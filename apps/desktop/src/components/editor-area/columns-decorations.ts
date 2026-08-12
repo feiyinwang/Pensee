@@ -391,9 +391,12 @@ class ColumnRowWidget extends WidgetType {
   }
 
   ignoreEvent(): boolean {
-    // Fully interactive widget: CodeMirror should not map our pointer events
-    // onto document positions.
-    return true;
+    // MUST be false. CodeMirror's `runHandlers` walks up from the event target
+    // and bails out entirely when a widget says it ignores the event — which
+    // would also skip our own `EditorView.domEventHandlers`, leaving the grab
+    // handle, the resize handle and the click-to-edit all inert. We stop
+    // propagation ourselves in the handlers instead.
+    return false;
   }
 }
 
@@ -469,10 +472,16 @@ export interface BlockRef {
 function topBlockAt(state: EditorState, pos: number): BlockRef | null {
   const clamped = Math.min(Math.max(pos, 0), state.doc.length);
   const tree = syntaxTree(state);
-  let node: SyntaxNode | null = tree.resolveInner(clamped, 1);
-  while (node?.parent?.parent) node = node.parent;
-  if (!node?.parent) return null; // blank line: resolves straight to the doc
-  return { from: node.from, to: node.to, name: node.name };
+  // Both sides matter. At a block's *end* boundary `resolveInner(pos, 1)` looks
+  // forward and lands on the Document — so pointing past the end of a short
+  // line (very easy to do: the line box spans the whole text column) would
+  // report "no block here" and the drop would silently fall back to a gap.
+  for (const side of [1, -1] as const) {
+    let node: SyntaxNode | null = tree.resolveInner(clamped, side);
+    while (node?.parent?.parent) node = node.parent;
+    if (node?.parent) return { from: node.from, to: node.to, name: node.name };
+  }
+  return null; // genuinely a blank line
 }
 
 /** Text of a block, ready to become a column. */
@@ -538,9 +547,15 @@ function beginColumnEdit(view: EditorView, cell: HTMLElement, body: HTMLElement)
 
 const HYSTERESIS = 16;
 const ROW_KEEP = 10;
-/** How much of a block's height counts as "above / below it" rather than
- *  "beside it". Capped so a tall code block still has a usable side zone. */
-const EDGE_ZONE = 14;
+/** Fraction of the text column, on each side, that means "drop beside this
+ *  block" rather than "drop above/below it". Splitting by *height* instead —
+ *  the obvious first idea — gives a one-line paragraph a 7px tall target, which
+ *  is unhittable; splitting by width gives ~180px on each side at any block
+ *  height. */
+const SIDE_FRACTION = 0.25;
+const SIDE_MAX = 220;
+/** Extra travel needed to flip a target that is already chosen. */
+const GAP_HYSTERESIS = 8;
 
 interface LayoutRect {
   left: number;
@@ -928,21 +943,28 @@ function hitTest(view: EditorView, x: number, y: number): DragTarget | null {
   if (!from || !to) return null;
   const top = from.top;
   const bottom = to.bottom;
-  const edge = Math.min(EDGE_ZONE, Math.max(6, (bottom - top) / 4));
 
-  // Vertical thirds: near the top/bottom edge means "between blocks"; the
-  // middle band means "beside it, as a column".
-  if (y < top + edge) {
-    return { kind: "gap", pos: block.from, y: top };
-  }
-  if (y > bottom - edge) {
-    const after = Math.min(block.to + 1, view.state.doc.length);
-    return { kind: "gap", pos: after, y: bottom };
-  }
-  const centre = (content.left + content.right) / 2;
+  // Horizontal first. The outer quarter of the text column on either side means
+  // "beside this block, as a column"; the middle means "between blocks", and
+  // then the block's own midline picks above vs below.
+  const style = getComputedStyle(view.contentDOM);
+  const textLeft = content.left + (parseFloat(style.paddingLeft) || 0);
+  const textRight = content.right - (parseFloat(style.paddingRight) || 0);
+  const side = Math.min(SIDE_FRACTION * Math.max(1, textRight - textLeft), SIDE_MAX);
+  const wasLeft = current?.kind === "block" && current.side === "left";
   const wasRight = current?.kind === "block" && current.side === "right";
-  const threshold = wasRight ? centre - HYSTERESIS : centre + HYSTERESIS;
-  return { kind: "block", block, side: x > threshold ? "right" : "left" };
+  if (x <= textLeft + side + (wasLeft ? HYSTERESIS : 0)) {
+    return { kind: "block", block, side: "left" };
+  }
+  if (x >= textRight - side - (wasRight ? HYSTERESIS : 0)) {
+    return { kind: "block", block, side: "right" };
+  }
+  const mid = (top + bottom) / 2;
+  const wasAfter = current?.kind === "gap" && current.pos > block.from;
+  const grip = Math.min(GAP_HYSTERESIS, (bottom - top) / 4);
+  const bias = wasAfter ? -grip : grip;
+  if (y < mid + bias) return { kind: "gap", pos: block.from, y: top };
+  return { kind: "gap", pos: Math.min(block.to + 1, view.state.doc.length), y: bottom };
 }
 
 function slotBefore(view: EditorView, row: HTMLElement, x: number, y: number): Element | null {
@@ -1061,11 +1083,24 @@ function insertionChange(
   // The "beside a block" case needs that block's own text, which only the view
   // can supply — see `blockInsertion`.
   if (resolved.block) return null;
-  if (resolved.gap !== undefined) {
-    const md = incoming.map((c) => c.md.trim()).join("\n\n");
-    return { from: resolved.gap, to: resolved.gap, insert: `${md}\n\n` };
-  }
+  // The gap case needs the document to decide how many newlines to add — see
+  // `gapInsertion`.
   return null;
+}
+
+/** Insert at a blank-line boundary. Both gap positions we produce are line
+ *  starts, so the text after us is fine with a trailing blank line; the text
+ *  *before* us is only separated by a single newline, and gluing two paragraphs
+ *  with one newline makes markdown read them as one block. */
+function gapInsertion(
+  view: EditorView,
+  pos: number,
+  incoming: Column[],
+): { from: number; to: number; insert: string } {
+  const doc = view.state.doc;
+  const md = incoming.map((c) => c.md.trim()).join("\n\n");
+  const prevLineHasText = pos > 0 && doc.lineAt(Math.max(0, pos - 1)).text.trim() !== "";
+  return { from: pos, to: pos, insert: `${prevLineHasText ? "\n" : ""}${md}\n\n` };
 }
 
 /** The block case needs the block's own markdown, which only the view can
@@ -1090,9 +1125,9 @@ function targetInsertion(
   resolved: ResolvedTarget,
   incoming: Column[],
 ): { from: number; to: number; insert: string } | null {
-  return resolved.block
-    ? blockInsertion(view, resolved, incoming)
-    : insertionChange(resolved, incoming);
+  if (resolved.block) return blockInsertion(view, resolved, incoming);
+  if (resolved.gap !== undefined) return gapInsertion(view, resolved.gap, incoming);
+  return insertionChange(resolved, incoming);
 }
 
 function eatNewline(view: EditorView, to: number): number {
@@ -1230,6 +1265,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     block: BlockRef | null = null;
     private readonly onMove: (e: MouseEvent) => void;
     private readonly onLeave: () => void;
+    private readonly onDown: (e: PointerEvent) => void;
 
     constructor(readonly view: EditorView) {
       this.handle = document.createElement("div");
@@ -1240,8 +1276,18 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
 
       this.onMove = (e: MouseEvent) => this.place(e);
       this.onLeave = () => this.hide();
+      // The handle lives in `view.dom`, outside `contentDOM` — and
+      // `EditorView.domEventHandlers` only ever sees `contentDOM`. So this one
+      // listener has to be wired by hand or the handle is inert.
+      this.onDown = (e: PointerEvent) => {
+        if (e.button !== 0 || !this.block) return;
+        e.preventDefault();
+        e.stopPropagation();
+        startBlockDrag(view, this.block, e);
+      };
       view.dom.addEventListener("mousemove", this.onMove);
       view.dom.addEventListener("mouseleave", this.onLeave);
+      this.handle.addEventListener("pointerdown", this.onDown);
     }
 
     private hide() {
@@ -1263,8 +1309,19 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       const coords = view.coordsAtPos(block.from);
       if (!coords) return this.hide();
       const host = view.dom.getBoundingClientRect();
+      // Sit in the left margin, measured from where the TEXT starts —
+      // `contentDOM`'s rect is the padding box, so it would put the handle on
+      // top of the first word. `--writer-editor-side-padding` can be as little
+      // as 24px (clamp(1.5rem, 4vw, 4rem)), so fall back to flush-against-text
+      // rather than overlapping.
+      // Text-column left edge = contentDOM's padding box + its own padding.
+      // `coords.left` is the caret rect, which sits a few px into the first
+      // glyph; `content.left` is the padding box. Neither is the text edge.
+      const padLeft = parseFloat(getComputedStyle(view.contentDOM).paddingLeft) || 0;
+      const room = content.left + padLeft - host.left;
+      const left = room >= 26 ? room - 26 : Math.max(0, room - 24);
       this.handle.style.top = `${coords.top - host.top}px`;
-      this.handle.style.left = `${Math.max(2, content.left - host.left - 26)}px`;
+      this.handle.style.left = `${left}px`;
       this.handle.classList.add("wr-gutter-on");
       this.block = block;
     }
@@ -1272,6 +1329,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     destroy() {
       this.view.dom.removeEventListener("mousemove", this.onMove);
       this.view.dom.removeEventListener("mouseleave", this.onLeave);
+      this.handle.removeEventListener("pointerdown", this.onDown);
       this.handle.remove();
     }
   },
@@ -1493,13 +1551,7 @@ const columnEvents = EditorView.domEventHandlers({
     if (handle) {
       event.preventDefault();
       event.stopPropagation();
-      if (handle.dataset.wrHandle === "col") {
-        startColumnDrag(view, handle, event);
-      } else {
-        const plugin = view.plugin(gutterHandlePlugin);
-        const block = plugin?.block;
-        if (block) startBlockDrag(view, block, event);
-      }
+      if (handle.dataset.wrHandle === "col") startColumnDrag(view, handle, event);
       return true;
     }
     const resize = target.closest<HTMLElement>("[data-wr-resize]");
