@@ -199,7 +199,7 @@ describe("joinBands / withBand", () => {
   });
 
   test("writing a caption into a picture-only column appends below it", () => {
-    expect(withBand("![](a.png)", "below", "说明")).toBe("![](a.png)\n\n说明");
+    expect(withBand("![](a.png)", "below", "a caption")).toBe("![](a.png)\n\na caption");
   });
 
   test("editing one band never touches the others", () => {

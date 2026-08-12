@@ -201,21 +201,27 @@
   }
 }
 
+/* Writing in a band should feel like writing anywhere else in the document, so
+   the box is invisible: same font, same size, same colour, no fill, no border,
+   no focus ring. A textarea does not inherit type by default — `font: inherit`
+   is what keeps it from falling back to 13px monospace. */
 .wr-col-edit {
   display: block;
   width: 100%;
-  font-family: var(--mono-font);
-  font-size: 0.78em;
-  line-height: 1.65;
-  color: var(--text-secondary);
-  background: var(--code-bg);
-  border: 1px solid var(--line-subtle);
-  border-radius: 6px;
-  padding: 7px 9px;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   resize: none;
   overflow: hidden;
   outline: none;
-  box-shadow: 0 0 0 3px var(--editor-selection-bg);
+  box-shadow: none;
+}
+.wr-col-edit::placeholder {
+  color: var(--text-icon-muted);
 }
 
 /* ---- grab handles ---------------------------------------------------- */
@@ -428,6 +434,51 @@ body.wr-resizing-body {
   height: 12px;
   background: linear-gradient(315deg, rgb(0 0 0 / 12%) 0%, rgb(0 0 0 / 4%) 45%, transparent 46%);
 }
+/* Carried out of the editor, the sheet crumples into a ball: releasing there
+   throws the block away. All CSS — creases are gradients, not an image. */
+.wr-lift.wr-lift-crumple {
+  padding: 0;
+  border-color: transparent;
+  border-radius: 48% 52% 46% 54% / 52% 46% 54% 48%;
+  mask-image: none;
+  background:
+    linear-gradient(
+      118deg,
+      rgb(0 0 0 / 10%) 0 21%,
+      transparent 21.5% 37%,
+      rgb(0 0 0 / 7%) 37.5% 45%,
+      transparent 45.5%
+    ),
+    linear-gradient(
+      -42deg,
+      rgb(0 0 0 / 9%) 0 17%,
+      transparent 17.5% 43%,
+      rgb(255 255 255 / 72%) 43.5% 57%,
+      transparent 57.5%
+    ),
+    linear-gradient(
+      72deg,
+      rgb(255 255 255 / 66%) 0 25%,
+      transparent 25.5% 53%,
+      rgb(0 0 0 / 9%) 53.5% 67%,
+      transparent 67.5%
+    ),
+    radial-gradient(120% 120% at 32% 28%, #fff 0%, var(--wr-paper) 46%, #d8d6d1 100%);
+  box-shadow:
+    0 10px 18px -8px rgb(0 0 0 / 45%),
+    inset 0 -7px 12px -7px rgb(0 0 0 / 28%);
+  transition:
+    width var(--wr-dur-move) var(--wr-ease-out),
+    height var(--wr-dur-move) var(--wr-ease-out),
+    border-radius var(--wr-dur-move) var(--wr-ease-out);
+}
+/* The text goes with it, but a ball has no readable text. */
+.wr-lift.wr-lift-crumple > *,
+.wr-lift.wr-lift-crumple::after {
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) ease;
+}
+
 .wr-lift > *:first-child {
   margin-top: 0;
 }

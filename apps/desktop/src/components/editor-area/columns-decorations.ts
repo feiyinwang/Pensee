@@ -489,7 +489,7 @@ class ColumnRowWidget extends WidgetType {
     const source = document.createElement("button");
     source.type = "button";
     source.className = "wr-tool";
-    source.title = "编辑源码";
+    source.title = "Edit source";
     source.textContent = "</>";
     source.addEventListener("mousedown", (event) => {
       event.preventDefault();
@@ -588,8 +588,12 @@ function buildColumn(
   return cell;
 }
 
-const EMPTY_COLUMN_PLACEHOLDER = "空栏 · 点这里写点什么";
-const EMPTY_BAND_PLACEHOLDER = "写说明…";
+/** UI copy. The app is in English; nothing user-facing here is localised. */
+const PLACEHOLDER: Record<BandName, string> = {
+  anchor: "Empty column · click to write",
+  above: "Write a note…",
+  below: "Write a caption…",
+};
 
 function paintBand(el: HTMLElement, markdown: string, band: BandName): void {
   const text = String(markdown ?? "").trim();
@@ -600,7 +604,7 @@ function paintBand(el: HTMLElement, markdown: string, band: BandName): void {
   }
   // An empty anchor means the whole column is empty; an empty outer band means
   // a neighbour wrote a caption and this column has the aligned slot for one.
-  el.innerHTML = `<p>${band === "anchor" ? EMPTY_COLUMN_PLACEHOLDER : EMPTY_BAND_PLACEHOLDER}</p>`;
+  el.innerHTML = `<p>${PLACEHOLDER[band]}</p>`;
 }
 
 /* -------------------------------------------------------- doc-range helpers */
@@ -661,6 +665,45 @@ function blockMarkdown(view: EditorView, block: BlockRef): string {
 /* ----------------------------------------------------------- column editing */
 
 /**
+ * Every key pressed in here has to stay in here. The widget lives inside
+ * `contentDOM` and CodeMirror's keymap listens there, so Backspace was read as
+ * "delete a character of the document", Enter as "split the block" and the arrow
+ * keys as "move the document cursor" — the textarea never saw them, while plain
+ * letters went through natively. That is exactly the half-working box this
+ * looked like. `ignoreEvent()` cannot fix it (it has to stay `false`, or the
+ * grab handle, the resize handle and click-to-edit all go inert), so the events
+ * are stopped at the textarea itself.
+ */
+const EDITOR_SWALLOWED_EVENTS = [
+  "keydown",
+  "keypress",
+  "keyup",
+  "beforeinput",
+  "input",
+  "paste",
+  "cut",
+  "copy",
+  "dragstart",
+  "drop",
+  "pointerdown",
+  "mousedown",
+  "dblclick",
+] as const;
+
+function createBandEditor(band: BandName, value: string): HTMLTextAreaElement {
+  const area = document.createElement("textarea");
+  area.className = "wr-col-edit";
+  area.value = value;
+  area.placeholder = PLACEHOLDER[band];
+  area.spellcheck = false;
+  area.rows = 1;
+  for (const type of EDITOR_SWALLOWED_EVENTS) {
+    area.addEventListener(type, (event) => event.stopPropagation());
+  }
+  return area;
+}
+
+/**
  * Edit one band in place. Deliberately *one band*, not the whole column: a
  * column-wide textarea turns the rendered picture back into `![](…)` every time
  * you fix a word in the caption. An empty band opens focused and ready to type,
@@ -678,11 +721,7 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   const band = (bandEl.dataset.wrBand ?? "anchor") as BandName;
   const before = splitBands(column.md)[band];
 
-  const area = document.createElement("textarea");
-  area.className = "wr-col-edit";
-  area.value = before;
-  area.placeholder = band === "anchor" ? EMPTY_COLUMN_PLACEHOLDER : EMPTY_BAND_PLACEHOLDER;
-  area.spellcheck = false;
+  const area = createBandEditor(band, before);
   const fit = () => {
     area.style.height = "auto";
     area.style.height = `${area.scrollHeight}px`;
@@ -719,8 +758,15 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   area.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      event.stopPropagation();
       finish(false);
+      view.focus();
+      return;
+    }
+    // Enter makes a new line, like any text box. Cmd/Ctrl+Enter is the way out
+    // without reaching for the mouse.
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      finish(true);
       view.focus();
     }
   });
@@ -752,6 +798,8 @@ const LIFT_MAX_WIDTH = 320;
 const LIFT_MAX_HEIGHT = 260;
 /** The "picked up off the page" nudge, on top of the shrink. */
 const LIFT_LIFT = 1.03;
+/** Diameter of the crumpled ball, on screen. */
+const CRUMPLE_SIZE = 72;
 
 interface LayoutRect {
   left: number;
@@ -799,6 +847,11 @@ interface DragState {
   lastX: number;
   lastT: number;
   tilt: number;
+  /** True while the pointer is outside the editor: the sheet is crumpled into a
+   *  ball and releasing there discards the block. */
+  crumpled: boolean;
+  /** Where the sheet was grabbed, remembered while it is a ball. */
+  grip: { x: number; y: number } | null;
   target: DragTarget | null;
   raf: number;
 }
@@ -1002,6 +1055,8 @@ function beginDrag(
     lastX: event.clientX,
     lastT: performance.now(),
     tilt: 0,
+    crumpled: false,
+    grip: null,
     target: null,
     raf: 0,
   };
@@ -1031,9 +1086,52 @@ function beginDrag(
 
 function paintLift(): void {
   if (!drag) return;
+  // A ball is already at its final size; only a flat sheet is scaled down.
+  const scale = drag.crumpled ? 1 : drag.liftScale * LIFT_LIFT;
   drag.lift.style.transform =
     `translate3d(${drag.x - drag.offsetX}px, ${drag.y - drag.offsetY}px, 0)` +
-    ` scale(${(drag.liftScale * LIFT_LIFT).toFixed(4)}) rotate(${drag.tilt.toFixed(2)}deg)`;
+    ` scale(${scale.toFixed(4)}) rotate(${drag.tilt.toFixed(2)}deg)`;
+}
+
+/**
+ * Carry the paper out of the editor and it crumples into a ball: releasing there
+ * throws the block away. Bring it back in and it flattens out again. Esc is
+ * still a plain cancel and a discard is a single undo step, so this is not a
+ * one-way door.
+ */
+function setCrumpled(state: DragState, on: boolean): void {
+  if (state.crumpled === on || state.source.kind === "external") return;
+  state.crumpled = on;
+  const lift = state.lift;
+  lift.classList.toggle("wr-lift-crumple", on);
+  // The sheet's size is inline (it mirrors the source block), so the ball's is
+  // too — no `!important` fight with the stylesheet. It is `position: fixed`, so
+  // animating its box cannot disturb the document.
+  if (on) {
+    lift.style.width = `${CRUMPLE_SIZE}px`;
+    lift.style.height = `${CRUMPLE_SIZE}px`;
+    lift.style.maxHeight = "none";
+  } else {
+    lift.style.width = `${Math.round(state.liftWidth)}px`;
+    lift.style.height = "";
+    lift.style.maxHeight = `${Math.round(LIFT_MAX_HEIGHT / state.liftScale)}px`;
+  }
+  if (on) {
+    // Hold the ball where the cursor is, not where the sheet happened to be
+    // grabbed — a corner grip on a 72px ball looks like a bug.
+    state.grip = { x: state.offsetX, y: state.offsetY };
+    state.offsetX = CRUMPLE_SIZE / 2;
+    state.offsetY = CRUMPLE_SIZE / 2;
+  } else if (state.grip) {
+    state.offsetX = state.grip.x;
+    state.offsetY = state.grip.y;
+  }
+  paintLift();
+}
+
+function insideEditor(view: EditorView, x: number, y: number): boolean {
+  const r = view.dom.getBoundingClientRect();
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }
 
 function onPointerMove(event: PointerEvent): void {
@@ -1041,7 +1139,10 @@ function onPointerMove(event: PointerEvent): void {
   const now = performance.now();
   const dt = Math.max(1, now - drag.lastT);
   const velocity = (event.clientX - drag.lastX) / dt;
-  drag.tilt = Math.max(-4, Math.min(4, drag.tilt * 0.82 + velocity * 3.2));
+  // A sheet leans with the drag (Emil caps this at a few degrees); a ball is
+  // allowed to actually tumble.
+  const limit = drag.crumpled ? 14 : 4;
+  drag.tilt = Math.max(-limit, Math.min(limit, drag.tilt * 0.82 + velocity * 3.2));
   drag.lastX = event.clientX;
   drag.lastT = now;
   drag.x = event.clientX;
@@ -1064,6 +1165,25 @@ function onDragFrame(): void {
   const state = drag;
   if (!state) return;
   state.raf = 0;
+
+  // Outside the editor there is nothing to aim at: crumple the sheet, drop every
+  // hint, and let go of the target so releasing there means "discard" rather
+  // than "put it back where it was".
+  const out = state.source.kind !== "external" && !insideEditor(state.view, state.x, state.y);
+  setCrumpled(state, out);
+  if (out) {
+    paintLift();
+    if (state.target) {
+      const parent = state.slot.parentElement;
+      state.target = null;
+      state.slot.remove();
+      if (parent) layoutRowTracks(parent);
+      cacheLayout(state.view);
+    }
+    state.bar.classList.remove("wr-drop-bar-on");
+    return;
+  }
+
   paintLift();
   const next = hitTest(state.view, state.x, state.y);
   if (!next || sameTarget(state.target, next)) return;
@@ -1322,8 +1442,16 @@ function endDrag(cancel: boolean): void {
   if (state.raf) cancelAnimationFrame(state.raf);
 
   const view = state.view;
+  const discard = !cancel && state.crumpled;
   const landing = state.slot.isConnected ? state.slot.getBoundingClientRect() : null;
-  if (landing) {
+  if (discard) {
+    // Tossed away: the ball drops out of sight. Nothing to fly back to.
+    state.lift.style.transition =
+      "transform 260ms var(--wr-ease-out), opacity 260ms var(--wr-ease-out)";
+    state.lift.style.transform =
+      `translate3d(${state.x - CRUMPLE_SIZE / 2}px, ${state.y + 90}px, 0)` +
+      ` scale(0.55) rotate(${(state.tilt * 3).toFixed(2)}deg)`;
+  } else if (landing) {
     // Animate the transform only — width is layout, and animating layout is what
     // the anti-jitter contract forbids. Settling means: fly to the slot, unshrink
     // to the slot's width, tilt back to 0°. No landing bounce (Emil).
@@ -1335,7 +1463,7 @@ function endDrag(cancel: boolean): void {
       ` scale(${settle.toFixed(4)}) rotate(0deg)`;
   }
   state.lift.style.opacity = "0";
-  window.setTimeout(() => state.lift.remove(), 220);
+  window.setTimeout(() => state.lift.remove(), discard ? 280 : 220);
 
   const slotRow = state.slot.parentElement;
   state.slot.remove();
@@ -1350,7 +1478,30 @@ function endDrag(cancel: boolean): void {
   thawImageHeights(view);
   clearFlip(view);
 
-  if (!cancel && state.target) commitDrop(view, state, state.target);
+  if (discard) discardSource(view, state.source);
+  else if (!cancel && state.target) commitDrop(view, state, state.target);
+}
+
+/** Released outside the editor: take the block out of the document. One
+ *  dispatch, so `Cmd+Z` brings it back in one step. */
+function discardSource(view: EditorView, source: DragSource): void {
+  if (source.kind === "col") {
+    const row = rowRefFromDOM(view, source.rowEl);
+    if (!row || !row.columns[source.index]) return;
+    view.dispatch({
+      changes: rowAfterRemoval(row, source.index),
+      userEvent: "delete.wr-column",
+    });
+    return;
+  }
+  if (source.kind === "block") {
+    const live = topBlockAt(view.state, source.block.from);
+    if (!live || live.from !== source.block.from) return;
+    view.dispatch({
+      changes: { from: live.from, to: eatNewline(view, live.to), insert: "" },
+      userEvent: "delete.wr-block",
+    });
+  }
 }
 
 /* ------------------------------------------------------------------ commit */
@@ -1803,6 +1954,8 @@ function startExternalDrag(view: EditorView, x: number, y: number, count: number
     lastX: x,
     lastT: performance.now(),
     tilt: 0,
+    crumpled: false,
+    grip: null,
     target: null,
     raf: 0,
   };
