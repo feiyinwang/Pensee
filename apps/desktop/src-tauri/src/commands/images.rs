@@ -18,6 +18,25 @@ pub fn save_clipboard_image(
     save_clipboard_image_impl(&markdown_file_path, &image_data, &format)
 }
 
+/// Copy a file that was dragged into the window (from Finder, the sidebar,
+/// anywhere) into the note's assets folder. Reading the bytes here rather than
+/// in the webview avoids two problems: the CSP's `connect-src` (which falls
+/// back to `default-src 'self'` and so blocks `fetch()` of an `asset://` URL),
+/// and marshalling several megabytes through IPC as a JSON number array.
+#[tauri::command]
+pub fn import_image_file(
+    markdown_file_path: String,
+    source_path: String,
+) -> Result<ImageSaveResult, AppError> {
+    let source = PathBuf::from(&source_path);
+    let format = source
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_else(|| "png".to_string());
+    let bytes = fs::read(&source)?;
+    save_clipboard_image_impl(&markdown_file_path, &bytes, &format)
+}
+
 pub fn save_clipboard_image_impl(
     markdown_file_path: &str,
     image_data: &[u8],
@@ -49,6 +68,12 @@ pub fn save_clipboard_image_impl(
     let ext = match format {
         "jpeg" | "jpg" => "jpg",
         "webp" => "webp",
+        "gif" => "gif",
+        "avif" => "avif",
+        "bmp" => "bmp",
+        "svg" => "svg",
+        "heic" => "heic",
+        "heif" => "heif",
         _ => "png",
     };
     let filename = format!(

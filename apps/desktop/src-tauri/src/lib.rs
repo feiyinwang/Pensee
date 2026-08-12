@@ -54,12 +54,36 @@ fn attach_window_handlers(app: &tauri::AppHandle, window: &WebviewWindow) {
     let label = window.label().to_string();
     let handle = app.clone();
     window.on_window_event(move |event| match event {
-        WindowEvent::DragDrop(DragDropEvent::Drop { paths, .. }) => {
+        WindowEvent::DragDrop(DragDropEvent::Drop { paths, position }) => {
+            // A markdown file or a folder means "open this". Anything else —
+            // images, above all — belongs to the editor, so forward it with the
+            // drop position and let the frontend decide where it lands.
+            //
+            // This is deliberately independent of the webview's own
+            // `onDragDropEvent`: this handler is the one we know fires (it is
+            // how dropping a .md file has always worked), so the editor never
+            // depends on an API we cannot verify from here.
+            let mut opened = false;
             for path in paths {
                 if let Some(payload) = resolve_path(path) {
                     queue_open_event(&handle, &label, payload);
+                    opened = true;
                     break;
                 }
+            }
+            if !opened && !paths.is_empty() {
+                let payload = serde_json::json!({
+                    "paths": paths
+                        .iter()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .collect::<Vec<_>>(),
+                    "x": position.x as f64,
+                    "y": position.y as f64,
+                });
+                // `as_str()`, not `&label`: `emit_to` takes `impl Into<EventTarget>`
+                // and `&String` doesn't satisfy that bound (no deref coercion
+                // through a generic).
+                let _ = handle.emit_to(label.as_str(), "editor:file-drop", payload);
             }
         }
         WindowEvent::Destroyed => {
@@ -572,6 +596,7 @@ pub fn run() {
             commands::search::fuzzy_search,
             commands::search::find_file_by_name,
             commands::images::save_clipboard_image,
+            commands::images::import_image_file,
             commands::settings::get_settings,
             commands::settings::get_setting,
             commands::settings::set_setting,

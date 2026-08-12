@@ -274,6 +274,17 @@ export function showMainWindow(): Promise<void> {
 }
 
 // Image commands
+/** Copy a file that was dragged in (Finder, sidebar, anywhere) into the note's
+ *  assets folder. Reading the bytes in Rust sidesteps the CSP — `connect-src`
+ *  falls back to `default-src 'self'`, which blocks `fetch()` of an `asset://`
+ *  URL — and keeps multi-megabyte files out of the IPC payload. */
+export function importImageFile(
+  markdownFilePath: string,
+  sourcePath: string,
+): Promise<{ relative_path: string; absolute_path: string }> {
+  return invoke("import_image_file", { markdownFilePath, sourcePath });
+}
+
 export function saveClipboardImage(
   markdownFilePath: string,
   imageData: number[],

@@ -9,7 +9,7 @@ import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
 import type { BlockContext, BlockParser, Line, MarkdownConfig } from "@lezer/markdown";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { foldableSyntaxFacet } from "@/lib/prosemark-core/main";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
@@ -1349,7 +1349,6 @@ const IMAGE_EXTENSIONS = new Set([
   "heic",
   "heif",
 ]);
-const MAX_DROPPED_IMAGE_BYTES = 5 * 1024 * 1024;
 
 function extensionOf(path: string): string {
   return path.split(".").pop()?.toLowerCase() ?? "";
@@ -1360,20 +1359,12 @@ function isImagePath(path: string): boolean {
 }
 
 /** Copy a dropped file next to the note and hand back a column holding it.
- *  Reads through the asset protocol rather than a filesystem plugin, so this
- *  needs no new Rust command — `save_clipboard_image` already knows where a
- *  note's images live. */
+ *  The copy happens in Rust (`import_image_file`): the webview cannot `fetch()`
+ *  an `asset://` URL because the CSP has no `connect-src` and so falls back to
+ *  `default-src 'self'`. */
 async function importDroppedImage(notePath: string, path: string): Promise<Column | null> {
   try {
-    const response = await fetch(convertFileSrc(path));
-    if (!response.ok) return null;
-    const buffer = await response.arrayBuffer();
-    if (!buffer.byteLength || buffer.byteLength > MAX_DROPPED_IMAGE_BYTES) return null;
-    const saved = await tauri.saveClipboardImage(
-      notePath,
-      Array.from(new Uint8Array(buffer)),
-      extensionOf(path) || "png",
-    );
+    const saved = await tauri.importImageFile(notePath, path);
     return { md: `![](${formatMarkdownDestination(saved.relative_path)})`, grow: 1 };
   } catch {
     return null;
@@ -1434,21 +1425,41 @@ function targetStillValid(view: EditorView, resolved: ResolvedTarget): boolean {
 function fileDropPlugin(getFilePath: () => string) {
   return ViewPlugin.fromClass(
     class {
-      private unlisten: (() => void) | null = null;
+      private unlistenWebview: (() => void) | null = null;
+      private unlistenBackend: (() => void) | null = null;
       private disposed = false;
       private paths: string[] = [];
+      /** Both channels can report the same drop. Second one within this window
+       *  is ignored so nothing is inserted twice. */
+      private lastDropAt = 0;
 
       constructor(readonly view: EditorView) {
+        // Channel A — the webview's own drag-drop events. Gives hover feedback
+        // (enter/over) as well as the drop.
         void getCurrentWebview()
-          .onDragDropEvent((event) => this.handle(event.payload))
+          .onDragDropEvent((event) => this.handleWebview(event.payload))
           .then((unlisten) => {
             if (this.disposed) unlisten();
-            else this.unlisten = unlisten;
+            else this.unlistenWebview = unlisten;
           })
-          .catch(() => {
-            // Not running under Tauri (tests) — file drop is unavailable, every
-            // other interaction still works.
-          });
+          .catch(() => {});
+
+        // Channel B — the Rust window handler, which forwards anything that
+        // isn't "open this file". This is the one we know fires, so a drop
+        // lands even if channel A is silent on this platform.
+        void listen<{ paths?: string[]; x?: number; y?: number }>("editor:file-drop", (event) => {
+          const { paths = [], x = 0, y = 0 } = event.payload ?? {};
+          const images = paths.filter(isImagePath);
+          if (!images.length) return;
+          const point = this.point({ x, y });
+          if (!this.inside(point.x, point.y)) return;
+          void this.commit(images, point.x, point.y);
+        })
+          .then((unlisten) => {
+            if (this.disposed) unlisten();
+            else this.unlistenBackend = unlisten;
+          })
+          .catch(() => {});
       }
 
       private owns(): boolean {
@@ -1465,7 +1476,7 @@ function fileDropPlugin(getFilePath: () => string) {
         return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
       }
 
-      private handle(payload: {
+      private handleWebview(payload: {
         type: "enter" | "over" | "drop" | "leave";
         paths?: string[];
         position?: { x: number; y: number };
@@ -1478,12 +1489,9 @@ function fileDropPlugin(getFilePath: () => string) {
         if (!payload.position) return;
         const { x, y } = this.point(payload.position);
 
-        if (payload.type === "enter") {
-          this.paths = (payload.paths ?? []).filter(isImagePath);
-        }
-        if (payload.type === "drop") {
-          const dropped = (payload.paths ?? []).filter(isImagePath);
-          if (dropped.length) this.paths = dropped;
+        if (payload.type === "enter" || payload.type === "drop") {
+          const seen = (payload.paths ?? []).filter(isImagePath);
+          if (seen.length) this.paths = seen;
         }
         if (!this.paths.length) return;
 
@@ -1496,11 +1504,11 @@ function fileDropPlugin(getFilePath: () => string) {
         if (payload.type === "drop") {
           const paths = this.paths;
           this.paths = [];
-          if (!this.owns()) startExternalDrag(this.view, x, y, paths.length);
-          void this.drop(paths);
+          void this.commit(paths, x, y);
           return;
         }
 
+        // hover: show the same landing indicator the internal drag uses
         if (!this.owns()) startExternalDrag(this.view, x, y, this.paths.length);
         if (!drag) return;
         drag.x = x;
@@ -1508,11 +1516,23 @@ function fileDropPlugin(getFilePath: () => string) {
         if (!drag.raf) drag.raf = requestAnimationFrame(onDragFrame);
       }
 
-      private async drop(paths: string[]): Promise<void> {
+      private async commit(paths: string[], x: number, y: number): Promise<void> {
+        const now = performance.now();
+        if (now - this.lastDropAt < 500) return; // the other channel got here first
+        this.lastDropAt = now;
+
         const view = this.view;
-        const target = drag?.target ?? null;
+        // The hover events may never have fired (or arrived without paths), so
+        // the drop cannot rely on a target having been computed already —
+        // resolve one straight from the drop coordinates.
+        let target = this.owns() ? (drag?.target ?? null) : null;
+        if (!target) {
+          if (!this.owns()) startExternalDrag(view, x, y, paths.length);
+          cacheLayout(view);
+          target = hitTest(view, x, y);
+        }
         const resolved = target ? resolveTarget(view, target, null) : null;
-        endDrag(true); // clears the indicator; the insert is ours to make
+        if (this.owns()) endDrag(true);
         if (!resolved) return;
 
         const notePath = getFilePath();
@@ -1532,8 +1552,10 @@ function fileDropPlugin(getFilePath: () => string) {
       destroy() {
         this.disposed = true;
         if (this.owns()) endDrag(true);
-        this.unlisten?.();
-        this.unlisten = null;
+        this.unlistenWebview?.();
+        this.unlistenBackend?.();
+        this.unlistenWebview = null;
+        this.unlistenBackend = null;
       }
     },
   );
