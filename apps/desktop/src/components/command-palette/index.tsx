@@ -240,7 +240,7 @@ export function CommandPalette() {
   }, [search, intent, firstValue]);
   /* eslint-enable react-doctor/no-derived-state */
 
-  const placeholder = isCreateIntent ? "Create a new note..." : "Search...";
+  const placeholder = isCreateIntent ? "Create a new note..." : "这是我的版本...";
 
   return (
     <CommandDialog
