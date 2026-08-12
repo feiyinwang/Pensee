@@ -1,17 +1,47 @@
 import {
   EditorSelection,
+  Prec,
   StateEffect,
   StateField,
   type EditorState,
+  type Extension,
   type Range,
 } from "@codemirror/state";
-import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view";
+import {
+  Decoration,
+  EditorView,
+  ViewPlugin,
+  WidgetType,
+  drawSelection,
+  keymap,
+  placeholder,
+} from "@codemirror/view";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxTree } from "@codemirror/language";
+import { languages } from "@codemirror/language-data";
+import { markdown } from "@codemirror/lang-markdown";
 import type { SyntaxNode } from "@lezer/common";
-import type { BlockContext, BlockParser, Line, MarkdownConfig } from "@lezer/markdown";
+import {
+  GFM,
+  type BlockContext,
+  type BlockParser,
+  type Line,
+  type MarkdownConfig,
+} from "@lezer/markdown";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { foldableSyntaxFacet } from "@/lib/prosemark-core/main";
+import {
+  codeBlockDecorationsExtension,
+  defaultFoldableSyntaxExtensions,
+  defaultHideExtensions,
+  fixedTabWidthExtension,
+  foldableSyntaxFacet,
+  listExtension,
+  prosemarkBaseThemeSetup,
+  prosemarkMarkdownFormattingKeymap,
+  prosemarkMarkdownSyntaxExtensions,
+  revealBlockOnArrowExtension,
+} from "@/lib/prosemark-core/main";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
 import { formatMarkdownDestination } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
@@ -450,6 +480,28 @@ const revealedRowField = StateField.define<number | null>({
   },
 });
 
+/**
+ * Unfold the row under the cursor back into its raw `<div class="wr-row">` text.
+ * The only thing a band editor cannot reach is the wrapper itself — the grow
+ * ratios and the tag — so this stays as the escape hatch for that.
+ *
+ * It has no UI entry point on purpose. The button this replaced floated over
+ * the corner of every row, all the time, to serve a case that comes up once a
+ * month; where it belongs instead (command palette, context menu, keybinding)
+ * is an open product decision.
+ */
+export function revealColumnSource(view: EditorView): boolean {
+  const pos = view.state.selection.main.head;
+  const ref = rowRefAt(view, pos);
+  if (!ref) return false;
+  view.dispatch({
+    effects: revealSourceEffect.of(ref.from),
+    selection: EditorSelection.cursor(ref.from),
+  });
+  view.focus();
+  return true;
+}
+
 /* ------------------------------------------------------------------ widget */
 
 class ColumnRowWidget extends WidgetType {
@@ -484,26 +536,10 @@ class ColumnRowWidget extends WidgetType {
     });
     layoutRowTracks(row);
 
-    const tools = document.createElement("div");
-    tools.className = "wr-row-tools";
-    const source = document.createElement("button");
-    source.type = "button";
-    source.className = "wr-tool";
-    source.title = "Edit source";
-    source.textContent = "</>";
-    source.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const pos = view.posAtDOM(row);
-      view.dispatch({
-        effects: revealSourceEffect.of(pos),
-        selection: EditorSelection.cursor(pos),
-      });
-      view.focus();
-    });
-    tools.append(source);
-    row.append(tools);
-
+    // No tool chrome in the corner. The `</>` button existed because a band was
+    // a raw textarea you could not read while typing; bands are live markdown
+    // now, so the source is already on screen. Reveal-source lives on as
+    // {@link revealColumnSource}.
     return row;
   }
 
@@ -668,11 +704,15 @@ function blockMarkdown(view: EditorView, block: BlockRef): string {
  * Every key pressed in here has to stay in here. The widget lives inside
  * `contentDOM` and CodeMirror's keymap listens there, so Backspace was read as
  * "delete a character of the document", Enter as "split the block" and the arrow
- * keys as "move the document cursor" — the textarea never saw them, while plain
- * letters went through natively. That is exactly the half-working box this
+ * keys as "move the document cursor" — the inner editor never saw them, while
+ * plain letters went through natively. That is exactly the half-working box this
  * looked like. `ignoreEvent()` cannot fix it (it has to stay `false`, or the
  * grab handle, the resize handle and click-to-edit all go inert), so the events
- * are stopped at the textarea itself.
+ * are stopped on the way out, at the host element.
+ *
+ * Order matters and it works out for free: the inner editor's own handlers sit
+ * on its `contentDOM`, which is *inside* the host, so they have already run by
+ * the time the event reaches this listener on the way up.
  */
 const EDITOR_SWALLOWED_EVENTS = [
   "keydown",
@@ -690,27 +730,48 @@ const EDITOR_SWALLOWED_EVENTS = [
   "dblclick",
 ] as const;
 
-function createBandEditor(band: BandName, value: string): HTMLTextAreaElement {
-  const area = document.createElement("textarea");
-  area.className = "wr-col-edit";
-  area.value = value;
-  area.placeholder = PLACEHOLDER[band];
-  area.spellcheck = false;
-  area.rows = 1;
-  for (const type of EDITOR_SWALLOWED_EVENTS) {
-    area.addEventListener(type, (event) => event.stopPropagation());
-  }
-  return area;
+/**
+ * What a band edits with. This used to be a `<textarea>`, and that was the one
+ * spot in Writer where markdown stopped being live: you typed `- `, got a
+ * literal hyphen, and only saw a bullet after clicking away — which then read as
+ * "the app dropped my list". A band is a piece of the document, so it gets the
+ * document's editor.
+ *
+ * Deliberately *not* `prosemarkBasicSetup()`. That bundle is built for a
+ * full-page editor and drags in a fold gutter, search, autocomplete and bracket
+ * matching — a gutter alone would put a column of empty space inside a 200px
+ * caption. What is kept is exactly the live-markdown layer (hide/fold, lists,
+ * code fences, tab width) plus history and the formatting keymap.
+ */
+function bandEditorExtensions(placeholderText: string): Extension[] {
+  return [
+    markdown({
+      codeLanguages: languages,
+      extensions: [GFM, prosemarkMarkdownSyntaxExtensions],
+    }),
+    defaultHideExtensions,
+    defaultFoldableSyntaxExtensions,
+    revealBlockOnArrowExtension,
+    listExtension,
+    fixedTabWidthExtension,
+    codeBlockDecorationsExtension,
+    history(),
+    drawSelection(),
+    EditorView.lineWrapping,
+    placeholder(placeholderText),
+    keymap.of([...prosemarkMarkdownFormattingKeymap, ...defaultKeymap, ...historyKeymap]),
+    prosemarkBaseThemeSetup(),
+  ];
 }
 
 /**
  * Edit one band in place. Deliberately *one band*, not the whole column: a
- * column-wide textarea turns the rendered picture back into `![](…)` every time
+ * column-wide editor turns the rendered picture back into `![](…)` every time
  * you fix a word in the caption. An empty band opens focused and ready to type,
  * so writing a caption is one click and no ceremony.
  */
 function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement): void {
-  if (cell.querySelector("textarea.wr-col-edit")) return;
+  if (cell.querySelector(".wr-col-edit")) return;
   const rowEl = cell.closest<HTMLElement>(".wr-row-widget");
   if (!rowEl) return;
   const ref = rowRefFromDOM(view, rowEl);
@@ -721,26 +782,30 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   const band = (bandEl.dataset.wrBand ?? "anchor") as BandName;
   const before = splitBands(column.md)[band];
 
-  const area = createBandEditor(band, before);
-  const fit = () => {
-    area.style.height = "auto";
-    area.style.height = `${area.scrollHeight}px`;
-  };
-  // Keep the band's grid row, or the textarea would be auto-placed into a new
-  // implicit row and the whole row would jump while you type.
-  area.style.gridRow = bandEl.style.gridRow;
-  bandEl.replaceWith(area);
-  fit();
-  area.focus();
-  area.setSelectionRange(area.value.length, area.value.length);
+  const host = document.createElement("div");
+  host.className = "wr-col-edit";
+  // The app draws an accent focus ring on every `:focus-visible` and opts
+  // surfaces out one selector at a time. An inline editor inside body text must
+  // never wear one, so it opts out by attribute — see App.css.
+  host.dataset.noFocusRing = "";
+  // Keep the band's grid row, or the editor would be auto-placed into a new
+  // implicit row and the whole row would jump the moment you click in.
+  host.style.gridRow = bandEl.style.gridRow;
+  for (const type of EDITOR_SWALLOWED_EVENTS) {
+    host.addEventListener(type, (event) => event.stopPropagation());
+  }
+  bandEl.replaceWith(host);
 
+  let inner: EditorView | null = null;
   let closed = false;
   const finish = (commit: boolean) => {
     if (closed) return;
     closed = true;
-    const next = area.value;
+    const next = inner?.state.doc.toString() ?? before;
+    inner?.destroy();
+    inner = null;
     paintBand(bandEl, commit ? next : before, band);
-    area.replaceWith(bandEl);
+    host.replaceWith(bandEl);
     if (!commit || next.trim() === before.trim()) return;
     const live = rowRefFromDOM(view, rowEl);
     if (!live || !live.columns[index]) return;
@@ -752,24 +817,43 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
       userEvent: "input.wr-column",
     });
   };
+  // Tearing the editor down from inside one of its own key handlers means
+  // `destroy()` runs while CodeMirror is still walking that event. Hand the
+  // teardown to a microtask so the handler returns into a live view first.
+  const close = (commit: boolean) => {
+    queueMicrotask(() => {
+      finish(commit);
+      view.focus();
+    });
+    return true;
+  };
 
-  area.addEventListener("input", fit);
-  area.addEventListener("blur", () => finish(true), { once: true });
-  area.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      finish(false);
-      view.focus();
-      return;
-    }
-    // Enter makes a new line, like any text box. Cmd/Ctrl+Enter is the way out
-    // without reaching for the mouse.
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      finish(true);
-      view.focus();
-    }
+  inner = new EditorView({
+    parent: host,
+    doc: before,
+    extensions: [
+      // Ahead of `defaultKeymap`, which binds Escape to "simplify selection".
+      Prec.highest(
+        keymap.of([
+          { key: "Escape", run: () => close(false) },
+          // Enter makes a new line, like any text box. Cmd/Ctrl+Enter is the way
+          // out without reaching for the mouse.
+          { key: "Mod-Enter", run: () => close(true) },
+        ]),
+      ),
+      ...bandEditorExtensions(PLACEHOLDER[band]),
+      // Clicking anywhere else commits, same as before. `finish` is idempotent,
+      // so the blur that `destroy()` itself causes is harmless.
+      EditorView.domEventHandlers({
+        blur: () => {
+          finish(true);
+          return false;
+        },
+      }),
+    ],
   });
+  inner.focus();
+  inner.dispatch({ selection: EditorSelection.cursor(inner.state.doc.length) });
 }
 
 /* -------------------------------------------------------------------- drag */

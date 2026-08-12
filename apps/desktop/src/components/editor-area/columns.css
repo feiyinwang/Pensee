@@ -14,6 +14,8 @@
   --wr-dur-move: 200ms;
   --wr-gap: 16px;
   --wr-radius: 8px;
+  /* Phosphor dots-six-vertical, regular. See the grab-handle rules below. */
+  --wr-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M104,60A12,12,0,1,1,92,48,12,12,0,0,1,104,60Zm60,12a12,12,0,1,0-12-12A12,12,0,0,0,164,72ZM92,116a12,12,0,1,0,12,12A12,12,0,0,0,92,116Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,116ZM92,184a12,12,0,1,0,12,12A12,12,0,0,0,92,184Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,184Z'/%3E%3C/svg%3E");
   /* Paper for the drag lift. Light: a sheet. Dark: the card colour, lifted a
      notch so it still reads as paper rather than a hole. */
   --wr-paper: #fdfcfa;
@@ -188,23 +190,23 @@
   border-radius: 3px;
   padding: 0.1em 0.32em;
 }
-/* An empty band: the aligned slot a neighbour's caption created. No border and
-   no fill — it is an invitation, not a widget — with a dashed hint on hover so
-   it is obviously clickable. One click and you are typing in it. */
+/* An empty band: the aligned slot a neighbour's caption created. No border, no
+   fill, and nothing on hover either — it is a piece of the page, not a widget.
+   The muted placeholder is the whole affordance; a box drawn around it made a
+   paragraph look like a form field, which is exactly what a band is not. Do not
+   add a hover outline back: the same instinct is what put an accent ring on the
+   editor below. */
 .wr-band-empty {
   color: var(--text-icon-muted);
-  border-radius: 5px;
-}
-@media (hover: hover) and (pointer: fine) {
-  .wr-band-empty:hover {
-    box-shadow: inset 0 0 0 1px var(--line-subtler);
-  }
 }
 
 /* Writing in a band should feel like writing anywhere else in the document, so
    the box is invisible: same font, same size, same colour, no fill, no border,
-   no focus ring. A textarea does not inherit type by default — `font: inherit`
-   is what keeps it from falling back to 13px monospace. */
+   no focus ring. This used to be a `<textarea>`, which meant a band was the one
+   place in Writer where markdown stayed raw while you typed — `- ` never became
+   a bullet until you clicked away. It is now a nested CodeMirror running the
+   same prosemark extensions as the document, so the rules below exist only to
+   strip the editor chrome an inline editor must not have. */
 .wr-col-edit {
   display: block;
   width: 100%;
@@ -215,12 +217,36 @@
   border: 0;
   border-radius: 0;
   padding: 0;
-  resize: none;
-  overflow: hidden;
   outline: none;
   box-shadow: none;
 }
-.wr-col-edit::placeholder {
+/* `!important` on the outlines is deliberate: `.cm-focused` ships an outline in
+   CodeMirror's own base theme, injected at a precedence we do not control. */
+.wr-col-edit .cm-editor,
+.wr-col-edit .cm-editor.cm-focused {
+  background: none;
+  font: inherit;
+  color: inherit;
+  outline: none !important;
+}
+.wr-col-edit .cm-scroller {
+  font: inherit;
+  line-height: inherit;
+  /* An inline editor is sized by its text, so it must not scroll: a `cm-scroller`
+     that clips would cut the second line of a caption off inside the column. */
+  overflow: visible;
+}
+.wr-col-edit .cm-content {
+  padding: 0;
+  /* CodeMirror reserves a viewport's worth of height by default — inside a
+     caption band that is a screenful of blank space under one line of text. */
+  min-height: 0 !important;
+  caret-color: var(--text-primary);
+}
+.wr-col-edit .cm-line {
+  padding: 0;
+}
+.wr-col-edit .cm-placeholder {
   color: var(--text-icon-muted);
 }
 
@@ -262,14 +288,20 @@
   pointer-events: auto;
 }
 
-/* the ⠿ glyph, drawn so we don't depend on a font */
+/* Phosphor `dots-six-vertical`, regular weight (MIT). Inlined as a mask rather
+   than imported as a component: these handles are built with plain DOM inside a
+   CodeMirror widget, so there is no React to render an icon into — and a mask
+   keeps `color` as the single knob, which is what lets the same glyph be white
+   over a picture and muted grey in the margin. `--wr-grip` is declared with the
+   other tokens on :root because the drag lift is appended to <body>. */
 .wr-grab::after,
 .wr-gutter-grab::after {
   content: "";
   position: absolute;
-  inset: 6px 7px;
-  background-image: radial-gradient(circle, currentcolor 46%, transparent 47%);
-  background-size: 4px 4px;
+  inset: 0;
+  background: currentcolor;
+  -webkit-mask: var(--wr-grip) center / 20px 20px no-repeat;
+  mask: var(--wr-grip) center / 20px 20px no-repeat;
 }
 .wr-grab::after {
   color: #fff;
@@ -518,43 +550,13 @@ body.wr-resizing-body {
 }
 
 /* ---- row tools ------------------------------------------------------- */
-
-.wr-row-tools {
-  position: absolute;
-  top: -6px;
-  right: 0;
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity var(--wr-dur-hover) ease;
-}
-@media (hover: hover) and (pointer: fine) {
-  .wr-row-widget:hover .wr-row-tools {
-    opacity: 1;
-  }
-}
-.wr-tool {
-  font-family: var(--mono-font);
-  font-size: 11px;
-  line-height: 1;
-  color: var(--text-icon-muted);
-  background: var(--surface-subtle);
-  border: 1px solid var(--line-subtler);
-  border-radius: 5px;
-  padding: 4px 6px;
-  cursor: pointer;
-  transition:
-    color var(--wr-dur-hover) ease,
-    background var(--wr-dur-hover) ease,
-    transform var(--wr-dur-press) var(--wr-ease-out);
-}
-.wr-tool:hover {
-  color: var(--text-primary);
-  background: var(--item-hover-bg);
-}
-.wr-tool:active {
-  transform: scale(0.97);
-}
+/* Deliberately empty. A hovering `</>` button in the corner of every row was an
+   escape hatch from a band editor that could not show you what you were typing.
+   Bands now edit as live markdown, so the source *is* what you are looking at,
+   and the button was one more thing floating over the text for no reason. The
+   reveal-source gate itself survives as the exported `revealColumnSource`
+   command — the capability is kept, only the floating chrome is gone. It has no
+   UI entry point yet; picking one is a product decision, not a CSS one. */
 
 /* ---- reduced motion: soften, don't strip ----------------------------- */
 
