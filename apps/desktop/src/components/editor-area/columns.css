@@ -1,0 +1,406 @@
+/* Columns — any block, side by side.
+   Colours come from App.css tokens so light/dark and the contrast slider all
+   follow automatically. Accent shows up in exactly three places: the drop
+   target, the resize handle, and the editing focus ring. */
+
+.cm-editor {
+  /* Emil standards: UI motion under 300ms, never ease-in. */
+  --wr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --wr-dur-press: 140ms;
+  --wr-dur-hover: 150ms;
+  --wr-dur-move: 200ms;
+  --wr-gap: 16px;
+  --wr-radius: 8px;
+}
+
+.wr-row-widget {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--wr-gap);
+  margin: 0.35em 0 0.6em;
+}
+
+.wr-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 150px;
+  margin: 0;
+}
+
+.wr-col.wr-dragging {
+  display: none;
+}
+
+/* ---- column content -------------------------------------------------- */
+
+.wr-col-body {
+  cursor: text;
+}
+.wr-col-body > *:first-child {
+  margin-top: 0;
+}
+.wr-col-body > *:last-child {
+  margin-bottom: 0;
+}
+.wr-col-body p {
+  margin: 0 0 0.5em;
+}
+.wr-col-body h1,
+.wr-col-body h2,
+.wr-col-body h3,
+.wr-col-body h4,
+.wr-col-body h5,
+.wr-col-body h6 {
+  margin: 0 0 0.35em;
+  line-height: 1.3;
+  color: var(--text-primary);
+  font-weight: 640;
+}
+.wr-col-body h1 {
+  font-size: 1.45em;
+}
+.wr-col-body h2 {
+  font-size: 1.25em;
+}
+.wr-col-body h3 {
+  font-size: 1.1em;
+}
+.wr-col-body h4,
+.wr-col-body h5,
+.wr-col-body h6 {
+  font-size: 1em;
+}
+.wr-col-body ul,
+.wr-col-body ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.3em;
+}
+.wr-col-body li {
+  margin: 1px 0;
+}
+.wr-col-body li::marker {
+  color: var(--text-icon-muted);
+}
+.wr-col-body code {
+  font-family: var(--mono-font);
+  font-size: 0.9em;
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 0.1em 0.32em;
+}
+.wr-col-body pre {
+  font-family: var(--mono-font);
+  font-size: 0.86em;
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0 0 0.5em;
+  overflow: auto;
+}
+.wr-col-body pre code {
+  background: none;
+  padding: 0;
+}
+.wr-col-body a {
+  color: var(--link-color);
+  text-decoration: underline;
+}
+.wr-col-body blockquote {
+  margin: 0 0 0.5em;
+  padding-left: 0.75em;
+  border-left: 2px solid var(--blockquote-border);
+}
+.wr-col-body hr {
+  border: none;
+  border-top: 1px solid var(--line-subtle);
+  margin: 0.6em 0;
+}
+.wr-col-body .katex-display {
+  margin: 6px 0;
+}
+.wr-col-body p.wr-img {
+  margin: 0 0 0.4em;
+  line-height: 0;
+}
+.wr-col-body img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--wr-radius);
+  border: 1px solid var(--line-subtler);
+  background: var(--surface-card);
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.wr-math-error {
+  font-family: var(--mono-font);
+  font-size: 0.9em;
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 0.1em 0.32em;
+}
+.wr-col-empty {
+  color: var(--text-icon-muted);
+}
+
+.wr-col-edit {
+  display: block;
+  width: 100%;
+  font-family: var(--mono-font);
+  font-size: 0.78em;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  background: var(--code-bg);
+  border: 1px solid var(--line-subtle);
+  border-radius: 6px;
+  padding: 7px 9px;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--editor-selection-bg);
+}
+
+/* ---- grab handles ---------------------------------------------------- */
+/* Visual 22px, hit area 32px (Fitts). Hover-gated so a touch tap can't latch
+   them. The column handle floats over the cell; the block handle lives in the
+   left margin so it never covers a word. */
+
+.wr-grab,
+.wr-gutter-grab {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: grab;
+  opacity: 0;
+  z-index: 2;
+  transition:
+    opacity var(--wr-dur-hover) ease,
+    transform var(--wr-dur-press) var(--wr-ease-out);
+}
+
+.wr-grab {
+  top: 8px;
+  left: 8px;
+  background: color-mix(in srgb, #000 55%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.wr-gutter-grab {
+  top: 0;
+  left: 0;
+  z-index: 4;
+  background: transparent;
+  pointer-events: none;
+}
+.wr-gutter-grab.wr-gutter-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* the ⠿ glyph, drawn so we don't depend on a font */
+.wr-grab::after,
+.wr-gutter-grab::after {
+  content: "";
+  position: absolute;
+  inset: 6px 7px;
+  background-image: radial-gradient(circle, currentcolor 46%, transparent 47%);
+  background-size: 4px 4px;
+}
+.wr-grab::after {
+  color: #fff;
+  opacity: 0.9;
+}
+.wr-gutter-grab::after {
+  color: var(--text-icon-muted);
+}
+.wr-gutter-grab:hover::after {
+  color: var(--text-secondary);
+}
+
+/* generous invisible hit area */
+.wr-grab::before,
+.wr-gutter-grab::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
+.wr-grab:active,
+.wr-gutter-grab:active {
+  cursor: grabbing;
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wr-col:hover > .wr-grab {
+    opacity: 1;
+  }
+}
+
+body.wr-dragging-body .wr-grab,
+body.wr-dragging-body .wr-gutter-grab {
+  opacity: 0 !important;
+}
+body.wr-dragging-body {
+  cursor: grabbing;
+}
+body.wr-resizing-body {
+  cursor: col-resize;
+}
+
+/* ---- resize handle --------------------------------------------------- */
+
+.wr-resize {
+  flex: 0 0 0;
+  width: 0;
+  align-self: stretch;
+  position: relative;
+}
+.wr-resize::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  cursor: col-resize;
+}
+.wr-resize::before {
+  content: "";
+  position: absolute;
+  left: -1.5px;
+  top: 12%;
+  height: 56%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wr-resize:hover::before {
+    opacity: 0.7;
+  }
+}
+.wr-resize.wr-resize-active::before {
+  opacity: 1;
+}
+
+/* ---- drop target ----------------------------------------------------- */
+/* One language per target kind: dropping inside a row shows the real column it
+   will become; anything else shows a thin bar, because a full-height slot
+   outside a row would shove the document and move what you were aiming at. */
+
+.wr-slot {
+  flex: 1 1 0;
+  min-width: 150px;
+  align-self: stretch;
+  border-radius: var(--wr-radius);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent);
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) var(--wr-ease-out);
+}
+.wr-slot.wr-slot-on {
+  opacity: 1;
+}
+
+.wr-drop-bar {
+  position: absolute;
+  z-index: 5;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) var(--wr-ease-out);
+}
+.wr-drop-bar.wr-drop-bar-on {
+  opacity: 1;
+}
+.wr-drop-bar.wr-drop-bar-vertical {
+  width: 4px;
+  height: auto;
+}
+
+/* ---- lift ------------------------------------------------------------ */
+
+.wr-lift {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 999;
+  pointer-events: none;
+  overflow: hidden;
+  padding: 10px 12px;
+  border-radius: var(--wr-radius);
+  background: var(--bg-base);
+  border: 1px solid var(--line-subtle);
+  color: var(--text-secondary);
+  box-shadow:
+    0 18px 40px -12px rgb(0 0 0 / 55%),
+    0 2px 8px rgb(0 0 0 / 30%);
+  will-change: transform;
+}
+.wr-lift > *:first-child {
+  margin-top: 0;
+}
+.wr-lift > *:last-child {
+  margin-bottom: 0;
+}
+.wr-lift img {
+  display: block;
+  width: 100%;
+  border-radius: 4px;
+}
+
+/* ---- row tools ------------------------------------------------------- */
+
+.wr-row-tools {
+  position: absolute;
+  top: -6px;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wr-row-widget:hover .wr-row-tools {
+    opacity: 1;
+  }
+}
+.wr-tool {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-icon-muted);
+  background: var(--surface-subtle);
+  border: 1px solid var(--line-subtler);
+  border-radius: 5px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition:
+    color var(--wr-dur-hover) ease,
+    background var(--wr-dur-hover) ease,
+    transform var(--wr-dur-press) var(--wr-ease-out);
+}
+.wr-tool:hover {
+  color: var(--text-primary);
+  background: var(--item-hover-bg);
+}
+.wr-tool:active {
+  transform: scale(0.97);
+}
+
+/* ---- reduced motion: soften, don't strip ----------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-col,
+  .wr-lift {
+    transition-duration: 1ms !important;
+  }
+}

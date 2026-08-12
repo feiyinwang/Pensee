@@ -49,6 +49,7 @@ import {
 } from "@/lib/prosemark-core/main";
 import { tableDecorations } from "./table-decorations";
 import { htmlBlockDecorations, htmlBlockParserExtension } from "./html-block-decorations";
+import { columnsDecorations, columnsParserExtension } from "./columns-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
 import { mathDecorations } from "./math-decorations";
 import { dragFreezeExtensions } from "./drag-selection-gate";
@@ -539,7 +540,16 @@ function createEditorExtensions(
   return [
     markdown({
       codeLanguages: languages,
-      extensions: [GFM, prosemarkMarkdownSyntaxExtensions, htmlBlockParserExtension],
+      // `columnsParserExtension` must come before the html-block parser: both
+      // register `before: "HTMLBlock"`, and a `wr-row` div has to be claimed as
+      // one ColumnRow node (blank lines and all) before the generic Type-6
+      // HTML block parser cuts it at the first blank line.
+      extensions: [
+        GFM,
+        prosemarkMarkdownSyntaxExtensions,
+        columnsParserExtension,
+        htmlBlockParserExtension,
+      ],
     }),
     linkNavigationExtension(getFilePath, isDisposed),
     editorBodyContextMenuExtension(getFilePath, isDisposed),
@@ -645,6 +655,10 @@ function createEditorExtensions(
     ),
     viewportParsePlugin,
     tableDecorations(),
+    // Before htmlBlockDecorations: column rows own their own node type, but
+    // keeping them adjacent documents the ordering intent. `getFilePath` is
+    // needed so dropped image files land next to the note they were dropped on.
+    columnsDecorations(getFilePath),
     htmlBlockDecorations(),
     mermaidDecorations(),
     mathDecorations(),
