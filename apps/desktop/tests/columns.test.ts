@@ -3,6 +3,11 @@ import {
   parseColumns,
   serializeColumns,
   renderBlockMarkdown,
+  splitBlocks,
+  splitBands,
+  joinBands,
+  withBand,
+  appendToBand,
   type Column,
 } from "../src/components/editor-area/columns-decorations";
 
@@ -129,5 +134,105 @@ describe("renderBlockMarkdown", () => {
   test("an empty column produces nothing", () => {
     expect(renderBlockMarkdown("")).toBe("");
     expect(renderBlockMarkdown("   \n  ")).toBe("");
+  });
+});
+
+describe("splitBlocks", () => {
+  test("splits at blank lines and keeps a list together", () => {
+    expect(splitBlocks("a\n\nb")).toEqual(["a", "b"]);
+    expect(splitBlocks("- one\n- two\n\nafter")).toEqual(["- one\n- two", "after"]);
+  });
+
+  test("a fence keeps its own blank lines instead of being cut in half", () => {
+    expect(splitBlocks("```\na\n\nb\n```\n\ntail")).toEqual(["```\na\n\nb\n```", "tail"]);
+  });
+
+  test("a multi-line $$ block stays whole", () => {
+    expect(splitBlocks("$$\nE=mc^2\n\nx\n$$\n\nnote")).toEqual(["$$\nE=mc^2\n\nx\n$$", "note"]);
+  });
+
+  test("drops empty input and stray blank lines", () => {
+    expect(splitBlocks("")).toEqual([]);
+    expect(splitBlocks("\n\n  \n")).toEqual([]);
+  });
+});
+
+describe("splitBands", () => {
+  test("the first standalone image is the anchor", () => {
+    expect(splitBands("lead\n\n![](a.png)\n\ncaption")).toEqual({
+      above: "lead",
+      anchor: "![](a.png)",
+      below: "caption",
+    });
+  });
+
+  test("a caption of several paragraphs is one band, not three", () => {
+    expect(splitBands("![](a.png)\n\none\n\ntwo").below).toBe("one\n\ntwo");
+  });
+
+  test("no image: the first block anchors, so a text column still lines up", () => {
+    expect(splitBands("first\n\nsecond")).toEqual({
+      above: "",
+      anchor: "first",
+      below: "second",
+    });
+  });
+
+  test("an empty column has empty bands", () => {
+    expect(splitBands("")).toEqual({ above: "", anchor: "", below: "" });
+  });
+
+  test("an inline image in a sentence is not an anchor", () => {
+    expect(splitBands("see ![](a.png) here").anchor).toBe("see ![](a.png) here");
+  });
+});
+
+describe("joinBands / withBand", () => {
+  test("round-trips a column without drift", () => {
+    const md = "lead\n\n![](a.png)\n\ncaption";
+    expect(joinBands(splitBands(md))).toBe(md);
+  });
+
+  test("an empty value removes the band and leaves no blank lines", () => {
+    expect(withBand("![](a.png)\n\ncaption", "below", "")).toBe("![](a.png)");
+    expect(withBand("![](a.png)\n\ncaption", "below", "   ")).toBe("![](a.png)");
+  });
+
+  test("writing a caption into a picture-only column appends below it", () => {
+    expect(withBand("![](a.png)", "below", "说明")).toBe("![](a.png)\n\n说明");
+  });
+
+  test("editing one band never touches the others", () => {
+    expect(withBand("lead\n\n![](a.png)\n\nold", "below", "new")).toBe("lead\n\n![](a.png)\n\nnew");
+  });
+});
+
+describe("appendToBand", () => {
+  test("dropping below an existing caption lands under it", () => {
+    expect(appendToBand("![](a.png)\n\none", "below", "two")).toBe("![](a.png)\n\none\n\ntwo");
+  });
+
+  test("dropping above lands directly above the picture", () => {
+    expect(appendToBand("lead\n\n![](a.png)", "above", "second")).toBe(
+      "lead\n\nsecond\n\n![](a.png)",
+    );
+  });
+
+  test("a fourth band never appears — it merges into the band it was dropped in", () => {
+    const once = appendToBand("![](a.png)", "below", "one");
+    const twice = appendToBand(once, "below", "two");
+    expect(splitBands(twice)).toEqual({
+      above: "",
+      anchor: "![](a.png)",
+      below: "one\n\ntwo",
+    });
+  });
+
+  test("dropping nothing changes nothing", () => {
+    expect(appendToBand("![](a.png)\n\nc", "below", "   ")).toBe("![](a.png)\n\nc");
+  });
+
+  test("an empty column takes the drop as its only content", () => {
+    expect(appendToBand("", "below", "hi")).toBe("hi");
   });
 });

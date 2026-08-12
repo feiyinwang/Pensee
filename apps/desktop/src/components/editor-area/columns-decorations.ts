@@ -111,6 +111,118 @@ export function parseColumns(text: string): Column[] | null {
   return columns.length ? columns : null;
 }
 
+/* -------------------------------------------------------------------- bands */
+
+/**
+ * A column's markdown split into the three rows ("bands") that a row aligns
+ * across all of its columns: whatever sits above the anchor, the anchor itself,
+ * whatever sits below it. The anchor is the column's first standalone image —
+ * that is the thing a reader lines up — and in a text-only column it is simply
+ * the first block, so a caption column still lines up with the pictures beside
+ * it.
+ *
+ * Bands are **derived at render time and never written to the file.** Storing
+ * them (a `data-band` attribute, say) would tie the format to this editor, and
+ * `<div class="wr-row">` was chosen precisely so GitHub and Obsidian can read
+ * it too. The cost is re-splitting a string on each render; the gain is that a
+ * row hand-written anywhere else gets bands for free, with no migration.
+ */
+export interface Bands {
+  above: string;
+  anchor: string;
+  below: string;
+}
+
+export type BandName = keyof Bands;
+
+export const BAND_ORDER: readonly BandName[] = ["above", "anchor", "below"];
+
+const IMAGE_BLOCK = /^!\[[^\]]*\]\([^)\s]+\)$/;
+
+/**
+ * Split markdown into blocks at blank lines, keeping fenced code and `$$` math
+ * whole — both may contain blank lines, and cutting them there would leave two
+ * broken halves.
+ */
+export function splitBlocks(md: string): string[] {
+  const lines = String(md ?? "").split("\n");
+  const blocks: string[] = [];
+  let buf: string[] = [];
+  let fence: "```" | "$$" | null = null;
+  const flush = () => {
+    const text = buf.join("\n").trim();
+    if (text) blocks.push(text);
+    buf = [];
+  };
+  for (const line of lines) {
+    if (fence) {
+      buf.push(line);
+      const closed = fence === "```" ? /^\s*```/.test(line) : /\$\$\s*$/.test(line);
+      if (closed) {
+        fence = null;
+        flush();
+      }
+      continue;
+    }
+    const text = line.trim();
+    if (text.startsWith("```")) {
+      flush();
+      buf.push(line);
+      fence = "```";
+      continue;
+    }
+    if (text.startsWith("$$") && !(text.length > 4 && text.endsWith("$$"))) {
+      flush();
+      buf.push(line);
+      fence = "$$";
+      continue;
+    }
+    if (!text) {
+      flush();
+      continue;
+    }
+    buf.push(line);
+  }
+  flush();
+  return blocks;
+}
+
+export function splitBands(md: string): Bands {
+  const blocks = splitBlocks(md);
+  if (!blocks.length) return { above: "", anchor: "", below: "" };
+  const found = blocks.findIndex((b) => IMAGE_BLOCK.test(b));
+  const at = found < 0 ? 0 : found;
+  return {
+    above: blocks.slice(0, at).join("\n\n"),
+    anchor: blocks[at] ?? "",
+    below: blocks.slice(at + 1).join("\n\n"),
+  };
+}
+
+export function joinBands(bands: Bands): string {
+  return BAND_ORDER.map((name) => bands[name].trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** Replace one band. An empty value removes it, leaving no blank lines behind. */
+export function withBand(md: string, band: BandName, value: string): string {
+  return joinBands({ ...splitBands(md), [band]: value.trim() });
+}
+
+/**
+ * Drop something into a band. It lands next to the anchor: appending to `above`
+ * puts it directly above the picture, appending to `below` puts it under
+ * whatever caption is already there. A band never splits into a fourth band.
+ */
+export function appendToBand(md: string, band: BandName, incoming: string): string {
+  const bands = splitBands(md);
+  const add = incoming.trim();
+  if (!add) return joinBands(bands);
+  const existing = bands[band].trim();
+  return joinBands({ ...bands, [band]: existing ? `${existing}\n\n${add}` : add });
+}
+
 export function serializeColumns(columns: Column[]): string {
   const cells = columns.map((c) =>
     [
@@ -357,15 +469,20 @@ class ColumnRowWidget extends WidgetType {
     row.className = "wr-row-widget";
     row.contentEditable = "false";
 
+    // Which bands this row shows. A band nobody filled in is not rendered at
+    // all — an always-present empty caption row would add height to every plain
+    // two-picture row for nothing.
+    const bands = this.columns.map((c) => splitBands(c.md));
+    const shown = BAND_ORDER.filter(
+      (name) => name === "anchor" || bands.some((b) => !!b[name].trim()),
+    );
+    row.dataset.wrBands = shown.join(",");
+    row.style.gridTemplateRows = `repeat(${shown.length}, auto)`;
+
     this.columns.forEach((column, index) => {
-      if (index > 0) {
-        const handle = document.createElement("div");
-        handle.className = "wr-resize";
-        handle.dataset.wrResize = String(index);
-        row.append(handle);
-      }
-      row.append(buildColumn(column, index, view));
+      row.append(buildColumn(column, bands[index]!, shown, index, view));
     });
+    layoutRowTracks(row);
 
     const tools = document.createElement("div");
     tools.className = "wr-row-tools";
@@ -400,38 +517,90 @@ class ColumnRowWidget extends WidgetType {
   }
 }
 
-function buildColumn(column: Column, index: number, view: EditorView): HTMLElement {
+/**
+ * One grid track per visible cell, in DOM order. Called on build, whenever the
+ * drop slot appears or leaves (it is a track of its own while it is there) and
+ * on resize. Tracks are `minmax(0, Gfr)`: `G` keeps exactly the meaning it has
+ * in the file's `flex:G 1 0`, and a 0 minimum means a narrow editor squeezes
+ * the columns instead of overflowing sideways. The 150px floor lives in
+ * {@link MIN_COLUMN} — below that the row stacks instead.
+ */
+function layoutRowTracks(row: HTMLElement): void {
+  const cells = [...row.children].filter(
+    (el): el is HTMLElement =>
+      el instanceof HTMLElement &&
+      (el.classList.contains("wr-col") || el.classList.contains("wr-slot")) &&
+      !el.classList.contains("wr-dragging"),
+  );
+  const tracks: string[] = [];
+  cells.forEach((el, i) => {
+    el.style.gridColumn = String(i + 1);
+    tracks.push(`minmax(0, ${fmtGrow(Number(el.dataset.wrGrow ?? "1"))}fr)`);
+  });
+  row.style.gridTemplateColumns = tracks.join(" ");
+  row.dataset.wrCols = String(cells.length);
+}
+
+function buildColumn(
+  column: Column,
+  bands: Bands,
+  shown: readonly BandName[],
+  index: number,
+  view: EditorView,
+): HTMLElement {
   const cell = document.createElement("div");
   cell.className = "wr-col";
   cell.dataset.wrIndex = String(index);
-  cell.style.flex = `${fmtGrow(column.grow)} 1 0`;
+  cell.dataset.wrGrow = fmtGrow(column.grow);
 
   const grab = document.createElement("div");
   grab.className = "wr-grab";
   grab.dataset.wrHandle = "col";
   grab.setAttribute("aria-hidden", "true");
+  cell.append(grab);
 
-  const body = document.createElement("div");
-  body.className = "wr-col-body";
-  paintColumn(body, column.md);
-
-  // Images decode asynchronously; without a remembered height the row's height
-  // jumps once each image lands and the scroll anchor slips.
-  for (const img of body.querySelectorAll("img")) {
-    const src = img.getAttribute("src") ?? "";
-    attachStableImageHeight(img as HTMLImageElement, body, src, view);
+  if (index > 0) {
+    // Lives inside the column, absolutely positioned over the gap on its left.
+    // It used to be a sibling of the columns, which a grid would count as a
+    // track of its own.
+    const handle = document.createElement("div");
+    handle.className = "wr-resize";
+    handle.dataset.wrResize = String(index);
+    cell.append(handle);
   }
 
-  cell.append(grab, body);
+  shown.forEach((name, i) => {
+    const band = document.createElement("div");
+    band.className = "wr-band";
+    band.dataset.wrBand = name;
+    band.style.gridRow = String(i + 1);
+    paintBand(band, bands[name], name);
+
+    // Images decode asynchronously; without a remembered height the row's
+    // height jumps once each image lands and the scroll anchor slips.
+    for (const img of band.querySelectorAll("img")) {
+      const src = img.getAttribute("src") ?? "";
+      attachStableImageHeight(img as HTMLImageElement, band, src, view);
+    }
+    cell.append(band);
+  });
+
   return cell;
 }
 
-const EMPTY_PLACEHOLDER = "空栏 · 点这里写点什么";
+const EMPTY_COLUMN_PLACEHOLDER = "空栏 · 点这里写点什么";
+const EMPTY_BAND_PLACEHOLDER = "写说明…";
 
-function paintColumn(el: HTMLElement, markdown: string): void {
-  const text = markdown.trim();
-  el.classList.toggle("wr-col-empty", !text);
-  el.innerHTML = text ? renderBlockMarkdown(text) : `<p>${EMPTY_PLACEHOLDER}</p>`;
+function paintBand(el: HTMLElement, markdown: string, band: BandName): void {
+  const text = String(markdown ?? "").trim();
+  el.classList.toggle("wr-band-empty", !text);
+  if (text) {
+    el.innerHTML = renderBlockMarkdown(text);
+    return;
+  }
+  // An empty anchor means the whole column is empty; an empty outer band means
+  // a neighbour wrote a caption and this column has the aligned slot for one.
+  el.innerHTML = `<p>${band === "anchor" ? EMPTY_COLUMN_PLACEHOLDER : EMPTY_BAND_PLACEHOLDER}</p>`;
 }
 
 /* -------------------------------------------------------- doc-range helpers */
@@ -491,7 +660,13 @@ function blockMarkdown(view: EditorView, block: BlockRef): string {
 
 /* ----------------------------------------------------------- column editing */
 
-function beginColumnEdit(view: EditorView, cell: HTMLElement, body: HTMLElement): void {
+/**
+ * Edit one band in place. Deliberately *one band*, not the whole column: a
+ * column-wide textarea turns the rendered picture back into `![](…)` every time
+ * you fix a word in the caption. An empty band opens focused and ready to type,
+ * so writing a caption is one click and no ceremony.
+ */
+function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement): void {
   if (cell.querySelector("textarea.wr-col-edit")) return;
   const rowEl = cell.closest<HTMLElement>(".wr-row-widget");
   if (!rowEl) return;
@@ -500,16 +675,22 @@ function beginColumnEdit(view: EditorView, cell: HTMLElement, body: HTMLElement)
   const index = Number(cell.dataset.wrIndex ?? "0");
   const column = ref.columns[index];
   if (!column) return;
+  const band = (bandEl.dataset.wrBand ?? "anchor") as BandName;
+  const before = splitBands(column.md)[band];
 
   const area = document.createElement("textarea");
   area.className = "wr-col-edit";
-  area.value = column.md;
+  area.value = before;
+  area.placeholder = band === "anchor" ? EMPTY_COLUMN_PLACEHOLDER : EMPTY_BAND_PLACEHOLDER;
   area.spellcheck = false;
   const fit = () => {
     area.style.height = "auto";
     area.style.height = `${area.scrollHeight}px`;
   };
-  body.replaceWith(area);
+  // Keep the band's grid row, or the textarea would be auto-placed into a new
+  // implicit row and the whole row would jump while you type.
+  area.style.gridRow = bandEl.style.gridRow;
+  bandEl.replaceWith(area);
   fit();
   area.focus();
   area.setSelectionRange(area.value.length, area.value.length);
@@ -519,12 +700,14 @@ function beginColumnEdit(view: EditorView, cell: HTMLElement, body: HTMLElement)
     if (closed) return;
     closed = true;
     const next = area.value;
-    paintColumn(body, commit ? next : column.md);
-    area.replaceWith(body);
-    if (!commit || next === column.md) return;
+    paintBand(bandEl, commit ? next : before, band);
+    area.replaceWith(bandEl);
+    if (!commit || next.trim() === before.trim()) return;
     const live = rowRefFromDOM(view, rowEl);
     if (!live || !live.columns[index]) return;
-    const columns = live.columns.map((c, i) => (i === index ? { ...c, md: next } : c));
+    const columns = live.columns.map((c, i) =>
+      i === index ? { ...c, md: withBand(c.md, band, next) } : c,
+    );
     view.dispatch({
       changes: { from: live.from, to: live.to, insert: serializeColumns(columns) },
       userEvent: "input.wr-column",
@@ -556,6 +739,19 @@ const SIDE_FRACTION = 0.25;
 const SIDE_MAX = 220;
 /** Extra travel needed to flip a target that is already chosen. */
 const GAP_HYSTERESIS = 8;
+/** Same split, applied inside a column: the outer quarter (at most 64px, since
+ *  a column is narrower than the text col) still means "a new column beside
+ *  this one"; the middle means "into this column, as a band". */
+const COL_SIDE_FRACTION = 0.25;
+const COL_SIDE_MAX = 64;
+/** Narrower than this and a column stops being worth reading side by side, so
+ *  the row stacks instead. Replaces the old `min-width` + `flex-wrap` pair. */
+const MIN_COLUMN = 150;
+/** The paper: at most this wide on screen, at most this tall before it fades. */
+const LIFT_MAX_WIDTH = 320;
+const LIFT_MAX_HEIGHT = 260;
+/** The "picked up off the page" nudge, on top of the shrink. */
+const LIFT_LIFT = 1.03;
 
 interface LayoutRect {
   left: number;
@@ -568,6 +764,15 @@ interface LayoutRect {
 
 type DragTarget =
   | { kind: "col"; rowEl: HTMLElement; before: Element | null }
+  | {
+      kind: "band";
+      rowEl: HTMLElement;
+      index: number;
+      band: BandName;
+      y: number;
+      left: number;
+      width: number;
+    }
   | { kind: "block"; block: BlockRef; side: "left" | "right" }
   | { kind: "gap"; pos: number; y: number };
 
@@ -583,6 +788,9 @@ interface DragState {
   slot: HTMLElement;
   bar: HTMLElement;
   lift: HTMLElement;
+  /** Unscaled width of the lift; the paper is shrunk with a transform. */
+  liftWidth: number;
+  liftScale: number;
   height: number;
   offsetX: number;
   offsetY: number;
@@ -608,7 +816,12 @@ function measured(view: EditorView): HTMLElement[] {
 
 function cacheLayout(view: EditorView): void {
   const scroll = view.scrollDOM.scrollTop;
-  for (const el of measured(view)) {
+  // Bands are cached too — aiming inside a column needs the anchor's midline —
+  // but they are deliberately *not* in MEASURED: `flip()` transforms everything
+  // it measures, and a band moving on its own inside a column that is already
+  // moving is the two-motions-at-once shake all over again.
+  const elements = [...measured(view), ...view.dom.querySelectorAll<HTMLElement>(".wr-band")];
+  for (const el of elements) {
     const r = el.getBoundingClientRect();
     LAYOUT.set(el, {
       left: r.left,
@@ -742,18 +955,27 @@ function beginDrag(
 
   const slot = document.createElement("div");
   slot.className = "wr-slot";
+  slot.dataset.wrGrow = "1";
   slot.style.minHeight = `${Math.round(rect.height)}px`;
 
   const bar = document.createElement("div");
   bar.className = "wr-drop-bar";
   view.dom.append(bar);
 
-  const liftWidth = Math.min(rect.width, 320);
-  const scale = rect.width ? liftWidth / rect.width : 1;
+  // A sheet of paper picked up off the page: keep the source's own width and
+  // shrink the whole thing with a transform. Re-flowing the content into a
+  // narrower box instead — which is what this used to do — makes it *taller*,
+  // while the old height cap was computed as `originalHeight × widthRatio`,
+  // i.e. shorter. With `overflow: hidden` on top, the text was sliced through
+  // the middle of the glyphs. Never derive a height from a width ratio.
+  const baseWidth = Math.max(1, rect.width);
+  const scale = Math.min(1, LIFT_MAX_WIDTH / baseWidth);
   const lift = document.createElement("div");
   lift.className = "wr-lift";
-  lift.style.width = `${liftWidth}px`;
-  lift.style.maxHeight = `${Math.min(Math.round(rect.height * scale), 260)}px`;
+  lift.style.width = `${Math.round(baseWidth)}px`;
+  // Unscaled units, so the cap lands at LIFT_MAX_HEIGHT on screen. Past it the
+  // paper fades out (CSS mask) rather than cutting a line in half.
+  lift.style.maxHeight = `${Math.round(LIFT_MAX_HEIGHT / scale)}px`;
   if (preview) {
     lift.innerHTML = preview.innerHTML;
   } else if (source.kind === "block") {
@@ -768,7 +990,11 @@ function beginDrag(
     slot,
     bar,
     lift,
+    liftWidth: baseWidth,
+    liftScale: scale,
     height: Math.round(rect.height),
+    // Grab offset survives the shrink: the spot you grabbed stays under the
+    // cursor, scaled the same way the paper is.
     offsetX: (event.clientX - rect.left) * scale,
     offsetY: Math.min((event.clientY - rect.top) * scale, 60),
     x: event.clientX,
@@ -784,6 +1010,7 @@ function beginDrag(
     // The slot takes the source's place immediately, so nothing shifts on lift.
     sourceEl.classList.add("wr-dragging");
     sourceEl.parentElement.insertBefore(slot, sourceEl);
+    layoutRowTracks(sourceEl.parentElement);
     cacheLayout(view);
     drag.target = {
       kind: "col",
@@ -806,7 +1033,7 @@ function paintLift(): void {
   if (!drag) return;
   drag.lift.style.transform =
     `translate3d(${drag.x - drag.offsetX}px, ${drag.y - drag.offsetY}px, 0)` +
-    ` scale(1.03) rotate(${drag.tilt.toFixed(2)}deg)`;
+    ` scale(${(drag.liftScale * LIFT_LIFT).toFixed(4)}) rotate(${drag.tilt.toFixed(2)}deg)`;
 }
 
 function onPointerMove(event: PointerEvent): void {
@@ -825,6 +1052,8 @@ function onPointerMove(event: PointerEvent): void {
 function sameTarget(a: DragTarget | null, b: DragTarget): boolean {
   if (!a || a.kind !== b.kind) return false;
   if (a.kind === "col" && b.kind === "col") return a.rowEl === b.rowEl && a.before === b.before;
+  if (a.kind === "band" && b.kind === "band")
+    return a.rowEl === b.rowEl && a.index === b.index && a.band === b.band;
   if (a.kind === "block" && b.kind === "block")
     return a.block.from === b.block.from && a.side === b.side;
   if (a.kind === "gap" && b.kind === "gap") return a.pos === b.pos;
@@ -848,7 +1077,12 @@ function onDragFrame(): void {
     const apply = () => {
       state.target = next;
       state.bar.classList.remove("wr-drop-bar-on");
+      const left = state.slot.parentElement;
       next.rowEl.insertBefore(state.slot, next.before);
+      // The slot is a grid track while it is here, so both rows it touches have
+      // to be re-tracked — inside `apply` so FLIP measures before and after.
+      if (left && left !== next.rowEl) layoutRowTracks(left);
+      layoutRowTracks(next.rowEl);
     };
     if (state.slot.isConnected) flip(state.view, apply);
     else {
@@ -859,11 +1093,14 @@ function onDragFrame(): void {
     return;
   }
 
-  // Outside a row: an overlay bar only. Never insert into contentDOM — CM's
-  // DOM observer would read that as an edit — and never shove the document.
+  // Outside a row, or inside a column rather than beside it: an overlay bar
+  // only. Never insert into contentDOM — CM's DOM observer would read that as an
+  // edit — and never shove the document.
   const apply = () => {
     state.target = next;
+    const left = state.slot.parentElement;
     state.slot.remove();
+    if (left) layoutRowTracks(left);
   };
   if (state.slot.isConnected) flip(state.view, apply);
   else apply();
@@ -892,6 +1129,15 @@ function paintDropBar(state: DragState, target: DragTarget): void {
     bar.style.width = `${content.width}px`;
     bar.style.top = `${target.y - host.top - 3}px`;
     bar.style.height = "";
+  } else if (target.kind === "band") {
+    // Same thin bar, but only as wide as the column: that width difference is
+    // the whole visual distinction between "into this column" and "between
+    // blocks", so no fifth kind of indicator is needed.
+    bar.classList.remove("wr-drop-bar-vertical");
+    bar.style.left = `${target.left - host.left}px`;
+    bar.style.width = `${target.width}px`;
+    bar.style.top = `${target.y - host.top - 3}px`;
+    bar.style.height = "";
   }
   bar.classList.add("wr-drop-bar-on");
 }
@@ -917,7 +1163,13 @@ function hitTest(view: EditorView, x: number, y: number): DragTarget | null {
         return y >= r.top && y <= r.bottom;
       }) ?? null;
   }
-  if (row) return { kind: "col", rowEl: row, before: slotBefore(view, row, x, y) };
+  if (row) {
+    // Inside a row, the middle of a column means "into this column" — the
+    // caption case — and only its outer quarters mean "a new column here".
+    const into = bandTarget(view, row, x, y);
+    if (into) return into;
+    return { kind: "col", rowEl: row, before: slotBefore(view, row, x, y) };
+  }
 
   // Anywhere else in the writing area: work off document positions, not DOM
   // elements — a paragraph can be several `.cm-line`s and a soft-wrapped one is
@@ -965,6 +1217,60 @@ function hitTest(view: EditorView, x: number, y: number): DragTarget | null {
   const bias = wasAfter ? -grip : grip;
   if (y < mid + bias) return { kind: "gap", pos: block.from, y: top };
   return { kind: "gap", pos: Math.min(block.to + 1, view.state.doc.length), y: bottom };
+}
+
+/**
+ * Aim inside one column. Returns null when the pointer is in the outer quarters
+ * (the caller then treats it as "a new column beside this one").
+ *
+ * The above/below line is the **anchor's** midline, not the column's: once a
+ * column carries a long caption, its own midline sits inside that caption and
+ * "drop it above the picture" would need an implausible reach upwards.
+ */
+function bandTarget(view: EditorView, row: HTMLElement, x: number, y: number): DragTarget | null {
+  const current = drag?.target;
+  const cells = [...row.querySelectorAll<HTMLElement>(":scope > .wr-col")].filter(
+    (c) => c !== drag?.sourceEl,
+  );
+  const cell = cells.find((c) => {
+    const r = layoutOf(view, c);
+    return !!r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  });
+  if (!cell) return null;
+  const rect = layoutOf(view, cell);
+  if (!rect) return null;
+  const index = Number(cell.dataset.wrIndex ?? "0");
+
+  // Sticky middle zone: once we are aiming into this column, leaving it needs
+  // HYSTERESIS px of overshoot, exactly like every other boundary here.
+  const inside =
+    current?.kind === "band" && current.rowEl === row && current.index === index ? current : null;
+  const side = Math.min(COL_SIDE_FRACTION * (rect.right - rect.left), COL_SIDE_MAX);
+  const slack = inside ? HYSTERESIS : 0;
+  if (x < rect.left + side - slack || x > rect.right - side + slack) return null;
+
+  const anchorEl = cell.querySelector<HTMLElement>('.wr-band[data-wr-band="anchor"]');
+  const anchor = (anchorEl && layoutOf(view, anchorEl)) || rect;
+  const mid = (anchor.top + anchor.bottom) / 2;
+  const grip = Math.min(GAP_HYSTERESIS, (anchor.bottom - anchor.top) / 4);
+  const bias = inside?.band === "below" ? -grip : grip;
+  const band: BandName = y < mid + bias ? "above" : "below";
+
+  // Draw the bar at the outer edge of the band being targeted, so it reads as
+  // "the text goes here", not "the text goes through the picture".
+  const edge = cell.querySelector<HTMLElement>(`.wr-band[data-wr-band="${band}"]`);
+  const edgeRect = edge ? layoutOf(view, edge) : null;
+  const line =
+    band === "above" ? (edgeRect?.top ?? anchor.top) : (edgeRect?.bottom ?? anchor.bottom);
+  return {
+    kind: "band",
+    rowEl: row,
+    index,
+    band,
+    y: line,
+    left: rect.left,
+    width: rect.right - rect.left,
+  };
 }
 
 function slotBefore(view: EditorView, row: HTMLElement, x: number, y: number): Element | null {
@@ -1018,17 +1324,28 @@ function endDrag(cancel: boolean): void {
   const view = state.view;
   const landing = state.slot.isConnected ? state.slot.getBoundingClientRect() : null;
   if (landing) {
+    // Animate the transform only — width is layout, and animating layout is what
+    // the anti-jitter contract forbids. Settling means: fly to the slot, unshrink
+    // to the slot's width, tilt back to 0°. No landing bounce (Emil).
     state.lift.style.transition =
-      "transform 200ms var(--wr-ease-out), opacity 200ms var(--wr-ease-out), width 200ms var(--wr-ease-out)";
-    state.lift.style.width = `${landing.width}px`;
-    state.lift.style.transform = `translate3d(${landing.left}px, ${landing.top}px, 0) scale(1) rotate(0deg)`;
+      "transform 200ms var(--wr-ease-out), opacity 200ms var(--wr-ease-out)";
+    const settle = landing.width / state.liftWidth;
+    state.lift.style.transform =
+      `translate3d(${landing.left}px, ${landing.top}px, 0)` +
+      ` scale(${settle.toFixed(4)}) rotate(0deg)`;
   }
   state.lift.style.opacity = "0";
   window.setTimeout(() => state.lift.remove(), 220);
 
+  const slotRow = state.slot.parentElement;
   state.slot.remove();
   state.bar.remove();
   state.sourceEl?.classList.remove("wr-dragging");
+  // Cancelling leaves the DOM as it was found, so the tracks have to come back
+  // with it — the widget is only rebuilt when a drop actually changes the text.
+  const sourceRowEl = state.sourceEl?.closest<HTMLElement>(".wr-row-widget") ?? null;
+  if (slotRow) layoutRowTracks(slotRow);
+  if (sourceRowEl && sourceRowEl !== slotRow) layoutRowTracks(sourceRowEl);
   document.body.classList.remove("wr-dragging-body");
   thawImageHeights(view);
   clearFlip(view);
@@ -1040,6 +1357,7 @@ function endDrag(cancel: boolean): void {
 
 interface ResolvedTarget {
   row?: { ref: RowRef; index: number };
+  band?: { ref: RowRef; index: number; band: BandName };
   block?: { ref: BlockRef; side: "left" | "right" };
   gap?: number;
 }
@@ -1057,6 +1375,11 @@ function resolveTarget(
     );
     const idx = target.before ? cells.indexOf(target.before as HTMLElement) : -1;
     return { row: { ref, index: idx < 0 ? cells.length : idx } };
+  }
+  if (target.kind === "band") {
+    const ref = rowRefFromDOM(view, target.rowEl);
+    if (!ref || !ref.columns[target.index]) return null;
+    return { band: { ref, index: target.index, band: target.band } };
   }
   if (target.kind === "block") {
     // Re-resolve from the document so a stale rect can never write at the
@@ -1079,6 +1402,18 @@ function insertionChange(
     const next = resolved.row.ref.columns.slice();
     next.splice(Math.max(0, Math.min(resolved.row.index, next.length)), 0, ...incoming);
     return { from: resolved.row.ref.from, to: resolved.row.ref.to, insert: serializeColumns(next) };
+  }
+  if (resolved.band) {
+    const { ref, index, band } = resolved.band;
+    const md = incoming
+      .map((c) => c.md.trim())
+      .filter(Boolean)
+      .join("\n\n");
+    if (!md) return null;
+    const next = ref.columns.map((c, i) =>
+      i === index ? { ...c, md: appendToBand(c.md, band, md) } : c,
+    );
+    return { from: ref.from, to: ref.to, insert: serializeColumns(next) };
   }
   // The "beside a block" case needs that block's own text, which only the view
   // can supply — see `blockInsertion`.
@@ -1158,6 +1493,28 @@ function commitDrop(view: EditorView, state: DragState, target: DragTarget): voi
   const resolved = resolveTarget(view, target, state.sourceEl);
   if (!resolved) return;
 
+  // --- a column dropped into a band of its own row: merge, then drop the empty
+  // column. Two columns merging into one leaves a single survivor, and a
+  // one-column row is not a row — unwrap it, same invariant as everywhere else.
+  if (source.kind === "col" && sourceRow && resolved.band?.ref.from === sourceRow.from) {
+    const { index, band } = resolved.band;
+    if (index === source.index) return; // into itself
+    const columns = sourceRow.columns.slice();
+    const into = columns[index];
+    if (!into) return;
+    columns[index] = { ...into, md: appendToBand(into.md, band, source.md) };
+    columns.splice(source.index, 1);
+    view.dispatch({
+      changes: {
+        from: sourceRow.from,
+        to: sourceRow.to,
+        insert: columns.length >= 2 ? serializeColumns(columns) : (columns[0]?.md ?? "").trim(),
+      },
+      userEvent: "move.wr-column",
+    });
+    return;
+  }
+
   // --- same row: one rewrite covers removal and insertion
   if (source.kind === "col" && sourceRow && resolved.row?.ref.from === sourceRow.from) {
     const columns = sourceRow.columns.slice();
@@ -1210,11 +1567,13 @@ function startResize(view: EditorView, handle: HTMLElement, event: PointerEvent)
   const ref = rowRefFromDOM(view, rowEl);
   if (!ref) return;
   const index = Number(handle.dataset.wrResize ?? "0");
-  const leftEl = handle.previousElementSibling as HTMLElement | null;
-  const rightEl = handle.nextElementSibling as HTMLElement | null;
+  // The handle sits inside the column on its right; the pair being resized is
+  // that column and its previous sibling.
+  const rightEl = handle.closest<HTMLElement>(".wr-col");
+  const leftEl = rightEl?.previousElementSibling as HTMLElement | null;
   const left = ref.columns[index - 1];
   const right = ref.columns[index];
-  if (!leftEl || !rightEl || !left || !right) return;
+  if (!leftEl?.classList.contains("wr-col") || !rightEl || !left || !right) return;
 
   const startLeft = leftEl.getBoundingClientRect().width;
   const startRight = rightEl.getBoundingClientRect().width;
@@ -1228,12 +1587,15 @@ function startResize(view: EditorView, handle: HTMLElement, event: PointerEvent)
 
   const move = (e: PointerEvent) => {
     const dx = e.clientX - startX;
-    const l = Math.max(40, startLeft + dx);
-    const r = Math.max(40, startRight - dx);
+    // The floor used to come from CSS `min-width`; grid tracks are `minmax(0,
+    // …)` so it is enforced here instead.
+    const l = Math.max(MIN_COLUMN, startLeft + dx);
+    const r = Math.max(MIN_COLUMN, startRight - dx);
     nextLeft = Math.round(((total * l) / (l + r)) * 100) / 100;
     nextRight = Math.round((total - nextLeft) * 100) / 100;
-    leftEl.style.flex = `${nextLeft} 1 0`;
-    rightEl.style.flex = `${nextRight} 1 0`;
+    leftEl.dataset.wrGrow = fmtGrow(nextLeft);
+    rightEl.dataset.wrGrow = fmtGrow(nextRight);
+    layoutRowTracks(rowEl);
   };
   const up = () => {
     window.removeEventListener("pointermove", move);
@@ -1335,6 +1697,46 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
   },
 );
 
+/* ------------------------------------------------------- narrow: stack, not wrap */
+
+/**
+ * Grid gives us band alignment for free but has a fixed number of tracks, so it
+ * cannot do what `flex-wrap` did when the editor got narrow. Stacking reads
+ * better than wrapping anyway (three columns folding into 2 + 1 were never
+ * aligned), and this is the one measurement in the file: a width comparison on
+ * resize, never a height, and never while a drag is in flight.
+ */
+const stackNarrowRows = ViewPlugin.fromClass(
+  class {
+    private readonly observer: ResizeObserver | null;
+
+    constructor(readonly view: EditorView) {
+      this.observer =
+        typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => this.apply());
+      this.observer?.observe(view.contentDOM);
+      this.apply();
+    }
+
+    update() {
+      this.apply();
+    }
+
+    private apply() {
+      if (drag) return; // never re-layout under the cursor mid-drag
+      for (const row of this.view.dom.querySelectorAll<HTMLElement>(".wr-row-widget")) {
+        const count = Math.max(1, Number(row.dataset.wrCols ?? "1"));
+        const width = row.getBoundingClientRect().width;
+        const needed = count * MIN_COLUMN + (count - 1) * 16;
+        row.classList.toggle("wr-row-stack", width > 0 && width < needed);
+      }
+    }
+
+    destroy() {
+      this.observer?.disconnect();
+    }
+  },
+);
+
 /* --------------------------------------------- dropping image files onto it */
 
 const IMAGE_EXTENSIONS = new Set([
@@ -1376,6 +1778,7 @@ function startExternalDrag(view: EditorView, x: number, y: number, count: number
 
   const slot = document.createElement("div");
   slot.className = "wr-slot";
+  slot.dataset.wrGrow = "1";
   slot.style.minHeight = "180px";
 
   const bar = document.createElement("div");
@@ -1390,6 +1793,8 @@ function startExternalDrag(view: EditorView, x: number, y: number, count: number
     bar,
     // Never attached: during an OS drag the system draws the drag image.
     lift: document.createElement("div"),
+    liftWidth: 1,
+    liftScale: 1,
     height: 180,
     offsetX: 0,
     offsetY: 0,
@@ -1409,8 +1814,9 @@ function startExternalDrag(view: EditorView, x: number, y: number, count: number
  *  the target still says what it said before dispatching. */
 function targetStillValid(view: EditorView, resolved: ResolvedTarget): boolean {
   const doc = view.state.doc;
-  if (resolved.row) {
-    const { from, to, columns } = resolved.row.ref;
+  const row = resolved.row?.ref ?? resolved.band?.ref;
+  if (row) {
+    const { from, to, columns } = row;
     if (to > doc.length) return false;
     const live = parseColumns(doc.sliceString(from, to));
     return !!live && live.length === columns.length;
@@ -1583,12 +1989,12 @@ const columnEvents = EditorView.domEventHandlers({
       startResize(view, resize, event);
       return true;
     }
-    const body = target.closest<HTMLElement>(".wr-col-body");
-    const cell = body?.closest<HTMLElement>(".wr-col");
-    if (body && cell) {
+    const band = target.closest<HTMLElement>(".wr-band");
+    const cell = band?.closest<HTMLElement>(".wr-col");
+    if (band && cell) {
       event.preventDefault();
       event.stopPropagation();
-      beginColumnEdit(view, cell, body);
+      beginBandEdit(view, cell, band);
       return true;
     }
     return false;
@@ -1619,6 +2025,7 @@ export function columnsDecorations(getFilePath: () => string) {
     columnRowFold,
     columnEvents,
     gutterHandlePlugin,
+    stackNarrowRows,
     fileDropPlugin(getFilePath),
   ];
 }
@@ -1627,4 +2034,9 @@ export const __testColumns = {
   parseColumns,
   serializeColumns,
   renderBlockMarkdown,
+  splitBlocks,
+  splitBands,
+  joinBands,
+  withBand,
+  appendToBand,
 };

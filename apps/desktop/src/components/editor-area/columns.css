@@ -3,7 +3,10 @@
    follow automatically. Accent shows up in exactly three places: the drop
    target, the resize handle, and the editing focus ring. */
 
-.cm-editor {
+/* On :root, not .cm-editor — the drag lift is appended to <body>, and an
+   undefined var() there makes the whole declaration invalid, which is why the
+   settle animation never used to run. */
+:root {
   /* Emil standards: UI motion under 300ms, never ease-in. */
   --wr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --wr-dur-press: 140ms;
@@ -11,86 +14,126 @@
   --wr-dur-move: 200ms;
   --wr-gap: 16px;
   --wr-radius: 8px;
+  /* Paper for the drag lift. Light: a sheet. Dark: the card colour, lifted a
+     notch so it still reads as paper rather than a hole. */
+  --wr-paper: #fdfcfa;
+}
+:root:has(.cm-editor) {
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wr-paper: color-mix(in srgb, var(--surface-card, #1c1c1e) 88%, #fff);
+  }
 }
 
+/* A row is a grid, one track per column and one row per band, so every column's
+   picture bottom and caption top line up without measuring anything in JS.
+   Track list and band count are written inline by `layoutRowTracks`. */
 .wr-row-widget {
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  align-items: start;
   gap: var(--wr-gap);
   margin: 0.35em 0 0.6em;
 }
 
 .wr-col {
   position: relative;
-  flex: 1 1 0;
-  min-width: 150px;
   margin: 0;
+  min-width: 0;
+  display: grid;
+  grid-row: 1 / -1;
+  grid-template-rows: subgrid;
+  align-content: start;
+  gap: 0;
+}
+
+/* No subgrid (older WebKit): bands stack per column and simply don't align.
+   Degrade, never break the layout. */
+@supports not (grid-template-rows: subgrid) {
+  .wr-col {
+    display: block;
+  }
 }
 
 .wr-col.wr-dragging {
   display: none;
 }
 
+/* Too narrow to read side by side: stack. Grid cannot wrap the way flex did,
+   and 3 columns folding into 2 + 1 was never aligned anyway. */
+.wr-row-widget.wr-row-stack {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: none !important;
+}
+.wr-row-widget.wr-row-stack > .wr-col {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  display: block;
+}
+.wr-row-widget.wr-row-stack .wr-band {
+  grid-row: auto !important;
+}
+
 /* ---- column content -------------------------------------------------- */
 
-.wr-col-body {
+.wr-band {
   cursor: text;
 }
-.wr-col-body > *:first-child {
+.wr-band > *:first-child {
   margin-top: 0;
 }
-.wr-col-body > *:last-child {
+.wr-band > *:last-child {
   margin-bottom: 0;
 }
-.wr-col-body p {
+.wr-band p {
   margin: 0 0 0.5em;
 }
-.wr-col-body h1,
-.wr-col-body h2,
-.wr-col-body h3,
-.wr-col-body h4,
-.wr-col-body h5,
-.wr-col-body h6 {
+.wr-band h1,
+.wr-band h2,
+.wr-band h3,
+.wr-band h4,
+.wr-band h5,
+.wr-band h6 {
   margin: 0 0 0.35em;
   line-height: 1.3;
   color: var(--text-primary);
   font-weight: 640;
 }
-.wr-col-body h1 {
+.wr-band h1 {
   font-size: 1.45em;
 }
-.wr-col-body h2 {
+.wr-band h2 {
   font-size: 1.25em;
 }
-.wr-col-body h3 {
+.wr-band h3 {
   font-size: 1.1em;
 }
-.wr-col-body h4,
-.wr-col-body h5,
-.wr-col-body h6 {
+.wr-band h4,
+.wr-band h5,
+.wr-band h6 {
   font-size: 1em;
 }
-.wr-col-body ul,
-.wr-col-body ol {
+.wr-band ul,
+.wr-band ol {
   margin: 0 0 0.5em;
   padding-left: 1.3em;
 }
-.wr-col-body li {
+.wr-band li {
   margin: 1px 0;
 }
-.wr-col-body li::marker {
+.wr-band li::marker {
   color: var(--text-icon-muted);
 }
-.wr-col-body code {
+.wr-band code {
   font-family: var(--mono-font);
   font-size: 0.9em;
   background: var(--code-bg);
   border-radius: 3px;
   padding: 0.1em 0.32em;
 }
-.wr-col-body pre {
+.wr-band pre {
   font-family: var(--mono-font);
   font-size: 0.86em;
   background: var(--code-bg);
@@ -99,33 +142,37 @@
   margin: 0 0 0.5em;
   overflow: auto;
 }
-.wr-col-body pre code {
+.wr-band pre code {
   background: none;
   padding: 0;
 }
-.wr-col-body a {
+.wr-band a {
   color: var(--link-color);
   text-decoration: underline;
 }
-.wr-col-body blockquote {
+.wr-band blockquote {
   margin: 0 0 0.5em;
   padding-left: 0.75em;
   border-left: 2px solid var(--blockquote-border);
 }
-.wr-col-body hr {
+.wr-band hr {
   border: none;
   border-top: 1px solid var(--line-subtle);
   margin: 0.6em 0;
 }
-.wr-col-body .katex-display {
+.wr-band .katex-display {
   margin: 6px 0;
 }
-.wr-col-body p.wr-img {
+.wr-band p.wr-img {
   margin: 0 0 0.4em;
   line-height: 0;
 }
-.wr-col-body img {
+.wr-band img {
   display: block;
+  /* There is no global border-box in this app, and `width:100%` plus a 1px
+     border would push each column 2px past its grid track — a hairline
+     horizontal scrollbar in a narrow editor. */
+  box-sizing: border-box;
   width: 100%;
   height: auto;
   border-radius: var(--wr-radius);
@@ -141,8 +188,17 @@
   border-radius: 3px;
   padding: 0.1em 0.32em;
 }
-.wr-col-empty {
+/* An empty band: the aligned slot a neighbour's caption created. No border and
+   no fill — it is an invitation, not a widget — with a dashed hint on hover so
+   it is obviously clickable. One click and you are typing in it. */
+.wr-band-empty {
   color: var(--text-icon-muted);
+  border-radius: 5px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wr-band-empty:hover {
+    box-shadow: inset 0 0 0 1px var(--line-subtler);
+  }
 }
 
 .wr-col-edit {
@@ -253,11 +309,15 @@ body.wr-resizing-body {
 
 /* ---- resize handle --------------------------------------------------- */
 
+/* Lives inside the column now, floating over the gap on its left: a grid counts
+   every child as a track, and this one must not be one. */
 .wr-resize {
-  flex: 0 0 0;
+  position: absolute;
+  left: calc(var(--wr-gap) / -2);
+  top: 0;
+  bottom: 0;
   width: 0;
-  align-self: stretch;
-  position: relative;
+  z-index: 3;
 }
 .wr-resize::after {
   content: "";
@@ -295,9 +355,9 @@ body.wr-resizing-body {
    outside a row would shove the document and move what you were aiming at. */
 
 .wr-slot {
-  flex: 1 1 0;
-  min-width: 150px;
+  grid-row: 1 / -1;
   align-self: stretch;
+  min-width: 0;
   border-radius: var(--wr-radius);
   background: color-mix(in srgb, var(--accent) 7%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent);
@@ -328,6 +388,10 @@ body.wr-resizing-body {
 
 /* ---- lift ------------------------------------------------------------ */
 
+/* A sheet of paper picked off the page. It keeps the source block's real width
+   and is shrunk by a transform, so the lines break exactly where they break in
+   the document — no reflow, and no height guessed from a width ratio (that is
+   what used to slice the text through the middle). */
 .wr-lift {
   position: fixed;
   left: 0;
@@ -335,21 +399,66 @@ body.wr-resizing-body {
   z-index: 999;
   pointer-events: none;
   overflow: hidden;
+  transform-origin: top left;
+  /* The width handed to it is a border-box measurement of the source block, so
+     the paper has to be measured the same way — otherwise it is 26px wider than
+     what you picked up and the grab offset drifts. */
+  box-sizing: border-box;
   padding: 10px 12px;
-  border-radius: var(--wr-radius);
-  background: var(--bg-base);
-  border: 1px solid var(--line-subtle);
+  /* Paper is crisper than a card. */
+  border-radius: 2px;
+  background: var(--wr-paper);
+  border: 1px solid var(--line-subtler, rgb(0 0 0 / 12%));
   color: var(--text-secondary);
   box-shadow:
-    0 18px 40px -12px rgb(0 0 0 / 55%),
-    0 2px 8px rgb(0 0 0 / 30%);
+    0 1px 2px rgb(0 0 0 / 18%),
+    0 18px 40px -12px rgb(0 0 0 / 45%);
+  /* Past the height cap the sheet fades out of view instead of cutting a line
+     of text in half. */
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
   will-change: transform;
+}
+/* Curled corner, drawn, not an image. */
+.wr-lift::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(315deg, rgb(0 0 0 / 12%) 0%, rgb(0 0 0 / 4%) 45%, transparent 46%);
 }
 .wr-lift > *:first-child {
   margin-top: 0;
 }
 .wr-lift > *:last-child {
   margin-bottom: 0;
+}
+.wr-lift p,
+.wr-lift ul,
+.wr-lift ol,
+.wr-lift pre,
+.wr-lift blockquote {
+  margin: 0 0 0.5em;
+}
+.wr-lift ul,
+.wr-lift ol {
+  padding-left: 1.3em;
+}
+.wr-lift h1,
+.wr-lift h2,
+.wr-lift h3,
+.wr-lift h4,
+.wr-lift h5,
+.wr-lift h6 {
+  margin: 0 0 0.35em;
+  line-height: 1.3;
+  font-weight: 640;
+}
+.wr-lift code,
+.wr-lift pre {
+  font-family: var(--mono-font);
+  font-size: 0.9em;
 }
 .wr-lift img {
   display: block;
@@ -398,6 +507,7 @@ body.wr-resizing-body {
 
 /* ---- reduced motion: soften, don't strip ----------------------------- */
 
+/* The paper's look is static, so it stays; only movement is cut. */
 @media (prefers-reduced-motion: reduce) {
   .wr-col,
   .wr-lift {
