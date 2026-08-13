@@ -63,10 +63,6 @@ const ICON = {
   right: svg(`<path d="M4.5 10h11"/><path d="M11 5.5 15.5 10 11 14.5"/>`),
   insertAbove: svg(`<path d="M3.5 4h13"/><path d="M10 8v7"/><path d="M6.5 11.5h7"/>`),
   insertBelow: svg(`<path d="M3.5 16h13"/><path d="M10 5v7"/><path d="M6.5 8.5h7"/>`),
-  align: svg(`<path d="M3.5 5h13"/><path d="M3.5 10h8"/><path d="M3.5 15h11"/>`),
-  color: svg(
-    `<circle cx="10" cy="10" r="6.2"/><path d="M10 3.8v12.4"/><path d="M3.8 10h12.4"/>`,
-  ),
   duplicate: svg(
     `<rect x="3.5" y="3.5" width="9" height="9" rx="2"/>` +
       `<path d="M7.5 16.5h7a2 2 0 0 0 2-2v-7"/>`,
@@ -126,7 +122,9 @@ const TILES: readonly Tile[] = [
   {
     id: "task",
     label: "To-do list",
-    glyph: svg(`<rect x="3.5" y="3.5" width="13" height="13" rx="3"/><path d="M6.8 10 9 12.4 13.4 7"/>`),
+    glyph: svg(
+      `<rect x="3.5" y="3.5" width="13" height="13" rx="3"/><path d="M6.8 10 9 12.4 13.4 7"/>`,
+    ),
   },
   { id: "code", label: "Code block", glyph: "{ }", className: "wr-bmenu-glyph-mono" },
   { id: "quote", label: "Quote", glyph: "”", className: "wr-bmenu-glyph-quote" },
@@ -138,8 +136,8 @@ interface Row {
   label: string;
   icon: string;
   danger?: boolean;
-  /** Present = rendered but inert, with this sentence behind the `?`. */
-  disabled?: string;
+  /** Kept for the submenus that do not exist yet (alignment, colour). Nothing
+   *  sets it today, so `group()` renders the caret for nobody. */
   submenu?: boolean;
   run?: () => void;
 }
@@ -152,8 +150,6 @@ export const MENU_OPEN_DELAY = 220;
 /** Grace period after the pointer leaves both the handle and the panel.
  *  The gap between them is bridged in CSS, not here. */
 export const MENU_CLOSE_DELAY = 150;
-
-const STORAGE_NOTE = "Markdown has no place to store this yet.";
 
 export class BlockHandleMenu {
   /** Public because the gutter plugin has to hang its own hover listeners on
@@ -226,19 +222,44 @@ export class BlockHandleMenu {
 
   /* ------------------------------------------------------------- positioning */
 
+  /** Two axes, two jobs — and they must not be the same axis.
+   *
+   *  This used to open *below* the handle and share its left edge: avoidance on
+   *  the vertical, straight overlap on the horizontal. But the vertical is also
+   *  the axis that has to absorb "there is no room left in the window", so the
+   *  moment a tall panel near the bottom of the screen got clamped upward it
+   *  landed on top of the handle that opened it. It looked like an h1 bug —
+   *  an h1's handle sits low and its panel is tall — but any block low enough
+   *  in the viewport did it.
+   *
+   *  So the horizontal is what keeps them apart, and it is never clamped; the
+   *  vertical is clamped freely and cannot produce an overlap wherever it ends
+   *  up. Do not put an "if it doesn't fit, flip to the left" branch back in:
+   *  that hands the invariant back to a conditional and the bug returns. */
   private position(anchor: DOMRect): void {
     // Measured, never derived: the panel's height is whatever its rows add up
-    // to, and it is read here only to decide which side of the handle it goes.
+    // to. Never a ratio of the width — that mistake has been made here before.
     const box = this.root.getBoundingClientRect();
     const margin = 8;
-    let top = anchor.bottom + 6;
+    const gap = 8;
+
+    // Vertical: flush with the top of the handle, then clamped into view.
+    let top = anchor.top;
     if (top + box.height > window.innerHeight - margin) {
-      top = Math.max(margin, window.innerHeight - margin - box.height);
+      top = window.innerHeight - margin - box.height;
     }
-    const left = Math.min(
-      Math.max(margin, anchor.left),
-      Math.max(margin, window.innerWidth - margin - box.width),
-    );
+    top = Math.max(margin, top);
+
+    // Horizontal: the invariant. Always right of the handle, and it does not
+    // slide back to avoid covering text — text can be read again afterwards,
+    // whereas a hidden handle leaves you unable to tell which block the menu is
+    // about to act on. The only escape is a window too narrow to hold the panel
+    // at all, which is under ~300px and not a size anyone writes at.
+    let left = anchor.right + gap;
+    if (left + box.width > window.innerWidth - margin) {
+      left = Math.max(margin, window.innerWidth - margin - box.width);
+    }
+
     this.root.style.top = `${Math.round(top)}px`;
     this.root.style.left = `${Math.round(left)}px`;
   }
@@ -294,15 +315,12 @@ export class BlockHandleMenu {
     }
     if (moves.length) out.push(this.group(moves));
 
-    // Rendered, not hidden. The slot is where it will be when there is a way
-    // to store alignment and colour in a markdown file; greying it out with a
-    // reason reads as honest, hiding it reads as "this editor cannot".
-    out.push(
-      this.group([
-        { label: "Align and Indent", icon: ICON.align, submenu: true, disabled: STORAGE_NOTE },
-        { label: "Color Options", icon: ICON.color, submenu: true, disabled: STORAGE_NOTE },
-      ]),
-    );
+    // No "Align and Indent" / "Color Options" placeholders. They were here as
+    // greyed-out rows holding the slot for the day markdown has somewhere to
+    // store alignment and colour, but the cost of a permanently dead row is
+    // paid at every single open and the benefit waits on a decision that has
+    // not been made. When there is a storage format, add the group back — it
+    // is one array entry.
 
     out.push(
       this.group([
@@ -359,10 +377,6 @@ export class BlockHandleMenu {
       button.className = "wr-bmenu-row";
       button.setAttribute("role", "menuitem");
       if (row.danger) button.classList.add("wr-bmenu-danger");
-      if (row.disabled) {
-        button.disabled = true;
-        button.title = row.disabled;
-      }
       const icon = document.createElement("span");
       icon.className = "wr-bmenu-lead";
       icon.innerHTML = row.icon;
@@ -373,8 +387,7 @@ export class BlockHandleMenu {
       if (row.submenu) {
         const caret = document.createElement("span");
         caret.className = "wr-bmenu-trail";
-        caret.innerHTML = row.disabled ? "?" : ICON.caret;
-        if (row.disabled) caret.classList.add("wr-bmenu-why");
+        caret.innerHTML = ICON.caret;
         button.append(caret);
       }
       if (row.run) button.addEventListener("click", row.run);

@@ -35,15 +35,21 @@
   user-select: none;
 }
 
-/* The pointer has to cross a 6px gap to get from the grip to the panel, and
+/* The pointer has to cross the 8px gap between the grip and the panel, and
    leaving the grip is what starts the close timer. Bridging it in CSS keeps
    the corridor out of the JavaScript: as far as `mouseleave` is concerned the
-   panel starts above its own top edge. */
+   panel starts before its own left edge.
+
+   This bridge is on the LEFT because the panel opens to the RIGHT of the grip
+   (see `position()` — the horizontal offset is what stops the panel covering
+   the grip). It used to sit on top, back when the panel opened downward. If
+   the panel's side ever changes again, this has to follow it, or the panel
+   closes while the pointer is still travelling toward it. */
 .wr-bmenu::before {
   content: "";
   position: absolute;
-  inset: -12px -4px auto -4px;
-  height: 14px;
+  inset: -4px auto -4px -14px;
+  width: 14px;
 }
 
 .wr-bmenu-on {
@@ -139,12 +145,12 @@
   cursor: default;
   transition: background var(--wr-dur-hover, 150ms) ease;
 }
-.wr-bmenu-row:hover:not(:disabled) {
+/* No `:not(:disabled)` guard — every row in this panel is live. The greyed-out
+   alignment and colour rows are gone, and nothing should reintroduce a row you
+   cannot click: a menu item that never does anything is a menu item you have to
+   read and skip every time you open the panel. */
+.wr-bmenu-row:hover {
   background: color-mix(in srgb, var(--fg-base) 7%, transparent);
-}
-.wr-bmenu-row:disabled {
-  color: var(--text-icon-muted);
-  cursor: default;
 }
 
 .wr-bmenu-label {
@@ -159,9 +165,6 @@
   place-items: center;
   flex: 0 0 16px;
   color: var(--text-icon-muted);
-}
-.wr-bmenu-row:disabled .wr-bmenu-lead {
-  opacity: 0.55;
 }
 .wr-bmenu-icon {
   width: 16px;
@@ -179,21 +182,11 @@
   flex: 0 0 16px;
   color: var(--text-icon-muted);
 }
-/* The `?` is the only affordance saying why the row above it is dead. */
-.wr-bmenu-why {
-  width: 15px;
-  height: 15px;
-  border: 1px solid color-mix(in srgb, var(--fg-base) 22%, transparent);
-  border-radius: 50%;
-  font-size: 10px;
-  line-height: 1;
-}
-
 .wr-bmenu-danger,
 .wr-bmenu-danger .wr-bmenu-lead {
   color: var(--wr-bmenu-danger);
 }
-.wr-bmenu-danger:hover:not(:disabled) {
+.wr-bmenu-danger:hover {
   background: color-mix(in srgb, var(--wr-bmenu-danger) 12%, transparent);
 }
 

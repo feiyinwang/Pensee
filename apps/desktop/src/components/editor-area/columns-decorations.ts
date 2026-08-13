@@ -71,11 +71,7 @@ import {
   type ActionTarget,
   type RowRef,
 } from "./block-actions";
-import {
-  BlockHandleMenu,
-  MENU_CLOSE_DELAY,
-  MENU_OPEN_DELAY,
-} from "./block-handle-menu";
+import { BlockHandleMenu, MENU_CLOSE_DELAY, MENU_OPEN_DELAY } from "./block-handle-menu";
 import { renderMath } from "./math-renderer";
 import "./columns.css";
 
@@ -1836,16 +1832,49 @@ const GRIP_H = 24;
  *  grip sat at a different height depending on what it was pointing at, and why
  *  the error grew with the font size. One reading for both: top from the
  *  element, height from the computed `line-height`. Never the caret rect, whose
- *  height browsers take from font metrics rather than from CSS. */
+ *  height browsers take from font metrics rather than from CSS.
+ *
+ *  That fix unified the *source* but not the *box*. `getBoundingClientRect()`
+ *  returns the border box and `line-height` measures content, so on any element
+ *  with vertical padding the two describe boxes that do not start in the same
+ *  place. Headings carry `padding-top: 1rem` (`prosemark-theme.css`), so the
+ *  grip was centred inside a 46px line box that began 16px above the text and
+ *  ended up sitting a whole line high — visible on an h1, invisible on a
+ *  paragraph, which has no padding to be wrong about. Strip the padding first:
+ *  content box to content box, and every padded line (headings today, block
+ *  quotes and code fences the moment their padding changes) is right at once. */
 function firstLineBox(el: HTMLElement): { top: number; height: number } {
   const rect = el.getBoundingClientRect();
   const style = getComputedStyle(el);
+  const padTop = parseFloat(style.paddingTop) || 0;
+  const padBottom = parseFloat(style.paddingBottom) || 0;
   const lh = parseFloat(style.lineHeight);
   const line = Number.isFinite(lh) && lh > 0 ? lh : (parseFloat(style.fontSize) || 16) * 1.8;
   // A soft-wrapped paragraph's rect covers every wrapped line, but the grip
   // belongs beside the first one. A single-line element is shorter than one
   // line-height only when it has none of its own, and then it wins.
-  return { top: rect.top, height: Math.min(line, rect.height || line) };
+  const content = rect.height - padTop - padBottom;
+  return { top: rect.top + padTop, height: Math.min(line, content > 0 ? content : line) };
+}
+
+/** How much room the hanging ATX hash takes up to the LEFT of the heading text.
+ *
+ *  `prosemark-theme.css` pulls `#`/`##`/… out of the inline flow and hangs them
+ *  in the margin (`position: absolute; right: 100%`) so heading text stays flush
+ *  with body text. That margin is the same margin the grip sits in, so without
+ *  this the grip lands on top of the hash.
+ *
+ *  Measured, never derived. The hash's width depends on the heading level, the
+ *  font size for that level and a padding in `em` — any formula gets one of the
+ *  six levels wrong, and it would be a formula duplicating a stylesheet.
+ *
+ *  Constant across caret states by design: off the heading line the hash is
+ *  faded with `opacity: 0`, not removed, so it still measures the same. If that
+ *  ever becomes `display: none`, the grip will start jumping sideways as the
+ *  caret enters and leaves the line. */
+function hangingHashWidth(lineEl: HTMLElement | null): number {
+  const hash = lineEl?.querySelector<HTMLElement>(".cm-heading-hash");
+  return hash ? hash.offsetWidth : 0;
 }
 
 /** Notion's rule: the grip is centred on the first line box rather than flush
@@ -2072,6 +2101,13 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.handle.style.top = `${gripTop(anchor, host.top)}px`;
       // Never negative: in a narrow window the page inset is 24px, less than the
       // grip is wide, and sliding it off the left edge would hide it entirely.
+      //
+      // No `hangingHashWidth()` here, deliberately. A band only has a hash to
+      // hang while it is OPEN for editing — the rendered state draws a real
+      // heading with no marker — so offsetting by it would slide the grip
+      // sideways the instant the band swapped states. The two-state box
+      // contract says the grip does not move across that swap, and a grip that
+      // stays put while slightly overlapping a `#` is the cheaper break.
       this.handle.style.left = `${Math.max(0, rect.left - host.left - GRIP_WIDTH - 4)}px`;
       this.handle.classList.add("wr-gutter-on");
     }
@@ -2154,7 +2190,11 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // padding box. Neither is the text edge.
       const padLeft = parseFloat(getComputedStyle(view.contentDOM).paddingLeft) || 0;
       const room = content.left + padLeft - host.left;
-      const left = Math.max(0, room - GRIP_WIDTH - 4);
+      // On a heading the margin is already occupied by the hanging hash, so the
+      // grip goes to the LEFT of it rather than on it. `Math.max(0, …)` still
+      // wins on a narrow window: flush against the edge and overlapping the
+      // hash beats sliding off-screen entirely.
+      const left = Math.max(0, room - hangingHashWidth(lineEl) - GRIP_WIDTH - 4);
       const isImage = IMAGE_BLOCK.test(blockMarkdown(view, block));
       this.kind.dataset.kind = isImage ? "image" : "text";
       const box = lineEl
