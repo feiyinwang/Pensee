@@ -15,6 +15,7 @@ import {
   drawSelection,
   keymap,
   placeholder,
+  type ViewUpdate,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxTree } from "@codemirror/language";
@@ -47,6 +48,34 @@ import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
 import { formatMarkdownDestination } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
 import { captureRenderedBand, reportBandEdit } from "./band-debug";
+import {
+  BAND_ORDER,
+  IMAGE_BLOCK,
+  ROW_OPEN,
+  appendToBand,
+  fmtGrow,
+  joinBands,
+  parseColumns,
+  serializeColumns,
+  splitBands,
+  splitBlocks,
+  withBand,
+  type BandName,
+  type Bands,
+  type Column,
+} from "./columns-model";
+import {
+  rowAfterBandRemoval,
+  rowAfterRemoval,
+  rowRefAt,
+  type ActionTarget,
+  type RowRef,
+} from "./block-actions";
+import {
+  BlockHandleMenu,
+  MENU_CLOSE_DELAY,
+  MENU_OPEN_DELAY,
+} from "./block-handle-menu";
 import { renderMath } from "./math-renderer";
 import "./columns.css";
 
@@ -107,170 +136,24 @@ import "./columns.css";
 
 /* ------------------------------------------------------------------- model */
 
-export interface Column {
-  /** Raw markdown for this cell. Anything a block can be. */
-  md: string;
-  grow: number;
-}
-
-const ROW_OPEN = /^[ \t]*<div\b[^>]*\bclass\s*=\s*["'][^"']*\bwr-row\b/i;
-/** `<div class="wr-col">` is what we write. `<figure>` is accepted for rows
- *  written by the first version of this feature. */
-const CELL_RE =
-  /<(?:div\b[^>]*\bclass\s*=\s*["'][^"']*\bwr-col\b[^>]*|figure\b[^>]*)>([\s\S]*?)<\/(?:div|figure)\s*>/gi;
-const CELL_ATTRS_RE = /<(?:div\b([^>]*\bclass\s*=\s*["'][^"']*\bwr-col\b[^>]*)|figure\b([^>]*))>/i;
-const GROW_RE = /flex\s*:\s*([0-9]*\.?[0-9]+)/i;
-
-function fmtGrow(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return "1";
-  return String(Math.round(n * 100) / 100);
-}
-
-/** Parse a `wr-row` block into its columns. Null when it isn't one. */
-export function parseColumns(text: string): Column[] | null {
-  if (!ROW_OPEN.test(text)) return null;
-  const columns: Column[] = [];
-  CELL_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = CELL_RE.exec(text))) {
-    const attrs = CELL_ATTRS_RE.exec(match[0] ?? "");
-    const growMatch = GROW_RE.exec((attrs?.[1] ?? attrs?.[2] ?? "") as string);
-    columns.push({
-      md: (match[1] ?? "").trim(),
-      grow: growMatch ? Number(growMatch[1]) : 1,
-    });
-  }
-  return columns.length ? columns : null;
-}
-
-/* -------------------------------------------------------------------- bands */
-
-/**
- * A column's markdown split into the three rows ("bands") that a row aligns
- * across all of its columns: whatever sits above the anchor, the anchor itself,
- * whatever sits below it. The anchor is the column's first standalone image —
- * that is the thing a reader lines up — and in a text-only column it is simply
- * the first block, so a caption column still lines up with the pictures beside
- * it.
- *
- * Bands are **derived at render time and never written to the file.** Storing
- * them (a `data-band` attribute, say) would tie the format to this editor, and
- * `<div class="wr-row">` was chosen precisely so GitHub and Obsidian can read
- * it too. The cost is re-splitting a string on each render; the gain is that a
- * row hand-written anywhere else gets bands for free, with no migration.
- */
-export interface Bands {
-  above: string;
-  anchor: string;
-  below: string;
-}
-
-export type BandName = keyof Bands;
-
-export const BAND_ORDER: readonly BandName[] = ["above", "anchor", "below"];
-
-const IMAGE_BLOCK = /^!\[[^\]]*\]\([^)\s]+\)$/;
-
-/**
- * Split markdown into blocks at blank lines, keeping fenced code and `$$` math
- * whole — both may contain blank lines, and cutting them there would leave two
- * broken halves.
- */
-export function splitBlocks(md: string): string[] {
-  const lines = String(md ?? "").split("\n");
-  const blocks: string[] = [];
-  let buf: string[] = [];
-  let fence: "```" | "$$" | null = null;
-  const flush = () => {
-    const text = buf.join("\n").trim();
-    if (text) blocks.push(text);
-    buf = [];
-  };
-  for (const line of lines) {
-    if (fence) {
-      buf.push(line);
-      const closed = fence === "```" ? /^\s*```/.test(line) : /\$\$\s*$/.test(line);
-      if (closed) {
-        fence = null;
-        flush();
-      }
-      continue;
-    }
-    const text = line.trim();
-    if (text.startsWith("```")) {
-      flush();
-      buf.push(line);
-      fence = "```";
-      continue;
-    }
-    if (text.startsWith("$$") && !(text.length > 4 && text.endsWith("$$"))) {
-      flush();
-      buf.push(line);
-      fence = "$$";
-      continue;
-    }
-    if (!text) {
-      flush();
-      continue;
-    }
-    buf.push(line);
-  }
-  flush();
-  return blocks;
-}
-
-export function splitBands(md: string): Bands {
-  const blocks = splitBlocks(md);
-  if (!blocks.length) return { above: "", anchor: "", below: "" };
-  const found = blocks.findIndex((b) => IMAGE_BLOCK.test(b));
-  const at = found < 0 ? 0 : found;
-  return {
-    above: blocks.slice(0, at).join("\n\n"),
-    anchor: blocks[at] ?? "",
-    below: blocks.slice(at + 1).join("\n\n"),
-  };
-}
-
-export function joinBands(bands: Bands): string {
-  return BAND_ORDER.map((name) => bands[name].trim())
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-/** Replace one band. An empty value removes it, leaving no blank lines behind. */
-export function withBand(md: string, band: BandName, value: string): string {
-  return joinBands({ ...splitBands(md), [band]: value.trim() });
-}
-
-/**
- * Drop something into a band. It lands next to the anchor: appending to `above`
- * puts it directly above the picture, appending to `below` puts it under
- * whatever caption is already there. A band never splits into a fourth band.
- */
-export function appendToBand(md: string, band: BandName, incoming: string): string {
-  const bands = splitBands(md);
-  const add = incoming.trim();
-  if (!add) return joinBands(bands);
-  const existing = bands[band].trim();
-  return joinBands({ ...bands, [band]: existing ? `${existing}\n\n${add}` : add });
-}
-
-export function serializeColumns(columns: Column[]): string {
-  const cells = columns.map((c) =>
-    [
-      `<div class="wr-col" style="flex:${fmtGrow(c.grow)} 1 0;min-width:150px">`,
-      "",
-      c.md.trim(),
-      "",
-      "</div>",
-    ].join("\n"),
-  );
-  return [
-    `<div class="wr-row" style="display:flex;flex-wrap:wrap;gap:16px">`,
-    ...cells,
-    "</div>",
-  ].join("\n");
-}
+/* The row/band model moved to `columns-model.ts`: the block handle menu has to
+   rewrite rows too, and a shared module is the only way both callers can use
+   one implementation without importing each other. Re-exported here so the
+   public surface of this module is unchanged. */
+export {
+  BAND_ORDER,
+  IMAGE_BLOCK,
+  appendToBand,
+  joinBands,
+  parseColumns,
+  serializeColumns,
+  splitBands,
+  splitBlocks,
+  withBand,
+  type BandName,
+  type Bands,
+  type Column,
+} from "./columns-model";
 
 /* ---------------------------------------------------------- markdown → HTML */
 
@@ -642,22 +525,6 @@ function paintBand(el: HTMLElement, markdown: string, band: BandName): void {
 }
 
 /* -------------------------------------------------------- doc-range helpers */
-
-interface RowRef {
-  from: number;
-  to: number;
-  columns: Column[];
-}
-
-function rowRefAt(view: EditorView, pos: number): RowRef | null {
-  const doc = view.state.doc;
-  const tree = syntaxTree(view.state);
-  let node: SyntaxNode | null = tree.resolveInner(Math.min(Math.max(pos, 0), doc.length), 1);
-  while (node && node.name !== "ColumnRow") node = node.parent;
-  if (!node) return null;
-  const columns = parseColumns(doc.sliceString(node.from, node.to));
-  return columns ? { from: node.from, to: node.to, columns } : null;
-}
 
 function rowRefFromDOM(view: EditorView, rowEl: HTMLElement): RowRef | null {
   let pos: number;
@@ -1769,32 +1636,6 @@ function eatNewline(view: EditorView, to: number): number {
   return end;
 }
 
-/** Removing a column may leave a single survivor. A one-column row is not a
- *  row — unwrap it back into a plain block. */
-function rowAfterRemoval(ref: RowRef, index: number): { from: number; to: number; insert: string } {
-  const rest = ref.columns.filter((_, i) => i !== index);
-  if (rest.length >= 2) {
-    return { from: ref.from, to: ref.to, insert: serializeColumns(rest) };
-  }
-  return { from: ref.from, to: ref.to, insert: (rest[0]?.md ?? "").trim() };
-}
-
-/** Take one band out of a column. Emptying the column removes the column, and
- *  a row with one column left is not a row — it delegates both invariants to
- *  {@link rowAfterRemoval} so the two can never disagree. */
-function rowAfterBandRemoval(
-  ref: RowRef,
-  index: number,
-  band: BandName,
-): { from: number; to: number; insert: string } | null {
-  const column = ref.columns[index];
-  if (!column) return null;
-  const md = withBand(column.md, band, "").trim();
-  if (!md) return rowAfterRemoval(ref, index);
-  const columns = ref.columns.map((c, i) => (i === index ? { ...c, md } : c));
-  return { from: ref.from, to: ref.to, insert: serializeColumns(columns) };
-}
-
 /** Does this target write inside `row`'s own range? */
 function sameRowTarget(row: RowRef, resolved: ResolvedTarget): boolean {
   return resolved.band?.ref.from === row.from || resolved.row?.ref.from === row.from;
@@ -2025,6 +1866,30 @@ type GripTarget =
   | { kind: "band"; el: HTMLElement; rowFrom: number }
   | { kind: "col"; el: HTMLElement };
 
+/** Re-address what the grip is pointing at, from DOM to document offsets.
+ *
+ *  The grip holds elements because that is the only way to point at a band —
+ *  the row widget owns that DOM and there is no position inside it. The menu
+ *  cannot: its first dispatch rebuilds the widget, and every element it was
+ *  holding is detached by the time the second one runs. So the crossing from
+ *  one world to the other happens exactly once, here, when the menu opens. */
+function toActionTarget(view: EditorView, grip: GripTarget): ActionTarget | null {
+  if (grip.kind === "block") {
+    return { kind: "block", from: grip.block.from, to: grip.block.to, name: grip.block.name };
+  }
+  if (grip.kind === "col") {
+    const row = grip.el.closest<HTMLElement>(".wr-row-widget");
+    const ref = row ? rowRefFromDOM(view, row) : null;
+    const index = Number(grip.el.dataset.wrIndex ?? "-1");
+    if (!ref || index < 0) return null;
+    return { kind: "col", rowFrom: ref.from, index };
+  }
+  const index = Number(grip.el.closest<HTMLElement>(".wr-col")?.dataset.wrIndex ?? "-1");
+  const band = grip.el.dataset.wrBand;
+  if (index < 0 || !band || !BAND_ORDER.includes(band as BandName)) return null;
+  return { kind: "band", rowFrom: grip.rowFrom, index, band: band as BandName };
+}
+
 /** A Notion-style handle that follows the pointer down the left margin. It
  *  lives outside `contentDOM` (CodeMirror would treat DOM there as an edit)
  *  and is positioned from document coordinates, so it works for a block that
@@ -2047,6 +1912,14 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     private readonly onMove: (e: MouseEvent) => void;
     private readonly onLeave: () => void;
     private readonly onDown: (e: PointerEvent) => void;
+    /** Hover opens the menu; pressing still means drag. Two timers rather than
+     *  one flag: the open one exists because the grip slides under the pointer
+     *  and a hand crossing a column of paragraphs passes over a dozen grips,
+     *  the close one because the pointer needs a moment to travel from grip to
+     *  panel. The gap between the two is bridged in CSS, not here. */
+    private readonly menu: BlockHandleMenu;
+    private openTimer: ReturnType<typeof setTimeout> | null = null;
+    private closeTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(readonly view: EditorView) {
       this.handle = document.createElement("div");
@@ -2061,14 +1934,25 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.kind.dataset.kind = "text";
       this.handle.append(this.kind);
       view.dom.append(this.handle);
+      this.menu = new BlockHandleMenu(view);
 
       this.onMove = (e: MouseEvent) => this.place(e);
-      this.onLeave = () => this.hide();
+      this.onLeave = () => {
+        // Leaving the editor is not a reason to take the menu away — the menu
+        // is not in the editor. It sits on `document.body`, and the pointer is
+        // inside it right now.
+        if (this.menu.isOpen()) return;
+        this.hide();
+      };
       // The handle lives in `view.dom`, outside `contentDOM` — and
       // `EditorView.domEventHandlers` only ever sees `contentDOM`. So this one
       // listener has to be wired by hand or the handle is inert.
       this.onDown = (e: PointerEvent) => {
         const target = this.block;
+        // Press wins over hover, unconditionally. Whatever the menu was about
+        // to do, or is showing, this is a drag.
+        this.cancelOpen();
+        this.menu.close();
         if (e.button !== 0 || !target) return;
         e.preventDefault();
         e.stopPropagation();
@@ -2103,9 +1987,60 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       view.dom.addEventListener("mousemove", this.onMove);
       view.dom.addEventListener("mouseleave", this.onLeave);
       this.handle.addEventListener("pointerdown", this.onDown);
+      this.handle.addEventListener("mouseenter", this.onGripEnter);
+      this.handle.addEventListener("mouseleave", this.onGripLeave);
+      this.menu.root.addEventListener("mouseenter", this.onPanelEnter);
+      this.menu.root.addEventListener("mouseleave", this.onGripLeave);
+    }
+
+    /* ------------------------------------------------------------ hover gate */
+
+    private readonly onGripEnter = () => {
+      this.cancelClose();
+      if (drag || this.menu.isOpen()) return;
+      this.cancelOpen();
+      this.openTimer = setTimeout(() => {
+        this.openTimer = null;
+        this.showMenu();
+      }, MENU_OPEN_DELAY);
+    };
+
+    private readonly onPanelEnter = () => this.cancelClose();
+
+    private readonly onGripLeave = () => {
+      this.cancelOpen();
+      this.cancelClose();
+      this.closeTimer = setTimeout(() => {
+        this.closeTimer = null;
+        this.menu.close();
+        this.hide();
+      }, MENU_CLOSE_DELAY);
+    };
+
+    private cancelOpen() {
+      if (this.openTimer === null) return;
+      clearTimeout(this.openTimer);
+      this.openTimer = null;
+    }
+
+    private cancelClose() {
+      if (this.closeTimer === null) return;
+      clearTimeout(this.closeTimer);
+      this.closeTimer = null;
+    }
+
+    private showMenu() {
+      const grip = this.block;
+      if (!grip || drag) return;
+      const target = toActionTarget(this.view, grip);
+      if (!target) return;
+      this.menu.openFor(target, this.handle.getBoundingClientRect());
     }
 
     private hide() {
+      // The menu is anchored to the grip. Taking the grip away while the panel
+      // is open would leave the panel pointing at nothing.
+      if (this.menu.isOpen()) return;
       this.handle.classList.remove("wr-gutter-on");
       this.block = null;
       this.keep = null;
@@ -2155,6 +2090,10 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
 
     private place(event: MouseEvent) {
       if (drag) return;
+      // Freeze while the panel is open. The grip is the panel's anchor and its
+      // target; letting it wander would leave the two describing different
+      // blocks, which is the one way this can silently do the wrong thing.
+      if (this.menu.isOpen()) return;
       const view = this.view;
       const content = view.contentDOM.getBoundingClientRect();
       if (event.clientY < content.top - 4) return this.hide();
@@ -2230,10 +2169,31 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.keep = null;
     }
 
+    /** Any write — the file watcher, an undo, a menu action, a keystroke —
+     *  invalidates every offset the grip is holding: the block it would drag,
+     *  and the target the open panel resolved from it. Letting it stand is how
+     *  a press on a stale grip picks up the wrong range, which was already
+     *  possible before this menu existed. Drop both and wait for the next
+     *  pointer move to re-measure. */
+    update(update: ViewUpdate) {
+      if (!update.docChanged) return;
+      this.menu.close();
+      this.handle.classList.remove("wr-gutter-on");
+      this.block = null;
+      this.keep = null;
+    }
+
     destroy() {
+      this.cancelOpen();
+      this.cancelClose();
       this.view.dom.removeEventListener("mousemove", this.onMove);
       this.view.dom.removeEventListener("mouseleave", this.onLeave);
       this.handle.removeEventListener("pointerdown", this.onDown);
+      this.handle.removeEventListener("mouseenter", this.onGripEnter);
+      this.handle.removeEventListener("mouseleave", this.onGripLeave);
+      this.menu.root.removeEventListener("mouseenter", this.onPanelEnter);
+      this.menu.root.removeEventListener("mouseleave", this.onGripLeave);
+      this.menu.destroy();
       this.handle.remove();
     }
   },

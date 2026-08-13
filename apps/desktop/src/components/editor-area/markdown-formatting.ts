@@ -187,6 +187,96 @@ const BLOCKQUOTE_RE = /^> /;
 const TASK_RE = /^- \[[ x]\] /;
 
 // ---------------------------------------------------------------------------
+// Block types
+// ---------------------------------------------------------------------------
+
+/**
+ * The nine block shapes the editor can put a block into.
+ *
+ * Two callers, two different verbs, one implementation. The keyboard commands
+ * below **toggle**: `Cmd+Shift+8` on a quoted line adds a bullet and leaves the
+ * quote alone, because that is what a toggle means. The block handle menu
+ * **converts**: its tiles are a radio group, so picking "Bulleted list" has to
+ * clear whatever prefix was there first or the block ends up wearing two.
+ * {@link setBlockType} is that second verb, kept here beside the first so the
+ * prefixes can never be spelled two ways.
+ */
+export type BlockTypeId =
+  | "text"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "numbered"
+  | "bullet"
+  | "task"
+  | "code"
+  | "quote";
+
+const FENCE_RE = /^\s*```/;
+
+/** Strip every block prefix this editor knows how to add. */
+function clearBlockPrefix(line: string): string {
+  return line
+    .replace(HEADING_RE, "")
+    .replace(TASK_RE, "")
+    .replace(BULLET_RE, "")
+    .replace(NUMBERED_RE, "")
+    .replace(BLOCKQUOTE_RE, "");
+}
+
+/** Unwrap a fenced block. Anything else comes back untouched. */
+function unfence(md: string): string {
+  const lines = md.split("\n");
+  if (lines.length >= 2 && FENCE_RE.test(lines[0] ?? "") && (lines.at(-1) ?? "").trim() === "```") {
+    return lines.slice(1, -1).join("\n");
+  }
+  return md;
+}
+
+/** What shape is this block already in? `null` when it is none of the nine —
+ *  an h4, a table, a picture — so the menu can show no tile as active rather
+ *  than lying about it. */
+export function blockTypeOf(md: string): BlockTypeId | null {
+  const first = md.split("\n", 1)[0] ?? "";
+  if (FENCE_RE.test(first)) return "code";
+  const heading = HEADING_RE.exec(first);
+  if (heading) {
+    const level = heading[1]?.length ?? 0;
+    return level <= 3 ? (`h${level}` as BlockTypeId) : null;
+  }
+  if (TASK_RE.test(first)) return "task";
+  if (BULLET_RE.test(first)) return "bullet";
+  if (NUMBERED_RE.test(first)) return "numbered";
+  if (BLOCKQUOTE_RE.test(first)) return "quote";
+  return "text";
+}
+
+/** Convert a whole block to `id`. Exclusive: the old prefix goes first. */
+export function setBlockType(md: string, id: BlockTypeId): string {
+  const body = unfence(md);
+  // Code is the one type whose content is not prose — clearing "prefixes"
+  // there would eat the first character of a shell command.
+  if (id === "code") return "```\n" + body + "\n```";
+  const cleared = body.split("\n").map(clearBlockPrefix);
+  switch (id) {
+    case "text":
+      return cleared.join("\n");
+    case "h1":
+    case "h2":
+    case "h3":
+      return cleared.map((l) => "#".repeat(Number(id.slice(1))) + " " + l).join("\n");
+    case "bullet":
+      return cleared.map((l) => `- ${l}`).join("\n");
+    case "numbered":
+      return cleared.map((l, i) => `${i + 1}. ${l}`).join("\n");
+    case "task":
+      return cleared.map((l) => `- [ ] ${l}`).join("\n");
+    case "quote":
+      return cleared.map((l) => `> ${l}`).join("\n");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Heading commands
 // ---------------------------------------------------------------------------
 
@@ -199,11 +289,10 @@ export function setHeading(level: number): StateCommand {
   }, `input.format.heading${level}`);
 }
 
-export const setParagraph: StateCommand = lineCommand((line) => {
-  const match = HEADING_RE.exec(line);
-  if (match) return line.slice(match[0].length);
-  return line;
-}, "input.format.paragraph");
+export const setParagraph: StateCommand = lineCommand(
+  (line) => clearBlockPrefix(line),
+  "input.format.paragraph",
+);
 
 // ---------------------------------------------------------------------------
 // List / blockquote / task commands

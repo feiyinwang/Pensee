@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- Block handle menu: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md) — hover the gutter grip to open block type / move / duplicate / clipboard / delete actions for plain blocks, pictures, caption bands and columns. First pass landed; submenus (Align and Indent, Color Options) are rendered inert pending a way to store non-markdown attributes, and there is still no keyboard path to the panel.
+
 - Reveal-in-sidebar + residual external-watcher misses: [`SPECs/reveal-in-sidebar-and-external-watcher-spec.md`](SPECs/reveal-in-sidebar-and-external-watcher-spec.md) — keep the explicit tab-context-menu "Reveal in sidebar" action working, leave ordinary file opens from expanding the Everything tree, and characterize the remaining external-file-watcher miss cases through a logging + manual-repro pass before patching further.
 
 ## Done

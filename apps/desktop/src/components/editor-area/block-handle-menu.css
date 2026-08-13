@@ -1,0 +1,235 @@
+/* Block handle menu — the panel the gutter grip opens on hover.
+
+   Tokens only: colours come from App.css so light/dark and the contrast slider
+   follow automatically. Declared on :root because the panel is appended to
+   <body>, outside any editor scope — an undefined var() there invalidates the
+   whole declaration, which is the bug that once stopped the drag lift from
+   animating. */
+:root {
+  --wr-bmenu-width: 240px;
+  --wr-bmenu-danger: #d64045;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wr-bmenu-danger: #ff7b7f;
+  }
+}
+
+.wr-bmenu {
+  position: fixed;
+  z-index: 60;
+  width: var(--wr-bmenu-width);
+  /* Height is whatever the rows add up to. Never a ratio of the width: that
+     mistake clipped the text inside a floating panel here once already. */
+  height: auto;
+  padding: 6px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--fg-base) 12%, transparent);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 12px 32px -8px rgb(0 0 0 / 22%);
+  color: var(--text-primary);
+  font-size: 13px;
+  user-select: none;
+}
+
+/* The pointer has to cross a 6px gap to get from the grip to the panel, and
+   leaving the grip is what starts the close timer. Bridging it in CSS keeps
+   the corridor out of the JavaScript: as far as `mouseleave` is concerned the
+   panel starts above its own top edge. */
+.wr-bmenu::before {
+  content: "";
+  position: absolute;
+  inset: -12px -4px auto -4px;
+  height: 14px;
+}
+
+.wr-bmenu-on {
+  animation: wr-bmenu-in 60ms var(--wr-ease-out, ease-out);
+}
+/* Opacity and a 2px lift, no scale — scaling text mid-animation makes it
+   blurry, and this panel is almost entirely text. */
+@keyframes wr-bmenu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wr-bmenu-on {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------- type tiles */
+
+.wr-bmenu-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg-base) 9%, transparent);
+}
+
+.wr-bmenu-tile {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  line-height: 1;
+  cursor: default;
+  transition: background var(--wr-dur-hover, 150ms) ease;
+}
+.wr-bmenu-tile:hover {
+  background: color-mix(in srgb, var(--fg-base) 7%, transparent);
+}
+.wr-bmenu-tile[data-active="true"] {
+  background: color-mix(in srgb, var(--accent, #ff6a00) 14%, transparent);
+  color: var(--accent, #ff6a00);
+}
+
+.wr-bmenu-glyph-serif {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+}
+.wr-bmenu-glyph-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  letter-spacing: -0.5px;
+}
+.wr-bmenu-glyph-quote {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  /* The glyph's ink sits high in its em box; nudge it back onto the tile's
+     optical centre instead of its geometric one. */
+  transform: translateY(4px);
+}
+
+/* ------------------------------------------------------------------- rows */
+
+.wr-bmenu-group + .wr-bmenu-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--fg-base) 9%, transparent);
+}
+.wr-bmenu-grid + .wr-bmenu-group {
+  margin-top: 4px;
+}
+
+.wr-bmenu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+  transition: background var(--wr-dur-hover, 150ms) ease;
+}
+.wr-bmenu-row:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fg-base) 7%, transparent);
+}
+.wr-bmenu-row:disabled {
+  color: var(--text-icon-muted);
+  cursor: default;
+}
+
+.wr-bmenu-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wr-bmenu-lead {
+  display: grid;
+  place-items: center;
+  flex: 0 0 16px;
+  color: var(--text-icon-muted);
+}
+.wr-bmenu-row:disabled .wr-bmenu-lead {
+  opacity: 0.55;
+}
+.wr-bmenu-icon {
+  width: 16px;
+  height: 16px;
+}
+.wr-bmenu-accel {
+  flex: 0 0 auto;
+  color: var(--text-icon-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.wr-bmenu-trail {
+  display: grid;
+  place-items: center;
+  flex: 0 0 16px;
+  color: var(--text-icon-muted);
+}
+/* The `?` is the only affordance saying why the row above it is dead. */
+.wr-bmenu-why {
+  width: 15px;
+  height: 15px;
+  border: 1px solid color-mix(in srgb, var(--fg-base) 22%, transparent);
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.wr-bmenu-danger,
+.wr-bmenu-danger .wr-bmenu-lead {
+  color: var(--wr-bmenu-danger);
+}
+.wr-bmenu-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--wr-bmenu-danger) 12%, transparent);
+}
+
+/* ---------------------------------------------------------------- confirm */
+
+.wr-bmenu-confirm {
+  padding: 4px 6px 6px;
+}
+.wr-bmenu-confirm p {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+.wr-bmenu-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.wr-bmenu-btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--fg-base) 14%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: default;
+}
+.wr-bmenu-btn:hover {
+  background: color-mix(in srgb, var(--fg-base) 7%, transparent);
+}
+.wr-bmenu-btn-danger {
+  border-color: color-mix(in srgb, var(--wr-bmenu-danger) 45%, transparent);
+  color: var(--wr-bmenu-danger);
+}
+.wr-bmenu-btn-danger:hover {
+  background: color-mix(in srgb, var(--wr-bmenu-danger) 12%, transparent);
+}
