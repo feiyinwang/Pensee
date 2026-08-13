@@ -72,6 +72,7 @@ import {
   type RowRef,
 } from "./block-actions";
 import { BlockHandleMenu, MENU_CLOSE_DELAY, MENU_OPEN_DELAY } from "./block-handle-menu";
+import { describeTarget, gripTrace } from "./grip-debug";
 import { renderMath } from "./math-renderer";
 import "./columns.css";
 
@@ -2211,25 +2212,34 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     }
 
     private place(event: MouseEvent) {
-      if (drag) return;
+      if (drag) return gripTrace("skip: drag in flight");
       // Freeze while the panel is open. The grip is the panel's anchor and its
       // target; letting it wander would leave the two describing different
       // blocks, which is the one way this can silently do the wrong thing.
-      if (this.menu.isOpen()) return this.holdIfReaching(event);
+      if (this.menu.isOpen()) {
+        gripTrace("frozen: panel open");
+        return this.holdIfReaching(event);
+      }
       const view = this.view;
       const content = view.contentDOM.getBoundingClientRect();
-      if (event.clientY < content.top - 4) return this.hide();
+      if (event.clientY < content.top - 4) {
+        gripTrace("hide: above content");
+        return this.hide();
+      }
 
       // Bands first: they live inside a widget, so `posAtCoords` would hand back
       // the row and the block path below would (correctly) refuse to drag it.
       const el = event.target instanceof HTMLElement ? event.target : null;
       // Standing on the grip itself is not a reason to recompute anything.
-      if (el && this.handle.contains(el)) return;
+      if (el && this.handle.contains(el)) return gripTrace("skip: on the grip");
       const bandEl = el?.closest<HTMLElement>(".wr-band, .wr-col-edit") ?? null;
       const rowEl = bandEl?.closest<HTMLElement>(".wr-row-widget") ?? null;
       if (bandEl && rowEl) {
         const rowFrom = rowRefFromDOM(view, rowEl)?.from;
-        if (rowFrom === undefined) return this.hide();
+        if (rowFrom === undefined) {
+          gripTrace("hide: band has no row ref", { target: describeTarget(el) });
+          return this.hide();
+        }
         const rect = bandEl.getBoundingClientRect();
         const bandKind = bandEl.querySelector("img") ? "image" : "text";
         this.placeBeside(rect, bandKind, this.anchorOf(bandEl, bandKind));
@@ -2244,16 +2254,31 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
           many && cell && bandEl.dataset.wrBand === "anchor"
             ? { kind: "col", el: cell }
             : { kind: "band", el: bandEl, rowFrom };
+        gripTrace("shown: band", { band: bandEl.dataset.wrBand, kind: this.block.kind });
         return;
       }
-      if (this.block?.kind !== "block" && this.reaching(event)) return;
+      if (this.block?.kind !== "block" && this.reaching(event)) {
+        return gripTrace("held: reaching for the previous grip", {
+          target: describeTarget(el),
+        });
+      }
 
       const probeX = Math.min(Math.max(event.clientX, content.left + 2), content.right - 2);
       const pos = view.posAtCoords({ x: probeX, y: event.clientY });
-      if (pos == null) return this.hide();
+      if (pos == null) {
+        gripTrace("hide: posAtCoords found nothing", { target: describeTarget(el) });
+        return this.hide();
+      }
       const block = topBlockAt(view.state, pos);
       // Rows have their own per-column handles; a row is never dragged whole.
-      if (!block || block.name === "ColumnRow") return this.hide();
+      if (!block || block.name === "ColumnRow") {
+        gripTrace("hide: no draggable block here", {
+          block: block?.name ?? "none",
+          pos,
+          target: describeTarget(el),
+        });
+        return this.hide();
+      }
       // The line ELEMENT, not `coordsAtPos`: see `firstLineBox`.
       const node = view.domAtPos(block.from).node;
       const lineEl =
@@ -2264,7 +2289,10 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // and no line to measure. Falling back to the caret rect is the old,
       // slightly-off placement — still far better than the grip vanishing.
       const coords = lineEl ? null : view.coordsAtPos(block.from);
-      if (!lineEl && !coords) return this.hide();
+      if (!lineEl && !coords) {
+        gripTrace("hide: block has neither a line nor caret coords", { block: block.name });
+        return this.hide();
+      }
       const host = view.dom.getBoundingClientRect();
       // Sit in the left margin, measured from where the TEXT starts —
       // `contentDOM`'s rect is the padding box, so it would put the handle on
@@ -2294,6 +2322,16 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.handle.classList.add("wr-gutter-on");
       this.block = { kind: "block", block };
       this.keep = null;
+      // `lines` is the tell for "the text under my picture has no handle": an
+      // image and the words beneath it with no blank line between them are ONE
+      // markdown paragraph, so the grip correctly groups to the image's line
+      // and never appears beside the words.
+      gripTrace("shown: block", {
+        block: block.name,
+        lines:
+          view.state.doc.lineAt(block.to).number - view.state.doc.lineAt(block.from).number + 1,
+        isImage,
+      });
     }
 
     /** Any write — the file watcher, an undo, a menu action, a keystroke —
