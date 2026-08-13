@@ -46,6 +46,7 @@ import {
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
 import { formatMarkdownDestination } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
+import { captureRenderedBand, reportBandEdit } from "./band-debug";
 import { renderMath } from "./math-renderer";
 import "./columns.css";
 
@@ -635,13 +636,26 @@ const PLACEHOLDER: Record<BandName, string> = {
 function paintBand(el: HTMLElement, markdown: string, band: BandName): void {
   const text = String(markdown ?? "").trim();
   el.classList.toggle("wr-band-empty", !text);
-  if (text) {
-    el.innerHTML = renderBlockMarkdown(text);
-    return;
-  }
   // An empty anchor means the whole column is empty; an empty outer band means
   // a neighbour wrote a caption and this column has the aligned slot for one.
-  el.innerHTML = `<p>${PLACEHOLDER[band]}</p>`;
+  el.innerHTML = text ? renderBlockMarkdown(text) : `<p>${PLACEHOLDER[band]}</p>`;
+  // The handle is re-added here, not in `buildColumn`, because the line above
+  // wipes it — and `finish()` repaints a band that already had one. It goes
+  // last so anything measuring the band's text can stop before it.
+  if (band !== "anchor" && text) el.append(bandHandle(band));
+}
+
+/** A caption is a block of its own, so it can be picked up on its own. The
+ *  anchor deliberately has none: the anchor *is* the column, and the column
+ *  handle already sits on it — two identical grips in the same corner meaning
+ *  two different things is worse than one. */
+function bandHandle(band: BandName): HTMLElement {
+  const grab = document.createElement("div");
+  grab.className = "wr-band-grab";
+  grab.dataset.wrHandle = "band";
+  grab.dataset.wrBandHandle = band;
+  grab.setAttribute("aria-hidden", "true");
+  return grab;
 }
 
 /* -------------------------------------------------------- doc-range helpers */
@@ -786,6 +800,9 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   if (!column) return;
   const band = (bandEl.dataset.wrBand ?? "anchor") as BandName;
   const before = splitBands(column.md)[band];
+  // Two-state geometry, read before the rendered band is swapped out. Off
+  // unless `writer.bandDebug` is set — see band-debug.ts.
+  const debugBefore = captureRenderedBand(bandEl);
 
   const host = document.createElement("div");
   host.className = "wr-col-edit";
@@ -841,6 +858,30 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
     return true;
   };
 
+  // "I can drag the picture but not these words" — the handle has to survive
+  // the swap into edit mode too. It commits first, so there is only ever one
+  // writer of the document: the drag then moves text that is already saved.
+  if (band !== "anchor") {
+    const editHandle = bandHandle(band);
+    editHandle.addEventListener("pointerdown", (down) => {
+      if (down.button !== 0) return;
+      down.preventDefault();
+      down.stopPropagation();
+      finish(true);
+      // `finish` may dispatch, and CodeMirror rebuilds widget DOM on the next
+      // frame — so the element to pick up is the *new* one, found by address
+      // rather than by the reference we came in with.
+      requestAnimationFrame(() => {
+        const live = rowEl.isConnected ? rowEl : findRowElement(view, ref.from);
+        const fresh = live?.querySelector<HTMLElement>(
+          `.wr-col[data-wr-index="${index}"] .wr-band[data-wr-band="${band}"]`,
+        );
+        if (fresh) startBandDrag(view, fresh, down);
+      });
+    });
+    host.append(editHandle);
+  }
+
   inner = new EditorView({
     parent: host,
     doc: before,
@@ -867,6 +908,7 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   });
   inner.focus();
   inner.dispatch({ selection: EditorSelection.cursor(inner.state.doc.length) });
+  reportBandEdit(debugBefore, host, inner, view);
 }
 
 /* -------------------------------------------------------------------- drag */
@@ -923,6 +965,7 @@ type DragTarget =
 
 type DragSource =
   | { kind: "col"; rowEl: HTMLElement; index: number; md: string }
+  | { kind: "band"; rowEl: HTMLElement; index: number; band: BandName; md: string }
   | { kind: "block"; block: BlockRef; md: string }
   | { kind: "external"; count: number };
 
@@ -1072,6 +1115,42 @@ function startColumnDrag(view: EditorView, handle: HTMLElement, event: PointerEv
     preview: cell,
     event,
   });
+}
+
+/** Pick up one band on its own. The column handle still means "take the whole
+ *  thing"; this one means "take just these words". */
+function startBandDrag(view: EditorView, bandEl: HTMLElement, event: PointerEvent): void {
+  const cell = bandEl.closest<HTMLElement>(".wr-col");
+  const rowEl = cell?.closest<HTMLElement>(".wr-row-widget");
+  if (!cell || !rowEl) return;
+  const ref = rowRefFromDOM(view, rowEl);
+  if (!ref) return;
+  const index = Number(cell.dataset.wrIndex ?? "0");
+  const column = ref.columns[index];
+  if (!column) return;
+  const band = (bandEl.dataset.wrBand ?? "anchor") as BandName;
+  const md = splitBands(column.md)[band].trim();
+  if (!md) return; // an empty slot has nothing to carry
+
+  beginDrag(view, {
+    source: { kind: "band", rowEl, index, band, md },
+    // No `sourceEl` on purpose. Hiding the band would re-track the row's shared
+    // rows and every other column would jump while the pointer is still down.
+    // The band stays where it is until a drop actually rewrites the document.
+    sourceEl: null,
+    rect: bandEl.getBoundingClientRect(),
+    preview: bandEl,
+    event,
+  });
+}
+
+/** The row widget for a document offset. CodeMirror rebuilds widget DOM after a
+ *  dispatch, so an element captured before one is not the element on screen. */
+function findRowElement(view: EditorView, from: number): HTMLElement | null {
+  for (const el of view.dom.querySelectorAll<HTMLElement>(".wr-row-widget")) {
+    if (rowRefFromDOM(view, el)?.from === from) return el;
+  }
+  return null;
 }
 
 function startBlockDrag(view: EditorView, block: BlockRef, event: PointerEvent): void {
@@ -1591,6 +1670,13 @@ function discardSource(view: EditorView, source: DragSource): void {
     });
     return;
   }
+  if (source.kind === "band") {
+    const row = rowRefFromDOM(view, source.rowEl);
+    const removal = row && rowAfterBandRemoval(row, source.index, source.band);
+    if (!removal) return;
+    view.dispatch({ changes: removal, userEvent: "delete.wr-band" });
+    return;
+  }
   if (source.kind === "block") {
     const live = topBlockAt(view.state, source.block.from);
     if (!live || live.from !== source.block.from) return;
@@ -1730,13 +1816,36 @@ function rowAfterRemoval(ref: RowRef, index: number): { from: number; to: number
   return { from: ref.from, to: ref.to, insert: (rest[0]?.md ?? "").trim() };
 }
 
+/** Take one band out of a column. Emptying the column removes the column, and
+ *  a row with one column left is not a row — it delegates both invariants to
+ *  {@link rowAfterRemoval} so the two can never disagree. */
+function rowAfterBandRemoval(
+  ref: RowRef,
+  index: number,
+  band: BandName,
+): { from: number; to: number; insert: string } | null {
+  const column = ref.columns[index];
+  if (!column) return null;
+  const md = withBand(column.md, band, "").trim();
+  if (!md) return rowAfterRemoval(ref, index);
+  const columns = ref.columns.map((c, i) => (i === index ? { ...c, md } : c));
+  return { from: ref.from, to: ref.to, insert: serializeColumns(columns) };
+}
+
+/** Does this target write inside `row`'s own range? */
+function sameRowTarget(row: RowRef, resolved: ResolvedTarget): boolean {
+  return resolved.band?.ref.from === row.from || resolved.row?.ref.from === row.from;
+}
+
 function commitDrop(view: EditorView, state: DragState, target: DragTarget): void {
   const source = state.source;
   if (source.kind === "external") return; // the file-drop controller owns that
 
   const incoming: Column[] = [{ md: source.md, grow: 1 }];
-  const sourceRow = source.kind === "col" ? rowRefFromDOM(view, source.rowEl) : null;
-  if (source.kind === "col" && !sourceRow) return;
+  const inRow = source.kind === "col" || source.kind === "band";
+  const sourceRow =
+    source.kind === "col" || source.kind === "band" ? rowRefFromDOM(view, source.rowEl) : null;
+  if (inRow && !sourceRow) return;
 
   const resolved = resolveTarget(view, target, state.sourceEl);
   if (!resolved) return;
@@ -1778,11 +1887,53 @@ function commitDrop(view: EditorView, state: DragState, target: DragTarget): voi
     return;
   }
 
+  // --- a band dropped anywhere inside its own row: one rewrite, never two.
+  // Removal and insertion both live in `[row.from, row.to]`, so two changes
+  // would overlap and the guard at the bottom would silently drop the whole
+  // drop on the floor.
+  if (source.kind === "band" && sourceRow && sameRowTarget(sourceRow, resolved)) {
+    const columns = sourceRow.columns.slice();
+    const held = columns[source.index];
+    if (!held) return;
+    if (resolved.band?.index === source.index && resolved.band.band === source.band) return;
+    const stripped = withBand(held.md, source.band, "").trim();
+    if (resolved.band) {
+      const { index, band } = resolved.band;
+      const base = index === source.index ? stripped : (columns[index]?.md ?? "");
+      if (index !== source.index) columns[source.index] = { ...held, md: stripped };
+      const into = columns[index];
+      if (!into) return;
+      columns[index] = { ...into, md: appendToBand(base, band, source.md) };
+    } else if (resolved.row) {
+      columns[source.index] = { ...held, md: stripped };
+      const at = Math.max(0, Math.min(resolved.row.index, columns.length));
+      columns.splice(at, 0, { md: source.md, grow: 1 });
+    } else {
+      return;
+    }
+    // A column the band was the last thing in is gone, and a lone survivor
+    // unwraps back into a plain block — same invariant as `rowAfterRemoval`.
+    const kept = columns.filter((c) => c.md.trim());
+    view.dispatch({
+      changes: {
+        from: sourceRow.from,
+        to: sourceRow.to,
+        insert: kept.length >= 2 ? serializeColumns(kept) : (kept[0]?.md ?? "").trim(),
+      },
+      userEvent: "move.wr-band",
+    });
+    return;
+  }
+
   const changes: { from: number; to: number; insert: string }[] = [];
 
   // --- remove the source
   if (source.kind === "col" && sourceRow) {
     changes.push(rowAfterRemoval(sourceRow, source.index));
+  } else if (source.kind === "band" && sourceRow) {
+    const removal = rowAfterBandRemoval(sourceRow, source.index, source.band);
+    if (!removal) return;
+    changes.push(removal);
   } else if (source.kind === "block") {
     const live = topBlockAt(view.state, source.block.from);
     if (!live || live.from !== source.block.from) return;
@@ -2279,6 +2430,10 @@ const columnEvents = EditorView.domEventHandlers({
       event.preventDefault();
       event.stopPropagation();
       if (handle.dataset.wrHandle === "col") startColumnDrag(view, handle, event);
+      if (handle.dataset.wrHandle === "band") {
+        const bandEl = handle.closest<HTMLElement>(".wr-band");
+        if (bandEl) startBandDrag(view, bandEl, event);
+      }
       return true;
     }
     const resize = target.closest<HTMLElement>("[data-wr-resize]");

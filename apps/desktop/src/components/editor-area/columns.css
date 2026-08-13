@@ -82,6 +82,9 @@
 
 .wr-band {
   cursor: text;
+  /* Containing block for the band's own grab handle. Does not move anything:
+     the band is a grid item either way. */
+  position: relative;
   /* The single number the two-state box contract turns on: the gap between two
      blocks when the band is rendered has to equal the height of the blank
      source line that separates them when the band is being edited. Both derive
@@ -234,6 +237,9 @@
    strip the editor chrome an inline editor must not have. */
 .wr-col-edit {
   display: block;
+  /* Same containing block the rendered band provides, so the handle does not
+     jump when the two states swap. */
+  position: relative;
   width: 100%;
   margin: 0;
   font: inherit;
@@ -320,6 +326,7 @@
    left margin so it never covers a word. */
 
 .wr-grab,
+.wr-band-grab,
 .wr-gutter-grab {
   position: absolute;
   width: 22px;
@@ -338,6 +345,23 @@
   left: 8px;
   background: color-mix(in srgb, #000 55%, transparent);
   backdrop-filter: blur(6px);
+}
+
+/* Over text, not over a photo: a translucent sheet of the page with a muted
+   glyph, where `.wr-grab` is a dark chip that has to read against any picture.
+   Top-left of the band, the same corner the column handle uses — one grip
+   position to learn, two scopes. */
+.wr-band-grab {
+  top: 0;
+  left: 0;
+  background: color-mix(in srgb, var(--surface-card, #fff) 86%, transparent);
+  backdrop-filter: blur(6px);
+}
+.wr-band-grab::after {
+  color: var(--text-icon-muted);
+}
+.wr-band-grab:hover::after {
+  color: var(--text-secondary);
 }
 
 .wr-gutter-grab {
@@ -359,6 +383,7 @@
    over a picture and muted grey in the margin. `--wr-grip` is declared with the
    other tokens on :root because the drag lift is appended to <body>. */
 .wr-grab::after,
+.wr-band-grab::after,
 .wr-gutter-grab::after {
   content: "";
   position: absolute;
@@ -380,6 +405,7 @@
 
 /* generous invisible hit area */
 .wr-grab::before,
+.wr-band-grab::before,
 .wr-gutter-grab::before {
   content: "";
   position: absolute;
@@ -387,6 +413,7 @@
 }
 
 .wr-grab:active,
+.wr-band-grab:active,
 .wr-gutter-grab:active {
   cursor: grabbing;
   transform: scale(0.97);
@@ -396,9 +423,19 @@
   .wr-col:hover > .wr-grab {
     opacity: 1;
   }
+  /* Hovering the words is the signal, not hovering the column: a caption and
+     the picture above it are two different things to pick up. `focus-within`
+     keeps it there while the caption is being edited — the report was "I click
+     into the text and the grip is gone". */
+  .wr-band:hover > .wr-band-grab,
+  .wr-col-edit:hover > .wr-band-grab,
+  .wr-col-edit:focus-within > .wr-band-grab {
+    opacity: 1;
+  }
 }
 
 body.wr-dragging-body .wr-grab,
+body.wr-dragging-body .wr-band-grab,
 body.wr-dragging-body .wr-gutter-grab {
   opacity: 0 !important;
 }
