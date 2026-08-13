@@ -51,6 +51,7 @@ import { tableDecorations } from "./table-decorations";
 import { htmlBlockDecorations, htmlBlockParserExtension } from "./html-block-decorations";
 import { columnsDecorations, columnsParserExtension } from "./columns-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
+import { boardDecorations } from "./board/board-decorations";
 import { mathDecorations } from "./math-decorations";
 import { dragFreezeExtensions } from "./drag-selection-gate";
 import { clampSelectionToHeadings, headingDecorations } from "./heading-decorations";
@@ -661,6 +662,10 @@ function createEditorExtensions(
     columnsDecorations(getFilePath),
     htmlBlockDecorations(),
     mermaidDecorations(),
+    // Next to mermaid on purpose: same fenced-code fold mechanism, same
+    // full-screen-overlay pattern. `getFilePath` is needed so pasted images
+    // land in this note's assets folder instead of being inlined.
+    boardDecorations(getFilePath),
     mathDecorations(),
     headingDecorations,
     imageSrcResolver(getFilePath),

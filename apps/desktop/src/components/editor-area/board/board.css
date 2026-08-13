@@ -1,0 +1,685 @@
+/* Board — in-document preview card, full-screen canvas, and chrome.
+
+   Tokens live on :root because the overlay is appended to <body>, outside any
+   editor scope; an undefined var() there invalidates the whole declaration.
+   Colours are derived from the App.css base tokens so light/dark and the
+   contrast slider follow automatically — no board-specific palette. */
+
+:root {
+  --wr-board-ink: var(--text-primary);
+  --wr-board-muted: var(--text-muted);
+  --wr-board-accent: var(--accent);
+  --wr-board-red: #e5484d;
+  --wr-board-orange: #f76b15;
+  --wr-board-green: #30a46c;
+  --wr-board-blue: #3b82f6;
+  --wr-board-purple: #8e4ec6;
+
+  --wr-board-dot: color-mix(in srgb, var(--fg-base) 16%, transparent);
+  --wr-board-surface: var(--bg-base);
+  --wr-board-frame-bg: color-mix(in srgb, var(--fg-base) 3%, transparent);
+  --wr-board-frame-edge: color-mix(in srgb, var(--fg-base) 14%, transparent);
+
+  --wr-board-sticky-yellow: #fdf1c7;
+  --wr-board-sticky-orange: #fadfba;
+  --wr-board-sticky-mint: #d7f2e3;
+  --wr-board-sticky-green: #d6f0cf;
+  --wr-board-sticky-sky: #d3ecf7;
+  --wr-board-sticky-lavender: #dcdcf6;
+  --wr-board-sticky-violet: #ded5f7;
+  --wr-board-sticky-pink: #f6d9ea;
+  --wr-board-sticky-rose: #f8d9d6;
+  --wr-board-sticky-ink: #1e1b16;
+  --wr-board-sticky-edge: rgb(0 0 0 / 6%);
+
+  --wr-board-card-height: 360px;
+  --wr-board-radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wr-board-red: #ff6369;
+    --wr-board-orange: #ff8b3d;
+    --wr-board-green: #4cc38a;
+    --wr-board-blue: #6a9bff;
+    --wr-board-purple: #b38aea;
+    --wr-board-sticky-ink: #1a1a1a;
+  }
+}
+
+/* ------------------------------------------------------------------ card */
+
+.wr-board-card-wrap {
+  padding: 8px 0;
+}
+
+.wr-board-card {
+  /* Fixed height on purpose. Deriving it from the width clips content — a
+     mistake this codebase has already paid for once. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--wr-board-radius);
+  background: var(--surface-card);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.wr-board-card:hover {
+  border-color: var(--focus-border);
+}
+
+.wr-board-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.wr-board-card-surface {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The card never takes the wheel — the document keeps scrolling. */
+  pointer-events: none;
+}
+
+.wr-board-static {
+  display: block;
+}
+
+.wr-board-card-message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 13px;
+}
+
+.wr-board-card-message strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.wr-board-card.is-error {
+  border-color: color-mix(in srgb, var(--wr-board-red) 50%, transparent);
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wr-board-card-note {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 11px;
+}
+
+.wr-board-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.wr-board-card:hover .wr-board-card-actions,
+.wr-board-card:focus-within .wr-board-card-actions {
+  opacity: 1;
+}
+
+.wr-board-card-action {
+  padding: 3px 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 7px;
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wr-board-card-action:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------ code modal */
+
+.wr-board-code-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 38%);
+}
+
+.wr-board-code-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(720px, 88vw);
+  height: min(60vh, 520px);
+  padding: 14px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+}
+
+.wr-board-code-panel textarea {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--text-primary);
+  font-family: var(--mono-font);
+  font-size: 12px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.wr-board-code-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.wr-board-code-bar .wr-board-card-action {
+  position: static;
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------ fullscreen */
+
+.wr-board-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.wr-board-fullscreen.is-open {
+  opacity: 1;
+}
+
+.wr-board-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--wr-board-surface);
+  transform: scale(0.985);
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+  opacity: 0;
+}
+
+.wr-board-fullscreen.is-open .wr-board-stage {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.wr-board-host {
+  position: absolute;
+  inset: 0;
+  outline: none;
+  font-family: var(--ui-font);
+}
+
+.wr-board-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: default;
+}
+
+.wr-board-host[data-tool="hand"] .wr-board-svg,
+.wr-board-host[data-panning="1"] .wr-board-svg {
+  cursor: grab;
+}
+
+.wr-board-host[data-tool="shape"] .wr-board-svg,
+.wr-board-host[data-tool="frame"] .wr-board-svg,
+.wr-board-host[data-tool="linker"] .wr-board-svg,
+.wr-board-host[data-tool="text"] .wr-board-svg,
+.wr-board-host[data-tool="sticky"] .wr-board-svg {
+  cursor: crosshair;
+}
+
+/* -------------------------------------------------------------- overlay */
+
+.wr-board-marquee {
+  fill: color-mix(in srgb, var(--accent) 10%, transparent);
+  stroke: var(--accent);
+}
+
+.wr-board-selbox {
+  fill: none;
+  stroke: var(--accent);
+}
+
+.wr-board-handle {
+  fill: var(--surface-primary);
+  stroke: var(--accent);
+}
+
+.wr-board-handle-stem {
+  stroke: var(--accent);
+}
+
+.wr-board-guide {
+  stroke: var(--wr-board-red);
+  stroke-dasharray: 4 3;
+}
+
+.wr-board-bind-hint {
+  fill: none;
+  stroke: var(--accent);
+  stroke-dasharray: 4 3;
+}
+
+/* -------------------------------------------------------- text editing */
+
+.wr-board-editor-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wr-board-text-editor {
+  /* Reads as the text itself: no border, no focus ring, no background. */
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--wr-board-ink);
+  font-family: var(--ui-font);
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.wr-board-text-editor:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------- chrome */
+
+.wr-board-chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wr-board-chrome > * {
+  pointer-events: auto;
+}
+
+.wr-board-topbar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.wr-board-close {
+  gap: 6px;
+  width: auto;
+  padding: 0 12px 0 8px;
+  font-size: 13px;
+}
+
+.wr-board-title {
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.wr-board-banner {
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wr-board-orange) 18%, var(--surface-primary));
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.wr-board-banner[data-tone="error"] {
+  background: color-mix(in srgb, var(--wr-board-red) 20%, var(--surface-primary));
+}
+
+.wr-board-rail {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 12px 32px -8px rgb(0 0 0 / 22%);
+  transform: translateY(-50%);
+}
+
+.wr-board-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.wr-board-btn:hover:not(:disabled) {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.wr-board-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.wr-board-rail-btn.is-active {
+  background: var(--item-active-bg);
+  color: var(--text-primary);
+}
+
+.wr-board-icon {
+  width: 19px;
+  height: 19px;
+}
+
+/* --------------------------------------------------------------- flyout */
+
+.wr-board-flyout {
+  position: absolute;
+  left: calc(100% + 10px);
+  padding: 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 12px 32px -8px rgb(0 0 0 / 22%);
+  /* Height follows the content. Never a ratio of the width. */
+  height: auto;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.wr-board-flyout-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wr-board-flyout-head kbd {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--kbd-bg);
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.wr-board-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.wr-board-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.wr-board-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.wr-board-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.wr-board-tile {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.wr-board-tile-wide {
+  width: 100%;
+  height: 34px;
+}
+
+.wr-board-tile-labeled {
+  width: 62px;
+  height: 62px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.wr-board-tile:hover,
+.wr-board-tile.is-active {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.wr-board-ratio {
+  border: 1.5px solid currentcolor;
+  border-radius: 3px;
+}
+
+.wr-board-ratio.is-dashed {
+  border-style: dashed;
+}
+
+.wr-board-swatch {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgb(0 0 0 / 8%);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.wr-board-swatch.is-small {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+}
+
+.wr-board-swatch.is-none {
+  background:
+    linear-gradient(
+      45deg,
+      transparent 44%,
+      var(--wr-board-red) 44%,
+      var(--wr-board-red) 56%,
+      transparent 56%
+    ),
+    var(--surface-subtle);
+}
+
+.wr-board-swatch.is-active {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* -------------------------------------------------------- style panel */
+
+.wr-board-style-panel {
+  position: absolute;
+  top: 64px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 216px;
+  padding: 12px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 12px 32px -8px rgb(0 0 0 / 22%);
+  height: auto;
+}
+
+.wr-board-style-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wr-board-style-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.wr-board-style-choices {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.wr-board-chip {
+  min-width: 26px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.wr-board-chip.is-active {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.wr-board-style-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-subtler);
+}
+
+.wr-board-text-btn {
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wr-board-text-btn:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.wr-board-text-btn.is-danger:hover {
+  color: var(--wr-board-red);
+}
+
+/* ------------------------------------------------------- viewport cluster */
+
+.wr-board-viewport-cluster {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.wr-board-group {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 4px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 12px 32px -8px rgb(0 0 0 / 22%);
+}
+
+.wr-board-zoom-label {
+  min-width: 52px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.wr-board-zoom-label:hover {
+  color: var(--text-primary);
+}
