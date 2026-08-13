@@ -15,6 +15,7 @@ import {
   drawSelection,
   keymap,
   placeholder,
+  type DecorationSet,
   type ViewUpdate,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -523,7 +524,19 @@ function paintBand(el: HTMLElement, markdown: string, band: BandName): void {
 
 /* -------------------------------------------------------- doc-range helpers */
 
+/** Document range of the row this element renders — or null if the element is
+ *  no longer part of the view.
+ *
+ *  The `isConnected` check is the whole point. `posAtDOM` does not throw on an
+ *  element it has never seen; it falls back to 0, and `rowRefAt(0)` happily
+ *  returns *the first ColumnRow in the document*. Every caller here holds row
+ *  elements across dispatches (a band editor commits, the widget rebuilds, and
+ *  the element it was holding is detached), so without this a commit meant for
+ *  the row you were typing in overwrites a completely different one — text
+ *  landing in a block you never touched. Detached DOM answers "where am I"
+ *  wrongly rather than not at all, which is the worst way for it to fail. */
 function rowRefFromDOM(view: EditorView, rowEl: HTMLElement): RowRef | null {
+  if (!rowEl.isConnected || !view.dom.contains(rowEl)) return null;
   let pos: number;
   try {
     pos = view.posAtDOM(rowEl);
@@ -636,8 +649,48 @@ function bandEditorExtensions(placeholderText: string): Extension[] {
  * you fix a word in the caption. An empty band opens focused and ready to type,
  * so writing a caption is one click and no ceremony.
  */
+/** The band editor that is open right now, if any.
+ *
+ *  There can only be one, and the reason is not tidiness. Committing a band
+ *  REWRITES THE DOCUMENT; the row widget is rebuilt from the new text, and
+ *  every element inside it — including the `cell` and `bandEl` that the
+ *  pointerdown handler just handed us — is detached at that moment. Opening a
+ *  second editor while the first is still open therefore builds it out of
+ *  elements that are about to become garbage, and its own commit then resolves
+ *  its position from detached DOM.
+ *
+ *  The old guard was `cell.querySelector(".wr-col-edit")`, which only saw the
+ *  SAME column. Clicking a band in a different column walked straight past it. */
+let openBandEdit: (() => void) | null = null;
+
+/** Where the pointer was for the click that is opening a band editor. Kept so
+ *  that closing a previously-open editor can re-hit-test the same spot after
+ *  the row rebuild, rather than trusting an element that no longer exists.
+ *
+ *  Module-level, like `openBandEdit`: only one editor view is on screen at a
+ *  time (tabs swap them out), so one slot is enough. If two views are ever
+ *  visible at once, both of these become per-view state. */
+const lastBandPointer = { x: 0, y: 0 };
+
 function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement): void {
   if (cell.querySelector(".wr-col-edit")) return;
+  if (openBandEdit) {
+    // Commit the other one first, then start over from whatever is under the
+    // pointer once the rebuild has settled. Re-hit-testing beats re-finding
+    // `bandEl` by address: coordinates survive a rebuild, elements do not.
+    // Same shape as the caption-drag path in `onDown`, for the same reason.
+    const commitOther = openBandEdit;
+    openBandEdit = null;
+    const { x, y } = lastBandPointer;
+    commitOther();
+    requestAnimationFrame(() => {
+      const under = document.elementFromPoint(x, y);
+      const nextBand = under instanceof HTMLElement ? under.closest<HTMLElement>(".wr-band") : null;
+      const nextCell = nextBand?.closest<HTMLElement>(".wr-col");
+      if (nextBand && nextCell) beginBandEdit(view, nextCell, nextBand);
+    });
+    return;
+  }
   const rowEl = cell.closest<HTMLElement>(".wr-row-widget");
   if (!rowEl) return;
   const ref = rowRefFromDOM(view, rowEl);
@@ -650,6 +703,10 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   // Two-state geometry, read before the rendered band is swapped out. Off
   // unless `writer.bandDebug` is set — see band-debug.ts.
   const debugBefore = captureRenderedBand(bandEl);
+
+  // Identity for the registry below: `finish` is redefined per editor, so the
+  // registry has to compare against THIS editor's copy, not the name.
+  const finishRef: { current: (() => void) | null } = { current: null };
 
   const host = document.createElement("div");
   host.className = "wr-col-edit";
@@ -682,6 +739,7 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   const finish = (commit: boolean) => {
     if (closed) return;
     closed = true;
+    if (openBandEdit === finishRef.current) openBandEdit = null;
     const next = inner?.state.doc.toString() ?? before;
     inner?.destroy();
     inner = null;
@@ -733,6 +791,11 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
       }),
     ],
   });
+  // Registered BEFORE `focus()`: focusing this editor blurs the previous one,
+  // and that blur commits — so by the time `focus()` returns, another
+  // `beginBandEdit` may already have run.
+  finishRef.current = () => finish(true);
+  openBandEdit = finishRef.current;
   inner.focus();
   inner.dispatch({ selection: EditorSelection.cursor(inner.state.doc.length) });
   reportBandEdit(debugBefore, host, inner, view);
@@ -1892,25 +1955,42 @@ function firstLineBox(el: HTMLElement): { top: number; height: number } {
   return { top: rect.top + padTop, height: Math.min(line, content > 0 ? content : line) };
 }
 
-/** How much room the hanging ATX hash takes up to the LEFT of the heading text.
+/** The line the grip is currently parked beside, marked so the stylesheet can
+ *  get the hanging ATX hash out of its way.
  *
- *  `prosemark-theme.css` pulls `#`/`##`/… out of the inline flow and hangs them
- *  in the margin (`position: absolute; right: 100%`) so heading text stays flush
- *  with body text. That margin is the same margin the grip sits in, so without
- *  this the grip lands on top of the hash.
+ *  The grip used to sit to the LEFT of the hash instead (`left = textEdge −
+ *  hashWidth − GRIP_WIDTH − 4`), which kept them from overlapping but put the
+ *  grip a hash-width further out on every heading than on any paragraph — read
+ *  as "the handle floats way off from my headings", and the bigger the heading
+ *  the bigger the gap. The hash is invisible unless the caret is on that line,
+ *  so most of the time it was a gap around nothing.
  *
- *  Measured, never derived. The hash's width depends on the heading level, the
- *  font size for that level and a padding in `em` — any formula gets one of the
- *  six levels wrong, and it would be a formula duplicating a stylesheet.
+ *  So the grip now sits where it sits for body text — one rule for every block
+ *  — and the hash yields instead. Two things had to stay true and both still
+ *  are: the grip's x never depends on whether the hash is showing (no sideways
+ *  jump when the caret enters the line), and the two never overlap.
  *
- *  Constant across caret states by design: off the heading line the hash is
- *  faded with `opacity: 0`, not removed, so it still measures the same. If that
- *  ever becomes `display: none`, the grip will start jumping sideways as the
- *  caret enters and leaves the line. */
-function hangingHashWidth(lineEl: HTMLElement | null): number {
-  const hash = lineEl?.querySelector<HTMLElement>(".cm-heading-hash");
-  return hash ? hash.offsetWidth : 0;
-}
+ *  A line decoration rather than a class written straight onto the `.cm-line`:
+ *  CodeMirror's DOM observer watches attributes inside `contentDOM` and redraws
+ *  over anything it did not put there. */
+const gripLineDeco = Decoration.line({ class: "wr-grip-line" });
+
+const setGripLine = StateEffect.define<number | null>();
+
+const gripLineField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    for (const effect of tr.effects) {
+      if (!effect.is(setGripLine)) continue;
+      return effect.value == null
+        ? Decoration.none
+        : Decoration.set([gripLineDeco.range(tr.state.doc.lineAt(effect.value).from)]);
+    }
+    // Any edit invalidates the offset, exactly like the grip's own target.
+    return tr.docChanged ? Decoration.none : deco;
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
 
 /** Notion's rule: the grip is centred on the first line box rather than flush
  *  with the top of it, so it still reads as aligned when the line grows — an h1
@@ -1974,6 +2054,9 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
      *  grip does — 8px under its bottom edge. Measuring it twice is two
      *  implementations of one number, and they drift. */
     lineBox: { top: number; height: number } | null = null;
+    /** Line start the `wr-grip-line` decoration sits on, or null. Only here to
+     *  keep `markGripLine` from dispatching on every mouse move. */
+    private gripLine: number | null = null;
     /** Rect of whatever the grip is currently parked beside. Reaching for the
      *  grip means leaving that rect — towards the grip, which sits in the
      *  margin outside it — so "the pointer left the block" cannot be the signal
@@ -2159,6 +2242,21 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.block = null;
       this.lineBox = null;
       this.keep = null;
+      this.markGripLine(null);
+    }
+
+    /** Tell the document which line the grip is standing next to, so the
+     *  hanging `#` on that line can get out of the way.
+     *
+     *  Deduplicated by line start: `place()` runs on every mouse move, and one
+     *  transaction per move is one transaction per frame. The dispatch carries
+     *  no changes, so `update()` — which drops the grip's target on any
+     *  `docChanged` — does not fire on it. */
+    private markGripLine(pos: number | null) {
+      const at = pos == null ? null : this.view.state.doc.lineAt(pos).from;
+      if (at === this.gripLine) return;
+      this.gripLine = at;
+      this.view.dispatch({ effects: setGripLine.of(at) });
     }
 
     /** Is the pointer on its way to the grip rather than off the block? The
@@ -2185,16 +2283,17 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       const host = this.view.dom.getBoundingClientRect();
       this.kind.dataset.kind = kind;
       this.lineBox = anchor;
+      // A band's markdown lives inside a widget; there is no page line to mark.
+      this.markGripLine(null);
       this.handle.style.top = `${gripTop(anchor, host.top)}px`;
       // Never negative: in a narrow window the page inset is 24px, less than the
       // grip is wide, and sliding it off the left edge would hide it entirely.
       //
-      // No `hangingHashWidth()` here, deliberately. A band only has a hash to
-      // hang while it is OPEN for editing — the rendered state draws a real
-      // heading with no marker — so offsetting by it would slide the grip
-      // sideways the instant the band swapped states. The two-state box
-      // contract says the grip does not move across that swap, and a grip that
-      // stays put while slightly overlapping a `#` is the cheaper break.
+      // No hash offset here either — same rule as the page editor now uses. A
+      // band only has a hash to hang while it is OPEN for editing (the rendered
+      // state draws a real heading with no marker), so any offset would slide
+      // the grip sideways the instant the band swapped states, and the
+      // two-state box contract says it must not move across that swap.
       this.handle.style.left = `${Math.max(0, rect.left - host.left - GRIP_WIDTH - 4)}px`;
       this.handle.classList.add("wr-gutter-on");
     }
@@ -2263,8 +2362,31 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
         });
       }
 
+      // The DOM under the pointer first; `posAtCoords` only when there is none.
+      //
+      // `posAtCoords` answers from CodeMirror's height map, which is a cache of
+      // what the DOM measured last time. An image whose rendered height has
+      // drifted from that cache — a remembered height from a different window
+      // width, a decode that lands after the measure — shifts every y below it,
+      // and the caption's y maps onto the PICTURE's line. The grip then parks
+      // beside the picture, wearing the picture chip, while you hover the
+      // words: "the text under my picture has no handle".
+      //
+      // Reproduced headlessly (Chromium + CM6): with a block image widget
+      // shrunk after the measure and no `requestMeasure`, hovering the caption
+      // resolves to the image block every time; resolving from
+      // `event.target.closest(".cm-line")` is correct in the same run, and in
+      // the healthy case both agree. The element the pointer is over cannot be
+      // stale — it is the measurement, not a model of it.
+      //
+      // The fallback still matters: hovering the LEFT MARGIN (where the grip
+      // lives) puts the pointer on `.cm-content`, not on any line, and there
+      // the height map is the only thing that can answer.
+      const hoverLine = el?.closest<HTMLElement>(".cm-line") ?? null;
       const probeX = Math.min(Math.max(event.clientX, content.left + 2), content.right - 2);
-      const pos = view.posAtCoords({ x: probeX, y: event.clientY });
+      const pos = hoverLine
+        ? view.posAtDOM(hoverLine)
+        : view.posAtCoords({ x: probeX, y: event.clientY });
       if (pos == null) {
         gripTrace("hide: posAtCoords found nothing", { target: describeTarget(el) });
         return this.hide();
@@ -2304,11 +2426,10 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // padding box. Neither is the text edge.
       const padLeft = parseFloat(getComputedStyle(view.contentDOM).paddingLeft) || 0;
       const room = content.left + padLeft - host.left;
-      // On a heading the margin is already occupied by the hanging hash, so the
-      // grip goes to the LEFT of it rather than on it. `Math.max(0, …)` still
-      // wins on a narrow window: flush against the edge and overlapping the
-      // hash beats sliding off-screen entirely.
-      const left = Math.max(0, room - hangingHashWidth(lineEl) - GRIP_WIDTH - 4);
+      // One rule for every block type: flush against the text column. A
+      // heading's hanging `#` lives in this same strip and yields instead —
+      // see `gripLineField`. `Math.max(0, …)` still wins on a narrow window.
+      const left = Math.max(0, room - GRIP_WIDTH - 4);
       const isImage = IMAGE_BLOCK.test(blockMarkdown(view, block));
       this.kind.dataset.kind = isImage ? "image" : "text";
       const box = lineEl
@@ -2317,6 +2438,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
           : firstLineBox(lineEl)
         : { top: coords!.top, height: GRIP_H };
       this.lineBox = box;
+      this.markGripLine(block.from);
       this.handle.style.top = `${gripTop(box, host.top)}px`;
       this.handle.style.left = `${left}px`;
       this.handle.classList.add("wr-gutter-on");
@@ -2327,6 +2449,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // markdown paragraph, so the grip correctly groups to the image's line
       // and never appears beside the words.
       gripTrace("shown: block", {
+        via: hoverLine ? "dom" : "coords",
         block: block.name,
         lines:
           view.state.doc.lineAt(block.to).number - view.state.doc.lineAt(block.from).number + 1,
@@ -2706,6 +2829,8 @@ const columnEvents = EditorView.domEventHandlers({
     if (band && cell) {
       event.preventDefault();
       event.stopPropagation();
+      lastBandPointer.x = event.clientX;
+      lastBandPointer.y = event.clientY;
       beginBandEdit(view, cell, band);
       return true;
     }
@@ -2734,6 +2859,7 @@ const columnRowFold = foldableSyntaxFacet.of({
 export function columnsDecorations(getFilePath: () => string) {
   return [
     revealedRowField,
+    gripLineField,
     columnRowFold,
     columnEvents,
     gutterHandlePlugin,

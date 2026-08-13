@@ -65,6 +65,15 @@ _inside_ the line, so `.cm-line`'s own `line-height` always resolves against
 an h3, 1.4px the other way in a code fence, exact on body text. That is what
 "only some block types look off" was.
 
+The grip's horizontal position is the same for every block type:
+`textEdge - GRIP_WIDTH - 4`. A heading's hanging `#` occupies that same strip
+and yields — the line the grip is parked beside gets a `wr-grip-line` line
+decoration and the stylesheet fades its hash. The grip used to be the one that
+yielded, sitting a hash-width further out on every heading; that read as the
+handle floating away from headings, and it made the grip's x depend on the
+block type. Two invariants survive the swap: the grip's x never depends on
+whether the hash is showing, and the two never overlap.
+
 The grip → panel corridor is a single padded rect (grip ∪ panel) tested in
 `holdIfReaching`, next to the code that positions the panel. It used to be
 `.wr-bmenu::before`, a strip on the panel's edge; that could not span a gap as
