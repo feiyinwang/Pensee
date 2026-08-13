@@ -8,6 +8,7 @@ export * from "./clickLink";
 export * from "./tabWidthExtension";
 export * from "./codeFenceExtension";
 export * from "./list";
+export * from "./deleteKeymap";
 
 export * from "./basicSetup";
 

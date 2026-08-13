@@ -37,6 +37,7 @@ import {
   fixedTabWidthExtension,
   foldableSyntaxFacet,
   listExtension,
+  platformDeleteKeymap,
   prosemarkBaseThemeSetup,
   prosemarkMarkdownFormattingKeymap,
   prosemarkMarkdownSyntaxExtensions,
@@ -759,6 +760,10 @@ function bandEditorExtensions(placeholderText: string): Extension[] {
     drawSelection(),
     EditorView.lineWrapping,
     placeholder(placeholderText),
+    // Word- and line-wise delete. A band is a slice of body text, so every key
+    // the document has, it has — and it takes them from the same shared module
+    // the page editor does rather than re-listing them here.
+    platformDeleteKeymap,
     keymap.of([...prosemarkMarkdownFormattingKeymap, ...defaultKeymap, ...historyKeymap]),
     prosemarkBaseThemeSetup(),
   ];
@@ -788,6 +793,14 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   // surfaces out one selector at a time. An inline editor inside body text must
   // never wear one, so it opts out by attribute — see App.css.
   host.dataset.noFocusRing = "";
+  // Opts this editor out of everything `prosemark-theme.css` writes for the
+  // *page* editor — text-column max width, auto margins, the 4rem side inset
+  // and 40vh of bottom padding. Those rules match any nested `.cm-content`,
+  // and the old override lived at the same specificity, so which one won was
+  // decided by CSS import order (measured: 288px of phantom space when it
+  // lost). The attribute makes the opt-out explicit and gives it the extra
+  // specificity to win outright. Any future in-place editor just sets it.
+  host.dataset.inlineEditor = "";
   // Keep the band's grid row, or the editor would be auto-placed into a new
   // implicit row and the whole row would jump the moment you click in.
   host.style.gridRow = bandEl.style.gridRow;
@@ -2065,6 +2078,22 @@ function targetStillValid(view: EditorView, resolved: ResolvedTarget): boolean {
   return resolved.gap !== undefined && resolved.gap <= doc.length;
 }
 
+/**
+ * `localStorage.setItem("writer.dropDebug", "1")` turns on one line of console
+ * output per drag-drop event, per channel. It exists because the two channels
+ * (the webview's `onDragDropEvent` and Rust's `WindowEvent::DragDrop`) may not
+ * agree on units or origin, and the only way to know is to read what each one
+ * actually sends — focused and unfocused, Retina and 1x. Cheap enough to leave
+ * in: one `localStorage` read per event, nothing when it is off.
+ */
+function dropDebugEnabled(): boolean {
+  try {
+    return localStorage.getItem("writer.dropDebug") === "1";
+  } catch {
+    return false;
+  }
+}
+
 function fileDropPlugin(getFilePath: () => string) {
   return ViewPlugin.fromClass(
     class {
@@ -2094,6 +2123,7 @@ function fileDropPlugin(getFilePath: () => string) {
           const { paths = [], x = 0, y = 0 } = event.payload ?? {};
           const images = paths.filter(isImagePath);
           if (!images.length) return;
+          this.trace("backend", "drop", { x, y });
           const point = this.point({ x, y });
           if (!this.inside(point.x, point.y)) return;
           void this.commit(images, point.x, point.y);
@@ -2109,9 +2139,40 @@ function fileDropPlugin(getFilePath: () => string) {
         return drag?.view === this.view && drag.source.kind === "external";
       }
 
+      /**
+       * Physical window coordinates to CSS viewport coordinates.
+       *
+       * Both drop channels feed this one converter, which quietly assumes they
+       * report in the same unit and from the same origin — an assumption that
+       * has never been checked, and the prime suspect for "the picture does not
+       * land where I let go when the window was not focused" (the webview
+       * channel sends no hover events until macOS activates the window, so an
+       * unfocused drop is the one case that relies purely on the Rust channel).
+       *
+       * Deliberately unchanged until there is data: guessing an offset or
+       * dropping the divide would be exactly the hardcode this project keeps
+       * banning. `wrDropDebug()` below prints what each channel actually sends;
+       * one drag with it on settles it.
+       */
       private point(position: { x: number; y: number }) {
         const ratio = window.devicePixelRatio || 1;
         return { x: position.x / ratio, y: position.y / ratio };
+      }
+
+      /** Raw numbers for one drop, per channel. Off unless asked for. */
+      private trace(channel: "webview" | "backend", type: string, raw: { x: number; y: number }) {
+        if (!dropDebugEnabled()) return;
+        const converted = this.point(raw);
+        const rect = this.view.dom.getBoundingClientRect();
+        // eslint-disable-next-line no-console
+        console.log("[writer drop]", channel, type, {
+          raw,
+          converted,
+          devicePixelRatio: window.devicePixelRatio,
+          editorRect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+          inside: this.inside(converted.x, converted.y),
+          focused: document.hasFocus(),
+        });
       }
 
       private inside(x: number, y: number): boolean {
@@ -2130,6 +2191,7 @@ function fileDropPlugin(getFilePath: () => string) {
           return;
         }
         if (!payload.position) return;
+        this.trace("webview", payload.type, payload.position);
         const { x, y } = this.point(payload.position);
 
         if (payload.type === "enter" || payload.type === "drop") {
