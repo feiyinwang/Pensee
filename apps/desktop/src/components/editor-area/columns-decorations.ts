@@ -1953,33 +1953,6 @@ function toActionTarget(view: EditorView, grip: GripTarget): ActionTarget | null
   return { kind: "band", rowFrom: grip.rowFrom, index, band: band as BandName };
 }
 
-/** The whole of what the grip points at, in viewport coordinates — not just the
- *  line the grip is parked beside.
- *
- *  This is the rect the panel is forbidden to cover. A band or a column can say
- *  so itself; a block is a range of offsets, so it is the union of its first and
- *  last `.cm-line`. When neither can be found (a position swallowed by a
- *  replacing decoration) the grip's own rect stands in: a one-line block is the
- *  common case and the grip is already sitting on its first line. */
-function gripViewportRect(view: EditorView, grip: GripTarget, fallback: DOMRect): DOMRect {
-  if (grip.kind !== "block") return grip.el.getBoundingClientRect();
-  const lineAt = (pos: number): HTMLElement | null => {
-    const node = view.domAtPos(pos).node;
-    const el = node instanceof HTMLElement ? node : node.parentElement;
-    return el?.closest<HTMLElement>(".cm-line") ?? null;
-  };
-  const first = lineAt(grip.block.from) ?? lineAt(grip.block.to);
-  const last = lineAt(grip.block.to) ?? first;
-  if (!first || !last) return fallback;
-  const a = first.getBoundingClientRect();
-  const b = last.getBoundingClientRect();
-  const top = Math.min(a.top, b.top);
-  const left = Math.min(a.left, b.left);
-  const width = Math.max(a.right, b.right) - left;
-  const height = Math.max(a.bottom, b.bottom) - top;
-  return new DOMRect(left, top, width, height);
-}
-
 /** A Notion-style handle that follows the pointer down the left margin. It
  *  lives outside `contentDOM` (CodeMirror would treat DOM there as an edit)
  *  and is positioned from document coordinates, so it works for a block that
@@ -1994,6 +1967,12 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     readonly handle: HTMLElement;
     readonly kind: HTMLElement;
     block: GripTarget | null = null;
+    /** The first-line box the grip is centred on, in viewport coordinates.
+     *
+     *  Kept rather than recomputed because the panel hangs off the SAME box the
+     *  grip does — 8px under its bottom edge. Measuring it twice is two
+     *  implementations of one number, and they drift. */
+    lineBox: { top: number; height: number } | null = null;
     /** Rect of whatever the grip is currently parked beside. Reaching for the
      *  grip means leaving that rect — towards the grip, which sits in the
      *  margin outside it — so "the pointer left the block" cannot be the signal
@@ -2160,9 +2139,15 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       const target = toActionTarget(this.view, grip);
       if (!target) return;
       const handle = this.handle.getBoundingClientRect();
-      // Two rects, two jobs: the grip says where the panel hangs from, the
-      // block says what it must not land on. See `position()`.
-      this.menu.openFor(target, handle, gripViewportRect(this.view, grip, handle));
+      // Two boxes, two jobs: the grip says where the panel hangs from
+      // horizontally, the first LINE says what it must not land on. Not the
+      // block — a block's height is the one thing the gap must not depend on.
+      // See `position()`.
+      const line = this.lineBox;
+      const span = line
+        ? { top: line.top, bottom: line.top + line.height }
+        : { top: handle.top, bottom: handle.bottom };
+      this.menu.openFor(target, handle, span);
     }
 
     private hide() {
@@ -2171,6 +2156,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       if (this.menu.isOpen()) return;
       this.handle.classList.remove("wr-gutter-on");
       this.block = null;
+      this.lineBox = null;
       this.keep = null;
     }
 
@@ -2197,6 +2183,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     ): void {
       const host = this.view.dom.getBoundingClientRect();
       this.kind.dataset.kind = kind;
+      this.lineBox = anchor;
       this.handle.style.top = `${gripTop(anchor, host.top)}px`;
       // Never negative: in a narrow window the page inset is 24px, less than the
       // grip is wide, and sliding it off the left edge would hide it entirely.
@@ -2301,6 +2288,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
           ? { top: lineEl.getBoundingClientRect().top, height: GRIP_H }
           : firstLineBox(lineEl)
         : { top: coords!.top, height: GRIP_H };
+      this.lineBox = box;
       this.handle.style.top = `${gripTop(box, host.top)}px`;
       this.handle.style.left = `${left}px`;
       this.handle.classList.add("wr-gutter-on");
@@ -2319,6 +2307,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.menu.close();
       this.handle.classList.remove("wr-gutter-on");
       this.block = null;
+      this.lineBox = null;
       this.keep = null;
     }
 

@@ -32,16 +32,26 @@ the delay every one of them opens.
 Two rects go into opening the panel: the **grip** says where it hangs from, the
 **block** says what it may not cover.
 
-- **Vertical is the invariant.** The panel goes below the block (`block.bottom
-  - 8`), or above it when there is no room below. It never crosses the block.
-    A block spans the whole text column, so no horizontal offset could have
-    cleared it — which is why the previous revision, "8px right of the grip",
-    landed on top of the block it was about to act on.
+- **Vertical is the invariant, and what it clears is the FIRST LINE — not the
+  block.** The panel sits 8px under the first line box, or 8px above it when
+  there is no room below. A line spans the whole text column, so no horizontal
+  offset could ever have cleared it; that is why "8px right of the grip" landed
+  on the block. Anchoring on the _block_ instead — the revision after that —
+  cleared it, but made the gap equal to the block's height: flush against a
+  quote, a whole picture away on an image. The line is what has to stay visible.
+  The block is only the container it sits in.
+- A picture's first line box is the degenerate one (top edge, one grip tall), so
+  a picture and a paragraph read identically. There is **no per-block-type
+  branch here** — every difference is already absorbed by `firstLineBox()`.
+- The line box is computed once, in `place()`/`placeBeside()`, and kept as
+  `lineBox`: the grip centres on it and the panel hangs off it. `openFor` takes
+  it as `VerticalSpan {top, bottom}` rather than a `DOMRect`, so "pass the
+  block's rect" stops being expressible.
 - **Horizontal is free.** Left edge aligned with the grip, clamped into the
   window. Clamping it can no longer produce an overlap.
-- Neither side big enough (a tall block in a short window): the panel is capped
-  with `max-height` and scrolls on the roomier side, rather than being allowed
-  to spill across the block.
+- Neither side big enough (a short window): the panel is capped with
+  `max-height` and scrolls on the roomier side, rather than being allowed to
+  spill across the line.
 - The two branches (below / above) both _satisfy_ the invariant; they are not
   the "flip when it doesn't fit" escape hatch that revision 1 was told never to
   reinstate. The test is not "is there a conditional" but "can any arm of it

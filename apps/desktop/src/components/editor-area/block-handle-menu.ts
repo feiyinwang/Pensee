@@ -132,6 +132,15 @@ const TILES: readonly Tile[] = [
 
 /* --------------------------------------------------------------------- model */
 
+/** The band the panel may not cross: the first line box of whatever the grip
+ *  points at. Deliberately not a `DOMRect` — the horizontal half of a rect has
+ *  no meaning here, and revision 3 went wrong by handing this a rect whose
+ *  `bottom` was the block's rather than the line's. */
+export interface VerticalSpan {
+  top: number;
+  bottom: number;
+}
+
 interface Row {
   label: string;
   icon: string;
@@ -190,7 +199,7 @@ export class BlockHandleMenu {
     return this.open;
   }
 
-  openFor(target: ActionTarget, anchor: DOMRect, avoid: DOMRect = anchor): void {
+  openFor(target: ActionTarget, anchor: DOMRect, avoid: VerticalSpan = anchor): void {
     this.target = target;
     this.root.replaceChildren(...this.build(target));
     if (!this.root.childElementCount) return this.close();
@@ -227,9 +236,8 @@ export class BlockHandleMenu {
 
   /** Two axes, two jobs — and they must not be the same axis.
    *
-   *  Third revision, and the rule has held through all three: **the axis that
-   *  guarantees non-overlap cannot be the axis that absorbs "no room left in
-   *  the window".** What changed each time is only what must not be overlapped.
+   *  Fourth revision. The rule has held throughout; what kept being wrong is
+   *  what it was applied to.
    *
    *  1. Below the grip, sharing its left edge. Avoidance on the vertical — the
    *     clamped axis — so a tall panel near the bottom of the screen was pushed
@@ -238,23 +246,28 @@ export class BlockHandleMenu {
    *     clamped in a window anyone writes at. The grip stayed visible, but 8px
    *     right of a grip in the margin is the text column, so the panel sat on
    *     top of the very block it was about to act on.
-   *  3. Here. What must not be covered is the BLOCK, and a block spans the
-   *     whole text column — so no horizontal offset can clear it, and the
-   *     invariant has to be vertical after all. Below the block, or above it;
-   *     never across it. The horizontal is free to be clamped now, because
-   *     clamping it can no longer produce an overlap.
+   *  3. Below the whole BLOCK. Nothing was covered any more — but the gap
+   *     became the block's height. A quote opened flush, an h1 a little lower,
+   *     a picture a whole picture away. Same rule, three different feels.
+   *  4. Here: below the FIRST LINE. The thing that must stay visible was never
+   *     the block, it was the line the grip is pointing at; the block is just
+   *     the container it lives in. Anchor on the line and the gap is 8px for
+   *     everything — a paragraph, a heading, a quote, a picture (whose first
+   *     line box is a degenerate one-grip-tall box at its top edge). Every
+   *     block-type difference was already absorbed by `firstLineBox()`, so
+   *     there is no per-type branch here and there must never be one.
    *
-   *  Note that this is not the "if it doesn't fit, flip" branch that revision 1
-   *  was told never to reinstate. Both branches here SATISFY the invariant —
-   *  the choice is which of two safe sides to use. Revision 1's flip escaped
-   *  the invariant. The test is not "is there a conditional" but "can any arm
-   *  of it end up overlapping".
+   *  Vertical stays the invariant, because a line spans the whole text column
+   *  and no horizontal offset can clear it. Both arms — under the line, or
+   *  above it — satisfy that invariant; this is not revision 1's "flip when it
+   *  doesn't fit", whose other arm landed on the anchor. The test is not "is
+   *  there a conditional" but "can any arm of it overlap".
    *
-   *  When neither side can hold the panel — a very tall block in a short
-   *  window — the panel is capped and scrolls on the roomier side rather than
-   *  being allowed to spill across the block. Losing rows to a scroll is
-   *  recoverable; covering the block you are acting on is the bug being fixed. */
-  private position(anchor: DOMRect, avoid: DOMRect): void {
+   *  When neither side can hold the panel — a short window — the panel is
+   *  capped and scrolls on the roomier side rather than being allowed to cross
+   *  the line. Losing rows to a scrollbar is recoverable; covering the line you
+   *  are acting on is the bug being fixed. */
+  private position(anchor: DOMRect, avoid: VerticalSpan): void {
     const margin = 8;
     const gap = 8;
 
@@ -264,8 +277,8 @@ export class BlockHandleMenu {
     this.root.style.maxHeight = "";
     const box = this.root.getBoundingClientRect();
 
-    // Vertical: the invariant. `roomBelow`/`roomAbove` are what is left of the
-    // window once the block and the gap are spent.
+    // Vertical: the invariant. What is left of the window once the line and the
+    // gap are spent — never the block's height, which is what revision 3 spent.
     const roomBelow = window.innerHeight - margin - (avoid.bottom + gap);
     const roomAbove = avoid.top - gap - margin;
     const below = box.height <= roomBelow || roomBelow >= roomAbove;
