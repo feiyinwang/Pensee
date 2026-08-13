@@ -1983,6 +1983,39 @@ function startResize(view: EditorView, handle: HTMLElement, event: PointerEvent)
  *  Mirrored in `columns.css` — if you change one, change the other. */
 const GRIP_WIDTH = 44;
 
+/** Height of the grip's box. Mirrored in `columns.css` — change one, change
+ *  the other, same as `GRIP_WIDTH`. */
+const GRIP_H = 24;
+
+/** The first line box a grip should line up with, in viewport coordinates.
+ *
+ *  There used to be two answers to "where is the top of this block": a caret
+ *  rect for a plain block, an element rect for a band. Those differ by half the
+ *  leading — about 5px at body size, about 8px on an h1 — which is why the same
+ *  grip sat at a different height depending on what it was pointing at, and why
+ *  the error grew with the font size. One reading for both: top from the
+ *  element, height from the computed `line-height`. Never the caret rect, whose
+ *  height browsers take from font metrics rather than from CSS. */
+function firstLineBox(el: HTMLElement): { top: number; height: number } {
+  const rect = el.getBoundingClientRect();
+  const style = getComputedStyle(el);
+  const lh = parseFloat(style.lineHeight);
+  const line = Number.isFinite(lh) && lh > 0 ? lh : (parseFloat(style.fontSize) || 16) * 1.8;
+  // A soft-wrapped paragraph's rect covers every wrapped line, but the grip
+  // belongs beside the first one. A single-line element is shorter than one
+  // line-height only when it has none of its own, and then it wins.
+  return { top: rect.top, height: Math.min(line, rect.height || line) };
+}
+
+/** Notion's rule: the grip is centred on the first line box rather than flush
+ *  with the top of it, so it still reads as aligned when the line grows — an h1
+ *  line box is 46px, nearly twice the grip. A picture has no line box; its
+ *  degenerate case is a box exactly one grip tall, which is flush-top by
+ *  construction. */
+function gripTop(box: { top: number; height: number }, hostTop: number): number {
+  return box.top - hostTop + (box.height - GRIP_H) / 2;
+}
+
 /** What the grip is currently pointing at. A plain block is addressed by
  *  document offset; a band cannot be — the widget owns its own DOM — so it is
  *  addressed by element, plus the row offset needed to find it again after a
@@ -2094,14 +2127,30 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
 
     /** Park the grip beside a rect rather than beside a document position:
      *  this is the only way to point at a band, whose DOM the widget owns. */
-    private placeBeside(rect: DOMRect, kind: "image" | "text"): void {
+    private placeBeside(
+      rect: DOMRect,
+      kind: "image" | "text",
+      anchor: { top: number; height: number },
+    ): void {
       const host = this.view.dom.getBoundingClientRect();
       this.kind.dataset.kind = kind;
-      this.handle.style.top = `${rect.top - host.top}px`;
+      this.handle.style.top = `${gripTop(anchor, host.top)}px`;
       // Never negative: in a narrow window the page inset is 24px, less than the
       // grip is wide, and sliding it off the left edge would hide it entirely.
       this.handle.style.left = `${Math.max(0, rect.left - host.left - GRIP_WIDTH - 4)}px`;
       this.handle.classList.add("wr-gutter-on");
+    }
+
+    /** The line box the grip lines up with beside a band: the band's rendered
+     *  first child, or its first `.cm-line` when the band is open for editing —
+     *  the two-state box contract says those two are the same box, so the grip
+     *  must not move when they swap. */
+    private anchorOf(bandEl: HTMLElement, kind: "image" | "text") {
+      if (kind === "image") return { top: bandEl.getBoundingClientRect().top, height: GRIP_H };
+      const line =
+        bandEl.querySelector<HTMLElement>(".cm-line") ??
+        (bandEl.firstElementChild as HTMLElement | null);
+      return firstLineBox(line ?? bandEl);
     }
 
     private place(event: MouseEvent) {
@@ -2121,7 +2170,8 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
         const rowFrom = rowRefFromDOM(view, rowEl)?.from;
         if (rowFrom === undefined) return this.hide();
         const rect = bandEl.getBoundingClientRect();
-        this.placeBeside(rect, bandEl.querySelector("img") ? "image" : "text");
+        const bandKind = bandEl.querySelector("img") ? "image" : "text";
+        this.placeBeside(rect, bandKind, this.anchorOf(bandEl, bandKind));
         this.keep = rect;
         // In a row with columns to reorder, the picture *is* the column — so
         // the grip on it moves the column, captions and all, and the caption
@@ -2143,8 +2193,17 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       const block = topBlockAt(view.state, pos);
       // Rows have their own per-column handles; a row is never dragged whole.
       if (!block || block.name === "ColumnRow") return this.hide();
-      const coords = view.coordsAtPos(block.from);
-      if (!coords) return this.hide();
+      // The line ELEMENT, not `coordsAtPos`: see `firstLineBox`.
+      const node = view.domAtPos(block.from).node;
+      const lineEl =
+        (node instanceof HTMLElement ? node : node.parentElement)?.closest<HTMLElement>(
+          ".cm-line",
+        ) ?? null;
+      // A position inside a replaced range can hand back `.cm-content` itself,
+      // and no line to measure. Falling back to the caret rect is the old,
+      // slightly-off placement — still far better than the grip vanishing.
+      const coords = lineEl ? null : view.coordsAtPos(block.from);
+      if (!lineEl && !coords) return this.hide();
       const host = view.dom.getBoundingClientRect();
       // Sit in the left margin, measured from where the TEXT starts —
       // `contentDOM`'s rect is the padding box, so it would put the handle on
@@ -2152,13 +2211,19 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // as 24px (clamp(1.5rem, 4vw, 4rem)), so fall back to flush-against-text
       // rather than overlapping.
       // Text-column left edge = contentDOM's padding box + its own padding.
-      // `coords.left` is the caret rect, which sits a few px into the first
-      // glyph; `content.left` is the padding box. Neither is the text edge.
+      // The caret rect sits a few px into the first glyph; `content.left` is the
+      // padding box. Neither is the text edge.
       const padLeft = parseFloat(getComputedStyle(view.contentDOM).paddingLeft) || 0;
       const room = content.left + padLeft - host.left;
       const left = Math.max(0, room - GRIP_WIDTH - 4);
-      this.kind.dataset.kind = IMAGE_BLOCK.test(blockMarkdown(view, block)) ? "image" : "text";
-      this.handle.style.top = `${coords.top - host.top}px`;
+      const isImage = IMAGE_BLOCK.test(blockMarkdown(view, block));
+      this.kind.dataset.kind = isImage ? "image" : "text";
+      const box = lineEl
+        ? isImage
+          ? { top: lineEl.getBoundingClientRect().top, height: GRIP_H }
+          : firstLineBox(lineEl)
+        : { top: coords!.top, height: GRIP_H };
+      this.handle.style.top = `${gripTop(box, host.top)}px`;
       this.handle.style.left = `${left}px`;
       this.handle.classList.add("wr-gutter-on");
       this.block = { kind: "block", block };

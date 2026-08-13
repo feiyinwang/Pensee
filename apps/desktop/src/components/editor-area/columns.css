@@ -365,6 +365,8 @@
   align-items: center;
   gap: 4px;
   width: auto;
+  /* Mirrored in `GRIP_H`: the grip is centred on the first line box, and that
+     sum is computed in TS, so both halves have to agree on this number. */
   height: 24px;
   border-radius: 0;
   background: transparent;
