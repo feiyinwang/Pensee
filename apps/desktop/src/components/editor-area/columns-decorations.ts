@@ -591,12 +591,12 @@ function buildColumn(
   cell.dataset.wrIndex = String(index);
   cell.dataset.wrGrow = fmtGrow(column.grow);
 
-  const grab = document.createElement("div");
-  grab.className = "wr-grab";
-  grab.dataset.wrHandle = "col";
-  grab.setAttribute("aria-hidden", "true");
-  cell.append(grab);
-
+  // No chip on the picture any more. A block gets exactly one grip, and it is
+  // the one in the margin — two grips a thumb apart, one of them meaning
+  // "the column" and the other "this band", is a question nobody should have to
+  // answer while reaching for a picture. Column drags still exist: the grip
+  // picks up the whole column when the row has one to reorder (see
+  // `gutterHandlePlugin`).
   if (index > 0) {
     // Lives inside the column, absolutely positioned over the gap on its left.
     // It used to be a sibling of the columns, which a grid would count as a
@@ -1989,7 +1989,8 @@ const GRIP_WIDTH = 44;
  *  dispatch rebuilds the widget. */
 type GripTarget =
   | { kind: "block"; block: BlockRef }
-  | { kind: "band"; el: HTMLElement; rowFrom: number };
+  | { kind: "band"; el: HTMLElement; rowFrom: number }
+  | { kind: "col"; el: HTMLElement };
 
 /** A Notion-style handle that follows the pointer down the left margin. It
  *  lives outside `contentDOM` (CodeMirror would treat DOM there as an edit)
@@ -2005,6 +2006,11 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     readonly handle: HTMLElement;
     readonly kind: HTMLElement;
     block: GripTarget | null = null;
+    /** Rect of whatever the grip is currently parked beside. Reaching for the
+     *  grip means leaving that rect — towards the grip, which sits in the
+     *  margin outside it — so "the pointer left the block" cannot be the signal
+     *  to hide. Without this the grip vanishes on the way to being clicked. */
+    keep: DOMRect | null = null;
     private readonly onMove: (e: MouseEvent) => void;
     private readonly onLeave: () => void;
     private readonly onDown: (e: PointerEvent) => void;
@@ -2037,6 +2043,10 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
           startBlockDrag(view, target.block, e);
           return;
         }
+        if (target.kind === "col") {
+          startColumnDrag(view, target.el, e);
+          return;
+        }
         if (!target.el.classList.contains("wr-col-edit")) {
           startBandDrag(view, target.el, e);
           return;
@@ -2065,6 +2075,21 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     private hide() {
       this.handle.classList.remove("wr-gutter-on");
       this.block = null;
+      this.keep = null;
+    }
+
+    /** Is the pointer on its way to the grip rather than off the block? The
+     *  corridor is the block's own height plus the strip of margin the grip
+     *  lives in. */
+    private reaching(event: MouseEvent): boolean {
+      const k = this.keep;
+      if (!k) return false;
+      return (
+        event.clientY >= k.top - 4 &&
+        event.clientY <= k.bottom + 4 &&
+        event.clientX <= k.left + 8 &&
+        event.clientX >= k.left - GRIP_WIDTH - 24
+      );
     }
 
     /** Park the grip beside a rect rather than beside a document position:
@@ -2088,18 +2113,29 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // Bands first: they live inside a widget, so `posAtCoords` would hand back
       // the row and the block path below would (correctly) refuse to drag it.
       const el = event.target instanceof HTMLElement ? event.target : null;
+      // Standing on the grip itself is not a reason to recompute anything.
+      if (el && this.handle.contains(el)) return;
       const bandEl = el?.closest<HTMLElement>(".wr-band, .wr-col-edit") ?? null;
       const rowEl = bandEl?.closest<HTMLElement>(".wr-row-widget") ?? null;
       if (bandEl && rowEl) {
         const rowFrom = rowRefFromDOM(view, rowEl)?.from;
         if (rowFrom === undefined) return this.hide();
-        this.placeBeside(
-          bandEl.getBoundingClientRect(),
-          bandEl.querySelector("img") ? "image" : "text",
-        );
-        this.block = { kind: "band", el: bandEl, rowFrom };
+        const rect = bandEl.getBoundingClientRect();
+        this.placeBeside(rect, bandEl.querySelector("img") ? "image" : "text");
+        this.keep = rect;
+        // In a row with columns to reorder, the picture *is* the column — so
+        // the grip on it moves the column, captions and all, and the caption
+        // keeps its own grip for moving just the words. A one-column row has
+        // nothing to reorder, so there the picture is only itself.
+        const cell = bandEl.closest<HTMLElement>(".wr-col");
+        const many = rowEl.querySelectorAll(":scope > .wr-col").length > 1;
+        this.block =
+          many && cell && bandEl.dataset.wrBand === "anchor"
+            ? { kind: "col", el: cell }
+            : { kind: "band", el: bandEl, rowFrom };
         return;
       }
+      if (this.block?.kind !== "block" && this.reaching(event)) return;
 
       const probeX = Math.min(Math.max(event.clientX, content.left + 2), content.right - 2);
       const pos = view.posAtCoords({ x: probeX, y: event.clientY });
@@ -2126,6 +2162,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.handle.style.left = `${left}px`;
       this.handle.classList.add("wr-gutter-on");
       this.block = { kind: "block", block };
+      this.keep = null;
     }
 
     destroy() {
@@ -2466,13 +2503,6 @@ const columnEvents = EditorView.domEventHandlers({
     const target = event.target;
     if (!(target instanceof HTMLElement)) return false;
 
-    const handle = target.closest<HTMLElement>("[data-wr-handle]");
-    if (handle) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (handle.dataset.wrHandle === "col") startColumnDrag(view, handle, event);
-      return true;
-    }
     const resize = target.closest<HTMLElement>("[data-wr-resize]");
     if (resize) {
       event.preventDefault();

@@ -19,6 +19,10 @@
   /* Type chips on the gutter grip. Stroked glyphs, so the mask has something
      to bite on; drawn here rather than imported because the grip is plain DOM
      inside a CodeMirror plugin, with no React to render an icon into. */
+  /* Ink blue for words, accent for pictures. Declared here with the other
+     tokens because the grip is appended to `view.dom`, outside any editor
+     scope. */
+  --wr-kind-text-tint: #3f6ad8;
   --wr-kind-text: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M5 6h14M12 6v12'/%3E%3C/svg%3E");
   --wr-kind-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='3'/%3E%3Ccircle cx='8.6' cy='9.6' r='1.5' fill='%23000' stroke='none'/%3E%3Cpath d='M3.6 16.8 8.5 12l3 3 3-3 5.9 5.9'/%3E%3C/svg%3E");
 
@@ -32,6 +36,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --wr-paper: color-mix(in srgb, var(--surface-card, #1c1c1e) 88%, #fff);
+    /* Same hue, lifted off the dark background so the glyph stays legible. */
+    --wr-kind-text-tint: #7f9df0;
   }
 }
 
@@ -327,11 +333,10 @@
 }
 
 /* ---- grab handles ---------------------------------------------------- */
-/* Visual 22px, hit area 32px (Fitts). Hover-gated so a touch tap can't latch
-   them. The column handle floats over the cell; the block handle lives in the
-   left margin so it never covers a word. */
+/* Hit area 32px (Fitts). Hover-gated so a touch tap can't latch it. There is
+   exactly one grip and it lives in the left margin, so it never covers a word
+   and never has to be told apart from a second grip beside it. */
 
-.wr-grab,
 .wr-gutter-grab {
   position: absolute;
   width: 22px;
@@ -343,13 +348,6 @@
   transition:
     opacity var(--wr-dur-hover) ease,
     transform var(--wr-dur-press) var(--wr-ease-out);
-}
-
-.wr-grab {
-  top: 8px;
-  left: 8px;
-  background: color-mix(in srgb, #000 55%, transparent);
-  backdrop-filter: blur(6px);
 }
 
 /* Type chip, then the dots, then the block. One grip for a paragraph, a
@@ -372,21 +370,33 @@
   background: transparent;
   pointer-events: none;
 }
+/* Colour is what tells the two apart at a glance, so the chip carries a tint
+   of its own kind rather than the same muted grey twice: text takes the ink
+   blue, a picture takes the app's accent. Border and fill are mixes of that one
+   colour, so a theme change moves all three together. */
 .wr-gutter-kind {
+  /* Default, so a chip with no kind yet is muted rather than invalid. */
+  --wr-kind-color: var(--text-icon-muted);
   flex: 0 0 24px;
   position: relative;
   width: 24px;
   height: 24px;
-  border: 1px solid var(--line-subtler);
+  border: 1px solid color-mix(in srgb, var(--wr-kind-color) 34%, transparent);
   border-radius: 6px;
-  background: var(--surface-card);
+  background: color-mix(in srgb, var(--wr-kind-color) 10%, var(--surface-primary));
+}
+.wr-gutter-kind[data-kind="text"] {
+  --wr-kind-color: var(--wr-kind-text-tint);
+}
+.wr-gutter-kind[data-kind="image"] {
+  --wr-kind-color: var(--accent, #ff6a00);
 }
 .wr-gutter-kind::before {
   content: "";
   position: absolute;
   inset: 4px;
   background: currentcolor;
-  color: var(--text-icon-muted);
+  color: var(--wr-kind-color);
   -webkit-mask: var(--wr-kind-text) center / 14px 14px no-repeat;
   mask: var(--wr-kind-text) center / 14px 14px no-repeat;
 }
@@ -414,7 +424,6 @@
    keeps `color` as the single knob, which is what lets the same glyph be white
    over a picture and muted grey in the margin. `--wr-grip` is declared with the
    other tokens on :root because the drag lift is appended to <body>. */
-.wr-grab::after,
 .wr-gutter-grab::after {
   content: "";
   position: absolute;
@@ -422,10 +431,6 @@
   background: currentcolor;
   -webkit-mask: var(--wr-grip) center / 20px 20px no-repeat;
   mask: var(--wr-grip) center / 20px 20px no-repeat;
-}
-.wr-grab::after {
-  color: #fff;
-  opacity: 0.9;
 }
 .wr-gutter-grab::after {
   color: var(--text-icon-muted);
@@ -435,31 +440,17 @@
 }
 
 /* generous invisible hit area */
-.wr-grab::before,
 .wr-gutter-grab::before {
   content: "";
   position: absolute;
   inset: -5px;
 }
 
-.wr-grab:active,
 .wr-gutter-grab:active {
   cursor: grabbing;
   transform: scale(0.97);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .wr-col:hover > .wr-grab {
-    opacity: 1;
-  }
-}
-/* The column chip means "reorder the columns", which a one-column row cannot
-   do — and there it would sit on the picture arguing with the gutter grip. */
-.wr-row-widget[data-wr-cols="1"] .wr-grab {
-  display: none;
-}
-
-body.wr-dragging-body .wr-grab,
 body.wr-dragging-body .wr-gutter-grab {
   opacity: 0 !important;
 }
