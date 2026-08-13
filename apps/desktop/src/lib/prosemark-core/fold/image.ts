@@ -15,10 +15,16 @@ const imageHeightCache = new Map<string, number>();
  *  until this element (re)decodes, record the settled height, and ask the
  *  view to re-measure so its scroll anchoring compensates. `load` can fire
  *  more than once when a resolver rewrites `src` after insertion; the last
- *  one wins. */
+ *  one wins.
+ *
+ *  There used to be a `container` parameter, and it was what got measured.
+ *  Deliberately gone: the number is re-applied as `image.style.height`, so
+ *  anything that measures more than the image reserves space the image will
+ *  never use. Harmless while every caller wrapped nothing but the picture, and
+ *  wrong the moment one did not. Do not add it back "just for context" — an
+ *  unused element here is an invitation to measure it again. */
 export function attachStableImageHeight(
   image: HTMLImageElement,
-  container: HTMLElement,
   cacheKey: string,
   view: EditorView,
 ): void {
@@ -28,7 +34,14 @@ export function attachStableImageHeight(
   }
   image.addEventListener("load", () => {
     image.style.height = "";
-    const height = container.getBoundingClientRect().height;
+    // The image, and only the image. Measured on the real case that exposed
+    // this: a column whose caption sits on the line directly under the picture
+    // renders as one band, and that band is a text line taller than the
+    // picture — 337px cached for a 301px image, so every render reserved 36px
+    // of space that never existed. That nudges the picture down relative to
+    // the plain one beside it and leaves CodeMirror's height map disagreeing
+    // with the DOM until the decode lands.
+    const height = image.getBoundingClientRect().height;
     if (height > 0) {
       imageHeightCache.set(cacheKey, height);
     }
@@ -63,7 +76,7 @@ class ImageWidget extends WidgetType {
       elem.className += " cm-image-block";
     }
     const image = document.createElement("img");
-    attachStableImageHeight(image, elem, this.url, view);
+    attachStableImageHeight(image, this.url, view);
     image.src = this.url;
     elem.appendChild(image);
     return elem;

@@ -499,7 +499,7 @@ function buildColumn(
     // height jumps once each image lands and the scroll anchor slips.
     for (const img of band.querySelectorAll("img")) {
       const src = img.getAttribute("src") ?? "";
-      attachStableImageHeight(img as HTMLImageElement, band, src, view);
+      attachStableImageHeight(img as HTMLImageElement, src, view);
     }
     cell.append(band);
   });
@@ -1975,6 +1975,16 @@ function firstLineBox(el: HTMLElement): { top: number; height: number } {
  *  over anything it did not put there. */
 const gripLineDeco = Decoration.line({ class: "wr-grip-line" });
 
+/** Is this line showing a hanging `#` right now?
+ *
+ *  The marker is in the DOM on every heading line, but faded to `opacity: 0`
+ *  (via a nested `.cm-hidden-token`) unless the caret is on that line. Only a
+ *  hash that is actually on screen can collide with the grip. */
+function showingHash(lineEl: HTMLElement | null): boolean {
+  const hash = lineEl?.querySelector<HTMLElement>(".cm-heading-hash");
+  return !!hash && !hash.querySelector(".cm-hidden-token");
+}
+
 const setGripLine = StateEffect.define<number | null>();
 
 const gripLineField = StateField.define<DecorationSet>({
@@ -2253,6 +2263,10 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
      *  no changes, so `update()` — which drops the grip's target on any
      *  `docChanged` — does not fire on it. */
     private markGripLine(pos: number | null) {
+      // Never while a band editor is open. That editor owns a piece of the
+      // widget's DOM, and a transaction on the outer view is the one thing that
+      // can pull the rug out from under it — for a purely cosmetic mark.
+      if (openBandEdit) return;
       const at = pos == null ? null : this.view.state.doc.lineAt(pos).from;
       if (at === this.gripLine) return;
       this.gripLine = at;
@@ -2438,7 +2452,10 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
           : firstLineBox(lineEl)
         : { top: coords!.top, height: GRIP_H };
       this.lineBox = box;
-      this.markGripLine(block.from);
+      // Only pay a transaction when it can change something on screen. A faded
+      // hash costs nothing to overlap, and most hovered lines have no hash at
+      // all — before this, every line the pointer crossed dispatched.
+      this.markGripLine(showingHash(lineEl) ? block.from : null);
       this.handle.style.top = `${gripTop(box, host.top)}px`;
       this.handle.style.left = `${left}px`;
       this.handle.classList.add("wr-gutter-on");

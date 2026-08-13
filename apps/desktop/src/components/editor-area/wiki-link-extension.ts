@@ -161,7 +161,7 @@ class ImageEmbedWidget extends WidgetType {
     const elem = document.createElement("span");
     elem.className = "cm-image cm-image-embed";
     const image = document.createElement("img");
-    attachStableImageHeight(image, elem, this.target, view);
+    attachStableImageHeight(image, this.target, view);
     elem.appendChild(image);
 
     void resolveEmbed(this.target, this.workspaceRoot, this.currentFilePath)

@@ -124,12 +124,38 @@ export function splitBlocks(md: string): string[] {
 export function splitBands(md: string): Bands {
   const blocks = splitBlocks(md);
   if (!blocks.length) return { above: "", anchor: "", below: "" };
-  const found = blocks.findIndex((b) => IMAGE_BLOCK.test(b));
-  const at = found < 0 ? 0 : found;
+  let at = blocks.findIndex((b) => IMAGE_BLOCK.test(b));
+  // A caption written on the line directly under a picture, with no blank line
+  // between them, is ONE markdown block — blocks split on blank lines and
+  // `IMAGE_BLOCK` is anchored to the whole string, so `![](x)\nioo` matches
+  // nothing and the column ends up with the picture AND the words in a single
+  // anchor band. Everything downstream then treats that band as a picture:
+  // the grip wears the picture chip and parks at the top of the band, so
+  // hovering the words shows the picture's handle and the caption has none of
+  // its own; the band renders as one paragraph, so the picture no longer lines
+  // up with the plain picture beside it.
+  //
+  // Two things to the reader is two bands. Split the block after its first
+  // line when that line is a standalone image, and let the rest fall into
+  // `below` — which is where the same text would have gone if the writer had
+  // left a blank line. `joinBands` puts that blank line back on the next
+  // commit, so the file ends up meaning what it looked like.
+  let trailing = "";
+  if (at < 0) {
+    at = blocks.findIndex((b) => IMAGE_BLOCK.test(b.split("\n")[0] ?? ""));
+    if (at >= 0) {
+      const lines = blocks[at]!.split("\n");
+      trailing = lines.slice(1).join("\n").trim();
+      blocks[at] = lines[0]!;
+    }
+  }
+  if (at < 0) at = 0;
+  const below = blocks.slice(at + 1);
+  if (trailing) below.unshift(trailing);
   return {
     above: blocks.slice(0, at).join("\n\n"),
     anchor: blocks[at] ?? "",
-    below: blocks.slice(at + 1).join("\n\n"),
+    below: below.join("\n\n"),
   };
 }
 
