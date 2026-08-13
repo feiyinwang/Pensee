@@ -1840,10 +1840,44 @@ const GRIP_H = 24;
  *  place. Headings carry `padding-top: 1rem` (`prosemark-theme.css`), so the
  *  grip was centred inside a 46px line box that began 16px above the text and
  *  ended up sitting a whole line high — visible on an h1, invisible on a
- *  paragraph, which has no padding to be wrong about. Strip the padding first:
- *  content box to content box, and every padded line (headings today, block
- *  quotes and code fences the moment their padding changes) is right at once. */
+ *  paragraph, which has no padding to be wrong about.
+ *
+ *  Stripping the padding fixed the top and left the HEIGHT wrong, which is the
+ *  third time this function has been corrected for the same reason: it kept
+ *  deriving the line box from CSS instead of measuring it. Heading and code
+ *  font sizes are tag styles (`syntaxHighlighting.ts`: `1.6em`/`1.4em`/`1.2em`,
+ *  `0.9rem`), so they land on a highlight SPAN *inside* the line. The line's own
+ *  computed `line-height` therefore still resolves against 16px — 28.8px — while
+ *  an h1's glyphs sit in a 46px box. Centring the 24px grip in the wrong box put
+ *  it 8.6px high on an h1, 5.8px on an h2, 2.9px on an h3, 1.4px low in a code
+ *  fence, and exactly right on body text, which is why it read as "some block
+ *  types".
+ *
+ *  So: measure. `Range.getClientRects()` over the line's contents returns one
+ *  rect per rendered fragment; the topmost band of them IS the first line,
+ *  whatever the padding, the font size, the wrapping or the inline widgets. The
+ *  rect is the glyph box rather than the CSS line box, but half-leading is
+ *  symmetric, so the two share a centre — and a centre is all `gripTop` wants.
+ *  The CSS derivation stays as the fallback for a line with nothing to measure
+ *  (an empty paragraph is `<br>` alone, and browsers disagree about its rects).
+ *
+ *  Do not add a per-block-type correction on top of this. That is what the
+ *  previous two attempts were, at one remove. */
+function measuredFirstLine(el: HTMLElement): { top: number; height: number } | null {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const rects = Array.from(range.getClientRects()).filter((r) => r.height > 0);
+  if (!rects.length) return null;
+  const top = Math.min(...rects.map((r) => r.top));
+  // Fragments on one visual line do not agree on `top` to the last decimal.
+  // 2px is wider than that noise and narrower than any line box.
+  const bottom = Math.max(...rects.filter((r) => r.top < top + 2).map((r) => r.bottom));
+  return { top, height: bottom - top };
+}
+
 function firstLineBox(el: HTMLElement): { top: number; height: number } {
+  const measured = measuredFirstLine(el);
+  if (measured) return measured;
   const rect = el.getBoundingClientRect();
   const style = getComputedStyle(el);
   const padTop = parseFloat(style.paddingTop) || 0;
@@ -1919,6 +1953,33 @@ function toActionTarget(view: EditorView, grip: GripTarget): ActionTarget | null
   return { kind: "band", rowFrom: grip.rowFrom, index, band: band as BandName };
 }
 
+/** The whole of what the grip points at, in viewport coordinates — not just the
+ *  line the grip is parked beside.
+ *
+ *  This is the rect the panel is forbidden to cover. A band or a column can say
+ *  so itself; a block is a range of offsets, so it is the union of its first and
+ *  last `.cm-line`. When neither can be found (a position swallowed by a
+ *  replacing decoration) the grip's own rect stands in: a one-line block is the
+ *  common case and the grip is already sitting on its first line. */
+function gripViewportRect(view: EditorView, grip: GripTarget, fallback: DOMRect): DOMRect {
+  if (grip.kind !== "block") return grip.el.getBoundingClientRect();
+  const lineAt = (pos: number): HTMLElement | null => {
+    const node = view.domAtPos(pos).node;
+    const el = node instanceof HTMLElement ? node : node.parentElement;
+    return el?.closest<HTMLElement>(".cm-line") ?? null;
+  };
+  const first = lineAt(grip.block.from) ?? lineAt(grip.block.to);
+  const last = lineAt(grip.block.to) ?? first;
+  if (!first || !last) return fallback;
+  const a = first.getBoundingClientRect();
+  const b = last.getBoundingClientRect();
+  const top = Math.min(a.top, b.top);
+  const left = Math.min(a.left, b.left);
+  const width = Math.max(a.right, b.right) - left;
+  const height = Math.max(a.bottom, b.bottom) - top;
+  return new DOMRect(left, top, width, height);
+}
+
 /** A Notion-style handle that follows the pointer down the left margin. It
  *  lives outside `contentDOM` (CodeMirror would treat DOM there as an edit)
  *  and is positioned from document coordinates, so it works for a block that
@@ -1945,7 +2006,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
      *  one flag: the open one exists because the grip slides under the pointer
      *  and a hand crossing a column of paragraphs passes over a dozen grips,
      *  the close one because the pointer needs a moment to travel from grip to
-     *  panel. The gap between the two is bridged in CSS, not here. */
+     *  panel. That trip is bridged by `holdIfReaching`, here — not in CSS. */
     private readonly menu: BlockHandleMenu;
     private openTimer: ReturnType<typeof setTimeout> | null = null;
     private closeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1968,9 +2029,11 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.onMove = (e: MouseEvent) => this.place(e);
       this.onLeave = () => {
         // Leaving the editor is not a reason to take the menu away — the menu
-        // is not in the editor. It sits on `document.body`, and the pointer is
-        // inside it right now.
-        if (this.menu.isOpen()) return;
+        // is not in the editor. It sits on `document.body`, and the pointer may
+        // be moving onto it right now. Start the countdown rather than closing:
+        // `onPanelEnter` cancels it if that is where the pointer went, and if
+        // the pointer left the window altogether nothing else ever would.
+        if (this.menu.isOpen()) return this.scheduleClose();
         this.hide();
       };
       // The handle lives in `view.dom`, outside `contentDOM` — and
@@ -2039,12 +2102,45 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
     private readonly onGripLeave = () => {
       this.cancelOpen();
       this.cancelClose();
+      this.scheduleClose();
+    };
+
+    /** Start the close countdown unless one is already running. Restarting it
+     *  on every pointer move would mean a pointer wandering anywhere in the
+     *  editor keeps the panel open forever. */
+    private scheduleClose() {
+      if (this.closeTimer !== null) return;
       this.closeTimer = setTimeout(() => {
         this.closeTimer = null;
         this.menu.close();
         this.hide();
       }, MENU_CLOSE_DELAY);
-    };
+    }
+
+    /** The grip → panel corridor, in JavaScript because it can no longer be a
+     *  strip of CSS on the panel's edge.
+     *
+     *  The panel used to open 8px to the right of the grip, so an apron drawn
+     *  just outside its own border covered the whole trip. It now opens below
+     *  (or above) the BLOCK, and the block is between the two — a gap as tall
+     *  as the block, which nothing anchored to the panel's edge can span. One
+     *  rect instead: grip ∪ panel, padded. Inside it the pointer is on its way
+     *  and the countdown is cancelled; outside it, it is leaving.
+     *
+     *  This and `position()` are one constraint. Move the panel and this moves
+     *  with it — the CSS bridge was split off once and went stale the same day. */
+    private holdIfReaching(event: MouseEvent) {
+      const g = this.handle.getBoundingClientRect();
+      const p = this.menu.root.getBoundingClientRect();
+      const pad = 12;
+      const inside =
+        event.clientX >= Math.min(g.left, p.left) - pad &&
+        event.clientX <= Math.max(g.right, p.right) + pad &&
+        event.clientY >= Math.min(g.top, p.top) - pad &&
+        event.clientY <= Math.max(g.bottom, p.bottom) + pad;
+      if (inside) this.cancelClose();
+      else this.scheduleClose();
+    }
 
     private cancelOpen() {
       if (this.openTimer === null) return;
@@ -2063,7 +2159,10 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       if (!grip || drag) return;
       const target = toActionTarget(this.view, grip);
       if (!target) return;
-      this.menu.openFor(target, this.handle.getBoundingClientRect());
+      const handle = this.handle.getBoundingClientRect();
+      // Two rects, two jobs: the grip says where the panel hangs from, the
+      // block says what it must not land on. See `position()`.
+      this.menu.openFor(target, handle, gripViewportRect(this.view, grip, handle));
     }
 
     private hide() {
@@ -2129,7 +2228,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // Freeze while the panel is open. The grip is the panel's anchor and its
       // target; letting it wander would leave the two describing different
       // blocks, which is the one way this can silently do the wrong thing.
-      if (this.menu.isOpen()) return;
+      if (this.menu.isOpen()) return this.holdIfReaching(event);
       const view = this.view;
       const content = view.contentDOM.getBoundingClientRect();
       if (event.clientY < content.top - 4) return this.hide();

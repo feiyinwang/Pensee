@@ -148,8 +148,11 @@ interface Row {
 export const MENU_OPEN_DELAY = 220;
 
 /** Grace period after the pointer leaves both the handle and the panel.
- *  The gap between them is bridged in CSS, not here. */
-export const MENU_CLOSE_DELAY = 150;
+ *  The corridor between them is a rect test in the gutter plugin
+ *  (`holdIfReaching`); this is only what happens once the pointer is outside
+ *  it. Longer than it used to be because the panel no longer opens beside the
+ *  grip: the pointer now has a whole block to cross. */
+export const MENU_CLOSE_DELAY = 320;
 
 export class BlockHandleMenu {
   /** Public because the gutter plugin has to hang its own hover listeners on
@@ -187,7 +190,7 @@ export class BlockHandleMenu {
     return this.open;
   }
 
-  openFor(target: ActionTarget, anchor: DOMRect): void {
+  openFor(target: ActionTarget, anchor: DOMRect, avoid: DOMRect = anchor): void {
     this.target = target;
     this.root.replaceChildren(...this.build(target));
     if (!this.root.childElementCount) return this.close();
@@ -200,7 +203,7 @@ export class BlockHandleMenu {
       this.view.scrollDOM.addEventListener("scroll", this.onScroll, { passive: true });
     }
     this.root.classList.add("wr-bmenu-on");
-    this.position(anchor);
+    this.position(anchor, avoid);
   }
 
   close(): void {
@@ -224,41 +227,65 @@ export class BlockHandleMenu {
 
   /** Two axes, two jobs — and they must not be the same axis.
    *
-   *  This used to open *below* the handle and share its left edge: avoidance on
-   *  the vertical, straight overlap on the horizontal. But the vertical is also
-   *  the axis that has to absorb "there is no room left in the window", so the
-   *  moment a tall panel near the bottom of the screen got clamped upward it
-   *  landed on top of the handle that opened it. It looked like an h1 bug —
-   *  an h1's handle sits low and its panel is tall — but any block low enough
-   *  in the viewport did it.
+   *  Third revision, and the rule has held through all three: **the axis that
+   *  guarantees non-overlap cannot be the axis that absorbs "no room left in
+   *  the window".** What changed each time is only what must not be overlapped.
    *
-   *  So the horizontal is what keeps them apart, and it is never clamped; the
-   *  vertical is clamped freely and cannot produce an overlap wherever it ends
-   *  up. Do not put an "if it doesn't fit, flip to the left" branch back in:
-   *  that hands the invariant back to a conditional and the bug returns. */
-  private position(anchor: DOMRect): void {
-    // Measured, never derived: the panel's height is whatever its rows add up
-    // to. Never a ratio of the width — that mistake has been made here before.
-    const box = this.root.getBoundingClientRect();
+   *  1. Below the grip, sharing its left edge. Avoidance on the vertical — the
+   *     clamped axis — so a tall panel near the bottom of the screen was pushed
+   *     up onto the grip that opened it.
+   *  2. Right of the grip. Avoidance moved to the horizontal, which is never
+   *     clamped in a window anyone writes at. The grip stayed visible, but 8px
+   *     right of a grip in the margin is the text column, so the panel sat on
+   *     top of the very block it was about to act on.
+   *  3. Here. What must not be covered is the BLOCK, and a block spans the
+   *     whole text column — so no horizontal offset can clear it, and the
+   *     invariant has to be vertical after all. Below the block, or above it;
+   *     never across it. The horizontal is free to be clamped now, because
+   *     clamping it can no longer produce an overlap.
+   *
+   *  Note that this is not the "if it doesn't fit, flip" branch that revision 1
+   *  was told never to reinstate. Both branches here SATISFY the invariant —
+   *  the choice is which of two safe sides to use. Revision 1's flip escaped
+   *  the invariant. The test is not "is there a conditional" but "can any arm
+   *  of it end up overlapping".
+   *
+   *  When neither side can hold the panel — a very tall block in a short
+   *  window — the panel is capped and scrolls on the roomier side rather than
+   *  being allowed to spill across the block. Losing rows to a scroll is
+   *  recoverable; covering the block you are acting on is the bug being fixed. */
+  private position(anchor: DOMRect, avoid: DOMRect): void {
     const margin = 8;
     const gap = 8;
 
-    // Vertical: flush with the top of the handle, then clamped into view.
-    let top = anchor.top;
-    if (top + box.height > window.innerHeight - margin) {
-      top = window.innerHeight - margin - box.height;
-    }
-    top = Math.max(margin, top);
+    // Measure with any previous cap released, or a panel opened once in a tight
+    // spot would keep that height for the rest of the session. Never a ratio of
+    // the width — that mistake has been made here before.
+    this.root.style.maxHeight = "";
+    const box = this.root.getBoundingClientRect();
 
-    // Horizontal: the invariant. Always right of the handle, and it does not
-    // slide back to avoid covering text — text can be read again afterwards,
-    // whereas a hidden handle leaves you unable to tell which block the menu is
-    // about to act on. The only escape is a window too narrow to hold the panel
-    // at all, which is under ~300px and not a size anyone writes at.
-    let left = anchor.right + gap;
+    // Vertical: the invariant. `roomBelow`/`roomAbove` are what is left of the
+    // window once the block and the gap are spent.
+    const roomBelow = window.innerHeight - margin - (avoid.bottom + gap);
+    const roomAbove = avoid.top - gap - margin;
+    const below = box.height <= roomBelow || roomBelow >= roomAbove;
+    const room = Math.max(below ? roomBelow : roomAbove, 0);
+    // The floor keeps a hopeless case (both sides tiny) from collapsing the
+    // panel to nothing; it is the only path on which the invariant can break,
+    // and it needs a window under ~300px tall to reach.
+    const capped = Math.max(room, 96);
+    if (box.height > capped) this.root.style.maxHeight = `${Math.round(capped)}px`;
+    const height = Math.min(box.height, capped);
+    const top = below ? avoid.bottom + gap : Math.max(margin, avoid.top - gap - height);
+
+    // Horizontal: hangs from the grip, so the panel reads as belonging to the
+    // handle you opened it from rather than floating in the text. Clamped
+    // freely — see the note above about why that is safe now.
+    let left = anchor.left;
     if (left + box.width > window.innerWidth - margin) {
-      left = Math.max(margin, window.innerWidth - margin - box.width);
+      left = window.innerWidth - margin - box.width;
     }
+    left = Math.max(margin, left);
 
     this.root.style.top = `${Math.round(top)}px`;
     this.root.style.left = `${Math.round(left)}px`;

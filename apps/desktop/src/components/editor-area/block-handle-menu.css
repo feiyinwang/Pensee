@@ -33,24 +33,24 @@
   color: var(--text-primary);
   font-size: 13px;
   user-select: none;
+  /* `position()` caps the height only when neither side of the block can hold
+     the panel whole. Without this the capped rows would simply be clipped. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-/* The pointer has to cross the 8px gap between the grip and the panel, and
-   leaving the grip is what starts the close timer. Bridging it in CSS keeps
-   the corridor out of the JavaScript: as far as `mouseleave` is concerned the
-   panel starts before its own left edge.
+/* No CSS bridge here any more, deliberately.
 
-   This bridge is on the LEFT because the panel opens to the RIGHT of the grip
-   (see `position()` — the horizontal offset is what stops the panel covering
-   the grip). It used to sit on top, back when the panel opened downward. If
-   the panel's side ever changes again, this has to follow it, or the panel
-   closes while the pointer is still travelling toward it. */
-.wr-bmenu::before {
-  content: "";
-  position: absolute;
-  inset: -4px auto -4px -14px;
-  width: 14px;
-}
+   There used to be a strip drawn just outside the panel's left edge so that
+   `mouseleave` thought the panel began before its own border, covering the 8px
+   trip from the grip. The panel now opens below (or above) the BLOCK, so grip
+   and panel are a whole block apart and no apron anchored to the panel's edge
+   can span that. Worse, the strip had to be re-aimed every time the panel
+   changed sides — one constraint living in two files, and it went stale the
+   first time it was asked to move.
+
+   The corridor is now a single rect test in `columns-decorations.ts`
+   (`holdIfReaching`), next to the code that decides where the panel goes. */
 
 .wr-bmenu-on {
   animation: wr-bmenu-in 60ms var(--wr-ease-out, ease-out);

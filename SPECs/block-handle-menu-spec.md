@@ -14,24 +14,52 @@ unconditionally: it cancels a pending open and closes an open panel before
 starting. The alternative — click to open, 3px threshold to drag — would put a
 decision in front of every drag, and dragging is the older, more frequent verb.
 
-| Event | Effect |
-| --- | --- |
-| Pointer rests on grip `MENU_OPEN_DELAY` (220ms) | Open |
-| Pointer leaves grip **and** panel for `MENU_CLOSE_DELAY` (150ms) | Close + hide grip |
-| `pointerdown` on grip | Close, start drag |
-| `Escape` | Close |
-| Editor scrolls, window blurs, document changes | Close |
-| Any menu action | Close first, then dispatch |
+| Event                                                                   | Effect                     |
+| ----------------------------------------------------------------------- | -------------------------- |
+| Pointer rests on grip `MENU_OPEN_DELAY` (220ms)                         | Open                       |
+| Pointer leaves the grip ∪ panel corridor for `MENU_CLOSE_DELAY` (320ms) | Close + hide grip          |
+| `pointerdown` on grip                                                   | Close, start drag          |
+| `Escape`                                                                | Close                      |
+| Editor scrolls, window blurs, document changes                          | Close                      |
+| Any menu action                                                         | Close first, then dispatch |
 
 The 220ms is load-bearing. The grip follows the pointer down the left margin,
 so a hand crossing a column of paragraphs passes over a dozen grips; without
 the delay every one of them opens.
 
-The 6px gap between grip and panel is bridged by `.wr-bmenu::before`, a
-transparent strip above the panel. Leaving the grip starts the close timer and
-entering the panel cancels it, so the corridor has to be part of the panel's
-hit area — in CSS, not in a JavaScript rect comparison, which is the version
-that gets out of sync with the layout.
+## Geometry
+
+Two rects go into opening the panel: the **grip** says where it hangs from, the
+**block** says what it may not cover.
+
+- **Vertical is the invariant.** The panel goes below the block (`block.bottom
+  - 8`), or above it when there is no room below. It never crosses the block.
+    A block spans the whole text column, so no horizontal offset could have
+    cleared it — which is why the previous revision, "8px right of the grip",
+    landed on top of the block it was about to act on.
+- **Horizontal is free.** Left edge aligned with the grip, clamped into the
+  window. Clamping it can no longer produce an overlap.
+- Neither side big enough (a tall block in a short window): the panel is capped
+  with `max-height` and scrolls on the roomier side, rather than being allowed
+  to spill across the block.
+- The two branches (below / above) both _satisfy_ the invariant; they are not
+  the "flip when it doesn't fit" escape hatch that revision 1 was told never to
+  reinstate. The test is not "is there a conditional" but "can any arm of it
+  overlap".
+
+The grip's own vertical placement centres a 24px chip on the **measured** first
+line box — `Range.getClientRects()` over the line's contents, not a computation
+from the line's CSS. Heading and code font sizes are tag styles on a span
+_inside_ the line, so `.cm-line`'s own `line-height` always resolves against
+16px and describes the wrong box: 8.6px out on an h1, 5.8px on an h2, 2.9px on
+an h3, 1.4px the other way in a code fence, exact on body text. That is what
+"only some block types look off" was.
+
+The grip → panel corridor is a single padded rect (grip ∪ panel) tested in
+`holdIfReaching`, next to the code that positions the panel. It used to be
+`.wr-bmenu::before`, a strip on the panel's edge; that could not span a gap as
+tall as a block, and being in a different file from `position()` it went stale
+the first time the panel changed sides.
 
 While the panel is open the grip is **frozen**: `place()` returns early. The
 grip is both the panel's anchor and its target, and letting it wander is the
@@ -42,12 +70,12 @@ one way this could quietly act on the wrong block.
 Built per target; an item that would be a no-op is not rendered rather than
 greyed out.
 
-| Target | Type tiles | Move / insert | Duplicate | Cut / Copy | Delete |
-| --- | --- | --- | --- | --- | --- |
-| Paragraph, heading, list, quote | yes | up / down / insert above / below | yes | yes | no confirm |
-| Picture, fence, table, HTML, rule | no | up / down / insert above / below | yes | yes | no confirm |
-| Band (a column's caption) | yes | — | yes | yes | no confirm |
-| Column | no | left / right | yes | yes | **confirm, with block count** |
+| Target                            | Type tiles | Move / insert                    | Duplicate | Cut / Copy | Delete                        |
+| --------------------------------- | ---------- | -------------------------------- | --------- | ---------- | ----------------------------- |
+| Paragraph, heading, list, quote   | yes        | up / down / insert above / below | yes       | yes        | no confirm                    |
+| Picture, fence, table, HTML, rule | no         | up / down / insert above / below | yes       | yes        | no confirm                    |
+| Band (a column's caption)         | yes        | —                                | yes       | yes        | no confirm                    |
+| Column                            | no         | left / right                     | yes       | yes        | **confirm, with block count** |
 
 Nine type tiles: Text, H1–H3, numbered, bulleted, to-do, code, quote. The tile
 matching the block is lit; clicking it again clears the block back to Text.
