@@ -53,10 +53,6 @@ function textMetrics(el: Element): Record<string, string> {
 function lineBoxes(el: Element): { lines: number; left: number; right: number; width: number } {
   const range = document.createRange();
   range.selectNodeContents(el);
-  // The band's own grab handle is a 22px box appended last; counting it as a
-  // line box would report one row more than the eye sees.
-  const handle = el.querySelector(":scope > .wr-band-grab");
-  if (handle) range.setEndBefore(handle);
   const rects = [...range.getClientRects()].filter((rect) => rect.width > 0.5 && rect.height > 0.5);
   if (!rects.length) return { lines: 0, left: 0, right: 0, width: 0 };
   const tops = new Set(rects.map((rect) => Math.round(rect.top)));

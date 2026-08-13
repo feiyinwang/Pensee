@@ -16,6 +16,12 @@
   --wr-radius: 8px;
   /* Phosphor dots-six-vertical, regular. See the grab-handle rules below. */
   --wr-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M104,60A12,12,0,1,1,92,48,12,12,0,0,1,104,60Zm60,12a12,12,0,1,0-12-12A12,12,0,0,0,164,72ZM92,116a12,12,0,1,0,12,12A12,12,0,0,0,92,116Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,116ZM92,184a12,12,0,1,0,12,12A12,12,0,0,0,92,184Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,184Z'/%3E%3C/svg%3E");
+  /* Type chips on the gutter grip. Stroked glyphs, so the mask has something
+     to bite on; drawn here rather than imported because the grip is plain DOM
+     inside a CodeMirror plugin, with no React to render an icon into. */
+  --wr-kind-text: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M5 6h14M12 6v12'/%3E%3C/svg%3E");
+  --wr-kind-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='3'/%3E%3Ccircle cx='8.6' cy='9.6' r='1.5' fill='%23000' stroke='none'/%3E%3Cpath d='M3.6 16.8 8.5 12l3 3 3-3 5.9 5.9'/%3E%3C/svg%3E");
+
   /* Paper for the drag lift. Light: a sheet. Dark: the card colour, lifted a
      notch so it still reads as paper rather than a hole. */
   --wr-paper: #fdfcfa;
@@ -326,7 +332,6 @@
    left margin so it never covers a word. */
 
 .wr-grab,
-.wr-band-grab,
 .wr-gutter-grab {
   position: absolute;
   width: 22px;
@@ -347,29 +352,56 @@
   backdrop-filter: blur(6px);
 }
 
-/* Over text, not over a photo: a translucent sheet of the page with a muted
-   glyph, where `.wr-grab` is a dark chip that has to read against any picture.
-   Top-left of the band, the same corner the column handle uses — one grip
-   position to learn, two scopes. */
-.wr-band-grab {
-  top: 0;
-  left: 0;
-  background: color-mix(in srgb, var(--surface-card, #fff) 86%, transparent);
-  backdrop-filter: blur(6px);
-}
-.wr-band-grab::after {
-  color: var(--text-icon-muted);
-}
-.wr-band-grab:hover::after {
-  color: var(--text-secondary);
-}
+/* Type chip, then the dots, then the block. One grip for a paragraph, a
+   picture and a caption alike — what differs is the chip, which says what you
+   are about to pick up. Width is mirrored in `GRIP_WIDTH`.
 
-.wr-gutter-grab {
+   Both selectors here carry `[data-wr-handle]` on purpose: the shared grip
+   rules further down are (0,1,1) too, so equal weight would leave "which one
+   wins" to the order of the rules in this file. */
+.wr-gutter-grab[data-wr-handle] {
   top: 0;
   left: 0;
   z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  height: 24px;
+  border-radius: 0;
   background: transparent;
   pointer-events: none;
+}
+.wr-gutter-kind {
+  flex: 0 0 24px;
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line-subtler);
+  border-radius: 6px;
+  background: var(--surface-card);
+}
+.wr-gutter-kind::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  background: currentcolor;
+  color: var(--text-icon-muted);
+  -webkit-mask: var(--wr-kind-text) center / 14px 14px no-repeat;
+  mask: var(--wr-kind-text) center / 14px 14px no-repeat;
+}
+.wr-gutter-kind[data-kind="image"]::before {
+  -webkit-mask-image: var(--wr-kind-image);
+  mask-image: var(--wr-kind-image);
+}
+/* The dots are a flex item here, not an overlay: they sit beside the chip. */
+.wr-gutter-grab[data-wr-handle]::after {
+  position: static;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 20px;
+  -webkit-mask-size: 16px 20px;
+  mask-size: 16px 20px;
 }
 .wr-gutter-grab.wr-gutter-on {
   opacity: 1;
@@ -383,7 +415,6 @@
    over a picture and muted grey in the margin. `--wr-grip` is declared with the
    other tokens on :root because the drag lift is appended to <body>. */
 .wr-grab::after,
-.wr-band-grab::after,
 .wr-gutter-grab::after {
   content: "";
   position: absolute;
@@ -405,7 +436,6 @@
 
 /* generous invisible hit area */
 .wr-grab::before,
-.wr-band-grab::before,
 .wr-gutter-grab::before {
   content: "";
   position: absolute;
@@ -413,7 +443,6 @@
 }
 
 .wr-grab:active,
-.wr-band-grab:active,
 .wr-gutter-grab:active {
   cursor: grabbing;
   transform: scale(0.97);
@@ -423,19 +452,14 @@
   .wr-col:hover > .wr-grab {
     opacity: 1;
   }
-  /* Hovering the words is the signal, not hovering the column: a caption and
-     the picture above it are two different things to pick up. `focus-within`
-     keeps it there while the caption is being edited — the report was "I click
-     into the text and the grip is gone". */
-  .wr-band:hover > .wr-band-grab,
-  .wr-col-edit:hover > .wr-band-grab,
-  .wr-col-edit:focus-within > .wr-band-grab {
-    opacity: 1;
-  }
+}
+/* The column chip means "reorder the columns", which a one-column row cannot
+   do — and there it would sit on the picture arguing with the gutter grip. */
+.wr-row-widget[data-wr-cols="1"] .wr-grab {
+  display: none;
 }
 
 body.wr-dragging-body .wr-grab,
-body.wr-dragging-body .wr-band-grab,
 body.wr-dragging-body .wr-gutter-grab {
   opacity: 0 !important;
 }

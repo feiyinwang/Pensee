@@ -639,23 +639,6 @@ function paintBand(el: HTMLElement, markdown: string, band: BandName): void {
   // An empty anchor means the whole column is empty; an empty outer band means
   // a neighbour wrote a caption and this column has the aligned slot for one.
   el.innerHTML = text ? renderBlockMarkdown(text) : `<p>${PLACEHOLDER[band]}</p>`;
-  // The handle is re-added here, not in `buildColumn`, because the line above
-  // wipes it — and `finish()` repaints a band that already had one. It goes
-  // last so anything measuring the band's text can stop before it.
-  if (band !== "anchor" && text) el.append(bandHandle(band));
-}
-
-/** A caption is a block of its own, so it can be picked up on its own. The
- *  anchor deliberately has none: the anchor *is* the column, and the column
- *  handle already sits on it — two identical grips in the same corner meaning
- *  two different things is worse than one. */
-function bandHandle(band: BandName): HTMLElement {
-  const grab = document.createElement("div");
-  grab.className = "wr-band-grab";
-  grab.dataset.wrHandle = "band";
-  grab.dataset.wrBandHandle = band;
-  grab.setAttribute("aria-hidden", "true");
-  return grab;
 }
 
 /* -------------------------------------------------------- doc-range helpers */
@@ -821,6 +804,10 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   // Keep the band's grid row, or the editor would be auto-placed into a new
   // implicit row and the whole row would jump the moment you click in.
   host.style.gridRow = bandEl.style.gridRow;
+  // The gutter grip addresses a band by name and re-finds it after a dispatch;
+  // while this editor stands in for the band, it has to answer the same
+  // question. Without it the grip vanishes the moment you click into a caption.
+  host.dataset.wrBand = band;
   for (const type of EDITOR_SWALLOWED_EVENTS) {
     host.addEventListener(type, (event) => event.stopPropagation());
   }
@@ -857,30 +844,6 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
     });
     return true;
   };
-
-  // "I can drag the picture but not these words" — the handle has to survive
-  // the swap into edit mode too. It commits first, so there is only ever one
-  // writer of the document: the drag then moves text that is already saved.
-  if (band !== "anchor") {
-    const editHandle = bandHandle(band);
-    editHandle.addEventListener("pointerdown", (down) => {
-      if (down.button !== 0) return;
-      down.preventDefault();
-      down.stopPropagation();
-      finish(true);
-      // `finish` may dispatch, and CodeMirror rebuilds widget DOM on the next
-      // frame — so the element to pick up is the *new* one, found by address
-      // rather than by the reference we came in with.
-      requestAnimationFrame(() => {
-        const live = rowEl.isConnected ? rowEl : findRowElement(view, ref.from);
-        const fresh = live?.querySelector<HTMLElement>(
-          `.wr-col[data-wr-index="${index}"] .wr-band[data-wr-band="${band}"]`,
-        );
-        if (fresh) startBandDrag(view, fresh, down);
-      });
-    });
-    host.append(editHandle);
-  }
 
   inner = new EditorView({
     parent: host,
@@ -2016,14 +1979,32 @@ function startResize(view: EditorView, handle: HTMLElement, event: PointerEvent)
 
 /* ------------------------------------------------------------ gutter handle */
 
+/** Width the grip occupies in the margin: the type chip, the gap, the dots.
+ *  Mirrored in `columns.css` — if you change one, change the other. */
+const GRIP_WIDTH = 44;
+
+/** What the grip is currently pointing at. A plain block is addressed by
+ *  document offset; a band cannot be — the widget owns its own DOM — so it is
+ *  addressed by element, plus the row offset needed to find it again after a
+ *  dispatch rebuilds the widget. */
+type GripTarget =
+  | { kind: "block"; block: BlockRef }
+  | { kind: "band"; el: HTMLElement; rowFrom: number };
+
 /** A Notion-style handle that follows the pointer down the left margin. It
  *  lives outside `contentDOM` (CodeMirror would treat DOM there as an edit)
  *  and is positioned from document coordinates, so it works for a block that
- *  spans several lines as well as a soft-wrapped one that spans none. */
+ *  spans several lines as well as a soft-wrapped one that spans none.
+ *
+ *  It serves bands too — a caption is a block you can pick up, and it should
+ *  not have to look different from one. Same grip, same place, whether the
+ *  thing under the pointer is a paragraph, a picture or a caption, and whether
+ *  or not that caption is currently open for editing. */
 const gutterHandlePlugin = ViewPlugin.fromClass(
   class {
     readonly handle: HTMLElement;
-    block: BlockRef | null = null;
+    readonly kind: HTMLElement;
+    block: GripTarget | null = null;
     private readonly onMove: (e: MouseEvent) => void;
     private readonly onLeave: () => void;
     private readonly onDown: (e: PointerEvent) => void;
@@ -2033,6 +2014,13 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.handle.className = "wr-gutter-grab";
       this.handle.dataset.wrHandle = "block";
       this.handle.setAttribute("aria-hidden", "true");
+      // What you are holding, shown rather than guessed: a picture and a
+      // paragraph get the same grip, so the chip is the only thing that says
+      // which one is under it.
+      this.kind = document.createElement("span");
+      this.kind.className = "wr-gutter-kind";
+      this.kind.dataset.kind = "text";
+      this.handle.append(this.kind);
       view.dom.append(this.handle);
 
       this.onMove = (e: MouseEvent) => this.place(e);
@@ -2041,10 +2029,33 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // `EditorView.domEventHandlers` only ever sees `contentDOM`. So this one
       // listener has to be wired by hand or the handle is inert.
       this.onDown = (e: PointerEvent) => {
-        if (e.button !== 0 || !this.block) return;
+        const target = this.block;
+        if (e.button !== 0 || !target) return;
         e.preventDefault();
         e.stopPropagation();
-        startBlockDrag(view, this.block, e);
+        if (target.kind === "block") {
+          startBlockDrag(view, target.block, e);
+          return;
+        }
+        if (!target.el.classList.contains("wr-col-edit")) {
+          startBandDrag(view, target.el, e);
+          return;
+        }
+        // Picking up a caption that is open for editing: the editor's own blur
+        // handler commits it, and CodeMirror rebuilds the widget on the next
+        // frame — so the element to carry is found by address, one frame later,
+        // not by the reference we are holding now.
+        const band = target.el.dataset.wrBand ?? "";
+        const index = target.el.closest<HTMLElement>(".wr-col")?.dataset.wrIndex ?? "0";
+        const rowFrom = target.rowFrom;
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        requestAnimationFrame(() => {
+          const row = findRowElement(view, rowFrom);
+          const fresh = row?.querySelector<HTMLElement>(
+            `.wr-col[data-wr-index="${index}"] .wr-band[data-wr-band="${band}"]`,
+          );
+          if (fresh) startBandDrag(view, fresh, e);
+        });
       };
       view.dom.addEventListener("mousemove", this.onMove);
       view.dom.addEventListener("mouseleave", this.onLeave);
@@ -2056,11 +2067,40 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       this.block = null;
     }
 
+    /** Park the grip beside a rect rather than beside a document position:
+     *  this is the only way to point at a band, whose DOM the widget owns. */
+    private placeBeside(rect: DOMRect, kind: "image" | "text"): void {
+      const host = this.view.dom.getBoundingClientRect();
+      this.kind.dataset.kind = kind;
+      this.handle.style.top = `${rect.top - host.top}px`;
+      // Never negative: in a narrow window the page inset is 24px, less than the
+      // grip is wide, and sliding it off the left edge would hide it entirely.
+      this.handle.style.left = `${Math.max(0, rect.left - host.left - GRIP_WIDTH - 4)}px`;
+      this.handle.classList.add("wr-gutter-on");
+    }
+
     private place(event: MouseEvent) {
       if (drag) return;
       const view = this.view;
       const content = view.contentDOM.getBoundingClientRect();
       if (event.clientY < content.top - 4) return this.hide();
+
+      // Bands first: they live inside a widget, so `posAtCoords` would hand back
+      // the row and the block path below would (correctly) refuse to drag it.
+      const el = event.target instanceof HTMLElement ? event.target : null;
+      const bandEl = el?.closest<HTMLElement>(".wr-band, .wr-col-edit") ?? null;
+      const rowEl = bandEl?.closest<HTMLElement>(".wr-row-widget") ?? null;
+      if (bandEl && rowEl) {
+        const rowFrom = rowRefFromDOM(view, rowEl)?.from;
+        if (rowFrom === undefined) return this.hide();
+        this.placeBeside(
+          bandEl.getBoundingClientRect(),
+          bandEl.querySelector("img") ? "image" : "text",
+        );
+        this.block = { kind: "band", el: bandEl, rowFrom };
+        return;
+      }
+
       const probeX = Math.min(Math.max(event.clientX, content.left + 2), content.right - 2);
       const pos = view.posAtCoords({ x: probeX, y: event.clientY });
       if (pos == null) return this.hide();
@@ -2080,11 +2120,12 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // glyph; `content.left` is the padding box. Neither is the text edge.
       const padLeft = parseFloat(getComputedStyle(view.contentDOM).paddingLeft) || 0;
       const room = content.left + padLeft - host.left;
-      const left = room >= 26 ? room - 26 : Math.max(0, room - 24);
+      const left = Math.max(0, room - GRIP_WIDTH - 4);
+      this.kind.dataset.kind = IMAGE_BLOCK.test(blockMarkdown(view, block)) ? "image" : "text";
       this.handle.style.top = `${coords.top - host.top}px`;
       this.handle.style.left = `${left}px`;
       this.handle.classList.add("wr-gutter-on");
-      this.block = block;
+      this.block = { kind: "block", block };
     }
 
     destroy() {
@@ -2430,10 +2471,6 @@ const columnEvents = EditorView.domEventHandlers({
       event.preventDefault();
       event.stopPropagation();
       if (handle.dataset.wrHandle === "col") startColumnDrag(view, handle, event);
-      if (handle.dataset.wrHandle === "band") {
-        const bandEl = handle.closest<HTMLElement>(".wr-band");
-        if (bandEl) startBandDrag(view, bandEl, event);
-      }
       return true;
     }
     const resize = target.closest<HTMLElement>("[data-wr-resize]");
