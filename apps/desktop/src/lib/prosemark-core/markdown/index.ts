@@ -5,6 +5,7 @@ import { frontmatterMarkdownSyntaxExtension } from "./frontmatter";
 import { nestedLinkAsPlainText } from "./nestedLinkAsPlainText";
 import { mathMarkdownSyntaxExtension } from "./mathMarkdown";
 import { spaceDestinationLinksMarkdownSyntaxExtension } from "./spaceDestinationLinks";
+import { shortDashUnderlineMarkdownSyntaxExtension } from "./shortDashUnderline";
 
 export { markdownTags } from "./tags";
 export {
@@ -18,6 +19,7 @@ export { additionalMarkdownSyntaxTags } from "../syntaxHighlighting";
 export { emojiMarkdownSyntaxExtension, dashMarkdownSyntaxExtension } from "../fold";
 export { mathDelimiterTag, mathFormulaTag, mathMarkdownSyntaxExtension } from "./mathMarkdown";
 export { spaceDestinationLinksMarkdownSyntaxExtension } from "./spaceDestinationLinks";
+export { shortDashUnderlineMarkdownSyntaxExtension } from "./shortDashUnderline";
 
 export const prosemarkMarkdownSyntaxExtensions = [
   additionalMarkdownSyntaxTags,
@@ -28,4 +30,5 @@ export const prosemarkMarkdownSyntaxExtensions = [
   emojiMarkdownSyntaxExtension,
   dashMarkdownSyntaxExtension,
   mathMarkdownSyntaxExtension,
+  shortDashUnderlineMarkdownSyntaxExtension,
 ];
