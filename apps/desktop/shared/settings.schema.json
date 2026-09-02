@@ -303,6 +303,16 @@
       "default": 10
     },
     {
+      "key": "workspace.daily-note-folder",
+      "label": "Daily Note Folder",
+      "description": "Folder inside the workspace where dated daily notes are created. Leave blank to create them at the workspace root.",
+      "category": "Workspace",
+      "type": "string",
+      "placeholder": "Workspace root",
+      "normalize": "trim",
+      "default": ""
+    },
+    {
       "key": "workspace.default-terminal",
       "label": "Default Terminal",
       "description": "Terminal application name on macOS, or executable name/full path on Windows and Linux. Leave blank for Writer's platform default; arguments are not supported.",

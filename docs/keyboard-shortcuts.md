@@ -11,6 +11,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+P           | File search (command palette) |
 | Cmd+O           | Go to file                    |
 | Cmd+N           | Create new note               |
+| Cmd+Shift+N     | Create or open today's note   |
 | Cmd+T           | New tab                       |
 | Cmd+W           | Close current tab             |
 | Cmd+\\          | Toggle sidebar                |
@@ -23,6 +24,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N, and history navigation still work.
+Cmd+Shift+N needs a workspace to file the note in, so it is inert there too.
 
 ## Menu Accelerators
 

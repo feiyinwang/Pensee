@@ -36,6 +36,12 @@ export function createFile(path: string): Promise<FileContent> {
   return invoke("create_file", { path });
 }
 
+/** Create `path` from the new-file template only when it is missing, then return
+ * the file either way. Backs the create-or-open daily note action. */
+export function createFileIfMissing(path: string): Promise<FileContent> {
+  return invoke("create_file_if_missing", { path });
+}
+
 export function createDirectory(path: string): Promise<DirEntry> {
   return invoke("create_directory", { path });
 }

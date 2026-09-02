@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-02
+
+- Add a daily note. The new-tab page gains a **Today's note** button next to Create new note, bound to `Cmd+Shift+N` and also available as **Open Today's Note** in the command palette. The first press of the day creates `2026-09-02.md` from the usual new-note template and drops the caret in the title; every later press reopens that same note untouched, so the shortcut is safe to hit all day. Notes land at the workspace root by default, or in the folder set by the new **Daily Note Folder** preference under Workspace (`Journal/Daily` works, and missing folders are created). The date is your local calendar date, so writing at 23:30 still files under today.
+
 ## 2026-08-10
 
 - Fix rendered markdown tables starving columns and breaking words mid-word (`protectio` / `n`). Table cells inherited `overflow-wrap: anywhere` from the editor's line wrapping, and because that value counts toward a column's minimum width, the table layout was free to squeeze any column down to a single character while the longest-prose column took nearly all the width. Cells now wrap on word boundaries, so a column never gets narrower than its longest word. The blanket 6em minimum is gone — a `#` column is now as narrow as its digits instead of being padded out to the width of a real column — and no single column may demand more than about half the line, which leaves medium columns like "24 hours rolling per identity" enough room to read instead of stacking one word per line. Very long unbreakable tokens (a `sha256:` digest, a long path) still break, but only when they genuinely cannot fit, and the table stays within the editor width. Headers are also left-aligned to match their bodies (an explicit `:---:` or `---:` still wins), and cells align to the top of their row instead of floating in the middle.

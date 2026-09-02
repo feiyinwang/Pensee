@@ -17,6 +17,7 @@ import {
   useSetCommandPaletteSearch,
 } from "@/hooks/use-command-palette";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { openTodaysNote } from "@/hooks/use-daily-note";
 import { useCloseWorkspace, useIsCompactFileMode, useWorkspace } from "@/hooks/use-workspace";
 import {
   useActiveFilePath,
@@ -141,6 +142,15 @@ export function CommandPalette() {
       label: "Create New File",
       description: "Command",
       run: () => openCommandPalette("create-file"),
+    },
+    root && {
+      id: "daily-note",
+      label: "Open Today's Note",
+      description: "Command",
+      run: () => {
+        void openTodaysNote();
+        close();
+      },
     },
     root &&
       activeFilePath && {

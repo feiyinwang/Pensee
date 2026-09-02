@@ -472,6 +472,22 @@ pub async fn create_file(path: String) -> Result<FileContent, AppError> {
     blocking(move || create_file_impl(&path)).await
 }
 
+/// Create `path` from the new-file template when it is missing, and return the
+/// file either way. "Open today's note" must behave identically on the first
+/// and every later press of the day, so the create-or-read decision lives in one
+/// filesystem-atomic place instead of an exists-then-create race in the frontend.
+pub fn create_file_if_missing_impl(path: &str) -> Result<FileContent, AppError> {
+    match create_file_impl(path) {
+        Err(AppError::AlreadyExists(_)) => read_file_impl(path),
+        result => result,
+    }
+}
+
+#[tauri::command]
+pub async fn create_file_if_missing(path: String) -> Result<FileContent, AppError> {
+    blocking(move || create_file_if_missing_impl(&path)).await
+}
+
 pub fn create_directory_impl(path: &str) -> Result<DirEntry, AppError> {
     let dir_path = PathBuf::from(path);
     if let Some(parent) = dir_path.parent() {
@@ -945,6 +961,25 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AppError::AlreadyExists(_)));
         assert_eq!(fs::read_to_string(path).unwrap(), "do not overwrite");
+    }
+
+    #[test]
+    fn test_create_file_if_missing_creates_then_reuses() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("Journal").join("2022-04-19.md");
+        let path_str = path.to_string_lossy().to_string();
+
+        // First press of the day: the parent folder and the templated note appear.
+        let created = create_file_if_missing_impl(&path_str).unwrap();
+        assert_eq!(created.content, "# ");
+
+        fs::write(&path, "# Monday\n\nnotes").unwrap();
+
+        // Every later press opens the same note without touching its contents.
+        let reopened = create_file_if_missing_impl(&path_str).unwrap();
+        assert_eq!(reopened.path, path_str);
+        assert_eq!(reopened.content, "# Monday\n\nnotes");
+        assert_eq!(fs::read_to_string(&path).unwrap(), "# Monday\n\nnotes");
     }
 
     #[test]

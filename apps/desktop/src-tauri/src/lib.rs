@@ -545,6 +545,7 @@ pub fn run() {
             commands::fs::read_file,
             commands::fs::write_file,
             commands::fs::create_file,
+            commands::fs::create_file_if_missing,
             commands::fs::create_directory,
             commands::fs::create_sidebar_entry,
             commands::fs::rename_entry,
