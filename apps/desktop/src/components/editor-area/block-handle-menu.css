@@ -53,7 +53,7 @@
    (`holdIfReaching`), next to the code that decides where the panel goes. */
 
 .wr-bmenu-on {
-  animation: wr-bmenu-in 60ms var(--wr-ease-out, ease-out);
+  animation: wr-bmenu-in 60ms var(--ease-out);
 }
 /* Opacity and a 2px lift, no scale — scaling text mid-animation makes it
    blurry, and this panel is almost entirely text. */
@@ -91,7 +91,7 @@
   font: inherit;
   line-height: 1;
   cursor: default;
-  transition: background var(--wr-dur-hover, 150ms) ease;
+  transition: background var(--motion-fast) var(--ease-out);
 }
 .wr-bmenu-tile:hover {
   background: color-mix(in srgb, var(--fg-base) 7%, transparent);
@@ -143,7 +143,7 @@
   font: inherit;
   text-align: left;
   cursor: default;
-  transition: background var(--wr-dur-hover, 150ms) ease;
+  transition: background var(--motion-fast) var(--ease-out);
 }
 /* No `:not(:disabled)` guard — every row in this panel is live. The greyed-out
    alignment and colour rows are gone, and nothing should reintroduce a row you

@@ -43,8 +43,8 @@
    depth window — otherwise every open replays the slide as an entrance. */
 .section-rail-popover-row[data-animate="true"] {
   transition:
-    color 300ms ease,
-    padding-left 240ms cubic-bezier(0.32, 0.72, 0, 1);
+    color var(--motion-fast) var(--ease-out),
+    padding-left var(--motion-base) var(--ease-out);
 }
 
 .section-rail-popover-row:hover {
@@ -54,7 +54,7 @@
 
 /* Hover wants instant colour, but must not also freeze a window slide. */
 .section-rail-popover-row[data-animate="true"]:hover {
-  transition: padding-left 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: padding-left var(--motion-base) var(--ease-out);
 }
 
 .section-rail-popover-row.is-active {

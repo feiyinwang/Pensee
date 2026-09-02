@@ -97,7 +97,8 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
       overlay.remove();
     };
     stage.addEventListener("transitionend", finalize, { once: true });
-    setTimeout(finalize, 240);
+    // Slightly longer than --motion-base so a normal exit fires transitionend first.
+    setTimeout(finalize, 200);
   };
 
   /** Capture phase so Esc, ⌘Z, ⌘F never reach the editor behind the overlay.

@@ -7,11 +7,12 @@
    undefined var() there makes the whole declaration invalid, which is why the
    settle animation never used to run. */
 :root {
-  /* Emil standards: UI motion under 300ms, never ease-in. */
-  --wr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --wr-dur-press: 140ms;
-  --wr-dur-hover: 150ms;
-  --wr-dur-move: 200ms;
+  /* Aliases of the App.css motion tokens (docs/motion.md), kept so the
+     column rules read in their own vocabulary. Change the tokens, not these. */
+  --wr-ease-out: var(--ease-out);
+  --wr-dur-press: var(--motion-fast);
+  --wr-dur-hover: var(--motion-fast);
+  --wr-dur-move: var(--motion-base);
   --wr-gap: 16px;
   --wr-radius: 8px;
   /* Phosphor dots-six-vertical, regular. See the grab-handle rules below. */
@@ -346,7 +347,7 @@
   opacity: 0;
   z-index: 2;
   transition:
-    opacity var(--wr-dur-hover) ease,
+    opacity var(--wr-dur-hover) var(--wr-ease-out),
     transform var(--wr-dur-press) var(--wr-ease-out);
 }
 
@@ -494,7 +495,7 @@ body.wr-resizing-body {
   border-radius: 2px;
   background: var(--accent);
   opacity: 0;
-  transition: opacity var(--wr-dur-hover) ease;
+  transition: opacity var(--wr-dur-hover) var(--wr-ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
   .wr-resize:hover::before {
@@ -626,7 +627,7 @@ body.wr-resizing-body {
 .wr-lift.wr-lift-crumple > *,
 .wr-lift.wr-lift-crumple::after {
   opacity: 0;
-  transition: opacity var(--wr-dur-hover) ease;
+  transition: opacity var(--wr-dur-hover) var(--wr-ease-out);
 }
 
 .wr-lift > *:first-child {

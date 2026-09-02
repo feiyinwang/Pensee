@@ -417,7 +417,7 @@ body.tree-dragging [data-tree-path] {
     var(--compact-picker-border-y-width) var(--compact-picker-border-x-width);
   box-sizing: border-box;
   pointer-events: none;
-  transition: border-color 100ms ease-out;
+  transition: border-color var(--motion-fast) var(--ease-out);
 }
 
 .compact-picker-content-scale {

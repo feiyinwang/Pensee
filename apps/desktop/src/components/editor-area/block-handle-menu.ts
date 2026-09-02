@@ -159,9 +159,13 @@ export const MENU_OPEN_DELAY = 220;
 /** Grace period after the pointer leaves both the handle and the panel.
  *  The corridor between them is a rect test in the gutter plugin
  *  (`holdIfReaching`); this is only what happens once the pointer is outside
- *  it. Longer than it used to be because the panel no longer opens beside the
- *  grip: the pointer now has a whole block to cross. */
-export const MENU_CLOSE_DELAY = 320;
+ *  it. Short on purpose: outside the corridor the pointer has moved out of the
+ *  way, and the panel should be gone by the next frame or two. The few
+ *  milliseconds left absorb a pointer skimming the corridor's padded edge and
+ *  coming straight back, which would otherwise close and demand a fresh
+ *  `MENU_OPEN_DELAY` on the grip. The trip from grip to panel does not lean
+ *  on this: every move inside the corridor cancels the countdown. */
+export const MENU_CLOSE_DELAY = 60;
 
 export class BlockHandleMenu {
   /** Public because the gutter plugin has to hang its own hover listeners on

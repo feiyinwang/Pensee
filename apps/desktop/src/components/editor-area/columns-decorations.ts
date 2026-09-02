@@ -970,7 +970,8 @@ function flip(view: EditorView, mutate: () => void): void {
     el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
     el.style.willChange = "transform";
     requestAnimationFrame(() => {
-      el.style.transition = "transform var(--wr-dur-move) var(--wr-ease-out)";
+      // A reorder is the tail of a drag, so the columns settle on the spring.
+      el.style.transition = "transform var(--motion-settle) var(--ease-spring)";
       el.style.transform = "translate3d(0, 0, 0)";
     });
   }
@@ -1535,23 +1536,24 @@ function endDrag(cancel: boolean): void {
   if (discard) {
     // Tossed away: the ball drops out of sight. Nothing to fly back to.
     state.lift.style.transition =
-      "transform 260ms var(--wr-ease-out), opacity 260ms var(--wr-ease-out)";
+      "transform var(--motion-settle) var(--ease-spring), opacity var(--motion-settle) var(--ease-spring)";
     state.lift.style.transform =
       `translate3d(${state.x - CRUMPLE_SIZE / 2}px, ${state.y + 90}px, 0)` +
       ` scale(0.55) rotate(${(state.tilt * 3).toFixed(2)}deg)`;
   } else if (landing) {
     // Animate the transform only — width is layout, and animating layout is what
     // the anti-jitter contract forbids. Settling means: fly to the slot, unshrink
-    // to the slot's width, tilt back to 0°. No landing bounce (Emil).
+    // to the slot's width, tilt back to 0°, on the gesture spring (docs/motion.md).
     state.lift.style.transition =
-      "transform 200ms var(--wr-ease-out), opacity 200ms var(--wr-ease-out)";
+      "transform var(--motion-settle) var(--ease-spring), opacity var(--motion-settle) var(--ease-spring)";
     const settle = landing.width / state.liftWidth;
     state.lift.style.transform =
       `translate3d(${landing.left}px, ${landing.top}px, 0)` +
       ` scale(${settle.toFixed(4)}) rotate(0deg)`;
   }
   state.lift.style.opacity = "0";
-  window.setTimeout(() => state.lift.remove(), discard ? 280 : 220);
+  // Just past --motion-settle so the lift is gone once the spring has landed.
+  window.setTimeout(() => state.lift.remove(), 200);
 
   const slotRow = state.slot.parentElement;
   state.slot.remove();
