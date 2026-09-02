@@ -27,7 +27,7 @@ When JavaScript has to drive an animation (the compact picker frame morph, the s
 
 ## Gestures today
 
-- Sidebar resize: `transition: none` during the drag, and the release lands on the dragged width, so nothing animates and no spring runs. The collapse toggle (`Cmd+[`) is click-driven, so the edge moves on `--motion-fast` / `--ease-out`.
+- Sidebar edge: no animation at all. A resize drag follows the pointer and lands on the dragged width, and the collapse toggle (`Cmd+[`) snaps open and closed. Do not add a transition here; the edge moves a large layout region and any tween reads as lag.
 - Block and column drag (`columns-decorations.ts`): the lift follows the pointer with no transition; on release it flies to its slot (or falls away when discarded) on the spring, and the displaced columns shift into place on the spring too.
 - Block handle menu: no exit animation. It opens on hover and closes 60ms after the pointer leaves the grip-to-panel corridor. That grace is only jitter tolerance; do not raise it to cover pointer travel, which the corridor rect handles.
 - Mermaid canvas pan and pinch zoom, file-tree drag: pure direct manipulation with no settle target, so no animation runs on release. Add a spring only if a settle target appears (snap-back, momentum, fly-to-drop).

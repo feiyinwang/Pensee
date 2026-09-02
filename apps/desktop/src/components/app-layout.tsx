@@ -9,19 +9,13 @@ import { useSidebar } from "@/hooks/use-sidebar";
 import { useWorkspaceChromeMode, useWorkspaceRoot } from "@/hooks/use-workspace";
 import { resolveAppView } from "@/lib/app-view";
 
-// The sidebar edge only ever animates on a click- or key-driven toggle: a
-// resize drag follows the pointer with no transition and releases at its
-// final width, so there is no settle to spring through. That makes the edge
-// ordinary state-driven motion, on the fast ease-out so Cmd+[ feels instant.
-// Tokens live in App.css (see docs/motion.md).
+// The sidebar edge never animates. A resize drag follows the pointer and
+// releases at its final width, and the collapse toggle snaps so Cmd+[ lands
+// on the same frame as the keypress (see docs/motion.md).
 const TRAFFIC_LIGHTS_CLEARANCE = 92;
 const SIDEBAR_EDGE_INSET = 12;
 /** Matches the button's `w-7`. */
 const TOGGLE_WIDTH = 28;
-
-function sidebarEdgeTransition(property: "width" | "left") {
-  return `${property} var(--motion-fast) var(--ease-out)`;
-}
 
 function clampSidebarWidth(width: number, maxSidebarWidth: number) {
   return Math.max(220, Math.min(maxSidebarWidth, Math.round(width)));
@@ -152,7 +146,6 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
           left: toggleLeft,
           height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
           paddingBlock: "var(--chrome-control-padding)",
-          transition: isSidebarDragging ? "none" : sidebarEdgeTransition("left"),
         }}
       >
         <div className="pointer-events-auto">
@@ -165,7 +158,6 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
           style={{
             left: tabChromeLeft,
             right: 12,
-            transition: isSidebarDragging ? "none" : sidebarEdgeTransition("left"),
           }}
         >
           <div className="pointer-events-auto">
@@ -179,7 +171,6 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
             className="shrink-0 overflow-hidden"
             style={{
               width: isSidebarCollapsed ? 0 : draftSidebarWidth,
-              transition: isSidebarDragging ? "none" : sidebarEdgeTransition("width"),
             }}
           >
             <div style={{ width: draftSidebarWidth }} className="h-full">
