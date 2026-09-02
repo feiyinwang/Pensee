@@ -26,6 +26,10 @@ import { syntaxTree } from "@codemirror/language";
 import { type BlockTypeId, setBlockType } from "./markdown-formatting";
 import { serializeColumns } from "./columns-model";
 import { emptyFence } from "./board/board-model";
+import * as tauri from "@/lib/tauri";
+import { getParentDir, getRelativePath } from "@/lib/paths";
+import { getWorkspaceRoot } from "@/hooks/workspace-api";
+import * as editorApi from "@/hooks/editor-api";
 import "./slash-menu.css";
 
 const svgNS = "http://www.w3.org/2000/svg";
@@ -111,6 +115,62 @@ function openFreshBoard(view: EditorView, attempt = 0): void {
   requestAnimationFrame(() => openFreshBoard(view, attempt + 1));
 }
 
+/**
+ * `/html`: pick an `.html` file and insert it as a `![[path]]` embed. The
+ * native dialog is modal, so the document cannot move under us while it is
+ * open; the `/query` is still removed first so a cancelled pick leaves the
+ * line clean (the same as picking the item and typing nothing). The path is
+ * workspace-relative when the file lives under the workspace, otherwise
+ * relative to the note, which is what the embed resolver probes.
+ */
+function insertHtmlEmbed(view: EditorView, from: number, to: number): void {
+  view.dispatch({ changes: { from, to }, userEvent: "input.slash" });
+  void tauri
+    .pickFile({ name: "HTML", extensions: ["html", "htm"] })
+    .then((picked) => {
+      if (!picked) return;
+      const target = embedTargetFor(picked);
+      const at = view.state.selection.main.head;
+      const insert = `![[${target}]]`;
+      view.dispatch({
+        changes: { from: at, insert },
+        selection: { anchor: at + insert.length },
+        userEvent: "input.slash",
+      });
+      view.focus();
+    })
+    .catch((error) => {
+      console.error("[editor] Failed to pick HTML file:", error);
+    });
+}
+
+function embedTargetFor(absolutePath: string): string {
+  const root = getWorkspaceRoot();
+  const normalized = absolutePath.replace(/\\/g, "/");
+  if (root) {
+    const relative = getRelativePath(normalized, root);
+    if (relative !== normalized) return relative;
+  }
+  const note = editorApi.getActiveFilePath();
+  return note ? relativeTo(getParentDir(note), normalized) : normalized;
+}
+
+/** `to` expressed relative to directory `base` with `..` segments. */
+function relativeTo(base: string, to: string): string {
+  const baseParts = base.split("/").filter(Boolean);
+  const toParts = to.split("/").filter(Boolean);
+  let shared = 0;
+  while (
+    shared < baseParts.length &&
+    shared < toParts.length &&
+    baseParts[shared] === toParts[shared]
+  ) {
+    shared++;
+  }
+  const ups = baseParts.slice(shared).map(() => "..");
+  return [...ups, ...toParts.slice(shared)].join("/");
+}
+
 /* ----------------------------------------------------------------- icons */
 
 const I: Record<string, string[]> = {
@@ -134,6 +194,7 @@ const I: Record<string, string[]> = {
   columns: ["M4 5h6v14H4z", "M14 5h6v14h-6z"],
   today: ["M5 6h14v13H5z", "M5 10h14", "M9 4v4", "M15 4v4"],
   now: ["M20 12a8 8 0 11-16 0 8 8 0 0116 0z", "M12 8v4l2.5 2"],
+  html: ["M4 5h16v14H4z", "M4 9h16", "M9 13l-2 2 2 2", "M15 13l2 2-2 2"],
 };
 
 /* ----------------------------------------------------------------- items */
@@ -261,6 +322,14 @@ const ITEMS: SlashItem[] = [
     section: "Blocks",
     paths: I.columns,
     run: insertRun(COLUMNS + "\n"),
+  },
+  {
+    id: "html",
+    label: "HTML file",
+    aliases: ["html", "iframe", "embed", "web"],
+    section: "Insert",
+    paths: I.html,
+    run: insertHtmlEmbed,
   },
   {
     id: "today",

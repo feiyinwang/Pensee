@@ -126,12 +126,16 @@ export async function pickWorkspace(): Promise<string | null> {
   return selected;
 }
 
-export async function pickFile(): Promise<string | null> {
+const MARKDOWN_PICK_FILTER = { name: "Markdown", extensions: ["md", "mdx", "markdown", "txt"] };
+
+export async function pickFile(
+  filter: { name: string; extensions: string[] } = MARKDOWN_PICK_FILTER,
+): Promise<string | null> {
   const selected = await openDialog({
     directory: false,
     multiple: false,
     title: "Open File",
-    filters: [{ name: "Markdown", extensions: ["md", "mdx", "markdown", "txt"] }],
+    filters: [filter],
   });
   return selected;
 }

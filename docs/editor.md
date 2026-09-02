@@ -157,9 +157,22 @@ Pure-helper tests (`computeToggleSelection`-style) catch math bugs but not focus
 
 When a widget has a click → dispatch → mode-change cycle, mount a real `EditorView` with two instances and simulate clicks. Assert against `view.state.selection.main` and `view.state.field(foldExtension)`, not against helper outputs.
 
+## Embedded pages are sandboxed frames; the CSP has to admit them
+
+`![[page.html]]` renders the file in an `<iframe sandbox="allow-scripts allow-forms">` (`html-embed-widget.ts`). Two things are load-bearing:
+
+- **No `allow-same-origin`.** The page gets an opaque origin, which is what keeps it out of the editor document, the app's storage, and Tauri's IPC origin check. It also means the frame cannot be measured from outside, so height is a `|N` modifier in the source plus a drag handle that writes it back, never auto-fit.
+- **`frame-src asset: https://asset.localhost`** in `tauri.conf.json`'s CSP. `default-src 'self'` silently blocks an `asset://` frame otherwise: no error, an empty box.
+
+Reloading an opaque-origin frame: `contentWindow.location.reload()` is refused and reassigning the same `src` is not a reliable navigation in WKWebView. Set `about:blank`, then the URL on the next frame.
+
+Do not add `iframe` to the inline-HTML sanitizer allow list (`html-block-decorations.ts`) to get the same effect; that admits remote URLs too.
+
 ## File map
 
 - `mermaid-decorations.ts` — canonical conditional replace ↔ widget. Reference for the click → dispatch → mode-change pattern, range-selection toggle, and live position lookup.
 - `table-decorations.ts` — canonical replace-only widget; uses `selectAllDecorationsOnSelectExtension` for click-to-select.
+- `html-embed-widget.ts` — inline-replace widget from a ViewPlugin (no block decorations allowed there), sandboxed iframe, `updateDOM` keeping the frame across a height rewrite, `fs:file-changed` reload registry.
+- `lib/wiki-links.ts` — `findWikiLinkAt`: the one scanner for `[[...]]` / `![[...]]` tokens on a line, used by the decorator, click handler and widgets.
 - `use-prosemark-editor.ts` — `EditorView.scrollHandler` setup for the ancestor-scroller case.
 - `node_modules/@prosemark/core/dist/main.js:30` — `selectionTouchesRange` semantics.

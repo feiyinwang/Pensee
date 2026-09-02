@@ -1,0 +1,131 @@
+/* HTML file embed (`![[page.html]]`). An inline-replace widget — the
+   wiki-link decorations come from a ViewPlugin, which may not emit block
+   decorations — so the root is an inline-block span stretched to the column,
+   the same shape the image embed uses. */
+
+.cm-html-embed {
+  display: inline-block;
+  width: 100%;
+  vertical-align: top;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+
+.cm-html-embed-frame {
+  position: relative;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--surface-card);
+  overflow: hidden;
+}
+
+.cm-html-embed-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.cm-html-embed-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-html-embed-button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-icon-muted, var(--text-muted));
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-hover) var(--ease-hover);
+}
+
+.cm-html-embed-frame:hover .cm-html-embed-button,
+.cm-html-embed-frame:focus-within .cm-html-embed-button {
+  opacity: 1;
+}
+
+.cm-html-embed-button:hover {
+  background-color: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.cm-html-embed-button svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.cm-html-embed-iframe {
+  display: block;
+  width: 100%;
+  border: none;
+  background-color: white;
+}
+
+/* While the height handle is being dragged the page under it must not see
+   the pointer, or it would capture the move events the drag needs. */
+.cm-html-embed-frame.is-resizing .cm-html-embed-iframe {
+  pointer-events: none;
+}
+
+.cm-html-embed-resize {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.cm-html-embed-resize::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 32px;
+  height: 3px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background-color: var(--text-icon-muted, var(--text-muted));
+  opacity: 0;
+  transition: opacity var(--motion-hover) var(--ease-hover);
+}
+
+.cm-html-embed-frame:hover .cm-html-embed-resize::after,
+.cm-html-embed-frame.is-resizing .cm-html-embed-resize::after {
+  opacity: 0.6;
+}
+
+.cm-html-embed-unresolved {
+  color: var(--text-muted);
+  cursor: text;
+}
+
+.cm-html-embed-unresolved-note {
+  margin-left: 0.5em;
+  font-family: var(--ui-font);
+  font-size: 0.85em;
+}

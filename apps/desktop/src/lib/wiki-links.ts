@@ -123,6 +123,61 @@ export async function resolveWikiLink(
 // per SPECs/obsidian-image-embed-spec.md.
 const WIKI_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg"]);
 
+// HTML files embed as a sandboxed frame (`![[page.html]]`), per
+// SPECs/html-file-embed-spec.md.
+const WIKI_HTML_EXTENSIONS = new Set(["html", "htm"]);
+
+export const HTML_EMBED_DEFAULT_HEIGHT = 400;
+export const HTML_EMBED_MIN_HEIGHT = 120;
+export const HTML_EMBED_MAX_HEIGHT = 2000;
+
+/** Matches `[[target]]` and `![[target]]`. Group 1: the optional `!` embed
+ *  prefix (must be captured — treating `![[img.png]]` as a plain link used to
+ *  render a link widget with a stray literal `!`). Group 2: the inner text. */
+export const WIKI_LINK_RE = /(!?)\[\[([^\]]+)\]\]/g;
+
+export interface WikiLinkMatch {
+  from: number;
+  to: number;
+  /** `true` when the token carries the `!` embed prefix. */
+  embed: boolean;
+  inner: string;
+}
+
+/**
+ * Find the `[[...]]` / `![[...]]` token on the line containing `pos`. A
+ * token starting exactly at `pos` wins over one that merely spans it, so a
+ * widget's own start position resolves to that widget when two embeds sit
+ * side by side. Returns null when no token covers `pos`.
+ */
+export function findWikiLinkAt(
+  doc: { lineAt(pos: number): { from: number; text: string } },
+  pos: number,
+): WikiLinkMatch | null {
+  const line = doc.lineAt(pos);
+  let spanning: WikiLinkMatch | null = null;
+  WIKI_LINK_RE.lastIndex = 0;
+  let match;
+  while ((match = WIKI_LINK_RE.exec(line.text)) !== null) {
+    const from = line.from + match.index;
+    const to = from + match[0].length;
+    if (pos < from || pos > to) continue;
+    const found = { from, to, embed: match[1] === "!", inner: match[2]! };
+    if (from === pos) return found;
+    spanning ??= found;
+  }
+  return spanning;
+}
+
+/** Slash-normalized embed path with any leading `/` stripped, or null when
+ *  the target has no usable extension. */
+function embedPathWithExtension(target: string): { path: string; ext: string } | null {
+  const path = unescapeWikiText(target).replace(/\\/g, "/").replace(/^\/+/, "");
+  const dot = path.lastIndexOf(".");
+  if (dot <= 0 || dot === path.length - 1) return null;
+  return { path, ext: path.slice(dot + 1).toLowerCase() };
+}
+
 /**
  * Parse the inner text of a `![[...]]` embed. Returns the normalized image
  * path (slashes normalized, leading `/` stripped) when the target is an
@@ -132,15 +187,49 @@ const WIKI_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg
  */
 export function parseWikiImageEmbedTarget(raw: string): string | null {
   const { target } = splitAlias(raw.trim());
-  const path = unescapeWikiText(target).replace(/\\/g, "/").replace(/^\/+/, "");
-  const dot = path.lastIndexOf(".");
-  if (dot <= 0 || dot === path.length - 1) return null;
-  const ext = path.slice(dot + 1).toLowerCase();
-  return WIKI_IMAGE_EXTENSIONS.has(ext) ? path : null;
+  const parsed = embedPathWithExtension(target);
+  return parsed && WIKI_IMAGE_EXTENSIONS.has(parsed.ext) ? parsed.path : null;
+}
+
+export interface WikiHtmlEmbed {
+  path: string;
+  /** Frame height in px, clamped to the allowed range. */
+  height: number;
+  /** Whether the source carried an explicit `|N` modifier. */
+  explicitHeight: boolean;
 }
 
 /**
- * Resolve a wiki image embed target to an absolute file path, or null.
+ * Parse the inner text of a `![[...]]` embed as an HTML file embed:
+ * `page.html` or `page.html|480`. Only the first `|` segment is read, and
+ * only when it is a bare integer; anything else (an alias, a second
+ * segment) is ignored rather than rejected so future modifiers do not
+ * break old notes. Returns null for non-HTML targets.
+ */
+export function parseWikiHtmlEmbedTarget(raw: string): WikiHtmlEmbed | null {
+  const { target, alias } = splitAlias(raw.trim());
+  const parsed = embedPathWithExtension(target);
+  if (!parsed || !WIKI_HTML_EXTENSIONS.has(parsed.ext)) return null;
+  const firstSegment = alias?.split("|")[0]?.trim() ?? "";
+  const explicit = /^\d{1,5}$/.test(firstSegment);
+  const height = explicit
+    ? Math.min(HTML_EMBED_MAX_HEIGHT, Math.max(HTML_EMBED_MIN_HEIGHT, Number(firstSegment)))
+    : HTML_EMBED_DEFAULT_HEIGHT;
+  return { path: parsed.path, height, explicitHeight: explicit };
+}
+
+/**
+ * Rewrite an embed's inner text with a new `|height` modifier, keeping the
+ * target text exactly as written (no normalization) so the only characters
+ * that change in the note are the modifier's.
+ */
+export function withWikiEmbedHeight(inner: string, height: number): string {
+  const { target } = splitAlias(inner.trim());
+  return `${target}|${Math.round(height)}`;
+}
+
+/**
+ * Resolve a wiki embed target (image or HTML file) to an absolute file path, or null.
  *
  * - Targets with `/` resolve workspace-relative first (Obsidian vault-path
  *   semantics), then relative to the current note's directory.
@@ -151,7 +240,7 @@ export function parseWikiImageEmbedTarget(raw: string): string | null {
  * - Without a workspace (compact windows), only note-relative probing
  *   applies.
  */
-export async function resolveWikiImage(
+export async function resolveWikiEmbed(
   target: string,
   workspaceRoot: string | null,
   currentFilePath: string | null,

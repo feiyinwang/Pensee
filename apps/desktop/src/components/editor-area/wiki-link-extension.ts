@@ -21,13 +21,17 @@ import { getFileStem } from "@/lib/paths";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as editorApi from "@/hooks/editor-api";
 import {
+  WIKI_LINK_RE,
   canonicalWikiTarget,
+  findWikiLinkAt,
+  parseWikiHtmlEmbedTarget,
   parseWikiLink,
   parseWikiImageEmbedTarget,
-  resolveWikiImage,
   resolveWikiLink,
 } from "@/lib/wiki-links";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
+import { HtmlEmbedWidget } from "./html-embed-widget";
+import { resolveEmbedPath } from "./wiki-embed-resolver";
 // The editor's completion sources are registered together here. CodeMirror's
 // `override` is winner-takes-all — a second `autocompletion({override})`
 // elsewhere would silently disable this one — so the slash menu's source joins
@@ -38,11 +42,6 @@ import { getEffectiveSelectionRanges } from "./drag-selection-gate";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-// Group 1: optional `!` embed prefix (Obsidian image embeds). Group 2: inner
-// target. The prefix must be captured here — treating `![[img.png]]` as a
-// plain wiki link used to render a link widget with a stray literal `!`.
-const WIKI_LINK_RE = /(!?)\[\[([^\]]+)\]\]/g;
 
 const CODE_NODE_NAMES = new Set(["FencedCode", "InlineCode", "CodeBlock", "CodeText", "CodeInfo"]);
 
@@ -61,29 +60,13 @@ function isInsideCode(state: EditorState, pos: number): boolean {
   return inside;
 }
 
-/**
- * Extract the wiki-link target text from the line containing `pos`.
- * Searches the whole line for a `[[...]]` token whose range covers `pos`,
- * so it works both when clicking raw text and replace-widget positions.
- */
+/** The wiki-link target text of the `[[...]]` token covering `pos`, if any.
+ *  Works both when clicking raw text and replace-widget positions. */
 function extractWikiTarget(
   doc: { lineAt(pos: number): { from: number; text: string } },
   pos: number,
 ): string | null {
-  const line = doc.lineAt(pos);
-  const text = line.text;
-
-  WIKI_LINK_RE.lastIndex = 0;
-  let match;
-  while ((match = WIKI_LINK_RE.exec(text)) !== null) {
-    const matchStart = line.from + match.index;
-    const matchEnd = matchStart + match[0].length;
-    if (pos >= matchStart && pos <= matchEnd) {
-      return match[2];
-    }
-  }
-
-  return null;
+  return findWikiLinkAt(doc, pos)?.inner ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,32 +95,6 @@ class WikiLinkWidget extends WidgetType {
 }
 
 const wikiLinkEditingMark = Decoration.mark({ class: "cm-wiki-link-editing" });
-
-// Resolved embed targets, keyed by workspace root + note dir + target.
-// Positive-only: a hit means the file existed at that absolute path when we
-// looked; misses re-probe on the next widget build so newly added images
-// appear without an invalidation channel. Bounded in practice by the number
-// of distinct embeds the user views in a session.
-const embedResolutionCache = new Map<string, string>();
-
-async function resolveEmbed(
-  target: string,
-  workspaceRoot: string | null,
-  currentFilePath: string | null,
-): Promise<string | null> {
-  const key = `${workspaceRoot ?? ""}\0${currentFilePath ?? ""}\0${target}`;
-  const cached = embedResolutionCache.get(key);
-  if (cached) return cached;
-  const resolved = await resolveWikiImage(
-    target,
-    workspaceRoot,
-    currentFilePath,
-    tauri.fileExists,
-    tauri.findFileByName,
-  );
-  if (resolved) embedResolutionCache.set(key, resolved);
-  return resolved;
-}
 
 /** Obsidian-style image embed `![[image.png]]`. Renders the resolved image
  *  inline (reusing the `.cm-image` styling and the shared height-stability
@@ -169,7 +126,7 @@ class ImageEmbedWidget extends WidgetType {
     attachStableImageHeight(image, this.target, view);
     elem.appendChild(image);
 
-    void resolveEmbed(this.target, this.workspaceRoot, this.currentFilePath)
+    void resolveEmbedPath(this.target, this.workspaceRoot, this.currentFilePath)
       .then((absolutePath) => {
         if (absolutePath) {
           image.src = convertFileSrc(absolutePath);
@@ -212,9 +169,10 @@ function buildDecorations(view: EditorView, getFilePath: () => string): Decorati
     while ((match = WIKI_LINK_RE.exec(text)) !== null) {
       const inner = match[2]!;
       const embedTarget = match[1] ? parseWikiImageEmbedTarget(inner) : null;
-      // Non-image embeds (note transclusions, PDFs) keep the plain link
+      const htmlEmbed = match[1] && !embedTarget ? parseWikiHtmlEmbedTarget(inner) : null;
+      // Other embeds (note transclusions, PDFs) keep the plain link
       // rendering over the `[[...]]` part, leaving the `!` as source text.
-      const start = from + match.index + (match[1] && !embedTarget ? 1 : 0);
+      const start = from + match.index + (match[1] && !embedTarget && !htmlEmbed ? 1 : 0);
       const end = from + match.index + match[0].length;
       if (isInsideCode(view.state, start)) continue;
 
@@ -229,6 +187,20 @@ function buildDecorations(view: EditorView, getFilePath: () => string): Decorati
           end,
           Decoration.replace({
             widget: new ImageEmbedWidget(match[0], embedTarget, workspaceRoot, currentFilePath),
+          }),
+        );
+      } else if (htmlEmbed) {
+        builder.add(
+          start,
+          end,
+          Decoration.replace({
+            widget: new HtmlEmbedWidget(
+              match[0],
+              htmlEmbed.path,
+              htmlEmbed.height,
+              workspaceRoot,
+              currentFilePath,
+            ),
           }),
         );
       } else {

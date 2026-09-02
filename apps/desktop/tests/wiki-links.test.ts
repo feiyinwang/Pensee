@@ -1,11 +1,17 @@
 import { describe, expect, test, vi } from "vite-plus/test";
 import {
+  HTML_EMBED_DEFAULT_HEIGHT,
+  HTML_EMBED_MAX_HEIGHT,
+  HTML_EMBED_MIN_HEIGHT,
   canonicalWikiTarget,
+  findWikiLinkAt,
   normalizeWikiTarget,
+  parseWikiHtmlEmbedTarget,
   parseWikiLink,
   parseWikiImageEmbedTarget,
-  resolveWikiImage,
+  resolveWikiEmbed,
   resolveWikiLink,
+  withWikiEmbedHeight,
 } from "../src/lib/wiki-links";
 import type { SearchResult } from "../src/types/fs";
 
@@ -422,15 +428,15 @@ describe("parseWikiImageEmbedTarget", () => {
 });
 
 // ---------------------------------------------------------------------------
-// resolveWikiImage
+// resolveWikiEmbed
 // ---------------------------------------------------------------------------
 
-describe("resolveWikiImage", () => {
+describe("resolveWikiEmbed", () => {
   const noFind = vi.fn(async () => null);
 
   test("resolves path targets workspace-relative first", async () => {
     const fileExists = vi.fn(async (p: string) => p === "/vault/assets/pic.png");
-    const result = await resolveWikiImage(
+    const result = await resolveWikiEmbed(
       "assets/pic.png",
       "/vault",
       "/vault/notes/note.md",
@@ -442,7 +448,7 @@ describe("resolveWikiImage", () => {
 
   test("falls back to note-relative for path targets", async () => {
     const fileExists = vi.fn(async (p: string) => p === "/vault/notes/assets/pic.png");
-    const result = await resolveWikiImage(
+    const result = await resolveWikiEmbed(
       "assets/pic.png",
       "/vault",
       "/vault/notes/note.md",
@@ -454,7 +460,7 @@ describe("resolveWikiImage", () => {
 
   test("probes note dir first for bare basenames", async () => {
     const fileExists = vi.fn(async (p: string) => p === "/vault/notes/pic.png");
-    const result = await resolveWikiImage(
+    const result = await resolveWikiEmbed(
       "pic.png",
       "/vault",
       "/vault/notes/note.md",
@@ -470,7 +476,7 @@ describe("resolveWikiImage", () => {
     const findFileByName = vi.fn(async (root: string, name: string) =>
       root === "/vault" && name === "pic.png" ? "/vault/deep/attachments/pic.png" : null,
     );
-    const result = await resolveWikiImage(
+    const result = await resolveWikiEmbed(
       "pic.png",
       "/vault",
       "/vault/notes/note.md",
@@ -483,7 +489,7 @@ describe("resolveWikiImage", () => {
   test("does not basename-search for path targets", async () => {
     const fileExists = vi.fn(async () => false);
     const findFileByName = vi.fn(async () => "/vault/wrong.png");
-    const result = await resolveWikiImage(
+    const result = await resolveWikiEmbed(
       "assets/pic.png",
       "/vault",
       null,
@@ -496,8 +502,87 @@ describe("resolveWikiImage", () => {
 
   test("resolves note-relative without a workspace (compact mode)", async () => {
     const fileExists = vi.fn(async (p: string) => p === "/anywhere/pic.png");
-    const result = await resolveWikiImage("pic.png", null, "/anywhere/note.md", fileExists, noFind);
+    const result = await resolveWikiEmbed("pic.png", null, "/anywhere/note.md", fileExists, noFind);
     expect(result).toBe("/anywhere/pic.png");
     expect(noFind).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// HTML embeds (SPECs/html-file-embed-spec.md)
+// ---------------------------------------------------------------------------
+
+describe("parseWikiHtmlEmbedTarget", () => {
+  test("accepts .html and .htm case-insensitively with the default height", () => {
+    expect(parseWikiHtmlEmbedTarget("demo.html")).toEqual({
+      path: "demo.html",
+      height: HTML_EMBED_DEFAULT_HEIGHT,
+      explicitHeight: false,
+    });
+    expect(parseWikiHtmlEmbedTarget("Report.HTM")?.path).toBe("Report.HTM");
+  });
+
+  test("normalizes slashes and strips a leading slash", () => {
+    expect(parseWikiHtmlEmbedTarget("assets\\demo.html")?.path).toBe("assets/demo.html");
+    expect(parseWikiHtmlEmbedTarget("/assets/demo.html")?.path).toBe("assets/demo.html");
+  });
+
+  test("reads an integer height modifier and clamps it", () => {
+    expect(parseWikiHtmlEmbedTarget("demo.html|600")).toEqual({
+      path: "demo.html",
+      height: 600,
+      explicitHeight: true,
+    });
+    expect(parseWikiHtmlEmbedTarget("demo.html| 480 ")?.height).toBe(480);
+    expect(parseWikiHtmlEmbedTarget("demo.html|10")?.height).toBe(HTML_EMBED_MIN_HEIGHT);
+    expect(parseWikiHtmlEmbedTarget("demo.html|99999")?.height).toBe(HTML_EMBED_MAX_HEIGHT);
+  });
+
+  test("ignores non-numeric modifiers and extra segments", () => {
+    expect(parseWikiHtmlEmbedTarget("demo.html|abc")).toEqual({
+      path: "demo.html",
+      height: HTML_EMBED_DEFAULT_HEIGHT,
+      explicitHeight: false,
+    });
+    expect(parseWikiHtmlEmbedTarget("demo.html|600|caption")?.height).toBe(600);
+  });
+
+  test("rejects non-HTML targets", () => {
+    expect(parseWikiHtmlEmbedTarget("Some Note")).toBeNull();
+    expect(parseWikiHtmlEmbedTarget("pic.png")).toBeNull();
+    expect(parseWikiHtmlEmbedTarget("report.pdf")).toBeNull();
+    expect(parseWikiHtmlEmbedTarget(".html")).toBeNull();
+    expect(parseWikiHtmlEmbedTarget("")).toBeNull();
+  });
+});
+
+describe("withWikiEmbedHeight", () => {
+  test("adds a modifier to a bare target", () => {
+    expect(withWikiEmbedHeight("assets/demo.html", 620)).toBe("assets/demo.html|620");
+  });
+
+  test("replaces an existing modifier and keeps the target text verbatim", () => {
+    expect(withWikiEmbedHeight("/Assets\\demo.html|400", 512.4)).toBe("/Assets\\demo.html|512");
+    expect(withWikiEmbedHeight("demo.html|400|caption", 300)).toBe("demo.html|300");
+  });
+});
+
+describe("findWikiLinkAt", () => {
+  const doc = {
+    lineAt: () => ({ from: 100, text: "see ![[a.html]][[Note]] end" }),
+  };
+
+  test("returns the token spanning pos with its embed flag", () => {
+    expect(findWikiLinkAt(doc, 106)).toEqual({ from: 104, to: 115, embed: true, inner: "a.html" });
+    expect(findWikiLinkAt(doc, 118)).toEqual({ from: 115, to: 123, embed: false, inner: "Note" });
+  });
+
+  test("prefers the token starting exactly at pos when two touch", () => {
+    expect(findWikiLinkAt(doc, 115)?.inner).toBe("Note");
+  });
+
+  test("returns null outside any token", () => {
+    expect(findWikiLinkAt(doc, 101)).toBeNull();
+    expect(findWikiLinkAt(doc, 125)).toBeNull();
   });
 });
