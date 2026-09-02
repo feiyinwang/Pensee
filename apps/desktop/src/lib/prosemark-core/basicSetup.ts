@@ -24,6 +24,7 @@ import { fixedTabWidthExtension } from "./tabWidthExtension";
 import { listExtension } from "./list";
 import { revealBlockOnArrowExtension } from "./revealBlockOnArrow";
 import { prosemarkMarkdownFormattingKeymap } from "./markdownFormattingKeymap";
+import { platformDeleteKeymap } from "./deleteKeymap";
 export { prosemarkMarkdownSyntaxExtensions } from "./markdown";
 
 export const prosemarkBasicSetup = (): Extension => [
@@ -44,6 +45,10 @@ export const prosemarkBasicSetup = (): Extension => [
   bracketMatching(),
   closeBrackets(),
   autocompletion(),
+  // Word- and line-wise delete, bound by name so they do not depend on the
+  // library's platform sniffing. Every editor in the app pulls this from here;
+  // see `deleteKeymap.ts`.
+  platformDeleteKeymap,
   keymap.of([
     ...prosemarkMarkdownFormattingKeymap,
     ...closeBracketsKeymap,

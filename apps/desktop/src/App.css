@@ -211,6 +211,16 @@
   outline-offset: -2px;
 }
 
+/* Opt out of the ring. Prefer the `data-no-focus-ring` attribute over adding a
+   selector to this list: the list is a per-surface allowlist, so every *new*
+   editing surface inherits an accent ring it never asked for until someone
+   remembers to come back and amend this rule. That is how in-place column
+   editing ended up drawing an orange box around a paragraph of body text — the
+   surface is invisible by design, so the ring was the only thing you could see.
+   Anything that draws its own caret, or is meant to look like page text rather
+   than like a control, sets the attribute on itself or on a wrapper. */
+[data-no-focus-ring]:focus-visible,
+[data-no-focus-ring] :focus-visible,
 /* Remove focus-visible on CodeMirror — it manages its own cursor */
 .cm-editor:focus-visible,
 /* Remove focus-visible on editor inputs that manage their own styles */

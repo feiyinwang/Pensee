@@ -12,7 +12,11 @@ import { StreamLanguage } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import DOMPurify from "dompurify";
-import { baseSyntaxHighlights, generalSyntaxHighlights } from "@/lib/prosemark-core/main";
+import {
+  baseSyntaxHighlights,
+  generalSyntaxHighlights,
+  platformDeleteKeymap,
+} from "@/lib/prosemark-core/main";
 
 export const MERMAID_CANVAS_HEIGHT = 480;
 
@@ -615,6 +619,10 @@ function createInnerEditor(
         generalSyntaxHighlights,
         drawSelection(),
         history(),
+        // Third in-place editor in the app, so it takes word/line delete from
+        // the same shared module the page and caption bands use. Anything that
+        // has to be re-listed per editor will eventually be missing from one.
+        platformDeleteKeymap,
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
         EditorView.theme({

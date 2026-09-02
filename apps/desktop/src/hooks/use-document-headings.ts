@@ -3,7 +3,14 @@ import { useFileContent } from "@/hooks/use-tabs";
 import { createHeadingSlugger } from "@/lib/heading-slug";
 
 export interface DocumentHeading {
+  /** Raw `#` count, 1–6. Slugs and anchor resolution depend on this. */
   level: number;
+  /**
+   * Nesting depth relative to the document, 0-based. Skipped levels collapse
+   * to one step (H1 -> H3 is depth 1, not 2) and a doc that starts at H2 sits
+   * at depth 0, so indentation never leaves a permanent empty gutter.
+   */
+  depth: number;
   text: string;
   line: number;
   pos: number;
@@ -14,7 +21,7 @@ export interface DocumentHeadingsOptions {
   maxDepth?: number;
 }
 
-const DEFAULT_MAX_DEPTH = 3;
+const DEFAULT_MAX_DEPTH = 6;
 const FULL_DEPTH = 6;
 
 export interface ParseDocumentHeadingsOptions {
@@ -33,6 +40,10 @@ export function parseDocumentHeadings(
   const slugDepth = Math.max(maxDepth, options.slugDepth ?? maxDepth);
   const slugger = createHeadingSlugger();
   const headings: DocumentHeading[] = [];
+  // Open ancestor levels. Depth is derived from the *rendered* set only, so a
+  // caller that renders H1–H2 gets depths 0–1 rather than gaps where the
+  // filtered-out levels used to be.
+  const openLevels: number[] = [];
   let inFence = false;
   let fenceChar: string | null = null;
   let fenceLen = 0;
@@ -63,7 +74,12 @@ export function parseDocumentHeadings(
         if (text && level <= slugDepth) {
           const slug = slugger(text);
           if (level <= maxDepth) {
-            headings.push({ level, text, line: i, pos, slug });
+            while (openLevels.length > 0 && openLevels[openLevels.length - 1] >= level) {
+              openLevels.pop();
+            }
+            const depth = openLevels.length;
+            openLevels.push(level);
+            headings.push({ level, depth, text, line: i, pos, slug });
           }
         }
       }

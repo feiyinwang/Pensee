@@ -28,6 +28,11 @@ import {
   resolveWikiLink,
 } from "@/lib/wiki-links";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
+// The editor's completion sources are registered together here. CodeMirror's
+// `override` is winner-takes-all — a second `autocompletion({override})`
+// elsewhere would silently disable this one — so the slash menu's source joins
+// the array below rather than installing its own config.
+import { slashCompletions, slashOptionIcon } from "./slash-menu";
 import { getEffectiveSelectionRanges } from "./drag-selection-gate";
 
 // ---------------------------------------------------------------------------
@@ -161,7 +166,7 @@ class ImageEmbedWidget extends WidgetType {
     const elem = document.createElement("span");
     elem.className = "cm-image cm-image-embed";
     const image = document.createElement("img");
-    attachStableImageHeight(image, elem, this.target, view);
+    attachStableImageHeight(image, this.target, view);
     elem.appendChild(image);
 
     void resolveEmbed(this.target, this.workspaceRoot, this.currentFilePath)
@@ -435,8 +440,9 @@ export function wikiLinkExtension(
     // already defaults to `"fixed"` on non-iOS.
     tooltips({ parent: document.body }),
     autocompletion({
-      override: [wikiLinkCompletions],
+      override: [wikiLinkCompletions, slashCompletions],
       icons: false,
+      addToOptions: [slashOptionIcon],
     }),
   ];
 }

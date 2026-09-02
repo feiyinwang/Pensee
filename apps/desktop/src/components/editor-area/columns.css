@@ -1,0 +1,687 @@
+/* Columns — any block, side by side.
+   Colours come from App.css tokens so light/dark and the contrast slider all
+   follow automatically. Accent shows up in exactly three places: the drop
+   target, the resize handle, and the editing focus ring. */
+
+/* On :root, not .cm-editor — the drag lift is appended to <body>, and an
+   undefined var() there makes the whole declaration invalid, which is why the
+   settle animation never used to run. */
+:root {
+  /* Emil standards: UI motion under 300ms, never ease-in. */
+  --wr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --wr-dur-press: 140ms;
+  --wr-dur-hover: 150ms;
+  --wr-dur-move: 200ms;
+  --wr-gap: 16px;
+  --wr-radius: 8px;
+  /* Phosphor dots-six-vertical, regular. See the grab-handle rules below. */
+  --wr-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M104,60A12,12,0,1,1,92,48,12,12,0,0,1,104,60Zm60,12a12,12,0,1,0-12-12A12,12,0,0,0,164,72ZM92,116a12,12,0,1,0,12,12A12,12,0,0,0,92,116Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,116ZM92,184a12,12,0,1,0,12,12A12,12,0,0,0,92,184Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,184Z'/%3E%3C/svg%3E");
+  /* Type chips on the gutter grip. Stroked glyphs, so the mask has something
+     to bite on; drawn here rather than imported because the grip is plain DOM
+     inside a CodeMirror plugin, with no React to render an icon into. */
+  /* Ink blue for words, accent for pictures. Declared here with the other
+     tokens because the grip is appended to `view.dom`, outside any editor
+     scope. */
+  --wr-kind-text-tint: #3f6ad8;
+  --wr-kind-text: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M5 6h14M12 6v12'/%3E%3C/svg%3E");
+  --wr-kind-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='3'/%3E%3Ccircle cx='8.6' cy='9.6' r='1.5' fill='%23000' stroke='none'/%3E%3Cpath d='M3.6 16.8 8.5 12l3 3 3-3 5.9 5.9'/%3E%3C/svg%3E");
+
+  /* Paper for the drag lift. Light: a sheet. Dark: the card colour, lifted a
+     notch so it still reads as paper rather than a hole. */
+  --wr-paper: #fdfcfa;
+}
+:root:has(.cm-editor) {
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wr-paper: color-mix(in srgb, var(--surface-card, #1c1c1e) 88%, #fff);
+    /* Same hue, lifted off the dark background so the glyph stays legible. */
+    --wr-kind-text-tint: #7f9df0;
+  }
+}
+
+/* A row is a grid, one track per column and one row per band, so every column's
+   picture bottom and caption top line up without measuring anything in JS.
+   Track list and band count are written inline by `layoutRowTracks`. */
+.wr-row-widget {
+  position: relative;
+  display: grid;
+  align-items: start;
+  gap: var(--wr-gap);
+  margin: 0.35em 0 0.6em;
+}
+
+.wr-col {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  grid-row: 1 / -1;
+  grid-template-rows: subgrid;
+  align-content: start;
+  gap: 0;
+}
+
+/* No subgrid (older WebKit): bands stack per column and simply don't align.
+   Degrade, never break the layout. */
+@supports not (grid-template-rows: subgrid) {
+  .wr-col {
+    display: block;
+  }
+}
+
+.wr-col.wr-dragging {
+  display: none;
+}
+
+/* Too narrow to read side by side: stack. Grid cannot wrap the way flex did,
+   and 3 columns folding into 2 + 1 was never aligned anyway. */
+.wr-row-widget.wr-row-stack {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: none !important;
+}
+.wr-row-widget.wr-row-stack > .wr-col {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  display: block;
+}
+.wr-row-widget.wr-row-stack .wr-band {
+  grid-row: auto !important;
+}
+
+/* ---- column content -------------------------------------------------- */
+
+.wr-band {
+  cursor: text;
+  /* Containing block for the band's own grab handle. Does not move anything:
+     the band is a grid item either way. */
+  position: relative;
+  /* The single number the two-state box contract turns on: the gap between two
+     blocks when the band is rendered has to equal the height of the blank
+     source line that separates them when the band is being edited. Both derive
+     from the body font size, NOT from the block's own font size — `0.5em` on an
+     `<h2>` is 11.2px, not 8px, which is how headings used to grow by 3.2px each
+     the moment you clicked into the caption. See PRD 2.9. */
+  --wr-block-gap: calc(var(--writer-editor-font-size, 16px) * 0.5);
+}
+.wr-band > *:first-child {
+  margin-top: 0;
+}
+.wr-band > *:last-child {
+  margin-bottom: 0;
+}
+.wr-band p {
+  margin: 0 0 var(--wr-block-gap);
+}
+.wr-band h1,
+.wr-band h2,
+.wr-band h3,
+.wr-band h4,
+.wr-band h5,
+.wr-band h6 {
+  /* `var(--wr-block-gap)`, not `0.5em`: em here would resolve against the
+     heading's own 1.6/1.4/1.2em size and produce an 11–13px gap where every
+     other block has 8px. That 3.2px per heading was a real mismatch. */
+  margin: 0 0 var(--wr-block-gap);
+  /* Sizes and line height are the editor's, not this file's: a heading line in
+     the nested CodeMirror is `font-size x 1.8`, and the rendered heading has to
+     land on the same box or the band changes height when you click into it.
+     Sizes come from `prosemark-core/syntaxHighlighting.ts`. */
+  line-height: 1.8;
+  color: var(--text-primary);
+  font-weight: 640;
+}
+.wr-band h1 {
+  font-size: 1.6em;
+}
+.wr-band h2 {
+  font-size: 1.4em;
+}
+.wr-band h3 {
+  font-size: 1.2em;
+}
+.wr-band h4,
+.wr-band h5,
+.wr-band h6 {
+  font-size: 1em;
+}
+.wr-band ul,
+.wr-band ol {
+  margin: 0 0 var(--wr-block-gap);
+  padding-left: 1.3em;
+}
+.wr-band li {
+  /* Zero, because a list item in the editor is one `.cm-line` with no margin.
+     1px top and bottom used to make a two-item list 3px taller than the same
+     list being edited. */
+  margin: 0;
+}
+.wr-band li::marker {
+  color: var(--text-icon-muted);
+}
+.wr-band code {
+  font-family: var(--mono-font);
+  font-size: 0.9em;
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 0.1em 0.32em;
+}
+.wr-band pre {
+  font-family: var(--mono-font);
+  font-size: 0.86em;
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0 0 var(--wr-block-gap);
+  overflow: auto;
+}
+.wr-band pre code {
+  background: none;
+  padding: 0;
+}
+.wr-band a {
+  color: var(--link-color);
+  text-decoration: underline;
+}
+.wr-band blockquote {
+  margin: 0 0 var(--wr-block-gap);
+  padding-left: 0.75em;
+  border-left: 2px solid var(--blockquote-border);
+}
+/* Same rule as the band's own first/last child, one level down: the paragraph
+   inside a quote must not add a second block gap. */
+.wr-band blockquote > *:first-child {
+  margin-top: 0;
+}
+.wr-band blockquote > *:last-child {
+  margin-bottom: 0;
+}
+.wr-band hr {
+  border: none;
+  border-top: 1px solid var(--line-subtle);
+  margin: 0.6em 0;
+}
+.wr-band .katex-display {
+  margin: 6px 0;
+}
+.wr-band p.wr-img {
+  margin: 0 0 0.4em;
+  line-height: 0;
+}
+.wr-band img {
+  display: block;
+  /* There is no global border-box in this app, and `width:100%` plus a 1px
+     border would push each column 2px past its grid track — a hairline
+     horizontal scrollbar in a narrow editor. */
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  border-radius: var(--wr-radius);
+  border: 1px solid var(--line-subtler);
+  background: var(--surface-card);
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.wr-math-error {
+  font-family: var(--mono-font);
+  font-size: 0.9em;
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 0.1em 0.32em;
+}
+/* An empty band: the aligned slot a neighbour's caption created. No border, no
+   fill, and nothing on hover either — it is a piece of the page, not a widget.
+   The muted placeholder is the whole affordance; a box drawn around it made a
+   paragraph look like a form field, which is exactly what a band is not. Do not
+   add a hover outline back: the same instinct is what put an accent ring on the
+   editor below. */
+.wr-band-empty {
+  color: var(--text-icon-muted);
+}
+
+/* Writing in a band should feel like writing anywhere else in the document, so
+   the box is invisible: same font, same size, same colour, no fill, no border,
+   no focus ring. This used to be a `<textarea>`, which meant a band was the one
+   place in Writer where markdown stayed raw while you typed — `- ` never became
+   a bullet until you clicked away. It is now a nested CodeMirror running the
+   same prosemark extensions as the document, so the rules below exist only to
+   strip the editor chrome an inline editor must not have. */
+.wr-col-edit {
+  display: block;
+  /* Same containing block the rendered band provides, so the handle does not
+     jump when the two states swap. */
+  position: relative;
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  outline: none;
+  box-shadow: none;
+}
+/* `!important` on the outlines is deliberate: `.cm-focused` ships an outline in
+   CodeMirror's own base theme, injected at a precedence we do not control. */
+.wr-col-edit .cm-editor,
+.wr-col-edit .cm-editor.cm-focused {
+  background: none;
+  font: inherit;
+  color: inherit;
+  outline: none !important;
+}
+.wr-col-edit .cm-scroller {
+  font: inherit;
+  line-height: inherit;
+  /* An inline editor is sized by its text, so it must not scroll: a `cm-scroller`
+     that clips would cut the second line of a caption off inside the column. */
+  overflow: visible;
+}
+.wr-col-edit .cm-content {
+  padding: 0;
+  /* CodeMirror reserves a viewport's worth of height by default — inside a
+     caption band that is a screenful of blank space under one line of text. */
+  min-height: 0 !important;
+  caret-color: var(--text-primary);
+}
+.wr-col-edit .cm-line {
+  padding: 0;
+}
+
+.wr-col-edit .cm-placeholder {
+  color: var(--text-icon-muted);
+}
+
+/* ---- inline editors: opt out of page-level editor styling ------------- */
+/* `prosemark-theme.css` styles `.cm-editor .cm-content` for the *page* editor:
+   a text-column max width, auto margins, a 4rem side inset and 40vh of bottom
+   padding so the last line can scroll to the middle. Every one of those is
+   wrong inside a caption, and every one of them also matches a nested editor.
+   Overriding them with `.wr-col-edit .cm-content` is the same specificity
+   (0,2,0), so which rule wins is decided by CSS import order — measured: when
+   `columns.css` loses that race the band grows by 288px. This selector is
+   (0,3,0) and carries an attribute, so it wins on its own merits and any new
+   in-place editor opts in by adding `data-inline-editor`. */
+[data-inline-editor] .cm-editor .cm-content {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  letter-spacing: inherit;
+  color: inherit;
+}
+/* A blank source line IS the gap between two blocks in an inline editor, so
+   its box has to be the same `--wr-block-gap` every rendered block carries as
+   `margin-bottom`. The page theme gives blank lines `line-height: 1` — a full
+   16px — and those extra 8px per blank line are exactly why a caption grew the
+   moment you clicked into it. Three parts (attribute + `.cm-editor` + line) so
+   this outranks the page rule on specificity rather than on import order. */
+[data-inline-editor] .cm-editor .cm-line:has(> br:only-child) {
+  line-height: 0.5;
+}
+[data-inline-editor] .cm-editor .cm-scroller {
+  overflow: visible;
+  line-height: inherit;
+}
+[data-inline-editor] .cm-editor,
+[data-inline-editor] .cm-editor.cm-focused {
+  background: none;
+  outline: none !important;
+}
+
+/* ---- grab handles ---------------------------------------------------- */
+/* Hit area 32px (Fitts). Hover-gated so a touch tap can't latch it. There is
+   exactly one grip and it lives in the left margin, so it never covers a word
+   and never has to be told apart from a second grip beside it. */
+
+.wr-gutter-grab {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: grab;
+  opacity: 0;
+  z-index: 2;
+  transition:
+    opacity var(--wr-dur-hover) ease,
+    transform var(--wr-dur-press) var(--wr-ease-out);
+}
+
+/* Type chip, then the dots, then the block. One grip for a paragraph, a
+   picture and a caption alike — what differs is the chip, which says what you
+   are about to pick up. Width is mirrored in `GRIP_WIDTH`.
+
+   Both selectors here carry `[data-wr-handle]` on purpose: the shared grip
+   rules further down are (0,1,1) too, so equal weight would leave "which one
+   wins" to the order of the rules in this file. */
+.wr-gutter-grab[data-wr-handle] {
+  top: 0;
+  left: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  /* Mirrored in `GRIP_H`: the grip is centred on the first line box, and that
+     sum is computed in TS, so both halves have to agree on this number. */
+  height: 24px;
+  border-radius: 0;
+  background: transparent;
+  pointer-events: none;
+}
+/* Colour is what tells the two apart at a glance, so the chip carries a tint
+   of its own kind rather than the same muted grey twice: text takes the ink
+   blue, a picture takes the app's accent. Border and fill are mixes of that one
+   colour, so a theme change moves all three together. */
+.wr-gutter-kind {
+  /* Default, so a chip with no kind yet is muted rather than invalid. */
+  --wr-kind-color: var(--text-icon-muted);
+  flex: 0 0 24px;
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: 1px solid color-mix(in srgb, var(--wr-kind-color) 34%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--wr-kind-color) 10%, var(--surface-primary));
+}
+.wr-gutter-kind[data-kind="text"] {
+  --wr-kind-color: var(--wr-kind-text-tint);
+}
+.wr-gutter-kind[data-kind="image"] {
+  --wr-kind-color: var(--accent, #ff6a00);
+}
+.wr-gutter-kind::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  background: currentcolor;
+  color: var(--wr-kind-color);
+  -webkit-mask: var(--wr-kind-text) center / 14px 14px no-repeat;
+  mask: var(--wr-kind-text) center / 14px 14px no-repeat;
+}
+.wr-gutter-kind[data-kind="image"]::before {
+  -webkit-mask-image: var(--wr-kind-image);
+  mask-image: var(--wr-kind-image);
+}
+/* The dots are a flex item here, not an overlay: they sit beside the chip. */
+.wr-gutter-grab[data-wr-handle]::after {
+  position: static;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 20px;
+  -webkit-mask-size: 16px 20px;
+  mask-size: 16px 20px;
+}
+.wr-gutter-grab.wr-gutter-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Phosphor `dots-six-vertical`, regular weight (MIT). Inlined as a mask rather
+   than imported as a component: these handles are built with plain DOM inside a
+   CodeMirror widget, so there is no React to render an icon into — and a mask
+   keeps `color` as the single knob, which is what lets the same glyph be white
+   over a picture and muted grey in the margin. `--wr-grip` is declared with the
+   other tokens on :root because the drag lift is appended to <body>. */
+.wr-gutter-grab::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentcolor;
+  -webkit-mask: var(--wr-grip) center / 20px 20px no-repeat;
+  mask: var(--wr-grip) center / 20px 20px no-repeat;
+}
+.wr-gutter-grab::after {
+  color: var(--text-icon-muted);
+}
+.wr-gutter-grab:hover::after {
+  color: var(--text-secondary);
+}
+
+/* generous invisible hit area */
+.wr-gutter-grab::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
+.wr-gutter-grab:active {
+  cursor: grabbing;
+  transform: scale(0.97);
+}
+
+body.wr-dragging-body .wr-gutter-grab {
+  opacity: 0 !important;
+}
+body.wr-dragging-body {
+  cursor: grabbing;
+}
+body.wr-resizing-body {
+  cursor: col-resize;
+}
+
+/* ---- resize handle --------------------------------------------------- */
+
+/* Lives inside the column now, floating over the gap on its left: a grid counts
+   every child as a track, and this one must not be one. */
+.wr-resize {
+  position: absolute;
+  left: calc(var(--wr-gap) / -2);
+  top: 0;
+  bottom: 0;
+  width: 0;
+  z-index: 3;
+}
+.wr-resize::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  cursor: col-resize;
+}
+.wr-resize::before {
+  content: "";
+  position: absolute;
+  left: -1.5px;
+  top: 12%;
+  height: 56%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wr-resize:hover::before {
+    opacity: 0.7;
+  }
+}
+.wr-resize.wr-resize-active::before {
+  opacity: 1;
+}
+
+/* ---- drop target ----------------------------------------------------- */
+/* One language per target kind: dropping inside a row shows the real column it
+   will become; anything else shows a thin bar, because a full-height slot
+   outside a row would shove the document and move what you were aiming at. */
+
+.wr-slot {
+  grid-row: 1 / -1;
+  align-self: stretch;
+  min-width: 0;
+  border-radius: var(--wr-radius);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent);
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) var(--wr-ease-out);
+}
+.wr-slot.wr-slot-on {
+  opacity: 1;
+}
+
+.wr-drop-bar {
+  position: absolute;
+  z-index: 5;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) var(--wr-ease-out);
+}
+.wr-drop-bar.wr-drop-bar-on {
+  opacity: 1;
+}
+.wr-drop-bar.wr-drop-bar-vertical {
+  width: 4px;
+  height: auto;
+}
+
+/* ---- lift ------------------------------------------------------------ */
+
+/* A sheet of paper picked off the page. It keeps the source block's real width
+   and is shrunk by a transform, so the lines break exactly where they break in
+   the document — no reflow, and no height guessed from a width ratio (that is
+   what used to slice the text through the middle). */
+.wr-lift {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 999;
+  pointer-events: none;
+  overflow: hidden;
+  transform-origin: top left;
+  /* The width handed to it is a border-box measurement of the source block, so
+     the paper has to be measured the same way — otherwise it is 26px wider than
+     what you picked up and the grab offset drifts. */
+  box-sizing: border-box;
+  padding: 10px 12px;
+  /* Paper is crisper than a card. */
+  border-radius: 2px;
+  background: var(--wr-paper);
+  border: 1px solid var(--line-subtler, rgb(0 0 0 / 12%));
+  color: var(--text-secondary);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 18%),
+    0 18px 40px -12px rgb(0 0 0 / 45%);
+  /* Past the height cap the sheet fades out of view instead of cutting a line
+     of text in half. */
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  will-change: transform;
+}
+/* Curled corner, drawn, not an image. */
+.wr-lift::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(315deg, rgb(0 0 0 / 12%) 0%, rgb(0 0 0 / 4%) 45%, transparent 46%);
+}
+/* Carried out of the editor, the sheet crumples into a ball: releasing there
+   throws the block away. All CSS — creases are gradients, not an image. */
+.wr-lift.wr-lift-crumple {
+  padding: 0;
+  border-color: transparent;
+  border-radius: 48% 52% 46% 54% / 52% 46% 54% 48%;
+  mask-image: none;
+  background:
+    linear-gradient(
+      118deg,
+      rgb(0 0 0 / 10%) 0 21%,
+      transparent 21.5% 37%,
+      rgb(0 0 0 / 7%) 37.5% 45%,
+      transparent 45.5%
+    ),
+    linear-gradient(
+      -42deg,
+      rgb(0 0 0 / 9%) 0 17%,
+      transparent 17.5% 43%,
+      rgb(255 255 255 / 72%) 43.5% 57%,
+      transparent 57.5%
+    ),
+    linear-gradient(
+      72deg,
+      rgb(255 255 255 / 66%) 0 25%,
+      transparent 25.5% 53%,
+      rgb(0 0 0 / 9%) 53.5% 67%,
+      transparent 67.5%
+    ),
+    radial-gradient(120% 120% at 32% 28%, #fff 0%, var(--wr-paper) 46%, #d8d6d1 100%);
+  box-shadow:
+    0 10px 18px -8px rgb(0 0 0 / 45%),
+    inset 0 -7px 12px -7px rgb(0 0 0 / 28%);
+  transition:
+    width var(--wr-dur-move) var(--wr-ease-out),
+    height var(--wr-dur-move) var(--wr-ease-out),
+    border-radius var(--wr-dur-move) var(--wr-ease-out);
+}
+/* The text goes with it, but a ball has no readable text. */
+.wr-lift.wr-lift-crumple > *,
+.wr-lift.wr-lift-crumple::after {
+  opacity: 0;
+  transition: opacity var(--wr-dur-hover) ease;
+}
+
+.wr-lift > *:first-child {
+  margin-top: 0;
+}
+.wr-lift > *:last-child {
+  margin-bottom: 0;
+}
+.wr-lift p,
+.wr-lift ul,
+.wr-lift ol,
+.wr-lift pre,
+.wr-lift blockquote {
+  margin: 0 0 0.5em;
+}
+.wr-lift ul,
+.wr-lift ol {
+  padding-left: 1.3em;
+}
+.wr-lift h1,
+.wr-lift h2,
+.wr-lift h3,
+.wr-lift h4,
+.wr-lift h5,
+.wr-lift h6 {
+  margin: 0 0 0.35em;
+  line-height: 1.3;
+  font-weight: 640;
+}
+.wr-lift code,
+.wr-lift pre {
+  font-family: var(--mono-font);
+  font-size: 0.9em;
+}
+.wr-lift img {
+  display: block;
+  width: 100%;
+  border-radius: 4px;
+}
+
+/* ---- row tools ------------------------------------------------------- */
+/* Deliberately empty. A hovering `</>` button in the corner of every row was an
+   escape hatch from a band editor that could not show you what you were typing.
+   Bands now edit as live markdown, so the source *is* what you are looking at,
+   and the button was one more thing floating over the text for no reason. The
+   reveal-source gate itself survives as the exported `revealColumnSource`
+   command — the capability is kept, only the floating chrome is gone. It has no
+   UI entry point yet; picking one is a product decision, not a CSS one. */
+
+/* ---- reduced motion: soften, don't strip ----------------------------- */
+
+/* The paper's look is static, so it stays; only movement is cut. */
+@media (prefers-reduced-motion: reduce) {
+  .wr-col,
+  .wr-lift {
+    transition-duration: 1ms !important;
+  }
+}

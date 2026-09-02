@@ -88,6 +88,53 @@ describe("parseDocumentHeadings", () => {
   });
 });
 
+describe("parseDocumentHeadings relative depth", () => {
+  test("a doc that starts at H2 sits flush at depth 0", () => {
+    const content = ["## A", "### B", "## C"].join("\n");
+    expect(parseDocumentHeadings(content, { maxDepth: 6 }).map((h) => h.depth)).toEqual([0, 1, 0]);
+  });
+
+  test("skipped levels collapse to one step", () => {
+    const content = ["# A", "### B", "###### C"].join("\n");
+    expect(parseDocumentHeadings(content, { maxDepth: 6 }).map((h) => h.depth)).toEqual([0, 1, 2]);
+  });
+
+  test("returning to a shallower level pops back down", () => {
+    const content = ["## A", "### B", "##### C", "## D", "# E", "## F"].join("\n");
+    expect(parseDocumentHeadings(content, { maxDepth: 6 }).map((h) => h.depth)).toEqual([
+      0, 1, 2, 0, 0, 1,
+    ]);
+  });
+
+  test("depth is relative to the rendered set, not the filtered-out levels", () => {
+    const content = ["# A", "#### B", "## C"].join("\n");
+    expect(
+      parseDocumentHeadings(content, { maxDepth: 2, slugDepth: 6 }).map((h) => [h.level, h.depth]),
+    ).toEqual([
+      [1, 0],
+      [2, 1],
+    ]);
+  });
+
+  test("a flat doc has no depth at all", () => {
+    const content = ["## A", "## B", "## C"].join("\n");
+    expect(parseDocumentHeadings(content, { maxDepth: 6 }).map((h) => h.depth)).toEqual([0, 0, 0]);
+  });
+
+  test("headings inside fences do not disturb the depth stack", () => {
+    const content = ["# A", "```", "###### Fake", "```", "## B"].join("\n");
+    expect(parseDocumentHeadings(content, { maxDepth: 6 }).map((h) => [h.text, h.depth])).toEqual([
+      ["A", 0],
+      ["B", 1],
+    ]);
+  });
+
+  test("defaults to the full H1–H6 range", () => {
+    const content = ["# A", "## B", "### C", "#### D", "##### E", "###### F"].join("\n");
+    expect(parseDocumentHeadings(content).map((h) => h.level)).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+});
+
 describe("buildSlugIndex", () => {
   test("maps each slug to its heading", () => {
     const content = ["# A", "## B", "### A"].join("\n");

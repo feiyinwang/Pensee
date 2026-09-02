@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import type { EditorView } from "@codemirror/view";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useDocumentHeadings, type DocumentHeading } from "@/hooks/use-document-headings";
@@ -9,15 +9,19 @@ import { useEscKey } from "./use-esc-key";
 import { useMountTransition } from "./use-mount-transition";
 import { showNativeContextMenu } from "./editor-context-menu";
 import { EDITOR_SAFE_SCROLL_MARGIN, EDITOR_SCROLLBAR_GUTTER } from "./editor-scroll-container";
+import {
+  TICK_INACTIVE_SCALE,
+  TICK_MAX_WIDTH,
+  indentForDepth,
+  nextWindowStart,
+  tickWidthForDepth,
+} from "./section-rail-depth";
 import "./section-rail.css";
 
-const INACTIVE_WIDTH = 10;
-const ACTIVE_WIDTH = 20;
-const INACTIVE_TICK_SCALE = INACTIVE_WIDTH / ACTIVE_WIDTH;
 const TICK_HEIGHT = 1;
 const TICK_GAP = 6;
 const RAIL_EDGE_INSET = 12;
-const RAIL_INNER_WIDTH = ACTIVE_WIDTH + 2;
+const RAIL_INNER_WIDTH = TICK_MAX_WIDTH + 2;
 const RAIL_ZONE_WIDTH = RAIL_EDGE_INSET + RAIL_INNER_WIDTH;
 const POPOVER_WIDTH = 260;
 const POPOVER_EDGE_INSET = RAIL_EDGE_INSET;
@@ -73,6 +77,37 @@ export function SectionRail({ filePath, view, scrollContainerRef }: SectionRailP
   const railZoneRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  const maxDepth = headings.reduce((max, heading) => Math.max(max, heading.depth), 0);
+  const activeDepth = activeIndex === null ? null : (headings[activeIndex]?.depth ?? null);
+  const [windowStart, setWindowStart] = useState(0);
+  // Indentation only transitions once a frame has been painted at the current
+  // window. Without this, opening the popover (or switching files) replays the
+  // slide as an entrance animation and the titles visibly skate sideways.
+  const [animateIndent, setAnimateIndent] = useState(false);
+
+  // A new file's depth structure has nothing to do with the old one, so the
+  // window restarts from 0 rather than inheriting — and lands there without a
+  // transition, courtesy of the animateIndent effect below.
+  const lastFilePathRef = useRef(filePath);
+  useEffect(() => {
+    const switched = lastFilePathRef.current !== filePath;
+    lastFilePathRef.current = filePath;
+    setWindowStart((current) => nextWindowStart(switched ? 0 : current, activeDepth, maxDepth));
+  }, [filePath, activeDepth, maxDepth]);
+
+  useEffect(() => {
+    setAnimateIndent(false);
+    if (!shouldRender) return;
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setAnimateIndent(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner) cancelAnimationFrame(inner);
+    };
+  }, [shouldRender, filePath]);
+
   // Move-between rail and popover keeps the popover open; leaving to
   // anywhere else closes. Crucial because the popover overlaps the rail
   // x-range — we still need an explicit relatedTarget check to bridge.
@@ -120,7 +155,7 @@ export function SectionRail({ filePath, view, scrollContainerRef }: SectionRailP
           className="pointer-events-none absolute left-0 right-0 top-1/2 h-[70vh] -translate-y-1/2 overflow-hidden"
         >
           <nav
-            className="section-rail-ticks absolute top-1/2 flex flex-col"
+            className="section-rail-ticks absolute top-1/2 flex flex-col items-end"
             data-open={isOpen ? "true" : "false"}
             style={{
               right: RAIL_EDGE_INSET,
@@ -134,13 +169,13 @@ export function SectionRail({ filePath, view, scrollContainerRef }: SectionRailP
             {headings.map((heading, i) => {
               const isActive = i === activeIndex;
               const tickStyle: CSSProperties = {
-                width: ACTIVE_WIDTH,
+                width: tickWidthForDepth(heading.depth),
                 height: TICK_HEIGHT,
                 background: "currentColor",
                 opacity: isActive ? 1 : 0.35,
-                transform: isActive ? "scaleX(1)" : `scaleX(${INACTIVE_TICK_SCALE})`,
+                transform: isActive ? "scaleX(1)" : `scaleX(${TICK_INACTIVE_SCALE})`,
                 transition:
-                  "transform var(--motion-base) var(--ease-out), opacity var(--motion-base) var(--ease-out)",
+                  "transform var(--motion-base) var(--ease-out), opacity var(--motion-base) var(--ease-out), width var(--motion-base) var(--ease-out)",
                 pointerEvents: "auto",
               };
               return (
@@ -189,10 +224,13 @@ export function SectionRail({ filePath, view, scrollContainerRef }: SectionRailP
                       className={`section-rail-popover-row block w-full cursor-default truncate border-0 bg-transparent p-0 text-left${
                         isActive ? " is-active" : ""
                       }`}
+                      data-animate={animateIndent ? "true" : "false"}
+                      title={heading.text}
                       style={{
                         fontSize: 13,
                         letterSpacing: "-0.01em",
                         lineHeight: 1.5,
+                        paddingLeft: indentForDepth(heading.depth, windowStart),
                       }}
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => handleTickClick(heading)}

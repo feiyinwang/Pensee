@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Writer Mine",
+  "identifier": "com.f.writer-mine",
+  "bundle": { "createUpdaterArtifacts": false },
+  "plugins": {
+    "updater": { "endpoints": ["https://writer-mine.invalid/latest.json"] }
+  }
+}

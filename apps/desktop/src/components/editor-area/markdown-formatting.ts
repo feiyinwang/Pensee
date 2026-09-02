@@ -180,11 +180,116 @@ function lineCommand(
   };
 }
 
-const HEADING_RE = /^(#{1,6})\s/;
+/** `# title`, and also a bare `#` with nothing after it. CommonMark says the
+ *  second is an empty heading, and the editor produces one whenever a heading
+ *  with no text is written and trimmed. Demanding the space made that line a
+ *  ghost: the type grid called it Text, "Heading 1" on it wrote `# #`, and
+ *  Paragraph could not clear it. */
+const HEADING_RE = /^(#{1,6})(?:[ \t]|$)/;
 const BULLET_RE = /^- /;
 const NUMBERED_RE = /^\d+\.\s/;
 const BLOCKQUOTE_RE = /^> /;
 const TASK_RE = /^- \[[ x]\] /;
+
+// ---------------------------------------------------------------------------
+// Block types
+// ---------------------------------------------------------------------------
+
+/**
+ * The nine block shapes the editor can put a block into.
+ *
+ * Two callers, two different verbs, one implementation. The keyboard commands
+ * below **toggle**: `Cmd+Shift+8` on a quoted line adds a bullet and leaves the
+ * quote alone, because that is what a toggle means. The block handle menu
+ * **converts**: its tiles are a radio group, so picking "Bulleted list" has to
+ * clear whatever prefix was there first or the block ends up wearing two.
+ * {@link setBlockType} is that second verb, kept here beside the first so the
+ * prefixes can never be spelled two ways.
+ */
+export type BlockTypeId =
+  | "text"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "numbered"
+  | "bullet"
+  | "task"
+  | "code"
+  | "quote";
+
+const FENCE_RE = /^\s*```/;
+
+/** Strip every block prefix this editor knows how to add. */
+function clearBlockPrefix(line: string): string {
+  return line
+    .replace(HEADING_RE, "")
+    .replace(TASK_RE, "")
+    .replace(BULLET_RE, "")
+    .replace(NUMBERED_RE, "")
+    .replace(BLOCKQUOTE_RE, "");
+}
+
+/** Unwrap a fenced block. Anything else comes back untouched. */
+function unfence(md: string): string {
+  const lines = md.split("\n");
+  if (lines.length >= 2 && FENCE_RE.test(lines[0] ?? "") && (lines.at(-1) ?? "").trim() === "```") {
+    return lines.slice(1, -1).join("\n");
+  }
+  return md;
+}
+
+/** What shape is this block already in? `null` when it is none of the nine —
+ *  an h4, a table, a picture — so the menu can show no tile as active rather
+ *  than lying about it. */
+export function blockTypeOf(md: string): BlockTypeId | null {
+  const first = md.split("\n", 1)[0] ?? "";
+  if (FENCE_RE.test(first)) return "code";
+  const heading = HEADING_RE.exec(first);
+  if (heading) {
+    const level = heading[1]?.length ?? 0;
+    return level <= 3 ? (`h${level}` as BlockTypeId) : null;
+  }
+  if (TASK_RE.test(first)) return "task";
+  if (BULLET_RE.test(first)) return "bullet";
+  if (NUMBERED_RE.test(first)) return "numbered";
+  if (BLOCKQUOTE_RE.test(first)) return "quote";
+  return "text";
+}
+
+/** Convert a whole block to `id`. Exclusive: the old prefix goes first. */
+export function setBlockType(md: string, id: BlockTypeId): string {
+  const body = unfence(md);
+  // Code is the one type whose content is not prose — clearing "prefixes"
+  // there would eat the first character of a shell command.
+  if (id === "code") return "```\n" + body + "\n```";
+  const lines = body.split("\n");
+
+  // A heading is one line. Mapping the prefix over every line the way the list
+  // shapes do turns one block into N headings, and a markdown paragraph is
+  // every consecutive non-blank line — so "make this a heading" was stamping a
+  // `#` onto the next line's content as well. Only the first line, the one the
+  // grip is parked beside, becomes the heading; whatever follows is pushed off
+  // as its own block, keeping the shape it already had.
+  if (id === "h1" || id === "h2" || id === "h3") {
+    const head = "#".repeat(Number(id.slice(1))) + " " + clearBlockPrefix(lines[0] ?? "");
+    const rest = lines.slice(1).join("\n").trim();
+    return rest ? `${head}\n\n${rest}` : head;
+  }
+
+  const cleared = lines.map(clearBlockPrefix);
+  switch (id) {
+    case "text":
+      return cleared.join("\n");
+    case "bullet":
+      return cleared.map((l) => `- ${l}`).join("\n");
+    case "numbered":
+      return cleared.map((l, i) => `${i + 1}. ${l}`).join("\n");
+    case "task":
+      return cleared.map((l) => `- [ ] ${l}`).join("\n");
+    case "quote":
+      return cleared.map((l) => `> ${l}`).join("\n");
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Heading commands
@@ -199,11 +304,10 @@ export function setHeading(level: number): StateCommand {
   }, `input.format.heading${level}`);
 }
 
-export const setParagraph: StateCommand = lineCommand((line) => {
-  const match = HEADING_RE.exec(line);
-  if (match) return line.slice(match[0].length);
-  return line;
-}, "input.format.paragraph");
+export const setParagraph: StateCommand = lineCommand(
+  (line) => clearBlockPrefix(line),
+  "input.format.paragraph",
+);
 
 // ---------------------------------------------------------------------------
 // List / blockquote / task commands
@@ -353,6 +457,51 @@ export const insertNow: StateCommand = ({ state, dispatch }) => {
   );
   return true;
 };
+
+// ---------------------------------------------------------------------------
+// Empty heading
+// ---------------------------------------------------------------------------
+
+/** Hashes and nothing else. `#`, `# `, `###   ` — a heading with no text. */
+const EMPTY_HEADING_RE = /^#{1,6}[ \t]*$/;
+
+/**
+ * Enter on a heading with no text clears the heading instead of leaving it
+ * stranded above whatever you write next.
+ *
+ * Every new note is born as the `# ` template (`create_file_impl`), so this is
+ * the very first Enter most notes ever see. Without it the hashes stay behind
+ * on their own line and the words land on the next one — which renders as the
+ * `#` clamped onto the following line's content, and reads as the editor
+ * having put the hash on the wrong line entirely.
+ *
+ * Deliberately the same rule `listEnter` already applies to an empty list
+ * item: wipe the line, keep the caret on it, let the next keystroke be plain
+ * text. An empty heading is never worth preserving.
+ */
+export const clearEmptyHeadingOnEnter: StateCommand = ({ state, dispatch }) => {
+  if (state.readOnly) return false;
+  // Multi-cursor or a real selection: Enter means something else entirely.
+  if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return false;
+  const line = state.doc.lineAt(state.selection.main.head);
+  if (!EMPTY_HEADING_RE.test(line.text)) return false;
+  dispatch(
+    state.update({
+      changes: { from: line.from, to: line.to },
+      selection: { anchor: line.from },
+      userEvent: "delete.empty-heading",
+    }),
+  );
+  return true;
+};
+
+/** `Prec.highest` to beat `@codemirror/lang-markdown`'s own `Prec.high` Enter
+ *  binding. It sits beside the list keymap at the same precedence, which is
+ *  safe because the two can never both match: one wants a list line, the other
+ *  a heading line, and each returns false otherwise. */
+export const emptyHeadingKeymap: Extension = Prec.highest(
+  keymap.of([{ key: "Enter", run: clearEmptyHeadingOnEnter }]),
+);
 
 // ---------------------------------------------------------------------------
 // Registry and keymap

@@ -1,0 +1,45 @@
+/* Slash menu — visual tokens borrowed from the block handle panel so the two
+   insert surfaces read as one thing. CodeMirror owns the tooltip element, so
+   these selectors hang off its class names. */
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 7px;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > completion-section {
+  padding: 8px 10px 4px;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.wr-slash-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--text-icon-muted);
+}
+
+.cm-tooltip-autocomplete > ul > li[aria-selected] .wr-slash-icon {
+  color: var(--text-secondary);
+}
+
+.wr-slash-icon svg {
+  width: 17px;
+  height: 17px;
+}

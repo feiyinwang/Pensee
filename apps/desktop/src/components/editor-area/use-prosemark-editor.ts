@@ -49,7 +49,9 @@ import {
 } from "@/lib/prosemark-core/main";
 import { tableDecorations } from "./table-decorations";
 import { htmlBlockDecorations, htmlBlockParserExtension } from "./html-block-decorations";
+import { columnsDecorations, columnsParserExtension } from "./columns-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
+import { boardDecorations } from "./board/board-decorations";
 import { mathDecorations } from "./math-decorations";
 import { dragFreezeExtensions } from "./drag-selection-gate";
 import { clampSelectionToHeadings, headingDecorations } from "./heading-decorations";
@@ -57,6 +59,7 @@ import { imageSrcResolver } from "./image-src-resolver";
 import { wikiLinkExtension } from "./wiki-link-extension";
 import {
   markdownFormatting,
+  emptyHeadingKeymap,
   formattingCommands,
   clearInlineFormatting,
   toggleFencedCodeBlock,
@@ -539,7 +542,16 @@ function createEditorExtensions(
   return [
     markdown({
       codeLanguages: languages,
-      extensions: [GFM, prosemarkMarkdownSyntaxExtensions, htmlBlockParserExtension],
+      // `columnsParserExtension` must come before the html-block parser: both
+      // register `before: "HTMLBlock"`, and a `wr-row` div has to be claimed as
+      // one ColumnRow node (blank lines and all) before the generic Type-6
+      // HTML block parser cuts it at the first blank line.
+      extensions: [
+        GFM,
+        prosemarkMarkdownSyntaxExtensions,
+        columnsParserExtension,
+        htmlBlockParserExtension,
+      ],
     }),
     linkNavigationExtension(getFilePath, isDisposed),
     editorBodyContextMenuExtension(getFilePath, isDisposed),
@@ -645,13 +657,22 @@ function createEditorExtensions(
     ),
     viewportParsePlugin,
     tableDecorations(),
+    // Before htmlBlockDecorations: column rows own their own node type, but
+    // keeping them adjacent documents the ordering intent. `getFilePath` is
+    // needed so dropped image files land next to the note they were dropped on.
+    columnsDecorations(getFilePath),
     htmlBlockDecorations(),
     mermaidDecorations(),
+    // Next to mermaid on purpose: same fenced-code fold mechanism, same
+    // full-screen-overlay pattern. `getFilePath` is needed so pasted images
+    // land in this note's assets folder instead of being inlined.
+    boardDecorations(getFilePath),
     mathDecorations(),
     headingDecorations,
     imageSrcResolver(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     markdownFormatting,
+    emptyHeadingKeymap,
 
     EditorView.updateListener.of((update) => {
       // Skip updates from document swaps/reloads, which carry a "writer" userEvent.

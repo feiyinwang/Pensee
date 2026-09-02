@@ -264,6 +264,25 @@
   opacity: 0;
 }
 
+/* The gutter grip and the hanging hash want the same strip of left margin, and
+   only one of them can have it. The grip wins, because it is the thing the
+   pointer is reaching for; the hash is a syntax hint that is already invisible
+   unless the caret is on this line.
+
+   The grip used to yield instead — it sat a hash-width further left on every
+   heading — but that reads as "the handle is floating away from my headings",
+   and it made the grip's x depend on the block type, which is exactly the kind
+   of per-type special case the grip is supposed to have none of.
+
+   `.wr-grip-line` is a line decoration set from `columns-decorations.ts`
+   (`gripLineField`) on whichever line the grip is parked beside. Opacity, never
+   `display: none` or `font-size: 0` — a collapsed hash measures as a
+   zero-height rect at the baseline and breaks vertical caret motion, which is
+   the same trap documented above. */
+.cm-editor .wr-grip-line .cm-heading-hash {
+  opacity: 0;
+}
+
 /* Wiki-link autocomplete tooltip uses the UI font, not the editor font */
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul,
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {

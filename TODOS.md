@@ -2,11 +2,14 @@
 
 ## In Progress
 
+- Block handle menu: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md) — hover the gutter grip to open block type / move / duplicate / clipboard / delete actions for plain blocks, pictures, caption bands and columns. First pass landed; submenus (Align and Indent, Color Options) are rendered inert pending a way to store non-markdown attributes, and there is still no keyboard path to the panel.
+
 - Reveal-in-sidebar + residual external-watcher misses: [`SPECs/reveal-in-sidebar-and-external-watcher-spec.md`](SPECs/reveal-in-sidebar-and-external-watcher-spec.md) — keep the explicit tab-context-menu "Reveal in sidebar" action working, leave ordinary file opens from expanding the Everything tree, and characterize the remaining external-file-watcher miss cases through a logging + manual-repro pass before patching further.
 
 ## Done
 
 - Motion timing: [`SPECs/motion-timing-spec.md`](SPECs/motion-timing-spec.md) — one token set for all animations (ease-out under 180ms, spring for the sidebar resize settle, global 0.97 button press scale); Tailwind `transition-*` defaults now resolve to the tokens. Rules in `docs/motion.md`.
+- Block menu headings leaking onto the next line — a paragraph is every consecutive non-blank line, so an H1/H2/H3 tile prefixed both lines of a block a single Enter had produced. `setBlockType` now heads only the block's first line (the one the grip is parked beside) and leaves the rest behind as its own block with its original shape intact.
 - Table column sizing (Phase A, CSS-only): [`SPECs/table-column-sizing-spec.md`](SPECs/table-column-sizing-spec.md) — folded table cells inherited `overflow-wrap: anywhere` from `EditorView.lineWrapping`, which feeds min-content sizing and let the auto table layout starve columns until words broke mid-word. Reset to `overflow-wrap: break-word` + `word-break: normal`, replaced the blanket `min-width: 6em` with a `max-width: 48ch` per-cell demand cap, top-aligned cells, and left-aligned headers while keeping explicit `:---:` / `---:` alignment. Phase B (wide tables breaking out of the editor measure) and Phase C (JS column-width computation) remain open.
 - PR #111 review fixes: [`SPECs/Agent/worksheet-pr111-review-fixes.md`](SPECs/Agent/worksheet-pr111-review-fixes.md) — guard creation and external launches against workspace switches, closes, and replaced roots; preserve cross-window global settings writes; and route the sidebar background menu through the full surface and rootless shell.
 - Folder-row Open in Terminal: [`SPECs/sidebar-empty-area-context-menu-spec.md`](SPECs/sidebar-empty-area-context-menu-spec.md) — add an Open in Terminal action to folder row context menus, launching the selected in-workspace directory with the configured terminal.
