@@ -62,10 +62,10 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+\ or Cmd+[ — toggle sidebar. The editor's indent-less moved off
-      // Mod-[ to Mod-Shift-[ in `editorDefaultKeymap` so this is the only
-      // thing the key does.
-      if (mod && (e.key === "\\" || e.key === "[")) {
+      // Cmd+\, Cmd+[ or Cmd+] — toggle sidebar. The editor's indent pair
+      // moved off Mod-[ / Mod-] to the shifted keys in `editorDefaultKeymap`
+      // so these are the only thing the brackets do.
+      if (mod && (e.key === "\\" || e.key === "[" || e.key === "]")) {
         e.preventDefault();
         if (isCompactFileMode) return;
         toggleSidebar();

@@ -15,6 +15,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+W           | Close current tab             |
 | Cmd+\\          | Toggle sidebar                |
 | Cmd+[           | Toggle sidebar                |
+| Cmd+]           | Toggle sidebar                |
 | Ctrl+Tab        | Next tab                      |
 | Ctrl+Shift+Tab  | Previous tab                  |
 | Cmd+1 ... Cmd+9 | Jump to Nth tab               |
@@ -22,7 +23,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Alt+ArrowRight  | Navigate forward              |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
-create hidden UI state: Cmd+\\, Cmd+[, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
+create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N, and history navigation still work.
 
 ## Menu Accelerators
