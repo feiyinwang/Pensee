@@ -647,7 +647,7 @@ function createEditorExtensions(
     Prec.highest(
       syntaxHighlighting(
         HighlightStyle.define([
-          { tag: tags.strong, fontWeight: "600" },
+          { tag: tags.strong, fontWeight: "600", color: "var(--editor-text-strong)" },
           { tag: tags.heading, fontWeight: "600" },
           { tag: tags.heading1, fontWeight: "600" },
           { tag: tags.heading2, fontWeight: "600" },

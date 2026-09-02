@@ -10,6 +10,10 @@
   --pm-code-btn-hover-background-color: var(--item-active-bg);
   --pm-blockquote-vertical-line-background-color: var(--blockquote-border);
   --pm-cursor-color: var(--text-primary);
+  /* Body prose sits a step under the UI's --text-secondary (80%) so bold
+     runs, drawn at --text-primary, read as brighter and not only heavier. */
+  --editor-text: color-mix(in srgb, var(--fg-base) 72%, transparent);
+  --editor-text-strong: var(--text-primary);
 
   --pm-syntax-link: var(--link-color);
   --pm-syntax-keyword: oklch(70.05% 0.217 296.83);
@@ -49,7 +53,7 @@
 .cm-editor {
   height: auto;
   outline: none;
-  color: var(--text-secondary);
+  color: var(--editor-text);
   background: transparent;
 }
 
@@ -131,7 +135,7 @@
   font-size: var(--writer-editor-font-size, 16px);
   line-height: var(--writer-editor-line-height, 1.8);
   letter-spacing: var(--writer-editor-letter-spacing, -0.03em);
-  color: var(--text-secondary);
+  color: var(--editor-text);
 }
 
 /* Override CodeMirror's base-theme `.cm-line { padding: 0 2px 0 6px }`
