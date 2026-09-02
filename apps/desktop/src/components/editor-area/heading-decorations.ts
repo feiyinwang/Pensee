@@ -14,6 +14,7 @@ import {
   type SelectionRange,
 } from "@codemirror/state";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
+import { HEADING_FONT_SIZES } from "@/lib/prosemark-core/main";
 
 type SyntaxNode = ReturnType<typeof syntaxTree>["topNode"];
 
@@ -35,6 +36,33 @@ for (let level = 1; level <= 6; level++) {
     attributes: { class: `cm-markdown-heading cm-heading-line cm-heading-line-${level}` },
   });
 }
+
+/**
+ * Hold a heading line open at its heading height even when it has no text.
+ *
+ * The hanging hash is `position: absolute` (see `prosemark-theme.css`), so on
+ * an empty heading — `#` alone, which is what exists the instant the hash is
+ * typed on a blank line — it is the line's only content and contributes no
+ * height. The line collapsed to its 1rem padding, and the 46px h1 glyph hung
+ * off its bottom edge straight over the line below: the `#` looked like it
+ * belonged to the next line's content, and only snapped back once there was a
+ * title to give the line height.
+ *
+ * A zero-width space in an `::after` is an in-flow inline box with the line's
+ * font metrics, which is exactly the thing an empty line lacks. It is sized
+ * from `HEADING_FONT_SIZES`, the same table the highlight style sizes the
+ * heading text with, so the empty and the filled line measure the same.
+ * Pseudo-content is invisible to CodeMirror's DOM observer and position
+ * mapping — there is no text node for `posAtDOM` or `coordsAtPos` to find.
+ */
+const emptyHeadingHeight = EditorView.theme({
+  ".cm-heading-line::after": { content: '"\u200b"' },
+  ...Object.fromEntries(
+    HEADING_FONT_SIZES.flatMap((fontSize, i) =>
+      fontSize ? [[`.cm-heading-line-${i + 1}::after`, { fontSize }]] : [],
+    ),
+  ),
+});
 
 function getMarkdownHeadingLevel(name: string): number | null {
   const atx = ATX_HEADING_RE.exec(name);
@@ -336,6 +364,7 @@ export function clampSelectionToHeadings(view: EditorView): void {
 
 export const headingDecorations: Extension = [
   headingPlugin,
+  emptyHeadingHeight,
   marginClickHandler,
   headingSelectionGuard,
   escapeHashLeft,

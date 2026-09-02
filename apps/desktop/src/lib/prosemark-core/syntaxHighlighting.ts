@@ -24,7 +24,20 @@ export const additionalMarkdownSyntaxTags: MarkdownConfig = {
   ],
 };
 
-const headingTagStyles = (fontSizes: (string | null)[]): TagStyle[] =>
+/** Font size per heading level, h1 first; `null` keeps the body size. The
+ *  one place these numbers live: the highlight style reads them for the text,
+ *  and `heading-decorations.ts` reads them to hold an EMPTY heading line open
+ *  at the same height, so the two can never disagree. */
+export const HEADING_FONT_SIZES: readonly (string | null)[] = [
+  "1.6em",
+  "1.4em",
+  "1.2em",
+  null,
+  null,
+  null,
+];
+
+const headingTagStyles = (fontSizes: readonly (string | null)[]): TagStyle[] =>
   fontSizes.map((fontSize, i) => ({
     tag: tags[`heading${(i + 1).toString()}` as keyof typeof tags] as Tag,
     fontSize,
@@ -33,7 +46,7 @@ const headingTagStyles = (fontSizes: (string | null)[]): TagStyle[] =>
 
 export const baseSyntaxHighlights = syntaxHighlighting(
   HighlightStyle.define([
-    ...headingTagStyles(["1.6em", "1.4em", "1.2em", null, null, null]),
+    ...headingTagStyles(HEADING_FONT_SIZES),
     {
       tag: markdownTags.headerMark,
       color: "var(--pm-header-mark-color)",
