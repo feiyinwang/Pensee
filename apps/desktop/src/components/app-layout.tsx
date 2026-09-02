@@ -13,6 +13,11 @@ import { resolveAppView } from "@/lib/app-view";
 // settle runs on the spring rather than the ease-out used for click-driven
 // motion. The collapse toggle shares the curve so the edge always moves the
 // same way. Tokens live in App.css (see docs/motion.md).
+const TRAFFIC_LIGHTS_CLEARANCE = 92;
+const SIDEBAR_EDGE_INSET = 12;
+/** Matches the button's `w-7`. */
+const TOGGLE_WIDTH = 28;
+
 function sidebarSettleTransition(property: "width" | "left") {
   return `${property} var(--motion-settle) var(--ease-spring)`;
 }
@@ -42,8 +47,16 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
     clampSidebarWidth(sidebarWidth, maxSidebarWidth),
   );
   const draftSidebarWidthRef = useRef(draftSidebarWidth);
-  // Collapsed: clear the traffic lights. Open: hang off the sidebar's edge.
-  const tabChromeLeft = isSidebarCollapsed ? 92 : draftSidebarWidth + 12;
+  // The toggle lives inside the sidebar's header, flush against its right
+  // edge, so it sits on the edge it controls and rides along on drag. With
+  // the sidebar collapsed there is no header, so it drops in beside the
+  // traffic lights and the tab chrome starts after it.
+  const toggleLeft = isSidebarCollapsed
+    ? TRAFFIC_LIGHTS_CLEARANCE
+    : draftSidebarWidth - SIDEBAR_EDGE_INSET - TOGGLE_WIDTH;
+  const tabChromeLeft = isSidebarCollapsed
+    ? TRAFFIC_LIGHTS_CLEARANCE + TOGGLE_WIDTH + 4
+    : draftSidebarWidth + SIDEBAR_EDGE_INSET;
 
   const setClampedSidebarWidth = useCallback(
     (nextWidth: number) => {
@@ -133,33 +146,32 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
         }}
       />
       <div
-        className="pointer-events-none absolute top-0 z-40"
+        className="pointer-events-none absolute top-0 z-50 flex items-center"
         style={{
-          left: tabChromeLeft,
-          right: 12,
+          left: toggleLeft,
+          height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
+          paddingBlock: "var(--chrome-control-padding)",
           transition: isSidebarDragging ? "none" : sidebarSettleTransition("left"),
         }}
       >
-        <div className="pointer-events-auto flex min-w-0 items-center gap-0.5">
-          {/* The toggle sits at the sidebar's edge, right before the history
-              arrows, so it moves with the edge it controls. */}
-          <div
-            data-tauri-drag-region
-            className="flex shrink-0 items-center"
-            style={{
-              height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
-              paddingBlock: "var(--chrome-control-padding)",
-            }}
-          >
-            <SidebarToggleButton />
-          </div>
-          {!showWelcome && (
-            <div className="min-w-0 flex-1">
-              <EditorTabs />
-            </div>
-          )}
+        <div className="pointer-events-auto">
+          <SidebarToggleButton />
         </div>
       </div>
+      {!showWelcome && (
+        <div
+          className="pointer-events-none absolute top-0 z-40"
+          style={{
+            left: tabChromeLeft,
+            right: 12,
+            transition: isSidebarDragging ? "none" : sidebarSettleTransition("left"),
+          }}
+        >
+          <div className="pointer-events-auto">
+            <EditorTabs />
+          </div>
+        </div>
+      )}
       <div className="flex h-full min-h-0 flex-col">
         <div className="flex min-h-0 flex-1">
           <div
