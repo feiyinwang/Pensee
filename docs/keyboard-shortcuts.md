@@ -53,7 +53,7 @@ These shortcuts are handled by the `markdownFormatting` CodeMirror extension and
 
 ## Editor (inherited from CodeMirror)
 
-Standard editing shortcuts provided by CodeMirror's basic setup. Cmd+[ (indent less) is removed from every editor keymap (`editorDefaultKeymap` in `basicSetup.ts`) so it can toggle the sidebar app-wide; Shift+Tab still dedents.
+Standard editing shortcuts provided by CodeMirror's basic setup. Indent is rebound from CodeMirror's Cmd+[ / Cmd+] to Cmd+Shift+[ / Cmd+Shift+] in `editorDefaultKeymap` (`basicSetup.ts`), which every editor uses, so Cmd+[ can toggle the sidebar app-wide.
 
 | Shortcut             | Action                         |
 | -------------------- | ------------------------------ |
@@ -71,7 +71,8 @@ Standard editing shortcuts provided by CodeMirror's basic setup. Cmd+[ (indent l
 | Cmd+Shift+Enter      | Insert line above              |
 | Tab                  | Indent / accept completion     |
 | Shift+Tab            | Dedent                         |
-| Cmd+]                | Indent more                    |
+| Cmd+Shift+]          | Indent more                    |
+| Cmd+Shift+[          | Indent less                    |
 | Cmd+F                | Find                           |
 | Cmd+H                | Find and replace               |
 | Cmd+G                | Find next                      |

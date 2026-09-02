@@ -62,9 +62,9 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+\ or Cmd+[ — toggle sidebar. The editor's own Mod-[ (indent
-      // less) is dropped from `editorDefaultKeymap` so this is the only thing
-      // the key does; Shift+Tab still dedents.
+      // Cmd+\ or Cmd+[ — toggle sidebar. The editor's indent-less moved off
+      // Mod-[ to Mod-Shift-[ in `editorDefaultKeymap` so this is the only
+      // thing the key does.
       if (mod && (e.key === "\\" || e.key === "[")) {
         e.preventDefault();
         if (isCompactFileMode) return;
