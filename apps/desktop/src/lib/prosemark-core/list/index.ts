@@ -93,17 +93,70 @@ const listItemDepth = (node: ParentChain): number => {
 // numbered item under a numbered item sits in the same column a nested
 // bullet would. Ordered markers stay as source text (the digits matter),
 // but the marker span has a minimum width so one- and two-digit numbers
-// share the same visual column while longer markers can still grow.
-const orderedLineDecoration = (depth: number) =>
+// share the same visual column; wider labels (`100.`, `1.2.3.`) widen both
+// the marker slot and the line's hanging indent together so wrapped text
+// still lines up under the body.
+const orderedLineDecoration = (depth: number, markerCh: number) =>
   Decoration.line({
     attributes: {
-      style: `padding-inline-start: ${((depth + 1) * LIST_UNIT_CH).toString()}ch; text-indent: -${(depth * LIST_UNIT_CH + 3.4).toString()}ch;`,
+      style: `padding-inline-start: ${(depth * LIST_UNIT_CH + markerCh).toString()}ch; text-indent: -${(depth * LIST_UNIT_CH + markerCh + 0.4).toString()}ch;`,
     },
   });
-const orderedMarkerDecoration = Decoration.mark({
-  class: "cm-list-ordered-marker",
-  attributes: { style: `min-width: ${LIST_UNIT_CH.toString()}ch;` },
-});
+
+// A nested numbered item draws its ordered ancestors' numbers in front of
+// its own (`2.` above `1.` reads `2.1.`), the way a multilevel list in a
+// word processor does. The ancestor chain is generated CSS content on the
+// marker mark (`::before` reading `--cm-list-ordered-prefix`), so the
+// source stays plain CommonMark and the caret still lands on the digits.
+const orderedMarkerDecoration = (chain: string, markerCh: number) => {
+  const style = [`min-width: ${markerCh.toString()}ch`];
+  const classes = ["cm-list-ordered-marker"];
+  if (chain !== "") {
+    classes.push("cm-list-ordered-marker-nested");
+    style.push(`--cm-list-ordered-prefix: "${chain}"`);
+  }
+  return Decoration.mark({
+    class: classes.join(" "),
+    attributes: { style: `${style.join("; ")};` },
+  });
+};
+
+// Digits of every ordered `ListItem` ancestor, outermost first, each
+// followed by `.`: `["2"]` → `"2."`, `["1", "2"]` → `"1.2."`. The chain stops
+// at the first bullet ancestor, so a numbered list under a bullet counts
+// from its own `1.` rather than inheriting numbers from further up.
+interface MarkerTreeNode {
+  name: string;
+  from: number;
+  to: number;
+  parent: MarkerTreeNode | null;
+  firstChild: MarkerTreeNode | null;
+}
+const orderedAncestorChain = (mark: MarkerTreeNode, doc: Text): string => {
+  const digits: string[] = [];
+  for (let p = mark.parent?.parent ?? null; p; p = p.parent) {
+    if (p.name !== "ListItem") continue;
+    const parentMark = p.firstChild;
+    if (!parentMark || parentMark.name !== "ListMark") break;
+    const text = doc.sliceString(parentMark.from, parentMark.to);
+    if (!isOrderedMarkText(text)) break;
+    digits.push(text.slice(0, -1));
+  }
+  return digits.length === 0 ? "" : `${digits.reverse().join(".")}.`;
+};
+
+// Conservative width estimate for a rendered marker label in `ch`: a digit
+// is one `ch` by definition, `.` / `)` are at most half a digit wide in the
+// editor faces, and a plain marker carries the list-mark highlight's 1ch
+// inset (nested labels drop it, see `.cm-list-ordered-marker-nested`).
+// Over-estimating is safe (the slot pads out and the body column still
+// matches the hanging indent); under-estimating would let the marker push
+// the first line's body past the wrapped continuation.
+const markerLabelCh = (chain: string, markText: string): number => {
+  let ch = chain === "" ? 1 : 0;
+  for (const c of chain + markText) ch += c >= "0" && c <= "9" ? 1 : 0.5;
+  return Math.max(LIST_UNIT_CH, ch);
+};
 
 // A list marker is followed by a space OR tab per CommonMark; accept both
 // in the trailing-char gates so tab-separated markers render.
@@ -172,14 +225,16 @@ function buildListDecorations(state: EditorState): ListDecorations {
         const line = state.doc.lineAt(node.from);
         const depth = listItemDepth(node.node);
         const prefixEnd = node.to + 1;
+        const chain = orderedAncestorChain(node.node, state.doc);
+        const markerCh = markerLabelCh(chain, markText);
         if (depth >= 1 && node.from > line.from) {
           allRanges.push(listIndentVisualDecoration(depth).range(line.from, node.from));
         }
-        allRanges.push(orderedMarkerDecoration.range(node.from, node.to));
+        allRanges.push(orderedMarkerDecoration(chain, markerCh).range(node.from, node.to));
         if (prefixEnd < line.to) {
           allRanges.push(listBodyDecoration.range(prefixEnd, line.to));
         }
-        allRanges.push(orderedLineDecoration(depth).range(line.from));
+        allRanges.push(orderedLineDecoration(depth, markerCh).range(line.from));
         return;
       }
 
@@ -931,6 +986,8 @@ export const __test = {
   parseListItemLine,
   findPrevListItem,
   renumberOrderedLevels,
+  orderedAncestorChain,
+  markerLabelCh,
   currentLineIndentLen,
   listEnter,
   listBackspace,

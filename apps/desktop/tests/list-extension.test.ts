@@ -64,6 +64,35 @@ function prefixMarks(
   return marks;
 }
 
+function orderedMarks(
+  state: EditorState,
+): Array<{ text: string; prefix: string | null; minWidth: string | null }> {
+  const decos = state.field(__test.listDecorationsField);
+  const marks: Array<{ text: string; prefix: string | null; minWidth: string | null }> = [];
+  decos.all.between(0, state.doc.length, (from, to, deco) => {
+    const spec = deco.spec as { class?: unknown; attributes?: { style?: unknown } };
+    if (typeof spec.class !== "string" || !spec.class.includes("cm-list-ordered-marker")) return;
+    const style = typeof spec.attributes?.style === "string" ? spec.attributes.style : "";
+    marks.push({
+      text: state.doc.sliceString(from, to),
+      prefix: /--cm-list-ordered-prefix: "([^"]*)"/.exec(style)?.[1] ?? null,
+      minWidth: /min-width: ([^;]+);/.exec(style)?.[1] ?? null,
+    });
+  });
+  return marks;
+}
+
+function lineStyles(state: EditorState): string[] {
+  const decos = state.field(__test.listDecorationsField);
+  const styles: string[] = [];
+  decos.all.between(0, state.doc.length, (from, to, deco) => {
+    const spec = deco.spec as { attributes?: { style?: unknown } };
+    if (from === to)
+      styles.push(typeof spec.attributes?.style === "string" ? spec.attributes.style : "");
+  });
+  return styles;
+}
+
 // ---------------------------------------------------------------------------
 // isOnListLine
 // ---------------------------------------------------------------------------
@@ -572,6 +601,35 @@ describe("listDecorationsField", () => {
       "padding-inline-start: 6ch; text-indent: -6.4ch;",
     ]);
     expect(indentVisuals).toEqual([{ from: 5, to: 8 }]);
+  });
+
+  test("nested ordered markers draw their ordered ancestors' numbers in front", () => {
+    const s = makeState("1. a\n2. b\n   1. c\n   2. d\n      1. e");
+    const marks = orderedMarks(s);
+    expect(marks.map((m) => m.text)).toEqual(["1.", "2.", "1.", "2.", "1."]);
+    expect(marks.map((m) => m.prefix)).toEqual([null, null, "2.", "2.", "2.2."]);
+  });
+
+  test("the ancestor chain stops at a bullet parent", () => {
+    const s = makeState("1. a\n   - b\n     1. c");
+    expect(orderedMarks(s).map((m) => m.prefix)).toEqual([null, null]);
+  });
+
+  test("wide labels widen the marker slot and hanging indent together", () => {
+    const s = makeState("100. a\n     1. b");
+    const marks = orderedMarks(s);
+    expect(marks.map((m) => m.minWidth)).toEqual(["4.5ch", "5ch"]);
+    expect(lineStyles(s)).toEqual([
+      "padding-inline-start: 4.5ch; text-indent: -4.9ch;",
+      "padding-inline-start: 8ch; text-indent: -8.4ch;",
+    ]);
+  });
+
+  test("markerLabelCh: digits one ch, punctuation half, plain markers inset 1ch, floored at the unit", () => {
+    expect(__test.markerLabelCh("", "1.")).toBe(3);
+    expect(__test.markerLabelCh("", "10.")).toBe(3.5);
+    expect(__test.markerLabelCh("2.", "1.")).toBe(3);
+    expect(__test.markerLabelCh("1.2.", "3.")).toBe(4.5);
   });
 
   test("does not render a bullet for a bare `-` (no trailing space)", () => {

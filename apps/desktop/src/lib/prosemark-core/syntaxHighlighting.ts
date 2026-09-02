@@ -169,6 +169,18 @@ const baseThemeSpec = {
     textAlign: "center",
     textIndent: "0",
   },
+  // Multilevel numbering: the ordered ancestors' digits (`2.`) drawn in
+  // front of the item's own source marker (`1.`) so the line reads `2.1.`.
+  // The chain is set inline by `listExtension` per marker.
+  ".cm-list-ordered-marker-nested::before": {
+    content: "var(--cm-list-ordered-prefix)",
+    color: "var(--pm-muted-color)",
+  },
+  // The list-mark highlight insets every marker by 1ch; with a chain drawn
+  // in front that inset would split `2.` from `1.`, so nested labels drop it.
+  ".cm-list-ordered-marker-nested > span": {
+    paddingLeft: "0",
+  },
   ".cm-blockquote-line": {
     position: "relative",
     "&:before": {
