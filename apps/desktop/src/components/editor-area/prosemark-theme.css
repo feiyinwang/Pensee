@@ -204,8 +204,8 @@
   border: 1.5px solid var(--text-muted);
   border-radius: 5px;
   transition:
-    background-color 0.15s,
-    border-color 0.15s;
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
 }
 
 .cm-editor .cm-list-prefix-task-checked::before {

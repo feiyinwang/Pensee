@@ -23,8 +23,9 @@ import { openStandaloneFile } from "@/hooks/use-open-drop";
 import { getFileName } from "@/lib/paths";
 
 const PICKER_POPUP_ID = "compact-file-picker-popup";
-const PICKER_ANIMATION_MS = 260;
-const PICKER_TRIGGER_BG_CLOSE_DELAY_MS = 90;
+// Matches --motion-base in App.css; the CSS-driven picker fades share it.
+const PICKER_ANIMATION_MS = 160;
+const PICKER_TRIGGER_BG_CLOSE_DELAY_MS = 20;
 const PICKER_TRIGGER_SURFACE_CLOSE_HOLD_MS = 300;
 const PICKER_GAP_PX = 8;
 const PICKER_MAX_LIST_HEIGHT = 420;
@@ -418,7 +419,7 @@ export function CompactFileLayout() {
             </span>
             <span
               aria-hidden="true"
-              className={`relative flex h-3 w-3 shrink-0 items-center justify-center text-[var(--text-icon-muted)] transition-transform duration-150 ease-out ${
+              className={`relative flex h-3 w-3 shrink-0 items-center justify-center text-[var(--text-icon-muted)] transition-transform ${
                 isNavigatorOpen ? "-rotate-90" : "rotate-90"
               }`}
             >
@@ -528,8 +529,10 @@ function interpolateNumber(from: number, to: number, progress: number) {
   return from + (to - from) * progress;
 }
 
+// Matches --ease-out in App.css so the JS-driven frame morph and the
+// CSS-driven content fade land together.
 function compactPickerEase(progress: number) {
-  return cubicBezier(progress, 0.32, 0, 0.2, 1);
+  return cubicBezier(progress, 0.16, 1, 0.3, 1);
 }
 
 function cubicBezier(progress: number, x1: number, y1: number, x2: number, y2: number) {

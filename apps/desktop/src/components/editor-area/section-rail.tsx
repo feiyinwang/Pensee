@@ -21,7 +21,8 @@ const RAIL_INNER_WIDTH = ACTIVE_WIDTH + 2;
 const RAIL_ZONE_WIDTH = RAIL_EDGE_INSET + RAIL_INNER_WIDTH;
 const POPOVER_WIDTH = 260;
 const POPOVER_EDGE_INSET = RAIL_EDGE_INSET;
-const POPOVER_TRANSITION_MS = 180;
+// Matches --motion-base in section-rail.css / App.css.
+const POPOVER_TRANSITION_MS = 160;
 
 interface SectionRailProps {
   filePath: string;
@@ -138,7 +139,8 @@ export function SectionRail({ filePath, view, scrollContainerRef }: SectionRailP
                 background: "currentColor",
                 opacity: isActive ? 1 : 0.35,
                 transform: isActive ? "scaleX(1)" : `scaleX(${INACTIVE_TICK_SCALE})`,
-                transition: "transform 300ms ease-in, opacity 300ms ease-in",
+                transition:
+                  "transform var(--motion-base) var(--ease-out), opacity var(--motion-base) var(--ease-out)",
                 pointerEvents: "auto",
               };
               return (

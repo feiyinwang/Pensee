@@ -43,7 +43,7 @@ export function SidebarSection({
         <span>{title}</span>
         <span
           aria-hidden="true"
-          className={`flex h-3 w-3 items-center justify-center transition-transform duration-150 ease-out ${
+          className={`flex h-3 w-3 items-center justify-center transition-transform ${
             isCollapsed ? "" : "rotate-90"
           }`}
         >

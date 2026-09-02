@@ -9,6 +9,14 @@ import { useSidebar } from "@/hooks/use-sidebar";
 import { useWorkspaceChromeMode, useWorkspaceRoot } from "@/hooks/use-workspace";
 import { resolveAppView } from "@/lib/app-view";
 
+// The sidebar edge is gesture-driven (drag to resize), so its post-release
+// settle runs on the spring rather than the ease-out used for click-driven
+// motion. The collapse toggle shares the curve so the edge always moves the
+// same way. Tokens live in App.css (see docs/motion.md).
+function sidebarSettleTransition(property: "width" | "left") {
+  return `${property} var(--motion-settle) var(--ease-spring)`;
+}
+
 function clampSidebarWidth(width: number, maxSidebarWidth: number) {
   return Math.max(220, Math.min(maxSidebarWidth, Math.round(width)));
 }
@@ -138,7 +146,7 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
           style={{
             left: tabChromeLeft,
             right: 12,
-            transition: isSidebarDragging ? "none" : "left 140ms ease-out",
+            transition: isSidebarDragging ? "none" : sidebarSettleTransition("left"),
           }}
         >
           <div className="pointer-events-auto">
@@ -152,7 +160,7 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
             className="shrink-0 overflow-hidden"
             style={{
               width: isSidebarCollapsed ? 0 : draftSidebarWidth,
-              transition: isSidebarDragging ? "none" : "width 140ms ease-out",
+              transition: isSidebarDragging ? "none" : sidebarSettleTransition("width"),
             }}
           >
             <div style={{ width: draftSidebarWidth }} className="h-full">

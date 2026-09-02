@@ -19,13 +19,13 @@ function BooleanControl({ value, onChange }: { value: boolean; onChange: (v: boo
       role="switch"
       aria-checked={value}
       aria-label="Toggle setting"
-      className="relative h-5 w-9 rounded-full transition-colors duration-200"
+      className="relative h-5 w-9 rounded-full transition-colors"
       style={{
         backgroundColor: value ? "var(--link-color)" : "var(--border-color)",
       }}
     >
       <span
-        className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform duration-200 ease-out"
+        className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform"
         style={{ transform: value ? "translateX(16px)" : "translateX(0)" }}
       />
     </button>

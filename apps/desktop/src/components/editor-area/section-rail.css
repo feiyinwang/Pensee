@@ -3,8 +3,8 @@
   transform: translateY(-50%) translateX(0) scale(1);
   opacity: 1;
   transition:
-    transform 180ms ease,
-    opacity 180ms ease;
+    transform var(--motion-base) var(--ease-out),
+    opacity var(--motion-base) var(--ease-out);
   will-change: transform, opacity;
 }
 
@@ -24,8 +24,8 @@
   transform: translateY(-50%) translateX(-4px) scale(1);
   opacity: 1;
   transition:
-    transform 180ms ease,
-    opacity 180ms ease;
+    transform var(--motion-base) var(--ease-out),
+    opacity var(--motion-base) var(--ease-out);
   will-change: transform, opacity;
 }
 
@@ -36,7 +36,7 @@
 
 .section-rail-popover-row {
   color: var(--text-muted);
-  transition: color 300ms ease;
+  transition: color var(--motion-fast) var(--ease-out);
 }
 
 .section-rail-popover-row:hover {

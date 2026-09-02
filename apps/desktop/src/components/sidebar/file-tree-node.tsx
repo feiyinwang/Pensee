@@ -153,7 +153,7 @@ export const FileTreeNode = memo(function FileTreeNode({
                 size={16}
                 color="currentColor"
                 strokeWidth={2}
-                className={`transition-transform duration-200 ease-out ${isExpanded ? "rotate-90" : ""}`}
+                className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
               />
             </span>
           </>

@@ -6,6 +6,7 @@
 
 ## Done
 
+- Motion timing: [`SPECs/motion-timing-spec.md`](SPECs/motion-timing-spec.md) — one token set for all animations (ease-out under 180ms, spring for the sidebar resize settle, global 0.97 button press scale); Tailwind `transition-*` defaults now resolve to the tokens. Rules in `docs/motion.md`.
 - Table column sizing (Phase A, CSS-only): [`SPECs/table-column-sizing-spec.md`](SPECs/table-column-sizing-spec.md) — folded table cells inherited `overflow-wrap: anywhere` from `EditorView.lineWrapping`, which feeds min-content sizing and let the auto table layout starve columns until words broke mid-word. Reset to `overflow-wrap: break-word` + `word-break: normal`, replaced the blanket `min-width: 6em` with a `max-width: 48ch` per-cell demand cap, top-aligned cells, and left-aligned headers while keeping explicit `:---:` / `---:` alignment. Phase B (wide tables breaking out of the editor measure) and Phase C (JS column-width computation) remain open.
 - PR #111 review fixes: [`SPECs/Agent/worksheet-pr111-review-fixes.md`](SPECs/Agent/worksheet-pr111-review-fixes.md) — guard creation and external launches against workspace switches, closes, and replaced roots; preserve cross-window global settings writes; and route the sidebar background menu through the full surface and rootless shell.
 - Folder-row Open in Terminal: [`SPECs/sidebar-empty-area-context-menu-spec.md`](SPECs/sidebar-empty-area-context-menu-spec.md) — add an Open in Terminal action to folder row context menus, launching the selected in-workspace directory with the configured terminal.

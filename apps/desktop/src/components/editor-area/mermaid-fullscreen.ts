@@ -50,7 +50,8 @@ export function openMermaidFullscreen(source: string, ariaLabel: string): void {
       overlay.remove();
     };
     host.addEventListener("transitionend", finalize, { once: true });
-    setTimeout(finalize, 240);
+    // Slightly longer than --motion-base so a normal exit fires transitionend first.
+    setTimeout(finalize, 200);
   };
 
   // Capture-phase listener so Esc dismisses the overlay before any inner

@@ -41,6 +41,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - [docs/editor.md](./docs/editor.md) — CodeMirror layout-model APIs, scroll-handler ownership, block-widget patterns (decoration shape, range-select to enter edit mode, posAtDOM boundary handling, button focus race, scrollSnapshot for heightmap shifts)
 - [docs/vite-plus.md](./docs/vite-plus.md) — `vp` CLI usage and common pitfalls
 - [docs/keyboard-shortcuts.md](./docs/keyboard-shortcuts.md) — canonical shortcut map
+- [docs/motion.md](./docs/motion.md) — animation tokens and rules: ease-out under 180ms, springs for gesture settles, global button press scale
 
 **Infra**
 
