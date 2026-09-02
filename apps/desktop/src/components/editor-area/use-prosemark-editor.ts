@@ -59,6 +59,7 @@ import { imageSrcResolver } from "./image-src-resolver";
 import { wikiLinkExtension } from "./wiki-link-extension";
 import {
   markdownFormatting,
+  emptyHeadingKeymap,
   formattingCommands,
   clearInlineFormatting,
   toggleFencedCodeBlock,
@@ -671,6 +672,7 @@ function createEditorExtensions(
     imageSrcResolver(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     markdownFormatting,
+    emptyHeadingKeymap,
 
     EditorView.updateListener.of((update) => {
       // Skip updates from document swaps/reloads, which carry a "writer" userEvent.

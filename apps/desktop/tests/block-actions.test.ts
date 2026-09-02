@@ -18,7 +18,11 @@ import {
   targetMarkdown,
   type ActionTarget,
 } from "../src/components/editor-area/block-actions";
-import { blockTypeOf, setBlockType } from "../src/components/editor-area/markdown-formatting";
+import {
+  blockTypeOf,
+  clearEmptyHeadingOnEnter,
+  setBlockType,
+} from "../src/components/editor-area/markdown-formatting";
 
 /** Stands in for `EditorView`: the actions only ever read `state` and call
  *  `dispatch`, which is the whole reason they are typed against a narrow
@@ -367,5 +371,51 @@ describe("columns", () => {
   test("no type tiles on a whole column", () => {
     const ed = new Fake(ROW);
     expect(acceptsBlockType(ed, { kind: "col", rowFrom: rowStart(ed), index: 0 })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Empty heading
+// ---------------------------------------------------------------------------
+
+describe("clearEmptyHeadingOnEnter", () => {
+  /** Runs the command against a doc with the caret at `head`. */
+  function press(doc: string, head: number) {
+    const ed = new Fake(doc);
+    ed.state = ed.state.update({ selection: { anchor: head } }).state;
+    const handled = clearEmptyHeadingOnEnter({
+      state: ed.state,
+      dispatch: (spec) => ed.dispatch(spec),
+    });
+    return { handled, doc: ed.doc, caret: ed.caret };
+  }
+
+  test("clears the `# ` new-file template instead of stranding the hashes", () => {
+    // The exact shape every new note starts in, and the very first Enter it
+    // sees. Leaving `# ` behind is what put the hash on the line above the
+    // words the user then typed.
+    expect(press("# ", 2)).toEqual({ handled: true, doc: "", caret: 0 });
+  });
+
+  test("clears a bare hash and deeper empty headings", () => {
+    expect(press("#", 1).doc).toBe("");
+    expect(press("###   ", 6).doc).toBe("");
+    expect(press("######", 6).doc).toBe("");
+  });
+
+  test("only the empty heading line goes; the rest of the doc stays", () => {
+    expect(press("# \nbody text", 2)).toEqual({ handled: true, doc: "\nbody text", caret: 0 });
+  });
+
+  test("leaves a heading that has text alone", () => {
+    expect(press("# title", 7).handled).toBe(false);
+    expect(press("# title", 7).doc).toBe("# title");
+  });
+
+  test("leaves non-headings alone", () => {
+    expect(press("", 0).handled).toBe(false);
+    expect(press("- ", 2).handled).toBe(false);
+    expect(press("#hashtag", 8).handled).toBe(false);
+    expect(press("####### seven", 13).handled).toBe(false);
   });
 });

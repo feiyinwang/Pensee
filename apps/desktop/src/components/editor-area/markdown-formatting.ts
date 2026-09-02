@@ -454,6 +454,51 @@ export const insertNow: StateCommand = ({ state, dispatch }) => {
 };
 
 // ---------------------------------------------------------------------------
+// Empty heading
+// ---------------------------------------------------------------------------
+
+/** Hashes and nothing else. `#`, `# `, `###   ` — a heading with no text. */
+const EMPTY_HEADING_RE = /^#{1,6}[ \t]*$/;
+
+/**
+ * Enter on a heading with no text clears the heading instead of leaving it
+ * stranded above whatever you write next.
+ *
+ * Every new note is born as the `# ` template (`create_file_impl`), so this is
+ * the very first Enter most notes ever see. Without it the hashes stay behind
+ * on their own line and the words land on the next one — which renders as the
+ * `#` clamped onto the following line's content, and reads as the editor
+ * having put the hash on the wrong line entirely.
+ *
+ * Deliberately the same rule `listEnter` already applies to an empty list
+ * item: wipe the line, keep the caret on it, let the next keystroke be plain
+ * text. An empty heading is never worth preserving.
+ */
+export const clearEmptyHeadingOnEnter: StateCommand = ({ state, dispatch }) => {
+  if (state.readOnly) return false;
+  // Multi-cursor or a real selection: Enter means something else entirely.
+  if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return false;
+  const line = state.doc.lineAt(state.selection.main.head);
+  if (!EMPTY_HEADING_RE.test(line.text)) return false;
+  dispatch(
+    state.update({
+      changes: { from: line.from, to: line.to },
+      selection: { anchor: line.from },
+      userEvent: "delete.empty-heading",
+    }),
+  );
+  return true;
+};
+
+/** `Prec.highest` to beat `@codemirror/lang-markdown`'s own `Prec.high` Enter
+ *  binding. It sits beside the list keymap at the same precedence, which is
+ *  safe because the two can never both match: one wants a list line, the other
+ *  a heading line, and each returns false otherwise. */
+export const emptyHeadingKeymap: Extension = Prec.highest(
+  keymap.of([{ key: "Enter", run: clearEmptyHeadingOnEnter }]),
+);
+
+// ---------------------------------------------------------------------------
 // Registry and keymap
 // ---------------------------------------------------------------------------
 
