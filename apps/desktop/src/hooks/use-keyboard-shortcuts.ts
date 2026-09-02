@@ -4,6 +4,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { toggleSidebar } from "@/hooks/use-sidebar";
 import { openTodaysNote } from "@/hooks/use-daily-note";
+import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 
 function isEditableTargetFocused(): boolean {
@@ -46,6 +47,27 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         void navigateForward();
         return;
+      }
+
+      // Cmd+= / Cmd++, Cmd+- and Cmd+0 — window zoom. The board canvas binds
+      // the same keys to its own viewport and only calls preventDefault, so
+      // yield to it when it already handled the event.
+      if (mod && !e.altKey && !e.defaultPrevented) {
+        if (e.key === "=" || e.key === "+") {
+          e.preventDefault();
+          zoomIn();
+          return;
+        }
+        if (e.key === "-" || e.key === "_") {
+          e.preventDefault();
+          zoomOut();
+          return;
+        }
+        if (e.key === "0" && !e.shiftKey) {
+          e.preventDefault();
+          resetZoom();
+          return;
+        }
       }
 
       // Cmd+P / Cmd+Shift+P — unified search (files + commands)

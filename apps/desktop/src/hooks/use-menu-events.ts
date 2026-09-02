@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { createSettingsTab, useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
+import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 
 // Native menu items that drive in-app navigation emit a Tauri event from the
 // Rust menu handler. Add the (event-name → handler) pair here to subscribe;
@@ -13,6 +14,9 @@ import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 // stable across renders.
 export const MENU_EVENT_HANDLERS: Record<string, () => void> = {
   "menu:open-preferences": openPreferences,
+  "menu:zoom-in": zoomIn,
+  "menu:zoom-out": zoomOut,
+  "menu:zoom-reset": resetZoom,
 };
 
 function openPreferences() {

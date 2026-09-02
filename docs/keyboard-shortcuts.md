@@ -22,11 +22,21 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+1 ... Cmd+9 | Jump to Nth tab               |
 | Alt+ArrowLeft   | Navigate back                 |
 | Alt+ArrowRight  | Navigate forward              |
+| Cmd+= / Cmd++   | Zoom in                       |
+| Cmd+-           | Zoom out                      |
+| Cmd+0           | Actual size (100%)            |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N, and history navigation still work.
 Cmd+Shift+N needs a workspace to file the note in, so it is inert there too.
+
+Zoom scales the whole window (WebKit page zoom, persisted in the global
+`appearance.zoom` setting) and steps along the browser ladder 50 · 67 · 75 · 80 ·
+90 · 100 · 110 · 125 · 150 · 175 · 200 · 250 · 300. The board canvas binds the
+same keys to its own viewport and wins while it is focused. The View menu carries
+the same three actions; its accelerators only fire when the page did not consume
+the key, so a press never zooms twice.
 
 ## Menu Accelerators
 
@@ -35,6 +45,9 @@ These shortcuts are bound to the native app menu (Tauri menu accelerators) rathe
 | Shortcut | Action                                                |
 | -------- | ----------------------------------------------------- |
 | Cmd+,    | Open Preferences (Settings tab) in the focused window |
+| Cmd+=    | View › Zoom In (shown as ⌘= since muda has no Plus)   |
+| Cmd+-    | View › Zoom Out                                       |
+| Cmd+0    | View › Actual Size                                    |
 
 ## Editor Formatting
 

@@ -103,6 +103,18 @@
       "default": true
     },
     {
+      "key": "appearance.zoom",
+      "label": "Zoom",
+      "description": "Scale of the whole window, in percent. Cmd+= zooms in, Cmd+- zooms out, Cmd+0 returns to 100.",
+      "category": "Appearance",
+      "type": "range",
+      "min": 50,
+      "max": 300,
+      "step": 5,
+      "scope": "global",
+      "default": 100
+    },
+    {
       "key": "appearance.editor-width",
       "label": "Editor Width",
       "description": "Editor content width mode",

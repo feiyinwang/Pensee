@@ -323,6 +323,26 @@ fn install_app_menu(
         .select_all()
         .build()?;
 
+    // Muda has no `Plus` key, so Zoom In shows as ⌘= rather than Safari's ⌘+.
+    // The frontend's keydown handler also binds these (plus the shifted
+    // variants) and consumes the key equivalent before it reaches the menu,
+    // so the accelerators here never fire twice; they exist so the View menu
+    // documents the shortcuts and stays clickable.
+    let zoom_in_item = MenuItemBuilder::with_id("view.zoom-in", "Zoom In")
+        .accelerator("CmdOrCtrl+=")
+        .build(app)?;
+    let zoom_out_item = MenuItemBuilder::with_id("view.zoom-out", "Zoom Out")
+        .accelerator("CmdOrCtrl+-")
+        .build(app)?;
+    let zoom_reset_item = MenuItemBuilder::with_id("view.zoom-reset", "Actual Size")
+        .accelerator("CmdOrCtrl+0")
+        .build(app)?;
+    let view_submenu = SubmenuBuilder::new(app, "View")
+        .item(&zoom_in_item)
+        .item(&zoom_out_item)
+        .item(&zoom_reset_item)
+        .build()?;
+
     let window_submenu = SubmenuBuilder::new(app, "Window")
         .minimize()
         .item(&PredefinedMenuItem::fullscreen(app, None)?)
@@ -332,6 +352,7 @@ fn install_app_menu(
     let menu = MenuBuilder::new(app)
         .item(&app_submenu)
         .item(&edit_submenu)
+        .item(&view_submenu)
         .item(&window_submenu)
         .build()?;
 
@@ -349,6 +370,9 @@ fn install_app_menu(
     app.on_menu_event(|app, event| match event.id().0.as_str() {
         "updater.check" => updater::start_check(app.clone(), true),
         "preferences.open" => emit_to_focused_window(app, "menu:open-preferences"),
+        "view.zoom-in" => emit_to_focused_window(app, "menu:zoom-in"),
+        "view.zoom-out" => emit_to_focused_window(app, "menu:zoom-out"),
+        "view.zoom-reset" => emit_to_focused_window(app, "menu:zoom-reset"),
         #[cfg(target_os = "macos")]
         "cli.toggle" => run_cli_toggle(app.clone()),
         _ => {}
