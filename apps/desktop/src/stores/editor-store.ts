@@ -272,7 +272,7 @@ async function ensureFileLoaded(path: string, set: EditorStateSetter, get: () =>
   const loadPromise = tauri
     .readFile(path)
     .then((raw) => {
-      const parsed = parseDocument(raw.content);
+      const parsed = parseDocument(raw.content, path);
       set((state) => {
         const file = state.openFiles.get(path);
         if (!file) return state;
@@ -364,7 +364,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // in the startup IPC) so the editor mounts loaded; `ensureFileLoaded`
     // then short-circuits on the non-loading entry.
     if (prefetched && prefetched.path === path) {
-      const parsed = parseDocument(prefetched.content);
+      const parsed = parseDocument(prefetched.content, path);
       set((state) => {
         const files = new Map(state.openFiles);
         files.set(
@@ -1007,7 +1007,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const seededActive =
       prefetchedActiveFile && activePath && prefetchedActiveFile.path === activePath
         ? (() => {
-            const parsed = parseDocument(prefetchedActiveFile.content);
+            const parsed = parseDocument(prefetchedActiveFile.content, activePath);
             return withDerived({
               ...createLoadingFile(activePath),
               path: activePath,
@@ -1092,7 +1092,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (!existing) return state;
       if (existing.content === content && existing.isDirty) return state;
 
-      const { title, titleSource } = inferTitle(content, existing.frontmatter);
+      const { title, titleSource } = inferTitle(content, existing.frontmatter, path);
       const files = new Map(state.openFiles);
       files.set(
         path,
@@ -1115,7 +1115,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const file = state.openFiles.get(path);
       if (!file || file.frontmatter === frontmatter) return state;
 
-      const { title, titleSource } = inferTitle(file.content, frontmatter);
+      const { title, titleSource } = inferTitle(file.content, frontmatter, path);
       const files = new Map(state.openFiles);
       files.set(
         path,
@@ -1162,7 +1162,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   reloadFromDisk: (path: string, rawContent: string) => {
     cancelSave(path);
-    const parsed = parseDocument(rawContent);
+    const parsed = parseDocument(rawContent, path);
     set((state) => {
       const file = state.openFiles.get(path);
       if (!file) return state;

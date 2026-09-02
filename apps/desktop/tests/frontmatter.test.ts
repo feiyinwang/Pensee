@@ -122,6 +122,30 @@ describe("parseDocument", () => {
   });
 });
 
+describe("parseDocument daily notes", () => {
+  test("keeps an empty title for a daily note with a leading heading", () => {
+    const result = parseDocument("# Standup notes\n\nSome text", "/vault/2026-09-02.md");
+    expect(result.title).toBe("");
+    expect(result.titleSource).toBe("none");
+  });
+
+  test("ignores a frontmatter title on a daily note", () => {
+    const result = parseDocument("---\ntitle: Renamed\n---\n# Body", "/vault/2026-09-02.md");
+    expect(result.title).toBe("");
+    expect(result.titleSource).toBe("none");
+  });
+
+  test("still infers the heading for a dated name that is not a daily note", () => {
+    const result = parseDocument("# Retro", "/vault/2026-09-02 retro.md");
+    expect(result.title).toBe("Retro");
+    expect(result.titleSource).toBe("h1");
+  });
+
+  test("still infers the heading when no path is given", () => {
+    expect(parseDocument("# Hello").title).toBe("Hello");
+  });
+});
+
 describe("serializeDocument", () => {
   test("writes the body verbatim when there is no frontmatter", () => {
     const result = serializeDocument(null, "# Project Plan\n\nBody text.");

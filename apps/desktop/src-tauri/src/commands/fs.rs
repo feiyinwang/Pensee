@@ -42,10 +42,35 @@ async fn blocking<T: Send + 'static>(
         .map_err(|e| AppError::Io(e.to_string()))?
 }
 
+/// Whether `path` is a daily note: a `.md` file named exactly `YYYY-MM-DD`.
+/// Mirrors `isDailyNoteName` in `lib/daily-note.ts`.
+fn is_daily_note_name(path: &Path) -> bool {
+    if !path
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+    {
+        return false;
+    }
+    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return false;
+    };
+    stem.len() == 10
+        && stem.bytes().enumerate().all(|(index, byte)| match index {
+            4 | 7 => byte == b'-',
+            _ => byte.is_ascii_digit(),
+        })
+}
+
 /// Extract a document title from a markdown file by reading its first few KB.
 /// Priority: YAML frontmatter `title:` field, then leading `# ` heading.
+/// A daily note has no extracted title: its date is its title, so a heading
+/// typed at the top of the day stays a section of the day.
 fn extract_title(path: &Path) -> Option<String> {
     use std::io::Read;
+
+    if is_daily_note_name(path) {
+        return None;
+    }
 
     let mut file = fs::File::open(path).ok()?;
     let mut buf = vec![0u8; 4096];
@@ -1221,6 +1246,21 @@ mod tests {
         let path = dir.path().join("doc.md");
         fs::write(&path, "").unwrap();
         assert_eq!(extract_title(&path), None);
+    }
+
+    #[test]
+    fn test_extract_title_none_for_daily_note_with_heading() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("2026-09-02.md");
+        fs::write(&path, "# Standup notes").unwrap();
+        assert!(extract_title(&path).is_none());
+
+        let dated_but_not_daily = dir.path().join("2026-09-02 retro.md");
+        fs::write(&dated_but_not_daily, "# Retro").unwrap();
+        assert_eq!(
+            extract_title(&dated_but_not_daily).as_deref(),
+            Some("Retro")
+        );
     }
 
     #[test]

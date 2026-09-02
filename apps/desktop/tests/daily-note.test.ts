@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vite-plus/test";
 
 import {
   formatDailyNoteDate,
+  isDailyNoteName,
   openDailyNote,
   resolveDailyNotePath,
   type DailyNoteDependencies,
@@ -33,6 +34,20 @@ describe("formatDailyNoteDate", () => {
     // the note must still be the 19th's.
     const lateEvening = new Date(2022, 3, 19, 23, 30, 0);
     expect(formatDailyNoteDate(lateEvening)).toBe("2022-04-19");
+  });
+});
+
+describe("isDailyNoteName", () => {
+  test("matches a YYYY-MM-DD markdown file anywhere in the workspace", () => {
+    expect(isDailyNoteName("/vault/2022-04-19.md")).toBe(true);
+    expect(isDailyNoteName("/vault/Journal/Daily/2022-04-19.MD")).toBe(true);
+  });
+
+  test("rejects other names", () => {
+    expect(isDailyNoteName("/vault/2022-04-19 retro.md")).toBe(false);
+    expect(isDailyNoteName("/vault/2022-04-19.txt")).toBe(false);
+    expect(isDailyNoteName("/vault/2022-4-19.md")).toBe(false);
+    expect(isDailyNoteName("/vault/notes.md")).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-import { normalizePath } from "@/lib/paths";
+import { getFileExtension, getFileStem, normalizePath } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
 
 const WINDOWS_ABSOLUTE_PATH = /^[A-Za-z]:[\\/]/;
@@ -13,6 +13,19 @@ export function formatDailyNoteDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+const DAILY_NOTE_NAME = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Whether `path` names a daily note: a `.md` file whose stem is exactly the
+ * `YYYY-MM-DD` that `formatDailyNoteDate` produces. The date is the note's
+ * identity, so it is also its title: a heading typed at the top of the day is
+ * a section of the day, not a rename of it. Mirrored by `is_daily_note_name`
+ * in `commands/fs.rs` for the sidebar index.
+ */
+export function isDailyNoteName(path: string): boolean {
+  return getFileExtension(path).toLowerCase() === "md" && DAILY_NOTE_NAME.test(getFileStem(path));
 }
 
 export type DailyNotePath = { ok: true; path: string } | { ok: false; error: string };

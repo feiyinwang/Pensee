@@ -1,5 +1,7 @@
 import { parse } from "yaml";
 
+import { isDailyNoteName } from "@/lib/daily-note";
+
 const FRONTMATTER_RE = /^---\n([\s\S]*?\n)?---(?:\n|$)/;
 
 export type TitleSource = "frontmatter" | "h1" | "none";
@@ -27,9 +29,9 @@ export function serializeFile(frontmatter: string | null, body: string): string 
   return `---\n${frontmatter}\n---\n${body}`;
 }
 
-export function parseDocument(raw: string): ParsedDocument {
+export function parseDocument(raw: string, path?: string): ParsedDocument {
   const parsed = parseFrontmatter(raw);
-  const { title, titleSource } = inferTitle(parsed.body, parsed.frontmatter);
+  const { title, titleSource } = inferTitle(parsed.body, parsed.frontmatter, path);
 
   return {
     frontmatter: parsed.frontmatter,
@@ -39,10 +41,20 @@ export function parseDocument(raw: string): ParsedDocument {
   };
 }
 
+/**
+ * The document's display title. `path`, when given, lets a daily note keep its
+ * date as the title (an empty title falls back to the file stem everywhere it
+ * is shown) instead of taking the first heading the writer adds to the day.
+ */
 export function inferTitle(
   body: string,
   frontmatter: string | null,
+  path?: string,
 ): { title: string; titleSource: TitleSource } {
+  if (path !== undefined && isDailyNoteName(path)) {
+    return { title: "", titleSource: "none" };
+  }
+
   const frontmatterTitle = getFrontmatterTitle(frontmatter);
   if (frontmatterTitle !== null) {
     return { title: frontmatterTitle, titleSource: "frontmatter" };

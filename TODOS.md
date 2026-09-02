@@ -8,6 +8,7 @@
 
 ## Done
 
+- Daily note title stuck to its date — `inferTitle` (frontend) and `extract_title` (Rust sidebar index) both skip heading/frontmatter title inference for a file named exactly `YYYY-MM-DD.md`, via `isDailyNoteName` / `is_daily_note_name`, so every consumer falls back to the file stem.
 - HTML file embed: [`SPECs/html-file-embed-spec.md`](SPECs/html-file-embed-spec.md) — `![[page.html]]` / `![[page.html|480]]` renders the file in a sandboxed frame with reload, open-externally and edit-source buttons, a drag handle that writes the height modifier back, live reload from the file watcher, and a `/html` slash item that picks the file. Follow-ups: keyboard path to the frame's buttons, a `|N` completion hint, and a workspace-wide way to open the page in a full window.
 - Numbered list nesting — Tab / Shift+Tab on ordered items: the previous-item lookup in `lib/prosemark-core/list` now matches ordered markers and aligns to the parent's content column, the touched levels are renumbered in the same transaction, and nested ordered lines render with per-depth hanging indent.
 - Multilevel list numbering: [`SPECs/multilevel-list-numbering-spec.md`](SPECs/multilevel-list-numbering-spec.md) — nested ordered items draw their ordered ancestors' digits in front of their own (`2.1.`, `2.2.1.`) as generated `::before` content on the marker mark; the chain stops at a bullet ancestor, and a `ch` estimate of the label sizes both the marker slot and the hanging indent so nested numbers share the nested-bullet body column.
