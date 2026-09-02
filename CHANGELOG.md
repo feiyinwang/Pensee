@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-02
+
+- Fix the block menu's H1/H2/H3 tiles stamping a `#` onto the next line's content. Two lines with no blank line between them are one markdown paragraph — which is what a single Enter produces — and the conversion prefixed every line of the block, so turning one line into a heading turned the line under it into a heading too. A heading is one line: only the line the grip is parked beside gets the hashes, and whatever followed stays behind as its own block, keeping the shape it already had (a bulleted list stays bulleted, a quote stays quoted). This is the same `setBlockType` the `/h1` slash command goes through, so both paths still produce identical markdown.
+
 ## 2026-08-13
 
 - Add a block menu to the gutter handle. Rest the pointer on the grip beside any block and a panel opens: nine type tiles (Text, H1–H3, numbered, bulleted, to-do, code, quote) with the current one lit, move up/down, insert above/below, Duplicate, Cut, Copy and Delete. Pressing the grip still starts a drag — hover opens, press drags, and a press cancels a pending or open panel. It serves pictures, a column's caption band and whole columns too, with the menu built per target so an item that would do nothing is not shown: no type tiles on a picture, a fence or a table, left/right instead of up/down on a column, and a confirmation naming the block count before a column delete (a single block is one undo away, a column is not). Align and Indent and Color Options are rendered but inert, with a `?` explaining that markdown has nowhere to store them yet. See [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md).

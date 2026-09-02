@@ -123,6 +123,22 @@ describe("setBlockType", () => {
     expect(setBlockType("a\nb", "numbered")).toBe("1. a\n2. b");
   });
 
+  test("a heading takes one line, never the next line's content", () => {
+    // Two lines with no blank between them are ONE markdown paragraph, which
+    // is what a single Enter produces. Prefixing every line made two headings
+    // and put a `#` in front of text the grip was not pointing at.
+    expect(setBlockType("now i have it done\nnext line content", "h1")).toBe(
+      "# now i have it done\n\nnext line content",
+    );
+    expect(setBlockType("a\nb\nc", "h2")).toBe("## a\n\nb\nc");
+    expect(setBlockType("a\nb", "h3")).toBe("### a\n\nb");
+  });
+
+  test("the lines a heading leaves behind keep their own shape", () => {
+    expect(setBlockType("- a\n- b\n- c", "h1")).toBe("# a\n\n- b\n- c");
+    expect(setBlockType("> q1\n> q2", "h1")).toBe("# q1\n\n> q2");
+  });
+
   test("keeps code content verbatim, prefixes and all", () => {
     expect(setBlockType("- not a list", "code")).toBe("```\n- not a list\n```");
   });
@@ -156,6 +172,13 @@ describe("applyBlockType", () => {
     // Caret stays at 0 — inside "one" — while "three" is converted.
     applyBlockType(ed, THREE_, "h1");
     expect(ed.doc).toBe("one\n\ntwo\n\n# three");
+  });
+
+  test("heads only the line the grip is beside, in one dispatch", () => {
+    const ed = new Fake("now i have it done\nnext line content");
+    expect(applyBlockType(ed, block(0, 36), "h1")).toBe(true);
+    expect(ed.doc).toBe("# now i have it done\n\nnext line content");
+    expect(ed.dispatches).toBe(1);
   });
 
   test("lights the tile matching the target", () => {

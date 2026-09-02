@@ -257,14 +257,24 @@ export function setBlockType(md: string, id: BlockTypeId): string {
   // Code is the one type whose content is not prose — clearing "prefixes"
   // there would eat the first character of a shell command.
   if (id === "code") return "```\n" + body + "\n```";
-  const cleared = body.split("\n").map(clearBlockPrefix);
+  const lines = body.split("\n");
+
+  // A heading is one line. Mapping the prefix over every line the way the list
+  // shapes do turns one block into N headings, and a markdown paragraph is
+  // every consecutive non-blank line — so "make this a heading" was stamping a
+  // `#` onto the next line's content as well. Only the first line, the one the
+  // grip is parked beside, becomes the heading; whatever follows is pushed off
+  // as its own block, keeping the shape it already had.
+  if (id === "h1" || id === "h2" || id === "h3") {
+    const head = "#".repeat(Number(id.slice(1))) + " " + clearBlockPrefix(lines[0] ?? "");
+    const rest = lines.slice(1).join("\n").trim();
+    return rest ? `${head}\n\n${rest}` : head;
+  }
+
+  const cleared = lines.map(clearBlockPrefix);
   switch (id) {
     case "text":
       return cleared.join("\n");
-    case "h1":
-    case "h2":
-    case "h3":
-      return cleared.map((l) => "#".repeat(Number(id.slice(1))) + " " + l).join("\n");
     case "bullet":
       return cleared.map((l) => `- ${l}`).join("\n");
     case "numbered":
