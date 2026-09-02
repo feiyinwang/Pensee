@@ -48,6 +48,7 @@ import {
   prosemarkMarkdownSyntaxExtensions,
 } from "@/lib/prosemark-core/main";
 import { tableDecorations } from "./table-decorations";
+import { tabularPasteTransaction } from "@/lib/tabular-paste";
 import { htmlBlockDecorations, htmlBlockParserExtension } from "./html-block-decorations";
 import { columnsDecorations, columnsParserExtension } from "./columns-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
@@ -484,7 +485,9 @@ function editorBodyContextMenuExtension(
             onPaste: () => {
               void readText().then((text) => {
                 if (!text || isDisposed()) return;
-                view.dispatch(view.state.replaceSelection(text));
+                view.dispatch(
+                  tabularPasteTransaction(view.state, text) ?? view.state.replaceSelection(text),
+                );
               });
             },
             onPastePlain: () => {
@@ -704,6 +707,14 @@ function createEditorExtensions(
           void handleImagePaste(imageFile, view, getFilePath(), isDisposed).catch((error) => {
             console.error("[editor] Failed to paste image:", error);
           });
+          return true;
+        }
+
+        const text = event.clipboardData?.getData("text/plain");
+        const tableTransaction = text ? tabularPasteTransaction(view.state, text) : null;
+        if (tableTransaction) {
+          event.preventDefault();
+          view.dispatch(tableTransaction);
           return true;
         }
 

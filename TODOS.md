@@ -8,6 +8,7 @@
 
 ## Done
 
+- Paste tabular data as a table: [`SPECs/paste-tabular-data-as-table-spec.md`](SPECs/paste-tabular-data-as-table-spec.md) — tab-separated text on paste (spreadsheets, Notion, Docs, web tables) becomes a GFM pipe table rendered by the existing `TableWidget`; one `tabularPasteTransaction` behind both the DOM paste handler and the context-menu Paste, Paste as plain text as the opt-out, `<br>` now renders as a break inside cells. Follow-ups in the spec: `Cmd+Shift+V`, merging into an existing table, HTML clipboard flavour, CSV.
 - Sidebar toggle shortcut and placement: [`SPECs/sidebar-toggle-shortcut-spec.md`](SPECs/sidebar-toggle-shortcut-spec.md) — `Cmd+[` and `Cmd+]` toggle the sidebar (editor indent rebound to `Cmd+Shift+[` / `]` via a shared `editorDefaultKeymap`), and the toggle button now lives at the sidebar header's right edge, beside the traffic lights when collapsed.
 - Motion timing: [`SPECs/motion-timing-spec.md`](SPECs/motion-timing-spec.md) — one token set for all animations (ease-out under 180ms, spring for the sidebar resize settle, global 0.97 button press scale); Tailwind `transition-*` defaults now resolve to the tokens. Rules in `docs/motion.md`.
 - Block menu headings leaking onto the next line — a paragraph is every consecutive non-blank line, so an H1/H2/H3 tile prefixed both lines of a block a single Enter had produced. `setBlockType` now heads only the block's first line (the one the grip is parked beside) and leaves the rest behind as its own block with its original shape intact.

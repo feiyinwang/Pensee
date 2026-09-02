@@ -131,6 +131,16 @@ describe("tableDecorations", () => {
     ]);
   });
 
+  test("renders <br> inside a cell as a line break", () => {
+    expect(parseTableCellInlineMarkdown("one<br>two <BR/> three")).toEqual([
+      { type: "text", text: "one" },
+      { type: "break" },
+      { type: "text", text: "two " },
+      { type: "break" },
+      { type: "text", text: " three" },
+    ]);
+  });
+
   test("folds a table to the rendered preview when selection is outside", () => {
     const decorations = collectFoldDecorations(makeState(0));
 

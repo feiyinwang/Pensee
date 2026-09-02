@@ -349,6 +349,13 @@ function renderMarkdownNode(markdown: string, node: SyntaxNode): TableCellInline
       return [{ type: "text", text: decodeMarkdownEntity(markdown.slice(node.from, node.to)) }];
     case "HardBreak":
       return [{ type: "break" }];
+    case "HTMLTag": {
+      // `<br>` is the only line break a GFM cell can express (a hard break
+      // needs a newline, which a cell cannot hold). Other tags stay as text.
+      const tag = markdown.slice(node.from, node.to);
+      if (/^<br\s*\/?>$/i.test(tag)) return [{ type: "break" }];
+      return [{ type: "text", text: tag }];
+    }
     case "Dash": {
       const dashCount = node.to - node.from;
       if (dashCount === 2) return [{ type: "text", text: "\u2013" }];
