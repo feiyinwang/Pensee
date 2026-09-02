@@ -232,7 +232,11 @@ function clearBlockPrefix(line: string): string {
 /** Unwrap a fenced block. Anything else comes back untouched. */
 function unfence(md: string): string {
   const lines = md.split("\n");
-  if (lines.length >= 2 && FENCE_RE.test(lines[0] ?? "") && (lines.at(-1) ?? "").trim() === "```") {
+  if (
+    lines.length >= 2 &&
+    FENCE_RE.test(lines[0] ?? "") &&
+    (lines[lines.length - 1] ?? "").trim() === "```"
+  ) {
     return lines.slice(1, -1).join("\n");
   }
   return md;
