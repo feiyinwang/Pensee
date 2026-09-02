@@ -87,6 +87,11 @@
   --motion-fast: 100ms;
   --motion-base: 160ms;
   --motion-settle: 180ms;
+  /* Hover highlights on menu rows: the pointer is already there, so the
+     colour has to land at once. Plain `ease` rather than --ease-out because
+     the change is a flat fill with nothing to overshoot into. */
+  --motion-hover: 50ms;
+  --ease-hover: ease;
   --ease-spring: var(--ease-out);
 
   /* Derived background — applied once on body. Editor and settings pages
