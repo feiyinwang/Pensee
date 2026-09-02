@@ -16,7 +16,8 @@ const {
   isOnListLine,
   listPrefixBoundaryMove,
   parseBulletTaskLine,
-  findPrevListItemIndent,
+  parseListItemLine,
+  findPrevListItem,
   listEnter,
   listBackspace,
   listIndent,
@@ -162,28 +163,55 @@ describe("list prefix caret zones", () => {
 });
 
 // ---------------------------------------------------------------------------
-// findPrevListItemIndent
+// parseListItemLine / findPrevListItem
 // ---------------------------------------------------------------------------
 
-describe("findPrevListItemIndent", () => {
-  test("returns the prior list item's indent", () => {
-    const s = makeState("- a\n  - b\n");
-    expect(findPrevListItemIndent(s, 2, () => true)).toBe(0);
+describe("parseListItemLine", () => {
+  test("bullets and tasks: content column is indent + 2", () => {
+    expect(parseListItemLine("- a")).toEqual({ indentLen: 0, contentCol: 2, digits: null });
+    expect(parseListItemLine("  - [ ] a")).toEqual({ indentLen: 2, contentCol: 4, digits: null });
   });
 
-  test("returns -1 when prior line is blank", () => {
+  test("ordered markers: content column follows the digits and delimiter", () => {
+    expect(parseListItemLine("1. a")).toEqual({ indentLen: 0, contentCol: 3, digits: "1" });
+    expect(parseListItemLine("   10) a")).toEqual({ indentLen: 3, contentCol: 7, digits: "10" });
+  });
+
+  test("rejects a marker with no trailing whitespace and plain prose", () => {
+    expect(parseListItemLine("-")).toBeNull();
+    expect(parseListItemLine("1.")).toBeNull();
+    expect(parseListItemLine("2024 was a year")).toBeNull();
+  });
+});
+
+describe("findPrevListItem", () => {
+  test("returns the prior list item", () => {
+    const s = makeState("- a\n  - b\n");
+    expect(findPrevListItem(s, 2, () => true)?.indentLen).toBe(0);
+  });
+
+  test("returns null when prior line is blank", () => {
     const s = makeState("- a\n\n- b");
-    expect(findPrevListItemIndent(s, 3, () => true)).toBe(-1);
+    expect(findPrevListItem(s, 3, () => true)).toBeNull();
   });
 
   test("respects the predicate filter for indent-only constraints", () => {
     const s = makeState("- a\n  - b\n    - c\n");
     // Looking for a list item with indent ≤ 4 from line 3: that's `  - b` (2).
-    expect(findPrevListItemIndent(s, 3, (i) => i <= 4)).toBe(2);
+    expect(findPrevListItem(s, 3, (i) => i.indentLen <= 4)?.indentLen).toBe(2);
     // Looking for indent strictly < 4: same answer (2).
-    expect(findPrevListItemIndent(s, 3, (i) => i < 4)).toBe(2);
+    expect(findPrevListItem(s, 3, (i) => i.indentLen < 4)?.indentLen).toBe(2);
     // Looking for indent strictly < 2 from line 2: `- a` at 0.
-    expect(findPrevListItemIndent(s, 2, (i) => i < 2)).toBe(0);
+    expect(findPrevListItem(s, 2, (i) => i.indentLen < 2)?.indentLen).toBe(0);
+  });
+
+  test("sees ordered items as list items", () => {
+    const s = makeState("1. a\n2. b");
+    expect(findPrevListItem(s, 2, () => true)).toEqual({
+      indentLen: 0,
+      contentCol: 3,
+      digits: "1",
+    });
   });
 });
 
@@ -374,6 +402,51 @@ describe("listIndent (Tab)", () => {
     expect(ran).toBe(true);
     expect(state.doc.toString()).toBe("- a\npara\n  - b");
   });
+
+  test("nests an ordered item under the previous one at its content column, restarting at 1", () => {
+    const s = makeState("1. a\n2. b", 9);
+    const { state, ran } = run(listIndent, s);
+    expect(ran).toBe(true);
+    expect(state.doc.toString()).toBe("1. a\n   1. b");
+    expect(state.selection.main.head).toBe(12);
+  });
+
+  test("closes the gap in the outer list when an item nests", () => {
+    const s = makeState("1. a\n2. b\n3. c", 9);
+    const { state } = run(listIndent, s);
+    expect(state.doc.toString()).toBe("1. a\n   1. b\n2. c");
+  });
+
+  test("continues an existing nested ordered list", () => {
+    const s = makeState("1. a\n   1. x\n2. b\n3. c", 16);
+    const { state } = run(listIndent, s);
+    expect(state.doc.toString()).toBe("1. a\n   1. x\n   2. b\n2. c");
+  });
+
+  test("aligns to a two-digit parent's content column", () => {
+    const s = makeState("10. a\n11. b", 11);
+    const { state } = run(listIndent, s);
+    expect(state.doc.toString()).toBe("10. a\n    1. b");
+  });
+
+  test("keeps a list's own start number when the first item stays put", () => {
+    const s = makeState("3. a\n4. b", 9);
+    const { state } = run(listIndent, s);
+    expect(state.doc.toString()).toBe("3. a\n   1. b");
+  });
+
+  test("nests a bullet under an ordered parent at column 3", () => {
+    const s = makeState("1. a\n- b", 8);
+    const { state } = run(listIndent, s);
+    expect(state.doc.toString()).toBe("1. a\n   - b");
+  });
+
+  test("indents every selected ordered line and renumbers the nested run", () => {
+    const s = makeState("1. a\n2. b\n3. c", 5, 14);
+    const { state, ran } = run(listIndent, s);
+    expect(ran).toBe(true);
+    expect(state.doc.toString()).toBe("1. a\n   1. b\n   2. c");
+  });
 });
 
 describe("listOutdent (Shift-Tab)", () => {
@@ -405,6 +478,34 @@ describe("listOutdent (Shift-Tab)", () => {
     const { state, ran } = run(listOutdent, s);
     expect(ran).toBe(true);
     expect(state.doc.toString()).toBe("- a\n- b\n- c");
+  });
+
+  test("outdents an ordered item and renumbers the list it joins", () => {
+    const s = makeState("1. a\n   1. b\n2. c", 12);
+    const { state, ran } = run(listOutdent, s);
+    expect(ran).toBe(true);
+    expect(state.doc.toString()).toBe("1. a\n2. b\n3. c");
+    expect(state.selection.main.head).toBe(9);
+  });
+
+  test("outdenting the last nested item leaves the remaining nested run intact", () => {
+    const s = makeState("1. a\n   1. x\n   2. y\n2. c", 19);
+    const { state } = run(listOutdent, s);
+    expect(state.doc.toString()).toBe("1. a\n   1. x\n2. y\n3. c");
+  });
+
+  test("outdents an ordered item nested under a bullet", () => {
+    const s = makeState("- a\n  1. b", 10);
+    const { state } = run(listOutdent, s);
+    expect(state.doc.toString()).toBe("- a\n1. b");
+  });
+
+  test("keeps the caret at the text end when renumbering shortens the marker", () => {
+    // `10.` on the caret's line becomes `2.` — the caret shifts back by one.
+    const s = makeState("1. a\n   10. b", 13);
+    const { state } = run(listOutdent, s);
+    expect(state.doc.toString()).toBe("1. a\n2. b");
+    expect(state.selection.main.head).toBe(9);
   });
 });
 
@@ -455,6 +556,24 @@ describe("computeCheckboxToggle", () => {
 // ---------------------------------------------------------------------------
 
 describe("listDecorationsField", () => {
+  test("nested ordered lines pad by depth and hide their leading whitespace", () => {
+    const s = makeState("1. a\n   1. b");
+    const decos = s.field(__test.listDecorationsField);
+    const lineStyles: string[] = [];
+    const indentVisuals: Array<{ from: number; to: number }> = [];
+    decos.all.between(0, s.doc.length, (from, to, deco) => {
+      const spec = deco.spec as { class?: unknown; attributes?: { style?: unknown } };
+      const style = typeof spec.attributes?.style === "string" ? spec.attributes.style : "";
+      if (from === to) lineStyles.push(style);
+      if (spec.class === "cm-list-indent-visual") indentVisuals.push({ from, to });
+    });
+    expect(lineStyles).toEqual([
+      "padding-inline-start: 3ch; text-indent: -3.4ch;",
+      "padding-inline-start: 6ch; text-indent: -6.4ch;",
+    ]);
+    expect(indentVisuals).toEqual([{ from: 5, to: 8 }]);
+  });
+
   test("does not render a bullet for a bare `-` (no trailing space)", () => {
     const s = makeState("-", 1);
     const decos = s.field(__test.listDecorationsField);

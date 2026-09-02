@@ -1,14 +1,18 @@
 import { syntaxTree } from "@codemirror/language";
 import {
+  ChangeSet,
   type ChangeSpec,
   EditorSelection,
   EditorState,
   type Extension,
+  type Line,
   Prec,
   type Range,
   type SelectionRange,
   StateField,
   type StateCommand,
+  type Text,
+  type Transaction,
   type TransactionSpec,
 } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, keymap } from "@codemirror/view";
@@ -68,16 +72,34 @@ const isBulletMarkChar = (ch: string): boolean => ch === "-" || ch === "+" || ch
 const ORDERED_MARKER_RE = /^\d+[.)]$/;
 const isOrderedMarkText = (s: string): boolean => ORDERED_MARKER_RE.test(s);
 
+// Depth = number of ancestor `ListItem` nodes above the item this mark
+// belongs to. Top-level items have depth 0; one level of nesting has depth
+// 1; etc.
+interface ParentChain {
+  name: string;
+  parent: ParentChain | null;
+}
+const listItemDepth = (node: ParentChain): number => {
+  let depth = -1;
+  for (let p = node.parent; p; p = p.parent) {
+    if (p.name === "ListItem") depth++;
+  }
+  return Math.max(depth, 0);
+};
+
 // Line-level hanging indent applied to ordered-list lines: the marker hangs
 // in the left gutter and wrapped continuation aligns with the body column.
-// Ordered markers stay as source text (the digits matter), but the marker span
-// has a minimum width so one- and two-digit numbers share the same visual
-// column while longer markers can still grow.
-const orderedLineDecoration = Decoration.line({
-  attributes: {
-    style: `padding-inline-start: ${LIST_UNIT_CH.toString()}ch; text-indent: -3.4ch;`,
-  },
-});
+// Nested items pad by one unit per depth, matching bullet geometry, so a
+// numbered item under a numbered item sits in the same column a nested
+// bullet would. Ordered markers stay as source text (the digits matter),
+// but the marker span has a minimum width so one- and two-digit numbers
+// share the same visual column while longer markers can still grow.
+const orderedLineDecoration = (depth: number) =>
+  Decoration.line({
+    attributes: {
+      style: `padding-inline-start: ${((depth + 1) * LIST_UNIT_CH).toString()}ch; text-indent: -${(depth * LIST_UNIT_CH + 3.4).toString()}ch;`,
+    },
+  });
 const orderedMarkerDecoration = Decoration.mark({
   class: "cm-list-ordered-marker",
   attributes: { style: `min-width: ${LIST_UNIT_CH.toString()}ch;` },
@@ -148,26 +170,23 @@ function buildListDecorations(state: EditorState): ListDecorations {
       const markText = state.doc.sliceString(node.from, node.to);
       if (isOrderedMarkText(markText)) {
         const line = state.doc.lineAt(node.from);
+        const depth = listItemDepth(node.node);
         const prefixEnd = node.to + 1;
+        if (depth >= 1 && node.from > line.from) {
+          allRanges.push(listIndentVisualDecoration(depth).range(line.from, node.from));
+        }
         allRanges.push(orderedMarkerDecoration.range(node.from, node.to));
         if (prefixEnd < line.to) {
           allRanges.push(listBodyDecoration.range(prefixEnd, line.to));
         }
-        allRanges.push(orderedLineDecoration.range(line.from));
+        allRanges.push(orderedLineDecoration(depth).range(line.from));
         return;
       }
 
       // Bullet lists only beyond this point — skip anything else.
       if (markText.length !== 1 || !isBulletMarkChar(markText)) return;
 
-      // Depth = number of ancestor `ListItem` nodes above the item this
-      // mark belongs to. Top-level items have depth 0; one level of nesting
-      // has depth 1; etc.
-      let depth = -1;
-      for (let p = node.node.parent; p; p = p.parent) {
-        if (p.name === "ListItem") depth++;
-      }
-      if (depth < 0) depth = 0;
+      const depth = listItemDepth(node.node);
 
       // Indent-step atomic markers — one zero-DOM mark per nesting level,
       // tracking the source char ranges so arrow keys and Backspace treat
@@ -259,25 +278,48 @@ const listDecorationsField = StateField.define<ListDecorations>({
   ],
 });
 
-// Find the indent of the nearest list-item line above `lineNumber` whose
-// own indent matches the predicate. Used by indent / outdent to align the
-// current line to a valid CommonMark parent. Returns -1 if none found
-// before a blank line breaks the list context, or after PREV_LIST_LOOKBACK
-// lines (defensive cap so giant docs don't pay an O(n) scan per keystroke).
-const findPrevListItemIndent = (
+// Any list-item line — bullet, task or ordered — reduced to the geometry
+// indent / outdent care about: how much leading whitespace it has and where
+// its content column starts (`- ` → +2, `1. ` → +3, `10. ` → +4). CommonMark
+// nests an item under the one above once its indent reaches that item's
+// content column, so the content column is what Tab aligns to.
+const LIST_ITEM_LINE_RE = /^([ \t]*)(?:[-+*]|(\d{1,9})[.)])[ \t]/;
+
+interface ListItemLine {
+  indentLen: number;
+  contentCol: number;
+  /** Source digits of an ordered marker; null for bullets and tasks. */
+  digits: string | null;
+}
+
+function parseListItemLine(text: string): ListItemLine | null {
+  const match = LIST_ITEM_LINE_RE.exec(text);
+  if (!match) return null;
+  return {
+    indentLen: match[1]?.length ?? 0,
+    contentCol: match[0].length,
+    digits: match[2] ?? null,
+  };
+}
+
+// Find the nearest list-item line above `lineNumber` that satisfies the
+// predicate. Used by indent / outdent to align the current line to a valid
+// CommonMark parent. Returns null if none is found before a blank line
+// breaks the list context, or after PREV_LIST_LOOKBACK lines (defensive
+// cap so giant docs don't pay an O(n) scan per keystroke).
+const findPrevListItem = (
   state: EditorState,
   lineNumber: number,
-  predicate: (indent: number) => boolean,
-): number => {
+  predicate: (item: ListItemLine) => boolean,
+): ListItemLine | null => {
   const stop = Math.max(1, lineNumber - PREV_LIST_LOOKBACK);
   for (let i = lineNumber - 1; i >= stop; i--) {
-    const prev = state.doc.line(i);
-    const text = prev.text;
-    if (text.trim() === "") return -1;
-    const m = /^([ \t]*)[-+*] /.exec(text);
-    if (m && predicate(m[1].length)) return m[1].length;
+    const text = state.doc.line(i).text;
+    if (text.trim() === "") return null;
+    const item = parseListItemLine(text);
+    if (item && predicate(item)) return item;
   }
-  return -1;
+  return null;
 };
 
 const currentLineIndentLen = (lineText: string): number =>
@@ -355,54 +397,168 @@ function selectedLineNumbers(state: EditorState): number[] {
   return [...numbers].sort((a, b) => a - b);
 }
 
-const listIndentSelection: StateCommand = ({ state, dispatch }) => {
+// One line's move between nesting levels, as computed by indent / outdent.
+interface ListLevelMove {
+  line: number;
+  oldIndent: number;
+  newIndent: number;
+}
+
+// Tab: nest one level deeper by aligning to the content column of the
+// nearest item above at the same or a shallower indent. That is
+// CommonMark's rule for a nested item (indent ≥ the parent's content
+// column) while staying inside the parent's `+3` window — a blanket
+// "insert 2 spaces" breaks once the chain of parents above isn't deep
+// enough (Lezer reclassifies the line as a code continuation and the
+// marker vanishes), and never reaches column 3 under a `1. ` parent.
+function listIndentMove(state: EditorState, line: Line): ListLevelMove | null {
+  const currentIndent = currentLineIndentLen(line.text);
+  const prev = findPrevListItem(state, line.number, (item) => item.indentLen <= currentIndent);
+  if (!prev || currentIndent >= prev.contentCol) return null;
+  return { line: line.number, oldIndent: currentIndent, newIndent: prev.contentCol };
+}
+
+// Shift-Tab: align to the nearest item above with a strictly shallower
+// indent — i.e. step up one nesting level — or to column 0.
+function listOutdentMove(state: EditorState, line: Line): ListLevelMove | null {
+  const currentIndent = currentLineIndentLen(line.text);
+  if (currentIndent === 0) return null;
+  const prev = findPrevListItem(state, line.number, (item) => item.indentLen < currentIndent);
+  const targetIndent = prev?.indentLen ?? 0;
+  if (targetIndent >= currentIndent) return null;
+  return { line: line.number, oldIndent: currentIndent, newIndent: targetIndent };
+}
+
+const listLevelMoveChange = (state: EditorState, move: ListLevelMove): ChangeSpec => {
+  const from = state.doc.line(move.line).from;
+  return move.newIndent > move.oldIndent
+    ? { from, insert: " ".repeat(move.newIndent - move.oldIndent) }
+    : { from, to: from + (move.oldIndent - move.newIndent) };
+};
+
+// After indent / outdent, make the ordered items on every touched level
+// count in sequence again. CommonMark only reads a list's first number,
+// but the editor draws the source digits and lang-markdown's Enter
+// continuation counts on from the item above, so `1.` / `2.` / `3.` with
+// `2.` tabbed under `1.` must become `1.` / `   1.` / `2.`. A run is
+// bounded by blank lines and reset by any shallower item or a bullet at
+// the same level; the first item of a run keeps its own number unless it
+// is the item that just moved, which starts a fresh list at 1.
+function renumberOrderedLevels(doc: Text, moves: ListLevelMove[]): ChangeSpec[] {
+  if (moves.length === 0) return [];
+  const levels = new Set<number>();
+  const movedLines = new Set<number>();
+  let first = doc.lines;
+  let last = 1;
+  for (const move of moves) {
+    levels.add(move.oldIndent);
+    levels.add(move.newIndent);
+    movedLines.add(move.line);
+    first = Math.min(first, move.line);
+    last = Math.max(last, move.line);
+  }
+  const isBlank = (n: number): boolean => doc.line(n).text.trim() === "";
+  let start = first;
+  while (start > 1 && first - start < PREV_LIST_LOOKBACK && !isBlank(start - 1)) start--;
+  let end = last;
+  while (end < doc.lines && end - last < PREV_LIST_LOOKBACK && !isBlank(end + 1)) end++;
+
   const changes: ChangeSpec[] = [];
+  // Last number assigned per level in the current run.
+  const prev = new Map<number, number>();
+  for (let n = start; n <= end; n++) {
+    const line = doc.line(n);
+    if (line.text.trim() === "") {
+      prev.clear();
+      continue;
+    }
+    const item = parseListItemLine(line.text);
+    if (!item) continue;
+    for (const level of levels) {
+      if (item.indentLen < level) {
+        prev.delete(level);
+        continue;
+      }
+      if (item.indentLen !== level) continue;
+      if (item.digits === null) {
+        prev.delete(level);
+        continue;
+      }
+      const own = Number(item.digits);
+      const before = prev.get(level);
+      const number = before === undefined ? (movedLines.has(n) ? 1 : own) : before + 1;
+      if (number !== own) {
+        const from = line.from + item.indentLen;
+        changes.push({ from, to: from + item.digits.length, insert: String(number) });
+      }
+      prev.set(level, number);
+    }
+  }
+  return changes;
+}
+
+// Apply level moves plus the renumbering they imply as one transaction, so
+// a single undo reverts both. `selection` overrides the mapped selection.
+function dispatchListLevelMoves(
+  state: EditorState,
+  dispatch: (tr: Transaction) => void,
+  moves: ListLevelMove[],
+  selection: { anchor: number } | undefined,
+  userEvent: string,
+): void {
+  const base = state.update({
+    changes: moves.map((move) => listLevelMoveChange(state, move)),
+    selection,
+    userEvent,
+  });
+  const renumber = ChangeSet.of(renumberOrderedLevels(base.newDoc, moves), base.newDoc.length);
+  if (renumber.empty) {
+    dispatch(base);
+    return;
+  }
+  dispatch(
+    state.update({
+      changes: base.changes.compose(renumber),
+      selection: base.newSelection.map(renumber),
+      userEvent,
+    }),
+  );
+}
+
+const listIndentSelection: StateCommand = ({ state, dispatch }) => {
+  const moves: ListLevelMove[] = [];
   let sawListLine = false;
 
   for (const lineNumber of selectedLineNumbers(state)) {
     const line = state.doc.line(lineNumber);
-    const parsed = parseBulletTaskLine(line);
-    if (!parsed) continue;
+    if (!parseListItemLine(line.text)) continue;
     sawListLine = true;
-
-    const prevIndent = findPrevListItemIndent(
-      state,
-      line.number,
-      (indent) => indent <= parsed.indentLen,
-    );
-    if (prevIndent < 0) continue;
-
-    const targetIndent = prevIndent + LIST_INDENT_SPACES;
-    if (parsed.indentLen >= targetIndent) continue;
-
-    changes.push({ from: line.from, insert: " ".repeat(targetIndent - parsed.indentLen) });
+    const move = listIndentMove(state, line);
+    if (move) moves.push(move);
   }
 
   if (!sawListLine) return false;
-  if (changes.length > 0) {
-    dispatch(state.update({ changes, userEvent: "input.indent" }));
+  if (moves.length > 0) {
+    dispatchListLevelMoves(state, dispatch, moves, undefined, "input.indent");
   }
   return true;
 };
 
 const listOutdentSelection: StateCommand = ({ state, dispatch }) => {
-  const changes: ChangeSpec[] = [];
+  const moves: ListLevelMove[] = [];
   let sawListLine = false;
 
   for (const lineNumber of selectedLineNumbers(state)) {
     const line = state.doc.line(lineNumber);
-    const parsed = parseBulletTaskLine(line);
-    if (!parsed) continue;
+    if (!parseListItemLine(line.text)) continue;
     sawListLine = true;
-    if (parsed.indentLen === 0) continue;
-
-    const removeLen = Math.min(LIST_INDENT_SPACES, parsed.indentLen);
-    changes.push({ from: line.from, to: line.from + removeLen });
+    const move = listOutdentMove(state, line);
+    if (move) moves.push(move);
   }
 
   if (!sawListLine) return false;
-  if (changes.length > 0) {
-    dispatch(state.update({ changes, userEvent: "delete.outdent" }));
+  if (moves.length > 0) {
+    dispatchListLevelMoves(state, dispatch, moves, undefined, "delete.outdent");
   }
   return true;
 };
@@ -548,15 +704,10 @@ const listPrefixArrowKeymap = Prec.highest(
 // (no `EditorView`/DOM needed). EditorView satisfies the same shape, so
 // they still bind to the keymap without changes.
 
-// Tab on a list line: nest one level deeper by aligning to the previous
-// list item's content column (= prev indent + 2 for `- ` markers). That
-// matches CommonMark's rule that a nested item's indent must be ≥ the
-// parent's content column, while staying within the parent's `+3` window
-// (which is what blanket "insert 2 spaces" violates once the chain of
-// parents above isn't deep enough — Lezer reclassifies the line as a code
-// continuation and the bullet vanishes). Always consumes Tab on a list
-// line (even when nesting is a no-op) so `indentWithTab` doesn't fall
-// through and insert a literal `\t` — that would break the list parse.
+// Tab on a list line (bullet, task or ordered): see `listIndentMove`.
+// Always consumes Tab on a list line (even when nesting is a no-op) so
+// `indentWithTab` doesn't fall through and insert a literal `\t` — that
+// would break the list parse.
 const listIndent: StateCommand = ({ state, dispatch }) => {
   if (state.readOnly) return false;
   if (state.selection.ranges.length !== 1 || !state.selection.main.empty) {
@@ -565,27 +716,15 @@ const listIndent: StateCommand = ({ state, dispatch }) => {
   const sel = state.selection.main;
   if (!isOnListLine(state, sel.head)) return false;
 
-  const line = state.doc.lineAt(sel.head);
-  const currentIndent = currentLineIndentLen(line.text);
+  const move = listIndentMove(state, state.doc.lineAt(sel.head));
+  if (!move) return true;
 
-  const prevIndent = findPrevListItemIndent(state, line.number, (i) => i <= currentIndent);
-  if (prevIndent < 0) return true;
-  const targetIndent = prevIndent + LIST_INDENT_SPACES;
-  if (currentIndent >= targetIndent) return true;
-
-  const insertLen = targetIndent - currentIndent;
-  dispatch(
-    state.update({
-      changes: { from: line.from, insert: " ".repeat(insertLen) },
-      selection: { anchor: sel.head + insertLen },
-      userEvent: "input.indent",
-    }),
-  );
+  const insertLen = move.newIndent - move.oldIndent;
+  dispatchListLevelMoves(state, dispatch, [move], { anchor: sel.head + insertLen }, "input.indent");
   return true;
 };
 
-// Shift-Tab on a list line: align to the nearest previous list item with
-// a strictly shallower indent — i.e. step up one nesting level.
+// Shift-Tab on a list line: see `listOutdentMove`.
 const listOutdent: StateCommand = ({ state, dispatch }) => {
   if (state.readOnly) return false;
   if (state.selection.ranges.length !== 1 || !state.selection.main.empty) {
@@ -595,24 +734,13 @@ const listOutdent: StateCommand = ({ state, dispatch }) => {
   if (!isOnListLine(state, sel.head)) return false;
 
   const line = state.doc.lineAt(sel.head);
-  const currentIndent = currentLineIndentLen(line.text);
-  if (currentIndent === 0) return true;
+  const move = listOutdentMove(state, line);
+  if (!move) return true;
 
-  const prevIndent = findPrevListItemIndent(state, line.number, (i) => i < currentIndent);
-  const targetIndent = Math.max(0, prevIndent);
-
-  const removeLen = currentIndent - targetIndent;
-  if (removeLen <= 0) return true;
-
+  const removeLen = move.oldIndent - move.newIndent;
   const cursorOffsetInLine = sel.head - line.from;
-  const newHead = line.from + Math.max(targetIndent, cursorOffsetInLine - removeLen);
-  dispatch(
-    state.update({
-      changes: { from: line.from, to: line.from + removeLen },
-      selection: { anchor: newHead },
-      userEvent: "delete.outdent",
-    }),
-  );
+  const newHead = line.from + Math.max(move.newIndent, cursorOffsetInLine - removeLen);
+  dispatchListLevelMoves(state, dispatch, [move], { anchor: newHead }, "delete.outdent");
   return true;
 };
 
@@ -800,7 +928,9 @@ export const __test = {
   isOnListLine,
   listPrefixBoundaryMove,
   parseBulletTaskLine,
-  findPrevListItemIndent,
+  parseListItemLine,
+  findPrevListItem,
+  renumberOrderedLevels,
   currentLineIndentLen,
   listEnter,
   listBackspace,
