@@ -1,4 +1,5 @@
 import { useOpenCommandPalette } from "@/hooks/use-command-palette";
+import { openTodaysNote } from "@/hooks/use-daily-note";
 
 function Shortcut({ children }: { children: string }) {
   return (
@@ -19,6 +20,15 @@ export function NewTabPage() {
         >
           Create new note
           <Shortcut>⌘N</Shortcut>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void openTodaysNote()}
+          className="flex items-center gap-1.5 text-[13px] text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+        >
+          Today's note
+          <Shortcut>⌘⇧N</Shortcut>
         </button>
 
         <button

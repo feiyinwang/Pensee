@@ -85,6 +85,24 @@ describe("default terminal setting", () => {
   });
 });
 
+describe("daily note folder setting", () => {
+  test("exposes the workspace-scoped daily note folder contract", () => {
+    const definition = SETTINGS_SCHEMA.find((def) => def.key === "workspace.daily-note-folder");
+    expect(definition).toMatchObject({
+      label: "Daily Note Folder",
+      description:
+        "Folder inside the workspace where dated daily notes are created. Leave blank to create them at the workspace root.",
+      category: "Workspace",
+      type: "string",
+      placeholder: "Workspace root",
+      normalize: "trim",
+      default: "",
+    });
+    // Daily notes belong to a vault, not to the app — no global scope override.
+    expect(definition).not.toHaveProperty("scope");
+  });
+});
+
 describe("theme presets", () => {
   test("at least one preset file is discovered", () => {
     expect(Object.keys(presetFiles).length).toBeGreaterThan(0);

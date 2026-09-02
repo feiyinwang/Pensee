@@ -3,6 +3,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { toggleSidebar } from "@/hooks/use-sidebar";
+import { openTodaysNote } from "@/hooks/use-daily-note";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 
 function isEditableTargetFocused(): boolean {
@@ -69,6 +70,14 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         if (isCompactFileMode) return;
         toggleSidebar();
+        return;
+      }
+
+      // Cmd+Shift+N — create or open today's dated note.
+      // Shift uppercases `key`, so this must be tested before the Cmd+N branch.
+      if (mod && e.shiftKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        void openTodaysNote();
         return;
       }
 
