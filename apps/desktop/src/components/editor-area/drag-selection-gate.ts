@@ -109,7 +109,11 @@ function shouldStartDragGate(
   // testable in a node environment (jsdom isn't pulled in for the unit suite).
   // Production targets always satisfy the duck check.
   const target = event.target as { closest?: (sel: string) => Element | null } | null;
-  if (target && typeof target.closest === "function" && target.closest(".cm-mermaid-widget")) {
+  if (
+    target &&
+    typeof target.closest === "function" &&
+    target.closest(".cm-mermaid-widget, .cm-table-widget")
+  ) {
     return null;
   }
   if (state.field(dragFrozenSelectionField, false) !== null) return null;

@@ -1,4 +1,4 @@
-import { type EditorState, type Range } from "@codemirror/state";
+import { EditorSelection, type ChangeSpec, type EditorState, type Range } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
@@ -9,13 +9,16 @@ import {
   type MarkdownConfig,
 } from "@lezer/markdown";
 import * as emoji from "node-emoji";
-import {
-  foldableSyntaxFacet,
-  prosemarkMarkdownSyntaxExtensions,
-  selectAllDecorationsOnSelectExtension,
-} from "@/lib/prosemark-core/main";
+import { foldableSyntaxFacet, prosemarkMarkdownSyntaxExtensions } from "@/lib/prosemark-core/main";
 import { SETTINGS_SCHEMA } from "@/lib/settings-schema";
 import { parseWikiLink } from "@/lib/wiki-links";
+import {
+  appendTableRowChange,
+  enclosingTable,
+  parseCells,
+  tableCellChange,
+  unescapeCellText,
+} from "@/lib/table-cell-edit";
 
 const fallbackMonospaceCodeFont =
   "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
@@ -107,40 +110,6 @@ const linkHiddenMarkdownNodes = new Set([
   "LinkTitle",
   "URL",
 ]);
-
-function isEscapedAt(text: string, index: number): boolean {
-  let backslashes = 0;
-  for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) {
-    backslashes++;
-  }
-  return backslashes % 2 === 1;
-}
-
-function parseCells(line: string): string[] {
-  const trimmed = line.trim();
-  const start = trimmed.startsWith("|") ? 1 : 0;
-  const end =
-    trimmed.endsWith("|") && !isEscapedAt(trimmed, trimmed.length - 1)
-      ? trimmed.length - 1
-      : trimmed.length;
-  const cells: string[] = [];
-  let current = "";
-  let escaped = false;
-
-  for (let i = start; i < end; i++) {
-    const char = trimmed[i];
-    if (char === "|" && !escaped) {
-      cells.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-    escaped = !escaped && char === "\\";
-  }
-
-  cells.push(current.trim());
-  return cells;
-}
 
 function parseAlignment(cell: string): Alignment | undefined {
   const left = cell.startsWith(":");
@@ -397,8 +366,260 @@ function appendInlineMarkdownNodes(parent: HTMLElement, nodes: TableCellInlineNo
 }
 
 function setCellMarkdownContent(cell: HTMLElement, markdown: string) {
+  // The raw markdown rides on the cell so the in-place editor can open with
+  // it long after the widget instance that rendered it has been replaced.
+  cell.dataset.raw = markdown;
   cell.replaceChildren();
   appendInlineMarkdownNodes(cell, parseTableCellInlineMarkdown(markdown));
+}
+
+// --- In-place cell editing ---
+//
+// A click on a rendered cell opens a zero-chrome textarea inside that cell
+// holding the cell's raw inline markdown. Commit writes only that cell's span
+// back to the document; the fold never leaves its rendered form because the
+// editor's selection never enters the table range. Source mode remains
+// reachable through the code toggle (which range-selects the table, the one
+// signal `selectionTouchesRange` listens to) and through keyboard entry.
+// See SPECs/table-in-place-cell-editing-spec.md.
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const CODE_ICON_PATHS = ["m16 18 6-6-6-6", "m8 6-6 6 6 6", "m13 4-2 16"] as const;
+const LINK_SELECTOR = ".cm-rendered-link, .cm-wiki-link";
+
+type CellElement = HTMLTableCellElement;
+type CellMove = "next" | "prev" | "down";
+
+interface OpenCellEditor {
+  cell: CellElement;
+  area: HTMLTextAreaElement;
+  /** The cell's markdown when the editor opened, so a no-op commit writes nothing. */
+  original: string;
+}
+
+// Keyed by the widget wrapper rather than the widget instance: every document
+// change yields a new TableWidget whose updateDOM must still know which cell is
+// live so it does not wipe the textarea out from under the user.
+const openEditors = new WeakMap<HTMLElement, OpenCellEditor>();
+
+function tableNodeFor(view: EditorView, element: HTMLElement): SyntaxNode | null {
+  // Resolved live at use time — never cached on the widget (docs/editor.md).
+  const pos = view.posAtDOM(element);
+  const tree = syntaxTree(view.state);
+  for (const side of [-1, 1] as const) {
+    const table = enclosingTable(tree.resolveInner(pos, side));
+    if (table) return table;
+  }
+  return null;
+}
+
+function cellCoordinates(cell: CellElement): { rowIdx: number; colIdx: number } {
+  const row = cell.parentElement as HTMLTableRowElement;
+  const isHeader = row.parentElement?.tagName === "THEAD";
+  return { rowIdx: isHeader ? -1 : row.sectionRowIndex, colIdx: cell.cellIndex };
+}
+
+function tableWidth(cell: CellElement): number {
+  return cell.closest("table")?.tHead?.rows[0]?.cells.length ?? 0;
+}
+
+/** The cell a commit should move into, `"append"` past the last cell, or null. */
+function neighbourCell(cell: CellElement, move: CellMove): CellElement | "append" | null {
+  const { rowIdx, colIdx } = cellCoordinates(cell);
+  const table = cell.closest("table");
+  if (!table) return null;
+  const headerCells = table.tHead?.rows[0]?.cells;
+  const bodyRows = table.tBodies[0]?.rows;
+  const width = headerCells?.length ?? 0;
+  const rowCount = bodyRows?.length ?? 0;
+  const at = (r: number, c: number): CellElement | null =>
+    r < 0 ? (headerCells?.[c] ?? null) : (bodyRows?.[r]?.cells[c] ?? null);
+
+  switch (move) {
+    case "down":
+      return at(rowIdx + 1, colIdx);
+    case "next":
+      if (colIdx + 1 < width) return at(rowIdx, colIdx + 1);
+      if (rowIdx + 1 < rowCount) return at(rowIdx + 1, 0);
+      return "append";
+    case "prev":
+      if (colIdx > 0) return at(rowIdx, colIdx - 1);
+      if (rowIdx >= 0) return at(rowIdx - 1, width - 1);
+      return null;
+  }
+}
+
+function lastRowFirstCell(wrapper: HTMLElement): CellElement | null {
+  const rows = wrapper.querySelector("tbody")?.rows;
+  return rows && rows.length > 0 ? (rows[rows.length - 1].cells[0] ?? null) : null;
+}
+
+function restoreCell(entry: OpenCellEditor, markdown: string): void {
+  const { cell } = entry;
+  cell.classList.remove("is-editing");
+  cell.style.width = "";
+  cell.style.boxSizing = "";
+  setCellMarkdownContent(cell, markdown);
+}
+
+function cancelCellEditor(wrapper: HTMLElement, entry: OpenCellEditor): void {
+  openEditors.delete(wrapper);
+  restoreCell(entry, entry.original);
+}
+
+function commitCellEditor(
+  view: EditorView,
+  wrapper: HTMLElement,
+  entry: OpenCellEditor,
+  move?: CellMove,
+): void {
+  openEditors.delete(wrapper);
+  const { cell, area, original } = entry;
+  const text = area.value.trim();
+  const changed = text !== unescapeCellText(original);
+  // Put the rendered cell back as it was; the dispatch below refills it from
+  // the document through updateDOM, which is the one rendering path.
+  restoreCell(entry, original);
+
+  // The widget was rebuilt under the editor (an external change, a reload):
+  // the cell no longer maps to anything, so the edit is dropped, not guessed.
+  if (!cell.isConnected) return;
+
+  const target = move ? neighbourCell(cell, move) : null;
+  const appendRow = target === "append";
+
+  if (changed || appendRow) {
+    const table = tableNodeFor(view, cell);
+    if (!table) {
+      console.warn("[table] could not resolve the table for a cell edit; edit dropped");
+      return;
+    }
+    const changes: ChangeSpec[] = [];
+    if (changed) {
+      const { rowIdx, colIdx } = cellCoordinates(cell);
+      const change = tableCellChange(view.state, table, rowIdx, colIdx, text);
+      if (change) changes.push(change);
+    }
+    if (appendRow) changes.push(appendTableRowChange(table, tableWidth(cell)));
+    view.dispatch({ changes, userEvent: "input", effects: view.scrollSnapshot() });
+  }
+
+  if (target && wrapper.isConnected) {
+    const next = target === "append" ? lastRowFirstCell(wrapper) : target;
+    if (next) {
+      openCellEditor(view, wrapper, next);
+      return;
+    }
+  }
+  // A keyboard commit with nowhere to go hands focus back so Cmd+Z reaches
+  // the editor's history. A blur commit leaves focus where the user put it.
+  if (move) view.focus();
+}
+
+function openCellEditor(view: EditorView, wrapper: HTMLElement, cell: CellElement): void {
+  const current = openEditors.get(wrapper);
+  if (current?.cell === cell) return;
+  if (current) commitCellEditor(view, wrapper, current);
+
+  const original = cell.dataset.raw ?? "";
+  const area = document.createElement("textarea");
+  area.className = "cm-table-cell-editor";
+  area.value = unescapeCellText(original);
+  area.rows = 1;
+
+  // Freeze the column at its rendered width so the table does not reflow
+  // around the textarea's different intrinsic size.
+  cell.style.width = `${cell.getBoundingClientRect().width}px`;
+  cell.style.boxSizing = "border-box";
+  cell.classList.add("is-editing");
+  cell.replaceChildren(area);
+
+  const entry: OpenCellEditor = { cell, area, original };
+  openEditors.set(wrapper, entry);
+
+  const autosize = () => {
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight}px`;
+  };
+  area.addEventListener("input", autosize);
+  area.addEventListener("keydown", (event) => {
+    // The editor's keymaps must not see keys typed into a cell.
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelCellEditor(wrapper, entry);
+      view.focus();
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      commitCellEditor(view, wrapper, entry, event.shiftKey ? "prev" : "next");
+    } else if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      commitCellEditor(view, wrapper, entry, "down");
+    }
+  });
+  area.addEventListener("blur", () => {
+    if (openEditors.get(wrapper) === entry) commitCellEditor(view, wrapper, entry);
+  });
+
+  area.focus();
+  area.setSelectionRange(area.value.length, area.value.length);
+  autosize();
+}
+
+function attachCellEditing(view: EditorView, wrapper: HTMLElement, cell: CellElement): void {
+  cell.addEventListener("mousedown", (event) => {
+    if (event.button !== 0) return;
+    // Links keep their own behaviour: the editor-level click handlers read
+    // their data attributes and navigate (table-cell-link-regressions-spec).
+    if (event.target instanceof Element && event.target.closest(LINK_SELECTOR)) return;
+    // A click inside the cell's own open textarea just moves its caret.
+    if (openEditors.get(wrapper)?.cell === cell) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openCellEditor(view, wrapper, cell);
+  });
+}
+
+function buildSourceToggle(view: EditorView, wrapper: HTMLElement): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "cm-table-source-toggle";
+  button.title = "Edit table source";
+  button.setAttribute("aria-label", "Edit table source");
+
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  for (const d of CODE_ICON_PATHS) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  button.append(svg);
+
+  button.addEventListener("mousedown", (event) => {
+    event.preventDefault(); // keep focus where it is (docs/editor.md)
+    event.stopPropagation();
+  });
+  button.addEventListener("click", () => {
+    const open = openEditors.get(wrapper);
+    if (open) commitCellEditor(view, wrapper, open);
+    const table = tableNodeFor(view, wrapper);
+    if (!table) return;
+    // Range-select the whole table: the canonical way to flip
+    // `selectionTouchesRange` and unfold to source.
+    view.dispatch({
+      selection: EditorSelection.single(table.to, table.from),
+      effects: view.scrollSnapshot(),
+    });
+    view.focus();
+  });
+  return button;
 }
 
 // --- Widget ---
@@ -416,19 +637,43 @@ class TableWidget extends WidgetType {
     return this.rawText === other.rawText;
   }
 
-  ignoreEvent(): boolean {
-    return false;
+  ignoreEvent(event: Event): boolean {
+    // The widget owns its pointer and keyboard events so CodeMirror never
+    // moves its selection into the table range on a click. Links are the
+    // exception: their clicks must reach the editor's navigation handlers.
+    return !(event.target instanceof Element && event.target.closest(LINK_SELECTOR));
   }
 
   get estimatedHeight(): number {
     return this.heightEstimate;
   }
 
-  toDOM(): HTMLElement {
+  private fillCell(cell: CellElement, markdown: string, alignment: Alignment | undefined) {
+    setCellMarkdownContent(cell, markdown);
+    cell.style.textAlign = alignment ?? "";
+  }
+
+  private appendBodyRow(
+    view: EditorView,
+    wrapper: HTMLElement,
+    tbody: HTMLTableSectionElement,
+    cells: string[],
+  ) {
+    const { headers, alignments } = this.table;
+    const tr = tbody.appendChild(document.createElement("tr"));
+    for (let c = 0; c < headers.length; c++) {
+      const td = tr.appendChild(document.createElement("td"));
+      this.fillCell(td, cells[c] ?? "", alignments[c]);
+      attachCellEditing(view, wrapper, td);
+    }
+  }
+
+  toDOM(view: EditorView): HTMLElement {
     const { headers, alignments, rows } = this.table;
 
     const wrapper = document.createElement("div");
     wrapper.className = "cm-table-widget";
+    wrapper.contentEditable = "false";
 
     const inner = wrapper.appendChild(document.createElement("div"));
     inner.className = "cm-table-inner";
@@ -438,43 +683,43 @@ class TableWidget extends WidgetType {
     const headerRow = thead.appendChild(document.createElement("tr"));
     for (let i = 0; i < headers.length; i++) {
       const th = headerRow.appendChild(document.createElement("th"));
-      setCellMarkdownContent(th, headers[i]);
-      const a = alignments[i];
-      if (a) th.style.textAlign = a;
+      this.fillCell(th, headers[i], alignments[i]);
+      attachCellEditing(view, wrapper, th);
     }
 
     const tbody = tableEl.appendChild(document.createElement("tbody"));
-    for (let r = 0; r < rows.length; r++) {
-      const tr = tbody.appendChild(document.createElement("tr"));
-      for (let c = 0; c < headers.length; c++) {
-        const td = tr.appendChild(document.createElement("td"));
-        setCellMarkdownContent(td, rows[r][c] ?? "");
-        const a = alignments[c];
-        if (a) td.style.textAlign = a;
-      }
-    }
+    for (const row of rows) this.appendBodyRow(view, wrapper, tbody, row);
 
+    inner.appendChild(buildSourceToggle(view, wrapper));
     return wrapper;
   }
 
-  updateDOM(dom: HTMLElement): boolean {
+  updateDOM(dom: HTMLElement, view: EditorView): boolean {
     const { headers, alignments, rows } = this.table;
 
-    const existingThs = dom.querySelectorAll<HTMLElement>("thead th");
-    const existingTrs = dom.querySelectorAll("tbody tr");
-    if (existingThs.length !== headers.length || existingTrs.length !== rows.length) return false;
+    const existingThs = dom.querySelectorAll<CellElement>("thead th");
+    const tbody = dom.querySelector<HTMLTableSectionElement>("tbody");
+    if (existingThs.length !== headers.length || !tbody) return false;
+
+    const live = openEditors.get(dom)?.cell;
 
     existingThs.forEach((th, i) => {
-      setCellMarkdownContent(th, headers[i]);
-      th.style.textAlign = alignments[i] ?? "";
+      if (th !== live) this.fillCell(th, headers[i], alignments[i]);
     });
 
-    existingTrs.forEach((tr, rowIdx) => {
-      tr.querySelectorAll<HTMLElement>("td").forEach((td, colIdx) => {
-        setCellMarkdownContent(td, rows[rowIdx]?.[colIdx] ?? "");
-        td.style.textAlign = alignments[colIdx] ?? "";
-      });
-    });
+    // Row count changes are absorbed in place so an open editor, and the DOM
+    // the next Tab target is looked up in, survive an appended row.
+    while (tbody.rows.length > rows.length) tbody.lastElementChild?.remove();
+    for (let r = tbody.rows.length; r < rows.length; r++) {
+      this.appendBodyRow(view, dom, tbody, rows[r]);
+    }
+    for (let r = 0; r < rows.length; r++) {
+      const tr = tbody.rows[r];
+      for (let c = 0; c < headers.length; c++) {
+        const td = tr.cells[c];
+        if (td && td !== live) this.fillCell(td, rows[r][c] ?? "", alignments[c]);
+      }
+    }
 
     return true;
   }
@@ -508,6 +753,59 @@ const tableTheme = EditorView.baseTheme({
   },
   ".cm-table-inner": {
     display: "inline-block",
+    position: "relative",
+  },
+  ".cm-table-widget th.is-editing, .cm-table-widget td.is-editing": {
+    boxShadow: "inset 0 0 0 2px var(--accent)",
+  },
+  ".cm-table-cell-editor": {
+    // Zero chrome: it must read as the cell's own text, not a form control.
+    display: "block",
+    width: "100%",
+    margin: "0",
+    padding: "0",
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    color: "inherit",
+    font: "inherit",
+    lineHeight: "inherit",
+    textAlign: "inherit",
+    resize: "none",
+    overflow: "hidden",
+    whiteSpace: "pre-wrap",
+  },
+  ".cm-table-source-toggle": {
+    position: "absolute",
+    top: "4px",
+    right: "4px",
+    width: "24px",
+    height: "24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0",
+    border: `${tableBorderWidthPx}px solid var(--border-color)`,
+    borderRadius: "6px",
+    backgroundColor: "var(--surface-card)",
+    color: "var(--text-secondary)",
+    cursor: "pointer",
+    opacity: "0",
+    transition:
+      "opacity var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out)",
+  },
+  ".cm-table-source-toggle svg": {
+    width: "14px",
+    height: "14px",
+    strokeWidth: "2",
+  },
+  ".cm-table-inner:hover .cm-table-source-toggle, .cm-table-inner:focus-within .cm-table-source-toggle":
+    {
+      opacity: "1",
+    },
+  ".cm-table-source-toggle:hover": {
+    backgroundColor: "var(--surface-subtle)",
+    color: "var(--text-primary)",
   },
   ".cm-table-widget table": {
     borderCollapse: "separate",
@@ -591,10 +889,5 @@ const foldTreeSync = ViewPlugin.fromClass(
 );
 
 export function tableDecorations() {
-  return [
-    tableFoldExtension,
-    tableTheme,
-    foldTreeSync,
-    selectAllDecorationsOnSelectExtension("cm-table-widget"),
-  ];
+  return [tableFoldExtension, tableTheme, foldTreeSync];
 }

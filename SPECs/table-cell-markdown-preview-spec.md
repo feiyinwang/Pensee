@@ -13,7 +13,7 @@ Folded markdown table previews should parse inline markdown inside header and bo
 
 ## Non-Goals
 
-- Rich visual table cell editing.
+- Rich visual table cell editing. _Superseded on 2026-09-02 by [`table-in-place-cell-editing-spec.md`](./table-in-place-cell-editing-spec.md); the preview rendering here is unchanged._
 - Block-level markdown inside cells.
 - Making links or images inside folded table previews navigate or load resources.
 

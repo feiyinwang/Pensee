@@ -267,14 +267,14 @@ describe("shouldStartDragGate", () => {
   // Minimal stand-in for a non-widget click target. We don't need a full DOM —
   // shouldStartDragGate only calls `closest()` which we can stub.
   const NON_WIDGET_TARGET = {
-    closest: (sel: string) => (sel === ".cm-mermaid-widget" ? null : null),
+    closest: () => null,
   } as unknown as Element;
 
   // Element-like with closest('.cm-mermaid-widget') returning a truthy node —
   // simulates a click that originated inside a mermaid widget (canvas pan,
   // Edit-code button, Preview button).
   const WIDGET_TARGET = {
-    closest: (sel: string) => (sel === ".cm-mermaid-widget" ? ({} as Element) : null),
+    closest: (sel: string) => (sel.includes(".cm-mermaid-widget") ? ({} as Element) : null),
   } as unknown as Element;
 
   test("returns dispatch with startDragEffect for primary button + non-widget target", () => {

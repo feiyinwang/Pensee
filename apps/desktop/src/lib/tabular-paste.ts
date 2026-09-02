@@ -12,6 +12,7 @@
 import type { EditorState, TransactionSpec } from "@codemirror/state";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
+import { escapeCellText } from "./table-cell-edit";
 
 /**
  * Parse tab-separated text into rows of cells, or return `undefined` when the
@@ -98,15 +99,11 @@ export function toMarkdownTable(rows: string[][]): string {
   const width = Math.max(...rows.map((r) => r.length));
   const line = (cells: string[]) => {
     const padded = [...cells, ...Array<string>(width - cells.length).fill("")];
-    return `| ${padded.map(escapeCell).join(" | ")} |`;
+    return `| ${padded.map(escapeCellText).join(" | ")} |`;
   };
   const [header, ...body] = rows;
   const delimiter = `| ${Array<string>(width).fill("---").join(" | ")} |`;
   return [line(header), delimiter, ...body.map(line)].join("\n");
-}
-
-function escapeCell(cell: string): string {
-  return cell.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 }
 
 // A pasted table must not be rewritten inside code, where the bytes are the

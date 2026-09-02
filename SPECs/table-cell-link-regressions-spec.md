@@ -15,7 +15,7 @@ Rendered links inside folded table preview cells should behave like links, not l
 
 - Visual editing inside folded table cells.
 - Rendering block markdown in table cells.
-- Changing how clicking non-link table cells enters source-edit mode.
+- Changing how clicking non-link table cells enters source-edit mode. _Superseded on 2026-09-02 by [`table-in-place-cell-editing-spec.md`](./table-in-place-cell-editing-spec.md): non-link clicks now edit the cell in place; link clicks still navigate as specified here._
 
 ## Implementation Notes
 
