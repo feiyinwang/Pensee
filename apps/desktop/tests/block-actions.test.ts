@@ -114,6 +114,14 @@ describe("blockTypeOf", () => {
   test("an h4 is none of them, rather than the wrong one", () => {
     expect(blockTypeOf("#### hi")).toBeNull();
   });
+
+  test("a bare hash is an empty heading, not text", () => {
+    // CommonMark's empty heading. Calling it Text made it a ghost the type
+    // grid could neither light up nor clear.
+    expect(blockTypeOf("#")).toBe("h1");
+    expect(blockTypeOf("##")).toBe("h2");
+    expect(blockTypeOf("#hashtag")).toBe("text");
+  });
 });
 
 describe("setBlockType", () => {
@@ -149,6 +157,11 @@ describe("setBlockType", () => {
 
   test("unwraps a fence on the way out", () => {
     expect(setBlockType("```\nhi\n```", "text")).toBe("hi");
+  });
+
+  test("clears a bare hash instead of stacking another on it", () => {
+    expect(setBlockType("#", "text")).toBe("");
+    expect(setBlockType("#", "h2")).toBe("## ");
   });
 });
 
@@ -192,6 +205,14 @@ describe("applyBlockType", () => {
     expect(applyBlockType(ed, block(16, 32), "h1")).toBe(true);
     expect(ed.doc).toBe("first line here\n# second line here");
     expect(ed.dispatches).toBe(1);
+  });
+
+  test("Heading 1 on a ghost `#` removes it rather than writing `# #`", () => {
+    // The tile is lit (it IS an h1), so picking it again clears the shape, and
+    // an empty result deletes the block — ghost gone, neighbour untouched.
+    const ed = new Fake("#\nnow i have it done");
+    expect(applyBlockType(ed, block(0, 1, "ATXHeading1"), "h1")).toBe(true);
+    expect(ed.doc).toBe("now i have it done");
   });
 
   test("lights the tile matching the target", () => {

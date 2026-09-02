@@ -180,7 +180,12 @@ function lineCommand(
   };
 }
 
-const HEADING_RE = /^(#{1,6})\s/;
+/** `# title`, and also a bare `#` with nothing after it. CommonMark says the
+ *  second is an empty heading, and the editor produces one whenever a heading
+ *  with no text is written and trimmed. Demanding the space made that line a
+ *  ghost: the type grid called it Text, "Heading 1" on it wrote `# #`, and
+ *  Paragraph could not clear it. */
+const HEADING_RE = /^(#{1,6})(?:[ \t]|$)/;
 const BULLET_RE = /^- /;
 const NUMBERED_RE = /^\d+\.\s/;
 const BLOCKQUOTE_RE = /^> /;
