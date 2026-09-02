@@ -97,6 +97,32 @@ describe("Block handle heading conversion", function () {
     });
   });
 
+  /** Which rendered line the grip is currently centred on. */
+  async function gripLineIndex() {
+    return browser.execute(() => {
+      const el = document.querySelector(".wr-gutter-grab");
+      const r = el.getBoundingClientRect();
+      const mid = r.top + r.height / 2;
+      return [...document.querySelectorAll(".cm-line")].findIndex((l) => {
+        const b = l.getBoundingClientRect();
+        return mid >= b.top && mid <= b.bottom;
+      });
+    });
+  }
+
+  it("parks the grip on the line under the pointer, not the paragraph's first", async function () {
+    // The bug: a paragraph is every consecutive non-blank line, so pointing at
+    // the second line resolved to the whole node and the grip jumped up to the
+    // first — heading the line above the one being pointed at.
+    const second = await browser.execute(() => {
+      const r = document.querySelectorAll(".cm-line")[1].getBoundingClientRect();
+      return { x: r.left + 30, y: r.top + r.height / 2 };
+    });
+    await hover(second.x, second.y);
+    await $(".wr-gutter-grab.wr-gutter-on").waitForExist({ timeout: 5_000 });
+    strictEqual(await gripLineIndex(), 1, "grip did not follow the pointer to line 2");
+  });
+
   it("opens the block handle panel over the paragraph", async function () {
     const box = await browser.execute(() => {
       const line = document.querySelector(".cm-line");
@@ -163,14 +189,70 @@ describe("Block handle heading conversion", function () {
     const read = await invoke("read_file", { path: filePath });
     ok(read.ok, `could not read back ${filePath}: ${read.error}`);
     const content = typeof read.value === "string" ? read.value : read.value?.content;
+    // No blank line inserted: the grip addresses the line, so heading line 1
+    // leaves nothing to split off — line 2 stays exactly where it was.
     strictEqual(
       content.trimEnd(),
-      `# ${FIRST}\n\n${SECOND}`,
+      `# ${FIRST}\n${SECOND}`,
       `unexpected markdown on disk: ${JSON.stringify(content)}`,
     );
 
     if (process.env.VERIFY_SHOT_DIR) {
       await browser.saveScreenshot(`${process.env.VERIFY_SHOT_DIR}/block-handle-heading.png`);
+    }
+  });
+
+  it("heads the second line when the second line is the one pointed at", async function () {
+    // The whole complaint, end to end: point at line 2, get the heading on
+    // line 2 — never on the line above it.
+    const reset = `${FIRST}\n${SECOND}\n`;
+    writeFileSync(filePath, reset);
+    await browser.refresh();
+    await $('button[aria-label="Hide sidebar"]').waitForExist({ timeout: 15_000 });
+    const item = await $(`span*=${FILE_STEM}`);
+    await item.waitForExist({ timeout: 15_000 });
+    await item.click();
+    await browser.waitUntil(async () => (await $(".cm-content").getText()).includes(SECOND), {
+      timeout: 10_000,
+      timeoutMsg: "document never reloaded",
+    });
+
+    const second = await browser.execute(() => {
+      const r = document.querySelectorAll(".cm-line")[1].getBoundingClientRect();
+      return { x: r.left + 30, y: r.top + r.height / 2 };
+    });
+    await hover(second.x, second.y);
+    await $(".wr-gutter-grab.wr-gutter-on").waitForExist({ timeout: 5_000 });
+    strictEqual(await gripLineIndex(), 1, "grip did not follow the pointer to line 2");
+
+    await browser.execute(() => {
+      const el = document.querySelector(".wr-gutter-grab");
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(
+        new MouseEvent("mouseenter", {
+          clientX: r.left + r.width / 2,
+          clientY: r.top + r.height / 2,
+        }),
+      );
+    });
+    await browser.waitUntil(
+      async () => (await $$('.wr-bmenu-tile[aria-label="Heading 2"]')).length > 0,
+      { timeout: 5_000, timeoutMsg: "block handle panel never opened on line 2" },
+    );
+    await $('.wr-bmenu-tile[aria-label="Heading 2"]').click();
+    await browser.pause(400);
+
+    const read = await invoke("read_file", { path: filePath });
+    ok(read.ok, `could not read back ${filePath}: ${read.error}`);
+    const content = typeof read.value === "string" ? read.value : read.value?.content;
+    strictEqual(
+      content.trimEnd(),
+      `${FIRST}\n## ${SECOND}`,
+      `the heading landed on the wrong line: ${JSON.stringify(content)}`,
+    );
+
+    if (process.env.VERIFY_SHOT_DIR) {
+      await browser.saveScreenshot(`${process.env.VERIFY_SHOT_DIR}/block-handle-heading-line2.png`);
     }
   });
 });

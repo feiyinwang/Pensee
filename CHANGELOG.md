@@ -2,6 +2,7 @@
 
 ## 2026-09-02
 
+- Fix the gutter grip jumping to the wrong line, so block-menu actions applied to a line you were not pointing at. A markdown paragraph is every consecutive non-blank line, so a single Enter leaves two independent lines inside one node — and the grip addressed that node, parking itself on its first line however far down you pointed. Turning the second line into a heading put the `#` on the first. For prose the grip now addresses the **line** under the pointer; lists, quotes, tables, fences and a picture with words under it stay whole, because there the lines really are one block. Move up/down follows the same units, and reordering two lines of a paragraph no longer splits them apart with a blank line.
 - Fix the block menu's H1/H2/H3 tiles stamping a `#` onto the next line's content. Two lines with no blank line between them are one markdown paragraph — which is what a single Enter produces — and the conversion prefixed every line of the block, so turning one line into a heading turned the line under it into a heading too. A heading is one line: only the line the grip is parked beside gets the hashes, and whatever followed stays behind as its own block, keeping the shape it already had (a bulleted list stays bulleted, a quote stays quoted). This is the same `setBlockType` the `/h1` slash command goes through, so both paths still produce identical markdown.
 
 ## 2026-08-13

@@ -219,8 +219,22 @@ interface Span {
  *  it is deliberately the same unit the gutter handle drags, so a block cannot
  *  be draggable to a place it cannot be moved to with the keyboard. */
 function topLevelSpans(view: BlockEditor): Span[] {
+  const doc = view.state.doc;
   const spans: Span[] = [];
   for (let n = syntaxTree(view.state).topNode.firstChild; n; n = n.nextSibling) {
+    // A multi-line `Paragraph` is one node but several blocks to the reader,
+    // and the gutter grip addresses each of its lines separately. This list is
+    // deliberately the same unit the grip drags, so it has to split the same
+    // way — otherwise "move up" vanishes from the menu for every line but the
+    // first, because the target's offset matches no span here.
+    const first = doc.lineAt(n.from);
+    if (n.name === "Paragraph" && first.to < n.to) {
+      for (let i = first.number; i <= doc.lineAt(n.to).number; i++) {
+        const line = doc.line(i);
+        spans.push({ from: line.from, to: line.to });
+      }
+      continue;
+    }
     spans.push({ from: n.from, to: n.to });
   }
   return spans;
@@ -277,8 +291,12 @@ export function moveTarget(view: BlockEditor, target: ActionTarget, dir: -1 | 1)
   const doc = view.state.doc;
   const aText = doc.sliceString(a.from, a.to);
   const bText = doc.sliceString(b.from, b.to);
-  const insert = `${bText}\n\n${aText}`;
-  const landing = dir < 0 ? a.from : a.from + bText.length + 2;
+  // Whatever separated them, not a hardcoded blank line: two lines of one
+  // paragraph are `\n` apart, and rebuilding them `\n\n` apart would split the
+  // paragraph as a side effect of reordering it.
+  const gap = doc.sliceString(a.to, b.from);
+  const insert = `${bText}${gap}${aText}`;
+  const landing = dir < 0 ? a.from : a.from + bText.length + gap.length;
   view.dispatch({
     changes: { from: a.from, to: b.to, insert },
     selection: EditorSelection.cursor(landing),

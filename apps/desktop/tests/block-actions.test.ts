@@ -181,6 +181,15 @@ describe("applyBlockType", () => {
     expect(ed.dispatches).toBe(1);
   });
 
+  test("heads one line of a multi-line paragraph, leaving its neighbour alone", () => {
+    // What the gutter grip now hands over when the pointer is on line 2:
+    // that line's own offsets, not the whole Paragraph node.
+    const ed = new Fake("first line here\nsecond line here");
+    expect(applyBlockType(ed, block(16, 32), "h1")).toBe(true);
+    expect(ed.doc).toBe("first line here\n# second line here");
+    expect(ed.dispatches).toBe(1);
+  });
+
   test("lights the tile matching the target", () => {
     const ed = new Fake("- a\n- b");
     expect(currentBlockType(ed, block(0, 7, "BulletList"))).toBe("bullet");
@@ -225,6 +234,23 @@ describe("moveTarget", () => {
     expect(canMove(ed, ONE, -1)).toBe(false);
     expect(canMove(ed, THREE_, 1)).toBe(false);
     expect(canMove(ed, TWO, 1)).toBe(true);
+  });
+
+  test("the lines of a paragraph move, and stay one paragraph", () => {
+    // The grip addresses each line of a paragraph, so the move list has to
+    // offer them too — and reordering must not insert a blank line and quietly
+    // split the paragraph in half.
+    const ed = new Fake("first line here\nsecond line here");
+    expect(canMove(ed, block(0, 15), 1)).toBe(true);
+    expect(moveTarget(ed, block(0, 15), 1)).toBe(true);
+    expect(ed.doc).toBe("second line here\nfirst line here");
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("blank-line separation between real blocks survives a move", () => {
+    const ed = new Fake(THREE);
+    moveTarget(ed, TWO, 1);
+    expect(ed.doc).toBe("one\n\nthree\n\ntwo");
   });
 });
 

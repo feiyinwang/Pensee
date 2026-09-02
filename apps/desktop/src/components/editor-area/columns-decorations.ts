@@ -553,6 +553,28 @@ export interface BlockRef {
   name: string;
 }
 
+/** For prose the unit under the grip is the LINE, not the markdown block.
+ *
+ *  A `Paragraph` is every consecutive non-blank line, so a single Enter leaves
+ *  two independent thoughts inside one node. Pointing at the second line and
+ *  getting the first is what made "make this a heading" head the line above
+ *  the one under the pointer — the grip parks on `block.from`, so it visibly
+ *  jumped up a line before the menu even opened.
+ *
+ *  Only plain paragraphs split. A list, a quote or a table is genuinely one
+ *  thing across its lines, and a picture with words under it stays whole
+ *  because the two are a single unit here — see the `lines` note in `place`. */
+function proseLineAt(state: EditorState, block: BlockRef | null, pos: number): BlockRef | null {
+  if (!block || block.name !== "Paragraph") return block;
+  const clamped = Math.min(Math.max(pos, block.from), block.to);
+  const line = state.doc.lineAt(clamped);
+  // Already a one-line paragraph: nothing to narrow, and returning the block
+  // keeps the identity the drag and move code compares against.
+  if (line.from <= block.from && line.to >= block.to) return block;
+  if (IMAGE_BLOCK.test(state.doc.sliceString(block.from, block.to).trim())) return block;
+  return { from: line.from, to: line.to, name: block.name };
+}
+
 function topBlockAt(state: EditorState, pos: number): BlockRef | null {
   const clamped = Math.min(Math.max(pos, 0), state.doc.length);
   const tree = syntaxTree(state);
@@ -2405,7 +2427,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
         gripTrace("hide: posAtCoords found nothing", { target: describeTarget(el) });
         return this.hide();
       }
-      const block = topBlockAt(view.state, pos);
+      const block = proseLineAt(view.state, topBlockAt(view.state, pos), pos);
       // Rows have their own per-column handles; a row is never dragged whole.
       if (!block || block.name === "ColumnRow") {
         gripTrace("hide: no draggable block here", {
