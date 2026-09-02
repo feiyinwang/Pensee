@@ -7,7 +7,8 @@
 
 import { EditorState } from "@codemirror/state";
 import { EditorView, drawSelection, keymap } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { history, historyKeymap } from "@codemirror/commands";
+import { editorDefaultKeymap } from "@/lib/prosemark-core/basicSetup";
 import { StreamLanguage } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
@@ -623,7 +624,7 @@ function createInnerEditor(
         // the same shared module the page and caption bands use. Anything that
         // has to be re-listed per editor will eventually be missing from one.
         platformDeleteKeymap,
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        keymap.of([...editorDefaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
         EditorView.theme({
           "&": { height: "100%", fontSize: "13px" },

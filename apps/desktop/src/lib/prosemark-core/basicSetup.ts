@@ -52,7 +52,7 @@ export const prosemarkBasicSetup = (): Extension => [
   keymap.of([
     ...prosemarkMarkdownFormattingKeymap,
     ...closeBracketsKeymap,
-    ...defaultKeymap,
+    ...editorDefaultKeymap,
     ...searchKeymap,
     ...historyKeymap,
     ...foldKeymap,
@@ -63,6 +63,13 @@ export const prosemarkBasicSetup = (): Extension => [
   foldGutter(),
   EditorView.lineWrapping,
 ];
+
+/** CodeMirror's `defaultKeymap` minus Mod-[. That key toggles the sidebar
+ *  app-wide (`useKeyboardShortcuts`), and CodeMirror only preventDefaults —
+ *  it never stops propagation — so leaving indentLess bound would run both.
+ *  Every editor in the app (main, columns, mermaid) pulls this so the key
+ *  means one thing everywhere. Shift+Tab still dedents. */
+export const editorDefaultKeymap = defaultKeymap.filter((binding) => binding.key !== "Mod-[");
 
 export const prosemarkBaseThemeSetup = (): Extension => [
   baseSyntaxHighlights,

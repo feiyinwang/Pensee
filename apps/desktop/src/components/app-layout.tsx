@@ -42,7 +42,8 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
     clampSidebarWidth(sidebarWidth, maxSidebarWidth),
   );
   const draftSidebarWidthRef = useRef(draftSidebarWidth);
-  const tabChromeLeft = isSidebarCollapsed ? 132 : draftSidebarWidth + 12;
+  // Collapsed: clear the traffic lights. Open: hang off the sidebar's edge.
+  const tabChromeLeft = isSidebarCollapsed ? 92 : draftSidebarWidth + 12;
 
   const setClampedSidebarWidth = useCallback(
     (nextWidth: number) => {
@@ -132,28 +133,33 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
         }}
       />
       <div
-        className="pointer-events-none absolute left-0 top-0 z-50 flex items-center"
+        className="pointer-events-none absolute top-0 z-40"
         style={{
-          height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
-          padding: "var(--chrome-control-padding) 12px var(--chrome-control-padding) 92px",
+          left: tabChromeLeft,
+          right: 12,
+          transition: isSidebarDragging ? "none" : sidebarSettleTransition("left"),
         }}
       >
-        <SidebarToggleButton />
-      </div>
-      {!showWelcome && (
-        <div
-          className="pointer-events-none absolute top-0 z-40"
-          style={{
-            left: tabChromeLeft,
-            right: 12,
-            transition: isSidebarDragging ? "none" : sidebarSettleTransition("left"),
-          }}
-        >
-          <div className="pointer-events-auto">
-            <EditorTabs />
+        <div className="pointer-events-auto flex min-w-0 items-center gap-0.5">
+          {/* The toggle sits at the sidebar's edge, right before the history
+              arrows, so it moves with the edge it controls. */}
+          <div
+            data-tauri-drag-region
+            className="flex shrink-0 items-center"
+            style={{
+              height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
+              paddingBlock: "var(--chrome-control-padding)",
+            }}
+          >
+            <SidebarToggleButton />
           </div>
+          {!showWelcome && (
+            <div className="min-w-0 flex-1">
+              <EditorTabs />
+            </div>
+          )}
         </div>
-      )}
+      </div>
       <div className="flex h-full min-h-0 flex-col">
         <div className="flex min-h-0 flex-1">
           <div

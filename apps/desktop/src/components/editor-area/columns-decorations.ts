@@ -18,7 +18,8 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { history, historyKeymap } from "@codemirror/commands";
+import { editorDefaultKeymap } from "@/lib/prosemark-core/basicSetup";
 import { syntaxTree } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { markdown } from "@codemirror/lang-markdown";
@@ -660,7 +661,7 @@ function bandEditorExtensions(placeholderText: string): Extension[] {
     // the document has, it has — and it takes them from the same shared module
     // the page editor does rather than re-listing them here.
     platformDeleteKeymap,
-    keymap.of([...prosemarkMarkdownFormattingKeymap, ...defaultKeymap, ...historyKeymap]),
+    keymap.of([...prosemarkMarkdownFormattingKeymap, ...editorDefaultKeymap, ...historyKeymap]),
     prosemarkBaseThemeSetup(),
   ];
 }

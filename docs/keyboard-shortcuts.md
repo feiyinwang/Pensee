@@ -14,6 +14,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+T           | New tab                       |
 | Cmd+W           | Close current tab             |
 | Cmd+\\          | Toggle sidebar                |
+| Cmd+[           | Toggle sidebar                |
 | Ctrl+Tab        | Next tab                      |
 | Ctrl+Shift+Tab  | Previous tab                  |
 | Cmd+1 ... Cmd+9 | Jump to Nth tab               |
@@ -21,7 +22,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Alt+ArrowRight  | Navigate forward              |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
-create hidden UI state: Cmd+\\, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
+create hidden UI state: Cmd+\\, Cmd+[, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N, and history navigation still work.
 
 ## Menu Accelerators
@@ -52,7 +53,7 @@ These shortcuts are handled by the `markdownFormatting` CodeMirror extension and
 
 ## Editor (inherited from CodeMirror)
 
-Standard editing shortcuts provided by CodeMirror's basic setup.
+Standard editing shortcuts provided by CodeMirror's basic setup. Cmd+[ (indent less) is removed from every editor keymap (`editorDefaultKeymap` in `basicSetup.ts`) so it can toggle the sidebar app-wide; Shift+Tab still dedents.
 
 | Shortcut             | Action                         |
 | -------------------- | ------------------------------ |
@@ -71,7 +72,6 @@ Standard editing shortcuts provided by CodeMirror's basic setup.
 | Tab                  | Indent / accept completion     |
 | Shift+Tab            | Dedent                         |
 | Cmd+]                | Indent more                    |
-| Cmd+[                | Indent less                    |
 | Cmd+F                | Find                           |
 | Cmd+H                | Find and replace               |
 | Cmd+G                | Find next                      |
