@@ -307,6 +307,12 @@ a {
   }
 
   .hero {
+    /* The sticky hero is a desktop-only affordance: in the stacked layout it
+       would stay pinned while the video strip scrolls up over the features. */
+    position: static;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100svh;
     width: auto;
     margin: 0;
     padding: 20px 20px 20px;
@@ -344,7 +350,6 @@ a {
 
   .screenshots::-webkit-scrollbar {
     display: none;
-    margin-top: auto;
   }
 
   .shot {

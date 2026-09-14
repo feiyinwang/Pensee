@@ -42,11 +42,11 @@ import {
   listExtension,
   platformDeleteKeymap,
   prosemarkBaseThemeSetup,
-  prosemarkMarkdownFormattingKeymap,
   prosemarkMarkdownSyntaxExtensions,
   revealBlockOnArrowExtension,
 } from "@/lib/prosemark-core/main";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
+import { markdownFormatting } from "./markdown-formatting";
 import { formatMarkdownDestination } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
 import { captureRenderedBand, reportBandEdit } from "./band-debug";
@@ -661,7 +661,10 @@ function bandEditorExtensions(placeholderText: string): Extension[] {
     // the document has, it has — and it takes them from the same shared module
     // the page editor does rather than re-listing them here.
     platformDeleteKeymap,
-    keymap.of([...prosemarkMarkdownFormattingKeymap, ...editorDefaultKeymap, ...historyKeymap]),
+    // The app's one formatting registry (Cmd+B / I / K / E, lists, headings),
+    // the same bindings the page editor gets.
+    markdownFormatting,
+    keymap.of([...editorDefaultKeymap, ...historyKeymap]),
     prosemarkBaseThemeSetup(),
   ];
 }
