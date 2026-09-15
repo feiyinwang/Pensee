@@ -1,8 +1,13 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useAllSettings, useResetSetting, useSetSetting } from "@/hooks/use-settings";
 import { SETTINGS_SCHEMA, type SettingDef } from "@/lib/settings-schema";
 import { SettingControl } from "./setting-control";
+import { ThemePresetRow } from "./theme-preset-row";
 import { ThemesSection } from "./themes-section";
+
+/** The theme dropdown sits in Appearance directly under the light/dark
+ *  Schema switch. It isn't a schema entry, so it is placed by anchor key. */
+const THEME_PRESET_ROW_AFTER = "appearance.theme";
 import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-container";
 
 /** Section that renders above the Themes block. The schema-driven section
@@ -37,18 +42,22 @@ export function SettingsPanel({ isActive }: { isActive: boolean }) {
         <h2 className="mb-3 text-[13px] font-medium text-[var(--text-muted)]">{category}</h2>
         <div className="-mx-4 overflow-hidden rounded-2xl border border-[var(--line-subtler)] bg-[var(--surface-card)]">
           {defs.map((def, i) => (
-            <div
-              key={def.key}
-              className={i === 0 ? undefined : "border-t border-[var(--line-subtler)]"}
-            >
-              <SettingControl
-                def={def}
-                value={settings[def.key]}
-                onChange={(value) => setSetting(def.key, value)}
-                onReset={() => void resetSetting(def.key)}
-                isModified={isModified(def)}
-              />
-            </div>
+            <Fragment key={def.key}>
+              <div className={i === 0 ? undefined : "border-t border-[var(--line-subtler)]"}>
+                <SettingControl
+                  def={def}
+                  value={settings[def.key]}
+                  onChange={(value) => setSetting(def.key, value)}
+                  onReset={() => void resetSetting(def.key)}
+                  isModified={isModified(def)}
+                />
+              </div>
+              {def.key === THEME_PRESET_ROW_AFTER && (
+                <div className="border-t border-[var(--line-subtler)]">
+                  <ThemePresetRow />
+                </div>
+              )}
+            </Fragment>
           ))}
         </div>
       </section>

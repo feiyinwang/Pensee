@@ -155,15 +155,6 @@
       "default": "\"SF Mono\", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace"
     },
     {
-      "key": "theme.light.preset",
-      "label": "Preset",
-      "description": "Light theme preset",
-      "category": "Theme",
-      "$comment": "Valid values are populated at runtime from shared/themes/*.json plus the special \"custom\" sentinel; we intentionally don't enum-constrain the contract so adding a preset doesn't require a schema edit.",
-      "type": "string",
-      "default": "Writer"
-    },
-    {
       "key": "theme.light.accent",
       "label": "Accent",
       "description": "Light theme accent color",
@@ -213,15 +204,6 @@
       "default": 22
     },
     {
-      "key": "theme.dark.preset",
-      "label": "Preset",
-      "description": "Dark theme preset",
-      "category": "Theme",
-      "$comment": "Valid values are populated at runtime from shared/themes/*.json plus the special \"custom\" sentinel; we intentionally don't enum-constrain the contract so adding a preset doesn't require a schema edit.",
-      "type": "string",
-      "default": "Writer"
-    },
-    {
       "key": "theme.dark.accent",
       "label": "Accent",
       "description": "Dark theme accent color",
@@ -237,7 +219,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--bg-base",
-      "default": "#0A6470"
+      "default": "#003E4A"
     },
     {
       "key": "theme.dark.foreground",

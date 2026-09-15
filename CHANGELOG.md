@@ -2,6 +2,7 @@
 
 ## 2026-09-15
 
+- Add a Theme dropdown to Preferences → Appearance with 14 color themes, each for both light and dark mode: Teal (the new default), the original Orange, Amber, Ember, Forest, Indigo, Midnight, Ocean, Olive, Plum, Slate, Violet, High Contrast and Warm Paper. Picking one fills in the Light and Dark Theme colors below it; changing any of those by hand shows the dropdown as Custom. The teal default is a shade deeper than yesterday's, and every gradient theme was tuned so editor body text and links stay at 4.5:1 contrast or better.
 - New default look: a deep teal gradient behind the window, the editor on a rounded frosted-glass panel, monospace uppercase labels for sidebar sections, footer stats and palette groups, and white pill primary buttons. Dark mode defaults to a teal background with a pale aqua accent; light mode gets a pale teal counterpart. Only the defaults changed, so theme colours you set yourself in Preferences are kept, and the gradient is built from whatever background colour you choose. The corner glow is dimmer than a pure copy of the reference would be, so text over it stays readable. See [SPECs/teal-glass-theme-spec.md](./SPECs/teal-glass-theme-spec.md).
 
 ## 2026-09-13

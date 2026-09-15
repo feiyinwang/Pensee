@@ -8,6 +8,7 @@
 
 ## Done
 
+- Theme presets dropdown: [`SPECs/teal-glass-theme-spec.md`](SPECs/teal-glass-theme-spec.md#theme-presets) — Appearance → Theme picks one of 14 folder-registered presets (`shared/themes/<slug>/`), writing the ten primaries; the active preset is derived from the primaries (Custom when edited), so no preset key is stored. Removed the dead `theme.{mode}.preset` schema entries.
 - Teal glass theme: [`SPECs/teal-glass-theme-spec.md`](SPECs/teal-glass-theme-spec.md) — teal theme defaults, an OKLCH gradient backdrop derived from the background colour (sRGB fallback behind `@supports`), the editor on a rounded `.glass-panel`, a `label-mono` utility for chrome labels and primary buttons, and `--accent-solid` for white glyphs on accent fills.
 - Daily note title stuck to its date — `inferTitle` (frontend) and `extract_title` (Rust sidebar index) both skip heading/frontmatter title inference for a file named exactly `YYYY-MM-DD.md`, via `isDailyNoteName` / `is_daily_note_name`, so every consumer falls back to the file stem.
 - HTML file embed: [`SPECs/html-file-embed-spec.md`](SPECs/html-file-embed-spec.md) — `![[page.html]]` / `![[page.html|480]]` renders the file in a sandboxed frame with reload, open-externally and edit-source buttons, a drag handle that writes the height modifier back, live reload from the file watcher, and a `/html` slash item that picks the file. Follow-ups: keyboard path to the frame's buttons, a `|N` completion hint, and a workspace-wide way to open the page in a full window.

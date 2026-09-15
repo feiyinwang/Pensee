@@ -71,3 +71,52 @@ The pale dark-mode accent can't carry a white glyph. `--accent-solid`
 (`accent` 70% + black) is used where a white mark sits on an accent fill: the
 checked task box and the sidebar drag-count badge. The search overlay's
 Replace All button, previously accent-filled, becomes the primary white pill.
+
+## Theme presets
+
+Preferences → Appearance has a **Theme** dropdown directly under Schema.
+
+Presets are folders under `apps/desktop/shared/themes/<slug>/` with
+`light.json` and `dark.json`, each holding the five primaries. They are picked
+up by glob in `src/lib/theme-presets.ts`; the slug becomes the display name.
+Adding a theme is adding a folder.
+
+**No stored preset key.** The primaries (`theme.{mode}.*`) remain the only
+source of truth. Choosing a preset writes all ten primaries; the dropdown shows
+whichever preset they currently match (hex compared case-insensitively, unset
+keys read as schema defaults), or **Custom** once any primary is edited under
+Light/Dark Theme. The unused `theme.light.preset` / `theme.dark.preset` schema
+entries were removed. Reset on the row applies the default preset.
+
+The default preset is whichever one equals the schema defaults, and it is
+listed first; the rest are alphabetical. `tests/theme-presets.test.ts` fails if
+the schema defaults stop matching a preset exactly.
+
+| Preset        | Dark bg / accent      | Light bg / accent     |
+| ------------- | --------------------- | --------------------- |
+| Teal (default)| `#003E4A` / `#8FDCD5` | `#E9F2F1` / `#0E6F78` |
+| Amber         | `#4A3600` / `#FFE08A` | `#F7F2E4` / `#80600E` |
+| Ember         | `#692313` / `#FFC3A6` | `#FAF0EB` / `#AD4529` |
+| Forest        | `#004123` / `#A8E6BE` | `#ECF5EF` / `#2A7549` |
+| High Contrast | `#000000` / `#79B8FF` | `#FFFFFF` / `#0040A0` |
+| Indigo        | `#243281` / `#BFCBFF` | `#EEF0FA` / `#3B4DB3` |
+| Midnight      | `#172448` / `#93B8FF` | `#ECEFF6` / `#2D4E8E` |
+| Ocean         | `#003A66` / `#A2D3FA` | `#EAF1F8` / `#1D5F99` |
+| Olive         | `#303E00` / `#D8EA9C` | `#F2F5E9` / `#5A6C22` |
+| Orange        | `#111111` / `#FF6A00` | `#FFFFFF` / `#FF6A00` |
+| Plum          | `#63204E` / `#FFB9DD` | `#F8EEF4` / `#9E3A74` |
+| Slate         | `#2A3B4F` / `#C6D3E3` | `#EEF1F5` / `#475569` |
+| Violet        | `#46297F` / `#DCC4FF` | `#F2EEF9` / `#6A41B5` |
+| Warm Paper    | `#1F1A14` / `#E0A269` | `#F6EFE3` / `#A45A2A` |
+
+Orange is the original Writer palette, values unchanged (including its
+translucency). The gradient variants share the teal recipe: foreground white,
+translucent 0, contrast 30 dark / 22 light, and a deep tinted-dark foreground
+in light mode.
+
+**Legibility floor.** Each gradient variant's dark background was darkened in
+OKLCH, hue and chroma held, until editor body text (`--editor-text`, 72% of the
+foreground) reaches 4.5:1 on the glass panel over the brightest `--backdrop-lift`
+region; accents were lightened until links reach 4.5:1 there. This moved the
+teal default from `#0A6470` to `#003E4A`. Orange, High Contrast and Warm Paper
+keep their existing values.

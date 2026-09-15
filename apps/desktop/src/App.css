@@ -77,7 +77,7 @@
   /* Primary tokens — pushed by JS via applyThemeTokens(). Defaults below are
      last-resort fallbacks for the brief window before settings hydrate. */
   --accent: #8fdcd5;
-  --bg-base: #0a6470;
+  --bg-base: #003e4a;
   --fg-base: #ffffff;
   --ui-font:
     -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,

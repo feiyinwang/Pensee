@@ -7,10 +7,7 @@
  *       imported here statically so TypeScript can derive literal types.
  *
  *   - `apps/desktop/shared/themes/<slug>/{light,dark}.json`
- *       Default theme *values*. Each preset is a folder with one JSON file
- *       per mode, holding just the primary values. Picked up by glob so
- *       dropping a new folder registers a new preset — no TS edits needed.
- *       The folder slug becomes the display name (kebab-case → Title Case).
+ *       Theme preset *values*, registered by `theme-presets.ts`.
  *
  * Splitting contract from values follows the same separation Rust uses: the
  * schema describes how a setting works; presets are just curated bundles of
@@ -76,17 +73,12 @@ export type PrimarySet = Record<PrimarySuffix, string | number>;
 
 const PRIMARY_PREFIX = (mode: ThemeMode) => `theme.${mode}.`;
 
-function presetKey(mode: ThemeMode): string {
-  return `theme.${mode}.preset`;
-}
-
 /** Schema entries describing the editable primaries for a theme mode. UI
  *  iterates these, write paths iterate these, preset compare iterates these.
  *  The hardcoded list lives only in the JSON schema. */
 export function getPrimaryDefs(mode: ThemeMode): SettingDef[] {
   const prefix = PRIMARY_PREFIX(mode);
-  const presetK = presetKey(mode);
-  return SETTINGS_SCHEMA.filter((def) => def.key.startsWith(prefix) && def.key !== presetK);
+  return SETTINGS_SCHEMA.filter((def) => def.key.startsWith(prefix));
 }
 
 export function suffixOf(mode: ThemeMode, key: string): PrimarySuffix {
