@@ -56,6 +56,15 @@
   }
 }
 
+/* Small-caps label voice: monospace, uppercase, tracked out. Used for section
+   headings, footer metadata and primary buttons so chrome text reads as
+   labels, distinct from the prose the editor holds. */
+@utility label-mono {
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 @utility scrollbar-none {
   scrollbar-width: none !important;
   scrollbar-color: transparent transparent !important;
@@ -67,9 +76,9 @@
 :root {
   /* Primary tokens — pushed by JS via applyThemeTokens(). Defaults below are
      last-resort fallbacks for the brief window before settings hydrate. */
-  --accent: #ff6a00;
-  --bg-base: #111111;
-  --fg-base: #fcfcfc;
+  --accent: #8fdcd5;
+  --bg-base: #0a6470;
+  --fg-base: #ffffff;
   --ui-font:
     -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
     "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
@@ -79,8 +88,8 @@
   --mono-font:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
     monospace;
-  --bg-opacity: 0.715;
-  --contrast: 0.328;
+  --bg-opacity: 1;
+  --contrast: 0.44;
 
   /* Motion durations (see docs/motion.md). --ease-spring falls back to
      ease-out here; the @supports block after :root swaps in the real spring. */
@@ -115,7 +124,29 @@
   --line-subtle: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 24%), transparent);
   --line-subtler: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 15%), transparent);
   --focus-border: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 65%), transparent);
-  --sidebar-divider-right: var(--line-subtler);
+  /* The editor sits on its own glass panel, so the sidebar edge needs no rule. */
+  --sidebar-divider-right: transparent;
+
+  /* Window backdrop: a diagonal gradient from a deepened background into a
+     lifted, more saturated middle, with a soft glow in the bottom-right
+     corner. Every stop derives from --bg-base, so custom theme colours still
+     produce a matching gradient. The glow is kept restrained because editor
+     text sits on top of it and has to stay legible. These sRGB mixes are the
+     fallback; the @supports block below swaps in OKLCH stops that keep the
+     hue's chroma instead of greying it. */
+  --backdrop-deep: color-mix(in srgb, black 50%, var(--bg-base));
+  --backdrop-lift: color-mix(in srgb, white 10%, var(--bg-base));
+  --backdrop-glow: color-mix(in srgb, white 22%, var(--bg-base));
+  --backdrop:
+    radial-gradient(60% 55% at 100% 100%, var(--backdrop-glow), transparent 70%),
+    radial-gradient(80% 70% at 75% 70%, var(--backdrop-lift), transparent 75%),
+    linear-gradient(155deg, var(--backdrop-deep) 0%, var(--bg-base) 60%);
+
+  /* Glass panel (the editor card): a faint white wash that brightens toward
+     the bottom-right, following the backdrop's light. */
+  --glass-fill-start: color-mix(in srgb, white 3%, transparent);
+  --glass-fill-end: color-mix(in srgb, white 8%, transparent);
+  --glass-border: color-mix(in srgb, white 9%, transparent);
 
   --surface-primary: var(--bg-base);
   --surface-card: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
@@ -138,6 +169,11 @@
   --scrollbar-bg: transparent;
   --scrollbar-thumb: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
   --blockquote-border: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
+
+  /* Filled accent surface that carries a white glyph (checked task box, drag
+     count badge). A pale accent can't hold white on its own, so it is pulled
+     toward black just far enough to keep the glyph at 3:1. */
+  --accent-solid: color-mix(in srgb, var(--accent) 70%, black);
 
   --link-color: var(--accent);
   --editor-selection-bg: color-mix(in srgb, var(--accent) 30%, transparent);
@@ -165,7 +201,31 @@
   font-family: var(--ui-font);
   line-height: 1.5;
   color: var(--text-secondary);
-  background-color: var(--bg);
+}
+
+/* The backdrop gradient is painted on a fixed layer rather than on :root so
+   the translucency setting can fade the whole gradient toward the OS
+   vibrancy behind the window (a gradient has no single colour to mix). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--backdrop);
+  opacity: var(--bg-opacity);
+  pointer-events: none;
+}
+
+/* Rounded glass card that holds the editor, like a floating panel over the
+   backdrop. Its own fill is a translucent wash, not --bg, so the gradient
+   still reads through it. */
+.glass-panel {
+  margin-block: 8px;
+  margin-right: 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  background: linear-gradient(160deg, var(--glass-fill-start), var(--glass-fill-end));
+  overflow: hidden;
 }
 
 /* Spring for gesture releases (sidebar resize settle): stiffness 2000,
@@ -200,8 +260,31 @@
    since dark-on-light overlays read denser than light-on-dark at the same
    alpha. */
 [data-theme="light"] {
+  --backdrop-deep: color-mix(in srgb, var(--accent) 14%, var(--bg-base));
+  --backdrop-lift: color-mix(in srgb, white 50%, var(--bg-base));
+  --backdrop-glow: white;
+  --glass-fill-start: color-mix(in srgb, white 40%, transparent);
+  --glass-fill-end: color-mix(in srgb, white 65%, transparent);
+  --glass-border: color-mix(in srgb, var(--fg-base) 8%, transparent);
   --surface-card: transparent;
   --surface-input: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 20%), transparent);
+}
+
+/* OKLCH backdrop stops (see the --backdrop comment in :root). Relative colour
+   syntax needs WebKit 18+, hence the guard: without it the tokens would be
+   invalid at use and the window would lose its background entirely. */
+@supports (color: oklch(from red l c h)) {
+  :root {
+    --backdrop-deep: oklch(from var(--bg-base) calc(l - 0.17) c h);
+    --backdrop-lift: oklch(from var(--bg-base) calc(l + 0.08) calc(c * 1.3) h);
+    --backdrop-glow: oklch(from var(--bg-base) calc(l + 0.13) calc(c * 0.7) h);
+  }
+
+  [data-theme="light"] {
+    --backdrop-deep: oklch(from var(--bg-base) calc(l - 0.06) calc(c * 1.6) h);
+    --backdrop-lift: oklch(from var(--bg-base) calc(l + 0.03) c h);
+    --backdrop-glow: oklch(from var(--bg-base) 0.99 calc(c * 0.3) h);
+  }
 }
 
 /* Dark mode: bump tab active bg so the focused tab stands out against the
@@ -330,7 +413,7 @@ body.tree-dragging [data-tree-path] {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--line-subtler);
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
   isolation: isolate;
 }
@@ -581,6 +664,9 @@ body.tree-dragging [data-tree-path] {
 
 [cmdk-group-heading] {
   padding: 6px 10px;
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   font-size: 11px;
   color: var(--text-muted);
   user-select: none;

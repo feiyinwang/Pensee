@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-15
+
+- New default look: a deep teal gradient behind the window, the editor on a rounded frosted-glass panel, monospace uppercase labels for sidebar sections, footer stats and palette groups, and white pill primary buttons. Dark mode defaults to a teal background with a pale aqua accent; light mode gets a pale teal counterpart. Only the defaults changed, so theme colours you set yourself in Preferences are kept, and the gradient is built from whatever background colour you choose. The corner glow is dimmer than a pure copy of the reference would be, so text over it stays readable. See [SPECs/teal-glass-theme-spec.md](./SPECs/teal-glass-theme-spec.md).
+
 ## 2026-09-13
 
 - Fix the marketing site's demo-video strip scrolling over the feature list on phones and tablets. The hero column's desktop-only `position: sticky` was still active in the stacked mobile layout, so the hero stayed pinned while the video strip slid up underneath the features. Below 900px the hero now scrolls with the page and grows to at least one screen (`100svh`) instead of exactly one, so it can never overflow into the strip; the features still sit at the bottom of the first screen.

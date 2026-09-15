@@ -42,7 +42,7 @@ export function DocumentFooter({ filePath }: { filePath: string }) {
     <div
       data-document-footer
       onContextMenu={handleContextMenu}
-      className="flex absolute bottom-0 w-full z-10 h-11 shrink-0 items-center justify-end gap-5 px-6 text-[13px] leading-[1.15] text-[var(--text-muted)] md:px-8"
+      className="flex absolute bottom-0 w-full z-10 h-11 shrink-0 items-center justify-end gap-5 px-6 label-mono text-[11px] leading-[1.15] text-[var(--text-muted)] md:px-8"
     >
       {visibleMetrics.map((metric) => (
         <FooterMetric

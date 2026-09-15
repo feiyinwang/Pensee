@@ -187,7 +187,9 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
             />
           )}
 
-          <div className="relative min-w-0 flex-1 bg-bg">
+          <div
+            className={`glass-panel relative min-w-0 flex-1 ${isSidebarCollapsed ? "ml-2" : ""}`}
+          >
             {showWelcome ? <WelcomeScreen /> : <EditorArea />}
           </div>
         </div>

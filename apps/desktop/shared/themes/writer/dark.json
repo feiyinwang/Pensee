@@ -1,7 +1,7 @@
 {
-  "accent": "#FF6A00",
-  "background": "#111111",
-  "foreground": "#FCFCFC",
-  "translucent": 20,
-  "contrast": 16
+  "accent": "#8FDCD5",
+  "background": "#0A6470",
+  "foreground": "#FFFFFF",
+  "translucent": 0,
+  "contrast": 30
 }

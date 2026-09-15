@@ -371,7 +371,7 @@ export function TelemetryConsentDialog() {
               type="button"
               disabled={isSubmitting}
               onClick={() => void resolvePrompt(false)}
-              className="rounded-lg border border-[var(--line-subtle)] px-4 py-2 text-[13px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-subtle)] disabled:opacity-60"
+              className="label-mono rounded-md border border-[var(--line-subtle)] px-4 py-2 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-subtle)] disabled:opacity-60"
             >
               Not now
             </button>
@@ -379,7 +379,7 @@ export function TelemetryConsentDialog() {
               type="button"
               disabled={isSubmitting}
               onClick={() => void resolvePrompt(true)}
-              className="rounded-lg bg-[var(--text-primary)] px-4 py-2 text-[13px] font-medium text-[var(--surface-primary)] transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="label-mono rounded-md bg-[var(--text-primary)] px-4 py-2 text-[12px] font-medium text-[var(--surface-primary)] transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               Subscribe
             </button>

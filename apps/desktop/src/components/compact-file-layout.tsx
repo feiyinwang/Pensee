@@ -437,7 +437,7 @@ export function CompactFileLayout() {
         </div>
       </div>
 
-      <div className="relative h-full min-w-0 bg-bg">
+      <div className="glass-panel relative ml-2 h-[calc(100%-16px)] min-w-0">
         <EditorArea showFooter={false} />
       </div>
     </div>

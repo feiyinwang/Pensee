@@ -170,7 +170,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--accent",
-      "default": "#FF6A00"
+      "default": "#0E6F78"
     },
     {
       "key": "theme.light.background",
@@ -179,7 +179,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--bg-base",
-      "default": "#FFFFFF"
+      "default": "#E9F2F1"
     },
     {
       "key": "theme.light.foreground",
@@ -188,7 +188,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--fg-base",
-      "default": "#0D0D0D"
+      "default": "#0B2A30"
     },
     {
       "key": "theme.light.translucent",
@@ -199,7 +199,7 @@
       "min": 0,
       "max": 100,
       "step": 1,
-      "default": 10
+      "default": 0
     },
     {
       "key": "theme.light.contrast",
@@ -210,7 +210,7 @@
       "min": 0,
       "max": 100,
       "step": 1,
-      "default": 20
+      "default": 22
     },
     {
       "key": "theme.dark.preset",
@@ -228,7 +228,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--accent",
-      "default": "#FF6A00"
+      "default": "#8FDCD5"
     },
     {
       "key": "theme.dark.background",
@@ -237,7 +237,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--bg-base",
-      "default": "#111111"
+      "default": "#0A6470"
     },
     {
       "key": "theme.dark.foreground",
@@ -246,7 +246,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--fg-base",
-      "default": "#FCFCFC"
+      "default": "#FFFFFF"
     },
     {
       "key": "theme.dark.translucent",
@@ -257,7 +257,7 @@
       "min": 0,
       "max": 100,
       "step": 1,
-      "default": 20
+      "default": 0
     },
     {
       "key": "theme.dark.contrast",
@@ -268,7 +268,7 @@
       "min": 0,
       "max": 100,
       "step": 1,
-      "default": 16
+      "default": 30
     },
     {
       "key": "files.associations",
