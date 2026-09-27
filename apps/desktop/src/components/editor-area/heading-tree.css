@@ -11,6 +11,14 @@
    same size so an empty `#` line measures like a filled one. */
 .cm-editor.cm-heading-tree .cm-heading-line {
   font-size: 1.125em;
+  /* Proximity: a heading belongs to the body below it, so it sits close to
+     that body and further from the section above. The stock 1rem top pad
+     plus the blank separator line and 1.8 leading left ~45px of air above a
+     heading against ~13px below it; the tree already marks every section
+     break, so the pad drops to a quarter and the heading's own leading
+     tightens to 1.5. That leaves ~30px above and ~10px below. */
+  padding-top: 0.25rem;
+  line-height: 1.5;
 }
 
 .cm-editor.cm-heading-tree .cm-heading-line span:not(.cm-hidden-token),
@@ -123,4 +131,13 @@
   font-size: 0.8em;
   font-weight: 400;
   vertical-align: middle;
+}
+
+/* The chevron's quarter turn and hover fill are motion; the tree works the
+   same without it. */
+@media (prefers-reduced-motion: reduce) {
+  .cm-heading-tree-toggle,
+  .cm-heading-tree-toggle::before {
+    transition: none;
+  }
 }

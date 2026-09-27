@@ -7,6 +7,8 @@ Every document shows its headings as a Reddit-style thread tree. Typing `#`, `##
 ## Behaviour
 
 - **Setting**: Preferences → Editor → Heading Tree (`editor.heading-tree`, default on). Off restores the stock heading sizes and indentation and reopens any collapsed sections, since the chevrons are the only control that reopens them.
+- **Spacing**: headings sit close to their own body and further from the section above (proximity). With the tree on, the heading top padding drops from 1rem to 0.25rem and heading leading from 1.8 to 1.5, leaving ~30px of air above a heading and ~10px below it, against ~45px / ~13px before.
+- **Motion**: only the chevron's quarter turn (`--motion-fast`, `--ease-out`, a transform) and its hover fill. Collapse and expand themselves are instant: the fold changes layout height, which is not animated. All of it is off under `prefers-reduced-motion`.
 - **Indentation**: every line in a section is indented one 24px step per nesting depth, plus one step for the toggle column. The heading and its body share the same left edge, like a comment's username and body. Text before the first heading is not indented.
 - **Depth**: nesting, not the raw `#` count. Skipped levels collapse to one step (`#` then `###` is one level deeper), matching the section rail. Only top-level headings count; a `#` inside a list item, blockquote or code fence is not a node.
 - **Toggles**: each heading has a small disclosure chevron (a ~6px glyph in a 16px hit area) in the step left of its text. ▾ means open and collapses the section on click; ▸ means collapsed and expands it. The chevron turns between the two on `--motion-fast`. A heading with nothing under it gets a plain dot instead.

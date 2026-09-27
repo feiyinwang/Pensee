@@ -2,7 +2,7 @@
 
 ## 2026-09-27
 
-- Show headings as a thread tree, like a Reddit comment thread. Each `#`, `##`, … heading gets a small arrow beside it and its section is indented one step per level; a line runs down from each heading and curves into each of its subheadings. All headings are now the same size, since the tree shows the level. The hanging `#` marks no longer show next to headings, even while you edit one; the arrow takes their place. Click a heading's arrow to collapse its section (▾ turns to ▸) or expand it again. Turn the whole thing off under Preferences → Editor → Heading Tree, which also restores the old heading sizes and reopens collapsed sections. See [SPECs/heading-tree-spec.md](./SPECs/heading-tree-spec.md).
+- Show headings as a thread tree, like a Reddit comment thread. Each `#`, `##`, … heading gets a small arrow beside it and its section is indented one step per level; a line runs down from each heading and curves into each of its subheadings. All headings are now the same size, since the tree shows the level, and sit closer to the text under them. The hanging `#` marks no longer show next to headings, even while you edit one; the arrow takes their place. Click a heading's arrow to collapse its section (▾ turns to ▸) or expand it again. Turn the whole thing off under Preferences → Editor → Heading Tree, which also restores the old heading sizes and reopens collapsed sections. See [SPECs/heading-tree-spec.md](./SPECs/heading-tree-spec.md).
 
 ## 2026-09-15
 
