@@ -32,6 +32,7 @@ import {
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
 import { HtmlEmbedWidget } from "./html-embed-widget";
 import { resolveEmbedPath } from "./wiki-embed-resolver";
+import { openWikiPage } from "./wiki-pages-extension";
 // The editor's completion sources are registered together here. CodeMirror's
 // `override` is winner-takes-all — a second `autocompletion({override})`
 // elsewhere would silently disable this one — so the slash menu's source joins
@@ -332,11 +333,14 @@ function wikiLinkClickHandler(getFilePath: () => string, isDisposed: () => boole
           tauri.fileExists,
           getFilePath(),
         )
-          .then((result) => {
+          .then(async (result) => {
             if (isDisposed()) return;
-            if (result.kind === "internal") {
-              void editorApi.navigateToFile(result.path);
-            }
+            // No page yet: create it, the same page typing the link creates.
+            const path =
+              result.kind === "internal"
+                ? result.path
+                : await openWikiPage(rawTarget, getFilePath() || null);
+            if (path && !isDisposed()) void editorApi.navigateToFile(path);
           })
           .catch((error) => {
             if (!isDisposed()) console.error("[editor] Failed to follow wiki link:", error);

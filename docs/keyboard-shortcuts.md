@@ -66,6 +66,7 @@ These shortcuts are handled by the `markdownFormatting` CodeMirror extension and
 | Cmd+Shift+Enter         | Task list                 |
 | Cmd+Alt+1 ... Cmd+Alt+6 | Heading 1-6               |
 | Cmd+Alt+0               | Paragraph (strip heading) |
+| Cmd+Alt+N               | Move selection to new page |
 
 ## Editor (inherited from CodeMirror)
 

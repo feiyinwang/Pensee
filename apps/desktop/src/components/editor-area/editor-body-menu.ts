@@ -4,6 +4,7 @@ import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import { buildEditorBodyMenuItemsSpec, showNativeContextMenu } from "./editor-context-menu";
 import { followLink, linkHrefAtPos } from "./link-navigation";
 import { runEditorCommand } from "./markdown-formatting";
+import { moveSelectionToPage } from "./wiki-pages-extension";
 import { tabularPasteTransaction } from "@/lib/tabular-paste";
 
 /** Right-click menu over the editor body: clipboard, the command submenus,
@@ -20,6 +21,7 @@ export function editorBodyContextMenuExtension(
       const linkHref = pos === null ? null : linkHrefAtPos(view, pos);
       const hasLink = linkHref !== null;
       const filePath = getFilePath();
+      const hasSelection = !view.state.selection.main.empty;
 
       void showNativeContextMenu(
         buildEditorBodyMenuItemsSpec(
@@ -56,6 +58,12 @@ export function editorBodyContextMenuExtension(
             onCopyLink: hasLink
               ? () => {
                   void writeText(linkHref);
+                }
+              : undefined,
+            onMoveToPage: hasSelection
+              ? () => {
+                  view.focus();
+                  moveSelectionToPage(view, getFilePath, isDisposed);
                 }
               : undefined,
             onRunCommand: (id) => {

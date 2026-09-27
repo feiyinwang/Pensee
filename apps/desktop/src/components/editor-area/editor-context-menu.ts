@@ -14,6 +14,7 @@ import {
   type EditorCommand,
   type EditorCommandId,
 } from "./markdown-formatting";
+import { MOVE_SELECTION_TO_PAGE_CHORD } from "./wiki-pages-extension";
 
 // -- Editor body menu --
 
@@ -23,7 +24,8 @@ export type EditorBodyMenuActionId =
   | "paste"
   | "select-all"
   | "open-link"
-  | "copy-link";
+  | "copy-link"
+  | "move-to-page";
 
 export interface EditorBodyMenuHandlers {
   onCut: () => void;
@@ -33,6 +35,8 @@ export interface EditorBodyMenuHandlers {
   onOpenLink?: () => void;
   onCopyLink?: () => void;
   onRunCommand?: (id: EditorCommandId) => void;
+  /** Present only when there is a selection to move. */
+  onMoveToPage?: () => void;
 }
 
 // Menu ids stay stable for tests and telemetry; text and accelerator come from
@@ -111,6 +115,17 @@ export function buildEditorBodyMenuItemsSpec(
     { kind: "item", id: "copy", text: "Copy", action: handlers.onCopy },
     { kind: "item", id: "paste", text: "Paste", action: handlers.onPaste },
   ];
+
+  if (handlers.onMoveToPage) {
+    items.push({ kind: "separator" });
+    items.push({
+      kind: "item",
+      id: "move-to-page",
+      text: "Move selection to new page",
+      action: handlers.onMoveToPage,
+      accelerator: chordToAccelerator(MOVE_SELECTION_TO_PAGE_CHORD),
+    });
+  }
 
   if (handlers.onRunCommand) {
     const run = handlers.onRunCommand;
