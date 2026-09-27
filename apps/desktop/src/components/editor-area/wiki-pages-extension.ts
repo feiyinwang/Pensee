@@ -1,4 +1,4 @@
-import { EditorView, keymap, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { type EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
@@ -35,7 +35,24 @@ export const tauriWikiPageDeps: WikiPageDeps = {
   writeFile: tauri.writeFile,
 };
 
+/** Shown in menus (via `chordToAccelerator`). Not bound through `keymap`: see
+ *  `isMoveToPageKey`. */
 export const MOVE_SELECTION_TO_PAGE_CHORD = "Mod-Alt-n";
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
+
+/** Cmd+Alt+N (Ctrl+Alt+N elsewhere), matched on the physical key.
+ *
+ *  A `keymap` binding for `Mod-Alt-n` never fires on a Mac: Option+N is a dead
+ *  key (it starts `ñ`), so the event's `key` is `"Dead"`, and CodeMirror only
+ *  falls back to the key code when `key` is a single character. Option+digit
+ *  yields a real character (`¡`), which is why the Cmd+Alt+1…6 heading keys
+ *  work and this one did not. `event.code` names the key, not what it types,
+ *  so it is also immune to the active input source (Pinyin included). */
+export function isMoveToPageKey(event: KeyboardEvent): boolean {
+  const mod = IS_MAC ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+  return mod && event.altKey && !event.shiftKey && event.code === "KeyN";
+}
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -165,12 +182,13 @@ export function wikiPagesExtension(
   return [
     autoCreateOnLeave(getFilePath, isDisposed),
     Prec.high(
-      keymap.of([
-        {
-          key: MOVE_SELECTION_TO_PAGE_CHORD,
-          run: (view) => moveSelectionToPage(view, getFilePath, isDisposed),
+      EditorView.domEventHandlers({
+        keydown(event, view) {
+          if (!isMoveToPageKey(event)) return false;
+          event.preventDefault();
+          return moveSelectionToPage(view, getFilePath, isDisposed);
         },
-      ]),
+      }),
     ),
   ];
 }

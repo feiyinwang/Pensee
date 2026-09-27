@@ -22,7 +22,8 @@ Links were already clickable when their page existed. Clicking one whose page do
 
 ### Move selection to new page
 
-- **Cmd+Alt+N**, or right-click → *Move selection to new page* (shown only with a selection).
+- **Cmd+Alt+N**, or right-click → *Move selection to new page* (shown only with a selection). The shortcut is matched on the physical key (`event.code === "KeyN"`), not through `keymap`: on a Mac, Option+N is a dead key, so `event.key` is `"Dead"` and a `Mod-Alt-n` keymap binding never fires. Matching the physical key also works under any input source, Chinese Pinyin included.
+- Titles can be in any script; only characters unsafe in file names (`\ / : * ? " < > | # ^ [ ]`, ASCII) are replaced. Full-width punctuation such as `：` is kept.
 - The first non-blank selected line becomes the title, with markdown removed (heading/list/quote/task markers, emphasis, link syntax) and characters that are unsafe in file names replaced. The rest of the selection becomes the body: `# Title\n\nbody`.
 - The page is created next to the current note. An existing page is never overwritten: `Title 2.md`, `Title 3.md`, … are used instead.
 - The selection is replaced by `[[Title]]`. If the selected text changed while the file was being written, the page is still created but the text is left alone, and a notice says so.
