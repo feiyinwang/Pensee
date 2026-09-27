@@ -13,11 +13,14 @@ import {
   appendPageBody,
   ensureWikiPage,
   findWikiPage,
+  safePageName,
+  textMovedToPage,
   newPageContent,
   newPagePath,
   pageFromSelection,
 } from "@/lib/wiki-pages";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
+import { useUIStore } from "@/stores/ui-store";
 import { showEditorNotice } from "./editor-notice-store";
 
 // Pages behind `[[wiki links]]`, from the editor's side:
@@ -159,9 +162,25 @@ async function appendToPage(path: string, body: string): Promise<void> {
   if (editorApi.getOpenFile(path)) editorApi.reloadFromDisk(path, next);
 }
 
-/** Move the main selection into the page titled after its first line, and put
- *  a link to that page where the selection was. When that page already exists
- *  the rest of the selection is added to its end; otherwise it is created. */
+/** Where a selection is moving to, picked in the command palette's
+ *  `move-to-page` mode: an existing page, or a new page by name. */
+export type MoveTarget = { kind: "existing"; path: string } | { kind: "new"; name: string };
+
+interface PendingMove {
+  view: EditorView;
+  from: number;
+  to: number;
+  text: string;
+  currentFile: string | null;
+  isDisposed: () => boolean;
+}
+
+/** The selection waiting for the palette to say where it goes. One at a time:
+ *  the palette is modal, and a second Cmd+Alt+N replaces the first. */
+let pendingMove: PendingMove | null = null;
+
+/** Open the page picker for the main selection, pre-filled with the name its
+ *  first line suggests. The move itself happens in `completeMoveToPage`. */
 export function moveSelectionToPage(
   view: EditorView,
   getFilePath: () => string,
@@ -169,34 +188,61 @@ export function moveSelectionToPage(
 ): boolean {
   const { from, to } = view.state.selection.main;
   if (from === to) return false;
-  const text = view.state.sliceDoc(from, to);
-  const page = pageFromSelection(text);
-  if (!page) {
-    showEditorNotice("The first selected line has no text to name the page after");
-    return true;
-  }
-  const root = getWorkspaceRoot();
-  if (!root) {
+  if (!getWorkspaceRoot()) {
     showEditorNotice("Open a folder to create pages in");
     return true;
   }
-  const currentFile = getFilePath() || null;
+  const text = view.state.sliceDoc(from, to);
+  pendingMove = { view, from, to, text, currentFile: getFilePath() || null, isDisposed };
+  useUIStore.getState().openCommandPalette("move-to-page", pageFromSelection(text)?.title ?? "");
+  return true;
+}
+
+/** The page picker closed without a choice. */
+export function cancelMoveToPage() {
+  const move = pendingMove;
+  pendingMove = null;
+  if (move && !move.isDisposed()) move.view.focus();
+}
+
+/** The file the pending move comes from, so the picker can leave it out. */
+export function pendingMoveSource(): string | null {
+  return pendingMove?.currentFile ?? null;
+}
+
+/** Move the pending selection to `target` and leave a link to it behind. An
+ *  existing page gets the text added at its end; a new page is created with
+ *  the name as its title. See `textMovedToPage` for which lines move. */
+export function completeMoveToPage(target: MoveTarget) {
+  const move = pendingMove;
+  pendingMove = null;
+  if (!move || move.isDisposed()) return;
+  const { view, from, to, text, currentFile, isDisposed } = move;
+  const root = getWorkspaceRoot();
+  if (!root) return;
 
   void (async () => {
     try {
-      const existing = await findWikiPage(page.title, root, currentFile, tauriWikiPageDeps);
-      if (existing && existing === currentFile) {
-        showEditorNotice(`"${page.title}" is this page, so the text was kept`);
-        return;
-      }
       let path: string;
-      if (existing) {
-        path = existing;
-        await appendToPage(path, page.body);
+      if (target.kind === "existing") {
+        path = target.path;
+        if (path === currentFile) throw new Error("that is the page the text is on");
+        await appendToPage(path, textMovedToPage(text, getFileStem(path)));
       } else {
-        path = newPagePath(page.title, root, currentFile);
-        await tauri.createFile(path);
-        await tauri.writeFile(path, newPageContent(page.title, page.body));
+        const name = safePageName(target.name);
+        if (!name) throw new Error("the page needs a name");
+        // Picked "new", but the page may exist after all (created meanwhile,
+        // or not yet in the search index): add to it rather than fail.
+        const existing = await findWikiPage(name, root, currentFile, tauriWikiPageDeps);
+        path = existing ?? newPagePath(name, root, currentFile);
+        if (path === currentFile) throw new Error("that is the page the text is on");
+        const moved = textMovedToPage(text, name);
+        if (existing) {
+          await appendToPage(path, moved);
+        } else {
+          await tauri.createFile(path);
+          await tauri.writeFile(path, newPageContent(name, moved));
+        }
       }
       if (isDisposed()) return;
       const name = getFileStem(path);
@@ -204,9 +250,7 @@ export function moveSelectionToPage(
       // link if it is still exactly what was selected — never overwrite an
       // edit made while the file was being written.
       if (view.state.sliceDoc(from, to) !== text) {
-        showEditorNotice(
-          `${existing ? "Added to" : "Created"} "${name}", but the text changed meanwhile, so it was kept`,
-        );
+        showEditorNotice(`Added to "${name}", but the text here changed meanwhile, so it was kept`);
         return;
       }
       const link = `[[${name}]]`;
@@ -216,12 +260,12 @@ export function moveSelectionToPage(
         userEvent: "input",
         scrollIntoView: true,
       });
-      if (existing) showEditorNotice(`Added to the existing page "${name}"`);
+      view.focus();
+      showEditorNotice(`Moved to "${name}"`);
     } catch (error) {
       if (!isDisposed()) showEditorNotice(`Could not move the text: ${errorText(error)}`);
     }
   })();
-  return true;
 }
 
 export function wikiPagesExtension(

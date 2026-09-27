@@ -126,6 +126,29 @@ export function appendPageBody(raw: string, body: string): string {
   return base ? `${base}\n\n${addition}\n` : `${addition}\n`;
 }
 
+/** `name` made usable as a page's file name: characters unsafe in file names
+ *  or wiki links become spaces, runs of space collapse, leading dots go (no
+ *  hidden files), and it is capped in length. Any script is kept as is. */
+export function safePageName(name: string): string {
+  return name
+    .replace(UNSAFE_NAME_CHARS, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\.+/, "")
+    .slice(0, MAX_TITLE_LENGTH)
+    .trim();
+}
+
+/** What a selection moved to the page `pageName` puts on that page. When the
+ *  page is the one the selection's first line names, that line is the page's
+ *  title already, so only the rest moves; into any other page the whole
+ *  selection moves, first line included. */
+export function textMovedToPage(selection: string, pageName: string): string {
+  const page = pageFromSelection(selection);
+  if (page && page.title.toLowerCase() === pageName.toLowerCase()) return page.body;
+  return selection;
+}
+
 export interface SelectionPage {
   title: string;
   body: string;
@@ -138,20 +161,15 @@ export function pageFromSelection(text: string): SelectionPage | null {
   const lines = text.split("\n");
   const first = lines.findIndex((line) => line.trim() !== "");
   if (first === -1) return null;
-  const title = lines[first]!.trim()
+  const titleText = lines[first]!.trim()
     // Block markers: heading, quote, list bullet or number, task box.
     .replace(/^(?:#{1,6}\s+|>\s*|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)+/, "")
     // Wiki links and markdown links keep their visible text.
     .replace(/!?\[\[([^\]|]*\|)?([^\]]*)\]\]/g, "$2")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     // Inline emphasis and code marks.
-    .replace(/[*_`~=]+/g, "")
-    .replace(UNSAFE_NAME_CHARS, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^\.+/, "")
-    .slice(0, MAX_TITLE_LENGTH)
-    .trim();
+    .replace(/[*_`~=]+/g, "");
+  const title = safePageName(titleText);
   if (!title) return null;
   return { title, body: lines.slice(first + 1).join("\n") };
 }

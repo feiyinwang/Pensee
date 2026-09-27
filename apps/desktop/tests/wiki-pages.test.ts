@@ -7,6 +7,8 @@ import {
   newPagePath,
   pageFromSelection,
   pageNameFromWikiTarget,
+  safePageName,
+  textMovedToPage,
   type WikiPageDeps,
 } from "../src/lib/wiki-pages";
 import type { SearchResult } from "../src/types/fs";
@@ -164,4 +166,21 @@ test("Chinese titles pass through untouched", () => {
     title: "中文标题：测试",
     body: "内容",
   });
+});
+
+describe("textMovedToPage", () => {
+  const selection = "预算计划\n第一步\n第二步";
+
+  test("into the page its first line names, the first line is the title and stays behind", () => {
+    expect(textMovedToPage(selection, "预算计划")).toBe("第一步\n第二步");
+  });
+
+  test("into any other page, everything moves", () => {
+    expect(textMovedToPage(selection, "主场")).toBe(selection);
+  });
+});
+
+test("safePageName keeps any script and drops unsafe characters", () => {
+  expect(safePageName("  主场 / 2026:plan  ")).toBe("主场 2026 plan");
+  expect(safePageName("...hidden")).toBe("hidden");
 });

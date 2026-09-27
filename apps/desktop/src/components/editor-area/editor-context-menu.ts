@@ -121,7 +121,7 @@ export function buildEditorBodyMenuItemsSpec(
     items.push({
       kind: "item",
       id: "move-to-page",
-      text: "Move selection to new page",
+      text: "Move selection to page…",
       action: handlers.onMoveToPage,
       accelerator: chordToAccelerator(MOVE_SELECTION_TO_PAGE_CHORD),
     });

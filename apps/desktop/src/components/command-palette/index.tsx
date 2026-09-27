@@ -33,7 +33,13 @@ import { useFuzzySearch } from "./use-fuzzy-search";
 import { useGlobalRecentFiles } from "@/hooks/use-global-recent-files";
 import { openStandaloneFile } from "@/hooks/use-open-drop";
 import { settingsKind } from "@/components/editor-area/page-kinds/settings";
-import { getFileName, getFileStem, getParentDir } from "@/lib/paths";
+import { getFileExtension, getFileName, getFileStem, getParentDir } from "@/lib/paths";
+import { safePageName } from "@/lib/wiki-pages";
+import {
+  cancelMoveToPage,
+  completeMoveToPage,
+  pendingMoveSource,
+} from "@/components/editor-area/wiki-pages-extension";
 import * as tauri from "@/lib/tauri";
 import type { RecentFile } from "@/lib/tauri";
 
@@ -60,6 +66,15 @@ function HighlightedPath({ path, indices }: { path: string; indices: number[] })
   );
 }
 
+function MovePageRow({ result }: { result: SearchResult }) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate">{getFileStem(result.path)}</span>
+      <span className="truncate text-[13px] text-text-muted">{result.relative_path}</span>
+    </div>
+  );
+}
+
 export function CommandPalette() {
   const isOpen = useIsCommandPaletteOpen();
   const close = useCloseCommandPalette();
@@ -81,6 +96,7 @@ export function CommandPalette() {
   const isCompactFileMode = useIsCompactFileMode();
 
   const isCreateIntent = intent === "create-file";
+  const isMoveIntent = intent === "move-to-page";
   const trimmedSearch = search.trim();
   const fileQuery = isCreateIntent ? "" : search;
   // Standalone compact windows have no workspace index — search filters the
@@ -217,8 +233,31 @@ export function CommandPalette() {
     },
   ].filter((c): c is Command => Boolean(c));
 
+  // Move mode: markdown pages only, never the page the text is being moved
+  // off. An exact name match goes first and is preselected, so typing a page's
+  // name and pressing Enter picks that page; otherwise "New page" is first.
+  const moveSource = isMoveIntent ? pendingMoveSource() : null;
+  const newPageName = isMoveIntent ? safePageName(search) : "";
+  const movePages = isMoveIntent
+    ? results.filter(
+        (r) =>
+          r.path !== moveSource &&
+          ["md", "markdown"].includes(getFileExtension(r.path).toLowerCase()),
+      )
+    : [];
+  const exactPage = movePages.find(
+    (r) => getFileStem(r.path).toLowerCase() === newPageName.toLowerCase(),
+  );
+  const otherMovePages = movePages.filter((r) => r !== exactPage);
+  const newPageValue = "move:new";
+
+  function handleMove(target: Parameters<typeof completeMoveToPage>[0]) {
+    completeMoveToPage(target);
+    close();
+  }
+
   const visibleFiles: SearchResult[] =
-    !isCreateIntent && trimmedSearch && !isCompactFileMode ? results : [];
+    !isCreateIntent && !isMoveIntent && trimmedSearch && !isCompactFileMode ? results : [];
   const visibleRecents: RecentFile[] =
     !isCreateIntent && isCompactFileMode && trimmedSearch
       ? globalRecents.filter(
@@ -228,13 +267,15 @@ export function CommandPalette() {
             matchesSearch(entry.path, trimmedSearch),
         )
       : [];
-  const visibleCommands = isCreateIntent
-    ? []
-    : trimmedSearch
-      ? commands.filter((c) => matchesSearch(c.label, trimmedSearch))
-      : commands;
-  const firstValue =
-    visibleCommands[0]?.id ?? visibleFiles[0]?.path ?? visibleRecents[0]?.path ?? "";
+  const visibleCommands =
+    isCreateIntent || isMoveIntent
+      ? []
+      : trimmedSearch
+        ? commands.filter((c) => matchesSearch(c.label, trimmedSearch))
+        : commands;
+  const firstValue = isMoveIntent
+    ? (exactPage?.path ?? (newPageName ? newPageValue : (otherMovePages[0]?.path ?? "")))
+    : (visibleCommands[0]?.id ?? visibleFiles[0]?.path ?? visibleRecents[0]?.path ?? "");
 
   const listRef = useRef<HTMLDivElement>(null);
   const [selectedValue, setSelectedValue] = useState(firstValue);
@@ -250,13 +291,20 @@ export function CommandPalette() {
   }, [search, intent, firstValue]);
   /* eslint-enable react-doctor/no-derived-state */
 
-  const placeholder = isCreateIntent ? "Create a new note..." : "这是我的版本...";
+  const placeholder = isCreateIntent
+    ? "Create a new note..."
+    : isMoveIntent
+      ? "Move selection to page…"
+      : "这是我的版本...";
 
   return (
     <CommandDialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) close();
+        if (!open) {
+          if (isMoveIntent) cancelMoveToPage();
+          close();
+        }
       }}
       label="Command Palette"
       shouldFilter={false}
@@ -265,7 +313,46 @@ export function CommandPalette() {
     >
       <CommandInput placeholder={placeholder} value={search} onValueChange={setSearch} />
       <CommandList ref={listRef}>
-        {isCreateIntent ? (
+        {isMoveIntent ? (
+          <>
+            {!newPageName && movePages.length === 0 && (
+              <CommandEmpty>Type a page name to move the selection there.</CommandEmpty>
+            )}
+            {exactPage && (
+              <CommandGroup heading="Add to page">
+                <CommandItem
+                  value={exactPage.path}
+                  onSelect={() => handleMove({ kind: "existing", path: exactPage.path })}
+                >
+                  <MovePageRow result={exactPage} />
+                </CommandItem>
+              </CommandGroup>
+            )}
+            {newPageName && !exactPage && (
+              <CommandGroup heading="New page">
+                <CommandItem
+                  value={newPageValue}
+                  onSelect={() => handleMove({ kind: "new", name: newPageName })}
+                >
+                  New page: {newPageName}
+                </CommandItem>
+              </CommandGroup>
+            )}
+            {otherMovePages.length > 0 && (
+              <CommandGroup heading={exactPage ? "Other pages" : "Add to page"}>
+                {otherMovePages.map((r) => (
+                  <CommandItem
+                    key={r.path}
+                    value={r.path}
+                    onSelect={() => handleMove({ kind: "existing", path: r.path })}
+                  >
+                    <MovePageRow result={r} />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </>
+        ) : isCreateIntent ? (
           <>
             {!trimmedSearch && <CommandEmpty>Type a note name to create it.</CommandEmpty>}
             {createPath && (
