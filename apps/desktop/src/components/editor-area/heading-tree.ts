@@ -351,16 +351,9 @@ function buildMarkers(view: EditorView): readonly LayerMarker[] {
   }
   if (path) markers.push(new ThreadMarker(path));
 
-  // While the caret or selection is on a heading line, its hanging `#` marks
-  // show in exactly the circle's spot; the circle steps aside for them.
-  const onHeadingLine = (h: TreeHeading) => {
-    const lineTo = state.doc.lineAt(h.from).to;
-    return state.selection.ranges.some((r) => r.from <= lineTo && r.to >= h.from);
-  };
-
   for (const i of visible) {
     const heading = outline[i];
-    if (!inViewport(heading) || onHeadingLine(heading)) continue;
+    if (!inViewport(heading)) continue;
     const line = state.doc.lineAt(heading.from);
     const toggle: ToggleState = foldAtLine(state, line.to)
       ? "collapsed"
@@ -383,8 +376,7 @@ const treeLayer = layer({
   above: true,
   class: "cm-heading-tree-layer",
   markers: buildMarkers,
-  update: (update) =>
-    update.docChanged || update.viewportChanged || update.selectionSet || treeInputsChanged(update),
+  update: (update) => update.docChanged || update.viewportChanged || treeInputsChanged(update),
   mount(dom, view) {
     dom.addEventListener("mousedown", (event) => {
       const target = event.target;

@@ -18,6 +18,15 @@
   font-size: inherit;
 }
 
+/* The tree shows the level, so the hanging `#` marks never show, not even
+   with the caret on the line: they would sit exactly where the circle is.
+   Opacity only, never display/font-size — the hash still has to measure for
+   vertical caret motion (see prosemark-theme.css). */
+.cm-editor.cm-heading-tree .cm-heading-hash {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .cm-heading-tree-layer {
   pointer-events: none;
 }
