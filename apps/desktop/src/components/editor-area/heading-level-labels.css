@@ -1,6 +1,6 @@
 /* H1–H6 labels in the left margin (`heading-level-labels.ts`). The box is the
-   grip's type chip box — 24px square, 6px radius, `GRIP_H` tall — so the grip
-   can stand on top of it without anything moving. Muted and borderless-ish on
+   grip's type chip box — 24px square, `GRIP_H` tall — so the grip
+   can stand on top of it without anything moving. Muted and borderless on
    purpose: it is on every heading all the time, so it has to recede. */
 .wr-heading-levels {
   position: absolute;
@@ -16,8 +16,6 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border: 1px solid var(--line-subtler);
-  border-radius: 6px;
   color: var(--text-muted);
   font-family: var(--ui-font);
   font-size: 11px;
