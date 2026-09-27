@@ -8,6 +8,7 @@
 
 ## Done
 
+- Heading tree: [`SPECs/heading-tree-spec.md`](SPECs/heading-tree-spec.md) — Reddit-style thread lines between heading levels, one heading size, a collapse circle per heading, and an `editor.heading-tree` setting to turn it off.
 - Theme presets dropdown: [`SPECs/teal-glass-theme-spec.md`](SPECs/teal-glass-theme-spec.md#theme-presets) — Appearance → Theme picks one of 14 folder-registered presets (`shared/themes/<slug>/`), writing the ten primaries; the active preset is derived from the primaries (Custom when edited), so no preset key is stored. Removed the dead `theme.{mode}.preset` schema entries.
 - Teal glass theme: [`SPECs/teal-glass-theme-spec.md`](SPECs/teal-glass-theme-spec.md) — teal theme defaults, an OKLCH gradient backdrop derived from the background colour (sRGB fallback behind `@supports`), the editor on a rounded `.glass-panel`, a `label-mono` utility for chrome labels and primary buttons, and `--accent-solid` for white glyphs on accent fills.
 - Daily note title stuck to its date — `inferTitle` (frontend) and `extract_title` (Rust sidebar index) both skip heading/frontmatter title inference for a file named exactly `YYYY-MM-DD.md`, via `isDailyNoteName` / `is_daily_note_name`, so every consumer falls back to the file stem.

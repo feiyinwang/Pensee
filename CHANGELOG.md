@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-27
+
+- Show headings as a thread tree, like a Reddit comment thread. Each `#`, `##`, … heading gets a circle beside it and its section is indented one step per level; a line runs down from each heading and curves into each of its subheadings. All headings are now the same size, since the tree shows the level. Click a heading's circle to collapse its section (⊖) or expand it again (⊕). Turn the whole thing off under Preferences → Editor → Heading Tree, which also restores the old heading sizes and reopens collapsed sections. See [SPECs/heading-tree-spec.md](./SPECs/heading-tree-spec.md).
+
 ## 2026-09-15
 
 - Add a Theme dropdown to Preferences → Appearance with 14 color themes, each for both light and dark mode: Teal (the new default), the original Orange, Amber, Ember, Forest, Indigo, Midnight, Ocean, Olive, Plum, Slate, Violet, High Contrast and Warm Paper. Picking one fills in the Light and Dark Theme colors below it; changing any of those by hand shows the dropdown as Custom. The teal default is a shade deeper than yesterday's, and every gradient theme was tuned so editor body text and links stay at 4.5:1 contrast or better.
