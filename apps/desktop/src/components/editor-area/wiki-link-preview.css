@@ -1,0 +1,84 @@
+/* Page preview card for hovered `[[links]]` (`wiki-link-preview.ts`). The glass
+   surface comes from `.surface-card` (App.css), like every other popover.
+   Width, left/top and max-height are written inline from the link's position. */
+.wr-link-preview {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Enter: grow out of the link. `transform-origin` is set inline. */
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    transform var(--motion-base) var(--ease-out);
+}
+
+/* Exit is quicker than the entrance: the reader has already moved on. Its
+   duration is mirrored by `EXIT_MS`. */
+.wr-link-preview[data-state="closed"] {
+  opacity: 0;
+  transform: scale(0.97);
+  transition-duration: var(--motion-fast);
+}
+
+.wr-link-preview-title {
+  position: relative;
+  flex: none;
+  padding: 10px 16px 6px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--ease-out);
+}
+
+.wr-link-preview-title:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.wr-link-preview-title:disabled {
+  cursor: default;
+}
+
+/* The part you scroll. `overscroll-behavior` keeps a scroll that reaches the
+   end of the preview from carrying on into the page behind it. */
+.wr-link-preview-body {
+  position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 14px;
+  font-size: 14px;
+}
+
+.wr-link-preview-body .cm-editor .cm-content {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* The page editor's headings open with 1rem of air; the preview is small. */
+.wr-link-preview-body .cm-markdown-heading {
+  padding-top: 0.4rem;
+}
+
+.wr-link-preview-note {
+  position: relative;
+  margin: 4px 0 2px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-link-preview,
+  .wr-link-preview[data-state="closed"],
+  .wr-link-preview-title {
+    transition: none;
+  }
+}

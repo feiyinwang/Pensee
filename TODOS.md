@@ -8,6 +8,7 @@
 
 ## Done
 
+- Link hover preview: [`SPECs/wiki-link-preview-spec.md`](SPECs/wiki-link-preview-spec.md) — hovering a `[[page]]` link shows the page, rendered read-only, in a scrollable card.
 - Pages from wiki links: [`SPECs/wiki-link-pages-spec.md`](SPECs/wiki-link-pages-spec.md) — finishing a `[[Name]]` creates `Name.md` when missing, clicking an unresolved link creates and opens it, and Cmd+Alt+N / right-click moves a selection into a new page titled by its first line.
 - Heading level labels: [`SPECs/heading-level-labels-spec.md`](SPECs/heading-level-labels-spec.md) — always-visible H1–H6 label in the grip's chip slot, the grip hides its own chip on headings, and the `#` marks never show.
 - Theme presets dropdown: [`SPECs/teal-glass-theme-spec.md`](SPECs/teal-glass-theme-spec.md#theme-presets) — Appearance → Theme picks one of 14 folder-registered presets (`shared/themes/<slug>/`), writing the ten primaries; the active preset is derived from the primaries (Custom when edited), so no preset key is stored. Removed the dead `theme.{mode}.preset` schema entries.
