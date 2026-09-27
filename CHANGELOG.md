@@ -3,7 +3,7 @@
 ## 2026-09-27
 
 - Typing a `[[Name]]` link now creates the page `Name` for you when it doesn't exist yet, as soon as you move on from the link, so the link works right away. The page goes next to the note you're writing in and starts with `# Name`. Clicking a link to a page that doesn't exist also creates and opens it.
-- Move any selection into its own page with Cmd+Alt+N or right-click → Move selection to new page. The first line becomes the page title, the rest becomes its content, and the selection is replaced with a `[[link]]` to the new page. An existing page with the same name is never overwritten; the new one gets a number instead. See [SPECs/wiki-link-pages-spec.md](./SPECs/wiki-link-pages-spec.md).
+- Move any selection into its own page with Cmd+Alt+N or right-click → Move selection to new page. The first line becomes the page title, the rest becomes its content, and the selection is replaced with a `[[link]]` to the new page. If a page with that name already exists, the text is added to the end of it instead, and the link points there. See [SPECs/wiki-link-pages-spec.md](./SPECs/wiki-link-pages-spec.md).
 - Show every heading's level as a small H1–H6 label in the left margin, always visible, so you can tell which level you are editing at a glance. It sits where the drag handle's type icon used to appear on headings; hovering a heading adds the drag dots beside the label. The `#` marks in front of headings no longer show at all, even while the cursor is on the heading. See [SPECs/heading-level-labels-spec.md](./SPECs/heading-level-labels-spec.md).
 
 ## 2026-09-15

@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vite-plus/test";
 import {
   ensureWikiPage,
-  freePagePath,
+  appendPageBody,
+  findWikiPage,
   newPageContent,
   newPagePath,
   pageFromSelection,
@@ -126,7 +127,41 @@ test("newPageContent puts the title first and drops leading blank lines", () => 
   expect(newPageContent("Plan")).toBe("# Plan\n");
 });
 
-test("freePagePath never reuses an existing name", async () => {
-  const exists = async (p: string) => p === "/vault/Plan.md" || p === "/vault/Plan 2.md";
-  expect(await freePagePath("/vault", "Plan", exists)).toBe("/vault/Plan 3.md");
+describe("findWikiPage", () => {
+  test("finds a page by name anywhere in the workspace", async () => {
+    const { deps } = fakeFs(["/vault/deep/预算计划.md"]);
+    expect(await findWikiPage("预算计划", ROOT, "/vault/a.md", deps)).toBe(
+      "/vault/deep/预算计划.md",
+    );
+  });
+
+  test("falls back to the page beside the current note when the name is ambiguous", async () => {
+    const { deps } = fakeFs(["/vault/x/Plan.md", "/vault/y/Plan.md"]);
+    expect(await findWikiPage("Plan", ROOT, "/vault/y/note.md", deps)).toBe("/vault/y/Plan.md");
+  });
+
+  test("null when there is no such page", async () => {
+    const { deps } = fakeFs(["/vault/Other.md"]);
+    expect(await findWikiPage("Plan", ROOT, "/vault/a.md", deps)).toBeNull();
+  });
+});
+
+describe("appendPageBody", () => {
+  test("adds the text as a new block at the end", () => {
+    expect(appendPageBody("# Plan\n\nstep one\n\n\n", "\nstep two\nstep three\n")).toBe(
+      "# Plan\n\nstep one\n\nstep two\nstep three\n",
+    );
+  });
+
+  test("an empty page becomes the text; empty text changes nothing", () => {
+    expect(appendPageBody("", "hello")).toBe("hello\n");
+    expect(appendPageBody("# Plan\n", "  \n")).toBe("# Plan\n");
+  });
+});
+
+test("Chinese titles pass through untouched", () => {
+  expect(pageFromSelection("## 中文标题：测试\n内容")).toEqual({
+    title: "中文标题：测试",
+    body: "内容",
+  });
 });

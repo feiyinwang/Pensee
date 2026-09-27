@@ -3,12 +3,16 @@ import { type EditorState, type Extension, Prec } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
 import * as tauri from "@/lib/tauri";
-import { getFileStem, getParentDir } from "@/lib/paths";
+import { getFileStem } from "@/lib/paths";
+import { serializeDocument } from "@/lib/frontmatter";
+import { isSaveInFlight } from "@/lib/save";
+import * as editorApi from "@/hooks/editor-api";
 import { findWikiLinkAt } from "@/lib/wiki-links";
 import {
   type WikiPageDeps,
+  appendPageBody,
   ensureWikiPage,
-  freePagePath,
+  findWikiPage,
   newPageContent,
   newPagePath,
   pageFromSelection,
@@ -125,8 +129,39 @@ function autoCreateOnLeave(getFilePath: () => string, isDisposed: () => boolean)
   );
 }
 
-/** Move the main selection into a new page titled after its first line, and
- *  put a link to that page where the selection was. */
+const SAVE_IDLE_POLL_MS = 20;
+const SAVE_IDLE_TIMEOUT_MS = 2000;
+
+/** Resolve once no autosave of `path` is being written, so an append cannot be
+ *  overwritten by a save that started from the older text. */
+async function saveIdle(path: string): Promise<void> {
+  const deadline = Date.now() + SAVE_IDLE_TIMEOUT_MS;
+  while (isSaveInFlight(path)) {
+    if (Date.now() > deadline) throw new Error(`"${getFileStem(path)}" is still saving`);
+    await new Promise((resolve) => setTimeout(resolve, SAVE_IDLE_POLL_MS));
+  }
+}
+
+/** Add `body` to the end of an existing page. When that page is open in a
+ *  tab, the tab's text is the base — it may hold edits not yet on disk — and
+ *  the tab is reloaded with the result, since a write of our own is not
+ *  reported back by the file watcher. */
+async function appendToPage(path: string, body: string): Promise<void> {
+  if (!body.trim()) return;
+  await saveIdle(path);
+  const open = editorApi.getOpenFile(path);
+  const base =
+    open && !open.isLoading
+      ? serializeDocument(open.frontmatter, open.content)
+      : (await tauri.readFile(path)).content;
+  const next = appendPageBody(base, body);
+  await tauri.writeFile(path, next);
+  if (editorApi.getOpenFile(path)) editorApi.reloadFromDisk(path, next);
+}
+
+/** Move the main selection into the page titled after its first line, and put
+ *  a link to that page where the selection was. When that page already exists
+ *  the rest of the selection is added to its end; otherwise it is created. */
 export function moveSelectionToPage(
   view: EditorView,
   getFilePath: () => string,
@@ -145,20 +180,33 @@ export function moveSelectionToPage(
     showEditorNotice("Open a folder to create pages in");
     return true;
   }
-  const dir = getParentDir(newPagePath(page.title, root, getFilePath() || null));
+  const currentFile = getFilePath() || null;
 
   void (async () => {
     try {
-      const path = await freePagePath(dir, page.title, tauri.fileExists);
-      const name = getFileStem(path);
-      await tauri.createFile(path);
-      await tauri.writeFile(path, newPageContent(name, page.body));
+      const existing = await findWikiPage(page.title, root, currentFile, tauriWikiPageDeps);
+      if (existing && existing === currentFile) {
+        showEditorNotice(`"${page.title}" is this page, so the text was kept`);
+        return;
+      }
+      let path: string;
+      if (existing) {
+        path = existing;
+        await appendToPage(path, page.body);
+      } else {
+        path = newPagePath(page.title, root, currentFile);
+        await tauri.createFile(path);
+        await tauri.writeFile(path, newPageContent(page.title, page.body));
+      }
       if (isDisposed()) return;
-      // The page exists now either way. Only swap the text for the link if
-      // it is still exactly what was selected — never overwrite an edit made
-      // while the file was being written.
+      const name = getFileStem(path);
+      // The page has the text now either way. Only swap the selection for the
+      // link if it is still exactly what was selected — never overwrite an
+      // edit made while the file was being written.
       if (view.state.sliceDoc(from, to) !== text) {
-        showEditorNotice(`Created "${name}", but the text changed meanwhile, so it was kept`);
+        showEditorNotice(
+          `${existing ? "Added to" : "Created"} "${name}", but the text changed meanwhile, so it was kept`,
+        );
         return;
       }
       const link = `[[${name}]]`;
@@ -168,8 +216,9 @@ export function moveSelectionToPage(
         userEvent: "input",
         scrollIntoView: true,
       });
+      if (existing) showEditorNotice(`Added to the existing page "${name}"`);
     } catch (error) {
-      if (!isDisposed()) showEditorNotice(`Could not create the page: ${errorText(error)}`);
+      if (!isDisposed()) showEditorNotice(`Could not move the text: ${errorText(error)}`);
     }
   })();
   return true;

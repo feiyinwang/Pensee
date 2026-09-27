@@ -59,15 +59,33 @@ export function newPageContent(title: string, body = ""): string {
 
 const inFlight = new Map<string, Promise<string>>();
 
+/** Path of the existing page `name` refers to, or null when there is none.
+ *  Found the way a click finds it (`resolveWikiLink`), then by its would-be
+ *  path directly: the search index catches up with a new file a moment after
+ *  it is written, and a stem shared by pages in two folders resolves to
+ *  neither, while the one beside the current note is still the right one. */
+export async function findWikiPage(
+  name: string,
+  workspaceRoot: string,
+  currentFilePath: string | null,
+  deps: Pick<WikiPageDeps, "fuzzySearch" | "fileExists">,
+): Promise<string | null> {
+  const resolved = await resolveWikiLink(
+    name,
+    workspaceRoot,
+    deps.fuzzySearch,
+    deps.fileExists,
+    currentFilePath,
+  );
+  if (resolved.kind === "internal") return resolved.path;
+  const path = newPagePath(name, workspaceRoot, currentFilePath);
+  return (await deps.fileExists(path)) ? path : null;
+}
+
 /**
  * Path of the page `inner` links to, creating it first when nothing matches.
  * Returns null when the link names no page (see `pageNameFromWikiTarget`).
- *
- * An existing page is found the way a click finds it (`resolveWikiLink`), and
- * then by its would-be path directly: the search index catches up with a new
- * file a moment after it is written, and without the direct check a second
- * call in that window would try to create the page twice. Concurrent calls
- * for one path share a single creation.
+ * Concurrent calls for one path share a single creation.
  */
 export async function ensureWikiPage(
   inner: string,
@@ -78,14 +96,8 @@ export async function ensureWikiPage(
   const name = pageNameFromWikiTarget(inner);
   if (!name) return null;
 
-  const resolved = await resolveWikiLink(
-    inner,
-    workspaceRoot,
-    deps.fuzzySearch,
-    deps.fileExists,
-    currentFilePath,
-  );
-  if (resolved.kind === "internal") return resolved.path;
+  const existing = await findWikiPage(name, workspaceRoot, currentFilePath, deps);
+  if (existing) return existing;
 
   const path = newPagePath(name, workspaceRoot, currentFilePath);
   const pending = inFlight.get(path);
@@ -103,6 +115,15 @@ export async function ensureWikiPage(
   } finally {
     inFlight.delete(path);
   }
+}
+
+/** `raw` with `body` added at the end as its own block, separated by one blank
+ *  line. An empty page just becomes the body. */
+export function appendPageBody(raw: string, body: string): string {
+  const addition = body.replace(/^\s*\n/, "").trimEnd();
+  if (!addition) return raw;
+  const base = raw.trimEnd();
+  return base ? `${base}\n\n${addition}\n` : `${addition}\n`;
 }
 
 export interface SelectionPage {
@@ -133,18 +154,4 @@ export function pageFromSelection(text: string): SelectionPage | null {
     .trim();
   if (!title) return null;
   return { title, body: lines.slice(first + 1).join("\n") };
-}
-
-/** First free `dir/title.md`, then `title 2.md`, `title 3.md`, … A page moved
- *  out of a selection must never overwrite one that already exists. */
-export async function freePagePath(
-  dir: string,
-  title: string,
-  fileExists: (path: string) => Promise<boolean>,
-): Promise<string> {
-  for (let n = 1; ; n++) {
-    const name = n === 1 ? title : `${title} ${n}`;
-    const path = normalizePath(`${dir.replace(/\/$/, "")}/${name}.md`);
-    if (!(await fileExists(path))) return path;
-  }
 }
