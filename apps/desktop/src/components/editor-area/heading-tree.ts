@@ -34,9 +34,9 @@ import {
 import "./heading-tree.css";
 
 // Reddit-style heading tree. Every section is indented one `TREE_STEP` per
-// nesting level; each heading gets a toggle circle in the step to the left of
-// its text, and a parent's thread line runs down from its circle and curves
-// into each child's circle. The circle collapses the section with CodeMirror's
+// nesting level; each heading gets a disclosure toggle in the step to the left of
+// its text, and a parent's thread line runs down from its toggle and curves
+// into each child's toggle. The toggle collapses the section with CodeMirror's
 // fold state (the markdown language's `headerIndent` fold service supplies the
 // section range), so a collapsed section is a real fold: the caret, search and
 // copy all treat it the way they treat any other fold.
@@ -45,20 +45,21 @@ import "./heading-tree.css";
 // blockquote lines already own their padding, and a margin shifts the whole
 // line box (hanging hash included) without touching either.
 //
-// Lines and circles are drawn on a layer, not in the lines, because a thread
+// Lines and toggles are drawn on a layer, not in the lines, because a thread
 // spans many lines and must pass over blank lines and block widgets whose DOM
 // the tree does not own.
 
 const SETTING_KEY = "editor.heading-tree";
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/** Toggle circle radius. Its left edge sits at the start of the heading's
- *  column, so its centre is `CIRCLE_R` in. */
-const CIRCLE_R = 8;
+/** Half the toggle button's 16px hit area. Its left edge sits at the start of
+ *  the heading's column, so its centre is `TOGGLE_R` in. */
+const TOGGLE_R = 8;
 /** Radius of the curve where a thread turns into a child. */
 const ELBOW_R = 10;
-/** Gap between a circle's edge and the thread leaving it. */
-const THREAD_GAP = 3;
+/** Distance from the toggle's centre to where a thread starts or stops. The
+ *  chevron glyph is ~6px across, so this leaves a small gap around it. */
+const THREAD_GAP = 7;
 
 function readSetting(): boolean {
   const value = useSettingsStore.getState().settings[SETTING_KEY];
@@ -100,7 +101,7 @@ function treeInputsChanged(update: ViewUpdate): boolean {
 // ---------- Setting sync ----------
 
 // Mirrors the setting into the editor state. Turning the tree off also opens
-// every collapsed section: the circles are the only way to reopen them, and
+// every collapsed section: the toggles are the only way to reopen them, and
 // leaving text folded behind a control that no longer exists would hide it.
 const settingSync = ViewPlugin.define((view) => {
   const unsubscribe = useSettingsStore.subscribe(() => {
@@ -333,19 +334,19 @@ function buildMarkers(view: EditorView): readonly LayerMarker[] {
   for (const i of visible) {
     const heading = outline[i];
     const last = lastChild.get(i);
-    // Thread down from this heading's circle to where its last child's elbow
+    // Thread down from this heading's toggle to where its last child's elbow
     // begins. Drawn whenever any part of it can be on screen.
     if (last !== undefined && heading.from <= viewTo && outline[last].from >= viewFrom) {
-      const x = round(columnX(heading.depth) + CIRCLE_R);
-      const top = round(centerY(i) + CIRCLE_R + THREAD_GAP);
+      const x = round(columnX(heading.depth) + TOGGLE_R);
+      const top = round(centerY(i) + THREAD_GAP);
       const bottom = round(centerY(last) - ELBOW_R);
       if (bottom > top) path += `M${x} ${top}V${bottom}`;
     }
-    // Elbow from the parent's thread into this heading's circle.
+    // Elbow from the parent's thread into this heading's toggle.
     if (heading.parent >= 0 && inViewport(heading)) {
-      const x = round(columnX(outline[heading.parent].depth) + CIRCLE_R);
+      const x = round(columnX(outline[heading.parent].depth) + TOGGLE_R);
       const y = round(centerY(i));
-      const end = round(columnX(heading.depth) - THREAD_GAP);
+      const end = round(columnX(heading.depth) + TOGGLE_R - THREAD_GAP);
       path += `M${x} ${y - ELBOW_R}A${ELBOW_R} ${ELBOW_R} 0 0 0 ${x + ELBOW_R} ${y}H${end}`;
     }
   }
@@ -364,7 +365,7 @@ function buildMarkers(view: EditorView): readonly LayerMarker[] {
       new ToggleMarker(
         heading.from,
         round(columnX(heading.depth)),
-        round(centerY(i) - CIRCLE_R),
+        round(centerY(i) - TOGGLE_R),
         toggle,
       ),
     );

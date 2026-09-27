@@ -50,54 +50,67 @@
   stroke-linecap: round;
 }
 
+/* The button keeps a 16px hit area centred on the thread's landing point;
+   only the glyph inside it is small. */
 .cm-heading-tree-toggle {
   box-sizing: border-box;
   width: 16px;
   height: 16px;
   padding: 0;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
+  border: 0;
+  border-radius: 4px;
   background: transparent;
-  color: color-mix(in srgb, var(--fg-base) calc(var(--contrast, 1) * 50%), transparent);
+  color: color-mix(in srgb, var(--fg-base) calc(var(--contrast, 1) * 70%), transparent);
   cursor: pointer;
   pointer-events: auto;
-  transition: color var(--motion-fast) var(--ease-out);
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-hover) var(--ease-hover);
 }
 
 .cm-heading-tree-toggle:hover {
   color: var(--text-primary);
+  background: var(--line-subtler);
 }
 
-/* The minus bar, and the plus bar's vertical stroke when collapsed. */
-.cm-heading-tree-toggle::before,
-.cm-heading-tree-toggle[data-state="collapsed"]::after {
+/* Disclosure chevron: two borders of a small square, rotated. Pointing down
+   (open) is 45deg; collapsed turns it a quarter back to point right. The
+   `translate` nudges keep its optical centre on the button's centre in both
+   orientations. */
+.cm-heading-tree-toggle::before {
   content: "";
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 8px;
-  height: 1.5px;
-  border-radius: 1px;
-  background: currentColor;
-  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translate(-50%, -75%) rotate(45deg);
+  transition: transform var(--motion-fast) var(--ease-out);
 }
 
-.cm-heading-tree-toggle[data-state="collapsed"]::after {
-  width: 1.5px;
-  height: 8px;
+.cm-heading-tree-toggle[data-state="collapsed"]::before {
+  transform: translate(-75%, -50%) rotate(-45deg);
 }
 
 /* A heading with nothing under it has nothing to collapse: a plain dot where
    the thread lands, no control. */
 .cm-heading-tree-toggle[data-state="leaf"] {
-  border-color: transparent;
   cursor: default;
 }
 
+.cm-heading-tree-toggle[data-state="leaf"]:hover {
+  background: transparent;
+}
+
 .cm-heading-tree-toggle[data-state="leaf"]::before {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
+  border: 0;
   border-radius: 50%;
+  background: currentColor;
+  transform: translate(-50%, -50%);
 }
 
 .cm-editor.cm-heading-tree .cm-foldPlaceholder {
