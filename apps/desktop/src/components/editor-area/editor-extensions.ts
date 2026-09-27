@@ -18,6 +18,7 @@ import { editorClipboardExtension } from "./editor-clipboard";
 import { editorSearchExtensions } from "./editor-search-extensions";
 import { useEditorSearchStore } from "./editor-search-store";
 import { headingDecorations } from "./heading-decorations";
+import { headingLevelLabels } from "./heading-level-labels";
 import { htmlBlockDecorations, htmlBlockParserExtension } from "./html-block-decorations";
 import { columnsDecorations, columnsParserExtension } from "./columns-decorations";
 import { boardDecorations } from "./board/board-decorations";
@@ -136,6 +137,7 @@ export function createEditorExtensions(
     boardDecorations(getFilePath),
     mathDecorations(),
     headingDecorations,
+    headingLevelLabels,
     imageSrcResolver(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     markdownFormatting,

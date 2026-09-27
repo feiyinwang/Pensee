@@ -268,6 +268,14 @@
   opacity: 0;
 }
 
+/* The `#` marks never show, caret on the line or not: the always-visible
+   H1–H6 label in the margin (`heading-level-labels.ts`) says the level
+   instead. Opacity for the same reason as above — the hash must keep
+   measuring for vertical caret motion. */
+.cm-editor .cm-heading-hash {
+  opacity: 0;
+}
+
 /* The gutter grip and the hanging hash want the same strip of left margin, and
    only one of them can have it. The grip wins, because it is the thing the
    pointer is reaching for; the hash is a syntax hint that is already invisible

@@ -391,6 +391,12 @@
 .wr-gutter-kind[data-kind="text"] {
   --wr-kind-color: var(--wr-kind-text-tint);
 }
+/* A heading's chip is drawn by `heading-level-labels.ts`, always, in this very
+   box. The grip keeps the slot (so the dots stay put) but shows nothing in it,
+   leaving the H1–H6 label underneath visible. */
+.wr-gutter-kind[data-kind="heading"] {
+  visibility: hidden;
+}
 .wr-gutter-kind[data-kind="image"] {
   --wr-kind-color: var(--accent, #ff6a00);
 }

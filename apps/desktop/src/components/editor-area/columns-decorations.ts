@@ -75,6 +75,7 @@ import {
 } from "./block-actions";
 import { BlockHandleMenu, MENU_CLOSE_DELAY, MENU_OPEN_DELAY } from "./block-handle-menu";
 import { describeTarget, gripTrace } from "./grip-debug";
+import { getMarkdownHeadingLevel } from "./heading-decorations";
 import { renderMath } from "./math-renderer";
 import "./columns.css";
 
@@ -1910,11 +1911,11 @@ function startResize(view: EditorView, handle: HTMLElement, event: PointerEvent)
 
 /** Width the grip occupies in the margin: the type chip, the gap, the dots.
  *  Mirrored in `columns.css` — if you change one, change the other. */
-const GRIP_WIDTH = 44;
+export const GRIP_WIDTH = 44;
 
 /** Height of the grip's box. Mirrored in `columns.css` — change one, change
  *  the other, same as `GRIP_WIDTH`. */
-const GRIP_H = 24;
+export const GRIP_H = 24;
 
 /** The first line box a grip should line up with, in viewport coordinates.
  *
@@ -1967,7 +1968,7 @@ function measuredFirstLine(el: HTMLElement): { top: number; height: number } | n
   return { top, height: bottom - top };
 }
 
-function firstLineBox(el: HTMLElement): { top: number; height: number } {
+export function firstLineBox(el: HTMLElement): { top: number; height: number } {
   const measured = measuredFirstLine(el);
   if (measured) return measured;
   const rect = el.getBoundingClientRect();
@@ -2035,7 +2036,7 @@ const gripLineField = StateField.define<DecorationSet>({
  *  line box is 46px, nearly twice the grip. A picture has no line box; its
  *  degenerate case is a box exactly one grip tall, which is flush-top by
  *  construction. */
-function gripTop(box: { top: number; height: number }, hostTop: number): number {
+export function gripTop(box: { top: number; height: number }, hostTop: number): number {
   return box.top - hostTop + (box.height - GRIP_H) / 2;
 }
 
@@ -2473,7 +2474,14 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       // see `gripLineField`. `Math.max(0, …)` still wins on a narrow window.
       const left = Math.max(0, room - GRIP_WIDTH - 4);
       const isImage = IMAGE_BLOCK.test(blockMarkdown(view, block));
-      this.kind.dataset.kind = isImage ? "image" : "text";
+      // A heading's chip is already on screen: `heading-level-labels.ts` keeps
+      // an always-visible H1–H6 label in this exact box. The grip hides its own
+      // chip there (see columns.css) and only adds the dots beside the label.
+      this.kind.dataset.kind = isImage
+        ? "image"
+        : getMarkdownHeadingLevel(block.name) !== null
+          ? "heading"
+          : "text";
       const box = lineEl
         ? isImage
           ? { top: lineEl.getBoundingClientRect().top, height: GRIP_H }

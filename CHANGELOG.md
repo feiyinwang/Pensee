@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-27
+
+- Show every heading's level as a small H1–H6 label in the left margin, always visible, so you can tell which level you are editing at a glance. It sits where the drag handle's type icon used to appear on headings; hovering a heading adds the drag dots beside the label. The `#` marks in front of headings no longer show at all, even while the cursor is on the heading. See [SPECs/heading-level-labels-spec.md](./SPECs/heading-level-labels-spec.md).
+
 ## 2026-09-15
 
 - Add a Theme dropdown to Preferences → Appearance with 14 color themes, each for both light and dark mode: Teal (the new default), the original Orange, Amber, Ember, Forest, Indigo, Midnight, Ocean, Olive, Plum, Slate, Violet, High Contrast and Warm Paper. Picking one fills in the Light and Dark Theme colors below it; changing any of those by hand shows the dropdown as Custom. The teal default is a shade deeper than yesterday's, and every gradient theme was tuned so editor body text and links stay at 4.5:1 contrast or better.

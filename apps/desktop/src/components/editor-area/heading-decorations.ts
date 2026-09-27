@@ -65,7 +65,7 @@ const emptyHeadingHeight = EditorView.theme({
   ),
 });
 
-function getMarkdownHeadingLevel(name: string): number | null {
+export function getMarkdownHeadingLevel(name: string): number | null {
   const atx = ATX_HEADING_RE.exec(name);
   if (atx) return Number(atx[1]);
 
