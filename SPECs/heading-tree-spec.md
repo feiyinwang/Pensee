@@ -20,7 +20,7 @@ Every document shows its headings as a Reddit-style thread tree. Typing `#`, `##
 
 - The outline is a state field rebuilt when the document or the committed syntax tree changes; it is empty while the setting is off, which switches every other part off.
 - Indentation is a `margin-left` line decoration over the visible ranges. Margin, not padding, because list and blockquote lines already own their padding.
-- Threads and circles live on a CodeMirror layer: one SVG path for every thread (faded as a group so overlapping segments do not double the alpha) and one chevron button per heading in the viewport. Heading y positions come from `coordsAtPos` for rendered headings and from the height map for the off-screen end of a long thread.
+- Threads and toggles live on a CodeMirror layer: one SVG path for every thread (faded as a group so overlapping segments do not double the alpha) and one chevron button per heading in the viewport. Heading y positions come from `coordsAtPos` for rendered headings and from the height map for the off-screen end of a long thread.
 
 ## Limits
 
