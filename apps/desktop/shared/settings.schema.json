@@ -42,14 +42,6 @@
       "default": 2
     },
     {
-      "key": "editor.heading-tree",
-      "label": "Heading Tree",
-      "description": "Indent sections under their headings, link the levels with thread lines, and collapse sections from the circle beside each heading",
-      "category": "Editor",
-      "type": "boolean",
-      "default": true
-    },
-    {
       "key": "statusbar.show-words",
       "label": "Words",
       "description": "Show the word count in the status bar",

@@ -65,7 +65,7 @@ const emptyHeadingHeight = EditorView.theme({
   ),
 });
 
-export function getMarkdownHeadingLevel(name: string): number | null {
+function getMarkdownHeadingLevel(name: string): number | null {
   const atx = ATX_HEADING_RE.exec(name);
   if (atx) return Number(atx[1]);
 
@@ -75,7 +75,7 @@ export function getMarkdownHeadingLevel(name: string): number | null {
   return null;
 }
 
-export function findHeadingHashEnd(node: SyntaxNode): number | null {
+function findHeadingHashEnd(node: SyntaxNode): number | null {
   const cursor = node.cursor();
   if (!cursor.firstChild() || cursor.name !== "HeaderMark") return null;
   return Math.min(cursor.to + 1, node.to);

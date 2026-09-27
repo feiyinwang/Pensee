@@ -18,7 +18,6 @@ import { editorClipboardExtension } from "./editor-clipboard";
 import { editorSearchExtensions } from "./editor-search-extensions";
 import { useEditorSearchStore } from "./editor-search-store";
 import { headingDecorations } from "./heading-decorations";
-import { headingTree } from "./heading-tree";
 import { htmlBlockDecorations, htmlBlockParserExtension } from "./html-block-decorations";
 import { columnsDecorations, columnsParserExtension } from "./columns-decorations";
 import { boardDecorations } from "./board/board-decorations";
@@ -137,7 +136,6 @@ export function createEditorExtensions(
     boardDecorations(getFilePath),
     mathDecorations(),
     headingDecorations,
-    headingTree,
     imageSrcResolver(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     markdownFormatting,
