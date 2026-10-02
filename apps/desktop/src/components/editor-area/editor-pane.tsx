@@ -22,9 +22,16 @@ function AsciiSpinner() {
 interface EditorPaneProps {
   path: string;
   isActive: boolean;
+  /** One of several side-by-side pages: always shown (the stack hides itself
+   *  with its tab), and sized for a column rather than the whole window. */
+  inStack?: boolean;
 }
 
-export const EditorPane = memo(function EditorPane({ path, isActive }: EditorPaneProps) {
+export const EditorPane = memo(function EditorPane({
+  path,
+  isActive,
+  inStack = false,
+}: EditorPaneProps) {
   const isLoading = useIsFileLoading(path);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [editorView, setEditorView] = useState<EditorView | null>(null);
@@ -32,13 +39,12 @@ export const EditorPane = memo(function EditorPane({ path, isActive }: EditorPan
 
   const getScrollContainer = useCallback(() => scrollContainerRef.current, []);
 
+  const visibilityClass =
+    inStack || isActive ? "relative z-10 h-full" : "absolute inset-0 invisible pointer-events-none";
+
   if (isLoading) {
     return (
-      <div
-        className={
-          isActive ? "relative z-10 h-full" : "absolute inset-0 invisible pointer-events-none"
-        }
-      >
+      <div className={visibilityClass}>
         <div className="flex h-full items-center justify-center text-[13px] text-[var(--text-muted)]">
           <AsciiSpinner />
         </div>
@@ -47,15 +53,10 @@ export const EditorPane = memo(function EditorPane({ path, isActive }: EditorPan
   }
 
   return (
-    <div
-      data-pane
-      className={
-        isActive ? "relative z-10 h-full" : "absolute inset-0 invisible pointer-events-none"
-      }
-    >
+    <div data-pane className={visibilityClass}>
       <EditorScrollContainer ref={scrollContainerRef}>
         <div
-          className="mx-auto w-full pt-32 pb-6 md:pt-[9rem]"
+          className={`mx-auto w-full pb-6 ${inStack ? "pt-10" : "pt-32 md:pt-[9rem]"}`}
           style={{
             maxWidth: "var(--writer-editor-outer-width)",
             boxSizing: "border-box",

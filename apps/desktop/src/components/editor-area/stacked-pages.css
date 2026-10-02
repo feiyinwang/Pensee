@@ -1,0 +1,188 @@
+/* Stacked pages: every page of a file tab side by side, each its own glass
+   island, scrolled horizontally. See SPECs/stacked-pages-spec.md. */
+
+.stacked-pages {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+/* A single page fills the tab exactly as it always has. */
+.stacked-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+.stacked-page-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ---- the strip -------------------------------------------------------- */
+
+.stacked-pages[data-stacked] {
+  --stacked-page-width: 640px;
+  --stacked-page-gap: 8px;
+  column-gap: var(--stacked-page-gap);
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Islands start under the tab row and stop above the footer stats. The
+     glass panel already sits 8px below the window top. */
+  padding-top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
+  padding-bottom: 44px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.stacked-pages[data-stacked]::-webkit-scrollbar {
+  display: none;
+}
+
+/* With islands showing, the panel behind them steps back so each page reads
+   as its own surface on the window backdrop. */
+.glass-panel:has(.stacked-pages[data-stacked][data-active]) {
+  border-color: transparent;
+  background: transparent;
+}
+
+.stacked-pages[data-stacked] > .stacked-page {
+  flex: 0 0 var(--stacked-page-width);
+  width: var(--stacked-page-width);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  background: linear-gradient(160deg, var(--glass-fill-start), var(--glass-fill-end));
+  /* The page column is the island, not the window: the editor's measure
+     fills it instead of centring a window-sized column inside. */
+  --writer-editor-side-padding: 2rem;
+  --writer-editor-outer-width: 100%;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-base) var(--ease-out),
+    translate var(--motion-base) var(--ease-out);
+}
+
+.stacked-pages[data-stacked] > .stacked-page[data-focused] {
+  border-color: var(--line-subtle);
+}
+
+/* A page opened from a link slides in from the page it came from. The
+   component sets this for one frame on a new island (not @starting-style:
+   the app's WebKit applies that block as a plain rule and the island stays
+   hidden). */
+.stacked-pages[data-stacked] > .stacked-page[data-entering] {
+  opacity: 0;
+  translate: 24px 0;
+  transition: none;
+}
+
+/* ---- header: grip, title, close --------------------------------------- */
+
+.stacked-page-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 8px 0 6px;
+  color: var(--text-muted);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.stacked-page-grip,
+.stacked-page-close {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-icon-muted);
+  opacity: 0;
+  transition:
+    opacity var(--motion-fast) var(--ease-out),
+    color var(--motion-hover) var(--ease-hover),
+    background-color var(--motion-hover) var(--ease-hover);
+}
+.stacked-page-grip {
+  cursor: grab;
+}
+.stacked-page-grip svg {
+  fill: currentColor;
+}
+.stacked-page-close {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.stacked-page:hover .stacked-page-grip,
+.stacked-page:hover .stacked-page-close,
+.stacked-page[data-focused] .stacked-page-close,
+.stacked-page-grip:focus-visible,
+.stacked-page-close:focus-visible {
+  opacity: 1;
+}
+.stacked-page-grip:hover,
+.stacked-page-close:hover {
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+
+.stacked-page-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.15;
+  transition: color var(--motion-fast) var(--ease-out);
+}
+.stacked-page[data-focused] .stacked-page-title {
+  color: var(--text-secondary);
+}
+
+/* ---- dragging --------------------------------------------------------- */
+
+/* The lifted page follows the pointer with no transition; the pages it
+   passes slide aside. */
+.stacked-pages[data-dragging] {
+  cursor: grabbing;
+}
+.stacked-pages[data-dragging] > .stacked-page {
+  transition: transform var(--motion-base) var(--ease-out);
+}
+.stacked-pages[data-dragging] .stacked-page-header {
+  cursor: grabbing;
+}
+.stacked-pages > .stacked-page[data-dragging] {
+  z-index: 20;
+  transition: none;
+  border-color: var(--line-subtle);
+  box-shadow: 0 24px 48px -16px rgb(0 0 0 / 35%);
+}
+/* Released: ease the leftover distance into the slot on the spring. */
+.stacked-pages > .stacked-page[data-dragging][data-settling] {
+  transition:
+    transform var(--motion-settle) var(--ease-spring),
+    box-shadow var(--motion-settle) var(--ease-out);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stacked-pages > .stacked-page,
+  .stacked-pages[data-dragging] > .stacked-page,
+  .stacked-pages > .stacked-page[data-dragging][data-settling] {
+    transition: none;
+  }
+}

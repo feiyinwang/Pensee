@@ -716,6 +716,127 @@ describe("editor-store", () => {
   });
 });
 
+describe("editor-store stacked pages", () => {
+  function fileLocation() {
+    const state = useEditorStore.getState();
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return tab?.location.kind === "file" ? tab.location : null;
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockedInvoke.mockImplementation(async (_cmd, args) => {
+      const path = (args as { path: string }).path;
+      return { path, content: path, modified_at: 1 };
+    });
+    useEditorStore.setState({
+      openFiles: new Map(),
+      tabs: [],
+      activeTabId: null,
+      activeFilePath: null,
+    });
+    useWorkspaceStore.setState({ chromeMode: "workspace" });
+    await useEditorStore.getState().openFile("/a.md");
+  });
+
+  test("opening a link adds the page right of its source and focuses it", async () => {
+    const store = useEditorStore.getState();
+    await store.openStackedPage("/a.md", "/b.md");
+    await store.openStackedPage("/b.md", "/c.md");
+    await store.openStackedPage("/a.md", "/d.md");
+
+    expect(fileLocation()).toEqual({
+      kind: "file",
+      path: "/d.md",
+      stack: ["/a.md", "/d.md", "/b.md", "/c.md"],
+    });
+    expect(useEditorStore.getState().activeFilePath).toBe("/d.md");
+    // Column changes rearrange the page; they are not history entries.
+    expect(useEditorStore.getState().tabs[0]!.back).toEqual([]);
+  });
+
+  test("opening a page that is already a column focuses it instead", async () => {
+    const store = useEditorStore.getState();
+    await store.openStackedPage("/a.md", "/b.md");
+    await store.openStackedPage("/b.md", "/a.md");
+
+    expect(fileLocation()).toEqual({ kind: "file", path: "/a.md", stack: ["/a.md", "/b.md"] });
+  });
+
+  test("closing a column focuses its left neighbour and collapses a single page", async () => {
+    const store = useEditorStore.getState();
+    await store.openStackedPage("/a.md", "/b.md");
+    await store.openStackedPage("/b.md", "/c.md");
+
+    store.closeStackedPage("/c.md");
+    expect(fileLocation()).toEqual({ kind: "file", path: "/b.md", stack: ["/a.md", "/b.md"] });
+    expect(useEditorStore.getState().openFiles.has("/c.md")).toBe(false);
+
+    store.closeStackedPage("/a.md");
+    expect(fileLocation()).toEqual({ kind: "file", path: "/b.md" });
+  });
+
+  test("moveStackedPage reorders without changing focus", async () => {
+    const store = useEditorStore.getState();
+    await store.openStackedPage("/a.md", "/b.md");
+    await store.openStackedPage("/b.md", "/c.md");
+
+    store.moveStackedPage("/c.md", 0);
+    expect(fileLocation()?.stack).toEqual(["/c.md", "/a.md", "/b.md"]);
+    store.moveStackedPage("/c.md", 9);
+    expect(fileLocation()?.stack).toEqual(["/a.md", "/b.md", "/c.md"]);
+    expect(fileLocation()?.path).toBe("/c.md");
+  });
+
+  test("navigating replaces the stack, and back restores it", async () => {
+    const store = useEditorStore.getState();
+    await store.openStackedPage("/a.md", "/b.md");
+    await store.navigateToFile("/z.md");
+    expect(fileLocation()).toEqual({ kind: "file", path: "/z.md" });
+
+    await useEditorStore.getState().navigateBack();
+    expect(fileLocation()).toEqual({ kind: "file", path: "/b.md", stack: ["/a.md", "/b.md"] });
+  });
+
+  test("navigating to a page already in the stack focuses it", async () => {
+    const store = useEditorStore.getState();
+    await store.openStackedPage("/a.md", "/b.md");
+    await store.navigateToFile("/a.md");
+
+    expect(fileLocation()).toEqual({ kind: "file", path: "/a.md", stack: ["/a.md", "/b.md"] });
+  });
+
+  test("a page that fails to load is dropped from the stack", async () => {
+    mockedInvoke.mockRejectedValueOnce(new Error("missing"));
+    await useEditorStore.getState().openStackedPage("/a.md", "/gone.md");
+
+    expect(fileLocation()).toEqual({ kind: "file", path: "/a.md" });
+  });
+
+  test("renames and deletes rewrite every column", async () => {
+    const store = useEditorStore.getState();
+    await store.openStackedPage("/a.md", "/b.md");
+    store.renameOpenFile("/a.md", "/a2.md");
+    expect(fileLocation()).toEqual({ kind: "file", path: "/b.md", stack: ["/a2.md", "/b.md"] });
+
+    useEditorStore.getState().removePathReferences("/b.md");
+    expect(fileLocation()).toEqual({ kind: "file", path: "/a2.md" });
+  });
+
+  test("the session round-trips the stack", async () => {
+    await useEditorStore.getState().openStackedPage("/a.md", "/b.md");
+    const snapshot = getEditorSessionSnapshot(useEditorStore.getState());
+    expect(snapshot.tabs[0]!.location).toEqual({
+      kind: "file",
+      path: "/b.md",
+      stack: ["/a.md", "/b.md"],
+    });
+
+    await useEditorStore.getState().restoreSession(snapshot.tabs, snapshot.activeIndex);
+    expect(fileLocation()).toEqual({ kind: "file", path: "/b.md", stack: ["/a.md", "/b.md"] });
+  });
+});
+
 describe("workspace-store rewriteExpandedDir", () => {
   beforeEach(() => {
     vi.clearAllMocks();

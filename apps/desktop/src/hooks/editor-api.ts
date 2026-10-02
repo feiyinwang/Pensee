@@ -1,4 +1,6 @@
 import { useEditorStore } from "@/stores/editor-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 export type { OpenFile, Tab, SessionTab } from "@/stores/editor-store";
 
 export function getOpenFile(path: string) {
@@ -47,6 +49,25 @@ export function reloadFromDisk(path: string, rawContent: string) {
 
 export function navigateToFile(path: string) {
   return useEditorStore.getState().navigateToFile(path);
+}
+
+export function isPageInActiveTab(path: string) {
+  const state = useEditorStore.getState();
+  const tab = state.tabs.find((t) => t.id === state.activeTabId);
+  if (tab?.location.kind !== "file") return false;
+  return (tab.location.stack ?? [tab.location.path]).includes(path);
+}
+
+/** Follow a link from the page at `fromPath`: workspace windows open the
+ *  target as a column beside it, compact windows (one page, no room for
+ *  columns) navigate in place. */
+export function openLinkedPage(fromPath: string, toPath: string) {
+  const { root, chromeMode } = useWorkspaceStore.getState();
+  const store = useEditorStore.getState();
+  if (getWorkspaceChromeMode(root, chromeMode) === "compact-file" || !fromPath) {
+    return store.navigateToFile(toPath);
+  }
+  return store.openStackedPage(fromPath, toPath);
 }
 
 export function renameOpenFile(oldPath: string, newPath: string) {

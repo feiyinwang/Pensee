@@ -8,6 +8,7 @@
 
 ## Done
 
+- Stacked pages: [`SPECs/stacked-pages-spec.md`](SPECs/stacked-pages-spec.md) — link clicks open the page as a column right of its source, Andy Matuschak–style but uncapped: a horizontally scrolling strip of glass islands, each scrolling on its own, draggable by its header (arrow keys on the grip) and closable. The stack lives on `FileLocation.stack`, persists with the session, and survives renames/deletes; sidebar navigation replaces it and Back restores it. Follow-ups in the spec: a key to close one column, adjustable column width, scroll-to-anchor for an already-open column.
 - Link hover preview: [`SPECs/wiki-link-preview-spec.md`](SPECs/wiki-link-preview-spec.md) — hovering a `[[page]]` link shows the page, rendered read-only, in a scrollable card.
 - Pages from wiki links: [`SPECs/wiki-link-pages-spec.md`](SPECs/wiki-link-pages-spec.md) — finishing a `[[Name]]` creates `Name.md` when missing, clicking an unresolved link creates and opens it, and Cmd+Alt+N / right-click moves a selection into a new page titled by its first line.
 - Heading level labels: [`SPECs/heading-level-labels-spec.md`](SPECs/heading-level-labels-spec.md) — always-visible H1–H6 label in the grip's chip slot, the grip hides its own chip on headings, and the `#` marks never show.

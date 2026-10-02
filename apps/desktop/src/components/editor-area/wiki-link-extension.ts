@@ -340,7 +340,7 @@ function wikiLinkClickHandler(getFilePath: () => string, isDisposed: () => boole
               result.kind === "internal"
                 ? result.path
                 : await openWikiPage(rawTarget, getFilePath() || null);
-            if (path && !isDisposed()) void editorApi.navigateToFile(path);
+            if (path && !isDisposed()) void editorApi.openLinkedPage(getFilePath(), path);
           })
           .catch((error) => {
             if (!isDisposed()) console.error("[editor] Failed to follow wiki link:", error);

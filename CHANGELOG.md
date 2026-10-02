@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-02
+
+- Links now open side by side. Clicking a page link opens that page in a new column next to the page you clicked it in, so you can read a trail of notes together; each column scrolls on its own, and the row of columns scrolls sideways with your trackpad, as many as you open. With two or more pages each one sits on its own glass card. Drag a card by its header to move it left or right (or focus its grip and use the arrow keys), and close it with its ×. Opening a file from the sidebar still replaces what's in the tab, and Back brings the columns back. See [SPECs/stacked-pages-spec.md](./SPECs/stacked-pages-spec.md).
+
 ## 2026-09-27
 
 - Hover a page link like `[[主场]]` to preview the page in a card beside it. The preview looks like the page itself, scrolls so you can read the whole thing, and its title opens the page. It stays open while your pointer is on it, and closes when you move away, press Esc, or keep typing. A link to a page that doesn't exist yet says so. See [SPECs/wiki-link-preview-spec.md](./SPECs/wiki-link-preview-spec.md).
