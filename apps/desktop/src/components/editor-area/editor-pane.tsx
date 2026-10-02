@@ -22,15 +22,15 @@ function AsciiSpinner() {
 interface EditorPaneProps {
   path: string;
   isActive: boolean;
-  /** One of several side-by-side pages: always shown (the stack hides itself
-   *  with its tab), and sized for a column rather than the whole window. */
-  inStack?: boolean;
+  /** One of several side-by-side tab columns: always shown, and sized for
+   *  its island rather than the whole window. */
+  inColumn?: boolean;
 }
 
 export const EditorPane = memo(function EditorPane({
   path,
   isActive,
-  inStack = false,
+  inColumn = false,
 }: EditorPaneProps) {
   const isLoading = useIsFileLoading(path);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -40,7 +40,9 @@ export const EditorPane = memo(function EditorPane({
   const getScrollContainer = useCallback(() => scrollContainerRef.current, []);
 
   const visibilityClass =
-    inStack || isActive ? "relative z-10 h-full" : "absolute inset-0 invisible pointer-events-none";
+    inColumn || isActive
+      ? "relative z-10 h-full"
+      : "absolute inset-0 invisible pointer-events-none";
 
   if (isLoading) {
     return (
@@ -56,7 +58,7 @@ export const EditorPane = memo(function EditorPane({
     <div data-pane className={visibilityClass}>
       <EditorScrollContainer ref={scrollContainerRef}>
         <div
-          className={`mx-auto w-full pb-6 ${inStack ? "pt-10" : "pt-32 md:pt-[9rem]"}`}
+          className={`mx-auto w-full pb-6 ${inColumn ? "pt-10" : "pt-32 md:pt-[9rem]"}`}
           style={{
             maxWidth: "var(--writer-editor-outer-width)",
             boxSizing: "border-box",

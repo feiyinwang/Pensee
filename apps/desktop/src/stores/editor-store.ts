@@ -17,7 +17,6 @@ import {
   type Location,
   type SerializedLocation,
 } from "@/components/editor-area/page-kinds";
-import { fileLocationFrom, stackOf } from "@/components/editor-area/page-kinds/file";
 
 export interface OpenFile {
   path: string;
@@ -60,6 +59,10 @@ interface EditorState {
   openFile: (path: string) => Promise<void>;
   openCompactFile: (path: string, prefetched?: FileContent | null) => Promise<void>;
   openFileInNewTab: (path: string) => Promise<void>;
+  /** Show `path` in a tab right of the active one (a new column), or
+   *  activate the tab already showing it. */
+  openFileBeside: (path: string) => Promise<void>;
+  moveTab: (tabId: string, toIndex: number) => void;
   openNewTab: () => void;
   ensureLauncherTab: () => void;
   openOrFocus: (match: (tab: Tab) => boolean, factory: () => Tab) => void;
@@ -70,12 +73,6 @@ interface EditorState {
   setActiveFile: (path: string) => void;
   setActiveTab: (tabId: string) => void;
   navigateToFile: (path: string) => Promise<void>;
-  /** Open `toPath` as a column to the right of `fromPath` in the active tab,
-   *  or focus it when the tab already shows it. */
-  openStackedPage: (fromPath: string, toPath: string) => Promise<void>;
-  focusStackedPage: (path: string) => void;
-  closeStackedPage: (path: string) => void;
-  moveStackedPage: (path: string, toIndex: number) => void;
   navigateBack: () => Promise<void>;
   navigateForward: () => Promise<void>;
   renameOpenFile: (oldPath: string, newPath: string) => void;
@@ -279,34 +276,6 @@ function applyRewriteToTab(tab: Tab, rewrite: (loc: Location) => Location | null
   return { ...tab, location: newLocation, back, forward };
 }
 
-function getActiveFileTab(state: Pick<EditorState, "tabs" | "activeTabId">) {
-  const tab = getActiveTab(state);
-  return tab?.location.kind === "file" ? { tab, location: tab.location } : null;
-}
-
-/** Swap the location of tab `tabId` (a file tab) without touching its
- *  history: column changes rearrange the page, they are not navigations. */
-function replaceFileTabLocation(
-  state: EditorState,
-  tabId: string,
-  rewrite: (location: FileLocation) => FileLocation | null,
-): Partial<EditorState> | EditorState {
-  const index = getTabIndex(state.tabs, tabId);
-  const tab = state.tabs[index];
-  if (!tab || tab.location.kind !== "file") return state;
-  const location = rewrite(tab.location);
-  if (!location || location === tab.location) return state;
-  const tabs = [...state.tabs];
-  tabs[index] = { ...tab, location };
-  const dropped = stackOf(tab.location).filter((p) => !stackOf(location).includes(p));
-  const files = maybePruneFiles(state, tabs, dropped);
-  return {
-    tabs,
-    activeFilePath: state.activeTabId === tabId ? location.path : state.activeFilePath,
-    ...(files ? { openFiles: files } : {}),
-  };
-}
-
 async function ensureFileLoaded(path: string, set: EditorStateSetter, get: () => EditorState) {
   const existing = get().openFiles.get(path);
   if (existing && !existing.isLoading) return;
@@ -481,6 +450,48 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Always create a fresh tab for `path`, even if another tab already shows it.
   // Used by the sidebar context menu's "Open in new tab" action so it never
   // collapses into the existing tab the way `openFile` does.
+  openFileBeside: async (path: string) => {
+    const existing = get().tabs.find(
+      (tab) => tab.location.kind === "file" && tab.location.path === path,
+    );
+    if (existing) {
+      get().setActiveTab(existing.id);
+      return;
+    }
+
+    const nextTab = createFileTab(path);
+    set((state) => {
+      const activeIndex = getTabIndex(state.tabs, state.activeTabId ?? "");
+      const at = activeIndex === -1 ? state.tabs.length : activeIndex + 1;
+      const openFiles = state.openFiles.has(path)
+        ? undefined
+        : new Map(state.openFiles).set(path, createLoadingFile(path));
+      return {
+        tabs: [...state.tabs.slice(0, at), nextTab, ...state.tabs.slice(at)],
+        activeTabId: nextTab.id,
+        activeFilePath: path,
+        ...(openFiles ? { openFiles } : {}),
+      };
+    });
+
+    try {
+      await ensureFileLoaded(path, set as EditorStateSetter, get);
+    } catch {
+      get().closeTab(nextTab.id);
+    }
+  },
+
+  moveTab: (tabId: string, toIndex: number) => {
+    set((state) => {
+      const from = getTabIndex(state.tabs, tabId);
+      const to = Math.min(Math.max(toIndex, 0), state.tabs.length - 1);
+      if (from === -1 || from === to) return state;
+      const tabs = state.tabs.filter((tab) => tab.id !== tabId);
+      tabs.splice(to, 0, state.tabs[from]!);
+      return { tabs };
+    });
+  },
+
   openFileInNewTab: async (path: string) => {
     const nextTab = createFileTab(path);
 
@@ -666,13 +677,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setActiveFile: (path: string) => {
     const tab = get().tabs.find(
-      (candidate) =>
-        candidate.location.kind === "file" && stackOf(candidate.location).includes(path),
+      (candidate) => candidate.location.kind === "file" && candidate.location.path === path,
     );
     if (!tab) return;
-    set({ activeTabId: tab.id });
-    get().focusStackedPage(path);
-    set({ activeFilePath: path });
+    set({ activeTabId: tab.id, activeFilePath: path });
   },
 
   setActiveTab: (tabId: string) => {
@@ -692,10 +700,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       await state.replaceTabWithFile(activeTab.id, path);
       return;
     }
-    if (activeTab.location.kind === "file" && stackOf(activeTab.location).includes(path)) {
-      state.focusStackedPage(path);
-      return;
-    }
+    if (activeTab.location.kind === "file" && activeTab.location.path === path) return;
 
     const previousTab = cloneTab(activeTab);
     const nextLocation: FileLocation = { kind: "file", path };
@@ -745,85 +750,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         };
       });
     }
-  },
-
-  openStackedPage: async (fromPath: string, toPath: string) => {
-    const active = getActiveFileTab(get());
-    if (!active) {
-      await get().navigateToFile(toPath);
-      return;
-    }
-    const tabId = active.tab.id;
-    if (stackOf(active.location).includes(toPath)) {
-      get().focusStackedPage(toPath);
-      return;
-    }
-
-    set((state) => {
-      const next = replaceFileTabLocation(state, tabId, (location) => {
-        const stack = stackOf(location);
-        const from = stack.indexOf(fromPath);
-        const at = from === -1 ? stack.length : from + 1;
-        return fileLocationFrom([...stack.slice(0, at), toPath, ...stack.slice(at)], toPath);
-      });
-      if (next === state || state.openFiles.has(toPath)) return next;
-      return {
-        ...next,
-        openFiles: new Map(next.openFiles ?? state.openFiles).set(
-          toPath,
-          createLoadingFile(toPath),
-        ),
-      };
-    });
-
-    try {
-      await ensureFileLoaded(toPath, set as EditorStateSetter, get);
-    } catch {
-      set((state) =>
-        replaceFileTabLocation(state, tabId, (location) =>
-          fileLocationFrom(
-            stackOf(location).filter((p) => p !== toPath),
-            location.path === toPath ? fromPath : location.path,
-          ),
-        ),
-      );
-    }
-  },
-
-  focusStackedPage: (path: string) => {
-    const active = getActiveFileTab(get());
-    if (!active || active.location.path === path) return;
-    set((state) =>
-      replaceFileTabLocation(state, active.tab.id, (location) =>
-        location.stack?.includes(path) ? { ...location, path } : location,
-      ),
-    );
-  },
-
-  closeStackedPage: (path: string) => {
-    const active = getActiveFileTab(get());
-    if (!active?.location.stack) return;
-    set((state) =>
-      replaceFileTabLocation(state, active.tab.id, (location) =>
-        locationBehavior(location).removePath(location, path),
-      ),
-    );
-  },
-
-  moveStackedPage: (path: string, toIndex: number) => {
-    const active = getActiveFileTab(get());
-    if (!active?.location.stack) return;
-    set((state) =>
-      replaceFileTabLocation(state, active.tab.id, (location) => {
-        const stack = stackOf(location);
-        const from = stack.indexOf(path);
-        const to = Math.min(Math.max(toIndex, 0), stack.length - 1);
-        if (from === -1 || from === to) return location;
-        const next = stack.filter((p) => p !== path);
-        next.splice(to, 0, path);
-        return { ...location, stack: next };
-      }),
-    );
   },
 
   navigateBack: async () => {

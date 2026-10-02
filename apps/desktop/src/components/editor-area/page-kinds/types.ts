@@ -79,8 +79,10 @@ export type AnyPageKind = PageKind<string, { kind: string }>;
  *  Kept out of `PageKind` so the editor UI is only imported by the renderer
  *  (`pageKindViews` in `./views`), never by the data/serialization layer. */
 export interface PageKindView<L extends { kind: string } = { kind: string }> {
-  /** React renderer for the tab body. */
-  Component: ComponentType<{ location: L; isActive: boolean }>;
+  /** React renderer for the tab body. `inColumn`: the tab is one of several
+   *  side-by-side columns, so it stays visible while another tab is active
+   *  (see SPECs/tab-columns-spec.md). */
+  Component: ComponentType<{ location: L; isActive: boolean; inColumn: boolean }>;
   /** Optional chrome rendered below the active tab body. */
   renderFooter?: (location: L) => ReactNode;
 }

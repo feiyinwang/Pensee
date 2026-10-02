@@ -2,7 +2,7 @@
 
 ## 2026-10-02
 
-- Links now open side by side. Clicking a page link opens that page in a new column next to the page you clicked it in, so you can read a trail of notes together; each column scrolls on its own, and the row of columns scrolls sideways with your trackpad, as many as you open. With two or more pages each one sits on its own glass card. Drag a card by its header to move it left or right (or focus its grip and use the arrow keys), and close it with its ×. Opening a file from the sidebar still replaces what's in the tab, and Back brings the columns back. See [SPECs/stacked-pages-spec.md](./SPECs/stacked-pages-spec.md).
+- Open tabs now sit side by side. With two or more tabs open, each tab is its own glass card in a row you scroll sideways with your trackpad, as many as you like, and each card scrolls up and down on its own. Click into a card (or its tab) to work in it; drag a card by its header to move it left or right (the tab bar follows), or focus its grip and use the arrow keys; close it with its ×. Clicking a page link opens that page in a new tab right next to the one you're reading. With a single tab, the page fills the window as before. See [SPECs/tab-columns-spec.md](./SPECs/tab-columns-spec.md).
 
 ## 2026-09-27
 

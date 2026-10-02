@@ -51,23 +51,22 @@ export function navigateToFile(path: string) {
   return useEditorStore.getState().navigateToFile(path);
 }
 
-export function isPageInActiveTab(path: string) {
-  const state = useEditorStore.getState();
-  const tab = state.tabs.find((t) => t.id === state.activeTabId);
-  if (tab?.location.kind !== "file") return false;
-  return (tab.location.stack ?? [tab.location.path]).includes(path);
+export function isFileOpenInTab(path: string) {
+  return useEditorStore
+    .getState()
+    .tabs.some((tab) => tab.location.kind === "file" && tab.location.path === path);
 }
 
-/** Follow a link from the page at `fromPath`: workspace windows open the
- *  target as a column beside it, compact windows (one page, no room for
- *  columns) navigate in place. */
-export function openLinkedPage(fromPath: string, toPath: string) {
+/** Follow a link: workspace windows show the target as a tab (column)
+ *  beside the current one, compact windows (one page, no tabs) navigate in
+ *  place. */
+export function openLinkedPage(toPath: string) {
   const { root, chromeMode } = useWorkspaceStore.getState();
   const store = useEditorStore.getState();
-  if (getWorkspaceChromeMode(root, chromeMode) === "compact-file" || !fromPath) {
+  if (getWorkspaceChromeMode(root, chromeMode) === "compact-file") {
     return store.navigateToFile(toPath);
   }
-  return store.openStackedPage(fromPath, toPath);
+  return store.openFileBeside(toPath);
 }
 
 export function renameOpenFile(oldPath: string, newPath: string) {

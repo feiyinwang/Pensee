@@ -50,12 +50,12 @@ export async function followLink(href: string | null, view: EditorView, filePath
       scrollSameDocAnchor(view, filePath, target.anchor);
       return;
     }
-    // A page already open as a column keeps its editor, so a pending anchor
+    // A page already open in a tab keeps its editor, so a pending anchor
     // would never be consumed; it only applies to a page about to mount.
-    if (target.anchor && !editorApi.isPageInActiveTab(target.path)) {
+    if (target.anchor && !editorApi.isFileOpenInTab(target.path)) {
       setPendingAnchor(target.path, target.anchor);
     }
-    await editorApi.openLinkedPage(filePath, target.path);
+    await editorApi.openLinkedPage(target.path);
     return;
   }
 

@@ -210,7 +210,7 @@ class LinkPreview {
     header.addEventListener("click", () => {
       if (!path) return;
       this.hide();
-      void editorApi.openLinkedPage(this.getFilePath(), path);
+      void editorApi.openLinkedPage(path);
     });
     card.append(header);
 

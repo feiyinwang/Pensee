@@ -1,21 +1,21 @@
 import { deepEqual, equal, ok } from "node:assert/strict";
 
-// Stacked pages verification (see SPECs/stacked-pages-spec.md): clicking a
-// wiki link opens the page as a column right of the page it came from, each
-// column is its own island in a horizontally scrolling strip, a column can be
-// dragged to a new position by its header, and closing a column collapses
-// back to a single page.
+// Tab columns verification (see SPECs/tab-columns-spec.md): with two or more
+// tabs open every tab is a column, an island in a horizontally scrolling
+// strip; clicking a wiki link opens the page as a tab right of the current
+// one, a column can be dragged to a new position by its header, and closing
+// down to one tab returns to the full-width page.
 //
 // Seeds its own linked pages into the restored workspace and self-skips
-// without one, like latex-math.spec.js. Set STACKED_PAGES_SHOTS to a
+// without one, like latex-math.spec.js. Set TAB_COLUMNS_SHOTS to a
 // directory to save a screenshot after each step.
-describe("Stacked pages", function () {
+describe("Tab columns", function () {
   const PAGES = {
     "stack-e2e-one": "# Stack one\n\nGo to [[stack-e2e-two]] next.\n",
     "stack-e2e-two": "# Stack two\n\nThen [[stack-e2e-three]] after.\n",
     "stack-e2e-three": "# Stack three\n\nThe end of the trail.\n",
   };
-  const shots = process.env.STACKED_PAGES_SHOTS;
+  const shots = process.env.TAB_COLUMNS_SHOTS;
 
   let workspaceRestored = false;
   let root = null;
@@ -35,9 +35,9 @@ describe("Stacked pages", function () {
 
   async function columnTitles() {
     return browser.execute(() =>
-      [...document.querySelectorAll(".stacked-pages[data-active] > .stacked-page")]
+      [...document.querySelectorAll(".tab-columns[data-columns] > .tab-column")]
         .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)
-        .map((el) => el.querySelector(".stacked-page-title")?.textContent ?? ""),
+        .map((el) => el.querySelector(".tab-column-title")?.textContent ?? ""),
     );
   }
 
@@ -65,8 +65,22 @@ describe("Stacked pages", function () {
     }, link);
   }
 
+  function headerSelector(title) {
+    return `.tab-column:has(.tab-column-title[data-e2e="${title}"])`;
+  }
+
+  // Tag each header with its title so selectors can find a column by name.
+  async function tagHeaders() {
+    await browser.execute(() => {
+      for (const el of document.querySelectorAll(".tab-column-title")) {
+        el.dataset.e2e = el.textContent ?? "";
+      }
+    });
+  }
+
   // Drag a column header to a horizontal client position with pointer events.
-  async function dragHeader(stem, toX) {
+  async function dragHeader(title, toX) {
+    await tagHeaders();
     await browser.execute(
       (selector, x) => {
         const header = document.querySelector(selector);
@@ -90,7 +104,7 @@ describe("Stacked pages", function () {
         }
         window.dispatchEvent(new PointerEvent("pointerup", { ...at(cx), buttons: 0 }));
       },
-      `.stacked-page[data-path$='${stem}.md'] .stacked-page-title`,
+      `${headerSelector(title)} .tab-column-title`,
       toX,
     );
   }
@@ -132,12 +146,22 @@ describe("Stacked pages", function () {
 
   it("opens the first page as a single, full-width page", async function () {
     await shot("00-start");
+    // Close restored tabs down to one, which drops the columns layout.
+    for (let i = 0; i < 20; i++) {
+      const closed = await browser.execute(() => {
+        const close = document.querySelector(".tab-columns[data-columns] .tab-column-close");
+        close?.click();
+        return Boolean(close);
+      });
+      if (!closed) break;
+      await browser.pause(100);
+    }
     const row = await $("span*=Stack one");
     await row.waitForExist({ timeout: 15_000 });
     await row.click();
     await $(".cm-wiki-link*=stack-e2e-two").waitForExist({ timeout: 10_000 });
     const stacked = await browser.execute(
-      () => !!document.querySelector(".stacked-pages[data-active][data-stacked]"),
+      () => !!document.querySelector(".tab-columns[data-columns]"),
     );
     equal(stacked, false);
   });
@@ -170,12 +194,12 @@ describe("Stacked pages", function () {
 
   it("scrolls the strip horizontally", async function () {
     const scrollable = await browser.execute(() => {
-      const strip = document.querySelector(".stacked-pages[data-active]");
+      const strip = document.querySelector(".tab-columns[data-columns]");
       return strip.scrollWidth > strip.clientWidth;
     });
     if (!scrollable) this.skip();
     const left = await browser.execute(() => {
-      const strip = document.querySelector(".stacked-pages[data-active]");
+      const strip = document.querySelector(".tab-columns[data-columns]");
       strip.scrollLeft = 0;
       return strip.scrollLeft;
     });
@@ -184,12 +208,13 @@ describe("Stacked pages", function () {
 
   it("moves a column by dragging its header", async function () {
     const toX = await browser.execute(() => {
-      document.querySelector(".stacked-pages[data-active]").scrollLeft = 0;
-      return document
-        .querySelector(".stacked-page[data-path$='stack-e2e-one.md']")
-        .getBoundingClientRect().left;
+      document.querySelector(".tab-columns[data-columns]").scrollLeft = 0;
+      const one = [...document.querySelectorAll(".tab-column-title")].find(
+        (el) => el.textContent === "Stack one",
+      );
+      return one.closest(".tab-column").getBoundingClientRect().left;
     });
-    await dragHeader("stack-e2e-three", toX);
+    await dragHeader("Stack three", toX);
     await browser.waitUntil(async () => (await columnTitles())[0] === "Stack three", {
       timeout: 5_000,
       timeoutMsg: `drag did not reorder: ${JSON.stringify(await columnTitles())}`,
@@ -199,13 +224,15 @@ describe("Stacked pages", function () {
   });
 
   it("closes a column and collapses back to one page", async function () {
-    for (const stem of ["stack-e2e-three", "stack-e2e-two"]) {
-      const close = await $(`.stacked-page[data-path$='${stem}.md'] .stacked-page-close`);
-      await browser.execute((el) => el.click(), close);
+    await tagHeaders();
+    for (const title of ["Stack three", "Stack two"]) {
+      await browser.execute(
+        (selector) => document.querySelector(selector).click(),
+        `${headerSelector(title)} .tab-column-close`,
+      );
     }
     await browser.waitUntil(
-      async () =>
-        browser.execute(() => !document.querySelector(".stacked-pages[data-active][data-stacked]")),
+      async () => browser.execute(() => !document.querySelector(".tab-columns[data-columns]")),
       { timeout: 5_000, timeoutMsg: "stack never collapsed" },
     );
     await shot("04-single-page");

@@ -1,14 +1,14 @@
-/* Stacked pages: every page of a file tab side by side, each its own glass
-   island, scrolled horizontally. See SPECs/stacked-pages-spec.md. */
+/* Tab columns: with two or more tabs open, every tab side by side, each its
+   own glass island, scrolled horizontally. See SPECs/tab-columns-spec.md. */
 
-.stacked-pages {
+.tab-columns {
   position: absolute;
   inset: 0;
   display: flex;
 }
 
-/* A single page fills the tab exactly as it always has. */
-.stacked-page {
+/* A single tab fills the panel exactly as it always has. */
+.tab-column {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -17,7 +17,15 @@
   height: 100%;
 }
 
-.stacked-page-body {
+/* Without columns, inactive tabs stay mounted but out of flow and hidden. */
+.tab-column[data-hidden] {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.tab-column-body {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
@@ -25,10 +33,10 @@
 
 /* ---- the strip -------------------------------------------------------- */
 
-.stacked-pages[data-stacked] {
-  --stacked-page-width: 640px;
-  --stacked-page-gap: 8px;
-  column-gap: var(--stacked-page-gap);
+.tab-columns[data-columns] {
+  --tab-column-width: 640px;
+  --tab-column-gap: 8px;
+  column-gap: var(--tab-column-gap);
   overflow-x: auto;
   overflow-y: hidden;
   /* Islands start under the tab row and stop above the footer stats. The
@@ -38,25 +46,25 @@
   overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
-.stacked-pages[data-stacked]::-webkit-scrollbar {
+.tab-columns[data-columns]::-webkit-scrollbar {
   display: none;
 }
 
-/* With islands showing, the panel behind them steps back so each page reads
+/* With islands showing, the panel behind them steps back so each tab reads
    as its own surface on the window backdrop. */
-.glass-panel:has(.stacked-pages[data-stacked][data-active]) {
+.glass-panel:has(.tab-columns[data-columns]) {
   border-color: transparent;
   background: transparent;
 }
 
-.stacked-pages[data-stacked] > .stacked-page {
-  flex: 0 0 var(--stacked-page-width);
-  width: var(--stacked-page-width);
+.tab-columns[data-columns] > .tab-column {
+  flex: 0 0 var(--tab-column-width);
+  width: var(--tab-column-width);
   overflow: hidden;
   border: 1px solid var(--glass-border);
   border-radius: 20px;
   background: linear-gradient(160deg, var(--glass-fill-start), var(--glass-fill-end));
-  /* The page column is the island, not the window: the editor's measure
+  /* The column is the island, not the window: the editor's measure
      fills it instead of centring a window-sized column inside. */
   --writer-editor-side-padding: 2rem;
   --writer-editor-outer-width: 100%;
@@ -66,15 +74,15 @@
     translate var(--motion-base) var(--ease-out);
 }
 
-.stacked-pages[data-stacked] > .stacked-page[data-focused] {
+.tab-columns[data-columns] > .tab-column[data-focused] {
   border-color: var(--line-subtle);
 }
 
-/* A page opened from a link slides in from the page it came from. The
+/* A newly opened tab slides in. The
    component sets this for one frame on a new island (not @starting-style:
    the app's WebKit applies that block as a plain rule and the island stays
    hidden). */
-.stacked-pages[data-stacked] > .stacked-page[data-entering] {
+.tab-columns[data-columns] > .tab-column[data-entering] {
   opacity: 0;
   translate: 24px 0;
   transition: none;
@@ -82,7 +90,7 @@
 
 /* ---- header: grip, title, close --------------------------------------- */
 
-.stacked-page-header {
+.tab-column-header {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -96,8 +104,8 @@
   touch-action: none;
 }
 
-.stacked-page-grip,
-.stacked-page-close {
+.tab-column-grip,
+.tab-column-close {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -114,31 +122,31 @@
     color var(--motion-hover) var(--ease-hover),
     background-color var(--motion-hover) var(--ease-hover);
 }
-.stacked-page-grip {
+.tab-column-grip {
   cursor: grab;
 }
-.stacked-page-grip svg {
+.tab-column-grip svg {
   fill: currentColor;
 }
-.stacked-page-close {
+.tab-column-close {
   font-size: 15px;
   line-height: 1;
 }
 
-.stacked-page:hover .stacked-page-grip,
-.stacked-page:hover .stacked-page-close,
-.stacked-page[data-focused] .stacked-page-close,
-.stacked-page-grip:focus-visible,
-.stacked-page-close:focus-visible {
+.tab-column:hover .tab-column-grip,
+.tab-column:hover .tab-column-close,
+.tab-column[data-focused] .tab-column-close,
+.tab-column-grip:focus-visible,
+.tab-column-close:focus-visible {
   opacity: 1;
 }
-.stacked-page-grip:hover,
-.stacked-page-close:hover {
+.tab-column-grip:hover,
+.tab-column-close:hover {
   background: var(--surface-subtle);
   color: var(--text-secondary);
 }
 
-.stacked-page-title {
+.tab-column-title {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -148,31 +156,31 @@
   line-height: 1.15;
   transition: color var(--motion-fast) var(--ease-out);
 }
-.stacked-page[data-focused] .stacked-page-title {
+.tab-column[data-focused] .tab-column-title {
   color: var(--text-secondary);
 }
 
 /* ---- dragging --------------------------------------------------------- */
 
-/* The lifted page follows the pointer with no transition; the pages it
+/* The lifted column follows the pointer with no transition; the columns it
    passes slide aside. */
-.stacked-pages[data-dragging] {
+.tab-columns[data-dragging] {
   cursor: grabbing;
 }
-.stacked-pages[data-dragging] > .stacked-page {
+.tab-columns[data-dragging] > .tab-column {
   transition: transform var(--motion-base) var(--ease-out);
 }
-.stacked-pages[data-dragging] .stacked-page-header {
+.tab-columns[data-dragging] .tab-column-header {
   cursor: grabbing;
 }
-.stacked-pages > .stacked-page[data-dragging] {
+.tab-columns > .tab-column[data-dragging] {
   z-index: 20;
   transition: none;
   border-color: var(--line-subtle);
   box-shadow: 0 24px 48px -16px rgb(0 0 0 / 35%);
 }
 /* Released: ease the leftover distance into the slot on the spring. */
-.stacked-pages > .stacked-page[data-dragging][data-settling] {
+.tab-columns > .tab-column[data-dragging][data-settling] {
   transition:
     transform var(--motion-settle) var(--ease-spring),
     box-shadow var(--motion-settle) var(--ease-out);
@@ -180,9 +188,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stacked-pages > .stacked-page,
-  .stacked-pages[data-dragging] > .stacked-page,
-  .stacked-pages > .stacked-page[data-dragging][data-settling] {
+  .tab-columns > .tab-column,
+  .tab-columns[data-dragging] > .tab-column,
+  .tab-columns > .tab-column[data-dragging][data-settling] {
     transition: none;
   }
 }

@@ -15,7 +15,14 @@ import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-co
  *  comes next, and everything else is rendered after. */
 const SECTIONS_BEFORE_THEMES = ["Appearance", "Typography"] as const;
 
-export function SettingsPanel({ isActive }: { isActive: boolean }) {
+export function SettingsPanel({
+  isActive,
+  inColumn = false,
+}: {
+  isActive: boolean;
+  inColumn?: boolean;
+}) {
+  const isShown = isActive || inColumn;
   const settings = useAllSettings();
   const setSetting = useSetSetting();
   const resetSetting = useResetSetting();
@@ -77,9 +84,9 @@ export function SettingsPanel({ isActive }: { isActive: boolean }) {
     <div
       data-settings-panel
       className={
-        isActive ? "relative z-10 h-full" : "absolute inset-0 invisible pointer-events-none h-full"
+        isShown ? "relative z-10 h-full" : "absolute inset-0 invisible pointer-events-none h-full"
       }
-      aria-hidden={!isActive}
+      aria-hidden={!isShown}
     >
       <EditorScrollContainer>
         <div className="mx-auto max-w-2xl px-8 pt-32 pb-24 md:pt-[9rem]">
