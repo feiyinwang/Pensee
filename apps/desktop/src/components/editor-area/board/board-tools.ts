@@ -50,6 +50,7 @@ export interface ToolbarCallbacks {
   onZoomReset: () => void;
   onZoomFit: () => void;
   onClose: () => void;
+  onPresent: () => void;
 }
 
 const svgNS = "http://www.w3.org/2000/svg";
@@ -95,6 +96,7 @@ const ICON = {
   undo: ["M9 7H5V3", "M5 7a8 8 0 1 1 0 8"],
   redo: ["M15 7h4V3", "M19 7a8 8 0 1 0 0 8"],
   close: ["M6 6l12 12", "M18 6L6 18"],
+  present: ["M8 5.5v13l10.5-6.5z"],
   minus: ["M5 12h14"],
   plus: ["M12 5v14", "M5 12h14"],
   fit: ["M4 9V4h5", "M20 15v5h-5", "M20 9V4h-5", "M4 15v5h5"],
@@ -191,7 +193,12 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   const title = document.createElement("span");
   title.className = "wr-board-title";
   title.textContent = "Board";
-  top.append(closeBtn, title);
+  const presentBtn = button("Present", ICON.present, () => cb.onPresent());
+  presentBtn.classList.add("wr-board-present");
+  const presentLabel = document.createElement("span");
+  presentLabel.textContent = "Present";
+  presentBtn.append(presentLabel);
+  top.append(closeBtn, title, presentBtn);
 
   const banner = document.createElement("div");
   banner.className = "wr-board-banner";

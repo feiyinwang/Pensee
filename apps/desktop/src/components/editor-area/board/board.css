@@ -184,10 +184,15 @@
   cursor: zoom-in;
 }
 
-.wr-board-image-open {
+.wr-board-image-actions {
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.wr-board-image-open {
   padding: 3px 10px;
   border: 1px solid var(--line-subtle);
   border-radius: 7px;
@@ -201,7 +206,7 @@
 }
 
 .wr-board-image:hover .wr-board-image-open,
-.wr-board-image-open:focus-visible {
+.wr-board-image-actions:focus-within .wr-board-image-open {
   opacity: 1;
 }
 
@@ -433,7 +438,8 @@
   align-items: center;
 }
 
-.wr-board-close {
+.wr-board-close,
+.wr-board-present {
   gap: 6px;
   width: auto;
   padding: 0 12px 0 8px;
@@ -702,4 +708,79 @@
 
 .wr-board-host.has-dock .wr-board-rail {
   display: none;
+}
+
+/* --------------------------------------------------------- present mode */
+
+/* Only the slide: chrome, dock, toolbar and grid step aside. */
+.wr-board-host.is-presenting .wr-board-chrome,
+.wr-board-host.is-presenting .wr-board-dock,
+.wr-board-host.is-presenting .wr-board-seltb,
+.wr-board-host.is-presenting .wr-board-overlay {
+  display: none;
+}
+
+.wr-board-host.is-presenting .wr-board-svg > rect {
+  fill: var(--wr-board-surface);
+}
+
+.wr-board-host.is-presenting {
+  cursor: pointer;
+}
+
+.wr-board-present-mask {
+  fill: var(--wr-board-surface);
+  pointer-events: none;
+}
+
+.wr-board-present-hud {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 999px;
+  background: var(--surface-primary);
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 25%);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  transform: translateX(-50%);
+  opacity: 0.35;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.wr-board-present-hud:hover,
+.wr-board-present-hud:focus-within {
+  opacity: 1;
+}
+
+.wr-board-present-hud[hidden] {
+  display: none;
+}
+
+.wr-board-present-count {
+  min-width: 52px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.wr-board-present-btn {
+  min-width: 32px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wr-board-present-btn:hover {
+  background: var(--item-hover-bg);
 }

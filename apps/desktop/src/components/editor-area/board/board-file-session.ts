@@ -190,7 +190,11 @@ export async function createBoardFromMermaid(
 
 /* ---------------------------------------------------------------- open */
 
-export async function openBoardFile(absolute: string, notePath: string | null): Promise<void> {
+export async function openBoardFile(
+  absolute: string,
+  notePath: string | null,
+  present = false,
+): Promise<void> {
   const file = await tauri.readFile(absolute);
   const parsed = readBoardSvg(file.content);
   if (!parsed) throw new Error("This SVG has no Writer board inside it.");
@@ -202,6 +206,7 @@ export async function openBoardFile(absolute: string, notePath: string | null): 
     importImage: importerFor(notePath, dir),
     onCommit: (scene) => void saveBoardFile(absolute, scene),
     onFinalCommit: (scene) => void saveBoardFile(absolute, scene),
+    present,
     onOpened: ({ warn }) => {
       if (parsed.badLines > 0) warn(`${parsed.badLines} element(s) could not be read`);
     },
@@ -210,11 +215,11 @@ export async function openBoardFile(absolute: string, notePath: string | null): 
 
 /* ------------------------------------------------- in-note preview hook */
 
-function openButton(onOpen: () => void): HTMLButtonElement {
+function cardButton(label: string, onOpen: () => void): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "wr-board-image-open";
-  btn.textContent = "Open board";
+  btn.textContent = label;
   btn.addEventListener("mousedown", (e) => e.preventDefault());
   btn.addEventListener("click", (e) => {
     e.preventDefault();
@@ -237,16 +242,23 @@ export function boardImageEnhancer(getFilePath: () => string | null) {
     dom.classList.add("wr-board-image");
     image.title = "Open board";
 
-    const open = (): void => {
+    const open = (present = false): void => {
       dom.querySelector(".wr-board-image-error")?.remove();
-      openBoardFile(absolute, getFilePath()).catch((error: unknown) => {
+      openBoardFile(absolute, getFilePath(), present).catch((error: unknown) => {
         const note = document.createElement("span");
         note.className = "wr-board-image-error";
         note.textContent = `Couldn't open board: ${error instanceof Error ? error.message : String(error)}`;
         dom.append(note);
       });
     };
-    dom.append(openButton(open));
+    const actions = document.createElement("span");
+    actions.className = "wr-board-image-actions";
+    // Present straight from the note: the board opens full-screen as slides.
+    actions.append(
+      cardButton("Present", () => open(true)),
+      cardButton("Open board", () => open()),
+    );
+    dom.append(actions);
     image.addEventListener("click", (e) => {
       e.preventDefault();
       open();

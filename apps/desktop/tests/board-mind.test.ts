@@ -40,7 +40,7 @@ const centre = (el: MindEl) => ({ x: el.x + el.w / 2, y: el.y + el.h / 2 });
 describe("layoutMind", () => {
   test("first-level topics balance across both sides of the root", () => {
     const { root, a, b } = map();
-    const sides = [a, b].map((k) => Math.sign(centre(k).x - centre(root).x)).sort();
+    const sides = [a, b].map((k) => Math.sign(centre(k).x - centre(root).x)).sort((p, q) => p - q);
     expect(sides).toEqual([-1, 1]);
   });
 

@@ -72,6 +72,7 @@ import {
 } from "./board-render";
 import { mermaidToElements } from "./board-mermaid";
 import { strokeFrom } from "./board-draw";
+import { fitView, lerpBox, lerpView, slideOrder } from "./board-present";
 import {
   addMindChild,
   addMindSibling,
@@ -132,6 +133,8 @@ export interface BoardCanvasOptions {
    *  Images are never inlined — that is the whole doc-size guarantee. */
   importImage?: (file: File) => Promise<{ src: string; w: number; h: number } | null>;
   readOnly?: boolean;
+  /** Start in present mode; leaving it closes the board (opened to present). */
+  present?: boolean;
 }
 
 export interface BoardCanvasHandle {
@@ -232,6 +235,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     onZoomReset: () => setZoom(1),
     onZoomFit: () => zoomToFit(),
     onClose: () => opts.onClose(),
+    onPresent: () => startPresenting(0),
   });
   host.append(toolbar.root);
 
@@ -1143,6 +1147,142 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     return a === "c" ? "center" : a === "r" ? "right" : "left";
   }
 
+  /* ---------------------------------------------------------- present */
+
+  interface PresentState {
+    slides: Box[];
+    index: number;
+    /** Where the camera was before presenting; restored on exit. */
+    saved: Viewport;
+    /** The visible hole in the mask, in scene units. */
+    hole: Box;
+    stop: (() => void) | null;
+  }
+  let presenting: PresentState | null = null;
+  const presentMask = svgEl("path", { class: "wr-board-present-mask", "fill-rule": "evenodd" });
+  const presentHud = document.createElement("div");
+  presentHud.className = "wr-board-present-hud";
+  presentHud.hidden = true;
+  host.append(presentHud);
+
+  function hudButton(label: string, text: string, onClick: () => void): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "wr-board-present-btn";
+    b.setAttribute("aria-label", label);
+    b.textContent = text;
+    b.addEventListener("pointerdown", (e) => e.stopPropagation());
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick();
+      host.focus();
+    });
+    return b;
+  }
+  const hudCount = document.createElement("span");
+  hudCount.className = "wr-board-present-count";
+  presentHud.append(
+    hudButton("Previous slide", "‹", () => presenting && goToSlide(presenting.index - 1)),
+    hudCount,
+    hudButton("Next slide", "›", () => presenting && goToSlide(presenting.index + 1)),
+    hudButton("Exit presentation", "Exit", () => stopPresenting()),
+  );
+
+  /** Covers everything but the current slide with the board colour. */
+  function drawPresentMask(): void {
+    if (!presenting) return;
+    const { hole } = presenting;
+    const far = 1e6;
+    presentMask.setAttribute(
+      "d",
+      `M${-far} ${-far}H${far}V${far}H${-far}Z` +
+        `M${hole.x} ${hole.y}V${hole.y + hole.h}H${hole.x + hole.w}V${hole.y}Z`,
+    );
+    if (presentMask.parentNode !== world) world.append(presentMask);
+  }
+
+  function startPresenting(index: number): void {
+    const slides = slideOrder(scene);
+    if (!slides.length || presenting) return;
+    closeTextEdit();
+    selection.clear();
+    setTool("select");
+    presenting = { slides, index: -1, saved: { ...vp() }, hole: slides[0], stop: null };
+    host.classList.add("is-presenting");
+    presentHud.hidden = false;
+    draw();
+    goToSlide(index);
+  }
+
+  function stopPresenting(): void {
+    if (!presenting) return;
+    const state = presenting;
+    state.stop?.();
+    presenting = null;
+    presentMask.remove();
+    presentHud.hidden = true;
+    host.classList.remove("is-presenting");
+    // Restore first: the saved scene carries the viewport, and presenting must
+    // never be what rewrites the file.
+    Object.assign(vp(), state.saved);
+    applyViewport();
+    draw();
+    if (opts.present) opts.onClose();
+  }
+
+  /** Springs the camera (and the mask's hole) to slide `index`. */
+  function goToSlide(index: number): void {
+    if (!presenting) return;
+    const state = presenting;
+    const next = Math.max(0, Math.min(state.slides.length - 1, index));
+    if (next === state.index) return;
+    const rect = svg.getBoundingClientRect();
+    const fromView = { ...vp() };
+    const fromHole = state.hole;
+    const toHole = state.slides[next];
+    const toView = fitView(toHole, rect.width, rect.height, 32);
+    state.index = next;
+    hudCount.textContent = `${next + 1} / ${state.slides.length}`;
+    state.stop?.();
+    const frame = (t: number): void => {
+      if (presenting !== state) return;
+      Object.assign(vp(), lerpView(fromView, toView, t, rect.width, rect.height));
+      state.hole = lerpBox(fromHole, toHole, Math.min(Math.max(t, 0), 1));
+      applyViewport();
+      drawPresentMask();
+    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      frame(1);
+      return;
+    }
+    // Arc's motion spring, loaded with the rest of the board chrome.
+    void import("motion").then(({ animate }) => {
+      if (presenting !== state || state.index !== next) return;
+      const controls = animate(0, 1, {
+        type: "spring",
+        visualDuration: 0.6,
+        bounce: 0.12,
+        onUpdate: frame,
+        onComplete: () => frame(1),
+      });
+      state.stop = () => controls.stop();
+    });
+  }
+
+  function onPresentKey(e: KeyboardEvent): void {
+    if (!presenting) return;
+    const forward = ["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"];
+    const back = ["ArrowLeft", "ArrowUp", "PageUp", "Backspace"];
+    if (forward.includes(e.key)) goToSlide(presenting.index + 1);
+    else if (back.includes(e.key)) goToSlide(presenting.index - 1);
+    else if (e.key === "Home") goToSlide(0);
+    else if (e.key === "End") goToSlide(presenting.slides.length - 1);
+    else if (e.key === "Escape") stopPresenting();
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   /* --------------------------------------------------------- pointer */
 
   function handleAt(p: Point): HandleId | null {
@@ -1221,6 +1361,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   function onPointerDown(e: PointerEvent): void {
+    if (presenting) {
+      // A click advances, like a slide deck; the board is not editable here.
+      if (e.button === 0) goToSlide(presenting.index + 1);
+      e.preventDefault();
+      return;
+    }
     if (e.button === 1 || spaceDown || tools.tool === "hand") {
       interaction = {
         kind: "pan",
@@ -1681,6 +1827,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   function onDoubleClick(e: MouseEvent): void {
+    if (presenting) return;
     if (opts.readOnly) return;
     const p = screenToScene(e.clientX, e.clientY);
     const hit = elementAt(scene, p, SCREEN.hitSlop / vp().zoom);
@@ -1715,6 +1862,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function onWheel(e: WheelEvent): void {
     e.preventDefault();
+    if (presenting) return;
     if (e.ctrlKey || e.metaKey) {
       const factor = Math.exp(-e.deltaY / 260);
       setZoom(vp().zoom * factor, { x: e.clientX, y: e.clientY });
@@ -1765,6 +1913,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   };
 
   function onKeyDown(e: KeyboardEvent): void {
+    if (presenting) {
+      onPresentKey(e);
+      return;
+    }
     if (activeEditor) return;
     const mod = e.metaKey || e.ctrlKey;
 
@@ -2006,6 +2158,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   applyViewport();
   draw();
   toolbar.setHistory(false, false);
+  if (opts.present) requestAnimationFrame(() => startPresenting(0));
 
   return {
     destroy() {

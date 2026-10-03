@@ -2,6 +2,7 @@
 
 ## 2026-10-03
 
+- Present a board. **Present** (on the board, or on the board's preview in your note) turns each section into a slide, in reading order: rows top to bottom, left to right. The camera glides from one slide to the next with a spring, and everything outside the current slide is hidden. → / Space / Enter / click go forward, ← goes back, Home and End jump to the first and last slide, Esc ends. A board with no sections presents as one slide. Presenting never changes the file; your view is put back when you finish.
 - Board tools now sit in a floating dock at the bottom (Arc Pro's Dock). Groups open a tray straight out of the dock: shapes, sticky-note colours, connector styles and section sizes. Keyboard shortcuts still work and the dock follows them.
 - New pen (P) for freehand drawing. Strokes are smoothed and simplified so they stay light in the file. You can select, move and resize them, and change their colour, width and style from the toolbar. The pen stays on until you pick another tool.
 - Mind maps on boards. Pick the Mind map tool (M) and click to start one. While typing a topic, **Tab** adds a child and **Enter** adds a sibling, the same keys that work when a topic is just selected. **Delete** removes a topic with its whole branch. The map lays itself out the way Lark's does: the central topic in the middle, branches balanced on both sides, each branch drawn in its own colour (change it from the toolbar). Dragging any topic moves the whole map. Mermaid mind maps convert too, with **Convert to board** or by pasting.
