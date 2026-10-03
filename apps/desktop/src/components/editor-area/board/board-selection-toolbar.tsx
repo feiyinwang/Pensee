@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Circle,
   Copy,
+  SquaresSubtract,
   Diamond,
   Ellipsis,
   Hexagon,
@@ -68,6 +69,7 @@ export interface SelectionToolbarActions {
   bringForward: () => void;
   sendBackward: () => void;
   duplicate: () => void;
+  selectSimilar: () => void;
   remove: () => void;
 }
 
@@ -521,6 +523,11 @@ function Toolbar({
         <Action label="Bring forward" icon={<BringToFront />} onClick={actions.bringForward} />
         <Action label="Send backward" icon={<SendToBack />} onClick={actions.sendBackward} />
         <Action label="Duplicate" icon={<Copy />} onClick={actions.duplicate} />
+        <Action
+          label="Select all like this"
+          icon={<SquaresSubtract />}
+          onClick={actions.selectSimilar}
+        />
         <Action label="Delete" icon={<Trash2 />} onClick={actions.remove} danger />
       </div>
     </Menu>,

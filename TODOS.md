@@ -2,7 +2,6 @@
 
 ## In Progress
 
-- Board: Lark parity in portable markdown: [`SPECs/board-lark-parity-spec.md`](SPECs/board-lark-parity-spec.md). Phase 1 (`.board.svg` storage, preview as a plain image, fence migration) is done. Phase 2 started: the selection toolbar (Arc) is done. Text polish (centred sticky/label text, "Add text" hint, type-to-edit, click-inside selection) is done. Flowcharts are done (quick connect, connector labels, Mermaid import). Mind maps are done. Arc Dock tools and pen are done. Present mode is done. Find & replace is done. Export is done. Next: templates, select similar, swimlanes. Phase 4 (Arc Pro board chrome: Dock toolbar) is unblocked; the Pro registry token works.
 
 - Block handle menu: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md) — hover the gutter grip to open block type / move / duplicate / clipboard / delete actions for plain blocks, pictures, caption bands and columns. First pass landed; submenus (Align and Indent, Color Options) are rendered inert pending a way to store non-markdown attributes, and there is still no keyboard path to the panel.
 
@@ -10,6 +9,7 @@
 
 ## Done
 
+- Board: Lark parity in portable markdown: [`SPECs/board-lark-parity-spec.md`](SPECs/board-lark-parity-spec.md). Done: `.board.svg` storage, Arc selection toolbar, Lark-style text, flowcharts (quick connect, arrow labels, Mermaid import), mind maps, Arc Pro Dock, pen, present mode, find & replace, PNG/SVG export, templates, batch select, swimlanes. Not built: PlantUML, PDF export, icon library, Visio/draw.io import, comments, translate, mobile.
 - Tab columns: [`SPECs/tab-columns-spec.md`](SPECs/tab-columns-spec.md) — with two or more tabs open every tab is a column, Andy Matuschak–style but uncapped: a horizontally scrolling strip of glass islands in tab order, each scrolling on its own, draggable by its header (arrow keys on the grip) and closable. Pinching out shows only the active tab, pinching in brings the columns back. Links open the target in a new tab right of the current one (`openFileBeside`); `moveTab` reorders. Follow-ups in the spec: adjustable column width, scroll-to-anchor for an already-open page, tab-bar drag.
 - Link hover preview: [`SPECs/wiki-link-preview-spec.md`](SPECs/wiki-link-preview-spec.md) — hovering a `[[page]]` link shows the page, rendered read-only, in a scrollable card.
 - Pages from wiki links: [`SPECs/wiki-link-pages-spec.md`](SPECs/wiki-link-pages-spec.md) — finishing a `[[Name]]` creates `Name.md` when missing, clicking an unresolved link creates and opens it, and Cmd+Alt+N / right-click moves a selection into a new page titled by its first line.
