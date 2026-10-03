@@ -187,7 +187,33 @@
   box-shadow: none;
 }
 
+/* ---- pinch between one tab and all columns ---------------------------- */
+
+/* Pinch in: the columns arrive from slightly larger, as if zooming out. */
+.tab-columns[data-zoom="out"] {
+  animation: tab-columns-zoom-out var(--motion-base) var(--ease-out);
+}
+/* Pinch out: the one tab arrives from slightly smaller, as if zooming in. */
+.tab-columns[data-zoom="in"] {
+  animation: tab-columns-zoom-in var(--motion-base) var(--ease-out);
+}
+@keyframes tab-columns-zoom-out {
+  from {
+    opacity: 0.4;
+    scale: 1.04;
+  }
+}
+@keyframes tab-columns-zoom-in {
+  from {
+    opacity: 0.4;
+    scale: 0.96;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .tab-columns[data-zoom] {
+    animation: none;
+  }
   .tab-columns > .tab-column,
   .tab-columns[data-dragging] > .tab-column,
   .tab-columns > .tab-column[data-dragging][data-settling] {

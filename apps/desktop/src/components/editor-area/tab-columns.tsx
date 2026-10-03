@@ -1,7 +1,9 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -18,6 +20,10 @@ const DRAG_THRESHOLD_PX = 4;
 // fastest it scrolls (px per frame) with the pointer at the very edge.
 const AUTOSCROLL_EDGE_PX = 64;
 const AUTOSCROLL_MAX_STEP_PX = 18;
+// Pinch travel (summed wheel deltaY) before a pinch switches between one
+// tab and all columns, and the quiet gap that ends a pinch gesture.
+const PINCH_THRESHOLD = 40;
+const PINCH_END_MS = 250;
 
 /** Tab ids are `tab-<sequence>`, increasing as tabs are created. */
 function tabSequence(id: string) {
@@ -45,7 +51,13 @@ function columnElement(strip: HTMLElement, tabId: string) {
 export function TabColumns() {
   const tabs = useOpenTabs();
   const activeTabId = useActiveTabId();
-  const isColumns = tabs.length > 1;
+  // Pinching out (zoom in) on the strip shows only the active tab, pinching
+  // in (zoom out) shows every tab side by side again.
+  const [focusedOne, setFocusedOne] = useState(false);
+  const focusedOneRef = useRef(focusedOne);
+  focusedOneRef.current = focusedOne;
+  const canColumn = tabs.length > 1;
+  const isColumns = canColumn && !focusedOne;
   const domOrder = [...tabs].sort((a, b) => tabSequence(a.id) - tabSequence(b.id));
 
   const stripRef = useRef<HTMLDivElement | null>(null);
@@ -107,6 +119,40 @@ export function TabColumns() {
     pendingSettleRef.current = null;
     settleDrop(stripRef.current, pending.tabId, pending.residual);
   }, [orderKey]);
+
+  // Trackpad pinch reaches the WebView as a wheel event with ctrlKey set.
+  // Canvases (boards, Mermaid) zoom on pinch and preventDefault it first.
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip || !canColumn) return;
+    let travel = 0;
+    let spent = false;
+    let quiet = 0;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey || event.metaKey || event.defaultPrevented) return;
+      event.preventDefault();
+      window.clearTimeout(quiet);
+      quiet = window.setTimeout(() => {
+        travel = 0;
+        spent = false;
+      }, PINCH_END_MS);
+      if (spent) return;
+      travel += event.deltaY;
+      if (Math.abs(travel) < PINCH_THRESHOLD) return;
+      spent = true;
+      const focus = travel < 0;
+      if (focus === focusedOneRef.current) return;
+      strip.dataset.zoom = focus ? "in" : "out";
+      setFocusedOne(focus);
+    };
+    // preventDefault stops the pinch from also zooming the page.
+    // eslint-disable-next-line react-doctor/client-passive-event-listeners
+    strip.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      strip.removeEventListener("wheel", onWheel);
+      window.clearTimeout(quiet);
+    };
+  }, [canColumn]);
 
   const startDrag = useCallback((event: ReactPointerEvent<HTMLElement>, tabId: string) => {
     const strip = stripRef.current;
@@ -203,7 +249,14 @@ export function TabColumns() {
   );
 
   return (
-    <div ref={stripRef} className="tab-columns" data-columns={isColumns || undefined}>
+    <div
+      ref={stripRef}
+      className="tab-columns"
+      data-columns={isColumns || undefined}
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) delete event.currentTarget.dataset.zoom;
+      }}
+    >
       {domOrder.map((tab) => {
         const index = tabs.indexOf(tab);
         const isActive = tab.id === activeTabId;
