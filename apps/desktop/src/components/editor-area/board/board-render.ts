@@ -22,7 +22,15 @@ import {
   isShape,
 } from "./board-model";
 import { smoothPath, strokeExtent } from "./board-draw";
-import { branchColor, mindBranchPath, mindDepth, mindFontSize, mindParent } from "./board-mind";
+import {
+  type SceneLookup,
+  branchColor,
+  mindBranchPath,
+  mindDepth,
+  mindFontSize,
+  mindParent,
+  sceneLookup,
+} from "./board-mind";
 import {
   LINKER_LABEL_PAD,
   type Point,
@@ -214,6 +222,8 @@ export interface RenderContext {
   /** Turns a document-relative image path into something the webview can load. */
   resolveSrc: (src: string) => string;
   scene: BoardScene;
+  /** Set by `SceneRenderer` for its pass; one-off renders scan instead. */
+  look?: SceneLookup;
 }
 
 function renderShape(g: SVGGElement, el: ShapeEl): void {
@@ -265,9 +275,9 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
 }
 
 function renderMind(g: SVGGElement, el: MindEl, ctx: RenderContext): void {
-  const depth = mindDepth(ctx.scene, el);
-  const parent = mindParent(ctx.scene, el);
-  const branch = colorVar(branchColor(ctx.scene, el));
+  const depth = mindDepth(ctx.scene, el, ctx.look);
+  const parent = mindParent(ctx.scene, el, ctx.look);
+  const branch = colorVar(branchColor(ctx.scene, el, ctx.look));
   if (parent) {
     // The group is translated to the topic; the branch is drawn in its frame.
     const local = (b: BoardEl) => ({ ...b, x: b.x - el.x, y: b.y - el.y });
@@ -553,20 +563,25 @@ export class SceneRenderer {
    * no node yet (e.g. dragged in from off-screen); the caller then renders all.
    */
   renderSome(scene: BoardScene, ctx: RenderContext, els: BoardEl[]): boolean {
+    const pass = { ...ctx, look: sceneLookup(scene) };
     for (const el of els) {
       if (!this.nodes.has(el.id)) return false;
-      this.update(el, scene, ctx);
+      this.update(el, scene, pass);
     }
     return true;
   }
 
   /** Re-renders or re-positions one existing-or-new node; returns it. */
-  private update(el: BoardEl, scene: BoardScene, ctx: RenderContext): SVGGElement {
+  private update(
+    el: BoardEl,
+    scene: BoardScene,
+    ctx: RenderContext & { look: SceneLookup },
+  ): SVGGElement {
     // Position is kept out of the stamp where it can be: dragging a shape
     // then only rewrites its group's transform instead of rebuilding it
     // (Excalidraw's "moving never re-renders the element" rule).
     const movable = movesByTransform(el);
-    const stamp = stampOf(el, scene, movable);
+    const stamp = stampOf(el, scene, movable, ctx.look);
     const place = `${el.x},${el.y}`;
     const existing = this.nodes.get(el.id);
     if (!existing || this.stamps.get(el.id) !== stamp) {
@@ -588,10 +603,11 @@ export class SceneRenderer {
   render(scene: BoardScene, ctx: RenderContext, visible: BoardEl[]): void {
     const seen = new Set<string>();
     let prev: SVGGElement | null = null;
+    const pass = { ...ctx, look: sceneLookup(scene) };
 
     for (const el of visible) {
       seen.add(el.id);
-      const node = this.update(el, scene, ctx);
+      const node = this.update(el, scene, pass);
       // Keep DOM order equal to z-order without rebuilding the layer.
       // Both locals are annotated: left to inference, `prev` and `shouldFollow`
       // resolve through each other across loop iterations and the checker gives
@@ -632,19 +648,19 @@ export class SceneRenderer {
  *  left out (a move is then just a transform), so anything positional must be
  *  relative: a topic's branch depends on where its parent is *from it*. That
  *  is what lets a whole mind map be dragged without re-rendering a topic. */
-function stampOf(el: BoardEl, scene: BoardScene, movable: boolean): string {
+function stampOf(el: BoardEl, scene: BoardScene, movable: boolean, look: SceneLookup): string {
   let base = JSON.stringify(movable ? { ...el, x: 0, y: 0 } : el);
   if (el.t === "mind" && el.pa) {
     // Its branch is drawn from the parent, in an inherited colour.
-    const parent = scene.els.find((e) => e.id === el.pa);
+    const parent = look.el(el.pa);
     if (parent) {
-      base += `|${parent.x - el.x},${parent.y - el.y},${parent.w},${parent.h}|${branchColor(scene, el)}`;
+      base += `|${parent.x - el.x},${parent.y - el.y},${parent.w},${parent.h}|${branchColor(scene, el, look)}`;
     }
   }
   if (isLinker(el)) {
     for (const b of [el.b1, el.b2]) {
       if (!b) continue;
-      const target = scene.els.find((e) => e.id === b.el);
+      const target = look.el(b.el);
       if (target) base += `|${target.x},${target.y},${target.w},${target.h},${target.a}`;
     }
   }

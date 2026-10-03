@@ -333,18 +333,35 @@
   display: none;
 }
 
-/* Mid-zoom the svg and grid are scaled as layers (see zoomGesture). */
-.wr-board-host.is-zooming .wr-board-svg,
-.wr-board-host.is-zooming .wr-board-grid-layer {
+/* The svg and grid are always their own layers, so a zoom gesture can scale
+   them on the compositor (see zoomGesture). Promoting them per gesture cost a
+   full re-raster on its first frame, and demoting them another at commit. */
+.wr-board-svg,
+.wr-board-grid-layer {
   transform-origin: 0 0;
   will-change: transform;
 }
 
+/* Zoomed far out, labels are 3-6px tall and unreadable, yet painting them was
+   two thirds of every frame on a busy board. Shapes keep their outlines and
+   fills; free text and section titles stay. Toggled at commit, never per frame. */
+.wr-board-host.is-far
+  .wr-board-content
+  [data-type]:not([data-type="text"], [data-type="frame"])
+  text {
+  display: none;
+}
+
+/* The svg overscans the stage by --overscan (OVERSCAN in board-canvas.ts) so
+   a pan can move it without repainting. Its transform origin stays the
+   stage's corner, which is what zoom and pan previews are computed from. */
 .wr-board-svg {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: calc(-1 * var(--overscan, 0px));
+  /* Explicit: a replaced element does not stretch between its insets. */
+  width: calc(100% + 2 * var(--overscan, 0px));
+  height: calc(100% + 2 * var(--overscan, 0px));
+  transform-origin: var(--overscan, 0px) var(--overscan, 0px);
   touch-action: none;
   cursor: default;
 }

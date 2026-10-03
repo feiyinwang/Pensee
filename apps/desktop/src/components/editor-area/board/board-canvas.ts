@@ -123,8 +123,13 @@ const SCREEN = {
 } as const;
 
 const CULL_THRESHOLD = 300;
-/** Screen pixels drawn beyond each edge on culled boards. */
-const CULL_MARGIN = 200;
+/** Screen pixels the svg extends beyond each edge of the stage. A pan moves
+ *  the painted svg on the compositor and repaints only once it has used most
+ *  of this margin, so panning costs the same on any board. Culled boards draw
+ *  exactly this far out. */
+const OVERSCAN = 256;
+/** Below this zoom, labels are hidden (see `.is-far` in board.css). */
+const FAR_ZOOM = 0.3;
 /** Grid spacing in scene units. */
 const GRID_STEP = 24;
 const HISTORY_LIMIT = 120;
@@ -218,6 +223,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   gridLayer.className = "wr-board-grid-layer";
   host.append(gridLayer);
   const svg = svgEl("svg", { class: "wr-board-svg" });
+  svg.style.setProperty("--overscan", `${OVERSCAN}px`);
   const world = svgEl("g", { class: "wr-board-world" });
   const content = svgEl("g", { class: "wr-board-content" });
   const overlay = svgEl("g", { class: "wr-board-overlay" });
@@ -281,7 +287,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  resize, so it is refreshed then and at the start of each gesture. */
   let cachedStageRect: DOMRect | null = null;
   function stageRect(): DOMRect {
-    cachedStageRect ??= svg.getBoundingClientRect();
+    // The host, not the svg: the svg overscans it and moves while panning.
+    cachedStageRect ??= host.getBoundingClientRect();
     return cachedStageRect;
   }
 
@@ -300,13 +307,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   let gridKey = "";
-  /** Re-tiles only when zoom or grid kind changes; a pan is one transform. */
-  function applyGrid(v: Viewport): void {
+  /** Re-tiles only when zoom or grid kind changes; a pan is one transform.
+   *  Returns that transform ("" when the grid is hidden). */
+  function applyGrid(v: Viewport): string {
     const size = GRID_STEP * v.zoom;
     // Like Excalidraw, no fine grid once its spacing drops under 10px.
     const show = scene.header.bg !== "none" && size >= 10;
     gridLayer.hidden = !show;
-    if (!show) return;
+    if (!show) return "";
     const key = `${scene.header.bg}|${size}`;
     if (key !== gridKey) {
       gridKey = key;
@@ -316,8 +324,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const mod = (n: number) => ((n % size) + size) % size;
     const ox = mod(-v.x * v.zoom) - size;
     const oy = mod(-v.y * v.zoom) - size;
-    paintedGrid = `translate3d(${ox}px, ${oy}px, 0)`;
-    gridLayer.style.transform = paintedGrid;
+    const t = `translate3d(${ox}px, ${oy}px, 0)`;
+    gridLayer.style.transform = t;
+    return t;
   }
 
   /** The viewport the SVG and grid were last really painted at. */
@@ -331,15 +340,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       window.clearTimeout(zoomSettleTimer);
       zoomSettleTimer = -1;
     }
-    host.classList.remove("is-zooming");
     svg.style.transform = "";
     painted = { ...v };
     world.setAttribute(
       "transform",
-      `translate(${-v.x * v.zoom} ${-v.y * v.zoom}) scale(${v.zoom})`,
+      `translate(${OVERSCAN - v.x * v.zoom} ${OVERSCAN - v.y * v.zoom}) scale(${v.zoom})`,
     );
-    applyGrid(v);
-    recullSoon(v);
+    paintedGrid = applyGrid(v);
+    host.classList.toggle("is-far", v.zoom < FAR_ZOOM);
+    recullSoon();
     toolbar.setZoom(v.zoom);
     placeSelectionToolbar();
   }
@@ -381,17 +390,40 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   const ZOOM_SETTLE_MS = 160;
   let zoomSettleTimer = -1;
 
-  function zoomGesture(next: number, anchorClient: Point): void {
-    zoomViewport(next, anchorClient);
+  /** Shows the live viewport by moving the svg as last painted, on the
+   *  compositor (its transform-origin is the stage's corner, see board.css). */
+  function previewViewport(): void {
     const c = painted;
     const n = vp();
     const s = n.zoom / c.zoom;
     const t = `translate(${(c.x - n.x) * n.zoom}px, ${(c.y - n.y) * n.zoom}px) scale(${s})`;
-    host.classList.add("is-zooming");
     svg.style.transform = t;
-    gridLayer.style.transform = `${t} ${paintedGrid}`;
+    // A pure pan re-snaps the grid exactly; a zoom stretches it with the svg.
+    if (s === 1) applyGrid(n);
+    else gridLayer.style.transform = `${t} ${paintedGrid}`;
     toolbar.setZoom(n.zoom);
     placeSelectionToolbar();
+  }
+
+  /* Panning moves the painted svg the same way. It overscans the stage by
+     OVERSCAN, so a pan only repaints once it has used most of that margin:
+     on a 2,600-element board, a repaint per pan frame measured 60-80ms; a
+     compositor move is one frame (8ms) at any size. */
+  function panViewport(): void {
+    const c = painted;
+    const n = vp();
+    const moved = Math.max(Math.abs(c.x - n.x), Math.abs(c.y - n.y)) * n.zoom;
+    if (c.zoom === n.zoom && zoomSettleTimer === -1 && moved < OVERSCAN * 0.75) {
+      previewViewport();
+      return;
+    }
+    applyViewport();
+    recullNow();
+  }
+
+  function zoomGesture(next: number, anchorClient: Point): void {
+    zoomViewport(next, anchorClient);
+    previewViewport();
     window.clearTimeout(zoomSettleTimer);
     zoomSettleTimer = window.setTimeout(() => {
       zoomSettleTimer = -1;
@@ -487,28 +519,41 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   let culledFor: Viewport | null = null;
   let recullFrame = 0;
 
-  /** Large boards draw only what is near the screen; once the view has moved
-   *  past the cull margin, redraw so newly visible elements appear. */
-  function recullSoon(v: Viewport): void {
-    if (scene.els.length < CULL_THRESHOLD || !culledFor || recullFrame) return;
-    const moved = Math.max(Math.abs(v.x - culledFor.x), Math.abs(v.y - culledFor.y)) * v.zoom;
-    if (moved < CULL_MARGIN / 2 && Math.abs(v.zoom / culledFor.zoom - 1) < 0.1) return;
+  /** Large boards draw only what the overscanned svg can show, which is
+   *  around where it was last painted (`painted`), not the live viewport a
+   *  preview has moved it to. Once it is repainted elsewhere, the culled set
+   *  must follow, or a later compositor pan would slide empty margin in. */
+  function cullIsStale(): boolean {
+    if (scene.els.length < CULL_THRESHOLD || !culledFor) return false;
+    const p = painted;
+    return culledFor.x !== p.x || culledFor.y !== p.y || culledFor.zoom !== p.zoom;
+  }
+
+  function recullNow(): void {
+    if (!cullIsStale()) return;
+    renderer.render(scene, { resolveSrc: opts.resolveSrc, scene }, visibleElements());
+  }
+
+  /** From `applyViewport`, whose callers usually `draw()` right after; this
+   *  covers the ones that do not. */
+  function recullSoon(): void {
+    if (recullFrame || !cullIsStale()) return;
     recullFrame = requestAnimationFrame(() => {
       recullFrame = 0;
-      renderer.render(scene, { resolveSrc: opts.resolveSrc, scene }, visibleElements());
+      recullNow();
     });
   }
 
   function visibleElements(): BoardEl[] {
     if (scene.els.length < CULL_THRESHOLD) return scene.els;
     const rect = stageRect();
-    const v = vp();
+    const v = painted;
     culledFor = { ...v };
     const view: Box = {
-      x: v.x - CULL_MARGIN / v.zoom,
-      y: v.y - CULL_MARGIN / v.zoom,
-      w: (rect.width + CULL_MARGIN * 2) / v.zoom,
-      h: (rect.height + CULL_MARGIN * 2) / v.zoom,
+      x: v.x - OVERSCAN / v.zoom,
+      y: v.y - OVERSCAN / v.zoom,
+      w: (rect.width + OVERSCAN * 2) / v.zoom,
+      h: (rect.height + OVERSCAN * 2) / v.zoom,
     };
     return scene.els.filter((el) => boxesOverlap(elementBounds(el), view));
   }
@@ -2024,7 +2069,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         const v = vp();
         v.x = interaction.startVp.x - (e.clientX - interaction.startClient.x) / v.zoom;
         v.y = interaction.startVp.y - (e.clientY - interaction.startClient.y) / v.zoom;
-        applyViewport();
+        panViewport();
         return;
       }
       case "marquee": {
@@ -2355,26 +2400,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const v = vp();
     v.x += e.deltaX / v.zoom;
     v.y += e.deltaY / v.zoom;
-    paintViewportSoon();
-  }
-
-  /** Trackpads send several wheel events per frame: paint the first at once,
-   *  fold the rest into one paint when the frame turns. */
-  let viewportFrame = 0;
-  let viewportDirty = false;
-  function paintViewportSoon(): void {
-    if (viewportFrame) {
-      viewportDirty = true;
-      return;
-    }
-    applyViewport();
-    viewportFrame = requestAnimationFrame(() => {
-      viewportFrame = 0;
-      if (viewportDirty) {
-        viewportDirty = false;
-        paintViewportSoon();
-      }
-    });
+    panViewport();
   }
 
   /* -------------------------------------------------------- keyboard */
@@ -2671,7 +2697,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       svg.removeEventListener("pointerdown", onPointerDown);
       svg.removeEventListener("pointermove", onPointerMoveRaw);
       if (moveFrame) cancelAnimationFrame(moveFrame);
-      if (viewportFrame) cancelAnimationFrame(viewportFrame);
       if (recullFrame) cancelAnimationFrame(recullFrame);
       svg.removeEventListener("pointerup", onPointerUp);
       svg.removeEventListener("pointercancel", onPointerUp);

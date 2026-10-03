@@ -68,10 +68,27 @@ Second pass ("instant no matter what I move"), measured A/B against the previous
 | Frame time while moving | 8–11ms | 8–10ms |
 | Click to select, to next frame | 16ms | 10ms median |
 
-7. **Same-frame moves.** The first pointer move in a frame is applied synchronously, and later moves in that frame fold into one when it turns. Deferring every move to `requestAnimationFrame` had added a full frame of lag. Trackpad scrolling gets the same treatment.
+7. **Same-frame moves.** The first pointer move in a frame is applied synchronously, and later moves in that frame fold into one when it turns. Deferring every move to `requestAnimationFrame` had added a full frame of lag. (Trackpad scrolling had the same treatment until 13 made it a compositor move.)
 8. **Gestures touch only what can change.** At drag, resize or rotate start, the set that can change is fixed: the moving elements plus connectors bound to them. Each frame re-renders only that set (`SceneRenderer.renderSome`), with no stamp pass over the rest of the board. Mind topics are stamped relative to their parent, so dragging a whole map is transforms only. Selecting skips the element pass entirely.
 9. **The toolbar stays out of the frame.** While the selection is being moved, the bar is hidden by a class, with no React work. Its size is cached from React commits and resize entries, never read on the per-frame path, where it forced a full layout. It uses a tighter shadow than Arc's `--shadow-floating`, whose 55px blur is painted in software each time the bar reappears.
-10. **Culled boards re-cull while panning.** Above 300 elements, only what is near the screen is drawn. The view now redraws once it has moved half the 200px margin, so items scrolled into view appear.
+10. **Culled boards re-cull while panning.** Above 300 elements, only what is near the screen is drawn. (Superseded by 13: the culled set now follows the overscanned svg.)
+
+Third pass ("is it still snappy with loads of everything?"), on a stress board of 2,640 elements: 64 tiles, each a section with six sticky notes, a five-step flowchart with arrows, a 17-topic mind map, three pen strokes, two text boxes, three labelled shapes, and a picture in every fourth tile. Interleaved A/B in WKWebView; "far" is 10% zoom with most of the board on screen.
+
+| | Before | After |
+| --- | --- | --- |
+| Zoom commit (repaint after a pinch rests), mid zoom | 14–44ms | 15–28ms |
+| Zoom commit, far | 94–154ms | 54–71ms |
+| JavaScript per zoom step, far | 62–71ms | 9–19ms |
+| Pan frame, far | 106ms median, every frame slow | 8ms median (one slow frame per 192px of travel) |
+| Pinch frame, far, p90 | 9–474ms | 9–10ms |
+
+A normal board (36 elements) is unchanged: 8ms frames, 9–29ms commits.
+
+11. **Lookups, not scans, while rendering.** Each render pass builds an id map and a children map once (`sceneLookup` in `board-mind.ts`) and hands it to stamping and mind-topic drawing. Before, every topic searched `scene.els` for its parent, its first-level ancestor and its siblings, and every connector for both ends: 145ms of stamping across four commits on the stress board, now 10ms.
+12. **No labels when they are unreadable.** Below 30% zoom (`FAR_ZOOM`), text inside shapes, sticky notes, topics and connectors is hidden by one class on the host (`.is-far`), toggled at commit. At that zoom it is 3-6px tall, and it was two thirds of each frame's paint. Free text and section titles stay.
+13. **Pans move the painted svg, like zooms.** The svg overscans the stage by 256px on every side (`OVERSCAN`; its transform origin stays the stage's corner). A pan only translates it on the compositor and repaints once it has used three quarters of the margin; culled boards draw exactly the overscanned area around where the svg was last painted. With everything on screen, a repaint per pan frame measured 60-87ms, and a compositor move 8ms. 512px halved the number of pan repaints but doubled each one and the zoom commits, so 256px it is. The stage rect is now measured on the host, since the svg is larger and moves.
+14. **The svg is always its own layer.** It used to be promoted for each zoom gesture and demoted at commit, paying a full raster both times.
 
 Not adopted: Excalidraw's per-element bitmap cache. It belongs to a `<canvas>` renderer, and with the above the SVG renderer already holds 120fps at 300 elements.
 

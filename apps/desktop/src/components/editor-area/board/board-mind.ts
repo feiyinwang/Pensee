@@ -37,9 +37,48 @@ export function mindChildren(scene: BoardScene, id: string): MindEl[] {
   return scene.els.filter((el): el is MindEl => isMind(el) && el.pa === id);
 }
 
-export function mindParent(scene: BoardScene, el: MindEl): MindEl | null {
+/**
+ * Id and child lookups for one pass over a scene that does not change during
+ * it (a render). Each map is built on first use. Without one, the helpers
+ * below scan `scene.els`, which made every topic of a large board cost
+ * several full scans per render.
+ */
+export interface SceneLookup {
+  el(id: string): BoardEl | undefined;
+  kids(id: string): MindEl[];
+}
+
+export function sceneLookup(scene: BoardScene): SceneLookup {
+  let byId: Map<string, BoardEl> | null = null;
+  let byParent: Map<string, MindEl[]> | null = null;
+  return {
+    el(id) {
+      if (!byId) {
+        byId = new Map();
+        // First wins, like `find`.
+        for (const e of scene.els) if (!byId.has(e.id)) byId.set(e.id, e);
+      }
+      return byId.get(id);
+    },
+    kids(id) {
+      if (!byParent) {
+        byParent = new Map();
+        for (const e of scene.els) {
+          if (!isMind(e) || !e.pa) continue;
+          const list = byParent.get(e.pa);
+          if (list) list.push(e);
+          else byParent.set(e.pa, [e]);
+        }
+      }
+      return byParent.get(id) ?? [];
+    },
+  };
+}
+
+export function mindParent(scene: BoardScene, el: MindEl, look?: SceneLookup): MindEl | null {
   if (!el.pa) return null;
-  const parent = scene.els.find((e) => e.id === el.pa);
+  const pa = el.pa;
+  const parent = look ? look.el(pa) : scene.els.find((e) => e.id === pa);
   return isMind(parent) ? parent : null;
 }
 
@@ -57,10 +96,10 @@ export function mindRoot(scene: BoardScene, el: MindEl): MindEl {
   return node;
 }
 
-export function mindDepth(scene: BoardScene, el: MindEl): number {
+export function mindDepth(scene: BoardScene, el: MindEl, look?: SceneLookup): number {
   let depth = 0;
   const seen = new Set<string>();
-  for (let p = mindParent(scene, el); p && !seen.has(p.id); p = mindParent(scene, p)) {
+  for (let p = mindParent(scene, el, look); p && !seen.has(p.id); p = mindParent(scene, p, look)) {
     seen.add(p.id);
     depth += 1;
   }
@@ -85,20 +124,21 @@ export function mindSubtree(scene: BoardScene, id: string): MindEl[] {
 }
 
 /** The colour a topic's branch is drawn in: its first-level ancestor's. */
-export function branchColor(scene: BoardScene, el: MindEl): ColorToken {
+export function branchColor(scene: BoardScene, el: MindEl, look?: SceneLookup): ColorToken {
   let node = el;
-  let parent = mindParent(scene, node);
+  let parent = mindParent(scene, node, look);
   if (!parent) return "ink";
   const seen = new Set<string>();
   while (parent.pa && !seen.has(parent.id)) {
     seen.add(parent.id);
     node = parent;
-    const up = mindParent(scene, node);
+    const up = mindParent(scene, node, look);
     if (!up) break;
     parent = up;
   }
   if (node.c) return node.c;
-  const index = mindChildren(scene, parent.id).findIndex((k) => k.id === node.id);
+  const siblings = look ? look.kids(parent.id) : mindChildren(scene, parent.id);
+  const index = siblings.findIndex((k) => k.id === node.id);
   return MIND_PALETTE[Math.max(index, 0) % MIND_PALETTE.length];
 }
 
