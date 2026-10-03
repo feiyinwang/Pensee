@@ -408,12 +408,10 @@ export function wikiLinkExtension(
     wikiLinkDecorations(getFilePath),
     wikiLinkClickHandler(getFilePath, isDisposed),
     wikiLinkTheme,
-    // Append the autocomplete tooltip to `document.body` so it escapes
-    // `EditorScrollContainer`'s `mask-image`, which establishes a
-    // compositing context that neutralizes `backdrop-filter` on any
-    // descendant. Without this, the popover's blur is a no-op and editor
-    // text bleeds straight through the card in light mode. `position`
-    // already defaults to `"fixed"` on non-iOS.
+    // Append the autocomplete tooltip to `document.body` so it escapes any
+    // ancestor compositing context (mask, filter, transform) that would
+    // neutralize its `backdrop-filter`. `position` already defaults to
+    // `"fixed"` on non-iOS.
     tooltips({ parent: document.body }),
     autocompletion({
       override: [wikiLinkCompletions, slashCompletions],

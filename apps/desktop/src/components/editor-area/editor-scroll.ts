@@ -14,7 +14,7 @@ export function findOuterScroller(root: HTMLElement): HTMLElement | null {
 }
 
 /** Scroll `scroller` so the line block at `pos` lands at the top of the safe
- *  zone (below the fade mask). Uses the layout model, not `coordsAtPos`, so it
+ *  zone (EDITOR_SAFE_SCROLL_MARGIN below the top). Uses the layout model, not `coordsAtPos`, so it
  *  works for positions outside the rendered viewport (see docs/editor.md). */
 export function scrollPosToSafeTop(
   view: EditorView,

@@ -35,10 +35,9 @@ const searchScrollIntent = StateField.define<boolean>({
 });
 
 // Override scrollIntoView only for search/replace navigation so matches
-// land in the clear zone of the *outer* scroll container (the
-// EditorScrollContainer is wrapped by a fade mask + 120px progressive
-// blur, and CodeMirror's default scroll walks ancestors generically and
-// doesn't always land the match where we want it). Only nudges the
+// land in the safe zone of the *outer* scroll container (CodeMirror's
+// default scroll walks ancestors generically and doesn't always land the
+// match where we want it). Only nudges the
 // scroll when the match is outside the safe zone — if it's already
 // visible we don't move so stepping between nearby matches doesn't
 // jump. For typing and ordinary cursor moves we return false and let
