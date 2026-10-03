@@ -116,11 +116,44 @@ export function fitFontSize(
 ): { size: number; lines: string[] } {
   for (let size = max; size >= min; size -= 1) {
     const lines = wrapText(text, size, boxW);
-    if (lines.length * size * 1.35 <= boxH) return { size, lines };
+    if (lines.length * size * LINE_HEIGHT <= boxH) return { size, lines };
   }
   return { size: min, lines: wrapText(text, min, boxW) };
 }
 
+export const LINE_HEIGHT = 1.35;
+export const STICKY_FONT_MAX = 22;
+export const STICKY_FONT_MIN = 11;
+
+/** Font ascent and descent as fractions of the size, measured once. */
+let fontMetrics: { ascent: number; descent: number } | null = null;
+
+function metrics(): { ascent: number; descent: number } {
+  if (fontMetrics) return fontMetrics;
+  if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+  const m = measureCtx
+    ? ((measureCtx.font = `400 100px ${BOARD_FONT}`), measureCtx.measureText("Hg"))
+    : null;
+  fontMetrics =
+    m && m.fontBoundingBoxAscent > 0
+      ? { ascent: m.fontBoundingBoxAscent / 100, descent: m.fontBoundingBoxDescent / 100 }
+      : { ascent: 0.8, descent: 0.2 };
+  return fontMetrics;
+}
+
+/** Alphabetic baseline of a line whose box starts at `lineTop`, placed the
+ *  way CSS places it (half-leading above the ascent). Matching CSS is the
+ *  point: the in-place editor is a textarea, so drawn and edited text now sit
+ *  on the same pixel. SVG's `central` baseline put glyphs ~8px higher. */
+export function baselineIn(lineTop: number, size: number): number {
+  const { ascent, descent } = metrics();
+  return lineTop + (size * LINE_HEIGHT - size * (ascent + descent)) / 2 + size * ascent;
+}
+
+/**
+ * `y` is the top of the first line box; lines are `size × LINE_HEIGHT` apart,
+ * the in-place editor's line height.
+ */
 function appendLines(
   parent: SVGElement,
   lines: string[],
@@ -134,24 +167,29 @@ function appendLines(
   },
 ): SVGTextElement {
   const anchor = opts.align === "c" ? "middle" : opts.align === "r" ? "end" : "start";
+  const lineH = opts.size * LINE_HEIGHT;
   const text = svgEl("text", {
     x: opts.x,
-    y: opts.y,
+    y: baselineIn(opts.y, opts.size),
     "font-size": opts.size,
     "font-family": BOARD_FONT,
     "font-weight": opts.weight ?? 400,
     fill: opts.fill,
     "text-anchor": anchor,
-    "dominant-baseline": "hanging",
     "xml:space": "preserve",
   });
   lines.forEach((line, i) => {
-    const tspan = svgEl("tspan", { x: opts.x, dy: i === 0 ? 0 : opts.size * 1.35 });
+    const tspan = svgEl("tspan", { x: opts.x, dy: i === 0 ? 0 : lineH });
     tspan.textContent = line || " ";
     text.append(tspan);
   });
   parent.append(text);
   return text;
+}
+
+/** Top of a block of `lines` centred vertically in `h`, never above `pad`. */
+export function centredTop(h: number, lines: number, size: number, pad: number): number {
+  return Math.max((h - lines * size * LINE_HEIGHT) / 2, pad);
 }
 
 /* ---------------------------------------------------------------- element */
@@ -200,10 +238,9 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
       el.lb.sz,
       9,
     );
-    const totalH = lines.length * size * 1.35;
     appendLines(g, lines, {
       x: el.lb.al === "c" ? el.w / 2 : el.lb.al === "r" ? el.w - pad : pad,
-      y: Math.max((el.h - totalH) / 2, pad),
+      y: centredTop(el.h, lines.length, size, pad),
       size,
       align: el.lb.al,
       fill: colorVar(el.lb.c ?? "ink"),
@@ -226,18 +263,20 @@ function renderSticky(g: SVGGElement, el: BoardEl & { c: string; tx: string }): 
   );
   if (el.tx) {
     const pad = 16;
+    // Lark-style: centred both ways, as large as fits — a two-word note reads
+    // from across the room, a paragraph shrinks to fit.
     const { size, lines } = fitFontSize(
       el.tx,
       STICKY_SIZE - pad * 2,
       STICKY_SIZE - pad * 2,
-      20,
-      12,
+      STICKY_FONT_MAX,
+      STICKY_FONT_MIN,
     );
     appendLines(g, lines, {
-      x: pad,
-      y: pad,
+      x: STICKY_SIZE / 2,
+      y: centredTop(STICKY_SIZE, lines.length, size, pad),
       size,
-      align: "l",
+      align: "c",
       fill: "var(--wr-board-sticky-ink)",
     });
   }

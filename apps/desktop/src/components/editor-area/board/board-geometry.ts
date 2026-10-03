@@ -14,14 +14,7 @@
  * the user zooms in.
  */
 
-import {
-  type BoardEl,
-  type BoardScene,
-  type LinkerEl,
-  findEl,
-  isLinker,
-  isShape,
-} from "./board-model";
+import { type BoardEl, type BoardScene, type LinkerEl, findEl, isLinker } from "./board-model";
 
 export interface Point {
   x: number;
@@ -283,16 +276,9 @@ export function hitTest(el: BoardEl, p: Point, tol: number): boolean {
 
   const poly = outlinePolygon(el);
   const inside = el.t === "ellipse" ? pointInEllipse(el, p) : pointInPolygon(p, poly);
-  const opaque =
-    el.t === "sticky" || el.t === "image" || el.t === "text" || (isShape(el) && el.st.f !== "none");
-  if (opaque) return inside || distToPolyline(p, poly, true) <= tol;
-  if (inside && isShape(el) && el.lb?.tx) {
-    // Label area of a hollow shape is clickable so text can be re-edited.
-    const c = centerOf(el);
-    const local = rotate(p.x, p.y, c.x, c.y, -el.a);
-    const lh = (el.lb.sz ?? 14) * 1.4;
-    if (Math.abs(local.y - c.y) <= lh) return true;
-  }
+  // Every shape is grabbed by its interior, hollow or filled (Lark). Things
+  // stacked above a shape still win, because hits walk the z-order top-down.
+  if (inside) return true;
   return distToPolyline(p, poly, true) <= tol;
 }
 

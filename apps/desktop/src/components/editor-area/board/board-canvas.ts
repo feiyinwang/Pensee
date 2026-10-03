@@ -53,7 +53,16 @@ import {
   routeLinker,
   snapMove,
 } from "./board-geometry";
-import { SceneRenderer, backgroundDefs, svgEl } from "./board-render";
+import {
+  BOARD_FONT,
+  LINE_HEIGHT,
+  STICKY_FONT_MAX,
+  STICKY_FONT_MIN,
+  SceneRenderer,
+  backgroundDefs,
+  fitFontSize,
+  svgEl,
+} from "./board-render";
 import { type ToolId, type ToolState, type Toolbar, buildToolbar } from "./board-tools";
 import { applyAlign, applyFontSize, applyTextColor, summarizeSelection } from "./board-selection";
 import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
@@ -448,6 +457,21 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         : ["nw", "ne", "se", "sw"];
 
     if (single && isLinker(single)) return;
+    if (single && !activeEditor && !textOf(single) && (isShape(single) || single.t === "sticky")) {
+      // Lark's empty-shape hint: says where typing will go.
+      const size = isShape(single) ? (single.lb?.sz ?? 14) : 16;
+      const hint = svgEl("text", {
+        x: single.x + single.w / 2,
+        y: single.y + single.h / 2,
+        "font-size": size,
+        "font-family": BOARD_FONT,
+        "text-anchor": "middle",
+        "dominant-baseline": "central",
+        class: "wr-board-placeholder",
+      });
+      hint.textContent = "Add text";
+      overlay.append(hint);
+    }
 
     for (const id of ids) {
       const p = handles[id];
@@ -836,29 +860,58 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   let activeEditor: HTMLTextAreaElement | null = null;
 
-  function startTextEdit(el: BoardEl): void {
+  /** `typed` starts the edit from a keystroke: it is appended, caret at the
+   *  end. Without it the existing text is selected (double-click / Enter). */
+  function startTextEdit(el: BoardEl, typed?: string): void {
     if (opts.readOnly) return;
     closeTextEdit();
     const v = vp();
-    const rect = svg.getBoundingClientRect();
     const area = document.createElement("textarea");
     // Zero chrome: this must read as the text itself, not as a form control.
     area.className = "wr-board-text-editor";
-    area.value = textOf(el);
+    area.value = textOf(el) + (typed ?? "");
     area.spellcheck = false;
+    const centred = el.t === "sticky" || isShape(el);
     const pad = el.t === "sticky" ? 16 : isShape(el) ? 10 : 0;
-    // `lb` only exists on shapes, so the shape guard has to come before the
-    // property access — the ternary chain alone does not narrow the union.
+    const boxW = Math.max(el.w - pad * 2, 60);
+    const boxH = Math.max(el.h - pad * 2, 20);
+    // Match what the renderer will draw, so nothing jumps when editing ends.
     const size =
-      el.t === "text" ? el.sz : el.t === "sticky" ? 16 : isShape(el) ? (el.lb?.sz ?? 14) : 14;
-    area.style.left = `${(el.x - v.x) * v.zoom + pad * v.zoom}px`;
-    area.style.top = `${(el.y - v.y) * v.zoom + pad * v.zoom}px`;
-    area.style.width = `${Math.max(el.w - pad * 2, 60) * v.zoom}px`;
-    area.style.height = `${Math.max(el.h - pad * 2, size * 1.4) * v.zoom}px`;
+      el.t === "text"
+        ? el.sz
+        : el.t === "sticky"
+          ? fitFontSize(area.value || "M", boxW, boxH, STICKY_FONT_MAX, STICKY_FONT_MIN).size
+          : isShape(el)
+            ? (el.lb?.sz ?? 14)
+            : 14;
+    const left = (el.x - v.x + pad) * v.zoom;
+    const top = (el.y - v.y + pad) * v.zoom;
+    area.style.left = `${left}px`;
+    area.style.width = `${boxW * v.zoom}px`;
     area.style.fontSize = `${size * v.zoom}px`;
     area.style.textAlign =
-      el.t === "text" ? alignCss(el.al) : isShape(el) ? alignCss(el.lb?.al ?? "c") : "left";
-    void rect;
+      el.t === "text"
+        ? alignCss(el.al)
+        : el.t === "sticky"
+          ? "center"
+          : isShape(el)
+            ? alignCss(el.lb?.al ?? "c")
+            : "left";
+    area.style.color = el.t === "sticky" ? "var(--wr-board-sticky-ink)" : "";
+
+    /** Shapes and notes edit centred, like they render: the field is only as
+     *  tall as its text and sits in the middle of the box. */
+    const fit = (): void => {
+      if (!centred) {
+        area.style.top = `${top}px`;
+        area.style.height = `${Math.max(boxH, size * LINE_HEIGHT) * v.zoom}px`;
+        return;
+      }
+      area.style.height = "0px";
+      const h = Math.min(area.scrollHeight, boxH * v.zoom);
+      area.style.height = `${h}px`;
+      area.style.top = `${top + (boxH * v.zoom - h) / 2}px`;
+    };
 
     const commit = (): void => {
       const next = area.value;
@@ -876,11 +929,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         markDirty();
       }
       area.remove();
+      drawn?.classList.remove("is-editing");
       if (activeEditor === area) activeEditor = null;
+      drawOverlay();
       host.focus();
     };
 
     area.addEventListener("blur", commit);
+    area.addEventListener("input", fit);
     area.addEventListener("keydown", (e) => {
       e.stopPropagation();
       if (e.key === "Escape") {
@@ -892,10 +948,16 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         commit();
       }
     });
+    // Hide the drawn text while the field shows it, or it reads double.
+    const drawn = content.querySelector(`[data-el="${el.id}"]`);
+    drawn?.classList.add("is-editing");
     editorLayer.append(area);
+    fit();
     activeEditor = area;
     area.focus();
-    area.select();
+    if (typed) area.setSelectionRange(area.value.length, area.value.length);
+    else area.select();
+    drawOverlay();
   }
 
   function closeTextEdit(): void {
@@ -1501,6 +1563,16 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       e.preventDefault();
       setTool("frame");
       return;
+    }
+    // Typing on one selected shape, note or text edits it (Lark, FigJam). Tool
+    // shortcuts still work with nothing selected.
+    if (!mod && !e.altKey && e.key.length === 1 && selection.size === 1) {
+      const el = findEl(scene, [...selection][0]);
+      if (el && (isShape(el) || el.t === "sticky" || el.t === "text")) {
+        e.preventDefault();
+        startTextEdit(el, e.key);
+        return;
+      }
     }
     if (!mod && !e.shiftKey && !e.altKey) {
       const handler = TOOL_KEYS[e.key.toLowerCase()];

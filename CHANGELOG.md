@@ -2,6 +2,7 @@
 
 ## 2026-10-03
 
+- Board text now looks like Lark's. Sticky-note text is centred and as large as fits, shrinking for longer notes. Text inside shapes is properly centred, and it stays in the same place when you start editing it, without showing twice. Select an empty shape or note and it shows "Add text"; typing with one shape, note or text box selected starts editing it. You can now click anywhere inside a shape to select it, not just on its border.
 - Scrolling sideways through open tabs is smoother on 120Hz (ProMotion) displays. Writer now redraws at the display's full refresh rate instead of 60 frames a second, so the cards keep up with your fingers on the trackpad like a native app.
 - Selecting something on a board now brings up a floating toolbar just under it, like Lark's. From the toolbar you can change a shape's type, fill, border colour, width and style, the text colour, size and alignment, a sticky note's colour, and a connector's route and arrowheads. **More** has opacity, bring forward, send backward, duplicate and delete. The toolbar moves above the selection when there isn't room below and gets out of the way while you drag. It replaces the old style panel in the top-right corner.
 - The top and bottom of a document are no longer faded and blurred. Text stays sharp and fully readable wherever it sits on screen, including the first and last lines of the page.

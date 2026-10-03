@@ -383,6 +383,16 @@
   pointer-events: auto;
 }
 
+.wr-board-content .is-editing text {
+  visibility: hidden;
+}
+
+.wr-board-placeholder {
+  fill: var(--wr-board-muted);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 .wr-board-text-editor:focus {
   outline: none;
   box-shadow: none;

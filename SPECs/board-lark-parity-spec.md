@@ -42,7 +42,7 @@ The toolbar is React + Arc (Popover, Tooltip, SegmentedControl, `motion` springs
 ## Phases
 
 1. **Portable storage** (this change): the file format, the enhancer on image previews, `/board` creating a file, and fence migration.
-2. **Core editing polish** (the user's priority): sticky notes, shapes with text inside, fill / border colour / width / dash, paste pictures. The selection toolbar above is done. Still open: sticky-note text size and placement, label vertical centring, and the "Add text" placeholder on empty shapes.
+2. **Core editing polish** (the user's priority): sticky notes, shapes with text inside, fill / border colour / width / dash, paste pictures. Done: the selection toolbar; sticky text centred and fitted (22→11px); labels centred using a CSS-matching baseline (`baselineIn`), so drawn and edited text sit on the same pixel; an "Add text" hint; typing on a single selected shape, note or text starts editing (tool shortcuts still work with nothing selected); and shapes are hit anywhere inside, not only on the border.
 3. **Mind maps and flowcharts:** a mind-map node type with auto layout (Tab adds a child, Enter adds a sibling), flowchart connectors that follow their shapes, and import of `mermaid` flowchart/mindmap fences into editable boards.
 4. **Arc board chrome:** the tools rail becomes Arc Pro's Dock; menus and the template picker move to Arc too, all lazy-loaded with the selection toolbar. Pro items install with `ARC_PRO_TOKEN` (see `docs/arc.md`).
 5. **Present mode:** sections become slides; arrow keys move the camera between them with spring transitions.
