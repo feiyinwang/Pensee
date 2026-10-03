@@ -50,8 +50,16 @@ fn queue_open_event(app: &tauri::AppHandle, label: &str, payload: PendingOpenPay
 /// Wire up per-window event handlers: drag-drop routes to the window's own
 /// pending-open queue, and the close/destroy event tears down the window's
 /// `WorkspaceState` (which drops the watcher, stopping FSEvents / inotify
-/// subscriptions).
+/// subscriptions). On macOS it also lifts WebKit's 60fps rendering cap so
+/// scrolling keeps up with a 120Hz display.
 fn attach_window_handlers(app: &tauri::AppHandle, window: &WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    if let Err(error) = window.with_webview(|webview| unsafe {
+        macos::render_at_display_refresh_rate(webview.inner().cast());
+    }) {
+        eprintln!("webview: cannot reach the WKWebView: {error}");
+    }
+
     let label = window.label().to_string();
     let handle = app.clone();
     window.on_window_event(move |event| match event {
