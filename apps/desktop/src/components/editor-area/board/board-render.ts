@@ -14,11 +14,13 @@ import {
   type BoardScene,
   type ColorToken,
   type LinkerEl,
+  type MindEl,
   type ShapeEl,
   STICKY_SIZE,
   isLinker,
   isShape,
 } from "./board-model";
+import { branchColor, mindBranchPath, mindDepth, mindFontSize, mindParent } from "./board-mind";
 import {
   LINKER_LABEL_PAD,
   type Point,
@@ -260,6 +262,47 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
   }
 }
 
+function renderMind(g: SVGGElement, el: MindEl, ctx: RenderContext): void {
+  const depth = mindDepth(ctx.scene, el);
+  const parent = mindParent(ctx.scene, el);
+  const branch = colorVar(branchColor(ctx.scene, el));
+  if (parent) {
+    // The group is translated to the topic; the branch is drawn in its frame.
+    const local = (b: BoardEl) => ({ ...b, x: b.x - el.x, y: b.y - el.y });
+    g.append(
+      svgEl("path", {
+        d: mindBranchPath(local(parent), local(el)),
+        fill: "none",
+        stroke: branch,
+        "stroke-width": depth === 1 ? 2.5 : 1.75,
+        "stroke-linecap": "round",
+      }),
+    );
+  }
+  g.append(
+    svgEl("rect", {
+      x: 0,
+      y: 0,
+      width: Math.max(el.w, 0),
+      height: Math.max(el.h, 0),
+      rx: depth === 0 ? 12 : depth === 1 ? 9 : 7,
+      fill: depth === 0 ? colorVar("ink") : "var(--wr-board-surface)",
+      stroke: depth === 0 ? "none" : branch,
+      "stroke-width": depth === 1 ? 2 : 1.25,
+    }),
+  );
+  const size = mindFontSize(depth);
+  const lines = (el.tx || " ").split("\n");
+  appendLines(g, lines, {
+    x: el.w / 2,
+    y: centredTop(el.h, lines.length, size, 0),
+    size,
+    align: "c",
+    fill: depth === 0 ? "var(--wr-board-surface)" : colorVar("ink"),
+    weight: depth === 0 ? 600 : depth === 1 ? 500 : 400,
+  });
+}
+
 function renderSticky(g: SVGGElement, el: BoardEl & { c: string; tx: string }): void {
   g.append(
     svgEl("rect", {
@@ -456,6 +499,7 @@ export function renderElement(el: BoardEl, ctx: RenderContext): SVGGElement {
   else if (el.t === "text") renderText(g, el as never);
   else if (el.t === "image") renderImage(g, el as never, ctx);
   else if (el.t === "frame") renderFrame(g, el as never);
+  else if (el.t === "mind") renderMind(g, el, ctx);
   else if (isShape(el)) renderShape(g, el);
   return g;
 }
@@ -522,6 +566,12 @@ export class SceneRenderer {
  */
 function stampOf(el: BoardEl, scene: BoardScene): string {
   let base = JSON.stringify(el);
+  if (el.t === "mind" && el.pa) {
+    // Its branch is drawn from the parent, in an inherited colour.
+    const parent = scene.els.find((e) => e.id === el.pa);
+    if (parent)
+      base += `|${parent.x},${parent.y},${parent.w},${parent.h}|${branchColor(scene, el)}`;
+  }
   if (isLinker(el)) {
     for (const b of [el.b1, el.b2]) {
       if (!b) continue;

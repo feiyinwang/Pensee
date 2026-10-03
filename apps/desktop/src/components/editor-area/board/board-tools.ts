@@ -17,7 +17,16 @@ import {
   STICKY_COLORS,
 } from "./board-model";
 
-export type ToolId = "select" | "hand" | "shape" | "text" | "sticky" | "linker" | "frame" | "image";
+export type ToolId =
+  | "select"
+  | "hand"
+  | "shape"
+  | "text"
+  | "sticky"
+  | "linker"
+  | "mind"
+  | "frame"
+  | "image";
 
 export interface ToolState {
   tool: ToolId;
@@ -76,6 +85,7 @@ const ICON = {
   sticky: ["M5 4h14v10l-5 6H5z", "M19 14h-5v6"],
   linker: ["M4 18c6 0 4-12 10-12", "M14 6h4v4"],
   frame: ["M4 8h16", "M8 4v16", "M4 4h16v16H4z"],
+  mind: ["M9 12h3", "M12 12c2 0 2-5 4-5h1", "M12 12c2 0 2 5 4 5h1", "M3 10h6v4H3z"],
   image: [
     "M4 5h16v14H4z",
     "M4 16l4.5-4.5 3 3L15 11l5 5",
@@ -204,6 +214,7 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
     { id: "text", title: "Text", hint: "T", paths: ICON.text },
     { id: "sticky", title: "Sticky note", hint: "N", paths: ICON.sticky, flyout: stickyFlyout },
     { id: "linker", title: "Connector", hint: "A", paths: ICON.linker, flyout: linkerFlyout },
+    { id: "mind", title: "Mind map", hint: "M", paths: ICON.mind },
     { id: "frame", title: "Section", hint: "⇧S", paths: ICON.frame, flyout: frameFlyout },
     { id: "image", title: "Image", hint: "", paths: ICON.image },
   ];

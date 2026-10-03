@@ -10,12 +10,15 @@
  * Pure: the caller passes a text measurer so tests need no DOM.
  */
 
+import { addMindChild, layoutMind, newMindRoot } from "./board-mind";
 import {
   type BoardEl,
   type LinkerEl,
+  type MindEl,
   type ShapeEl,
   type ShapeKind,
   defaultStyle,
+  emptyScene,
   newId,
 } from "./board-model";
 
@@ -333,6 +336,60 @@ export function flowchartToElements(graph: FlowGraph, measure: Measure = approxM
   return [...links, ...all];
 }
 
+/* ------------------------------------------------------------- mindmap */
+
+const MIND_NODE =
+  /^(?:[A-Za-z0-9_-]+)?\s*(\(\(|\)\)|\{\{|\(|\)|\[)(.*?)(\)\)|\(\(|\}\}|\)|\(|\])\s*$/;
+
+/** Mermaid `mindmap`: indentation is the tree; node brackets only change the
+ *  shape in Mermaid, so here they are stripped to the text. */
+export function mindmapToElements(
+  source: string,
+  measure: Measure = approxMeasure,
+): BoardEl[] | null {
+  const lines = source.replace(/\r/g, "").split("\n");
+  const first = lines.findIndex((l) => l.trim() && !l.trim().startsWith("%%"));
+  if (first < 0 || !/^\s*mindmap\b/i.test(lines[first])) return null;
+
+  const scene = emptyScene();
+  const stack: { indent: number; id: string }[] = [];
+  let root: MindEl | null = null;
+  for (const line of lines.slice(first + 1)) {
+    if (!line.trim() || line.trim().startsWith("%%")) continue;
+    const indent = line.length - line.trimStart().length;
+    let text = line
+      .trim()
+      .replace(/::icon\([^)]*\)/g, "")
+      .replace(/:::[\w-]+/g, "")
+      .trim();
+    if (!text) continue;
+    const m = MIND_NODE.exec(text);
+    if (m) text = m[2];
+    text = cleanText(text);
+    while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+    if (!root) {
+      root = newMindRoot({ x: 0, y: 0 }, text);
+      scene.els.push(root);
+      stack.push({ indent, id: root.id });
+      continue;
+    }
+    const parentId = stack.length ? stack[stack.length - 1].id : root.id;
+    const parent = scene.els.find((e) => e.id === parentId) as MindEl;
+    const topic = addMindChild(scene, parent);
+    topic.tx = text;
+    stack.push({ indent, id: topic.id });
+  }
+  if (!root) return null;
+  layoutMind(scene, root.id, measure);
+  const minX = Math.min(...scene.els.map((e) => e.x));
+  const minY = Math.min(...scene.els.map((e) => e.y));
+  for (const el of scene.els) {
+    el.x -= minX;
+    el.y -= minY;
+  }
+  return scene.els;
+}
+
 /* ------------------------------------------------------------ registry */
 
 /** Every Mermaid diagram type that can become a board, tried in order. */
@@ -341,6 +398,7 @@ const IMPORTERS: ((source: string, measure?: Measure) => BoardEl[] | null)[] = [
     const graph = parseMermaidFlowchart(src);
     return graph ? flowchartToElements(graph, measure) : null;
   },
+  (src, measure) => mindmapToElements(src, measure),
 ];
 
 /** Board elements for a Mermaid source, top-left at (0, 0); `null` when the

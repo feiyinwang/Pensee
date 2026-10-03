@@ -18,6 +18,7 @@ import {
   type FramePreset,
   type ImageEl,
   type LinkerEl,
+  type MindEl,
   type ShapeEl,
   type TextEl,
   type Viewport,
@@ -66,8 +67,26 @@ import {
   svgEl,
 } from "./board-render";
 import { mermaidToElements } from "./board-mermaid";
+import {
+  addMindChild,
+  addMindSibling,
+  MIND,
+  isMind,
+  layoutMind,
+  mindDepth,
+  mindFontSize,
+  mindRoot,
+  mindSubtree,
+  newMindRoot,
+} from "./board-mind";
 import { type ToolId, type ToolState, type Toolbar, buildToolbar } from "./board-tools";
-import { applyAlign, applyFontSize, applyTextColor, summarizeSelection } from "./board-selection";
+import {
+  applyAlign,
+  applyBranchColor,
+  applyFontSize,
+  applyTextColor,
+  summarizeSelection,
+} from "./board-selection";
 import {
   SIDES,
   type Side,
@@ -473,6 +492,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         : ["nw", "ne", "se", "sw"];
 
     if (single && isLinker(single)) return;
+    // Topics are sized and placed by the layout: no resize, rotate or dots.
+    if (selectionHasMind()) return;
     if (single && !activeEditor && !textOf(single) && (isShape(single) || single.t === "sticky")) {
       // Lark's empty-shape hint: says where typing will go.
       const size = isShape(single) ? (single.lb?.sz ?? 14) : 16;
@@ -550,7 +571,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (!selToolbar) return;
     const busy = interaction.kind !== "none";
     const els = [...selection].map((id) => findEl(scene, id)).filter(Boolean) as BoardEl[];
-    selToolbar.update(busy || opts.readOnly ? null : summarizeSelection(els));
+    selToolbar.update(busy || opts.readOnly ? null : summarizeSelection(els, scene));
     placeSelectionToolbar();
   }
 
@@ -607,6 +628,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     setFontSize: (sz) => mutateSelection((el) => applyFontSize(el, sz)),
     setAlign: (al) => mutateSelection((el) => applyAlign(el, al)),
     setRoute: (r) => mutateSelection((el) => isLinker(el) && (el.sh = r)),
+    setBranch: (c) => mutateSelection((el) => applyBranchColor(scene, el, c)),
     setHeads: (hd) => mutateSelection((el) => isLinker(el) && (el.hd = { ...hd })),
     setOpacity: (o) => mutateSelection((el) => (el.op = o)),
     bringForward: () => reorder(1),
@@ -677,7 +699,16 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     for (const frame of frames) {
       for (const el of scene.els) if (el.fr === frame.id) doomed.add(el.id);
     }
+    // A topic takes its branch with it; the surviving map closes the gap.
+    const relayout = new Set<string>();
+    for (const id of selection) {
+      const el = findEl(scene, id);
+      if (!isMind(el)) continue;
+      for (const n of mindSubtree(scene, id)) doomed.add(n.id);
+      relayout.add(mindRoot(scene, el).id);
+    }
     scene.els = scene.els.filter((el) => !doomed.has(el.id));
+    for (const rootId of relayout) if (!doomed.has(rootId)) layoutMind(scene, rootId, measureText);
     // A binding to a removed element degrades to its last resolved point so
     // the arrow stays where the user last saw it instead of vanishing.
     for (const el of scene.els) {
@@ -715,6 +746,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
     for (const copy of copies) {
       if (copy.fr && idMap.has(copy.fr)) copy.fr = idMap.get(copy.fr);
+      // A copied topic keeps its copied parent, or becomes a map of its own.
+      if (isMind(copy) && copy.pa) {
+        if (idMap.has(copy.pa)) copy.pa = idMap.get(copy.pa);
+        else delete copy.pa;
+      }
       if (isLinker(copy)) {
         if (copy.b1 && idMap.has(copy.b1.el)) copy.b1.el = idMap.get(copy.b1.el) as string;
         else delete copy.b1;
@@ -903,8 +939,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const frame = mid
       ? { x: mid.x - 90, y: mid.y - 24, w: 180, h: 48 }
       : { x: el.x, y: el.y, w: el.w, h: el.h };
-    const centred = el.t === "sticky" || isShape(el) || Boolean(mid);
-    const pad = el.t === "sticky" ? 16 : isShape(el) ? 10 : 0;
+    const mind = isMind(el) ? mindDepth(scene, el) : -1;
+    const centred = el.t === "sticky" || isShape(el) || Boolean(mid) || mind >= 0;
+    const pad = el.t === "sticky" ? 16 : isShape(el) ? 10 : mind >= 0 ? MIND.padY : 0;
     const boxW = Math.max(frame.w - pad * 2, 60);
     const boxH = Math.max(frame.h - pad * 2, 20);
     // Match what the renderer will draw, so nothing jumps when editing ends.
@@ -917,7 +954,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             ? (el.lb?.sz ?? 14)
             : isLinker(el)
               ? (el.lb?.sz ?? 13)
-              : 14;
+              : mind >= 0
+                ? mindFontSize(mind)
+                : 14;
     const left = (frame.x - v.x + pad) * v.zoom;
     const top = (frame.y - v.y + pad) * v.zoom;
     area.style.left = `${left}px`;
@@ -930,14 +969,30 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           ? "center"
           : isShape(el)
             ? alignCss(el.lb?.al ?? "c")
-            : mid
+            : mid || mind >= 0
               ? "center"
               : "left";
-    area.style.color = el.t === "sticky" ? "var(--wr-board-sticky-ink)" : "";
+    area.style.color =
+      el.t === "sticky"
+        ? "var(--wr-board-sticky-ink)"
+        : mind === 0
+          ? "var(--wr-board-surface)" // the root is light text on a dark pill
+          : "";
+    if (mind >= 0) area.style.fontWeight = mind === 0 ? "600" : mind === 1 ? "500" : "400";
 
     /** Shapes and notes edit centred, like they render: the field is only as
      *  tall as its text and sits in the middle of the box. */
+    const root = isMind(el) ? mindRoot(scene, el) : null;
+    const growsLeft = Boolean(root && root !== el && el.x + el.w / 2 < root.x + root.w / 2);
     const fit = (): void => {
+      if (mind >= 0) {
+        // A topic grows with its text while typing, as it will once laid out.
+        const longest = Math.max(...area.value.split("\n").map((l) => measureText(l || " ", size)));
+        const width = Math.max(boxW, longest + 4) * v.zoom;
+        area.style.width = `${width}px`;
+        // Left of the root a topic grows leftward, away from its parent.
+        if (growsLeft) area.style.left = `${left + boxW * v.zoom - width}px`;
+      }
       if (!centred) {
         area.style.top = `${top}px`;
         area.style.height = `${Math.max(boxH, size * LINE_HEIGHT) * v.zoom}px`;
@@ -954,6 +1009,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       if (next !== textOf(el)) {
         pushHistory();
         setTextOf(el, next);
+        if (isMind(el)) layoutMind(scene, mindRoot(scene, el).id, measureText);
         if (el.t === "text") {
           el.h = Math.max(24, (next.split("\n").length || 1) * el.sz * 1.35);
           if (!next.trim()) {
@@ -982,6 +1038,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         commit();
+      }
+      // Typing a topic: Enter moves on to a sibling, Tab to a child; Shift+Enter
+      // is a line break. Same keys as with the topic merely selected.
+      if (
+        isMind(el) &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))
+      ) {
+        e.preventDefault();
+        commit();
+        const fresh = findEl(scene, el.id);
+        if (isMind(fresh)) addTopic(fresh, e.key === "Tab" ? "child" : "sibling");
       }
     });
     // Hide the drawn text while the field shows it, or it reads double.
@@ -1012,6 +1081,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (!box || !selection.size) return null;
     const single = selection.size === 1 ? findEl(scene, [...selection][0]) : null;
     if (single && isLinker(single)) return null;
+    if (selectionHasMind()) return null;
     const z = vp().zoom;
     const tol = SCREEN.handle / z;
     const positions = handlePositions(box);
@@ -1028,6 +1098,23 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       if (Math.abs(p.x - pos.x) <= tol && Math.abs(p.y - pos.y) <= tol) return id;
     }
     return null;
+  }
+
+  function selectionHasMind(): boolean {
+    for (const id of selection) if (isMind(findEl(scene, id))) return true;
+    return false;
+  }
+
+  /** Tab / Enter on a topic: add a child or a sibling, lay the map out again,
+   *  and start typing in the new topic. */
+  function addTopic(from: MindEl, kind: "child" | "sibling"): void {
+    pushHistory();
+    const topic = kind === "child" ? addMindChild(scene, from) : addMindSibling(scene, from);
+    layoutMind(scene, mindRoot(scene, topic).id, measureText);
+    selection = new Set([topic.id]);
+    draw();
+    markDirty();
+    startTextEdit(topic);
   }
 
   function quickDotAt(p: Point): Side | null {
@@ -1138,6 +1225,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         if (frameIds.size > 0) {
           for (const kid of scene.els) if (kid.fr && frameIds.has(kid.fr)) ids.add(kid.id);
         }
+        // Dragging any topic carries its whole map; the layout owns relative positions.
+        for (const id of [...ids]) {
+          const el = findEl(scene, id);
+          if (isMind(el)) for (const n of mindSubtree(scene, mindRoot(scene, el).id)) ids.add(n.id);
+        }
         interaction = { kind: "drag", origin: p, startEls: snapshot(ids), moved: false };
         svg.setPointerCapture(e.pointerId);
         return;
@@ -1150,6 +1242,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
     if (tools.tool === "image") {
       pickImage();
+      return;
+    }
+
+    if (tools.tool === "mind") {
+      pushHistory();
+      const root = newMindRoot(p);
+      scene.els.push(root);
+      layoutMind(scene, root.id, measureText);
+      selection = new Set([root.id]);
+      setTool("select");
+      draw();
+      markDirty();
+      startTextEdit(root);
       return;
     }
 
@@ -1533,6 +1638,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   const TOOL_KEYS: Record<string, () => void> = {
     v: () => setTool("select"),
+    m: () => setTool("mind"),
     h: () => setTool("hand"),
     r: () => {
       tools.shape = "roundRect";
@@ -1644,6 +1750,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       e.preventDefault();
       deleteSelection();
       return;
+    }
+    if ((e.key === "Tab" || e.key === "Enter") && selection.size === 1 && !mod) {
+      const el = findEl(scene, [...selection][0]);
+      if (isMind(el)) {
+        e.preventDefault();
+        // Lark: Tab adds a child, Enter a sibling (a child on the root).
+        addTopic(el, e.key === "Tab" ? "child" : "sibling");
+        return;
+      }
     }
     if (e.key === "Enter" && selection.size === 1) {
       const el = findEl(scene, [...selection][0]);

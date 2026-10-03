@@ -71,7 +71,7 @@ export type ArrowHead = "none" | "triangle" | "line" | "dot";
 export type StrokeDash = "solid" | "dashed" | "dotted";
 export type FramePreset = "custom" | "16:9" | "4:3" | "1:1" | "A4";
 
-export type ElementType = ShapeKind | "text" | "sticky" | LinkerKind | "frame" | "image";
+export type ElementType = ShapeKind | "text" | "sticky" | LinkerKind | "frame" | "image" | "mind";
 
 export interface Style {
   /** stroke */ s: ColorToken;
@@ -154,7 +154,20 @@ export interface ImageEl extends Base {
   alt?: string;
 }
 
-export type BoardEl = ShapeEl | TextEl | StickyEl | LinkerEl | FrameEl | ImageEl;
+/**
+ * One mind-map topic. The tree is the `pa` (parent) links; the root has none.
+ * Positions and sizes are laid out by `board-mind.ts` and stored like any
+ * element's, so the file renders without Writer.
+ */
+export interface MindEl extends Base {
+  t: "mind";
+  tx: string;
+  /** parent topic id; absent on the root */ pa?: string;
+  /** branch colour, set on first-level topics and inherited below */ c?: ColorToken;
+  /** side of the root a first-level topic grows on */ sd?: "l" | "r";
+}
+
+export type BoardEl = ShapeEl | TextEl | StickyEl | LinkerEl | FrameEl | ImageEl | MindEl;
 
 export interface Viewport {
   x: number;
@@ -363,6 +376,13 @@ function parseElement(raw: unknown): BoardEl | null {
   if ((SHAPE_KINDS as string[]).includes(t)) {
     return { ...base, t: t as ShapeKind, st: parseStyle(o.st), lb: parseLabel(o.lb) };
   }
+  if (t === "mind") {
+    const el: MindEl = { ...base, t, tx: str(o.tx, "") };
+    if (typeof o.pa === "string") el.pa = o.pa;
+    if (typeof o.c === "string") el.c = o.c as ColorToken;
+    if (o.sd === "l" || o.sd === "r") el.sd = o.sd;
+    return el;
+  }
   return null;
 }
 
@@ -434,6 +454,13 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
   if (el.lk) o.lk = true;
 
   switch (el.t) {
+    case "mind": {
+      o.tx = el.tx;
+      if (el.pa) o.pa = el.pa;
+      if (el.c) o.c = el.c;
+      if (el.sd) o.sd = el.sd;
+      break;
+    }
     case "text": {
       o.tx = el.tx;
       if (el.sz !== 16) o.sz = el.sz;
@@ -560,14 +587,14 @@ export function childrenOf(scene: BoardScene, frameId: string): BoardEl[] {
 }
 
 export function textOf(el: BoardEl): string {
-  if (el.t === "text" || el.t === "sticky") return el.tx;
+  if (el.t === "text" || el.t === "sticky" || el.t === "mind") return el.tx;
   if (isLinker(el)) return el.lb?.tx ?? "";
   if (isShape(el)) return el.lb?.tx ?? "";
   return "";
 }
 
 export function setTextOf(el: BoardEl, text: string): void {
-  if (el.t === "text" || el.t === "sticky") el.tx = text;
+  if (el.t === "text" || el.t === "sticky" || el.t === "mind") el.tx = text;
   else if (isLinker(el)) {
     if (text) el.lb = { tx: text, sz: el.lb?.sz ?? 13 };
     else delete el.lb;

@@ -117,7 +117,11 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
       e.stopPropagation();
       return;
     }
-    if (e.key === "Escape") e.stopPropagation();
+    // Escape is NOT stopped here. This listener runs in the capture phase on
+    // `document`, so stopping it starved every handler inside the overlay:
+    // Esc could not finish typing, clear a selection, close a popover or
+    // close the board. The overlay is not inside the editor, so its key
+    // events never reach CodeMirror anyway.
   };
 
   const onWindowBlur = (): void => {

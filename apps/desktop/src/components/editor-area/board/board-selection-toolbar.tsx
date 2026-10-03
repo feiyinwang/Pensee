@@ -62,6 +62,7 @@ export interface SelectionToolbarActions {
   setFontSize: (s: number) => void;
   setAlign: (a: Align) => void;
   setRoute: (r: LinkerShape) => void;
+  setBranch: (c: ColorToken) => void;
   setHeads: (h: { s: ArrowHead; e: ArrowHead }) => void;
   setOpacity: (o: number) => void;
   bringForward: () => void;
@@ -366,6 +367,26 @@ function Toolbar({
             onValueChange={(v) => actions.setDash(v as StrokeDash)}
           />
         </Section>
+      </Menu>,
+    );
+  }
+
+  if (s.branch) {
+    groups.push(
+      <Menu
+        key="branch"
+        label="Branch colour"
+        icon={<span className={styles.ringDot} style={{ borderColor: swatchColor(s.branch) }} />}
+        onOpenChange={onBusy}
+        width={236}
+      >
+        <Swatches
+          label="Branch colour"
+          tokens={INK_TOKENS}
+          value={s.branch}
+          color={swatchColor}
+          onPick={actions.setBranch}
+        />
       </Menu>,
     );
   }

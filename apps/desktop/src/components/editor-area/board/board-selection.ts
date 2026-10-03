@@ -7,9 +7,12 @@
  * element that can take it and leaves the rest alone (Lark behaves the same).
  */
 
+import { branchColor, isMind, mindParent } from "./board-mind";
 import {
   type ArrowHead,
   type BoardEl,
+  type BoardScene,
+  type MindEl,
   type ColorToken,
   type LinkerShape,
   type ShapeEl,
@@ -39,6 +42,8 @@ export interface SelectionSummary {
   textColor?: ColorToken;
   fontSize?: number;
   align?: Align;
+  /** Mind-map topics below the root: the colour of their branch. */
+  branch?: ColorToken;
   /** Connectors only. */
   route?: LinkerShape;
   heads?: { s: ArrowHead; e: ArrowHead };
@@ -49,9 +54,12 @@ function hasLabel(el: BoardEl): el is ShapeEl & { lb: NonNullable<ShapeEl["lb"]>
   return isShape(el) && Boolean(el.lb?.tx);
 }
 
-export function summarizeSelection(els: BoardEl[]): SelectionSummary | null {
+export function summarizeSelection(els: BoardEl[], scene?: BoardScene): SelectionSummary | null {
   if (!els.length) return null;
   const summary: SelectionSummary = { count: els.length, opacity: els[0].op };
+
+  const topic = scene ? els.find((el) => isMind(el) && el.pa) : undefined;
+  if (scene && isMind(topic)) summary.branch = branchColor(scene, topic);
 
   const shape = els.find(isShape);
   if (shape) {
@@ -91,6 +99,16 @@ export function summarizeSelection(els: BoardEl[]): SelectionSummary | null {
 }
 
 /* -------------------------------------------------------------- apply */
+
+/** Recolours the branch `el` sits on: the colour lives on its first-level topic. */
+export function applyBranchColor(scene: BoardScene, el: BoardEl, c: ColorToken): void {
+  if (!isMind(el) || !el.pa) return;
+  let node: MindEl = el;
+  for (let parent = mindParent(scene, node); parent?.pa; parent = mindParent(scene, node)) {
+    node = parent;
+  }
+  node.c = c;
+}
 
 export function applyTextColor(el: BoardEl, c: ColorToken): void {
   if (el.t === "text") el.c = c;
