@@ -70,7 +70,9 @@ export function summarizeSelection(els: BoardEl[], scene?: BoardScene): Selectio
   const sticky = els.find((el) => el.t === "sticky");
   if (sticky?.t === "sticky") summary.sticky = sticky.c;
 
-  const stroked = els.find((el) => isShape(el) || isLinker(el)) as ShapeEl | undefined;
+  const stroked = els.find((el) => isShape(el) || isLinker(el) || el.t === "draw") as
+    | ShapeEl
+    | undefined;
   if (stroked) {
     summary.stroke = stroked.st.s;
     summary.width = stroked.st.w;

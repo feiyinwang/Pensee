@@ -274,6 +274,20 @@ export function hitTest(el: BoardEl, p: Point, tol: number): boolean {
     return pointInBox(p, b) && distToPolyline(p, outlinePolygon(el), true) <= tol + 2;
   }
 
+  if (el.t === "draw") {
+    // On the ink only, scaled the way the renderer scales it.
+    let ew = 0;
+    let eh = 0;
+    for (const [x, y] of el.pts) {
+      ew = Math.max(ew, x);
+      eh = Math.max(eh, y);
+    }
+    const sx = ew > 0 ? el.w / ew : 1;
+    const sy = eh > 0 ? el.h / eh : 1;
+    const pts = el.pts.map(([x, y]) => ({ x: el.x + x * sx, y: el.y + y * sy }));
+    return distToPolyline(p, pts, false) <= tol + el.st.w / 2;
+  }
+
   const poly = outlinePolygon(el);
   const inside = el.t === "ellipse" ? pointInEllipse(el, p) : pointInPolygon(p, poly);
   // Every shape is grabbed by its interior, hollow or filled (Lark). Things

@@ -688,3 +688,18 @@
   z-index: 3;
   width: max-content;
 }
+
+/* ----------------------------------------------------------- tools dock */
+
+/* Arc Pro Dock, bottom centre; its trays grow upward. */
+.wr-board-dock {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+}
+
+.wr-board-host.has-dock .wr-board-rail {
+  display: none;
+}

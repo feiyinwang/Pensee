@@ -18,8 +18,12 @@ import {
   type FramePreset,
   type ImageEl,
   type LinkerEl,
+  type LinkerKind,
+  type LinkerShape,
   type MindEl,
   type ShapeEl,
+  type ShapeKind,
+  type StickyColor,
   type TextEl,
   type Viewport,
   FRAME_PRESETS,
@@ -67,6 +71,7 @@ import {
   svgEl,
 } from "./board-render";
 import { mermaidToElements } from "./board-mermaid";
+import { strokeFrom } from "./board-draw";
 import {
   addMindChild,
   addMindSibling,
@@ -97,6 +102,7 @@ import {
   quickDots,
 } from "./board-flow";
 import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
+import type { ToolDockHandle } from "./board-dock";
 
 /* -------------------------------------------------------------- constants */
 
@@ -138,6 +144,8 @@ type Interaction =
   | { kind: "none" }
   /** Pressed a quick-connect dot: a click adds the next step, a drag draws a connector. */
   | { kind: "quick"; side: Side; src: string; origin: Point }
+  /** Pen stroke in progress, scene-space points. */
+  | { kind: "pen"; pts: Point[] }
   | { kind: "pan"; startClient: Point; startVp: Viewport }
   | { kind: "marquee"; origin: Point; current: Point; additive: boolean }
   | { kind: "drag"; origin: Point; startEls: Map<string, BoardEl>; moved: boolean }
@@ -165,6 +173,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   let spaceDown = false;
   let hoverTarget: string | null = null;
   let disposed = false;
+  /** Arc Dock for tools; null until its lazy chunk arrives (see below). */
+  let toolDock: ToolDockHandle | null = null;
 
   const past: string[] = [];
   const future: string[] = [];
@@ -412,6 +422,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const z = vp().zoom;
     const px = (n: number) => n / z;
 
+    if (interaction.kind === "pen" && interaction.pts.length > 1) {
+      overlay.append(
+        svgEl("polyline", {
+          points: interaction.pts.map((q) => `${q.x},${q.y}`).join(" "),
+          fill: "none",
+          stroke: "var(--wr-board-ink)",
+          "stroke-width": 2,
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round",
+        }),
+      );
+    }
+
     if (interaction.kind === "marquee") {
       const box = normalizeBox(interaction.origin, interaction.current);
       overlay.append(
@@ -594,7 +617,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const clear = SCREEN.quickOffset + SCREEN.quickDot + 12;
     const below = bottom + clear;
     const above = top - clear - h;
-    let y = below + h > hostRect.height - 64 && above > 56 ? above : below;
+    const bottomChrome = host.classList.contains("has-dock") ? 96 : 64;
+    let y = below + h > hostRect.height - bottomChrome && above > 56 ? above : below;
     y = Math.min(Math.max(y, 56), hostRect.height - h - margin);
     // Never under the tools rail on the left.
     const rail = host.querySelector(".wr-board-rail")?.getBoundingClientRect();
@@ -645,6 +669,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     })
     .catch((error: unknown) => console.error("[board] selection toolbar failed to load", error));
 
+  // The tools Dock (Arc Pro) replaces the plain rail once it has loaded; if it
+  // cannot load, the rail stays and the error is logged.
+  const dockHost = document.createElement("div");
+  dockHost.className = "wr-board-dock";
+  host.append(dockHost);
+  void import("./board-dock")
+    .then((m) => {
+      if (disposed) return;
+      toolDock = m.mountToolDock(dockHost, toolValue(), pickFromDock);
+      host.classList.add("has-dock");
+    })
+    .catch((error: unknown) => console.error("[board] tool dock failed to load", error));
+
   function reorder(dir: 1 | -1): void {
     if (!selection.size) return;
     pushHistory();
@@ -662,9 +699,41 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /* ------------------------------------------------------- selection */
 
+  /** The Dock id for the current tool, e.g. "shape:ellipse". */
+  function toolValue(): string {
+    switch (tools.tool) {
+      case "shape":
+        return `shape:${tools.shape}`;
+      case "sticky":
+        return `sticky:${tools.sticky}`;
+      case "linker":
+        return `linker:${tools.linker.kind}:${tools.linker.shape}`;
+      case "frame":
+        return `frame:${tools.frame}`;
+      default:
+        return tools.tool;
+    }
+  }
+
+  function pickFromDock(id: string): void {
+    const [kind, a, b] = id.split(":");
+    if (kind === "image") {
+      pickImage();
+      toolDock?.setValue(toolValue());
+      return;
+    }
+    if (kind === "shape") tools.shape = a as ShapeKind;
+    else if (kind === "sticky") tools.sticky = a as StickyColor;
+    else if (kind === "linker") tools.linker = { kind: a as LinkerKind, shape: b as LinkerShape };
+    else if (kind === "frame") tools.frame = a as FramePreset;
+    setTool(kind as ToolId);
+    host.focus();
+  }
+
   function setTool(tool: ToolId): void {
     tools.tool = tool;
     toolbar.setTool(tool);
+    toolDock?.setValue(toolValue());
     host.dataset.tool = tool;
     if (tool !== "select") {
       selection.clear();
@@ -1245,6 +1314,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       return;
     }
 
+    if (tools.tool === "pen") {
+      interaction = { kind: "pen", pts: [p] };
+      svg.setPointerCapture(e.pointerId);
+      return;
+    }
+
     if (tools.tool === "mind") {
       pushHistory();
       const root = newMindRoot(p);
@@ -1293,6 +1368,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
 
     switch (interaction.kind) {
+      case "pen": {
+        const last = interaction.pts[interaction.pts.length - 1];
+        if (Math.hypot(p.x - last.x, p.y - last.y) * vp().zoom >= 1.5) {
+          interaction.pts.push(p);
+          drawOverlay();
+        }
+        return;
+      }
       case "quick": {
         const z = vp().zoom;
         const o = interaction.origin;
@@ -1443,6 +1526,22 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const current = interaction;
     interaction = { kind: "none" };
     activeGuides = [];
+    if (current.kind === "pen") {
+      try {
+        svg.releasePointerCapture(e.pointerId);
+      } catch {
+        /* capture may already be gone */
+      }
+      // The pen stays on (Lark): each stroke is its own element and undo step.
+      const stroke = strokeFrom(current.pts, defaultStyle({ w: 2 }), 0.75 / vp().zoom);
+      if (stroke) {
+        pushHistory();
+        scene.els.push(stroke);
+        draw();
+        markDirty();
+      } else drawOverlay();
+      return;
+    }
     if (current.kind === "quick") {
       try {
         svg.releasePointerCapture(e.pointerId);
@@ -1639,6 +1738,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   const TOOL_KEYS: Record<string, () => void> = {
     v: () => setTool("select"),
     m: () => setTool("mind"),
+    p: () => setTool("pen"),
     h: () => setTool("hand"),
     r: () => {
       tools.shape = "roundRect";
@@ -1915,6 +2015,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       selToolbarResize.disconnect();
       selToolbar?.destroy();
       selToolbar = null;
+      toolDock?.destroy();
+      toolDock = null;
       svg.removeEventListener("pointerdown", onPointerDown);
       svg.removeEventListener("pointermove", onPointerMove);
       svg.removeEventListener("pointerup", onPointerUp);

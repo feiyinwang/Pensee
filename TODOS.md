@@ -2,7 +2,7 @@
 
 ## In Progress
 
-- Board: Lark parity in portable markdown: [`SPECs/board-lark-parity-spec.md`](SPECs/board-lark-parity-spec.md). Phase 1 (`.board.svg` storage, preview as a plain image, fence migration) is done. Phase 2 started: the selection toolbar (Arc) is done. Text polish (centred sticky/label text, "Add text" hint, type-to-edit, click-inside selection) is done. Flowcharts are done (quick connect, connector labels, Mermaid import). Mind maps are done. Next: Arc Dock tools rail, pen, present mode, find & replace, export, templates. Phase 4 (Arc Pro board chrome: Dock toolbar) is unblocked; the Pro registry token works.
+- Board: Lark parity in portable markdown: [`SPECs/board-lark-parity-spec.md`](SPECs/board-lark-parity-spec.md). Phase 1 (`.board.svg` storage, preview as a plain image, fence migration) is done. Phase 2 started: the selection toolbar (Arc) is done. Text polish (centred sticky/label text, "Add text" hint, type-to-edit, click-inside selection) is done. Flowcharts are done (quick connect, connector labels, Mermaid import). Mind maps are done. Arc Dock tools and pen are done. Next: present mode, find & replace, export, templates. Phase 4 (Arc Pro board chrome: Dock toolbar) is unblocked; the Pro registry token works.
 
 - Block handle menu: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md) — hover the gutter grip to open block type / move / duplicate / clipboard / delete actions for plain blocks, pictures, caption bands and columns. First pass landed; submenus (Align and Indent, Color Options) are rendered inert pending a way to store non-markdown attributes, and there is still no keyboard path to the panel.
 

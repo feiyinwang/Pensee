@@ -71,7 +71,15 @@ export type ArrowHead = "none" | "triangle" | "line" | "dot";
 export type StrokeDash = "solid" | "dashed" | "dotted";
 export type FramePreset = "custom" | "16:9" | "4:3" | "1:1" | "A4";
 
-export type ElementType = ShapeKind | "text" | "sticky" | LinkerKind | "frame" | "image" | "mind";
+export type ElementType =
+  | ShapeKind
+  | "text"
+  | "sticky"
+  | LinkerKind
+  | "frame"
+  | "image"
+  | "mind"
+  | "draw";
 
 export interface Style {
   /** stroke */ s: ColorToken;
@@ -167,7 +175,17 @@ export interface MindEl extends Base {
   /** side of the root a first-level topic grows on */ sd?: "l" | "r";
 }
 
-export type BoardEl = ShapeEl | TextEl | StickyEl | LinkerEl | FrameEl | ImageEl | MindEl;
+/**
+ * A pen stroke. `pts` are relative to (x, y) as drawn; a resize changes w/h and
+ * the renderer scales the path to fit, so the points never need rewriting.
+ */
+export interface DrawEl extends Base {
+  t: "draw";
+  pts: [number, number][];
+  st: Style;
+}
+
+export type BoardEl = ShapeEl | TextEl | StickyEl | LinkerEl | FrameEl | ImageEl | MindEl | DrawEl;
 
 export interface Viewport {
   x: number;
@@ -376,6 +394,13 @@ function parseElement(raw: unknown): BoardEl | null {
   if ((SHAPE_KINDS as string[]).includes(t)) {
     return { ...base, t: t as ShapeKind, st: parseStyle(o.st), lb: parseLabel(o.lb) };
   }
+  if (t === "draw") {
+    const raw = Array.isArray(o.pts) ? o.pts : [];
+    const pts = raw
+      .filter((p): p is [number, number] => Array.isArray(p) && p.length >= 2)
+      .map((p) => [num(p[0], 0), num(p[1], 0)] as [number, number]);
+    return pts.length >= 2 ? { ...base, t, pts, st: parseStyle(o.st) } : null;
+  }
   if (t === "mind") {
     const el: MindEl = { ...base, t, tx: str(o.tx, "") };
     if (typeof o.pa === "string") el.pa = o.pa;
@@ -454,6 +479,12 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
   if (el.lk) o.lk = true;
 
   switch (el.t) {
+    case "draw": {
+      o.pts = el.pts.map(([px, py]) => [R(px), R(py)]);
+      const st = pruneStyle(el.st);
+      if (st) o.st = st;
+      break;
+    }
     case "mind": {
       o.tx = el.tx;
       if (el.pa) o.pa = el.pa;
@@ -565,8 +596,8 @@ export function isShape(el: BoardEl): el is ShapeEl {
   return (SHAPE_KINDS as string[]).includes(el.t);
 }
 
-export function hasStyle(el: BoardEl): el is ShapeEl | LinkerEl {
-  return isShape(el) || isLinker(el);
+export function hasStyle(el: BoardEl): el is ShapeEl | LinkerEl | DrawEl {
+  return isShape(el) || isLinker(el) || el.t === "draw";
 }
 
 export function cloneScene(scene: BoardScene): BoardScene {

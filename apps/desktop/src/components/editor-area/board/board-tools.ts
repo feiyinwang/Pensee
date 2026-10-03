@@ -24,6 +24,7 @@ export type ToolId =
   | "text"
   | "sticky"
   | "linker"
+  | "pen"
   | "mind"
   | "frame"
   | "image";

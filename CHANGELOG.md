@@ -2,6 +2,8 @@
 
 ## 2026-10-03
 
+- Board tools now sit in a floating dock at the bottom (Arc Pro's Dock). Groups open a tray straight out of the dock: shapes, sticky-note colours, connector styles and section sizes. Keyboard shortcuts still work and the dock follows them.
+- New pen (P) for freehand drawing. Strokes are smoothed and simplified so they stay light in the file. You can select, move and resize them, and change their colour, width and style from the toolbar. The pen stays on until you pick another tool.
 - Mind maps on boards. Pick the Mind map tool (M) and click to start one. While typing a topic, **Tab** adds a child and **Enter** adds a sibling, the same keys that work when a topic is just selected. **Delete** removes a topic with its whole branch. The map lays itself out the way Lark's does: the central topic in the middle, branches balanced on both sides, each branch drawn in its own colour (change it from the toolbar). Dragging any topic moves the whole map. Mermaid mind maps convert too, with **Convert to board** or by pasting.
 - Escape now works on boards. It finishes typing, clears the selection, and on a third press closes the board. Before, the full-screen board swallowed Escape before anything inside it could see it.
 - Build flowcharts the way Lark does. A selected shape or sticky note shows a dot on each side. Click a dot to add the next step there, joined by an arrow and ready to type into; drag from a dot to draw an arrow to anything. Arrows can carry a label ("Yes", "No"): select one and type, or double-click it. Elbow arrows now leave and arrive at the middle of a side and keep following their shapes when you move them. The rotate handle moved to the bottom-left corner to make room for the dots.

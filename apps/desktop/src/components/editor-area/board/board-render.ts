@@ -13,6 +13,7 @@ import {
   type BoardEl,
   type BoardScene,
   type ColorToken,
+  type DrawEl,
   type LinkerEl,
   type MindEl,
   type ShapeEl,
@@ -20,6 +21,7 @@ import {
   isLinker,
   isShape,
 } from "./board-model";
+import { smoothPath, strokeExtent } from "./board-draw";
 import { branchColor, mindBranchPath, mindDepth, mindFontSize, mindParent } from "./board-mind";
 import {
   LINKER_LABEL_PAD,
@@ -303,6 +305,28 @@ function renderMind(g: SVGGElement, el: MindEl, ctx: RenderContext): void {
   });
 }
 
+function renderDraw(g: SVGGElement, el: DrawEl): void {
+  const ext = strokeExtent(el.pts);
+  const path = svgEl("path", {
+    d: smoothPath(el.pts),
+    fill: "none",
+    stroke: colorVar(el.st.s),
+    "stroke-width": el.st.w,
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    // Resizing scales the path, never the pen width.
+    "vector-effect": "non-scaling-stroke",
+  });
+  const sx = ext.w > 0 ? el.w / ext.w : 1;
+  const sy = ext.h > 0 ? el.h / ext.h : 1;
+  if (Math.abs(sx - 1) > 1e-3 || Math.abs(sy - 1) > 1e-3) {
+    path.setAttribute("transform", `scale(${sx} ${sy})`);
+  }
+  const dash = dashArray(el.st);
+  if (dash) path.setAttribute("stroke-dasharray", dash);
+  g.append(path);
+}
+
 function renderSticky(g: SVGGElement, el: BoardEl & { c: string; tx: string }): void {
   g.append(
     svgEl("rect", {
@@ -500,6 +524,7 @@ export function renderElement(el: BoardEl, ctx: RenderContext): SVGGElement {
   else if (el.t === "image") renderImage(g, el as never, ctx);
   else if (el.t === "frame") renderFrame(g, el as never);
   else if (el.t === "mind") renderMind(g, el, ctx);
+  else if (el.t === "draw") renderDraw(g, el);
   else if (isShape(el)) renderShape(g, el);
   return g;
 }
