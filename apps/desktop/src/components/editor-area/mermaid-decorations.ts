@@ -5,6 +5,9 @@ import { foldableSyntaxFacet } from "@/lib/prosemark-core/main";
 import { renderMermaid } from "./mermaid-renderer";
 import { MERMAID_CANVAS_HEIGHT, MermaidCanvasHandle, mountMermaidCanvas } from "./mermaid-canvas";
 import { openMermaidFullscreen } from "./mermaid-fullscreen";
+import { formatMarkdownDestination } from "@/lib/paths";
+import { mermaidToElements } from "./board/board-mermaid";
+import { createBoardFromMermaid, openBoardFile } from "./board/board-file-session";
 import "./mermaid-canvas.css";
 
 // Outer widget padding (top + bottom). `mermaid-canvas.css` splits this
@@ -26,6 +29,7 @@ class MermaidWidget extends WidgetType {
   constructor(
     readonly body: string,
     readonly fenceText: string,
+    readonly getFilePath: () => string | null,
   ) {
     super();
   }
@@ -59,12 +63,14 @@ class MermaidWidget extends WidgetType {
     // the same frame it enters the DOM — no IntersectionObserver, no async
     // gap that can leave the user stuck on a placeholder.
     const result = renderMermaid(this.body);
+    const convertible = Boolean(this.getFilePath()) && mermaidToElements(this.body) !== null;
     const handle = mountMermaidCanvas(host, {
       svgHtml: result.svg ?? "",
       ariaLabel,
       source: this.fenceText,
       onSourceChange,
       onExpand,
+      onConvertToBoard: convertible ? () => void convertToBoard(view, host, this) : undefined,
     });
     if (result.error) handle.updateSource("", this.fenceText, result.error);
     widgetHandles.set(wrapper, handle);
@@ -126,6 +132,40 @@ function findEnclosingFencedCode(view: EditorView, host: HTMLElement) {
  * of editing the full fence, and the user can recover by completing the
  * fence again.
  */
+/**
+ * Lark's "upgrade to board": the fence becomes a `.board.svg` image line in one
+ * transaction (⌘Z brings the diagram back), then the board opens. Nothing is
+ * touched if the file cannot be written or the fence moved meanwhile.
+ */
+async function convertToBoard(
+  view: EditorView,
+  host: HTMLElement,
+  widget: MermaidWidget,
+): Promise<void> {
+  const notePath = widget.getFilePath();
+  if (!notePath) return;
+  try {
+    const file = await createBoardFromMermaid(notePath, widget.body);
+    const fence = findEnclosingFencedCode(view, host);
+    if (!fence || view.state.doc.sliceString(fence.from, fence.to) !== widget.fenceText) {
+      throw new Error("the diagram changed while it was being converted");
+    }
+    view.dispatch({
+      changes: {
+        from: fence.from,
+        to: fence.to,
+        insert: `![Board](${formatMarkdownDestination(file.relative)})`,
+      },
+    });
+    await openBoardFile(file.absolute, notePath);
+  } catch (error) {
+    console.error("[mermaid] convert to board failed", error);
+    window.alert(
+      `Couldn't convert this diagram: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 function writeFenceText(view: EditorView, host: HTMLElement, next: string): void {
   const fence = findEnclosingFencedCode(view, host);
   if (!fence) return;
@@ -165,31 +205,36 @@ function parseFencedCode(
   return { info, source };
 }
 
-const mermaidFoldExtension = foldableSyntaxFacet.of({
-  nodePath: "FencedCode",
-  keepDecorationOnUnfold: true,
-  buildDecorations: (state, node) => {
-    const parsed = parseFencedCode(state, node);
-    if (!parsed) return undefined;
+const noPath = (): string | null => null;
 
-    if (!parsed.info.trim().toLowerCase().startsWith("mermaid")) return undefined;
+const mermaidFoldExtension = (getFilePath: () => string | null) =>
+  foldableSyntaxFacet.of({
+    nodePath: "FencedCode",
+    keepDecorationOnUnfold: true,
+    buildDecorations: (state, node) => {
+      const parsed = parseFencedCode(state, node);
+      if (!parsed) return undefined;
 
-    const body = parsed.source.trim();
-    if (!body) return undefined;
+      if (!parsed.info.trim().toLowerCase().startsWith("mermaid")) return undefined;
 
-    const fenceText = state.doc.sliceString(node.from, node.to);
-    const widget = new MermaidWidget(body, fenceText);
-    // Always replace the entire fence with the rendered canvas. Editing
-    // happens inside the canvas (a nested editor panel), not by exposing
-    // the underlying markdown via selection — so there's no preview/edit
-    // decoration switch.
-    return Decoration.replace({ widget, block: true, inclusiveStart: true }).range(
-      node.from,
-      node.to,
-    );
-  },
-});
+      const body = parsed.source.trim();
+      if (!body) return undefined;
 
-export function mermaidDecorations() {
-  return [mermaidFoldExtension];
+      const fenceText = state.doc.sliceString(node.from, node.to);
+      const widget = new MermaidWidget(body, fenceText, getFilePath);
+      // Always replace the entire fence with the rendered canvas. Editing
+      // happens inside the canvas (a nested editor panel), not by exposing
+      // the underlying markdown via selection — so there's no preview/edit
+      // decoration switch.
+      return Decoration.replace({ widget, block: true, inclusiveStart: true }).range(
+        node.from,
+        node.to,
+      );
+    },
+  });
+
+/** `getFilePath` enables "Convert to board" (a board file needs a folder);
+ *  read-only hosts such as the link preview omit it. */
+export function mermaidDecorations(getFilePath: () => string | null = noPath) {
+  return [mermaidFoldExtension(getFilePath)];
 }

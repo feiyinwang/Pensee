@@ -387,6 +387,20 @@
   visibility: hidden;
 }
 
+/* Quick-connect dots (Lark's blue side dots). */
+.wr-board-qdot {
+  fill: color-mix(in srgb, var(--accent) 55%, transparent);
+  stroke: var(--wr-board-surface);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  cursor: crosshair;
+  transition: fill var(--motion-fast) var(--ease-out);
+}
+
+.wr-board-qdot:hover {
+  fill: var(--accent);
+}
+
 .wr-board-placeholder {
   fill: var(--wr-board-muted);
   opacity: 0.7;

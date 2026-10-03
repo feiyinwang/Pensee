@@ -37,6 +37,13 @@ const SOURCE_CHANGE_DEBOUNCE_MS = 150;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const CODE_ICON_PATHS = ["m16 18 6-6-6-6", "m8 6-6 6 6 6", "m13 4-2 16"] as const;
+const BOARD_ICON_PATHS = [
+  "M4 6h16v10H4z",
+  "M9 16l-2 4",
+  "M15 16l2 4",
+  "M8 9.5h3.5",
+  "M8 12.5h6",
+] as const;
 const RESET_ICON_PATHS = ["M3 12a9 9 0 1 0 2.64-6.36L3 8", "M3 3v5h5"] as const;
 
 export type MermaidCanvasOptions = {
@@ -50,6 +57,8 @@ export type MermaidCanvasOptions = {
   onExpand?: () => void;
   // Mount the close button (✕) in the top-right cluster — used inside the fullscreen dialog.
   onClose?: () => void;
+  // Mount "Convert to board" in the top-right cluster — only for diagram types a board can hold.
+  onConvertToBoard?: () => void;
 };
 
 export type MermaidCanvasHandle = {
@@ -144,6 +153,14 @@ export function mountMermaidCanvas(
     if (editing && innerView) innerView.focus();
     else host.focus();
   };
+
+  if (opts.onConvertToBoard) {
+    const convert = makeButton("", "Convert to board");
+    convert.classList.add("cm-mermaid-canvas-icon-btn");
+    setButtonIcon(convert, BOARD_ICON_PATHS);
+    convert.addEventListener("click", () => opts.onConvertToBoard?.());
+    topCluster.append(convert);
+  }
 
   if (editingEnabled) {
     editButton = makeButton("", "Edit code");

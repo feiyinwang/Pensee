@@ -132,7 +132,7 @@ export function createEditorExtensions(
     // needed so dropped image files land next to the note they were dropped on.
     columnsDecorations(getFilePath),
     htmlBlockDecorations(),
-    mermaidDecorations(),
+    mermaidDecorations(getFilePath),
     // Next to mermaid on purpose: same fenced-code fold mechanism, same
     // full-screen-overlay pattern. `getFilePath` is needed so pasted images
     // land in this note's assets folder instead of being inlined.

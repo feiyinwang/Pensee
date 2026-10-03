@@ -19,7 +19,15 @@ import {
   isLinker,
   isShape,
 } from "./board-model";
-import { type Point, headAngle, pathD, routeLinker, svgOutlinePath } from "./board-geometry";
+import {
+  LINKER_LABEL_PAD,
+  type Point,
+  headAngle,
+  pathD,
+  polylineMidpoint,
+  routeLinker,
+  svgOutlinePath,
+} from "./board-geometry";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -53,6 +61,10 @@ const measureCache = new Map<string, number>();
 
 export const BOARD_FONT =
   'ui-sans-serif, -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+
+export function measureText(text: string, size: number): number {
+  return measure(text, size);
+}
 
 function measure(text: string, size: number, weight = 400): number {
   const key = `${size}|${weight}|${text}`;
@@ -363,6 +375,26 @@ function renderLinker(g: SVGGElement, el: LinkerEl, ctx: RenderContext): void {
     const at = which === "s" ? pts[0] : pts[pts.length - 1];
     const angle = headAngle(pts, which);
     g.append(arrowHead(kind, at, angle, stroke, el.st.w));
+  }
+
+  if (el.lb?.tx) {
+    // On a knock-out of the board colour, so the line does not run through it.
+    const m = polylineMidpoint(pts);
+    const lines = el.lb.tx.split("\n");
+    const size = el.lb.sz;
+    const w = Math.max(...lines.map((l) => measure(l, size))) + LINKER_LABEL_PAD * 2;
+    const h = lines.length * size * LINE_HEIGHT;
+    g.append(
+      svgEl("rect", {
+        x: m.x - w / 2,
+        y: m.y - h / 2,
+        width: w,
+        height: h,
+        rx: 4,
+        fill: "var(--wr-board-surface)",
+      }),
+    );
+    appendLines(g, lines, { x: m.x, y: m.y - h / 2, size, align: "c", fill: colorVar("ink") });
   }
 }
 

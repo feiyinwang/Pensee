@@ -43,10 +43,11 @@ The toolbar is React + Arc (Popover, Tooltip, SegmentedControl, `motion` springs
 
 1. **Portable storage** (this change): the file format, the enhancer on image previews, `/board` creating a file, and fence migration.
 2. **Core editing polish** (the user's priority): sticky notes, shapes with text inside, fill / border colour / width / dash, paste pictures. Done: the selection toolbar; sticky text centred and fitted (22→11px); labels centred using a CSS-matching baseline (`baselineIn`), so drawn and edited text sit on the same pixel; an "Add text" hint; typing on a single selected shape, note or text starts editing (tool shortcuts still work with nothing selected); and shapes are hit anywhere inside, not only on the border.
-3. **Mind maps and flowcharts:** a mind-map node type with auto layout (Tab adds a child, Enter adds a sibling), flowchart connectors that follow their shapes, and import of `mermaid` flowchart/mindmap fences into editable boards.
-4. **Arc board chrome:** the tools rail becomes Arc Pro's Dock; menus and the template picker move to Arc too, all lazy-loaded with the selection toolbar. Pro items install with `ARC_PRO_TOKEN` (see `docs/arc.md`).
-5. **Present mode:** sections become slides; arrow keys move the camera between them with spring transitions.
-6. **Later:** templates, icon library, batch edit, pen tool, PNG/PDF export, import, find & replace, swimlanes, PlantUML. Comments, translate and mobile are out of scope for a local-first app.
+3. **Flowcharts (done):** quick connect (side dots: click adds a blank copy of the shape plus a bound elbow arrow and selects it; drag draws a connector from that side), connector labels (`lb` on lines, drawn at the midpoint on a knock-out, edited like any text), elbow routing between facing side midpoints (`sideAnchor`/`orthogonalRoute`), connector hits tested against the routed path, and Mermaid flowchart import (`board-mermaid.ts`: parser for nodes, shapes, labelled/dashed/chained/grouped links; longest-path ranks, one barycentre sweep, back edges curved). Two ways in: **Convert to board** on a Mermaid block, and pasting Mermaid text onto a board. The rotate handle moved to the bottom-left corner (Lark) to free the top dot.
+4. **Mind maps:** a mind-map node type with auto layout (Tab adds a child, Enter adds a sibling), and import of `mermaid` mindmap fences.
+5. **Arc board chrome:** the tools rail becomes Arc Pro's Dock; menus and the template picker move to Arc too, all lazy-loaded with the selection toolbar. Pro items install with `ARC_PRO_TOKEN` (see `docs/arc.md`).
+6. **Present mode:** sections become slides; arrow keys move the camera between them with spring transitions.
+7. **Later:** templates, icon library, batch edit, pen tool, PNG/PDF export, import, find & replace, swimlanes, PlantUML. Comments, translate and mobile are out of scope for a local-first app.
 
 ## Non-goals
 

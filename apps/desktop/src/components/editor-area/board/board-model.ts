@@ -136,6 +136,8 @@ export interface LinkerEl extends Base {
   b2?: Binding;
   hd: { s: ArrowHead; e: ArrowHead };
   st: Style;
+  /** text on the line, drawn at its midpoint (flowchart "yes" / "no") */
+  lb?: { tx: string; sz: number };
 }
 
 export interface FrameEl extends Base {
@@ -327,9 +329,12 @@ function parseElement(raw: unknown): BoardEl | null {
       .map((p) => [num(p[0], 0), num(p[1], 0)] as [number, number]);
     if (pts.length < 2) pts.push([0, 0], [100, 0]);
     const hd = (o.hd ?? {}) as Record<string, unknown>;
+    const rawLb = (o.lb ?? null) as Record<string, unknown> | null;
+    const lbText = rawLb ? str(rawLb.tx, "") : "";
     return {
       ...base,
       t,
+      ...(lbText ? { lb: { tx: lbText, sz: num(rawLb?.sz, 13) } } : {}),
       sh: str(o.sh, "straight") as LinkerShape,
       pts,
       b1: parseBinding(o.b1),
@@ -451,6 +456,7 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
       if (el.hd.s !== "none" || el.hd.e !== defEnd) o.hd = el.hd;
       const st = pruneStyle(el.st);
       if (st) o.st = st;
+      if (el.lb?.tx) o.lb = el.lb.sz === 13 ? { tx: el.lb.tx } : { tx: el.lb.tx, sz: el.lb.sz };
       break;
     }
     case "frame": {
@@ -555,13 +561,17 @@ export function childrenOf(scene: BoardScene, frameId: string): BoardEl[] {
 
 export function textOf(el: BoardEl): string {
   if (el.t === "text" || el.t === "sticky") return el.tx;
+  if (isLinker(el)) return el.lb?.tx ?? "";
   if (isShape(el)) return el.lb?.tx ?? "";
   return "";
 }
 
 export function setTextOf(el: BoardEl, text: string): void {
   if (el.t === "text" || el.t === "sticky") el.tx = text;
-  else if (isShape(el)) {
+  else if (isLinker(el)) {
+    if (text) el.lb = { tx: text, sz: el.lb?.sz ?? 13 };
+    else delete el.lb;
+  } else if (isShape(el)) {
     if (text) el.lb = { ...el.lb, tx: text, sz: el.lb?.sz ?? 14, al: el.lb?.al ?? "c" };
     else delete el.lb;
   }

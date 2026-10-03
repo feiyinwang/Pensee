@@ -50,6 +50,7 @@ import {
   handlePositions,
   resizeBox,
   rotate,
+  polylineMidpoint,
   routeLinker,
   snapMove,
 } from "./board-geometry";
@@ -61,10 +62,21 @@ import {
   SceneRenderer,
   backgroundDefs,
   fitFontSize,
+  measureText,
   svgEl,
 } from "./board-render";
+import { mermaidToElements } from "./board-mermaid";
 import { type ToolId, type ToolState, type Toolbar, buildToolbar } from "./board-tools";
 import { applyAlign, applyFontSize, applyTextColor, summarizeSelection } from "./board-selection";
+import {
+  SIDES,
+  type Side,
+  blankCopy,
+  canQuickConnect,
+  connectorBetween,
+  nextStepBox,
+  quickDots,
+} from "./board-flow";
 import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
 
 /* -------------------------------------------------------------- constants */
@@ -73,7 +85,9 @@ import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-se
 const SCREEN = {
   hitSlop: 8,
   handle: 9,
-  rotateOffset: 26,
+  /** Quick-connect dots: distance outside the box, and radius. */
+  quickOffset: 22,
+  quickDot: 5,
   snap: 6,
   minDrag: 4,
 } as const;
@@ -103,6 +117,8 @@ export interface BoardCanvasHandle {
 
 type Interaction =
   | { kind: "none" }
+  /** Pressed a quick-connect dot: a click adds the next step, a drag draws a connector. */
+  | { kind: "quick"; side: Side; src: string; origin: Point }
   | { kind: "pan"; startClient: Point; startVp: Viewport }
   | { kind: "marquee"; origin: Point; current: Point; additive: boolean }
   | { kind: "drag"; origin: Point; startEls: Map<string, BoardEl>; moved: boolean }
@@ -489,27 +505,33 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
 
     if (selection.size === 1) {
-      const p = { x: box.x + box.w / 2, y: box.y - px(SCREEN.rotateOffset) };
-      overlay.append(
-        svgEl("line", {
-          x1: box.x + box.w / 2,
-          y1: box.y,
-          x2: p.x,
-          y2: p.y,
-          class: "wr-board-handle-stem",
-          "stroke-width": px(1),
-        }),
-      );
+      // Bottom-left, off the corner (Lark): the top-centre spot belongs to
+      // the quick-connect dot.
+      const p = rotateHandlePoint(box, z);
       overlay.append(
         svgEl("circle", {
           cx: p.x,
           cy: p.y,
           r: size / 2,
-          class: "wr-board-handle",
+          class: "wr-board-handle is-rotate",
           "stroke-width": px(1),
           "data-handle": "rot",
         }),
       );
+    }
+    if (single && canQuickConnect(single) && !activeEditor && interaction.kind === "none") {
+      const dots = quickDots(box, px(SCREEN.quickOffset));
+      for (const side of SIDES) {
+        overlay.append(
+          svgEl("circle", {
+            cx: dots[side].x,
+            cy: dots[side].y,
+            r: px(SCREEN.quickDot),
+            class: "wr-board-qdot",
+            "data-side": side,
+          }),
+        );
+      }
     }
   }
 
@@ -547,11 +569,16 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const right = left + box.w * v.zoom;
     const bottom = top + box.h * v.zoom;
     const margin = 8;
-    const below = bottom + SCREEN.handle + 10;
-    const above = top - SCREEN.rotateOffset - SCREEN.handle - 10 - h;
+    // Clear of the quick-connect dots and the corner rotate handle.
+    const clear = SCREEN.quickOffset + SCREEN.quickDot + 12;
+    const below = bottom + clear;
+    const above = top - clear - h;
     let y = below + h > hostRect.height - 64 && above > 56 ? above : below;
     y = Math.min(Math.max(y, 56), hostRect.height - h - margin);
-    const x = Math.min(Math.max((left + right) / 2 - w / 2, margin), hostRect.width - w - margin);
+    // Never under the tools rail on the left.
+    const rail = host.querySelector(".wr-board-rail")?.getBoundingClientRect();
+    const minX = rail ? rail.right - hostRect.left + margin : margin;
+    const x = Math.min(Math.max((left + right) / 2 - w / 2, minX), hostRect.width - w - margin);
     selToolbarHost.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
 
@@ -871,10 +898,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     area.className = "wr-board-text-editor";
     area.value = textOf(el) + (typed ?? "");
     area.spellcheck = false;
-    const centred = el.t === "sticky" || isShape(el);
+    // A connector label edits in a box centred on the line's midpoint.
+    const mid = isLinker(el) ? polylineMidpoint(routeLinker(scene, el)) : null;
+    const frame = mid
+      ? { x: mid.x - 90, y: mid.y - 24, w: 180, h: 48 }
+      : { x: el.x, y: el.y, w: el.w, h: el.h };
+    const centred = el.t === "sticky" || isShape(el) || Boolean(mid);
     const pad = el.t === "sticky" ? 16 : isShape(el) ? 10 : 0;
-    const boxW = Math.max(el.w - pad * 2, 60);
-    const boxH = Math.max(el.h - pad * 2, 20);
+    const boxW = Math.max(frame.w - pad * 2, 60);
+    const boxH = Math.max(frame.h - pad * 2, 20);
     // Match what the renderer will draw, so nothing jumps when editing ends.
     const size =
       el.t === "text"
@@ -883,9 +915,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           ? fitFontSize(area.value || "M", boxW, boxH, STICKY_FONT_MAX, STICKY_FONT_MIN).size
           : isShape(el)
             ? (el.lb?.sz ?? 14)
-            : 14;
-    const left = (el.x - v.x + pad) * v.zoom;
-    const top = (el.y - v.y + pad) * v.zoom;
+            : isLinker(el)
+              ? (el.lb?.sz ?? 13)
+              : 14;
+    const left = (frame.x - v.x + pad) * v.zoom;
+    const top = (frame.y - v.y + pad) * v.zoom;
     area.style.left = `${left}px`;
     area.style.width = `${boxW * v.zoom}px`;
     area.style.fontSize = `${size * v.zoom}px`;
@@ -896,7 +930,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           ? "center"
           : isShape(el)
             ? alignCss(el.lb?.al ?? "c")
-            : "left";
+            : mid
+              ? "center"
+              : "left";
     area.style.color = el.t === "sticky" ? "var(--wr-board-sticky-ink)" : "";
 
     /** Shapes and notes edit centred, like they render: the field is only as
@@ -980,7 +1016,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const tol = SCREEN.handle / z;
     const positions = handlePositions(box);
     if (selection.size === 1) {
-      const rotPoint = { x: box.x + box.w / 2, y: box.y - SCREEN.rotateOffset / z };
+      const rotPoint = rotateHandlePoint(box, z);
       if (Math.hypot(p.x - rotPoint.x, p.y - rotPoint.y) <= tol) return "rot";
     }
     const ids: HandleId[] =
@@ -992,6 +1028,31 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       if (Math.abs(p.x - pos.x) <= tol && Math.abs(p.y - pos.y) <= tol) return id;
     }
     return null;
+  }
+
+  function quickDotAt(p: Point): Side | null {
+    if (selection.size !== 1 || activeEditor) return null;
+    const el = findEl(scene, [...selection][0]);
+    if (!canQuickConnect(el)) return null;
+    const z = vp().zoom;
+    const dots = quickDots(elementBounds(el), SCREEN.quickOffset / z);
+    const reach = (SCREEN.quickDot + 5) / z;
+    return (
+      SIDES.find((side) => Math.hypot(p.x - dots[side].x, p.y - dots[side].y) <= reach) ?? null
+    );
+  }
+
+  /** Quick-connect click: a blank copy of the shape on that side, joined by
+   *  an elbow arrow, selected so typing labels it straight away. */
+  function addNextStep(srcId: string, side: Side): void {
+    const src = findEl(scene, srcId);
+    if (!canQuickConnect(src)) return;
+    pushHistory();
+    const next = blankCopy(src, nextStepBox(src, side, scene));
+    scene.els.push(connectorBetween(src, next), next);
+    selection = new Set([next.id]);
+    draw();
+    markDirty();
   }
 
   function snapshot(ids: Iterable<string>): Map<string, BoardEl> {
@@ -1023,6 +1084,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const tol = SCREEN.hitSlop / vp().zoom;
 
     if (tools.tool === "select") {
+      const side = quickDotAt(p);
+      if (side) {
+        interaction = { kind: "quick", side, src: [...selection][0], origin: p };
+        svg.setPointerCapture(e.pointerId);
+        return;
+      }
       const handle = handleAt(p);
       if (handle === "rot") {
         const box = selectionBox();
@@ -1121,6 +1188,23 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
 
     switch (interaction.kind) {
+      case "quick": {
+        const z = vp().zoom;
+        const o = interaction.origin;
+        if (Math.hypot(p.x - o.x, p.y - o.y) < (SCREEN.minDrag * 2) / z) return;
+        // Dragged off the dot: draw a connector out of that side instead.
+        const src = findEl(scene, interaction.src);
+        const el = makeElement("linker", o) as LinkerEl | null;
+        if (!src || !el) return;
+        el.t = "arrow";
+        el.sh = "elbow";
+        el.hd = { s: "none", e: "triangle" };
+        el.b1 = { el: src.id, fx: 0, gap: 4 };
+        scene.els.push(el);
+        interaction = { kind: "linking", el, origin: o };
+        onPointerMove(e);
+        return;
+      }
       case "pan": {
         const v = vp();
         v.x = interaction.startVp.x - (e.clientX - interaction.startClient.x) / v.zoom;
@@ -1254,6 +1338,16 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const current = interaction;
     interaction = { kind: "none" };
     activeGuides = [];
+    if (current.kind === "quick") {
+      try {
+        svg.releasePointerCapture(e.pointerId);
+      } catch {
+        /* capture may already be gone */
+      }
+      addNextStep(current.src, current.side);
+      renderStyle();
+      return;
+    }
     try {
       svg.releasePointerCapture(e.pointerId);
     } catch {
@@ -1409,7 +1503,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
       return;
     }
-    if (hit.t === "image" || isLinker(hit)) return;
+    if (hit.t === "image") return;
     selection = new Set([hit.id]);
     draw();
     startTextEdit(hit);
@@ -1553,7 +1647,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
     if (e.key === "Enter" && selection.size === 1) {
       const el = findEl(scene, [...selection][0]);
-      if (el && !isLinker(el) && el.t !== "image") {
+      if (el && el.t !== "image" && el.t !== "frame") {
         e.preventDefault();
         startTextEdit(el);
       }
@@ -1568,7 +1662,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     // shortcuts still work with nothing selected.
     if (!mod && !e.altKey && e.key.length === 1 && selection.size === 1) {
       const el = findEl(scene, [...selection][0]);
-      if (el && (isShape(el) || el.t === "sticky" || el.t === "text")) {
+      if (el && (isShape(el) || el.t === "sticky" || el.t === "text" || isLinker(el))) {
         e.preventDefault();
         startTextEdit(el, e.key);
         return;
@@ -1611,6 +1705,23 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
   }
 
+  /** Adds elements laid out from (0, 0), centred on `at`, as one undo step. */
+  function placeImported(els: BoardEl[], at: Point): void {
+    const box = boxesUnion(els.map((el) => elementBounds(el)));
+    if (!box) return;
+    const dx = at.x - (box.x + box.w / 2);
+    const dy = at.y - (box.y + box.h / 2);
+    pushHistory();
+    for (const el of els) {
+      el.x = Math.round(el.x + dx);
+      el.y = Math.round(el.y + dy);
+    }
+    scene.els.push(...els);
+    selection = new Set(els.map((el) => el.id));
+    draw();
+    markDirty();
+  }
+
   function onPaste(e: ClipboardEvent): void {
     if (activeEditor || opts.readOnly) return;
     const items = e.clipboardData?.items;
@@ -1628,6 +1739,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (!text) return;
     e.preventDefault();
     const at = viewCenterScene();
+    // Pasted Mermaid flowchart / mind map: drop it in as editable shapes.
+    const imported = mermaidToElements(text, measureText);
+    if (imported) {
+      placeImported(imported, at);
+      return;
+    }
     const el = makeElement("text", at) as TextEl | null;
     if (!el) return;
     el.tx = text;
@@ -1705,6 +1822,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       host.focus();
     },
   };
+}
+
+function rotateHandlePoint(box: Box, zoom: number): Point {
+  const off = 16 / zoom;
+  return { x: box.x - off, y: box.y + box.h + off };
 }
 
 function normalizeBox(a: Point, b: Point): Box {

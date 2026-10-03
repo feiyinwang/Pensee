@@ -300,9 +300,24 @@ export function elementAt(scene: BoardScene, p: Point, tol: number): BoardEl | n
   for (let i = scene.els.length - 1; i >= 0; i -= 1) {
     const el = scene.els[i];
     if (el.lk) continue;
-    if (hitTest(el, p, tol)) return el;
+    if (isLinker(el)) {
+      // Routed, not stored, points: a bound end follows its shape, and the
+      // stored point goes stale the moment that shape moves.
+      if (linkerHit(scene, el, p, tol)) return el;
+    } else if (hitTest(el, p, tol)) return el;
   }
   return null;
+}
+
+export const LINKER_LABEL_PAD = 6;
+
+function linkerHit(scene: BoardScene, el: LinkerEl, p: Point, tol: number): boolean {
+  const route = routeLinker(scene, el);
+  if (distToPolyline(p, route, false) <= tol + el.st.w) return true;
+  if (!el.lb?.tx) return false;
+  const m = polylineMidpoint(route);
+  const half = el.lb.tx.length * el.lb.sz * 0.3 + LINKER_LABEL_PAD;
+  return Math.abs(p.x - m.x) <= half && Math.abs(p.y - m.y) <= el.lb.sz;
 }
 
 /** Innermost frame whose interior contains the point — used for drop targeting. */
@@ -449,11 +464,73 @@ export function routeLinker(scene: BoardScene, el: LinkerEl): Point[] {
   if (t1 && el.b1) start = bindingPoint(t1, el.b1.fx, el.b1.gap, t2 ? centerOf(t2) : end);
   if (t2 && el.b2) end = bindingPoint(t2, el.b2.fx, el.b2.gap, t1 ? centerOf(t1) : start);
 
+  if (el.sh === "elbow" && t1 && t2 && el.b1 && el.b2) {
+    // Flowchart style: leave and arrive at the facing side midpoints.
+    return orthogonalRoute(
+      sideAnchor(t1, centerOf(t2), el.b1.gap),
+      sideAnchor(t2, centerOf(t1), el.b2.gap),
+    );
+  }
   if (el.sh === "elbow") return elbowRoute(start, end, [t1, t2].filter(Boolean) as BoardEl[]);
   if (raw.length > 2 && el.sh === "straight") {
     return [start, ...raw.slice(1, -1), end];
   }
   return [start, end];
+}
+
+export interface SideAnchor {
+  p: Point;
+  /** True when the anchor is on the left or right side. */
+  horizontal: boolean;
+}
+
+/** Midpoint of the side of `el` that faces `toward`, pushed out by `gap`.
+ *  The side is chosen relative to the box's own proportions, so a wide box
+ *  connects sideways to things level with it and vertically to things below. */
+export function sideAnchor(el: BoardEl, toward: Point, gap: number): SideAnchor {
+  const b = elementBounds(el);
+  const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+  const dx = toward.x - c.x;
+  const dy = toward.y - c.y;
+  if (Math.abs(dx) * b.h >= Math.abs(dy) * b.w) {
+    return { p: { x: dx >= 0 ? b.x + b.w + gap : b.x - gap, y: c.y }, horizontal: true };
+  }
+  return { p: { x: c.x, y: dy >= 0 ? b.y + b.h + gap : b.y - gap }, horizontal: false };
+}
+
+/** Right-angled path between two side anchors: a Z when both leave the same
+ *  way, an L when they meet at a corner. */
+export function orthogonalRoute(a: SideAnchor, b: SideAnchor): Point[] {
+  if (a.horizontal && b.horizontal) {
+    const mx = (a.p.x + b.p.x) / 2;
+    return [a.p, { x: mx, y: a.p.y }, { x: mx, y: b.p.y }, b.p];
+  }
+  if (!a.horizontal && !b.horizontal) {
+    const my = (a.p.y + b.p.y) / 2;
+    return [a.p, { x: a.p.x, y: my }, { x: b.p.x, y: my }, b.p];
+  }
+  return a.horizontal ? [a.p, { x: b.p.x, y: a.p.y }, b.p] : [a.p, { x: a.p.x, y: b.p.y }, b.p];
+}
+
+/** The point halfway along a polyline — where a connector's label sits. */
+export function polylineMidpoint(points: Point[]): Point {
+  if (points.length === 0) return { x: 0, y: 0 };
+  let total = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  }
+  let left = total / 2;
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1];
+    const b = points[i];
+    const seg = Math.hypot(b.x - a.x, b.y - a.y);
+    if (seg >= left && seg > 0) {
+      const t = left / seg;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+    left -= seg;
+  }
+  return points[points.length - 1];
 }
 
 /** Orthogonal 3-segment route. Picks the variant that stays clear of the two

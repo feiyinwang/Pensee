@@ -13,6 +13,8 @@ import { imageWidgetEnhancerFacet } from "@/lib/prosemark-core/main";
 import { decodeLinkPath, getParentDir, normalizeMarkdownDestination } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
 import { type BoardScene, emptyScene } from "./board-model";
+import { mermaidToElements } from "./board-mermaid";
+import { measureText } from "./board-render";
 import { isBoardFile, readBoardSvg, relativePath, renderBoardSvg } from "./board-file";
 import { openBoardFullscreen } from "./board-fullscreen";
 
@@ -172,6 +174,18 @@ export async function createBoardFile(
   }
   await saveBoardFile(saved.absolute_path, scene);
   return { relative: saved.relative_path, absolute: saved.absolute_path };
+}
+
+/** A board file built from a Mermaid diagram, centred on the origin. */
+export async function createBoardFromMermaid(
+  notePath: string,
+  source: string,
+): Promise<{ relative: string; absolute: string }> {
+  const els = mermaidToElements(source, measureText);
+  if (!els) throw new Error("Only Mermaid flowcharts and mind maps can become boards.");
+  const scene = emptyScene();
+  scene.els = els;
+  return createBoardFile(notePath, scene);
 }
 
 /* ---------------------------------------------------------------- open */
