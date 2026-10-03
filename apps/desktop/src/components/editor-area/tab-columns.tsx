@@ -142,6 +142,12 @@ export function TabColumns() {
       spent = true;
       const focus = travel < 0;
       if (focus === focusedOneRef.current) return;
+      // Zoom into the column under the pointer, not necessarily the active one.
+      const hovered = (event.target as Element).closest<HTMLElement>("[data-column-tab]");
+      const hoveredTab = hovered?.dataset.columnTab;
+      if (focus && hoveredTab && hoveredTab !== useEditorStore.getState().activeTabId) {
+        useEditorStore.getState().setActiveTab(hoveredTab);
+      }
       strip.dataset.zoom = focus ? "in" : "out";
       setFocusedOne(focus);
     };
