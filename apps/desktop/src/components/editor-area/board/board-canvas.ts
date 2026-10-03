@@ -73,6 +73,7 @@ import {
 import { mermaidToElements } from "./board-mermaid";
 import { strokeFrom } from "./board-draw";
 import { fitView, lerpBox, lerpView, slideOrder } from "./board-present";
+import { findMatches, replaceInElement } from "./board-search";
 import {
   addMindChild,
   addMindSibling,
@@ -141,6 +142,8 @@ export interface BoardCanvasHandle {
   destroy: () => void;
   flush: () => BoardScene;
   focus: () => void;
+  /** Opens find & replace (⌘F, routed here by the overlay). */
+  find: () => void;
 }
 
 type Interaction =
@@ -178,6 +181,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   let disposed = false;
   /** Arc Dock for tools; null until its lazy chunk arrives (see below). */
   let toolDock: ToolDockHandle | null = null;
+  /** Find & replace results (ids in reading order) and the current one. */
+  let matches: string[] = [];
+  let matchIndex = -1;
 
   const past: string[] = [];
   const future: string[] = [];
@@ -425,6 +431,26 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     overlay.replaceChildren();
     const z = vp().zoom;
     const px = (n: number) => n / z;
+
+    if (matches.length) {
+      for (const [i, id] of matches.entries()) {
+        const el = findEl(scene, id);
+        if (!el) continue;
+        const b = elementBounds(el);
+        const pad = px(4);
+        overlay.append(
+          svgEl("rect", {
+            x: b.x - pad,
+            y: b.y - pad,
+            width: b.w + pad * 2,
+            height: b.h + pad * 2,
+            rx: px(6),
+            class: i === matchIndex ? "wr-board-match is-current" : "wr-board-match",
+            "stroke-width": px(i === matchIndex ? 2.5 : 1.5),
+          }),
+        );
+      }
+    }
 
     if (interaction.kind === "pen" && interaction.pts.length > 1) {
       overlay.append(
@@ -1146,6 +1172,147 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   function alignCss(a: "l" | "c" | "r"): string {
     return a === "c" ? "center" : a === "r" ? "right" : "left";
   }
+
+  /* ---------------------------------------------------- find & replace */
+
+  const findBar = document.createElement("div");
+  findBar.className = "wr-board-find";
+  findBar.hidden = true;
+  findBar.setAttribute("role", "search");
+  const findInput = document.createElement("input");
+  findInput.type = "text";
+  findInput.placeholder = "Find on board";
+  findInput.setAttribute("aria-label", "Find on board");
+  const replaceInput = document.createElement("input");
+  replaceInput.type = "text";
+  replaceInput.placeholder = "Replace with";
+  replaceInput.setAttribute("aria-label", "Replace with");
+  const findCount = document.createElement("span");
+  findCount.className = "wr-board-find-count";
+  findCount.setAttribute("aria-live", "polite");
+  function findButton(label: string, text: string, onClick: () => void): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "wr-board-find-btn";
+    b.textContent = text;
+    b.setAttribute("aria-label", label);
+    b.addEventListener("click", onClick);
+    return b;
+  }
+  findBar.append(
+    findInput,
+    findCount,
+    findButton("Previous match", "↑", () => stepMatch(-1)),
+    findButton("Next match", "↓", () => stepMatch(1)),
+    replaceInput,
+    findButton("Replace", "Replace", () => replaceCurrent()),
+    findButton("Replace all", "All", () => replaceAll()),
+    findButton("Close find", "✕", () => closeFind()),
+  );
+  // Typing here must not reach the board's own shortcuts.
+  findBar.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeFind();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.target === replaceInput) replaceCurrent();
+      else stepMatch(e.shiftKey ? -1 : 1);
+    }
+  });
+  findBar.addEventListener("pointerdown", (e) => e.stopPropagation());
+  host.append(findBar);
+
+  function openFind(): void {
+    if (presenting) return;
+    closeTextEdit();
+    findBar.hidden = false;
+    findInput.focus();
+    findInput.select();
+    runFind();
+  }
+
+  function closeFind(): void {
+    findBar.hidden = true;
+    matches = [];
+    matchIndex = -1;
+    drawOverlay();
+    host.focus();
+  }
+
+  function runFind(keepIndex = false): void {
+    matches = findMatches(scene, findInput.value);
+    matchIndex = matches.length
+      ? keepIndex
+        ? Math.min(Math.max(matchIndex, 0), matches.length - 1)
+        : 0
+      : -1;
+    showMatch();
+  }
+
+  function stepMatch(dir: 1 | -1): void {
+    if (!matches.length) return;
+    matchIndex = (matchIndex + dir + matches.length) % matches.length;
+    showMatch();
+  }
+
+  /** Counts, selects and centres the current match. */
+  function showMatch(): void {
+    findCount.textContent = findInput.value
+      ? matches.length
+        ? `${matchIndex + 1} of ${matches.length}`
+        : "No results"
+      : "";
+    const el = matchIndex >= 0 ? findEl(scene, matches[matchIndex]) : undefined;
+    if (el) {
+      selection = new Set([el.id]);
+      const box = elementBounds(el);
+      const rect = svg.getBoundingClientRect();
+      const v = vp();
+      const onScreen =
+        box.x >= v.x &&
+        box.y >= v.y &&
+        box.x + box.w <= v.x + rect.width / v.zoom &&
+        box.y + box.h <= v.y + rect.height / v.zoom;
+      if (!onScreen) {
+        v.x = box.x + box.w / 2 - rect.width / v.zoom / 2;
+        v.y = box.y + box.h / 2 - rect.height / v.zoom / 2;
+        applyViewport();
+      }
+    }
+    draw();
+  }
+
+  function afterReplace(touched: BoardEl[]): void {
+    const roots = new Set<string>();
+    for (const el of touched) {
+      if (isMind(el)) roots.add(mindRoot(scene, el).id);
+      if (el.t === "text") el.h = Math.max(24, (el.tx.split("\n").length || 1) * el.sz * 1.35);
+    }
+    for (const id of roots) layoutMind(scene, id, measureText);
+    markDirty();
+    runFind(true);
+  }
+
+  function replaceCurrent(): void {
+    const el = matchIndex >= 0 ? findEl(scene, matches[matchIndex]) : undefined;
+    if (!el || !findInput.value) return;
+    pushHistory();
+    replaceInElement(el, findInput.value, replaceInput.value);
+    afterReplace([el]);
+  }
+
+  /** Every match in one undo step. */
+  function replaceAll(): void {
+    if (!matches.length || !findInput.value) return;
+    pushHistory();
+    const touched = matches.map((id) => findEl(scene, id)).filter(Boolean) as BoardEl[];
+    for (const el of touched) replaceInElement(el, findInput.value, replaceInput.value);
+    afterReplace(touched);
+  }
+
+  findInput.addEventListener("input", () => runFind());
 
   /* ---------------------------------------------------------- present */
 
@@ -2187,6 +2354,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     flush() {
       closeTextEdit();
       return scene;
+    },
+    find() {
+      openFind();
     },
     focus() {
       host.focus();

@@ -112,6 +112,8 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     if (mod && SWALLOWED.has(e.key.toLowerCase())) {
       e.preventDefault();
       e.stopPropagation();
+      // ⌘F stays out of the note behind, but is the board's own find.
+      if (e.key.toLowerCase() === "f") canvas?.find();
       return;
     }
     if (mod && e.key.toLowerCase() === "z") {

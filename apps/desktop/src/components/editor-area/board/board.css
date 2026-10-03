@@ -784,3 +784,77 @@
 .wr-board-present-btn:hover {
   background: var(--item-hover-bg);
 }
+
+/* ------------------------------------------------------- find & replace */
+
+.wr-board-find {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 22%);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  transform: translateX(-50%);
+}
+
+.wr-board-find[hidden] {
+  display: none;
+}
+
+.wr-board-find input {
+  width: 160px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  background: var(--surface-input, transparent);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.wr-board-find input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.wr-board-find-count {
+  min-width: 64px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.wr-board-find-btn {
+  height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wr-board-find-btn:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.wr-board-match {
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent) 45%, transparent);
+  pointer-events: none;
+}
+
+.wr-board-match.is-current {
+  stroke: var(--accent);
+}
