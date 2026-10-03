@@ -7,7 +7,7 @@
  * `SelectionSummary`; this file only renders it and reports picks back.
  */
 
-import { type ReactNode, useSyncExternalStore } from "react";
+import { type ReactNode, useLayoutEffect, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
@@ -576,13 +576,19 @@ function Root({
   subscribe,
   actions,
   onBusy,
+  onCommit,
 }: {
   getSummary: () => SelectionSummary | null;
   subscribe: (fn: () => void) => () => void;
   actions: SelectionToolbarActions;
   onBusy: (open: boolean) => void;
+  onCommit: () => void;
 }) {
   const summary = useSyncExternalStore(subscribe, getSummary);
+  // The bar's size is only known once React has committed it; tell the canvas
+  // then, so it can place the bar. (A ResizeObserver alone is late, and does
+  // not fire at all in a hidden window.)
+  useLayoutEffect(onCommit, [summary, onCommit]);
   return (
     <AnimatePresence>
       {summary && <Toolbar key="tb" summary={summary} actions={actions} onBusy={onBusy} />}
@@ -593,6 +599,7 @@ function Root({
 export function mountSelectionToolbar(
   host: HTMLElement,
   actions: SelectionToolbarActions,
+  onCommit: () => void,
 ): SelectionToolbarHandle {
   ensureArcTokens();
   const root = createRoot(host);
@@ -608,6 +615,7 @@ export function mountSelectionToolbar(
         return () => listeners.delete(fn);
       }}
       actions={actions}
+      onCommit={onCommit}
       onBusy={(open) => {
         openMenus = Math.max(0, openMenus + (open ? 1 : -1));
       }}

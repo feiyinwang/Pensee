@@ -2,6 +2,7 @@
 
 ## 2026-10-03
 
+- Boards are much snappier. Panning, dragging and pinch-zooming now run at your display's full frame rate (about 8ms a frame on a 120Hz screen, down from 47ms for panning and 23ms for zooming), even with 300 items on the board. The dot grid no longer redraws on every move, zooming stretches the view and sharpens it as soon as you stop, and moving around the board no longer re-saves the file each time. See [SPECs/board-lark-parity-spec.md](./SPECs/board-lark-parity-spec.md#performance).
 - Board templates. A new, empty board opens with a template picker (Blank, Flowchart, Mind map, Kanban, Retrospective, SWOT, Swimlanes and Slides), each with a live preview. **Templates** in the board's top bar adds one to any board. **More → Select all like this** selects every item of the same kind so you can restyle them all at once. The top-bar buttons (Close, Present, Templates, Export) now show their icons and labels in full instead of being clipped.
 - Pinch on the trackpad to switch between one tab and all your open tabs. Pinch out (spread your fingers) over a tab to zoom into that tab; pinch in to see every open tab side by side again. Pinching on a board or diagram still zooms that board or diagram.
 - Export a board as a PNG (2× resolution, white background, good for slides and chat) or an SVG (opens anywhere, pictures included). With something selected, only the selection is exported: a section comes with what's inside it, and arrows come along when both their ends do.

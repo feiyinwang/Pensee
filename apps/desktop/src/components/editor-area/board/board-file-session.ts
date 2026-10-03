@@ -117,16 +117,26 @@ const lastText = new Map<string, string>();
 const chains = new Map<string, Promise<void>>();
 const versions = new Map<string, number>();
 
-export function saveBoardFile(absolute: string, scene: BoardScene): Promise<void> {
+/** Files written since their in-note preview was last refreshed. */
+const stalePreviews = new Set<string>();
+
+/**
+ * `refresh` reloads the note's `<img>` for this board. Only the final commit
+ * (closing the board) asks for it: reloading means the webview decodes the
+ * whole SVG again, behind the board, after every debounced save.
+ */
+export function saveBoardFile(absolute: string, scene: BoardScene, refresh = true): Promise<void> {
   const prev = chains.get(absolute) ?? Promise.resolve();
   const next = prev
     .then(async () => {
       const text = await boardFileText(scene, getParentDir(absolute));
-      if (lastText.get(absolute) === text) return;
-      await tauri.writeFile(absolute, text);
-      lastText.set(absolute, text);
-      versions.set(absolute, (versions.get(absolute) ?? 0) + 1);
-      refreshPreviews(absolute);
+      if (lastText.get(absolute) !== text) {
+        await tauri.writeFile(absolute, text);
+        lastText.set(absolute, text);
+        versions.set(absolute, (versions.get(absolute) ?? 0) + 1);
+        stalePreviews.add(absolute);
+      }
+      if (refresh && stalePreviews.delete(absolute)) refreshPreviews(absolute);
     })
     .catch((error) => {
       console.error(`[board] could not save ${absolute}`, error);
@@ -204,7 +214,7 @@ export async function openBoardFile(
     scene: parsed.scene,
     resolveSrc: editorResolver(dir),
     importImage: importerFor(notePath, dir),
-    onCommit: (scene) => void saveBoardFile(absolute, scene),
+    onCommit: (scene) => void saveBoardFile(absolute, scene, false),
     onFinalCommit: (scene) => void saveBoardFile(absolute, scene),
     present,
     exportSvg: (scene) => boardFileText(scene, dir),

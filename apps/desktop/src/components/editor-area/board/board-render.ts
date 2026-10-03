@@ -513,6 +513,13 @@ function needsTransform(el: BoardEl): boolean {
   return !isLinker(el);
 }
 
+/** Elements whose drawing does not depend on their own position, so a move
+ *  is just a new transform. Not linkers (absolute routes) and not mind topics
+ *  (their branch is drawn relative to the parent). */
+function movesByTransform(el: BoardEl): boolean {
+  return needsTransform(el) && el.t !== "mind";
+}
+
 export function renderElement(el: BoardEl, ctx: RenderContext): SVGGElement {
   const g = svgEl("g", { "data-el": el.id, "data-type": el.t });
   if (needsTransform(el)) g.setAttribute("transform", transformFor(el));
@@ -534,6 +541,8 @@ export function renderElement(el: BoardEl, ctx: RenderContext): SVGGElement {
 export class SceneRenderer {
   private nodes = new Map<string, SVGGElement>();
   private stamps = new Map<string, string>();
+  /** Last x/y per element, for the move-only fast path. */
+  private places = new Map<string, string>();
 
   constructor(private readonly layer: SVGGElement) {}
 
@@ -544,14 +553,23 @@ export class SceneRenderer {
 
     for (const el of visible) {
       seen.add(el.id);
-      const stamp = stampOf(el, scene);
+      // Position is kept out of the stamp where it can be: dragging a shape
+      // then only rewrites its group's transform instead of rebuilding it
+      // (Excalidraw's "moving never re-renders the element" rule).
+      const movable = movesByTransform(el);
+      const stamp = stampOf(movable ? { ...el, x: 0, y: 0 } : el, scene);
+      const place = `${el.x},${el.y}`;
       const existing = this.nodes.get(el.id);
       let node: SVGGElement | undefined = existing;
       if (!existing || this.stamps.get(el.id) !== stamp) {
         node = renderElement(el, ctx);
         this.stamps.set(el.id, stamp);
+        this.places.set(el.id, place);
         if (existing) existing.replaceWith(node);
         this.nodes.set(el.id, node);
+      } else if (movable && this.places.get(el.id) !== place) {
+        existing.setAttribute("transform", transformFor(el));
+        this.places.set(el.id, place);
       }
       if (!node) continue;
       // Keep DOM order equal to z-order without rebuilding the layer.
@@ -570,6 +588,7 @@ export class SceneRenderer {
       node.remove();
       this.nodes.delete(id);
       this.stamps.delete(id);
+      this.places.delete(id);
     }
   }
 
@@ -605,33 +624,4 @@ function stampOf(el: BoardEl, scene: BoardScene): string {
     }
   }
   return base;
-}
-
-/* ------------------------------------------------------------- background */
-
-export function backgroundDefs(): SVGDefsElement {
-  const defs = svgEl("defs");
-  const dot = svgEl("pattern", {
-    id: "wr-board-dots",
-    width: 24,
-    height: 24,
-    patternUnits: "userSpaceOnUse",
-  });
-  dot.append(svgEl("circle", { cx: 1, cy: 1, r: 1, fill: "var(--wr-board-dot)" }));
-  const grid = svgEl("pattern", {
-    id: "wr-board-grid",
-    width: 24,
-    height: 24,
-    patternUnits: "userSpaceOnUse",
-  });
-  grid.append(
-    svgEl("path", {
-      d: "M24 0 L0 0 0 24",
-      fill: "none",
-      stroke: "var(--wr-board-dot)",
-      "stroke-width": 1,
-    }),
-  );
-  defs.append(dot, grid);
-  return defs;
 }

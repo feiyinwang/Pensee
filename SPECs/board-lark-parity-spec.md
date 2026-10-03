@@ -39,6 +39,29 @@ A control appears when at least one selected element can take it, and shows the 
 
 The toolbar is React + Arc (Popover, Tooltip, SegmentedControl, `motion` springs). It is lazy-loaded on the first board open, and Arc's tokens are injected scoped (see `arc-tokens.ts`, `docs/arc.md`).
 
+## Performance
+
+Measured in the real app (WKWebView, 120Hz display, frame-to-frame time with one input event per frame). The JavaScript was never the problem (about 1ms per pointer event); painting was.
+
+| | Before | After |
+| --- | --- | --- |
+| Pan | 47ms avg, 110ms max | 8ms median, 10ms max |
+| Drag a shape | 17ms avg, 71ms max | 8ms avg |
+| Pinch/⌘-scroll zoom | 23ms median, 41ms p90 | 8ms median, 10ms p90 |
+| 300 elements, drag / pan | — | 8ms / 10ms avg |
+| Open a board | — | 6–24ms to first content |
+
+What made the difference, in order of impact. Several follow Excalidraw's renderer (`renderer/staticScene.ts`, `renderElement.ts`, `throttleRAF`, `shouldCacheIgnoreZoom`):
+
+1. **Grid off the SVG.** The dot grid was an SVG `<pattern>`. WebKit re-rasterised the full-screen pattern whenever its transform was touched, which happened every pan frame: about 45ms a frame on its own. It is now a CSS background on a composited layer (`.wr-board-grid-layer`), moved with `translate3d` snapped to the spacing, and re-tiled only when zoom changes. Like Excalidraw, the grid hides below 10px spacing.
+2. **Zoom gestures stretch, then commit.** Mid-gesture, the svg and the grid get a compositor-only CSS transform from the last painted viewport to the live one, and the real repaint happens 160ms after the last step (`zoomGesture`; Excalidraw does the same with `shouldCacheIgnoreZoom` and 300ms). The preview and the committed result match to 0.00px.
+3. **No saves on viewport moves.** Pan and zoom used to end in a full file save: re-rendering the board SVG, inlining pictures, writing, and reloading the note's preview image behind the board. A viewport change is not an edit. It is written with the next change or on close. Debounced saves no longer reload the preview; only closing does.
+4. **One update per frame.** Pointer moves are coalesced into a single `requestAnimationFrame` (Excalidraw's `throttleRAF`). Pen strokes still keep every point through `getCoalescedEvents`. A pending move is flushed before pointer-up.
+5. **Moving does not re-render.** For elements whose drawing does not depend on their position, the reconciler stamps without x/y and only rewrites the group's `transform` on a move. Linkers and mind topics are the exception, because their geometry depends on others.
+6. **No forced layout per event.** The stage rect is cached (refreshed on resize and pointer-down) instead of `getBoundingClientRect` on every pointer event. The zoom label and selection toolbar are only touched when their content changes. The toolbar is placed from a React layout effect once its size is known, rather than waiting for a `ResizeObserver`.
+
+Not adopted: Excalidraw's per-element bitmap cache. It belongs to a `<canvas>` renderer, and with the above the SVG renderer already holds 120fps at 300 elements.
+
 ## Phases
 
 1. **Portable storage** (this change): the file format, the enhancer on image previews, `/board` creating a file, and fence migration.

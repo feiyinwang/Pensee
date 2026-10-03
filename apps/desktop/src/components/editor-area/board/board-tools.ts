@@ -421,7 +421,9 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
       for (const [id, btn] of railButtons) btn.classList.toggle("is-active", id === tool);
     },
     setZoom(zoom) {
-      zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+      // Called every pan frame; only touch the DOM when the number changes.
+      const text = `${Math.round(zoom * 100)}%`;
+      if (zoomLabel.textContent !== text) zoomLabel.textContent = text;
     },
     setHistory(canUndo, canRedo) {
       undoBtn.disabled = !canUndo;

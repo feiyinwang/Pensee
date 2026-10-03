@@ -66,7 +66,6 @@ import {
   STICKY_FONT_MAX,
   STICKY_FONT_MIN,
   SceneRenderer,
-  backgroundDefs,
   fitFontSize,
   measureText,
   svgEl,
@@ -124,6 +123,8 @@ const SCREEN = {
 } as const;
 
 const CULL_THRESHOLD = 300;
+/** Grid spacing in scene units. */
+const GRID_STEP = 24;
 const HISTORY_LIMIT = 120;
 const ZOOM_STEP = 1.2;
 
@@ -207,14 +208,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   host.classList.add("wr-board-host");
   host.tabIndex = 0;
 
+  // The dot grid is a CSS background on its own composited layer, NOT an SVG
+  // <pattern>: WebKit re-rasterised the full-screen pattern whenever its
+  // transform was touched, which made every pan frame ~45ms (measured; 8ms
+  // with it gone). Panning now only moves this layer, snapped to the spacing.
+  const gridLayer = document.createElement("div");
+  gridLayer.className = "wr-board-grid-layer";
+  host.append(gridLayer);
   const svg = svgEl("svg", { class: "wr-board-svg" });
-  svg.append(backgroundDefs());
-  const bg = svgEl("rect", { x: 0, y: 0, width: "100%", height: "100%" });
   const world = svgEl("g", { class: "wr-board-world" });
   const content = svgEl("g", { class: "wr-board-content" });
   const overlay = svgEl("g", { class: "wr-board-overlay" });
   world.append(content, overlay);
-  svg.append(bg, world);
+  svg.append(world);
   host.append(svg);
 
   const editorLayer = document.createElement("div");
@@ -268,8 +274,17 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   const vp = () => scene.header.vp;
 
+  /** The stage's screen rect, cached. Reading it per pointer event forced a
+   *  synchronous layout after every frame's DOM writes; it only changes on
+   *  resize, so it is refreshed then and at the start of each gesture. */
+  let cachedStageRect: DOMRect | null = null;
+  function stageRect(): DOMRect {
+    cachedStageRect ??= svg.getBoundingClientRect();
+    return cachedStageRect;
+  }
+
   function screenToScene(clientX: number, clientY: number): Point {
-    const rect = svg.getBoundingClientRect();
+    const rect = stageRect();
     const v = vp();
     return {
       x: (clientX - rect.left) / v.zoom + v.x,
@@ -278,32 +293,57 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   function viewCenterScene(): Point {
-    const rect = svg.getBoundingClientRect();
+    const rect = stageRect();
     return screenToScene(rect.left + rect.width / 2, rect.top + rect.height / 2);
   }
 
+  let gridKey = "";
+  /** Re-tiles only when zoom or grid kind changes; a pan is one transform. */
+  function applyGrid(v: Viewport): void {
+    const size = GRID_STEP * v.zoom;
+    // Like Excalidraw, no fine grid once its spacing drops under 10px.
+    const show = scene.header.bg !== "none" && size >= 10;
+    gridLayer.hidden = !show;
+    if (!show) return;
+    const key = `${scene.header.bg}|${size}`;
+    if (key !== gridKey) {
+      gridKey = key;
+      gridLayer.dataset.kind = scene.header.bg;
+      gridLayer.style.setProperty("--grid", `${size}px`);
+    }
+    const mod = (n: number) => ((n % size) + size) % size;
+    const ox = mod(-v.x * v.zoom) - size;
+    const oy = mod(-v.y * v.zoom) - size;
+    paintedGrid = `translate3d(${ox}px, ${oy}px, 0)`;
+    gridLayer.style.transform = paintedGrid;
+  }
+
+  /** The viewport the SVG and grid were last really painted at. */
+  let painted: Viewport = { ...scene.header.vp };
+  let paintedGrid = "";
+
   function applyViewport(): void {
     const v = vp();
+    // Any real paint ends an in-flight zoom preview.
+    if (zoomSettleTimer !== -1) {
+      window.clearTimeout(zoomSettleTimer);
+      zoomSettleTimer = -1;
+    }
+    host.classList.remove("is-zooming");
+    svg.style.transform = "";
+    painted = { ...v };
     world.setAttribute(
       "transform",
       `translate(${-v.x * v.zoom} ${-v.y * v.zoom}) scale(${v.zoom})`,
     );
-    const pattern = scene.header.bg === "grid" ? "wr-board-grid" : "wr-board-dots";
-    bg.setAttribute("fill", scene.header.bg === "none" ? "transparent" : `url(#${pattern})`);
-    bg.setAttribute(
-      "transform",
-      `translate(${(-v.x * v.zoom) % (24 * v.zoom)} ${(-v.y * v.zoom) % (24 * v.zoom)})`,
-    );
-    const dots = svg.querySelector("#wr-board-dots");
-    const grid = svg.querySelector("#wr-board-grid");
-    for (const p of [dots, grid]) {
-      if (p) p.setAttribute("patternTransform", `scale(${v.zoom})`);
-    }
+    applyGrid(v);
     toolbar.setZoom(v.zoom);
     placeSelectionToolbar();
   }
 
-  function setZoom(next: number, anchorClient?: Point): void {
+  /** Moves the viewport to `next` zoom, keeping `anchorClient` (or the centre)
+   *  fixed on screen. Updates state only; callers decide how to paint. */
+  function zoomViewport(next: number, anchorClient?: Point): void {
     const v = vp();
     const zoom = clampZoom(next);
     if (anchorClient) {
@@ -313,16 +353,48 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       v.x += before.x - after.x;
       v.y += before.y - after.y;
     } else {
-      const rect = svg.getBoundingClientRect();
+      const rect = stageRect();
       const cx = v.x + rect.width / v.zoom / 2;
       const cy = v.y + rect.height / v.zoom / 2;
       v.zoom = zoom;
       v.x = cx - rect.width / zoom / 2;
       v.y = cy - rect.height / zoom / 2;
     }
+  }
+
+  /** Buttons and shortcuts: one step, painted at once. No save — a viewport
+   *  change is not an edit (it is written with the next change or on close). */
+  function setZoom(next: number, anchorClient?: Point): void {
+    zoomViewport(next, anchorClient);
     applyViewport();
     draw();
-    markDirty();
+  }
+
+  /* Pinch / ⌘-scroll zoom. Excalidraw stretches cached bitmaps mid-gesture and
+     re-rasterises once afterwards; the SVG equivalent is a compositor-only CSS
+     transform from the last painted viewport to the live one, committed as a
+     real repaint once the gesture rests. Re-rendering the SVG and re-tiling
+     the grid on every step measured ~23ms a frame even on a tiny board. */
+  const ZOOM_SETTLE_MS = 160;
+  let zoomSettleTimer = -1;
+
+  function zoomGesture(next: number, anchorClient: Point): void {
+    zoomViewport(next, anchorClient);
+    const c = painted;
+    const n = vp();
+    const s = n.zoom / c.zoom;
+    const t = `translate(${(c.x - n.x) * n.zoom}px, ${(c.y - n.y) * n.zoom}px) scale(${s})`;
+    host.classList.add("is-zooming");
+    svg.style.transform = t;
+    gridLayer.style.transform = `${t} ${paintedGrid}`;
+    toolbar.setZoom(n.zoom);
+    placeSelectionToolbar();
+    window.clearTimeout(zoomSettleTimer);
+    zoomSettleTimer = window.setTimeout(() => {
+      zoomSettleTimer = -1;
+      applyViewport();
+      draw();
+    }, ZOOM_SETTLE_MS);
   }
 
   function zoomBy(factor: number): void {
@@ -332,7 +404,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   function zoomToFit(): void {
     const boxes = scene.els.map((el) => elementBounds(el));
     const union = boxesUnion(boxes);
-    const rect = svg.getBoundingClientRect();
+    const rect = stageRect();
     if (!union || union.w <= 0 || union.h <= 0) {
       const v = vp();
       v.zoom = 1;
@@ -410,7 +482,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function visibleElements(): BoardEl[] {
     if (scene.els.length < CULL_THRESHOLD) return scene.els;
-    const rect = svg.getBoundingClientRect();
+    const rect = stageRect();
     const v = vp();
     const view: Box = {
       x: v.x - 200 / v.zoom,
@@ -628,12 +700,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   host.append(selToolbarHost);
   let selToolbar: SelectionToolbarHandle | null = null;
 
+  let lastSummaryKey = "-";
   function renderStyle(): void {
     if (!selToolbar) return;
     const busy = interaction.kind !== "none";
     const els = [...selection].map((id) => findEl(scene, id)).filter(Boolean) as BoardEl[];
-    selToolbar.update(busy || opts.readOnly ? null : summarizeSelection(els, scene));
-    placeSelectionToolbar();
+    const summary = busy || opts.readOnly ? null : summarizeSelection(els, scene);
+    // Unchanged during a drag (null) or a pan: skip React and the re-place.
+    const key = summary ? JSON.stringify(summary) : "";
+    if (key !== lastSummaryKey) {
+      lastSummaryKey = key;
+      selToolbar.update(summary);
+    }
+    if (summary) placeSelectionToolbar();
   }
 
   /** Centred under the selection, clear of the handles; flips above when it
@@ -644,8 +723,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const { w, h } = selToolbar.size();
     if (!box || !w) return;
     const v = vp();
-    const hostRect = host.getBoundingClientRect();
-    const svgRect = svg.getBoundingClientRect();
+    // The svg fills the host, so one cached rect serves for both.
+    const hostRect = stageRect();
+    const svgRect = hostRect;
     const left = svgRect.left - hostRect.left + (box.x - v.x) * v.zoom;
     const top = svgRect.top - hostRect.top + (box.y - v.y) * v.zoom;
     const right = left + box.w * v.zoom;
@@ -659,7 +739,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     let y = below + h > hostRect.height - bottomChrome && above > 56 ? above : below;
     y = Math.min(Math.max(y, 56), hostRect.height - h - margin);
     // Never under the tools rail on the left.
-    const rail = host.querySelector(".wr-board-rail")?.getBoundingClientRect();
+    const rail = host.classList.contains("has-dock")
+      ? null
+      : host.querySelector(".wr-board-rail")?.getBoundingClientRect();
     const minX = rail ? rail.right - hostRect.left + margin : margin;
     const x = Math.min(Math.max((left + right) / 2 - w / 2, minX), hostRect.width - w - margin);
     selToolbarHost.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
@@ -707,7 +789,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   void import("./board-selection-toolbar")
     .then((m) => {
       if (disposed) return;
-      selToolbar = m.mountSelectionToolbar(selToolbarHost, selectionActions);
+      selToolbar = m.mountSelectionToolbar(selToolbarHost, selectionActions, () =>
+        placeSelectionToolbar(),
+      );
       renderStyle();
     })
     .catch((error: unknown) => console.error("[board] selection toolbar failed to load", error));
@@ -1393,7 +1477,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (el) {
       selection = new Set([el.id]);
       const box = elementBounds(el);
-      const rect = svg.getBoundingClientRect();
+      const rect = stageRect();
       const v = vp();
       const onScreen =
         box.x >= v.x &&
@@ -1528,7 +1612,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const state = presenting;
     const next = Math.max(0, Math.min(state.slides.length - 1, index));
     if (next === state.index) return;
-    const rect = svg.getBoundingClientRect();
+    const rect = stageRect();
     const fromView = { ...vp() };
     const fromHole = state.hole;
     const toHole = state.slides[next];
@@ -1653,6 +1737,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   function onPointerDown(e: PointerEvent): void {
+    cachedStageRect = null;
     if (presenting) {
       // A click advances, like a slide deck; the board is not editable here.
       if (e.button === 0) goToSlide(presenting.index + 1);
@@ -1787,6 +1872,41 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     draw();
   }
 
+  /* Pointer moves are coalesced to one update per frame (Excalidraw's
+     throttleRAF): a 120Hz trackpad can deliver several per frame, and each
+     used to redraw. Pen points are the exception — they are all kept, using
+     the browser's coalesced events, and only the drawing waits a frame. */
+  let pendingMove: PointerEvent | null = null;
+  let moveFrame = 0;
+
+  function onPointerMoveRaw(e: PointerEvent): void {
+    if (interaction.kind === "pen") {
+      const z = vp().zoom;
+      for (const ce of e.getCoalescedEvents?.() ?? [e]) {
+        const p = screenToScene(ce.clientX, ce.clientY);
+        const last = interaction.pts[interaction.pts.length - 1];
+        if (Math.hypot(p.x - last.x, p.y - last.y) * z >= 1.5) interaction.pts.push(p);
+      }
+    }
+    pendingMove = e;
+    if (!moveFrame) moveFrame = requestAnimationFrame(flushMove);
+  }
+
+  function flushMove(): void {
+    moveFrame = 0;
+    const e = pendingMove;
+    pendingMove = null;
+    if (e) onPointerMove(e);
+  }
+
+  /** Applies a still-pending move before a gesture ends, so the last position
+   *  is never dropped. */
+  function flushPendingMove(): void {
+    if (!moveFrame) return;
+    cancelAnimationFrame(moveFrame);
+    flushMove();
+  }
+
   function onPointerMove(e: PointerEvent): void {
     const p = screenToScene(e.clientX, e.clientY);
 
@@ -1807,11 +1927,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
     switch (interaction.kind) {
       case "pen": {
-        const last = interaction.pts[interaction.pts.length - 1];
-        if (Math.hypot(p.x - last.x, p.y - last.y) * vp().zoom >= 1.5) {
-          interaction.pts.push(p);
-          drawOverlay();
-        }
+        // Points were collected as they arrived (onPointerMoveRaw).
+        drawOverlay();
         return;
       }
       case "quick": {
@@ -1960,6 +2077,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   function onPointerUp(e: PointerEvent): void {
+    flushPendingMove();
     const p = screenToScene(e.clientX, e.clientY);
     const current = interaction;
     interaction = { kind: "none" };
@@ -1998,7 +2116,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
     switch (current.kind) {
       case "pan": {
-        markDirty();
+        // No save: a viewport move is not an edit. The view is written with
+        // the next real change, or on close (the final commit always runs).
+        drawOverlay();
         break;
       }
       case "marquee": {
@@ -2157,20 +2277,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (presenting) return;
     if (e.ctrlKey || e.metaKey) {
       const factor = Math.exp(-e.deltaY / 260);
-      setZoom(vp().zoom * factor, { x: e.clientX, y: e.clientY });
+      zoomGesture(vp().zoom * factor, { x: e.clientX, y: e.clientY });
       return;
     }
     const v = vp();
     v.x += e.deltaX / v.zoom;
     v.y += e.deltaY / v.zoom;
     applyViewport();
-    scheduleViewportSave();
-  }
-
-  let viewportSaveTimer = -1;
-  function scheduleViewportSave(): void {
-    window.clearTimeout(viewportSaveTimer);
-    viewportSaveTimer = window.setTimeout(() => markDirty(), 400);
+    renderStyle();
   }
 
   /* -------------------------------------------------------- keyboard */
@@ -2429,7 +2543,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   /* ---------------------------------------------------------- wiring */
 
   svg.addEventListener("pointerdown", onPointerDown);
-  svg.addEventListener("pointermove", onPointerMove);
+  svg.addEventListener("pointermove", onPointerMoveRaw);
   svg.addEventListener("pointerup", onPointerUp);
   svg.addEventListener("pointercancel", onPointerUp);
   svg.addEventListener("dblclick", onDoubleClick);
@@ -2441,6 +2555,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   host.addEventListener("dragover", onDragOver);
 
   const resizeObserver = new ResizeObserver(() => {
+    cachedStageRect = null;
     applyViewport();
     draw();
   });
@@ -2457,7 +2572,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   return {
     destroy() {
       disposed = true;
-      window.clearTimeout(viewportSaveTimer);
       resizeObserver.disconnect();
       selToolbarResize.disconnect();
       selToolbar?.destroy();
@@ -2465,7 +2579,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       toolDock?.destroy();
       toolDock = null;
       svg.removeEventListener("pointerdown", onPointerDown);
-      svg.removeEventListener("pointermove", onPointerMove);
+      svg.removeEventListener("pointermove", onPointerMoveRaw);
+      if (moveFrame) cancelAnimationFrame(moveFrame);
       svg.removeEventListener("pointerup", onPointerUp);
       svg.removeEventListener("pointercancel", onPointerUp);
       svg.removeEventListener("dblclick", onDoubleClick);

@@ -95,7 +95,10 @@ describe("Board selection toolbar", function () {
         r(document.querySelector('.wr-board-seltb [role="toolbar"]')),
       ];
     });
-    ok(barRect.top > shapeRect.bottom, "toolbar is not below the shape");
+    ok(
+      barRect.top > shapeRect.bottom,
+      `toolbar is not below the shape: bar ${JSON.stringify(barRect)} shape ${JSON.stringify(shapeRect)}`,
+    );
     const shapeMid = shapeRect.left + shapeRect.width / 2;
     const barMid = barRect.left + barRect.width / 2;
     ok(Math.abs(shapeMid - barMid) < 4, `toolbar not centred (${shapeMid} vs ${barMid})`);

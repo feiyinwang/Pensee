@@ -310,6 +310,36 @@
   font-family: var(--ui-font);
 }
 
+/* One tile wider and taller than the stage: it is shifted by up to one tile. */
+.wr-board-grid-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% + var(--grid, 24px));
+  height: calc(100% + var(--grid, 24px));
+  background-image: radial-gradient(circle at 1px 1px, var(--wr-board-dot) 1px, transparent 1.5px);
+  background-size: var(--grid, 24px) var(--grid, 24px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.wr-board-grid-layer[data-kind="grid"] {
+  background-image:
+    linear-gradient(to right, var(--wr-board-dot) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--wr-board-dot) 1px, transparent 1px);
+}
+
+.wr-board-grid-layer[hidden] {
+  display: none;
+}
+
+/* Mid-zoom the svg and grid are scaled as layers (see zoomGesture). */
+.wr-board-host.is-zooming .wr-board-svg,
+.wr-board-host.is-zooming .wr-board-grid-layer {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
 .wr-board-svg {
   position: absolute;
   inset: 0;
@@ -726,8 +756,12 @@
   display: none;
 }
 
-.wr-board-host.is-presenting .wr-board-svg > rect {
-  fill: var(--wr-board-surface);
+.wr-board-host.is-presenting .wr-board-grid-layer {
+  display: none;
+}
+
+.wr-board-host.is-presenting {
+  background: var(--wr-board-surface);
 }
 
 .wr-board-host.is-presenting {
