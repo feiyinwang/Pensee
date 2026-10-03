@@ -60,6 +60,19 @@ What made the difference, in order of impact. Several follow Excalidraw's render
 5. **Moving does not re-render.** For elements whose drawing does not depend on their position, the reconciler stamps without x/y and only rewrites the group's `transform` on a move. Linkers and mind topics are the exception, because their geometry depends on others.
 6. **No forced layout per event.** The stage rect is cached (refreshed on resize and pointer-down) instead of `getBoundingClientRect` on every pointer event. The zoom label and selection toolbar are only touched when their content changes. The toolbar is placed from a React layout effect once its size is known, rather than waiting for a `ResizeObserver`.
 
+Second pass ("instant no matter what I move"), measured A/B against the previous build on a mixed board (sections, sticky notes, a flowchart, a 13-topic mind map, a large picture), interleaved runs:
+
+| | Before | After |
+| --- | --- | --- |
+| Input → drawing changes, every kind of move | 8–10ms (one frame) | ~1ms (same frame) |
+| Frame time while moving | 8–11ms | 8–10ms |
+| Click to select, to next frame | 16ms | 10ms median |
+
+7. **Same-frame moves.** The first pointer move in a frame is applied synchronously, and later moves in that frame fold into one when it turns. Deferring every move to `requestAnimationFrame` had added a full frame of lag. Trackpad scrolling gets the same treatment.
+8. **Gestures touch only what can change.** At drag, resize or rotate start, the set that can change is fixed: the moving elements plus connectors bound to them. Each frame re-renders only that set (`SceneRenderer.renderSome`), with no stamp pass over the rest of the board. Mind topics are stamped relative to their parent, so dragging a whole map is transforms only. Selecting skips the element pass entirely.
+9. **The toolbar stays out of the frame.** While the selection is being moved, the bar is hidden by a class, with no React work. Its size is cached from React commits and resize entries, never read on the per-frame path, where it forced a full layout. It uses a tighter shadow than Arc's `--shadow-floating`, whose 55px blur is painted in software each time the bar reappears.
+10. **Culled boards re-cull while panning.** Above 300 elements, only what is near the screen is drawn. The view now redraws once it has moved half the 200px margin, so items scrolled into view appear.
+
 Not adopted: Excalidraw's per-element bitmap cache. It belongs to a `<canvas>` renderer, and with the above the SVG renderer already holds 120fps at 300 elements.
 
 ## Phases

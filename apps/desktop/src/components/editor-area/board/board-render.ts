@@ -514,10 +514,10 @@ function needsTransform(el: BoardEl): boolean {
 }
 
 /** Elements whose drawing does not depend on their own position, so a move
- *  is just a new transform. Not linkers (absolute routes) and not mind topics
- *  (their branch is drawn relative to the parent). */
+ *  is just a new transform. Not linkers: their routes are absolute. (Mind
+ *  topics qualify because their stamp is relative to the parent.) */
 function movesByTransform(el: BoardEl): boolean {
-  return needsTransform(el) && el.t !== "mind";
+  return needsTransform(el);
 }
 
 export function renderElement(el: BoardEl, ctx: RenderContext): SVGGElement {
@@ -546,6 +546,44 @@ export class SceneRenderer {
 
   constructor(private readonly layer: SVGGElement) {}
 
+  /**
+   * Updates only `els` — the elements a gesture can change. No culling or
+   * reordering pass, and no stamping of the rest of the board, so per-frame
+   * cost follows what moves, not board size. Returns false when an element has
+   * no node yet (e.g. dragged in from off-screen); the caller then renders all.
+   */
+  renderSome(scene: BoardScene, ctx: RenderContext, els: BoardEl[]): boolean {
+    for (const el of els) {
+      if (!this.nodes.has(el.id)) return false;
+      this.update(el, scene, ctx);
+    }
+    return true;
+  }
+
+  /** Re-renders or re-positions one existing-or-new node; returns it. */
+  private update(el: BoardEl, scene: BoardScene, ctx: RenderContext): SVGGElement {
+    // Position is kept out of the stamp where it can be: dragging a shape
+    // then only rewrites its group's transform instead of rebuilding it
+    // (Excalidraw's "moving never re-renders the element" rule).
+    const movable = movesByTransform(el);
+    const stamp = stampOf(el, scene, movable);
+    const place = `${el.x},${el.y}`;
+    const existing = this.nodes.get(el.id);
+    if (!existing || this.stamps.get(el.id) !== stamp) {
+      const node = renderElement(el, ctx);
+      this.stamps.set(el.id, stamp);
+      this.places.set(el.id, place);
+      if (existing) existing.replaceWith(node);
+      this.nodes.set(el.id, node);
+      return node;
+    }
+    if (movable && this.places.get(el.id) !== place) {
+      existing.setAttribute("transform", transformFor(el));
+      this.places.set(el.id, place);
+    }
+    return existing;
+  }
+
   /** `visible` is the culled subset; everything else is removed from the DOM. */
   render(scene: BoardScene, ctx: RenderContext, visible: BoardEl[]): void {
     const seen = new Set<string>();
@@ -553,25 +591,7 @@ export class SceneRenderer {
 
     for (const el of visible) {
       seen.add(el.id);
-      // Position is kept out of the stamp where it can be: dragging a shape
-      // then only rewrites its group's transform instead of rebuilding it
-      // (Excalidraw's "moving never re-renders the element" rule).
-      const movable = movesByTransform(el);
-      const stamp = stampOf(movable ? { ...el, x: 0, y: 0 } : el, scene);
-      const place = `${el.x},${el.y}`;
-      const existing = this.nodes.get(el.id);
-      let node: SVGGElement | undefined = existing;
-      if (!existing || this.stamps.get(el.id) !== stamp) {
-        node = renderElement(el, ctx);
-        this.stamps.set(el.id, stamp);
-        this.places.set(el.id, place);
-        if (existing) existing.replaceWith(node);
-        this.nodes.set(el.id, node);
-      } else if (movable && this.places.get(el.id) !== place) {
-        existing.setAttribute("transform", transformFor(el));
-        this.places.set(el.id, place);
-      }
-      if (!node) continue;
+      const node = this.update(el, scene, ctx);
       // Keep DOM order equal to z-order without rebuilding the layer.
       // Both locals are annotated: left to inference, `prev` and `shouldFollow`
       // resolve through each other across loop iterations and the checker gives
@@ -608,13 +628,18 @@ export class SceneRenderer {
  * stamp folds in the bound elements' geometry — otherwise moving a shape would
  * leave its arrows stale.
  */
-function stampOf(el: BoardEl, scene: BoardScene): string {
-  let base = JSON.stringify(el);
+/** What an element's drawing depends on. With `movable`, its own position is
+ *  left out (a move is then just a transform), so anything positional must be
+ *  relative: a topic's branch depends on where its parent is *from it*. That
+ *  is what lets a whole mind map be dragged without re-rendering a topic. */
+function stampOf(el: BoardEl, scene: BoardScene, movable: boolean): string {
+  let base = JSON.stringify(movable ? { ...el, x: 0, y: 0 } : el);
   if (el.t === "mind" && el.pa) {
     // Its branch is drawn from the parent, in an inherited colour.
     const parent = scene.els.find((e) => e.id === el.pa);
-    if (parent)
-      base += `|${parent.x},${parent.y},${parent.w},${parent.h}|${branchColor(scene, el)}`;
+    if (parent) {
+      base += `|${parent.x - el.x},${parent.y - el.y},${parent.w},${parent.h}|${branchColor(scene, el)}`;
+    }
   }
   if (isLinker(el)) {
     for (const b of [el.b1, el.b2]) {

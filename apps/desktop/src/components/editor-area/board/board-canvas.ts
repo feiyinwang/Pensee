@@ -123,6 +123,8 @@ const SCREEN = {
 } as const;
 
 const CULL_THRESHOLD = 300;
+/** Screen pixels drawn beyond each edge on culled boards. */
+const CULL_MARGIN = 200;
 /** Grid spacing in scene units. */
 const GRID_STEP = 24;
 const HISTORY_LIMIT = 120;
@@ -337,6 +339,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       `translate(${-v.x * v.zoom} ${-v.y * v.zoom}) scale(${v.zoom})`,
     );
     applyGrid(v);
+    recullSoon(v);
     toolbar.setZoom(v.zoom);
     placeSelectionToolbar();
   }
@@ -480,15 +483,32 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /* ------------------------------------------------------------ draw */
 
+  /** Viewport the culled element set was computed for. */
+  let culledFor: Viewport | null = null;
+  let recullFrame = 0;
+
+  /** Large boards draw only what is near the screen; once the view has moved
+   *  past the cull margin, redraw so newly visible elements appear. */
+  function recullSoon(v: Viewport): void {
+    if (scene.els.length < CULL_THRESHOLD || !culledFor || recullFrame) return;
+    const moved = Math.max(Math.abs(v.x - culledFor.x), Math.abs(v.y - culledFor.y)) * v.zoom;
+    if (moved < CULL_MARGIN / 2 && Math.abs(v.zoom / culledFor.zoom - 1) < 0.1) return;
+    recullFrame = requestAnimationFrame(() => {
+      recullFrame = 0;
+      renderer.render(scene, { resolveSrc: opts.resolveSrc, scene }, visibleElements());
+    });
+  }
+
   function visibleElements(): BoardEl[] {
     if (scene.els.length < CULL_THRESHOLD) return scene.els;
     const rect = stageRect();
     const v = vp();
+    culledFor = { ...v };
     const view: Box = {
-      x: v.x - 200 / v.zoom,
-      y: v.y - 200 / v.zoom,
-      w: rect.width / v.zoom + 400 / v.zoom,
-      h: rect.height / v.zoom + 400 / v.zoom,
+      x: v.x - CULL_MARGIN / v.zoom,
+      y: v.y - CULL_MARGIN / v.zoom,
+      w: (rect.width + CULL_MARGIN * 2) / v.zoom,
+      h: (rect.height + CULL_MARGIN * 2) / v.zoom,
     };
     return scene.els.filter((el) => boxesOverlap(elementBounds(el), view));
   }
@@ -497,6 +517,27 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     renderer.render(scene, { resolveSrc: opts.resolveSrc, scene }, visibleElements());
     drawOverlay();
     renderStyle();
+  }
+
+  /** What a gesture over `moving` can change: those elements plus connectors
+   *  bound to them. Worked out once per gesture (keyed on its snapshot). */
+  const gestureDirty = new WeakMap<Map<string, BoardEl>, BoardEl[]>();
+
+  /** A drag / resize / rotate frame: re-render only what can have changed. */
+  function drawGesture(moving: Map<string, BoardEl>): void {
+    let dirty = gestureDirty.get(moving);
+    if (!dirty) {
+      dirty = scene.els.filter(
+        (el) =>
+          moving.has(el.id) ||
+          (isLinker(el) && ((el.b1 && moving.has(el.b1.el)) || (el.b2 && moving.has(el.b2.el)))),
+      );
+      gestureDirty.set(moving, dirty);
+    }
+    const ctx = { resolveSrc: opts.resolveSrc, scene };
+    if (!renderer.renderSome(scene, ctx, dirty)) renderer.render(scene, ctx, visibleElements());
+    drawOverlay();
+    renderStyle(); // hides the selection toolbar for the gesture (a class toggle)
   }
 
   function selectionBox(): Box | null {
@@ -703,6 +744,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   let lastSummaryKey = "-";
   function renderStyle(): void {
     if (!selToolbar) return;
+    // While the selection itself is being moved, the bar is hidden by a class:
+    // no React work and no exit animation (unmounting cost a 25–45ms hitch at
+    // every drag start). Other gestures go through the normal path, so a click
+    // that clears the selection does not re-show a bar only to animate it out.
+    const moving =
+      interaction.kind === "drag" || interaction.kind === "resize" || interaction.kind === "rotate";
+    selToolbarHost.classList.toggle("is-hidden", moving);
+    if (moving) return;
     const busy = interaction.kind !== "none";
     const els = [...selection].map((id) => findEl(scene, id)).filter(Boolean) as BoardEl[];
     const summary = busy || opts.readOnly ? null : summarizeSelection(els, scene);
@@ -720,7 +769,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   function placeSelectionToolbar(): void {
     if (!selToolbar) return;
     const box = selectionBox();
-    const { w, h } = selToolbar.size();
+    // Cached: measuring here forced a full layout on every pan frame.
+    const { w, h } = toolbarSize;
     if (!box || !w) return;
     const v = vp();
     // The svg fills the host, so one cached rect serves for both.
@@ -747,7 +797,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     selToolbarHost.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
 
-  const selToolbarResize = new ResizeObserver(() => placeSelectionToolbar());
+  /** The bar's size, from React commits and resize entries (never measured on
+   *  the per-frame path). */
+  let toolbarSize = { w: 0, h: 0 };
+  const selToolbarResize = new ResizeObserver((entries) => {
+    const r = entries[entries.length - 1]?.contentRect;
+    if (r) toolbarSize = { w: r.width, h: r.height };
+    placeSelectionToolbar();
+  });
   selToolbarResize.observe(selToolbarHost);
 
   function mutateSelection(fn: (el: BoardEl) => void): void {
@@ -789,9 +846,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   void import("./board-selection-toolbar")
     .then((m) => {
       if (disposed) return;
-      selToolbar = m.mountSelectionToolbar(selToolbarHost, selectionActions, () =>
-        placeSelectionToolbar(),
-      );
+      selToolbar = m.mountSelectionToolbar(selToolbarHost, selectionActions, () => {
+        // Once per React commit (not per frame): the bar's new size.
+        if (selToolbar) toolbarSize = selToolbar.size();
+        placeSelectionToolbar();
+      });
       renderStyle();
     })
     .catch((error: unknown) => console.error("[board] selection toolbar failed to load", error));
@@ -874,7 +933,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       if (additive && selection.has(id)) selection.delete(id);
       else selection.add(id);
     }
-    draw();
+    // Selection never changes how elements are drawn: only the handles and
+    // the toolbar need updating, not a stamp pass over the whole board.
+    drawOverlay();
+    renderStyle();
   }
 
   function deleteSelection(): void {
@@ -1876,6 +1938,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
      throttleRAF): a 120Hz trackpad can deliver several per frame, and each
      used to redraw. Pen points are the exception — they are all kept, using
      the browser's coalesced events, and only the drawing waits a frame. */
+  /* The first move in a frame is applied at once, so it is painted in that
+     same frame (no added latency). Further moves in the same frame only update
+     `pendingMove`; the latest is applied when the frame turns. Deferring every
+     move to the next rAF instead cost one full frame of lag (measured 8ms). */
   let pendingMove: PointerEvent | null = null;
   let moveFrame = 0;
 
@@ -1888,23 +1954,29 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         if (Math.hypot(p.x - last.x, p.y - last.y) * z >= 1.5) interaction.pts.push(p);
       }
     }
-    pendingMove = e;
-    if (!moveFrame) moveFrame = requestAnimationFrame(flushMove);
+    if (moveFrame) {
+      pendingMove = e;
+      return;
+    }
+    onPointerMove(e);
+    moveFrame = requestAnimationFrame(turnFrame);
   }
 
-  function flushMove(): void {
+  function turnFrame(): void {
     moveFrame = 0;
     const e = pendingMove;
     pendingMove = null;
-    if (e) onPointerMove(e);
+    if (e) onPointerMoveRaw(e);
   }
 
   /** Applies a still-pending move before a gesture ends, so the last position
    *  is never dropped. */
   function flushPendingMove(): void {
-    if (!moveFrame) return;
-    cancelAnimationFrame(moveFrame);
-    flushMove();
+    if (moveFrame) cancelAnimationFrame(moveFrame);
+    moveFrame = 0;
+    const e = pendingMove;
+    pendingMove = null;
+    if (e) onPointerMove(e);
   }
 
   function onPointerMove(e: PointerEvent): void {
@@ -1989,7 +2061,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           el.x = clampCoord(start.x + dx);
           el.y = clampCoord(start.y + dy);
         }
-        draw();
+        drawGesture(interaction.startEls);
         return;
       }
       case "resize": {
@@ -2021,7 +2093,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             el.pts = start.pts.map(([qx, qy]) => [qx * sx, qy * sy] as [number, number]);
           }
         }
-        draw();
+        drawGesture(interaction.startEls);
         return;
       }
       case "rotate": {
@@ -2037,7 +2109,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           el.x = moved.x - start.w / 2;
           el.y = moved.y - start.h / 2;
         }
-        draw();
+        drawGesture(interaction.startEls);
         return;
       }
       case "create": {
@@ -2283,8 +2355,26 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const v = vp();
     v.x += e.deltaX / v.zoom;
     v.y += e.deltaY / v.zoom;
+    paintViewportSoon();
+  }
+
+  /** Trackpads send several wheel events per frame: paint the first at once,
+   *  fold the rest into one paint when the frame turns. */
+  let viewportFrame = 0;
+  let viewportDirty = false;
+  function paintViewportSoon(): void {
+    if (viewportFrame) {
+      viewportDirty = true;
+      return;
+    }
     applyViewport();
-    renderStyle();
+    viewportFrame = requestAnimationFrame(() => {
+      viewportFrame = 0;
+      if (viewportDirty) {
+        viewportDirty = false;
+        paintViewportSoon();
+      }
+    });
   }
 
   /* -------------------------------------------------------- keyboard */
@@ -2581,6 +2671,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       svg.removeEventListener("pointerdown", onPointerDown);
       svg.removeEventListener("pointermove", onPointerMoveRaw);
       if (moveFrame) cancelAnimationFrame(moveFrame);
+      if (viewportFrame) cancelAnimationFrame(viewportFrame);
+      if (recullFrame) cancelAnimationFrame(recullFrame);
       svg.removeEventListener("pointerup", onPointerUp);
       svg.removeEventListener("pointercancel", onPointerUp);
       svg.removeEventListener("dblclick", onDoubleClick);

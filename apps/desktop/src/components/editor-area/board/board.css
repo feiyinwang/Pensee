@@ -722,6 +722,12 @@
 
 /* -------------------------------------------------- selection toolbar */
 
+/* Positioned by board-canvas.ts; the toolbar inside is React + Arc. Hidden
+   instantly during gestures (no transition, no React update). */
+.wr-board-seltb.is-hidden {
+  visibility: hidden;
+}
+
 /* Positioned by board-canvas.ts; the toolbar inside is React + Arc. */
 .wr-board-seltb {
   position: absolute;
