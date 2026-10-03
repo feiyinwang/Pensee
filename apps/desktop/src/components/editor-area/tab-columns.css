@@ -187,23 +187,7 @@
   box-shadow: none;
 }
 
-/* ---- pinch between one tab and all columns ---------------------------- */
-
-/* Fade only: scaling the strip makes WebKit draw dark hairlines on the
-   islands' clipped, rounded edges while it resamples them. */
-.tab-columns[data-zoom] {
-  animation: tab-columns-zoom var(--motion-base) var(--ease-out);
-}
-@keyframes tab-columns-zoom {
-  from {
-    opacity: 0.4;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .tab-columns[data-zoom] {
-    animation: none;
-  }
   .tab-columns > .tab-column,
   .tab-columns[data-dragging] > .tab-column,
   .tab-columns > .tab-column[data-dragging][data-settling] {

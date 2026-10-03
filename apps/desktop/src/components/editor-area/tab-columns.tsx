@@ -51,7 +51,7 @@ function columnElement(strip: HTMLElement, tabId: string) {
 export function TabColumns() {
   const tabs = useOpenTabs();
   const activeTabId = useActiveTabId();
-  // Pinching out (zoom in) on the strip shows only the active tab, pinching
+  // Pinching out (zoom in) on a column shows only that tab, pinching
   // in (zoom out) shows every tab side by side again.
   const [focusedOne, setFocusedOne] = useState(false);
   const focusedOneRef = useRef(focusedOne);
@@ -148,7 +148,6 @@ export function TabColumns() {
       if (focus && hoveredTab && hoveredTab !== useEditorStore.getState().activeTabId) {
         useEditorStore.getState().setActiveTab(hoveredTab);
       }
-      strip.dataset.zoom = focus ? "in" : "out";
       setFocusedOne(focus);
     };
     // preventDefault stops the pinch from also zooming the page.
@@ -255,14 +254,7 @@ export function TabColumns() {
   );
 
   return (
-    <div
-      ref={stripRef}
-      className="tab-columns"
-      data-columns={isColumns || undefined}
-      onAnimationEnd={(event) => {
-        if (event.target === event.currentTarget) delete event.currentTarget.dataset.zoom;
-      }}
-    >
+    <div ref={stripRef} className="tab-columns" data-columns={isColumns || undefined}>
       {domOrder.map((tab) => {
         const index = tabs.indexOf(tab);
         const isActive = tab.id === activeTabId;
