@@ -1,5 +1,8 @@
 /**
- * CodeMirror integration for the ```board fence.
+ * CodeMirror integration for boards.
+ *
+ * A board is now a `.board.svg` image (see `board-file-session.ts`); this file
+ * still renders the legacy ```board fence and converts it on Open.
  *
  * The fence is replaced by a **static** preview card. It is deliberately not an
  * interactive canvas: an embedded infinite canvas competes with document scroll
@@ -12,70 +15,22 @@
 
 import { Decoration, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { foldableSyntaxFacet } from "@/lib/prosemark-core/main";
-import { decodeLinkPath, getParentDir, normalizeMarkdownDestination } from "@/lib/paths";
-import * as tauri from "@/lib/tauri";
+import { formatMarkdownDestination, getParentDir } from "@/lib/paths";
 import { BOARD_FENCE_INFO, type BoardScene, fenceFor, parseBoard, sceneSize } from "./board-model";
 import { renderStaticBoard } from "./board-canvas";
 import { openBoardFullscreen } from "./board-fullscreen";
+import {
+  boardImageEnhancer,
+  createBoardFile,
+  editorResolver,
+  openBoardFile,
+} from "./board-file-session";
 import "./board.css";
 
 /** Fixed. See the header note — do not turn this into a ratio of the width. */
 export const BOARD_CARD_HEIGHT = 360;
 const CARD_VERTICAL_PADDING = 16;
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-
-/* ------------------------------------------------------------ asset paths */
-
-function resolverFor(notePath: string | null): (src: string) => string {
-  const dir = notePath ? getParentDir(notePath) : null;
-  return (src: string) => {
-    if (!src) return "";
-    const normalized = normalizeMarkdownDestination(src);
-    if (/^(https?:|data:|blob:|asset:)/.test(normalized)) return normalized;
-    if (!dir) return normalized;
-    const local = decodeLinkPath(normalized);
-    const absolute = local.startsWith("/") ? local : `${dir}/${local}`;
-    return convertFileSrc(absolute);
-  };
-}
-
-async function naturalSize(file: File): Promise<{ w: number; h: number }> {
-  const url = URL.createObjectURL(file);
-  try {
-    const size = await new Promise<{ w: number; h: number }>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve({ w: 0, h: 0 });
-      img.src = url;
-    });
-    return size;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/**
- * Copies the image into the note's assets folder and hands back a *relative
- * path*. Nothing is ever inlined as a data URL — that is what keeps a board
- * with twenty screenshots from turning the markdown file into a megabyte.
- */
-function importerFor(notePath: string | null) {
-  if (!notePath) return undefined;
-  return async (file: File): Promise<{ src: string; w: number; h: number } | null> => {
-    const buffer = await file.arrayBuffer();
-    if (buffer.byteLength > MAX_IMAGE_BYTES) return null;
-    const size = await naturalSize(file);
-    const format = file.type.split("/")[1] || "png";
-    const saved = await tauri.saveClipboardImage(
-      notePath,
-      Array.from(new Uint8Array(buffer)),
-      format,
-    );
-    return { src: saved.relative_path, w: size.w, h: size.h };
-  };
-}
 
 /* ----------------------------------------------------------------- widget */
 
@@ -139,7 +94,9 @@ class BoardWidget extends WidgetType {
       card.append(surface);
       queueMicrotask(() => {
         const width = surface.clientWidth || 640;
-        surface.append(renderStaticBoard(scene, width, BOARD_CARD_HEIGHT, resolverFor(notePath)));
+        surface.append(
+          renderStaticBoard(scene, width, BOARD_CARD_HEIGHT, editorResolver(noteDir(notePath))),
+        );
       });
     }
 
@@ -161,10 +118,14 @@ class BoardWidget extends WidgetType {
 
     const open = (): void => {
       const path = this.deps.getFilePath();
+      if (path) {
+        void migrateAndOpen(view, this, scene, path);
+        return;
+      }
+      // An unsaved note has no folder to put a board file in; edit in place.
       openBoardFullscreen({
         scene,
-        resolveSrc: resolverFor(path),
-        importImage: importerFor(path),
+        resolveSrc: editorResolver(null),
         onCommit: (next) => writeBack(view, this, next),
         onFinalCommit: (next) => writeBack(view, this, next),
       });
@@ -254,7 +215,36 @@ function codeButton(view: EditorView, widget: BoardWidget): HTMLButtonElement {
   });
 }
 
+function noteDir(path: string | null): string | null {
+  return path ? getParentDir(path) : null;
+}
+
 /* ------------------------------------------------------------- write back */
+
+/**
+ * Legacy fence → `.board.svg`. Runs on Open: writes the file, swaps the fence
+ * for an image line (one transaction, so ⌘Z brings the fence back), then edits
+ * the file. Fails loudly and leaves the fence untouched if the write fails.
+ */
+async function migrateAndOpen(
+  view: EditorView,
+  widget: BoardWidget,
+  scene: BoardScene,
+  notePath: string,
+): Promise<void> {
+  try {
+    const file = await createBoardFile(notePath, scene, getParentDir(notePath));
+    if (!replaceFence(view, widget, `![Board](${formatMarkdownDestination(file.relative)})`)) {
+      throw new Error("the board moved while it was being converted");
+    }
+    await openBoardFile(file.absolute, notePath);
+  } catch (error) {
+    console.error("[board] could not convert fence", error);
+    window.alert(
+      `Couldn't convert this board: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
 
 function writeBack(view: EditorView, widget: BoardWidget, scene: BoardScene): void {
   replaceFence(view, widget, fenceFor(scene));
@@ -265,14 +255,15 @@ function writeBack(view: EditorView, widget: BoardWidget, scene: BoardScene): vo
  * widget's own fence text keeps the edit correct even when text above has
  * shifted since the widget was built — the same tactic mermaid uses.
  */
-function replaceFence(view: EditorView, widget: BoardWidget, next: string): void {
+function replaceFence(view: EditorView, widget: BoardWidget, next: string): boolean {
   const doc = view.state.doc.toString();
   const at = doc.indexOf(widget.fenceText);
-  if (at < 0) return;
-  if (doc.slice(at, at + widget.fenceText.length) === next) return;
+  if (at < 0) return false;
+  if (widget.fenceText === next) return true;
   view.dispatch({
     changes: { from: at, to: at + widget.fenceText.length, insert: next },
   });
+  return true;
 }
 
 /* ------------------------------------------------------------- extension */
@@ -338,5 +329,5 @@ const foldTreeSync = ViewPlugin.fromClass(
 );
 
 export function boardDecorations(getFilePath: () => string | null) {
-  return [boardFoldExtension({ getFilePath }), foldTreeSync];
+  return [boardFoldExtension({ getFilePath }), foldTreeSync, boardImageEnhancer(getFilePath)];
 }

@@ -637,6 +637,7 @@ pub fn run() {
             commands::search::find_file_by_name,
             commands::images::save_clipboard_image,
             commands::images::import_image_file,
+            commands::images::read_file_data_url,
             commands::settings::get_settings,
             commands::settings::get_setting,
             commands::settings::set_setting,

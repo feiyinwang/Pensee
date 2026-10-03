@@ -157,6 +157,62 @@
   color: var(--text-primary);
 }
 
+/* ------------------------------------------------- .board.svg preview */
+
+/* The preview is the file itself in a plain <img>; this only frames it and
+   adds the Open button. */
+.wr-board-image {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--wr-board-radius);
+  background: var(--surface-card);
+  overflow: hidden;
+  transition: border-color var(--motion-fast) var(--ease-out);
+}
+
+.wr-board-image:hover {
+  border-color: var(--focus-border);
+}
+
+.wr-board-image img {
+  display: block;
+  max-width: 100%;
+  max-height: var(--wr-board-card-height);
+  cursor: zoom-in;
+}
+
+.wr-board-image-open {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 7px;
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.wr-board-image:hover .wr-board-image-open,
+.wr-board-image-open:focus-visible {
+  opacity: 1;
+}
+
+.wr-board-image-error {
+  display: block;
+  padding: 6px 10px;
+  color: var(--wr-board-red);
+  font-family: var(--ui-font);
+  font-size: 12px;
+}
+
 /* ------------------------------------------------------------ code modal */
 
 .wr-board-code-modal {

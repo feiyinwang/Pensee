@@ -72,6 +72,9 @@ pub fn save_clipboard_image_impl(
         "avif" => "avif",
         "bmp" => "bmp",
         "svg" => "svg",
+        // A board is an SVG whose scene rides along as metadata; the double
+        // extension is how Writer tells it apart from a plain picture.
+        "board.svg" => "board.svg",
         "heic" => "heic",
         "heif" => "heif",
         _ => "png",
@@ -90,6 +93,38 @@ pub fn save_clipboard_image_impl(
         relative_path,
         absolute_path: abs_path.to_string_lossy().to_string(),
     })
+}
+
+/// Read a local file as a `data:` URL. Boards embed their pictures this way in
+/// the rendered SVG layer, because an SVG shown through `<img>` (which is how
+/// GitHub, Obsidian and every other markdown app show it) may not load any
+/// outside resource. The CSP keeps the webview from `fetch()`ing `asset://`,
+/// so the bytes have to come through here.
+#[tauri::command]
+pub fn read_file_data_url(path: String) -> Result<String, AppError> {
+    read_file_data_url_impl(&path)
+}
+
+pub fn read_file_data_url_impl(path: &str) -> Result<String, AppError> {
+    use base64::Engine;
+    let file_path = PathBuf::from(path);
+    let ext = file_path
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        "avif" => "image/avif",
+        "bmp" => "image/bmp",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        _ => "application/octet-stream",
+    };
+    let bytes = fs::read(&file_path)?;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+    Ok(format!("data:{};base64,{}", mime, encoded))
 }
 
 fn epoch_to_datetime(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
@@ -187,6 +222,23 @@ mod tests {
             "Filename '{}' does not match expected format",
             filename
         );
+    }
+
+    #[test]
+    fn test_save_board_svg_keeps_double_extension() {
+        let (_dir, md_path) = setup_md_file();
+        let result =
+            save_clipboard_image_impl(&md_path.to_string_lossy(), b"<svg/>", "board.svg").unwrap();
+        assert!(result.relative_path.ends_with(".board.svg"));
+    }
+
+    #[test]
+    fn test_read_file_data_url_encodes_with_mime() {
+        let (dir, _md_path) = setup_md_file();
+        let png = dir.path().join("a.png");
+        fs::write(&png, [1u8, 2, 3]).unwrap();
+        let url = read_file_data_url_impl(&png.to_string_lossy()).unwrap();
+        assert_eq!(url, "data:image/png;base64,AQID");
     }
 
     #[test]

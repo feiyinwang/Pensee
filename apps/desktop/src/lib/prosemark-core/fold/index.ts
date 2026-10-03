@@ -8,7 +8,7 @@ export { foldExtension, foldableSyntaxFacet, selectAllDecorationsOnSelectExtensi
 export { emojiExtension, emojiMarkdownSyntaxExtension } from "./emoji";
 export { dashMarkdownSyntaxExtension, dashExtension } from "./dashes";
 export { horizonalRuleExtension } from "./horizontalRule";
-export { imageExtension } from "./image";
+export { imageExtension, imageWidgetEnhancerFacet, type ImageWidgetEnhancer } from "./image";
 export { blockQuoteExtension } from "../blockQuote";
 
 // Task rendering + checkbox click toggle live in `listExtension` (`../list`).

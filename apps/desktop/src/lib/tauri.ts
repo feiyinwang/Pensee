@@ -311,6 +311,11 @@ export function importImageFile(
   return invoke("import_image_file", { markdownFilePath, sourcePath });
 }
 
+/** A local file as a `data:` URL — how a `.board.svg` inlines its pictures. */
+export function readFileDataUrl(path: string): Promise<string> {
+  return invoke("read_file_data_url", { path });
+}
+
 export function saveClipboardImage(
   markdownFilePath: string,
   imageData: number[],

@@ -26,8 +26,9 @@ import { syntaxTree } from "@codemirror/language";
 import { type BlockTypeId, setBlockType } from "./markdown-formatting";
 import { serializeColumns } from "./columns-model";
 import { emptyFence } from "./board/board-model";
+import { createBoardFile, openBoardFile } from "./board/board-file-session";
 import * as tauri from "@/lib/tauri";
-import { getParentDir, getRelativePath } from "@/lib/paths";
+import { formatMarkdownDestination, getParentDir, getRelativePath } from "@/lib/paths";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as editorApi from "@/hooks/editor-api";
 import "./slash-menu.css";
@@ -113,6 +114,38 @@ function openFreshBoard(view: EditorView, attempt = 0): void {
   }
   if (attempt >= 6) return;
   requestAnimationFrame(() => openFreshBoard(view, attempt + 1));
+}
+
+/**
+ * `/board`: a `.board.svg` in the note's assets folder, referenced as an
+ * ordinary image so every markdown app can show it. An unsaved note has no
+ * folder for the file, so it gets the legacy inline fence instead.
+ */
+function insertBoard(view: EditorView, from: number, to: number): void {
+  const note = editorApi.getActiveFilePath();
+  if (!note) {
+    insertRun(emptyFence() + "\n")(view, from, to);
+    openFreshBoard(view);
+    return;
+  }
+  view.dispatch({ changes: { from, to }, userEvent: "input.slash" });
+  void createBoardFile(note)
+    .then((file) => {
+      const at = view.state.selection.main.head;
+      const insert = `![Board](${formatMarkdownDestination(file.relative)})\n`;
+      view.dispatch({
+        changes: { from: at, insert },
+        selection: { anchor: at + insert.length },
+        userEvent: "input.slash",
+      });
+      return openBoardFile(file.absolute, note);
+    })
+    .catch((error) => {
+      console.error("[editor] Failed to create board:", error);
+      window.alert(
+        `Couldn't create the board: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
 }
 
 /**
@@ -302,10 +335,7 @@ const ITEMS: SlashItem[] = [
     aliases: ["draw", "canvas", "whiteboard", "sketch"],
     section: "Blocks",
     paths: I.board,
-    run: (view, from, to) => {
-      insertRun(emptyFence() + "\n")(view, from, to);
-      openFreshBoard(view);
-    },
+    run: insertBoard,
   },
   {
     id: "mermaid",

@@ -1,3 +1,4 @@
+import { Facet } from "@codemirror/state";
 import { Decoration, type EditorView, WidgetType } from "@codemirror/view";
 import { normalizeMarkdownDestination } from "@/lib/paths";
 import { foldableSyntaxFacet, selectAllDecorationsOnSelectExtension } from "./core";
@@ -54,6 +55,18 @@ export function attachStableImageHeight(
   });
 }
 
+/** Host hook for images that are more than pictures (a `.board.svg` opens an
+ *  editor). Runs after the `<img>` is built; each enhancer checks `url` itself
+ *  and leaves anything it does not own alone. */
+export type ImageWidgetEnhancer = (
+  dom: HTMLElement,
+  image: HTMLImageElement,
+  url: string,
+  view: EditorView,
+) => void;
+
+export const imageWidgetEnhancerFacet = Facet.define<ImageWidgetEnhancer>();
+
 class ImageWidget extends WidgetType {
   constructor(
     public url: string,
@@ -80,6 +93,9 @@ class ImageWidget extends WidgetType {
     attachStableImageHeight(image, this.url, view);
     image.src = resolveImageSrc(view.state, this.url);
     elem.appendChild(image);
+    for (const enhance of view.state.facet(imageWidgetEnhancerFacet)) {
+      enhance(elem, image, this.url, view);
+    }
     return elem;
   }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-03
+
+- Boards are now saved as their own `.board.svg` file next to the note, and the note just shows them as an image: `![Board](note-assets/….board.svg)`. GitHub, Obsidian, VS Code and other markdown apps now show the actual board instead of a block of code. In Writer the board loads as fast as any picture. Click it (or **Open board**) to edit, and your changes save back to the file. Pictures you paste onto a board are built into the file so they show up everywhere. Boards made before this change convert the first time you open them, and Cmd+Z in the note brings the old version back. See [SPECs/board-lark-parity-spec.md](./SPECs/board-lark-parity-spec.md).
+
 ## 2026-10-02
 
 - Open tabs now sit side by side. With two or more tabs open, each tab is its own glass card in a row you scroll sideways with your trackpad, as many as you like, and each card scrolls up and down on its own. Click into a card (or its tab) to work in it; drag a card by its header to move it left or right (the tab bar follows), or focus its grip and use the arrow keys; close it with its ×. Clicking a page link opens that page in a new tab right next to the one you're reading. With a single tab, the page fills the window as before. See [SPECs/tab-columns-spec.md](./SPECs/tab-columns-spec.md).
