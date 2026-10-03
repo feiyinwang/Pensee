@@ -5,10 +5,20 @@ export default defineConfig({
     "*": "vp check --fix",
   },
   fmt: {
-    ignorePatterns: ["apps/website/src/routeTree.gen.ts", ".wrangler/**"],
+    ignorePatterns: [
+      "apps/website/src/routeTree.gen.ts",
+      ".wrangler/**",
+      // Vendored Arc registry files (`shadcn add @uiarc/...`); keep them byte-identical to upstream.
+      "apps/desktop/src/components/arc/**",
+    ],
   },
   lint: {
-    ignorePatterns: ["apps/website/src/routeTree.gen.ts", ".wrangler/**"],
+    ignorePatterns: [
+      "apps/website/src/routeTree.gen.ts",
+      ".wrangler/**",
+      // Vendored Arc registry files (`shadcn add @uiarc/...`); keep them byte-identical to upstream.
+      "apps/desktop/src/components/arc/**",
+    ],
     options: { typeAware: true, typeCheck: true },
   },
   test: {

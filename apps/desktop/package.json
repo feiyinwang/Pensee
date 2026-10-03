@@ -35,6 +35,8 @@
     "cmdk": "catalog:",
     "dompurify": "catalog:",
     "katex": "catalog:",
+    "lucide-react": "catalog:",
+    "motion": "catalog:",
     "node-emoji": "catalog:",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
