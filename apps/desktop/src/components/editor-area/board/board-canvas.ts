@@ -15,12 +15,10 @@
 import {
   type BoardEl,
   type BoardScene,
-  type ColorToken,
   type FramePreset,
   type ImageEl,
   type LinkerEl,
   type ShapeEl,
-  type StrokeDash,
   type TextEl,
   type Viewport,
   FRAME_PRESETS,
@@ -56,14 +54,9 @@ import {
   snapMove,
 } from "./board-geometry";
 import { SceneRenderer, backgroundDefs, svgEl } from "./board-render";
-import {
-  type StyleTargets,
-  type ToolId,
-  type ToolState,
-  type Toolbar,
-  buildToolbar,
-  renderStylePanel,
-} from "./board-tools";
+import { type ToolId, type ToolState, type Toolbar, buildToolbar } from "./board-tools";
+import { applyAlign, applyFontSize, applyTextColor, summarizeSelection } from "./board-selection";
+import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
 
 /* -------------------------------------------------------------- constants */
 
@@ -235,6 +228,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       if (p) p.setAttribute("patternTransform", `scale(${v.zoom})`);
     }
     toolbar.setZoom(v.zoom);
+    placeSelectionToolbar();
   }
 
   function setZoom(next: number, anchorClient?: Point): void {
@@ -497,27 +491,48 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   let activeGuides: { x?: number; y?: number; from: number; to: number }[] = [];
 
-  /* ------------------------------------------------------ style panel */
+  /* ------------------------------------------------ selection toolbar */
+
+  // The toolbar is React + Arc + motion, so it loads on first open rather than
+  // with every note. Until it arrives there is simply no toolbar.
+  const selToolbarHost = document.createElement("div");
+  selToolbarHost.className = "wr-board-seltb";
+  host.append(selToolbarHost);
+  let selToolbar: SelectionToolbarHandle | null = null;
 
   function renderStyle(): void {
+    if (!selToolbar) return;
+    const busy = interaction.kind !== "none";
     const els = [...selection].map((id) => findEl(scene, id)).filter(Boolean) as BoardEl[];
-    if (!els.length) {
-      renderStylePanel(toolbar.stylePanel, null, styleHandlers);
-      return;
-    }
-    const targets: StyleTargets = {};
-    const styled = els.filter(hasStyle);
-    if (styled.length) {
-      targets.stroke = styled[0].st.s;
-      targets.width = styled[0].st.w;
-      targets.dash = styled[0].st.d;
-      if (styled.some(isShape)) targets.fill = (styled.find(isShape) as ShapeEl).st.f;
-    }
-    const texts = els.filter((el) => el.t === "text") as TextEl[];
-    if (texts.length) targets.fontSize = texts[0].sz;
-    targets.opacity = els[0].op;
-    renderStylePanel(toolbar.stylePanel, targets, styleHandlers);
+    selToolbar.update(busy || opts.readOnly ? null : summarizeSelection(els));
+    placeSelectionToolbar();
   }
+
+  /** Centred under the selection, clear of the handles; flips above when it
+   *  would run into the bottom controls, and never leaves the stage. */
+  function placeSelectionToolbar(): void {
+    if (!selToolbar) return;
+    const box = selectionBox();
+    const { w, h } = selToolbar.size();
+    if (!box || !w) return;
+    const v = vp();
+    const hostRect = host.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    const left = svgRect.left - hostRect.left + (box.x - v.x) * v.zoom;
+    const top = svgRect.top - hostRect.top + (box.y - v.y) * v.zoom;
+    const right = left + box.w * v.zoom;
+    const bottom = top + box.h * v.zoom;
+    const margin = 8;
+    const below = bottom + SCREEN.handle + 10;
+    const above = top - SCREEN.rotateOffset - SCREEN.handle - 10 - h;
+    let y = below + h > hostRect.height - 64 && above > 56 ? above : below;
+    y = Math.min(Math.max(y, 56), hostRect.height - h - margin);
+    const x = Math.min(Math.max((left + right) / 2 - w / 2, margin), hostRect.width - w - margin);
+    selToolbarHost.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  }
+
+  const selToolbarResize = new ResizeObserver(() => placeSelectionToolbar());
+  selToolbarResize.observe(selToolbarHost);
 
   function mutateSelection(fn: (el: BoardEl) => void): void {
     if (!selection.size) return;
@@ -530,22 +545,32 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     markDirty();
   }
 
-  const styleHandlers = {
-    setStroke: (c: ColorToken) => mutateSelection((el) => hasStyle(el) && (el.st.s = c)),
-    setFill: (c: ColorToken) => mutateSelection((el) => isShape(el) && (el.st.f = c)),
-    setWidth: (w: number) => mutateSelection((el) => hasStyle(el) && (el.st.w = w)),
-    setDash: (d: StrokeDash) => mutateSelection((el) => hasStyle(el) && (el.st.d = d)),
-    setOpacity: (o: number) => mutateSelection((el) => (el.op = o)),
-    setFontSize: (s: number) =>
-      mutateSelection((el) => {
-        if (el.t === "text") el.sz = s;
-        else if (isShape(el) && el.lb) el.lb.sz = s;
-      }),
+  const selectionActions: SelectionToolbarActions = {
+    setShapeKind: (kind) => mutateSelection((el) => isShape(el) && (el.t = kind)),
+    setFill: (c) => mutateSelection((el) => isShape(el) && (el.st.f = c)),
+    setSticky: (c) => mutateSelection((el) => el.t === "sticky" && (el.c = c)),
+    setStroke: (c) => mutateSelection((el) => hasStyle(el) && (el.st.s = c)),
+    setWidth: (w) => mutateSelection((el) => hasStyle(el) && (el.st.w = w)),
+    setDash: (d) => mutateSelection((el) => hasStyle(el) && (el.st.d = d)),
+    setTextColor: (c) => mutateSelection((el) => applyTextColor(el, c)),
+    setFontSize: (sz) => mutateSelection((el) => applyFontSize(el, sz)),
+    setAlign: (al) => mutateSelection((el) => applyAlign(el, al)),
+    setRoute: (r) => mutateSelection((el) => isLinker(el) && (el.sh = r)),
+    setHeads: (hd) => mutateSelection((el) => isLinker(el) && (el.hd = { ...hd })),
+    setOpacity: (o) => mutateSelection((el) => (el.op = o)),
     bringForward: () => reorder(1),
     sendBackward: () => reorder(-1),
     duplicate: () => duplicateSelection(),
     remove: () => deleteSelection(),
   };
+
+  void import("./board-selection-toolbar")
+    .then((m) => {
+      if (disposed) return;
+      selToolbar = m.mountSelectionToolbar(selToolbarHost, selectionActions);
+      renderStyle();
+    })
+    .catch((error: unknown) => console.error("[board] selection toolbar failed to load", error));
 
   function reorder(dir: 1 | -1): void {
     if (!selection.size) return;
@@ -1269,6 +1294,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       default:
         drawOverlay();
     }
+    // Every gesture hides the selection toolbar; bring it back however it ended.
+    renderStyle();
   }
 
   /** Rewinds to the pre-drag state, pushes that onto history, then re-applies —
@@ -1581,6 +1608,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       disposed = true;
       window.clearTimeout(viewportSaveTimer);
       resizeObserver.disconnect();
+      selToolbarResize.disconnect();
+      selToolbar?.destroy();
+      selToolbar = null;
       svg.removeEventListener("pointerdown", onPointerDown);
       svg.removeEventListener("pointermove", onPointerMove);
       svg.removeEventListener("pointerup", onPointerUp);

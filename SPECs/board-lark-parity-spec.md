@@ -20,12 +20,31 @@ A board is an SVG file in the note's `{stem}-assets/` folder. The markdown refer
 - **Load speed:** the in-note preview is just `<img src=…board.svg>`. No JavaScript parses or renders anything until you open the editor.
 - **Migration:** a legacy ` ```board ` fence still previews and opens. Its first edit writes a `.board.svg` and swaps the fence for the image line, in one undoable transaction.
 
+## Selection toolbar
+
+Selecting anything on a board shows a floating toolbar centred under the selection, clear of the resize handles. It flips above the selection when it would run into the bottom controls, and it hides during any drag, resize, rotate, marquee or pan. It replaces the old fixed style panel in the top-right corner.
+
+| Control | Shows for | Sets |
+| --- | --- | --- |
+| Shape | shapes | the shape kind (10 kinds) |
+| Fill / Note colour | shapes / sticky notes | fill token / paper colour |
+| Border (Line for connectors) | shapes, connectors | colour, width (thin/medium/thick), style (solid/dashed/dotted) |
+| Connector | connectors | route (straight/elbow/curved), start and end arrowheads |
+| Text colour, Text size, Align | text, shapes with a label | colour token, size (12–48), left/centre/right |
+| More | everything | opacity, bring forward, send backward, duplicate, delete |
+
+A control appears when at least one selected element can take it, and shows the first such element's value. Applying it changes every selected element that can take it. The rules live in `board-selection.ts`, and shape labels gained an optional colour (`lb.c`, with ink as the omitted default).
+
+**Not on the toolbar:** lock. The format stores `lk`, but the canvas doesn't enforce it yet, and a control that does nothing would be misleading.
+
+The toolbar is React + Arc (Popover, Tooltip, SegmentedControl, `motion` springs). It is lazy-loaded on the first board open, and Arc's tokens are injected scoped (see `arc-tokens.ts`, `docs/arc.md`).
+
 ## Phases
 
 1. **Portable storage** (this change): the file format, the enhancer on image previews, `/board` creating a file, and fence migration.
-2. **Core editing polish** (the user's priority): sticky notes, shapes with text inside, fill / border colour / width / dash, paste pictures. Most of this exists already; the work is a pass to match Lark's feel and to keep the style panel's colours consistent.
+2. **Core editing polish** (the user's priority): sticky notes, shapes with text inside, fill / border colour / width / dash, paste pictures. The selection toolbar above is done. Still open: sticky-note text size and placement, label vertical centring, and the "Add text" placeholder on empty shapes.
 3. **Mind maps and flowcharts:** a mind-map node type with auto layout (Tab adds a child, Enter adds a sibling), flowchart connectors that follow their shapes, and import of `mermaid` flowchart/mindmap fences into editable boards.
-4. **Arc board chrome:** toolbar, style panel, menus and template picker rebuilt on Arc Pro components (React + Framer Motion), loaded lazily inside the full-screen overlay only. This needs the Arc MCP signed in (`claude mcp add --transport http arc https://uiarc.dev/api/mcp`).
+4. **Arc board chrome:** the tools rail becomes Arc Pro's Dock; menus and the template picker move to Arc too, all lazy-loaded with the selection toolbar. Pro items install with `ARC_PRO_TOKEN` (see `docs/arc.md`).
 5. **Present mode:** sections become slides; arrow keys move the camera between them with spring transitions.
 6. **Later:** templates, icon library, batch edit, pen tool, PNG/PDF export, import, find & replace, swimlanes, PlantUML. Comments, translate and mobile are out of scope for a local-first app.
 

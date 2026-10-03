@@ -85,6 +85,7 @@ export interface Label {
   tx: string;
   /** font size */ sz: number;
   /** horizontal align */ al: "l" | "c" | "r";
+  /** text colour; omitted means ink */ c?: ColorToken;
 }
 
 export interface Binding {
@@ -266,7 +267,9 @@ function parseLabel(raw: unknown): Label | undefined {
   const o = raw as Record<string, unknown>;
   const tx = str(o.tx, "");
   if (!tx) return undefined;
-  return { tx, sz: num(o.sz, 14), al: str(o.al, "c") as Label["al"] };
+  const label: Label = { tx, sz: num(o.sz, 14), al: str(o.al, "c") as Label["al"] };
+  if (typeof o.c === "string" && o.c !== "ink") label.c = o.c as ColorToken;
+  return label;
 }
 
 function parseBinding(raw: unknown): Binding | undefined {
@@ -468,6 +471,7 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
         const lb: Record<string, unknown> = { tx: el.lb.tx };
         if (el.lb.sz !== 14) lb.sz = el.lb.sz;
         if (el.lb.al !== "c") lb.al = el.lb.al;
+        if (el.lb.c && el.lb.c !== "ink") lb.c = el.lb.c;
         o.lb = lb;
       }
     }
@@ -558,7 +562,7 @@ export function textOf(el: BoardEl): string {
 export function setTextOf(el: BoardEl, text: string): void {
   if (el.t === "text" || el.t === "sticky") el.tx = text;
   else if (isShape(el)) {
-    if (text) el.lb = { tx: text, sz: el.lb?.sz ?? 14, al: el.lb?.al ?? "c" };
+    if (text) el.lb = { ...el.lb, tx: text, sz: el.lb?.sz ?? 14, al: el.lb?.al ?? "c" };
     else delete el.lb;
   }
 }

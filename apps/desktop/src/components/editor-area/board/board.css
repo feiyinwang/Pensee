@@ -614,92 +614,6 @@
   outline-offset: 1px;
 }
 
-/* -------------------------------------------------------- style panel */
-
-.wr-board-style-panel {
-  position: absolute;
-  top: 64px;
-  right: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 216px;
-  padding: 12px;
-  border: 1px solid var(--line-subtle);
-  border-radius: 12px;
-  background: var(--surface-primary);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 6%),
-    0 12px 32px -8px rgb(0 0 0 / 22%);
-  height: auto;
-}
-
-.wr-board-style-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.wr-board-style-label {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.wr-board-style-choices {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.wr-board-chip {
-  min-width: 26px;
-  padding: 2px 6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: var(--surface-subtle);
-  color: var(--text-secondary);
-  font-family: var(--ui-font);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.wr-board-chip.is-active {
-  border-color: var(--accent);
-  color: var(--text-primary);
-}
-
-.wr-board-style-actions {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 2px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line-subtler);
-}
-
-.wr-board-text-btn {
-  padding: 3px 8px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: var(--ui-font);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.wr-board-text-btn:hover {
-  background: var(--item-hover-bg);
-  color: var(--text-primary);
-}
-
-.wr-board-text-btn.is-danger:hover {
-  color: var(--wr-board-red);
-}
-
 /* ------------------------------------------------------- viewport cluster */
 
 .wr-board-viewport-cluster {
@@ -738,4 +652,15 @@
 
 .wr-board-zoom-label:hover {
   color: var(--text-primary);
+}
+
+/* -------------------------------------------------- selection toolbar */
+
+/* Positioned by board-canvas.ts; the toolbar inside is React + Arc. */
+.wr-board-seltb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: max-content;
 }

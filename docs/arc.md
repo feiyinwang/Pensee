@@ -23,4 +23,14 @@ Arc's docs say to import `@/components/arc/foundation.css` in the root layout. *
 - reacts to `:root[data-theme="dark"]`, which Writer also sets;
 - removes focus outlines from every element (`:is(*:focus, *:focus-visible, *:focus-within)`), which breaks keyboard focus visibility across the app.
 
-Load Arc only inside the surface that uses it (the board overlay), with its tokens scoped to that container. Lazy-load that surface, so notes never pay for `motion` or Arc CSS at startup.
+Call `ensureArcTokens()` from `board/arc-tokens.ts` instead, from a lazy-loaded module. It injects a rewritten copy once:
+
+- the tokens move to `body`, because Arc popovers and tooltips portal there;
+- every Arc token name Writer already defines (measured at runtime, so new Tailwind utilities are covered) keeps Writer's value;
+- the focus rule is dropped.
+
+Arc components then pick up Writer's accent, text colours and UI font, and nothing outside them changes. Keep Arc imports behind a dynamic `import()` so notes never pay for `motion` or Arc at startup.
+
+## Motion
+
+Arc components keep their own motion (`motionTokens`, springs such as the popover's 580ms settle). That departs from [motion.md](./motion.md)'s "ease-out under 180ms" rule on purpose: the user chose Arc for board visuals and animation. The exception covers Arc surfaces only; Writer's own UI still follows motion.md. Every Arc component honours `prefers-reduced-motion`.

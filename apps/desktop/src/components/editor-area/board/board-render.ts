@@ -206,7 +206,7 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
       y: Math.max((el.h - totalH) / 2, pad),
       size,
       align: el.lb.al,
-      fill: colorVar("ink"),
+      fill: colorVar(el.lb.c ?? "ink"),
     });
   }
 }

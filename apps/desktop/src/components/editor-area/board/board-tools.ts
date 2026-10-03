@@ -9,12 +9,10 @@
  */
 
 import {
-  type ColorToken,
   type FramePreset,
   type LinkerShape,
   type ShapeKind,
   type StickyColor,
-  type StrokeDash,
   SHAPE_KINDS,
   STICKY_COLORS,
 } from "./board-model";
@@ -105,7 +103,6 @@ export interface Toolbar {
   setZoom: (zoom: number) => void;
   setHistory: (canUndo: boolean, canRedo: boolean) => void;
   closeFlyout: () => void;
-  stylePanel: HTMLElement;
   banner: HTMLElement;
   showBanner: (text: string, tone: "warn" | "error") => void;
   hideBanner: () => void;
@@ -351,15 +348,11 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   viewportCluster.append(historyGroup, zoomGroup);
 
   /* ------------------------------------------------------ style panel */
-  const stylePanel = document.createElement("div");
-  stylePanel.className = "wr-board-style-panel";
-  stylePanel.hidden = true;
 
-  root.append(top, rail, viewportCluster, stylePanel);
+  root.append(top, rail, viewportCluster);
 
   return {
     root,
-    stylePanel,
     banner,
     closeFlyout,
     setTool(tool) {
@@ -383,120 +376,6 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   };
 }
 
-/* ----------------------------------------------------------- style panel */
-
-export interface StyleTargets {
-  stroke?: ColorToken;
-  fill?: ColorToken;
-  width?: number;
-  dash?: StrokeDash;
-  opacity?: number;
-  fontSize?: number;
-}
-
-export interface StyleHandlers {
-  setStroke: (c: ColorToken) => void;
-  setFill: (c: ColorToken) => void;
-  setWidth: (w: number) => void;
-  setDash: (d: StrokeDash) => void;
-  setOpacity: (o: number) => void;
-  setFontSize: (s: number) => void;
-  bringForward: () => void;
-  sendBackward: () => void;
-  duplicate: () => void;
-  remove: () => void;
-}
-
-const STROKE_TOKENS: ColorToken[] = ["ink", "muted", "red", "orange", "green", "blue", "purple"];
-const FILL_TOKENS: ColorToken[] = ["none", "muted", "red", "orange", "green", "blue", "purple"];
-
-export function renderStylePanel(
-  panel: HTMLElement,
-  targets: StyleTargets | null,
-  handlers: StyleHandlers,
-): void {
-  panel.replaceChildren();
-  if (!targets) {
-    panel.hidden = true;
-    return;
-  }
-  panel.hidden = false;
-
-  if (targets.stroke !== undefined) {
-    panel.append(swatchRow("Stroke", STROKE_TOKENS, targets.stroke, (c) => handlers.setStroke(c)));
-  }
-  if (targets.fill !== undefined) {
-    panel.append(swatchRow("Fill", FILL_TOKENS, targets.fill, (c) => handlers.setFill(c)));
-  }
-  if (targets.width !== undefined) {
-    panel.append(
-      choiceRow(
-        "Width",
-        [
-          { label: "S", value: 1 },
-          { label: "M", value: 2 },
-          { label: "L", value: 4 },
-        ],
-        targets.width,
-        (v) => handlers.setWidth(v),
-      ),
-    );
-  }
-  if (targets.dash !== undefined) {
-    panel.append(
-      choiceRow<StrokeDash>(
-        "Line",
-        [
-          { label: "──", value: "solid" },
-          { label: "╌╌", value: "dashed" },
-          { label: "····", value: "dotted" },
-        ],
-        targets.dash,
-        (v) => handlers.setDash(v),
-      ),
-    );
-  }
-  if (targets.fontSize !== undefined) {
-    panel.append(
-      choiceRow(
-        "Text",
-        [
-          { label: "S", value: 12 },
-          { label: "M", value: 16 },
-          { label: "L", value: 24 },
-          { label: "XL", value: 36 },
-        ],
-        targets.fontSize,
-        (v) => handlers.setFontSize(v),
-      ),
-    );
-  }
-  if (targets.opacity !== undefined) {
-    panel.append(
-      choiceRow(
-        "Opacity",
-        [
-          { label: "30%", value: 0.3 },
-          { label: "60%", value: 0.6 },
-          { label: "100%", value: 1 },
-        ],
-        targets.opacity,
-        (v) => handlers.setOpacity(v),
-      ),
-    );
-  }
-
-  const actions = document.createElement("div");
-  actions.className = "wr-board-style-actions";
-  actions.append(
-    textButton("Forward", handlers.bringForward),
-    textButton("Backward", handlers.sendBackward),
-    textButton("Duplicate", handlers.duplicate),
-    textButton("Delete", handlers.remove, true),
-  );
-  panel.append(actions);
-}
-
 /* ------------------------------------------------------------- primitives */
 
 function button(title: string, paths: string[], onClick: () => void): HTMLButtonElement {
@@ -506,18 +385,6 @@ function button(title: string, paths: string[], onClick: () => void): HTMLButton
   btn.title = title;
   btn.setAttribute("aria-label", title);
   btn.append(icon(paths));
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    onClick();
-  });
-  return btn;
-}
-
-function textButton(label: string, onClick: () => void, danger = false): HTMLButtonElement {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = danger ? "wr-board-text-btn is-danger" : "wr-board-text-btn";
-  btn.textContent = label;
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     onClick();
@@ -544,61 +411,4 @@ function flyout(title: string, hint: string): HTMLElement {
   header.append(name, key);
   panel.append(header);
   return panel;
-}
-
-function swatchRow(
-  label: string,
-  tokens: ColorToken[],
-  active: ColorToken,
-  onPick: (c: ColorToken) => void,
-): HTMLElement {
-  const row = document.createElement("div");
-  row.className = "wr-board-style-row";
-  const name = document.createElement("span");
-  name.className = "wr-board-style-label";
-  name.textContent = label;
-  row.append(name);
-  const list = document.createElement("div");
-  list.className = "wr-board-style-choices";
-  for (const token of tokens) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "wr-board-swatch is-small";
-    btn.title = token;
-    btn.setAttribute("aria-label", `${label} ${token}`);
-    if (token === "none") btn.classList.add("is-none");
-    else btn.style.background = `var(--wr-board-${token})`;
-    btn.classList.toggle("is-active", token === active);
-    btn.addEventListener("click", () => onPick(token));
-    list.append(btn);
-  }
-  row.append(list);
-  return row;
-}
-
-function choiceRow<T extends string | number>(
-  label: string,
-  options: { label: string; value: T }[],
-  active: T,
-  onPick: (v: T) => void,
-): HTMLElement {
-  const row = document.createElement("div");
-  row.className = "wr-board-style-row";
-  const name = document.createElement("span");
-  name.className = "wr-board-style-label";
-  name.textContent = label;
-  row.append(name);
-  const list = document.createElement("div");
-  list.className = "wr-board-style-choices";
-  for (const option of options) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "wr-board-chip";
-    btn.textContent = option.label;
-    btn.classList.toggle("is-active", option.value === active);
-    btn.addEventListener("click", () => onPick(option.value));
-    list.append(btn);
-  }
-  row.append(list);
-  return row;
 }
