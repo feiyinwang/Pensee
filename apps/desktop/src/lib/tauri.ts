@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import sidebarEntryKinds from "@shared/sidebar-entry-kinds.json";
 import type {
   DirEntry,
@@ -138,6 +138,18 @@ export async function pickFile(
     filters: [filter],
   });
   return selected;
+}
+
+/** Native "Save as" for an exported file; null when cancelled. */
+export function pickSavePath(
+  defaultPath: string,
+  filter: { name: string; extensions: string[] },
+): Promise<string | null> {
+  return saveDialog({ defaultPath, filters: [filter], title: "Export" });
+}
+
+export function writeExportFile(path: string, dataBase64: string): Promise<void> {
+  return invoke("write_export_file", { path, dataBase64 });
 }
 
 export function getRecentWorkspaces(): Promise<string[]> {

@@ -51,6 +51,8 @@ export interface ToolbarCallbacks {
   onZoomFit: () => void;
   onClose: () => void;
   onPresent: () => void;
+  /** Absent when the board has no file to export from (legacy fence in an unsaved note). */
+  onExport?: (kind: "png" | "svg") => void;
 }
 
 const svgNS = "http://www.w3.org/2000/svg";
@@ -97,6 +99,7 @@ const ICON = {
   redo: ["M15 7h4V3", "M19 7a8 8 0 1 0 0 8"],
   close: ["M6 6l12 12", "M18 6L6 18"],
   present: ["M8 5.5v13l10.5-6.5z"],
+  export: ["M12 4v11", "M7.5 10.5L12 15l4.5-4.5", "M5 19h14"],
   minus: ["M5 12h14"],
   plus: ["M12 5v14", "M5 12h14"],
   fit: ["M4 9V4h5", "M20 15v5h-5", "M20 9V4h-5", "M4 15v5h5"],
@@ -117,7 +120,7 @@ export interface Toolbar {
   setHistory: (canUndo: boolean, canRedo: boolean) => void;
   closeFlyout: () => void;
   banner: HTMLElement;
-  showBanner: (text: string, tone: "warn" | "error") => void;
+  showBanner: (text: string, tone: "info" | "warn" | "error") => void;
   hideBanner: () => void;
 }
 
@@ -199,6 +202,39 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   presentLabel.textContent = "Present";
   presentBtn.append(presentLabel);
   top.append(closeBtn, title, presentBtn);
+  if (cb.onExport) {
+    const onExport = cb.onExport;
+    const exportBtn = button("Export", ICON.export, () => {
+      menu.hidden = !menu.hidden;
+    });
+    exportBtn.classList.add("wr-board-present");
+    exportBtn.setAttribute("aria-haspopup", "menu");
+    const exportLabel = document.createElement("span");
+    exportLabel.textContent = "Export";
+    exportBtn.append(exportLabel);
+    const menu = document.createElement("div");
+    menu.className = "wr-board-export-menu";
+    menu.setAttribute("role", "menu");
+    menu.hidden = true;
+    for (const [kind, label] of [
+      ["png", "PNG image (2×)"],
+      ["svg", "SVG (opens anywhere)"],
+    ] as const) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.setAttribute("role", "menuitem");
+      item.textContent = label;
+      item.addEventListener("click", () => {
+        menu.hidden = true;
+        onExport(kind);
+      });
+      menu.append(item);
+    }
+    const wrap = document.createElement("span");
+    wrap.className = "wr-board-export";
+    wrap.append(exportBtn, menu);
+    top.append(wrap);
+  }
 
   const banner = document.createElement("div");
   banner.className = "wr-board-banner";

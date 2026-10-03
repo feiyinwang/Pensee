@@ -23,6 +23,7 @@ export interface BoardFullscreenOptions {
   importImage?: (file: File) => Promise<{ src: string; w: number; h: number } | null>;
   /** Open straight into present mode; leaving it closes the board. */
   present?: boolean;
+  exportSvg?: (scene: BoardScene) => Promise<string>;
   /** Lets the host tell us the document changed underneath us. */
   onOpened?: (api: { warn: (message: string) => void; close: () => void }) => void;
 }
@@ -149,6 +150,7 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     resolveSrc: opts.resolveSrc,
     importImage: opts.importImage,
     present: opts.present,
+    exportSvg: opts.exportSvg,
   });
 
   void overlay.getBoundingClientRect();

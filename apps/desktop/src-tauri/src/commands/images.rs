@@ -127,6 +127,23 @@ pub fn read_file_data_url_impl(path: &str) -> Result<String, AppError> {
     Ok(format!("data:{};base64,{}", mime, encoded))
 }
 
+/// Write an exported board picture (PNG bytes, base64) to a path the user
+/// chose in the save dialog. Base64 rather than a number array keeps a large
+/// PNG from ballooning the IPC payload.
+#[tauri::command]
+pub fn write_export_file(path: String, data_base64: String) -> Result<(), AppError> {
+    write_export_file_impl(&path, &data_base64)
+}
+
+pub fn write_export_file_impl(path: &str, data_base64: &str) -> Result<(), AppError> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data_base64)
+        .map_err(|e| AppError::Io(format!("Invalid export data: {e}")))?;
+    fs::write(path, bytes)?;
+    Ok(())
+}
+
 fn epoch_to_datetime(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
     // Simple epoch to date conversion (good enough for filenames)
     let days = secs / 86400;
@@ -239,6 +256,15 @@ mod tests {
         fs::write(&png, [1u8, 2, 3]).unwrap();
         let url = read_file_data_url_impl(&png.to_string_lossy()).unwrap();
         assert_eq!(url, "data:image/png;base64,AQID");
+    }
+
+    #[test]
+    fn test_write_export_file_decodes_base64() {
+        let (dir, _md) = setup_md_file();
+        let out = dir.path().join("board.png");
+        write_export_file_impl(&out.to_string_lossy(), "AQID").unwrap();
+        assert_eq!(fs::read(&out).unwrap(), vec![1u8, 2, 3]);
+        assert!(write_export_file_impl(&out.to_string_lossy(), "not base64!").is_err());
     }
 
     #[test]

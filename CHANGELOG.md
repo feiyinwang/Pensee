@@ -2,6 +2,7 @@
 
 ## 2026-10-03
 
+- Export a board as a PNG (2× resolution, white background, good for slides and chat) or an SVG (opens anywhere, pictures included). With something selected, only the selection is exported: a section comes with what's inside it, and arrows come along when both their ends do.
 - Find and replace on boards. Cmd+F opens a find bar that searches sticky notes, shapes, text, arrow labels, mind-map topics and section names. Matches are outlined and the board scrolls to each one; Enter and Shift+Enter step through them. **Replace** changes the current match; **All** changes every match in one step you can undo.
 - Present a board. **Present** (on the board, or on the board's preview in your note) turns each section into a slide, in reading order: rows top to bottom, left to right. The camera glides from one slide to the next with a spring, and everything outside the current slide is hidden. → / Space / Enter / click go forward, ← goes back, Home and End jump to the first and last slide, Esc ends. A board with no sections presents as one slide. Presenting never changes the file; your view is put back when you finish.
 - Board tools now sit in a floating dock at the bottom (Arc Pro's Dock). Groups open a tray straight out of the dock: shapes, sticky-note colours, connector styles and section sizes. Keyboard shortcuts still work and the dock follows them.

@@ -74,6 +74,8 @@ import { mermaidToElements } from "./board-mermaid";
 import { strokeFrom } from "./board-draw";
 import { fitView, lerpBox, lerpView, slideOrder } from "./board-present";
 import { findMatches, replaceInElement } from "./board-search";
+import { exportSubset, svgToPngBase64 } from "./board-export";
+import * as tauri from "@/lib/tauri";
 import {
   addMindChild,
   addMindSibling,
@@ -136,6 +138,8 @@ export interface BoardCanvasOptions {
   readOnly?: boolean;
   /** Start in present mode; leaving it closes the board (opened to present). */
   present?: boolean;
+  /** The self-contained SVG for a scene (pictures inlined). Enables Export. */
+  exportSvg?: (scene: BoardScene) => Promise<string>;
 }
 
 export interface BoardCanvasHandle {
@@ -242,6 +246,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     onZoomFit: () => zoomToFit(),
     onClose: () => opts.onClose(),
     onPresent: () => startPresenting(0),
+    onExport: opts.exportSvg ? (kind) => void exportBoard(kind) : undefined,
   });
   host.append(toolbar.root);
 
@@ -1171,6 +1176,48 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function alignCss(a: "l" | "c" | "r"): string {
     return a === "c" ? "center" : a === "r" ? "right" : "left";
+  }
+
+  /* ----------------------------------------------------------- export */
+
+  /** The selection if there is one, otherwise the whole board. */
+  async function exportBoard(kind: "png" | "svg"): Promise<void> {
+    const exportSvg = opts.exportSvg;
+    if (!exportSvg) return;
+    const subset = selection.size ? exportSubset(scene, new Set(selection)) : scene;
+    if (!subset.els.length) {
+      toolbar.showBanner("Nothing to export yet.", "warn");
+      return;
+    }
+    try {
+      const path = await tauri.pickSavePath(`board.${kind}`, {
+        name: kind.toUpperCase(),
+        extensions: [kind],
+      });
+      if (!path) return;
+      const svgText = await exportSvg(subset);
+      const data =
+        kind === "svg"
+          ? bytesToBase64(new TextEncoder().encode(svgText))
+          : await svgToPngBase64(svgText);
+      await tauri.writeExportFile(path, data);
+      toolbar.showBanner(`Exported ${path.split("/").pop()}`, "info");
+      window.setTimeout(() => toolbar.hideBanner(), 2400);
+    } catch (error) {
+      console.error("[board] export failed", error);
+      toolbar.showBanner(
+        `Export failed: ${error instanceof Error ? error.message : String(error)}`,
+        "error",
+      );
+    }
+  }
+
+  function bytesToBase64(bytes: Uint8Array): string {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
   }
 
   /* ---------------------------------------------------- find & replace */

@@ -207,6 +207,7 @@ export async function openBoardFile(
     onCommit: (scene) => void saveBoardFile(absolute, scene),
     onFinalCommit: (scene) => void saveBoardFile(absolute, scene),
     present,
+    exportSvg: (scene) => boardFileText(scene, dir),
     onOpened: ({ warn }) => {
       if (parsed.badLines > 0) warn(`${parsed.badLines} element(s) could not be read`);
     },
