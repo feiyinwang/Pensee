@@ -31,16 +31,39 @@ export const SIZE_BUDGET = {
 
 /* ------------------------------------------------------------------ types */
 
-export type ColorToken =
-  | "ink"
-  | "muted"
-  | "accent"
-  | "red"
-  | "orange"
-  | "green"
-  | "blue"
-  | "purple"
-  | "none";
+/** The `--wr-board-<name>` colour tokens, neutrals first, then round the
+ *  hue wheel (FigJam's order). See SPECs/board-color-palette-spec.md. */
+export const HUE_TOKENS = [
+  "ink",
+  "muted",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "accent",
+  "blue",
+  "purple",
+  "pink",
+] as const;
+export type HueToken = (typeof HUE_TOKENS)[number];
+
+/** A stored colour: a token (strong), its `-soft` tint (for fills), a custom
+ *  `#rrggbb`, or `none`. */
+export type ColorToken = HueToken | `${HueToken}-soft` | `#${string}` | "none";
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+/** Board files are untrusted input: only these shapes of string are colours. */
+export function isColor(v: unknown): v is ColorToken {
+  if (typeof v !== "string") return false;
+  if (v === "none" || HEX_COLOR.test(v)) return true;
+  const base = v.endsWith("-soft") ? v.slice(0, -5) : v;
+  return (HUE_TOKENS as readonly string[]).includes(base);
+}
+
+function color(v: unknown, fallback: ColorToken): ColorToken {
+  return isColor(v) ? v : fallback;
+}
 
 export type StickyColor =
   | "yellow"
@@ -248,10 +271,18 @@ export const FRAME_PRESETS: Record<FramePreset, { w: number; h: number } | null>
   A4: { w: 794, h: 1123 },
 };
 
+/** The file-format default: values equal to it are left out of the file, so
+ *  changing it would recolour every existing board. New shapes use
+ *  `newShapeStyle` instead. */
 const DEFAULT_STYLE: Style = { s: "ink", f: "none", w: 1.5, d: "solid", r: 8 };
 
 export function defaultStyle(over: Partial<Style> = {}): Style {
   return { ...DEFAULT_STYLE, ...over };
+}
+
+/** FigJam's default: a soft fill with the strong outline of the same hue. */
+export function newShapeStyle(): Style {
+  return defaultStyle({ f: "blue-soft", s: "blue" });
 }
 
 const DEFAULT_HEADER: BoardHeader = { v: 1, vp: { x: 0, y: 0, zoom: 1 }, bg: "dot" };
@@ -287,8 +318,8 @@ function str(v: unknown, fallback: string): string {
 function parseStyle(raw: unknown): Style {
   const o = (raw ?? {}) as Record<string, unknown>;
   return {
-    s: str(o.s, DEFAULT_STYLE.s) as ColorToken,
-    f: str(o.f, DEFAULT_STYLE.f) as ColorToken,
+    s: color(o.s, DEFAULT_STYLE.s),
+    f: color(o.f, DEFAULT_STYLE.f),
     w: num(o.w, DEFAULT_STYLE.w),
     d: str(o.d, DEFAULT_STYLE.d) as StrokeDash,
     r: num(o.r, DEFAULT_STYLE.r),
@@ -301,7 +332,7 @@ function parseLabel(raw: unknown): Label | undefined {
   const tx = str(o.tx, "");
   if (!tx) return undefined;
   const label: Label = { tx, sz: num(o.sz, 14), al: str(o.al, "c") as Label["al"] };
-  if (typeof o.c === "string" && o.c !== "ink") label.c = o.c as ColorToken;
+  if (isColor(o.c) && o.c !== "ink") label.c = o.c;
   return label;
 }
 
@@ -340,7 +371,7 @@ function parseElement(raw: unknown): BoardEl | null {
       tx: str(o.tx, ""),
       sz: num(o.sz, 16),
       al: str(o.al, "l") as TextEl["al"],
-      c: str(o.c, "ink") as ColorToken,
+      c: color(o.c, "ink"),
     };
   }
   if (t === "sticky") {
@@ -404,7 +435,7 @@ function parseElement(raw: unknown): BoardEl | null {
   if (t === "mind") {
     const el: MindEl = { ...base, t, tx: str(o.tx, "") };
     if (typeof o.pa === "string") el.pa = o.pa;
-    if (typeof o.c === "string") el.c = o.c as ColorToken;
+    if (isColor(o.c)) el.c = o.c;
     if (o.sd === "l" || o.sd === "r") el.sd = o.sd;
     return el;
   }

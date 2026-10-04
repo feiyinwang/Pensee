@@ -52,8 +52,18 @@ export function svgEl<K extends keyof SVGElementTagNameMap>(
   return node;
 }
 
+/** CSS for a stored colour. Tokens (and their `-soft` tints) resolve against
+ *  the theme. A custom `#rrggbb` is drawn as picked in light mode; in dark mode
+ *  (`--wr-board-flip: 1`) its OKLCH lightness is mirrored into the dark range
+ *  and its chroma eased, so a pale fill becomes a dark tint instead of glaring.
+ *  See SPECs/board-color-palette-spec.md. */
 export function colorVar(token: ColorToken): string {
-  return token === "none" ? "none" : `var(--wr-board-${token})`;
+  if (token === "none") return "none";
+  if (token.startsWith("#")) {
+    const f = "var(--wr-board-flip, 0)";
+    return `oklch(from ${token} calc(l + ${f} * (clamp(0.25, 1.15 - l, 0.9) - l)) calc(c * (1 - 0.2 * ${f})) h)`;
+  }
+  return `var(--wr-board-${token})`;
 }
 
 function stickyVar(token: string): string {

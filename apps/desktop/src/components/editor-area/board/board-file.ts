@@ -12,7 +12,13 @@
  * Every rendered element also sits on its own line, for the same reason.
  */
 
-import { type BoardScene, type ParseResult, parseBoard, serializeBoard } from "./board-model";
+import {
+  type BoardScene,
+  HUE_TOKENS,
+  type ParseResult,
+  parseBoard,
+  serializeBoard,
+} from "./board-model";
 import { boxesUnion, elementBounds } from "./board-geometry";
 import { renderElement } from "./board-render";
 
@@ -71,8 +77,13 @@ function escapeXml(text: string): string {
  * Writer those resolve against the theme; in a file opened anywhere else
  * nothing defines them, so the file brings its own, light and dark.
  */
-const FILE_STYLE = `:root{--wr-board-surface:#fff;--wr-board-ink:#1f2328;--wr-board-muted:#6b7280;--wr-board-accent:#0d9488;--wr-board-red:#e5484d;--wr-board-orange:#f76b15;--wr-board-green:#30a46c;--wr-board-blue:#3b82f6;--wr-board-purple:#8e4ec6;--wr-board-frame-bg:rgb(0 0 0/3%);--wr-board-frame-edge:rgb(0 0 0/14%);--wr-board-sticky-yellow:#fdf1c7;--wr-board-sticky-orange:#fadfba;--wr-board-sticky-mint:#d7f2e3;--wr-board-sticky-green:#d6f0cf;--wr-board-sticky-sky:#d3ecf7;--wr-board-sticky-lavender:#dcdcf6;--wr-board-sticky-violet:#ded5f7;--wr-board-sticky-pink:#f6d9ea;--wr-board-sticky-rose:#f8d9d6;--wr-board-sticky-ink:#1e1b16;--wr-board-sticky-edge:rgb(0 0 0/6%)}
-@media (prefers-color-scheme:dark){:root{--wr-board-surface:#0d1117;--wr-board-ink:#e6edf3;--wr-board-muted:#9aa4b2;--wr-board-accent:#2dd4bf;--wr-board-red:#ff6369;--wr-board-orange:#ff8b3d;--wr-board-green:#4cc38a;--wr-board-blue:#6a9bff;--wr-board-purple:#b38aea;--wr-board-frame-bg:rgb(255 255 255/4%);--wr-board-frame-edge:rgb(255 255 255/16%);--wr-board-sticky-ink:#1a1a1a}}`;
+const SOFT_TOKENS = HUE_TOKENS.map(
+  (h) =>
+    `--wr-board-${h}-soft:color-mix(in oklch,var(--wr-board-${h}) 22%,var(--wr-board-surface))`,
+).join(";");
+
+const FILE_STYLE = `:root{${SOFT_TOKENS};--wr-board-flip:0;--wr-board-yellow:oklch(0.76 0.155 80);--wr-board-pink:oklch(0.64 0.2 350);--wr-board-surface:#fff;--wr-board-ink:#1f2328;--wr-board-muted:#6b7280;--wr-board-accent:#0d9488;--wr-board-red:#e5484d;--wr-board-orange:#f76b15;--wr-board-green:#30a46c;--wr-board-blue:#3b82f6;--wr-board-purple:#8e4ec6;--wr-board-frame-bg:rgb(0 0 0/3%);--wr-board-frame-edge:rgb(0 0 0/14%);--wr-board-sticky-yellow:#fdf1c7;--wr-board-sticky-orange:#fadfba;--wr-board-sticky-mint:#d7f2e3;--wr-board-sticky-green:#d6f0cf;--wr-board-sticky-sky:#d3ecf7;--wr-board-sticky-lavender:#dcdcf6;--wr-board-sticky-violet:#ded5f7;--wr-board-sticky-pink:#f6d9ea;--wr-board-sticky-rose:#f8d9d6;--wr-board-sticky-ink:#1e1b16;--wr-board-sticky-edge:rgb(0 0 0/6%)}
+@media (prefers-color-scheme:dark){:root{--wr-board-surface:#0d1117;--wr-board-ink:#e6edf3;--wr-board-muted:#9aa4b2;--wr-board-accent:#2dd4bf;--wr-board-red:#ff6369;--wr-board-orange:#ff8b3d;--wr-board-green:#4cc38a;--wr-board-blue:#6a9bff;--wr-board-purple:#b38aea;--wr-board-yellow:oklch(0.83 0.15 85);--wr-board-pink:oklch(0.72 0.17 350);--wr-board-flip:1;--wr-board-frame-bg:rgb(255 255 255/4%);--wr-board-frame-edge:rgb(255 255 255/16%);--wr-board-sticky-ink:#1a1a1a}}`;
 
 const SVG_NS_ATTR = / xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g;
 

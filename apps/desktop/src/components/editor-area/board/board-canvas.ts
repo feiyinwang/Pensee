@@ -32,6 +32,7 @@ import {
   clampZoom,
   cloneScene,
   defaultStyle,
+  newShapeStyle,
   emptyScene,
   findEl,
   hasStyle,
@@ -1168,10 +1169,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /* -------------------------------------------------------- creation */
 
-  function styleForNew(): ReturnType<typeof defaultStyle> {
-    return defaultStyle();
-  }
-
   function makeElement(kind: ToolId, at: Point): BoardEl | null {
     const id = newId();
     switch (kind) {
@@ -1185,7 +1182,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           h: 0,
           a: 0,
           op: 1,
-          st: styleForNew(),
+          st: newShapeStyle(),
         } as ShapeEl;
       case "sticky":
         return {
@@ -1246,7 +1243,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             [0, 0],
           ],
           hd: { s: "none", e: tools.linker.kind === "arrow" ? "triangle" : "none" },
-          st: styleForNew(),
+          st: defaultStyle(),
         } as LinkerEl;
       default:
         return null;

@@ -253,6 +253,25 @@
       "default": 30
     },
     {
+      "key": "board.palette",
+      "label": "Board Colours",
+      "description": "Colours offered for shape fills and borders on boards, in order. Edit them from a shape's Fill or Border menu.",
+      "category": "Board",
+      "type": "list",
+      "default": [
+        "ink",
+        "muted",
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "accent",
+        "blue",
+        "purple",
+        "pink"
+      ]
+    },
+    {
       "key": "files.associations",
       "label": "File Associations",
       "description": "File patterns to include in the workspace",

@@ -41,6 +41,7 @@ import { motionTokens } from "@/components/arc/lib/motion-tokens";
 import {
   type ArrowHead,
   type ColorToken,
+  HUE_TOKENS,
   type LinkerShape,
   SHAPE_KINDS,
   STICKY_COLORS,
@@ -49,6 +50,8 @@ import {
   type StrokeDash,
 } from "./board-model";
 import type { Align, SelectionSummary } from "./board-selection";
+import { PaletteSwatches } from "./board-color-picker";
+import { colorVar } from "./board-render";
 import { ensureArcTokens } from "./arc-tokens";
 import styles from "./board-selection-toolbar.module.css";
 
@@ -110,21 +113,12 @@ const SHAPE_NAMES: Record<ShapeKind, string> = {
   cross: "Cross",
 };
 
-const INK_TOKENS: ColorToken[] = [
-  "ink",
-  "muted",
-  "accent",
-  "red",
-  "orange",
-  "green",
-  "blue",
-  "purple",
-];
-const FILL_TOKENS: ColorToken[] = ["none", ...INK_TOKENS];
+/** Text and branch colours: the fixed hue tokens. Fills and borders use the
+ *  editable palette (`PaletteSwatches`). */
+const INK_TOKENS: readonly ColorToken[] = HUE_TOKENS;
 const FONT_SIZES = [12, 14, 16, 20, 24, 32, 48];
 
-const swatchColor = (token: string) =>
-  token === "none" ? "transparent" : `var(--wr-board-${token})`;
+const swatchColor = (token: ColorToken) => (token === "none" ? "transparent" : colorVar(token));
 const stickyColor = (token: string) => `var(--wr-board-sticky-${token})`;
 
 /* ------------------------------------------------------------ pieces */
@@ -303,13 +297,7 @@ function Toolbar({
       >
         {s.fill !== undefined && (
           <Section title="Fill">
-            <Swatches
-              label="Fill"
-              tokens={FILL_TOKENS}
-              value={s.fill}
-              color={swatchColor}
-              onPick={actions.setFill}
-            />
+            <PaletteSwatches kind="fill" value={s.fill} onPick={actions.setFill} />
           </Section>
         )}
         {s.sticky && (
@@ -337,13 +325,7 @@ function Toolbar({
         width={260}
       >
         <Section title="Colour">
-          <Swatches
-            label="Border colour"
-            tokens={INK_TOKENS}
-            value={s.stroke}
-            color={swatchColor}
-            onPick={actions.setStroke}
-          />
+          <PaletteSwatches kind="stroke" value={s.stroke} onPick={actions.setStroke} />
         </Section>
         <Section title="Width">
           <SegmentedControl
