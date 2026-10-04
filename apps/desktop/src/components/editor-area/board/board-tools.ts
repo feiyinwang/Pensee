@@ -201,7 +201,11 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   const presentLabel = document.createElement("span");
   presentLabel.textContent = "Present";
   presentBtn.append(presentLabel);
-  top.append(closeBtn, title, presentBtn);
+  // Undo and redo sit up here with the board's other commands (they used to
+  // share the bottom-right cluster with zoom).
+  const undoBtn = button("Undo (⌘Z)", ICON.undo, () => cb.onUndo());
+  const redoBtn = button("Redo (⇧⌘Z)", ICON.redo, () => cb.onRedo());
+  top.append(closeBtn, title, undoBtn, redoBtn, presentBtn);
   if (cb.onExport) {
     const onExport = cb.onExport;
     const exportBtn = button("Export", ICON.export, () => {
@@ -385,10 +389,6 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   const viewportCluster = document.createElement("div");
   viewportCluster.className = "wr-board-viewport-cluster";
 
-  const undoBtn = button("Undo (⌘Z)", ICON.undo, () => cb.onUndo());
-  const redoBtn = button("Redo (⇧⌘Z)", ICON.redo, () => cb.onRedo());
-  const historyGroup = group([undoBtn, redoBtn]);
-
   const zoomOut = button("Zoom out (⌘−)", ICON.minus, () => cb.onZoom(-1));
   const zoomIn = button("Zoom in (⌘+)", ICON.plus, () => cb.onZoom(1));
   const zoomLabel = document.createElement("button");
@@ -400,7 +400,7 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   const fitBtn = button("Zoom to fit (⌘1)", ICON.fit, () => cb.onZoomFit());
   const zoomGroup = group([zoomOut, zoomLabel, zoomIn, fitBtn]);
 
-  viewportCluster.append(historyGroup, zoomGroup);
+  viewportCluster.append(zoomGroup);
 
   /* ------------------------------------------------------ style panel */
 
