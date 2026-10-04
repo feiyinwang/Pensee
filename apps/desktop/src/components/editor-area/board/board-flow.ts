@@ -55,7 +55,7 @@ export function nextStepBox(
   side: Side,
   scene: BoardScene,
   size: { w: number; h: number } = src,
-  ignore?: string,
+  ignore?: string | ReadonlySet<string>,
 ): Box {
   const [sx, sy] = STEP[side];
   const { w, h } = size;
@@ -70,7 +70,13 @@ export function nextStepBox(
   // Connectors don't block a spot: their stored points can span a whole
   // column of cards they no longer follow, which used to fill every slot.
   const others = scene.els
-    .filter((el) => el.id !== src.id && el.id !== ignore && el.t !== "frame" && !isLinker(el))
+    .filter(
+      (el) =>
+        el.id !== src.id &&
+        (typeof ignore === "string" ? el.id !== ignore : !ignore?.has(el.id)) &&
+        el.t !== "frame" &&
+        !isLinker(el),
+    )
     .map(elementBounds);
   const clear = QUICK_GAP / 4;
   const free = (box: Box): boolean =>
@@ -143,44 +149,75 @@ export function placeNear(
  *  for dropping it there to dock it after that card. */
 export const DOCK_REACH = 120;
 
+/** Where a dragged group docks: the card it joins after, the slot for the
+ *  group's bounding box, how far each dragged item moves to fill it, and the
+ *  heads (first cards of the group's chains) that get the arrow. */
+export interface Dock {
+  from: ShapeEl | StickyEl;
+  side: Side;
+  box: Box;
+  shift: Point;
+  heads: (ShapeEl | StickyEl)[];
+}
+
 /**
- * Docking a dragged card: the shape or note it has come within `DOCK_REACH`
- * of (nearest, edge to edge; overlapping counts as nearest), the side of that one it is on,
- * and the slot beside it the card snaps into on drop. Null when nothing is in
- * reach, or the nearest one is already joined to the card.
+ * Docking dragged cards (one, or a selection of cards and the arrows between
+ * them): the shape or note they have come within `DOCK_REACH` of (nearest,
+ * edge to edge, from any dragged card; overlapping counts as nearest), and a
+ * slot to its right — the flow's direction, wherever they were dropped —
+ * that the whole group moves into, sliding down past existing steps. The
+ * heads are the dragged cards no other dragged card points into. Null when
+ * nothing is in reach, something dragged isn't a card, or the group is
+ * already joined to that card.
  */
-export function dockTarget(
-  scene: BoardScene,
-  card: ShapeEl | StickyEl,
-): { from: ShapeEl | StickyEl; side: Side; box: Box } | null {
-  const c = elementBounds(card);
-  // Nearest by edge gap; one the card overlaps has a gap of 0, so it beats
-  // any card merely near. Ties (several overlapped) go to the nearer centre.
+export function dockTarget(scene: BoardScene, moving: BoardEl[]): Dock | null {
+  const ids = new Set(moving.map((el) => el.id));
+  const cards: (ShapeEl | StickyEl)[] = [];
+  for (const el of moving) {
+    if (isLinker(el)) continue;
+    if (!canQuickConnect(el)) return null;
+    cards.push(el);
+  }
+  if (!cards.length) return null;
+  const boxes = cards.map(elementBounds);
+
+  // Nearest by edge gap; one a card overlaps has a gap of 0, so it beats any
+  // card merely near. Ties (several overlapped) go to the nearer centre.
   let best: { el: ShapeEl | StickyEl; d: number; cd: number } | null = null;
-  const cc = { x: c.x + c.w / 2, y: c.y + c.h / 2 };
   for (const el of scene.els) {
-    if (el.id === card.id || !canQuickConnect(el)) continue;
+    if (ids.has(el.id) || !canQuickConnect(el)) continue;
     const b = elementBounds(el);
-    const dx = Math.max(b.x - (c.x + c.w), 0, c.x - (b.x + b.w));
-    const dy = Math.max(b.y - (c.y + c.h), 0, c.y - (b.y + b.h));
-    const d = Math.hypot(dx, dy);
-    if (d > DOCK_REACH) continue;
-    const cd = Math.hypot(b.x + b.w / 2 - cc.x, b.y + b.h / 2 - cc.y);
-    if (!best || d < best.d || (d === best.d && cd < best.cd)) best = { el, d, cd };
+    for (const c of boxes) {
+      const dx = Math.max(b.x - (c.x + c.w), 0, c.x - (b.x + b.w));
+      const dy = Math.max(b.y - (c.y + c.h), 0, c.y - (b.y + b.h));
+      const d = Math.hypot(dx, dy);
+      if (d > DOCK_REACH) continue;
+      const cd = Math.hypot(b.x + b.w / 2 - (c.x + c.w / 2), b.y + b.h / 2 - (c.y + c.h / 2));
+      if (!best || d < best.d || (d === best.d && cd < best.cd)) best = { el, d, cd };
+    }
   }
   if (!best) return null;
   const from = best.el;
-  const joined = scene.els.some(
-    (el) =>
-      isLinker(el) &&
-      ((el.b1?.el === from.id && el.b2?.el === card.id) ||
-        (el.b1?.el === card.id && el.b2?.el === from.id)),
+
+  const links = scene.els.filter(isLinker);
+  const joined = links.some(
+    (l) =>
+      (l.b1?.el === from.id && ids.has(l.b2?.el ?? "")) ||
+      (l.b2?.el === from.id && ids.has(l.b1?.el ?? "")),
   );
   if (joined) return null;
-  // A docked card always comes next to the right — the flow's direction —
-  // wherever it was dropped; the slot slides down past existing steps.
+  const heads = cards.filter(
+    (c) => !links.some((l) => l.b2?.el === c.id && l.b1 && ids.has(l.b1.el)),
+  );
+  if (!heads.length) return null; // a closed loop has no first card
+
+  const x0 = Math.min(...boxes.map((b) => b.x));
+  const y0 = Math.min(...boxes.map((b) => b.y));
+  const w = Math.max(...boxes.map((b) => b.x + b.w)) - x0;
+  const h = Math.max(...boxes.map((b) => b.y + b.h)) - y0;
   const side: Side = "e";
-  return { from, side, box: nextStepBox(from, side, scene, card, card.id) };
+  const box = nextStepBox(from, side, scene, { w, h }, ids);
+  return { from, side, box, shift: { x: box.x - x0, y: box.y - y0 }, heads };
 }
 
 /** A blank copy of `src` (same kind, size and style; no text) at `box`. */

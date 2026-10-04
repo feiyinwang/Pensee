@@ -137,7 +137,7 @@ describe("dockTarget", () => {
   test("a card dragged near another docks into the slot after it", () => {
     const a = rect("a", 0, 0);
     const card = rect("card", 160 + 50, 30); // 50 to the right, a bit low
-    const dock = dockTarget({ ...emptyScene(), els: [a, card] }, card);
+    const dock = dockTarget({ ...emptyScene(), els: [a, card] }, [card]);
     expect(dock?.from.id).toBe("a");
     expect(dock?.side).toBe("e");
     expect(dock?.box).toEqual({ x: 160 + QUICK_GAP, y: 0, w: 160, h: 110 });
@@ -148,17 +148,17 @@ describe("dockTarget", () => {
     const one = rect("one", 0, 200);
     const two = rect("two", 0, 0);
     const card = rect("card", 60, 260);
-    const dock = dockTarget({ ...emptyScene(), els: [one, two, card] }, card);
+    const dock = dockTarget({ ...emptyScene(), els: [one, two, card] }, [card]);
     expect(dock?.from.id).toBe("one");
   });
 
   test("nothing when out of reach or already joined", () => {
     const a = rect("a", 0, 0);
     const far = rect("far", 160 + 400, 0);
-    expect(dockTarget({ ...emptyScene(), els: [a, far] }, far)).toBeNull();
+    expect(dockTarget({ ...emptyScene(), els: [a, far] }, [far])).toBeNull();
     const near = rect("near", 160 + 50, 0);
     const joined = { ...emptyScene(), els: [a, near, connectorBetween(a, near, "e")] };
-    expect(dockTarget(joined, near)).toBeNull();
+    expect(dockTarget(joined, [near])).toBeNull();
   });
 });
 
@@ -166,8 +166,31 @@ describe("dockTarget direction", () => {
   test("docks to the right even when dropped below", () => {
     const a = rect("a", 0, 0);
     const card = rect("card", 0, 110 + 40);
-    const dock = dockTarget({ ...emptyScene(), els: [a, card] }, card);
+    const dock = dockTarget({ ...emptyScene(), els: [a, card] }, [card]);
     expect(dock?.side).toBe("e");
     expect(dock?.box.x).toBe(160 + QUICK_GAP);
+  });
+});
+
+describe("dockTarget with a group", () => {
+  test("a dragged chain docks as a block; only its head gets the arrow", () => {
+    const a = rect("a", 0, 0);
+    // A chain h → t dragged so that h's corner overlaps a's right edge.
+    const h = rect("h", 150, 60);
+    const t = rect("t", 150 + 160 + QUICK_GAP, 60);
+    const ht = connectorBetween(h, t, "e");
+    const dock = dockTarget({ ...emptyScene(), els: [a, h, t, ht] }, [h, t, ht]);
+    expect(dock?.from.id).toBe("a");
+    expect(dock?.heads.map((c) => c.id)).toEqual(["h"]);
+    // The group's box lands right of a, centred on its axis.
+    expect(dock?.box.x).toBe(160 + QUICK_GAP);
+    expect(dock?.shift).toEqual({ x: 160 + QUICK_GAP - 150, y: 0 - 60 });
+  });
+
+  test("no dock when something dragged isn't a card", () => {
+    const a = rect("a", 0, 0);
+    const h = rect("h", 200, 0);
+    const pic = { ...rect("pic", 200, 200), t: "image" } as unknown as ShapeEl;
+    expect(dockTarget({ ...emptyScene(), els: [a, h, pic] }, [h, pic])).toBeNull();
   });
 });

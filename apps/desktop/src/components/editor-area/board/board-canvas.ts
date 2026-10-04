@@ -188,7 +188,7 @@ type Interaction =
       origin: Point;
       startEls: Map<string, BoardEl>;
       moved: boolean;
-      /** A single card brought near another: where it docks on drop. */
+      /** Dragged cards brought near another: where they dock on drop. */
       dock: ReturnType<typeof dockTarget>;
     }
   | {
@@ -705,22 +705,29 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
 
     if (interaction.kind === "drag" && interaction.dock) {
-      // The dragged card docks after the lit one: its slot is outlined, with
-      // the dashed link from the lit card to it.
-      const { from, box: slot } = interaction.dock;
-      connectHint(elementBounds(from), slot);
-      overlay.append(
-        svgEl("rect", {
-          x: slot.x,
-          y: slot.y,
-          width: slot.w,
-          height: slot.h,
-          rx: 8,
-          class: "wr-board-ghost",
-          "stroke-width": px(1.5),
-          "stroke-dasharray": `${px(5)} ${px(4)}`,
-        }),
-      );
+      // The dragged cards dock after the lit one: where each will land is
+      // outlined, with a dashed link from the lit card to each head.
+      const { from, shift, heads } = interaction.dock;
+      const fromBox = elementBounds(from);
+      for (const id of interaction.startEls.keys()) {
+        const el = findEl(scene, id);
+        if (!el || isLinker(el)) continue;
+        const b = elementBounds(el);
+        const g = { x: b.x + shift.x, y: b.y + shift.y, w: b.w, h: b.h };
+        if (heads.some((h) => h.id === id)) connectHint(fromBox, g);
+        overlay.append(
+          svgEl("rect", {
+            x: g.x,
+            y: g.y,
+            width: g.w,
+            height: g.h,
+            rx: 8,
+            class: "wr-board-ghost",
+            "stroke-width": px(1.5),
+            "stroke-dasharray": `${px(5)} ${px(4)}`,
+          }),
+        );
+      }
     }
 
     /** Rings `f` (what a card will connect to) and runs a dashed line from
@@ -2441,10 +2448,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           el.x = clampCoord(start.x + dx);
           el.y = clampCoord(start.y + dy);
         }
-        // One card near another offers to dock after it (Alt: just move).
-        const only = interaction.startEls.size === 1 ? findEl(scene, [...movingIds][0]) : null;
-        interaction.dock =
-          only && canQuickConnect(only) && !e.altKey ? dockTarget(scene, only) : null;
+        // Cards near another offer to dock after it (Alt: just move).
+        interaction.dock = e.altKey
+          ? null
+          : dockTarget(
+              scene,
+              [...movingIds]
+                .map((id) => findEl(scene, id))
+                .filter((el): el is BoardEl => Boolean(el)),
+            );
         drawGesture(interaction.startEls);
         return;
       }
@@ -2615,19 +2627,28 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         if (current.moved) {
           const dock = current.dock;
           restoreAndCommit(current.startEls, () => {
-            for (const id of current.startEls.keys()) {
+            const ids = current.startEls;
+            for (const id of ids.keys()) {
               const el = findEl(scene, id);
               if (!el) continue;
-              if (dock) {
-                // Docked: into the slot after the lit card, joined to it. It
-                // moves there, so the arrows that led into it go; its own
-                // next steps stay attached.
-                el.x = dock.box.x;
-                el.y = dock.box.y;
-                scene.els = scene.els.filter((o) => !(isLinker(o) && o.b2?.el === el.id && o.b1));
-                scene.els.push(connectorBetween(dock.from, el, dock.side));
+              if (dock && !isLinker(el)) {
+                el.x += dock.shift.x;
+                el.y += dock.shift.y;
               }
               assignFrame(el);
+            }
+            if (!dock) return;
+            // Docked: the group sits in the slot after the lit card, which
+            // points into each head. The heads moved there, so arrows that
+            // led into them from outside the group go; arrows within the
+            // group and out of it stay.
+            const heads = new Set(dock.heads.map((h) => h.id));
+            scene.els = scene.els.filter(
+              (o) => !(isLinker(o) && heads.has(o.b2?.el ?? "") && o.b1 && !ids.has(o.b1.el)),
+            );
+            for (const id of heads) {
+              const head = findEl(scene, id);
+              if (head) scene.els.push(connectorBetween(dock.from, head, dock.side));
             }
           });
         } else {
