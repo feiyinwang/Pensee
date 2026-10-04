@@ -10,6 +10,7 @@ import {
   ATTACH_REACH,
   QUICK_GAP,
   connectorBetween,
+  dockTarget,
   nextStepBox,
   placeNear,
 } from "../src/components/editor-area/board/board-flow";
@@ -129,5 +130,27 @@ describe("nextStepBox never overlaps", () => {
     const box = nextStepBox(src, "e", scene);
     expect(box.x).toBe(x);
     for (const c of column) expect(boxesOverlap(box, c)).toBe(false);
+  });
+});
+
+describe("dockTarget", () => {
+  test("a card dragged near another docks into the slot after it", () => {
+    const a = rect("a", 0, 0);
+    const card = rect("card", 160 + 50, 30); // 50 to the right, a bit low
+    const dock = dockTarget({ ...emptyScene(), els: [a, card] }, card);
+    expect(dock?.from.id).toBe("a");
+    expect(dock?.side).toBe("e");
+    expect(dock?.box).toEqual({ x: 160 + QUICK_GAP, y: 0, w: 160, h: 110 });
+  });
+
+  test("nothing when out of reach, overlapping, or already joined", () => {
+    const a = rect("a", 0, 0);
+    const far = rect("far", 160 + 400, 0);
+    expect(dockTarget({ ...emptyScene(), els: [a, far] }, far)).toBeNull();
+    const onTop = rect("top", 40, 40);
+    expect(dockTarget({ ...emptyScene(), els: [a, onTop] }, onTop)).toBeNull();
+    const near = rect("near", 160 + 50, 0);
+    const joined = { ...emptyScene(), els: [a, near, connectorBetween(a, near, "e")] };
+    expect(dockTarget(joined, near)).toBeNull();
   });
 });

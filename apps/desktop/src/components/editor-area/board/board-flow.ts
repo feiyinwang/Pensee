@@ -139,6 +139,48 @@ export function placeNear(
   return { box: nextStepBox(best.el, side, scene, { w, h }, ignore), from: best.el, side };
 }
 
+/** How close (scene units, edge to edge) a dragged card must come to another
+ *  for dropping it there to dock it after that card. */
+export const DOCK_REACH = 120;
+
+/**
+ * Docking a dragged card: the shape or note it has come within `DOCK_REACH`
+ * of (nearest, edge to edge, not overlapping), the side of that one it is on,
+ * and the slot beside it the card snaps into on drop. Null when nothing is in
+ * reach, or the nearest one is already joined to the card.
+ */
+export function dockTarget(
+  scene: BoardScene,
+  card: ShapeEl | StickyEl,
+): { from: ShapeEl | StickyEl; side: Side; box: Box } | null {
+  const c = elementBounds(card);
+  let best: { el: ShapeEl | StickyEl; d: number } | null = null;
+  for (const el of scene.els) {
+    if (el.id === card.id || !canQuickConnect(el)) continue;
+    const b = elementBounds(el);
+    const dx = Math.max(b.x - (c.x + c.w), 0, c.x - (b.x + b.w));
+    const dy = Math.max(b.y - (c.y + c.h), 0, c.y - (b.y + b.h));
+    if (dx === 0 && dy === 0) continue; // on top of it is not next to it
+    const d = Math.hypot(dx, dy);
+    if (d > DOCK_REACH) continue;
+    if (!best || d < best.d) best = { el, d };
+  }
+  if (!best) return null;
+  const from = best.el;
+  const joined = scene.els.some(
+    (el) =>
+      isLinker(el) &&
+      ((el.b1?.el === from.id && el.b2?.el === card.id) ||
+        (el.b1?.el === card.id && el.b2?.el === from.id)),
+  );
+  if (joined) return null;
+  const b = elementBounds(from);
+  const ox = (c.x + c.w / 2 - (b.x + b.w / 2)) / (b.w / 2 || 1);
+  const oy = (c.y + c.h / 2 - (b.y + b.h / 2)) / (b.h / 2 || 1);
+  const side: Side = Math.abs(ox) >= Math.abs(oy) ? (ox > 0 ? "e" : "w") : oy > 0 ? "s" : "n";
+  return { from, side, box: nextStepBox(from, side, scene, card, card.id) };
+}
+
 /** A blank copy of `src` (same kind, size and style; no text) at `box`. */
 export function blankCopy(src: ShapeEl | StickyEl, box: Box): ShapeEl | StickyEl {
   const copy = structuredClone(src) as ShapeEl | StickyEl;

@@ -111,6 +111,7 @@ import {
   blankCopy,
   canQuickConnect,
   connectorBetween,
+  dockTarget,
   nextStepBox,
   placeNear,
   quickDots,
@@ -179,7 +180,14 @@ type Interaction =
   | { kind: "pen"; pts: Point[] }
   | { kind: "pan"; startClient: Point; startVp: Viewport }
   | { kind: "marquee"; origin: Point; current: Point; additive: boolean }
-  | { kind: "drag"; origin: Point; startEls: Map<string, BoardEl>; moved: boolean }
+  | {
+      kind: "drag";
+      origin: Point;
+      startEls: Map<string, BoardEl>;
+      moved: boolean;
+      /** A single card brought near another: where it docks on drop. */
+      dock: ReturnType<typeof dockTarget>;
+    }
   | {
       kind: "resize";
       handle: HandleId;
@@ -678,46 +686,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       const w = ghost.box.w;
       const h = ghost.box.h;
       const g = { x: pointerScene.x - w / 2, y: pointerScene.y - h / 2, w, h };
-      if (ghost.from) {
-        const f = elementBounds(ghost.from);
-        overlay.append(
-          svgEl("rect", {
-            x: f.x - px(3),
-            y: f.y - px(3),
-            width: f.w + px(6),
-            height: f.h + px(6),
-            rx: px(6),
-            class: "wr-board-connect-target",
-            "stroke-width": px(2),
-          }),
-        );
-        const fc = { x: f.x + f.w / 2, y: f.y + f.h / 2 };
-        const gc = { x: g.x + w / 2, y: g.y + h / 2 };
-        // From the target's edge to the card's edge, along the centre line.
-        const edge = (b: typeof f, toward: Point) => {
-          const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
-          const dx = toward.x - c.x;
-          const dy = toward.y - c.y;
-          const t = Math.min(
-            dx ? b.w / 2 / Math.abs(dx) : Infinity,
-            dy ? b.h / 2 / Math.abs(dy) : Infinity,
-          );
-          return { x: c.x + dx * Math.min(t, 1), y: c.y + dy * Math.min(t, 1) };
-        };
-        const a = edge(f, gc);
-        const e = edge(g, fc);
-        overlay.append(
-          svgEl("line", {
-            x1: a.x,
-            y1: a.y,
-            x2: e.x,
-            y2: e.y,
-            class: "wr-board-ghost-link",
-            "stroke-width": px(1.5),
-            "stroke-dasharray": `${px(5)} ${px(4)}`,
-          }),
-        );
-      }
+      if (ghost.from) connectHint(elementBounds(ghost.from), g);
       overlay.append(
         svgEl("rect", {
           x: g.x,
@@ -726,6 +695,67 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           height: h,
           rx: tools.tool === "sticky" ? px(2) : 8,
           class: "wr-board-ghost",
+          "stroke-width": px(1.5),
+          "stroke-dasharray": `${px(5)} ${px(4)}`,
+        }),
+      );
+    }
+
+    if (interaction.kind === "drag" && interaction.dock) {
+      // The dragged card docks after the lit one: its slot is outlined, with
+      // the dashed link from the lit card to it.
+      const { from, box: slot } = interaction.dock;
+      connectHint(elementBounds(from), slot);
+      overlay.append(
+        svgEl("rect", {
+          x: slot.x,
+          y: slot.y,
+          width: slot.w,
+          height: slot.h,
+          rx: 8,
+          class: "wr-board-ghost",
+          "stroke-width": px(1.5),
+          "stroke-dasharray": `${px(5)} ${px(4)}`,
+        }),
+      );
+    }
+
+    /** Rings `f` (what a card will connect to) and runs a dashed line from
+     *  its edge to the edge of `g`, along the centre line. */
+    function connectHint(f: Box, g: Box): void {
+      overlay.append(
+        svgEl("rect", {
+          x: f.x - px(3),
+          y: f.y - px(3),
+          width: f.w + px(6),
+          height: f.h + px(6),
+          rx: px(6),
+          class: "wr-board-connect-target",
+          "stroke-width": px(2),
+        }),
+      );
+      const fc = { x: f.x + f.w / 2, y: f.y + f.h / 2 };
+      const gc = { x: g.x + g.w / 2, y: g.y + g.h / 2 };
+      // From the target's edge to the card's edge, along the centre line.
+      const edge = (b: typeof f, toward: Point) => {
+        const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+        const dx = toward.x - c.x;
+        const dy = toward.y - c.y;
+        const t = Math.min(
+          dx ? b.w / 2 / Math.abs(dx) : Infinity,
+          dy ? b.h / 2 / Math.abs(dy) : Infinity,
+        );
+        return { x: c.x + dx * Math.min(t, 1), y: c.y + dy * Math.min(t, 1) };
+      };
+      const a = edge(f, gc);
+      const e = edge(g, fc);
+      overlay.append(
+        svgEl("line", {
+          x1: a.x,
+          y1: a.y,
+          x2: e.x,
+          y2: e.y,
+          class: "wr-board-ghost-link",
           "stroke-width": px(1.5),
           "stroke-dasharray": `${px(5)} ${px(4)}`,
         }),
@@ -2191,7 +2221,13 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           const el = findEl(scene, id);
           if (isMind(el)) for (const n of mindSubtree(scene, mindRoot(scene, el).id)) ids.add(n.id);
         }
-        interaction = { kind: "drag", origin: p, startEls: snapshot(ids), moved: false };
+        interaction = {
+          kind: "drag",
+          origin: p,
+          startEls: snapshot(ids),
+          moved: false,
+          dock: null,
+        };
         svg.setPointerCapture(e.pointerId);
         return;
       }
@@ -2372,6 +2408,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           el.x = clampCoord(start.x + dx);
           el.y = clampCoord(start.y + dy);
         }
+        // One card near another offers to dock after it (Alt: just move).
+        const only = interaction.startEls.size === 1 ? findEl(scene, [...movingIds][0]) : null;
+        interaction.dock =
+          only && canQuickConnect(only) && !e.altKey ? dockTarget(scene, only) : null;
         drawGesture(interaction.startEls);
         return;
       }
@@ -2534,10 +2574,18 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
       case "drag": {
         if (current.moved) {
+          const dock = current.dock;
           restoreAndCommit(current.startEls, () => {
             for (const id of current.startEls.keys()) {
               const el = findEl(scene, id);
-              if (el) assignFrame(el);
+              if (!el) continue;
+              if (dock) {
+                // Docked: into the slot after the lit card, joined to it.
+                el.x = dock.box.x;
+                el.y = dock.box.y;
+                scene.els.push(connectorBetween(dock.from, el, dock.side));
+              }
+              assignFrame(el);
             }
           });
         } else {
