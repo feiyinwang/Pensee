@@ -666,45 +666,65 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const z = vp().zoom;
     const px = (n: number) => n / z;
 
-    if (ghost) {
-      const g = ghost.box;
-      overlay.append(
-        svgEl("rect", {
-          x: g.x,
-          y: g.y,
-          width: g.w,
-          height: g.h,
-          rx: tools.tool === "sticky" ? px(2) : 8,
-          class: "wr-board-ghost",
-          "stroke-width": px(1.5),
-          "stroke-dasharray": `${px(5)} ${px(4)}`,
-        }),
-      );
-      if (ghost.from && ghost.side) {
+    if (ghost && pointerScene) {
+      // The card follows the cursor; the shape it would connect to is ringed
+      // (the connector tool's bind hint), with a dashed line out to the card.
+      // A click drops it beside that shape — see `placeNear`.
+      const w = ghost.box.w;
+      const h = ghost.box.h;
+      const g = { x: pointerScene.x - w / 2, y: pointerScene.y - h / 2, w, h };
+      if (ghost.from) {
         const f = elementBounds(ghost.from);
-        const mid = (b: { x: number; y: number; w: number; h: number }, side: Side) =>
-          side === "e"
-            ? { x: b.x + b.w, y: b.y + b.h / 2 }
-            : side === "w"
-              ? { x: b.x, y: b.y + b.h / 2 }
-              : side === "s"
-                ? { x: b.x + b.w / 2, y: b.y + b.h }
-                : { x: b.x + b.w / 2, y: b.y };
-        const opposite: Record<Side, Side> = { e: "w", w: "e", n: "s", s: "n" };
-        const a = mid(f, ghost.side);
-        const b = mid(g, opposite[ghost.side]);
+        overlay.append(
+          svgEl("rect", {
+            x: f.x - px(3),
+            y: f.y - px(3),
+            width: f.w + px(6),
+            height: f.h + px(6),
+            rx: px(6),
+            class: "wr-board-bind-hint",
+            "stroke-width": px(2),
+          }),
+        );
+        const fc = { x: f.x + f.w / 2, y: f.y + f.h / 2 };
+        const gc = { x: g.x + w / 2, y: g.y + h / 2 };
+        // From the target's edge to the card's edge, along the centre line.
+        const edge = (b: typeof f, toward: Point) => {
+          const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+          const dx = toward.x - c.x;
+          const dy = toward.y - c.y;
+          const t = Math.min(
+            dx ? b.w / 2 / Math.abs(dx) : Infinity,
+            dy ? b.h / 2 / Math.abs(dy) : Infinity,
+          );
+          return { x: c.x + dx * Math.min(t, 1), y: c.y + dy * Math.min(t, 1) };
+        };
+        const a = edge(f, gc);
+        const e = edge(g, fc);
         overlay.append(
           svgEl("line", {
             x1: a.x,
             y1: a.y,
-            x2: b.x,
-            y2: b.y,
+            x2: e.x,
+            y2: e.y,
             class: "wr-board-ghost-link",
             "stroke-width": px(1.5),
             "stroke-dasharray": `${px(5)} ${px(4)}`,
           }),
         );
       }
+      overlay.append(
+        svgEl("rect", {
+          x: g.x,
+          y: g.y,
+          width: w,
+          height: h,
+          rx: tools.tool === "sticky" ? px(2) : 8,
+          class: "wr-board-ghost",
+          "stroke-width": px(1.5),
+          "stroke-dasharray": `${px(5)} ${px(4)}`,
+        }),
+      );
     }
 
     if (matches.length) {
@@ -1158,23 +1178,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       for (const n of mindSubtree(scene, id)) doomed.add(n.id);
       relayout.add(mindRoot(scene, el).id);
     }
-    scene.els = scene.els.filter((el) => !doomed.has(el.id));
-    for (const rootId of relayout) if (!doomed.has(rootId)) layoutMind(scene, rootId, measureText);
-    // A binding to a removed element degrades to its last resolved point so
-    // the arrow stays where the user last saw it instead of vanishing.
+    // An arrow or line attached to anything being deleted goes with it — a
+    // connector to nothing is litter. One undo step brings them all back.
     for (const el of scene.els) {
-      if (!isLinker(el)) continue;
-      const pts = routeLinker(scene, el);
-      if (el.b1 && doomed.has(el.b1.el)) {
-        delete el.b1;
-        el.pts[0] = [pts[0].x - el.x, pts[0].y - el.y];
-      }
-      if (el.b2 && doomed.has(el.b2.el)) {
-        delete el.b2;
-        const last = pts[pts.length - 1];
-        el.pts[el.pts.length - 1] = [last.x - el.x, last.y - el.y];
+      if (isLinker(el) && ((el.b1 && doomed.has(el.b1.el)) || (el.b2 && doomed.has(el.b2.el)))) {
+        doomed.add(el.id);
       }
     }
+    scene.els = scene.els.filter((el) => !doomed.has(el.id));
+    for (const rootId of relayout) if (!doomed.has(rootId)) layoutMind(scene, rootId, measureText);
     selection.clear();
     draw();
     markDirty();
