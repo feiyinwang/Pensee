@@ -49,6 +49,7 @@ import {
   boxContains,
   boxesOverlap,
   boxesUnion,
+  absLinkerPoints,
   computeFocus,
   elementAt,
   elementBounds,
@@ -193,7 +194,10 @@ type Interaction =
       startAngle: number;
     }
   | { kind: "create"; origin: Point; el: BoardEl }
-  | { kind: "linking"; el: LinkerEl; origin: Point };
+  | { kind: "linking"; el: LinkerEl; origin: Point }
+  /** Dragging an end of a selected connector: rebinds it to whatever it is
+   *  dropped on (FigJam), or leaves it free there. */
+  | { kind: "relink"; id: string; end: 1 | 2; startEls: Map<string, BoardEl> };
 
 let chromePrefetched = false;
 
@@ -774,7 +778,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       );
     }
 
-    if (hoverTarget && (tools.tool === "linker" || interaction.kind === "linking")) {
+    if (
+      hoverTarget &&
+      (tools.tool === "linker" || interaction.kind === "linking" || interaction.kind === "relink")
+    ) {
       const el = findEl(scene, hoverTarget);
       if (el) {
         const b = elementBounds(el);
@@ -835,6 +842,20 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             "stroke-width": px(el.st.w + 3),
           }),
         );
+      }
+      const only = selected.length === 1 ? selected[0] : null;
+      if (only && isLinker(only) && interaction.kind !== "relink") {
+        for (const q of linkerEnds(only)) {
+          overlay.append(
+            svgEl("circle", {
+              cx: q.x,
+              cy: q.y,
+              r: px(SCREEN.handle / 2 + 1),
+              class: "wr-board-handle",
+              "stroke-width": px(1.5),
+            }),
+          );
+        }
       }
       return;
     }
@@ -1919,6 +1940,34 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /* --------------------------------------------------------- pointer */
 
+  /** A connector's two drawn ends, start then finish. */
+  function linkerEnds(el: LinkerEl): [Point, Point] {
+    const route = routeLinker(scene, el);
+    return [route[0], route[route.length - 1]];
+  }
+
+  /** The end handle of the single selected connector under `p`, if any. */
+  function linkerEndAt(p: Point): { el: LinkerEl; end: 1 | 2 } | null {
+    if (selection.size !== 1) return null;
+    const el = findEl(scene, [...selection][0]);
+    if (!el || !isLinker(el)) return null;
+    const tol = SCREEN.handle / vp().zoom;
+    const [a, b] = linkerEnds(el);
+    // The finish wins a tie: on a short connector it is the end usually re-aimed.
+    if (Math.hypot(p.x - b.x, p.y - b.y) <= tol) return { el, end: 2 };
+    if (Math.hypot(p.x - a.x, p.y - a.y) <= tol) return { el, end: 1 };
+    return null;
+  }
+
+  /** Moves end `end` of `el` to the free point `p`, keeping the other points. */
+  function setLinkerEnd(el: LinkerEl, end: 1 | 2, p: Point): void {
+    const abs = absLinkerPoints(el);
+    abs[end === 1 ? 0 : abs.length - 1] = p;
+    el.x = abs[0].x;
+    el.y = abs[0].y;
+    el.pts = abs.map((q) => [q.x - el.x, q.y - el.y]);
+  }
+
   function handleAt(p: Point): HandleId | null {
     const box = selectionBox();
     if (!box || !selection.size) return null;
@@ -1996,7 +2045,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (!canQuickConnect(src)) return;
     pushHistory();
     const next = blankCopy(src, nextStepBox(src, side, scene));
-    scene.els.push(connectorBetween(src, next), next);
+    scene.els.push(connectorBetween(src, next, side), next);
     selection = new Set([next.id]);
     draw();
     markDirty();
@@ -2045,6 +2094,21 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       const caret = caretShapeAt(p);
       if (caret) {
         toggleLabelExpand(caret);
+        return;
+      }
+      const endHit = linkerEndAt(p);
+      if (endHit) {
+        // Unbound ends keep their stored point; start from where it is drawn.
+        const [a, b] = linkerEnds(endHit.el);
+        interaction = {
+          kind: "relink",
+          id: endHit.el.id,
+          end: endHit.end,
+          startEls: snapshot([endHit.el.id]),
+        };
+        setLinkerEnd(endHit.el, 1, a);
+        setLinkerEnd(endHit.el, 2, b);
+        svg.setPointerCapture(e.pointerId);
         return;
       }
       const side = quickDotAt(p);
@@ -2369,6 +2433,20 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         draw();
         return;
       }
+      case "relink": {
+        const el = findEl(scene, interaction.id);
+        if (!el || !isLinker(el)) return;
+        // While dragged the end is free; it binds again on drop.
+        if (interaction.end === 1) delete el.b1;
+        else delete el.b2;
+        // Never onto the shape the other end is on: that would be a loop.
+        const fixed = interaction.end === 1 ? el.b2?.el : el.b1?.el;
+        const candidate = linkTargetAt(p)?.id ?? null;
+        hoverTarget = candidate === fixed ? null : candidate;
+        setLinkerEnd(el, interaction.end, p);
+        draw();
+        return;
+      }
       default:
     }
   }
@@ -2447,6 +2525,41 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         restoreAndCommit(current.startEls);
         break;
       }
+      case "relink": {
+        const target = hoverTarget ? findEl(scene, hoverTarget) : null;
+        hoverTarget = null;
+        const el = findEl(scene, current.id);
+        if (!el || !isLinker(el)) break;
+        const [a, b] = linkerEnds(el);
+        const moved = current.end === 1 ? a : b;
+        const other = current.end === 1 ? b : a;
+        const start = current.startEls.get(current.id) as LinkerEl;
+        const startEnd = linkerEnds(start)[current.end - 1];
+        if (
+          !target &&
+          Math.hypot(moved.x - startEnd.x, moved.y - startEnd.y) < SCREEN.minDrag / vp().zoom
+        ) {
+          // A click on the handle, not a drag: put it back as it was.
+          scene.els = scene.els.map((e2) => (e2.id === el.id ? structuredClone(start) : e2));
+          draw();
+          break;
+        }
+        restoreAndCommit(current.startEls, () => {
+          // restoreAndCommit merges the final state over the start, which
+          // brings back the old binding of the dragged end: set it explicitly.
+          const live = findEl(scene, current.id);
+          if (!live || !isLinker(live)) return;
+          const binding = target
+            ? { el: target.id, fx: computeFocus(target, moved, other), gap: 6 }
+            : undefined;
+          if (current.end === 1) {
+            if (binding) live.b1 = binding;
+            else delete live.b1;
+          } else if (binding) live.b2 = binding;
+          else delete live.b2;
+        });
+        break;
+      }
       case "create": {
         const el = current.el;
         const tooSmall =
@@ -2481,7 +2594,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           break;
         }
         pushHistory();
-        addPlaced(el, spot?.from ?? null);
+        addPlaced(el, spot?.from ?? null, spot?.side ?? null);
         if (el.t === "text" || el.t === "sticky") startTextEdit(el);
         break;
       }
@@ -2622,16 +2735,16 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
     }
     pushHistory();
-    addPlaced(el, spot?.from ?? null);
+    addPlaced(el, spot?.from ?? null, spot?.side ?? null);
   }
 
   /** Adds a newly placed shape or note — and, when it was placed beside
    *  `from`, the arrow from `from` to it — selects it, and saves. The caller
    *  has pushed the undo step. */
-  function addPlaced(el: BoardEl, from: BoardEl | null): void {
+  function addPlaced(el: BoardEl, from: BoardEl | null, side: Side | null): void {
     assignFrame(el);
     scene.els.push(el);
-    if (from) scene.els.push(connectorBetween(from, el));
+    if (from) scene.els.push(connectorBetween(from, el, side));
     selection = new Set([el.id]);
     ghost = null;
     setTool("select");

@@ -123,7 +123,10 @@ export interface Binding {
   /** bound element id */ el: string;
   /** focus: -1..1, position along the target's boundary (Excalidraw model) */ fx: number;
   /** gap from the boundary, px */ gap: number;
+  /** pinned side for elbow routing; omitted means the side facing the other end */ sd?: BoxSide;
 }
+
+export type BoxSide = "n" | "e" | "s" | "w";
 
 interface Base {
   id: string;
@@ -344,7 +347,15 @@ function parseBinding(raw: unknown): Binding | undefined {
   const o = raw as Record<string, unknown>;
   const el = str(o.el, "");
   if (!el) return undefined;
-  return { el, fx: num(o.fx, 0), gap: num(o.gap, 6) };
+  const b: Binding = { el, fx: num(o.fx, 0), gap: num(o.gap, 6) };
+  if (o.sd === "n" || o.sd === "e" || o.sd === "s" || o.sd === "w") b.sd = o.sd;
+  return b;
+}
+
+function serializeBinding(b: Binding): Record<string, unknown> {
+  const o: Record<string, unknown> = { el: b.el, fx: Math.round(b.fx * 1000) / 1000, gap: b.gap };
+  if (b.sd) o.sd = b.sd;
+  return o;
 }
 
 function parseElement(raw: unknown): BoardEl | null {
@@ -549,8 +560,8 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
     case "arrow": {
       if (el.sh !== "straight") o.sh = el.sh;
       o.pts = el.pts.map(([px, py]) => [R(px), R(py)]);
-      if (el.b1) o.b1 = { el: el.b1.el, fx: Math.round(el.b1.fx * 1000) / 1000, gap: el.b1.gap };
-      if (el.b2) o.b2 = { el: el.b2.el, fx: Math.round(el.b2.fx * 1000) / 1000, gap: el.b2.gap };
+      if (el.b1) o.b1 = serializeBinding(el.b1);
+      if (el.b2) o.b2 = serializeBinding(el.b2);
       const defEnd = el.t === "arrow" ? "triangle" : "none";
       if (el.hd.s !== "none" || el.hd.e !== defEnd) o.hd = el.hd;
       const st = pruneStyle(el.st);

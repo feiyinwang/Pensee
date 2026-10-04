@@ -14,7 +14,14 @@
  * the user zooms in.
  */
 
-import { type BoardEl, type BoardScene, type LinkerEl, findEl, isLinker } from "./board-model";
+import {
+  type BoardEl,
+  type BoardScene,
+  type BoxSide,
+  type LinkerEl,
+  findEl,
+  isLinker,
+} from "./board-model";
 
 export interface Point {
   x: number;
@@ -485,10 +492,12 @@ export function routeLinker(scene: BoardScene, el: LinkerEl): Point[] {
   if (t2 && el.b2) end = bindingPoint(t2, el.b2.fx, el.b2.gap, t1 ? centerOf(t1) : start);
 
   if (el.sh === "elbow" && t1 && t2 && el.b1 && el.b2) {
-    // Flowchart style: leave and arrive at the facing side midpoints.
+    // Flowchart style: leave and arrive at the facing side midpoints, unless
+    // a binding pins its side (an item placed beside another is entered from
+    // the side it was placed on).
     return orthogonalRoute(
-      sideAnchor(t1, centerOf(t2), el.b1.gap),
-      sideAnchor(t2, centerOf(t1), el.b2.gap),
+      el.b1.sd ? pinnedAnchor(t1, el.b1.sd, el.b1.gap) : sideAnchor(t1, centerOf(t2), el.b1.gap),
+      el.b2.sd ? pinnedAnchor(t2, el.b2.sd, el.b2.gap) : sideAnchor(t2, centerOf(t1), el.b2.gap),
     );
   }
   if (el.sh === "elbow") return elbowRoute(start, end, [t1, t2].filter(Boolean) as BoardEl[]);
@@ -516,6 +525,17 @@ export function sideAnchor(el: BoardEl, toward: Point, gap: number): SideAnchor 
     return { p: { x: dx >= 0 ? b.x + b.w + gap : b.x - gap, y: c.y }, horizontal: true };
   }
   return { p: { x: c.x, y: dy >= 0 ? b.y + b.h + gap : b.y - gap }, horizontal: false };
+}
+
+/** Midpoint of `side` of `el`, pushed out by `gap`. */
+export function pinnedAnchor(el: BoardEl, side: BoxSide, gap: number): SideAnchor {
+  const b = elementBounds(el);
+  const cx = b.x + b.w / 2;
+  const cy = b.y + b.h / 2;
+  if (side === "e") return { p: { x: b.x + b.w + gap, y: cy }, horizontal: true };
+  if (side === "w") return { p: { x: b.x - gap, y: cy }, horizontal: true };
+  if (side === "s") return { p: { x: cx, y: b.y + b.h + gap }, horizontal: false };
+  return { p: { x: cx, y: b.y - gap }, horizontal: false };
 }
 
 /** Right-angled path between two side anchors: a Z when both leave the same

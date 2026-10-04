@@ -1,6 +1,18 @@
 import { describe, expect, test } from "vite-plus/test";
-import { emptyScene, type ShapeEl } from "../src/components/editor-area/board/board-model";
-import { ATTACH_REACH, QUICK_GAP, placeNear } from "../src/components/editor-area/board/board-flow";
+import {
+  emptyScene,
+  parseBoard,
+  serializeBoard,
+  type LinkerEl,
+  type ShapeEl,
+} from "../src/components/editor-area/board/board-model";
+import {
+  ATTACH_REACH,
+  QUICK_GAP,
+  connectorBetween,
+  placeNear,
+} from "../src/components/editor-area/board/board-flow";
+import { routeLinker } from "../src/components/editor-area/board/board-geometry";
 
 const rect = (id: string, x: number, y: number): ShapeEl => ({
   id,
@@ -44,5 +56,31 @@ describe("placeNear", () => {
     const spot = placeNear(scene, { x: 200, y: 50 }, 160, 110);
     expect(spot.from?.id).toBe("a");
     expect(spot.box.y).not.toBe(0);
+  });
+});
+
+describe("connectorBetween with a placement side", () => {
+  // A step placed to the right that slid down below its siblings.
+  const a = rect("a", 0, 0);
+  const b = rect("b", 160 + QUICK_GAP, 300);
+
+  test("enters the new item from the side it was placed on", () => {
+    const scene = { ...emptyScene(), els: [a, b] };
+    const arrow = connectorBetween(a, b, "e");
+    expect(arrow.b2?.sd).toBe("w");
+    const route = routeLinker(scene, arrow);
+    const end = route[route.length - 1];
+    expect(end).toEqual({ x: b.x - 4, y: b.y + b.h / 2 });
+    // Leaves the source from the bottom, then turns right: an L.
+    expect(route).toHaveLength(3);
+    expect(route[0]).toEqual({ x: 80, y: 110 + 4 });
+  });
+
+  test("keeps the pinned side through a save and load", () => {
+    const scene = { ...emptyScene(), els: [a, b, connectorBetween(a, b, "e")] };
+    const back = parseBoard(serializeBoard(scene));
+    const arrow = back.scene.els.find((el) => el.t === "arrow") as LinkerEl;
+    expect(arrow.b2?.sd).toBe("w");
+    expect(arrow.b1?.sd).toBeUndefined();
   });
 });
