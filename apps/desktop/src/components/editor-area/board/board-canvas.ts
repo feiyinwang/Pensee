@@ -171,6 +171,8 @@ export interface BoardCanvasHandle {
   focus: () => void;
   /** Opens find & replace (⌘F, routed here by the overlay). */
   find: () => void;
+  /** Undo or redo on the board (⌘Z routed here when focus is outside it). */
+  history: (dir: "undo" | "redo") => void;
 }
 
 type Interaction =
@@ -3242,6 +3244,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     flush() {
       closeTextEdit();
       return scene;
+    },
+    history(dir) {
+      if (dir === "undo") undo();
+      else redo();
     },
     find() {
       openFind();

@@ -105,7 +105,7 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     setTimeout(finalize, 150);
   };
 
-  /** Capture phase so Esc, ⌘Z, ⌘F never reach the editor behind the overlay.
+  /** Capture phase so ⌘Z, ⌘F never reach the editor behind the overlay.
    *  The board's own handlers run on the host element inside. */
   const SWALLOWED = new Set(["f", "p", "k", "s"]);
   const onKeyDown = (e: KeyboardEvent): void => {
@@ -119,8 +119,15 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
       return;
     }
     if (mod && e.key.toLowerCase() === "z") {
-      // Belongs to the board's stack; stop it from reaching CodeMirror.
+      // Belongs to the board's stack. From inside the overlay it goes on to
+      // the board's own handler (stopping it here, in the capture phase,
+      // used to starve that handler, so ⌘Z did nothing). From anywhere else
+      // (focus left in the note behind) it must not reach CodeMirror: stop
+      // it and undo on the board directly.
+      if (e.target instanceof Node && overlay.contains(e.target)) return;
+      e.preventDefault();
       e.stopPropagation();
+      canvas?.history(e.shiftKey ? "redo" : "undo");
       return;
     }
     // Escape is NOT stopped here. This listener runs in the capture phase on
