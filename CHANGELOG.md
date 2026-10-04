@@ -2,6 +2,8 @@
 
 ## 2026-10-04
 
+- Fixed: clicking a shape sometimes hid its blue connect dots and left red alignment lines on screen. The tiny movement in a normal click was being treated as the start of a drag, which could also nudge the shape a few pixels without an undo step. Shapes now stay put until you actually drag them.
+- Fixed: dragging an arrow onto another shape often left the end unconnected, so the arrow didn't follow when the shape moved. The arrow's own tip, which sits right under the pointer, was being picked as the target instead of the shape beneath it. Arrows now attach to the shape under the pointer, whether drawn from a connect dot or with the arrow tool.
 - The board's dot grid no longer disappears when you zoom out. The finer dots fade away gradually and every fourth dot stays, so there is always a grid. Text on shapes, sticky notes and mind-map topics stays visible at every zoom level on normal boards; it is only hidden when zoomed far out on very large boards (300 items or more), where it is too small to read. After a pinch or Cmd-scroll on a normal board, the view sharpens sooner (100ms after you stop, down from 160ms).
 - Fixed: two-finger scrolling on a board sometimes did nothing, and Cmd-scroll sometimes didn't zoom. Since the previous change, macOS could hand the whole scroll gesture to the board's frame instead of the board. Pinch and Cmd-scroll now also zoom when the pointer is over the board's toolbars. The four connect dots around a selected item are now blue, so they no longer look like the orange resize and rotate handles. The board's top bar (Close, Present, Templates, Export) now starts to the right of the window's close, minimise and full-screen buttons instead of under them.
 

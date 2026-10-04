@@ -593,6 +593,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     renderStyle(); // hides the selection toolbar for the gesture (a class toggle)
   }
 
+  /** What a connector end can attach to under `p`: the topmost shape, note,
+   *  text, picture or topic. Connectors (including the one being drawn, whose
+   *  tip is always under the pointer) and sections are looked through, not
+   *  returned; returning the drawn arrow itself is what left drags unbound. */
+  function linkTargetAt(p: Point): BoardEl | null {
+    return elementAt(
+      scene,
+      p,
+      SCREEN.hitSlop / vp().zoom,
+      (el) => !isLinker(el) && el.t !== "frame",
+    );
+  }
+
   function selectionBox(): Box | null {
     const boxes = [...selection]
       .map((id) => findEl(scene, id))
@@ -1974,10 +1987,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const el = makeElement(tools.tool, p);
     if (!el) return;
     if (isLinker(el)) {
-      const target = elementAt(scene, p, tol);
-      if (target && target.t !== "frame") {
-        el.b1 = { el: target.id, fx: 0, gap: 6 };
-      }
+      const target = linkTargetAt(p);
+      if (target) el.b1 = { el: target.id, fx: 0, gap: 6 };
       interaction = { kind: "linking", el, origin: p };
     } else {
       interaction = { kind: "create", origin: p, el };
@@ -2037,8 +2048,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
     if (interaction.kind === "none") {
       if (tools.tool === "linker") {
-        const target = elementAt(scene, p, SCREEN.hitSlop / vp().zoom);
-        const next = target && target.t !== "frame" ? target.id : null;
+        const next = linkTargetAt(p)?.id ?? null;
         if (next !== hoverTarget) {
           hoverTarget = next;
           drawOverlay();
@@ -2094,6 +2104,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         ) {
           interaction.moved = true;
         }
+        // Below the drag threshold nothing moves: snapping a click's wobble
+        // used to nudge the shape and draw guides that the release (a click,
+        // so no commit) never cleared, with the quick-connect dots gone.
+        if (!interaction.moved) return;
         const movingIds = new Set(interaction.startEls.keys());
         const movingBoxes = [...interaction.startEls.values()].map((el) => elementBounds(el));
         const union = boxesUnion(movingBoxes);
@@ -2190,8 +2204,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
       case "linking": {
         const el = interaction.el;
-        const target = elementAt(scene, p, SCREEN.hitSlop / vp().zoom);
-        const candidate = target && target.t !== "frame" && target.id !== el.id ? target.id : null;
+        const candidate = linkTargetAt(p)?.id ?? null;
         if (candidate !== hoverTarget) hoverTarget = candidate;
         el.pts[el.pts.length - 1] = [p.x - el.x, p.y - el.y];
         draw();
@@ -2263,6 +2276,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
               if (el) assignFrame(el);
             }
           });
+        } else {
+          // A click: redraw so the overlay is the resting one (with the
+          // quick-connect dots), whatever the gesture drew.
+          drawOverlay();
         }
         break;
       }

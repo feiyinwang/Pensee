@@ -309,11 +309,17 @@ function pointInEllipse(el: BoardEl, p: Point): boolean {
 
 export const FRAME_TITLE_H = 22;
 
-/** Topmost element under the point. Array order is z-order, so iterate back. */
-export function elementAt(scene: BoardScene, p: Point, tol: number): BoardEl | null {
+/** Topmost element under the point that `accept` allows (all, by default).
+ *  Array order is z-order, so iterate back. */
+export function elementAt(
+  scene: BoardScene,
+  p: Point,
+  tol: number,
+  accept?: (el: BoardEl) => boolean,
+): BoardEl | null {
   for (let i = scene.els.length - 1; i >= 0; i -= 1) {
     const el = scene.els[i];
-    if (el.lk) continue;
+    if (el.lk || (accept && !accept(el))) continue;
     if (isLinker(el)) {
       // Routed, not stored, points: a bound end follows its shape, and the
       // stored point goes stale the moment that shape moves.
