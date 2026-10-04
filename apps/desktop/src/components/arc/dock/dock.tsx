@@ -42,7 +42,7 @@ export interface DockProps {
 /** Geometry in px. Keep in step with the stylesheet. */
 const ITEM = 44, PAD = 6, BAR = ITEM + PAD * 2, RADIUS = 22, TRAY_ITEM = 40, TRAY_PAD = 6, TRAY = TRAY_ITEM + TRAY_PAD * 2, TRAY_RADIUS = 20, FILLET = 12, GAP = 2;
 /** Hover delay before the first label, and how long a label stays warm so the next one glides in without waiting. */
-const DELAY = 200, WARM = 700; // Writer patch (docs/arc.md): upstream 380
+const DELAY = 60, WARM = 700; // Writer patch (docs/arc.md): upstream 380
 
 const { spring, duration, ease, blur } = motionTokens;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -180,7 +180,7 @@ export function Dock({ items, value = null, onValueChange, onItemsChange, label 
   }, [reduced, shownTip, tipOn, tipWidth]);
 
   useEffect(() => {
-    const controls = animate(tipOn, tip ? 1 : 0, reduced ? { duration: .12 } : tip ? physical(.14, 0) : { duration: .1, ease: [...ease.exit] }); // Writer patch: upstream .22 in, duration.exit + ease.standard out
+    const controls = animate(tipOn, tip ? 1 : 0, reduced ? { duration: .12 } : tip ? physical(.1, 0) : { duration: .1, ease: [...ease.exit] }); // Writer patch: upstream .22 in, duration.exit + ease.standard out
     return () => controls.stop();
   }, [reduced, tip, tipOn]);
 

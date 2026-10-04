@@ -14,7 +14,7 @@ pnpm dlx shadcn@latest add @uiarc-pro/<name>    # Pro
 - **Pro items** need `ARC_PRO_TOKEN=arc_pro_…` in `apps/desktop/.env.local` (gitignored). `components.json` reads it into the `Authorization` header.
 - **Where files go:** `src/components/arc/`. They are vendored. Formatting and linting skip that folder (see the root `vite.config.ts`) so they stay byte-identical to upstream. Don't hand-edit them; wrap them instead.
 - **Local patches** (the only exceptions — each line is marked `Writer patch` in the file; re-apply after reinstalling the item):
-  - `dock/dock.tsx` — faster tool labels, because the Dock exposes no timing props: first-label delay 200ms (upstream 380), label enter spring 0.14 (upstream 0.22), exit 100ms ease-in (upstream 180ms), glide between items 0.2 (upstream 0.3).
+  - `dock/dock.tsx` — faster tool labels, because the Dock exposes no timing props: first-label delay 60ms (upstream 380) — just enough to skip a pointer sweeping across the dock, label enter spring 0.1 (upstream 0.22), exit 100ms ease-in (upstream 180ms), glide between items 0.2 (upstream 0.3).
 - **Dependencies:** every item needs `motion` and `lucide-react`. Both are installed.
 
 ## Never import `foundation.css` globally
