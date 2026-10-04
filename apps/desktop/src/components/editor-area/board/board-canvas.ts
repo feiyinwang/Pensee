@@ -2389,10 +2389,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     startTextEdit(hit);
   }
 
+  /** On the host, so a pinch or Cmd-scroll over the board's own chrome (the
+   *  selection toolbar, the dock) still zooms the board. Plain scrolling pans
+   *  only from the canvas, so a scrollable panel on the board still scrolls. */
   function onWheel(e: WheelEvent): void {
+    const zoom = e.ctrlKey || e.metaKey;
+    if (!zoom && !svg.contains(e.target as Node)) return;
     e.preventDefault();
     if (presenting) return;
-    if (e.ctrlKey || e.metaKey) {
+    if (zoom) {
       const factor = Math.exp(-e.deltaY / 260);
       zoomGesture(vp().zoom * factor, { x: e.clientX, y: e.clientY });
       return;
@@ -2663,7 +2668,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   svg.addEventListener("pointerup", onPointerUp);
   svg.addEventListener("pointercancel", onPointerUp);
   svg.addEventListener("dblclick", onDoubleClick);
-  svg.addEventListener("wheel", onWheel, { passive: false });
+  host.addEventListener("wheel", onWheel, { passive: false });
   host.addEventListener("keydown", onKeyDown);
   host.addEventListener("keyup", onKeyUp);
   host.addEventListener("paste", onPaste);
@@ -2701,7 +2706,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       svg.removeEventListener("pointerup", onPointerUp);
       svg.removeEventListener("pointercancel", onPointerUp);
       svg.removeEventListener("dblclick", onDoubleClick);
-      svg.removeEventListener("wheel", onWheel);
+      host.removeEventListener("wheel", onWheel);
       host.removeEventListener("keydown", onKeyDown);
       host.removeEventListener("keyup", onKeyUp);
       host.removeEventListener("paste", onPaste);

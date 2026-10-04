@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-04
+
+- Fixed: two-finger scrolling on a board sometimes did nothing, and Cmd-scroll sometimes didn't zoom. Since the previous change, macOS could hand the whole scroll gesture to the board's frame instead of the board. Pinch and Cmd-scroll now also zoom when the pointer is over the board's toolbars. The four connect dots around a selected item are now blue, so they no longer look like the orange resize and rotate handles. The board's top bar (Close, Present, Templates, Export) now starts to the right of the window's close, minimise and full-screen buttons instead of under them.
+
 ## 2026-10-03
 
 - Boards stay snappy when they are packed. On a test board with more than 2,600 items (sections, sticky notes, flowcharts, mind maps, drawings, pictures), the pause after a pinch or ⌘-scroll zoom is about half as long when zoomed out (54–71ms, down from 94–154ms). Scrolling around a zoomed-out board now runs at the display's full frame rate (8ms a frame, down from about 106ms), and zooming no longer stutters. Panning slides what is already drawn and only redraws near the edges, and the work per zoom step is a fifth of what it was. When zoomed out below 30%, where text is too small to read, labels inside shapes, notes and topics are hidden until you zoom back in; free text and section titles stay. See [SPECs/board-lark-parity-spec.md](./SPECs/board-lark-parity-spec.md#performance).

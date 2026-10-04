@@ -289,7 +289,11 @@
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  /* clip, not hidden: the svg overscans the stage, and an overflow:hidden box
+     with overflow is a scroll container. WebKit then latched trackpad and
+     mouse-wheel gestures to the stage, so the board's wheel handler never saw
+     them and two-finger pans and Cmd-scroll zooms were dropped. */
+  overflow: clip;
   background: var(--wr-board-surface);
   transform: scale(0.985);
   transition:
@@ -439,9 +443,10 @@
   visibility: hidden;
 }
 
-/* Quick-connect dots (Lark's blue side dots). */
+/* Quick-connect dots (Lark's blue side dots): blue, so they never read as
+   the accent-coloured resize and rotate handles. */
 .wr-board-qdot {
-  fill: color-mix(in srgb, var(--accent) 55%, transparent);
+  fill: color-mix(in srgb, var(--wr-board-blue) 60%, transparent);
   stroke: var(--wr-board-surface);
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
@@ -450,7 +455,7 @@
 }
 
 .wr-board-qdot:hover {
-  fill: var(--accent);
+  fill: var(--wr-board-blue);
 }
 
 .wr-board-placeholder {
@@ -479,7 +484,9 @@
 .wr-board-topbar {
   position: absolute;
   top: 14px;
-  left: 14px;
+  /* Clears the macOS window buttons, which sit over the full-window board;
+     same as TRAFFIC_LIGHTS_CLEARANCE in app-layout.tsx. */
+  left: 92px;
   display: flex;
   gap: 10px;
   align-items: center;
