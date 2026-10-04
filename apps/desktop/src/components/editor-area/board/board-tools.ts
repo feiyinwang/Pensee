@@ -51,7 +51,6 @@ export interface ToolbarCallbacks {
   onZoomFit: () => void;
   onClose: () => void;
   onPresent: () => void;
-  onTemplates: () => void;
   /** Absent when the board has no file to export from (legacy fence in an unsaved note). */
   onExport?: (kind: "png" | "svg") => void;
 }
@@ -100,7 +99,6 @@ const ICON = {
   redo: ["M15 7h4V3", "M19 7a8 8 0 1 0 0 8"],
   close: ["M6 6l12 12", "M18 6L6 18"],
   present: ["M8 5.5v13l10.5-6.5z"],
-  templates: ["M4 4h7v7H4z", "M13 4h7v7h-7z", "M4 13h7v7H4z", "M13 13h7v7h-7z"],
   export: ["M12 4v11", "M7.5 10.5L12 15l4.5-4.5", "M5 19h14"],
   minus: ["M5 12h14"],
   plus: ["M12 5v14", "M5 12h14"],
@@ -203,12 +201,7 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   const presentLabel = document.createElement("span");
   presentLabel.textContent = "Present";
   presentBtn.append(presentLabel);
-  const templatesBtn = button("Templates", ICON.templates, () => cb.onTemplates());
-  templatesBtn.classList.add("wr-board-present");
-  const templatesLabel = document.createElement("span");
-  templatesLabel.textContent = "Templates";
-  templatesBtn.append(templatesLabel);
-  top.append(closeBtn, title, presentBtn, templatesBtn);
+  top.append(closeBtn, title, presentBtn);
   if (cb.onExport) {
     const onExport = cb.onExport;
     const exportBtn = button("Export", ICON.export, () => {

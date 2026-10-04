@@ -262,7 +262,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     onZoomFit: () => zoomToFit(),
     onClose: () => opts.onClose(),
     onPresent: () => startPresenting(0),
-    onTemplates: () => showTemplates(),
     onExport: opts.exportSvg ? (kind) => void exportBoard(kind) : undefined,
   });
   host.append(toolbar.root);
@@ -610,8 +609,20 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const boxes = [...selection]
       .map((id) => findEl(scene, id))
       .filter((el): el is BoardEl => Boolean(el))
-      .map((el) => elementBounds(el));
+      .map((el) => (isLinker(el) ? routeBounds(el) : elementBounds(el)));
     return boxesUnion(boxes);
+  }
+
+  /** A connector's box as drawn. Its stored points go stale once an end is
+   *  bound (and are (0,0) on connectors made already bound), which put the
+   *  selection toolbar near the board's origin instead of under the line. */
+  function routeBounds(el: LinkerEl): Box {
+    const pts = routeLinker(scene, el);
+    const xs = pts.map((q) => q.x);
+    const ys = pts.map((q) => q.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
   }
 
   function drawOverlay(): void {
@@ -712,6 +723,25 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const box = selectionBox();
     if (!box || interaction.kind === "create" || interaction.kind === "linking") return;
 
+    // Connectors show their selection on the line itself, not as a box around
+    // the route (which read as a stray rectangle on an elbow arrow).
+    const selected = [...selection].map((id) => findEl(scene, id));
+    if (selected.every((el) => el && isLinker(el))) {
+      for (const el of selected) {
+        if (!el || !isLinker(el)) continue;
+        overlay.append(
+          svgEl("polyline", {
+            points: routeLinker(scene, el)
+              .map((q) => `${q.x},${q.y}`)
+              .join(" "),
+            class: "wr-board-link-sel",
+            "stroke-width": px(el.st.w + 3),
+          }),
+        );
+      }
+      return;
+    }
+
     overlay.append(
       svgEl("rect", {
         x: box.x,
@@ -780,7 +810,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         }),
       );
     }
-    if (single && canQuickConnect(single) && !activeEditor && interaction.kind === "none") {
+    // Kept while typing into the shape: the dots are how you carry on.
+    if (single && canQuickConnect(single) && interaction.kind === "none") {
       const dots = quickDots(box, px(SCREEN.quickOffset));
       for (const side of SIDES) {
         overlay.append(
