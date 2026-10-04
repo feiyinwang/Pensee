@@ -94,6 +94,10 @@ A normal board (36 elements) is unchanged: 8ms frames, 9–29ms commits.
 
 Not adopted: Excalidraw's per-element bitmap cache. It belongs to a `<canvas>` renderer, and with the above the SVG renderer already holds 120fps at 300 elements.
 
+## Mind map quick dots
+
+A selected topic shows blue quick dots (`mindDots`, `growMind` in `board-mind.ts`). The root has one on each side and each adds a first-level branch pinned (`sd`) to that side. Any other topic has one on its outer side (a child) and one above and below (a parallel topic before or after it; a parallel first-level topic is pinned to the same side). There is no dot on the side the branch arrives from. A click grows the map, re-runs the layout and starts typing in the new topic, the same as Tab and Enter. A drag from any dot draws an arrow to whatever it is dropped on, like a shape's dots.
+
 ## Phases
 
 1. **Portable storage** (this change): the file format, the enhancer on image previews, `/board` creating a file, and fence migration.

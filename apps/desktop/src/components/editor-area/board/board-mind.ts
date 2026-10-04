@@ -269,8 +269,13 @@ export function addMindChild(scene: BoardScene, parent: MindEl): MindEl {
   return kid;
 }
 
-/** A sibling right after `node`; on the root it is a child instead. */
-export function addMindSibling(scene: BoardScene, node: MindEl): MindEl {
+/** A sibling right after (or before) `node`; on the root it is a child
+ *  instead. */
+export function addMindSibling(
+  scene: BoardScene,
+  node: MindEl,
+  place: "after" | "before" = "after",
+): MindEl {
   const parent = mindParent(scene, node);
   if (!parent) return addMindChild(scene, node);
   const kid = blankTopic(parent.id);
@@ -278,9 +283,56 @@ export function addMindSibling(scene: BoardScene, node: MindEl): MindEl {
     // No side yet: the layout puts it on the lighter side of the root.
     kid.c = MIND_PALETTE[mindChildren(scene, parent.id).length % MIND_PALETTE.length];
   }
-  scene.els.splice(lastIndexOfSubtree(scene, node.id) + 1, 0, kid);
+  const at = place === "after" ? lastIndexOfSubtree(scene, node.id) + 1 : scene.els.indexOf(node);
+  scene.els.splice(at, 0, kid);
   kid.x = node.x;
   kid.y = node.y + node.h;
+  return kid;
+}
+
+/** How a topic grows from one of its quick dots. */
+export type MindGrow = "child" | "before" | "after";
+type DotSide = "n" | "e" | "s" | "w";
+
+/** The side of the root a topic hangs on (its first-level ancestor's); null
+ *  for the root. */
+export function mindSide(scene: BoardScene, el: MindEl): "l" | "r" | null {
+  if (!el.pa) return null;
+  let node = el;
+  const seen = new Set<string>();
+  for (let up = mindParent(scene, node); up?.pa && !seen.has(up.id); up = mindParent(scene, node)) {
+    seen.add(up.id);
+    node = up;
+  }
+  if (node.sd) return node.sd;
+  const root = mindRoot(scene, el);
+  return node.x + node.w / 2 >= root.x + root.w / 2 ? "r" : "l";
+}
+
+/** Which quick dots a topic shows and what each adds (Lark): the root grows a
+ *  branch out of either side; any other topic grows a child away from the
+ *  root, and a parallel topic above or below itself. The side facing the
+ *  parent has none, since the branch arrives there. */
+export function mindDots(scene: BoardScene, el: MindEl): Partial<Record<DotSide, MindGrow>> {
+  const side = mindSide(scene, el);
+  if (!side) return { e: "child", w: "child" };
+  return { [side === "r" ? "e" : "w"]: "child", n: "before", s: "after" };
+}
+
+/** Adds the topic a quick dot on `from` stands for. A branch out of the
+ *  root's left or right, and a parallel first-level topic, are pinned to that
+ *  side so the layout keeps them where they were asked for. */
+export function growMind(scene: BoardScene, from: MindEl, dot: DotSide): MindEl | null {
+  const how = mindDots(scene, from)[dot];
+  if (!how) return null;
+  if (how === "child") {
+    const kid = addMindChild(scene, from);
+    if (!from.pa) kid.sd = dot === "w" ? "l" : "r";
+    return kid;
+  }
+  const kid = addMindSibling(scene, from, how);
+  const parent = mindParent(scene, from);
+  if (parent && !parent.pa) kid.sd = mindSide(scene, from) ?? undefined;
   return kid;
 }
 

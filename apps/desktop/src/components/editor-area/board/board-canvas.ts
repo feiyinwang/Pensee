@@ -81,6 +81,8 @@ import * as tauri from "@/lib/tauri";
 import {
   addMindChild,
   addMindSibling,
+  growMind,
+  mindDots,
   MIND,
   isMind,
   layoutMind,
@@ -762,8 +764,26 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         : ["nw", "ne", "se", "sw"];
 
     if (single && isLinker(single)) return;
-    // Topics are sized and placed by the layout: no resize, rotate or dots.
-    if (selectionHasMind()) return;
+    // Topics are sized and placed by the layout: no resize or rotate, and
+    // their dots grow the map (child out of the far side, parallel topics
+    // above and below) rather than copy the shape.
+    if (selectionHasMind()) {
+      if (isMind(single) && interaction.kind === "none") {
+        const dots = quickDots(box, px(SCREEN.quickOffset));
+        for (const side of Object.keys(mindDots(scene, single)) as Side[]) {
+          overlay.append(
+            svgEl("circle", {
+              cx: dots[side].x,
+              cy: dots[side].y,
+              r: px(SCREEN.quickDot),
+              class: "wr-board-qdot",
+              "data-side": side,
+            }),
+          );
+        }
+      }
+      return;
+    }
     if (single && !activeEditor && !textOf(single) && (isShape(single) || single.t === "sticky")) {
       // Lark's empty-shape hint: says where typing will go.
       const size = isShape(single) ? (single.lb?.sz ?? 14) : 16;
@@ -1864,12 +1884,17 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   function quickDotAt(p: Point): Side | null {
     if (selection.size !== 1 || activeEditor) return null;
     const el = findEl(scene, [...selection][0]);
-    if (!canQuickConnect(el)) return null;
+    const sides = isMind(el)
+      ? (Object.keys(mindDots(scene, el)) as Side[])
+      : canQuickConnect(el)
+        ? SIDES
+        : null;
+    if (!el || !sides) return null;
     const z = vp().zoom;
     const dots = quickDots(elementBounds(el), SCREEN.quickOffset / z);
     const reach = (SCREEN.quickDot + 5) / z;
     return (
-      SIDES.find((side) => Math.hypot(p.x - dots[side].x, p.y - dots[side].y) <= reach) ?? null
+      sides.find((side) => Math.hypot(p.x - dots[side].x, p.y - dots[side].y) <= reach) ?? null
     );
   }
 
@@ -1877,6 +1902,18 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  an elbow arrow, selected so typing labels it straight away. */
   function addNextStep(srcId: string, side: Side): void {
     const src = findEl(scene, srcId);
+    if (isMind(src)) {
+      // A topic's dot grows the map; the layout places the new topic.
+      pushHistory();
+      const topic = growMind(scene, src, side);
+      if (!topic) return;
+      layoutMind(scene, mindRoot(scene, topic).id, measureText);
+      selection = new Set([topic.id]);
+      draw();
+      markDirty();
+      startTextEdit(topic);
+      return;
+    }
     if (!canQuickConnect(src)) return;
     pushHistory();
     const next = blankCopy(src, nextStepBox(src, side, scene));
