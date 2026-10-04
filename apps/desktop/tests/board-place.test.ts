@@ -194,3 +194,30 @@ describe("dockTarget with a group", () => {
     expect(dockTarget({ ...emptyScene(), els: [a, h, pic] }, [h, pic])).toBeNull();
   });
 });
+
+describe("dockTarget re-centres the card it joins", () => {
+  test("level with the middle of its next steps after the drop", () => {
+    const a = rect("a", 0, 0);
+    // Something already right of `a`, so the group slides down below it.
+    const other = rect("other", 160 + QUICK_GAP, -250);
+    // Two separate cards dragged together: both are heads.
+    const h1 = rect("h1", 200, 0);
+    const h2 = rect("h2", 200, 400);
+    const dock = dockTarget({ ...emptyScene(), els: [a, other, h1, h2] }, [h1, h2]);
+    expect(dock?.heads.map((c) => c.id)).toEqual(["h1", "h2"]);
+    const shift = dock?.shift.y ?? 0;
+    expect(shift).toBeGreaterThan(0);
+    const mid = (0 + shift + 55 + (400 + shift + 55)) / 2;
+    expect(dock?.fromY).toBe(Math.round(mid - 55));
+  });
+
+  test("stays when its new spot is taken", () => {
+    const a = rect("a", 0, 0);
+    const blocker = rect("blocker", 0, 200);
+    const h1 = rect("h1", 200, 0);
+    const h2 = rect("h2", 200, 400);
+    const dock = dockTarget({ ...emptyScene(), els: [a, blocker, h1, h2] }, [h1, h2]);
+    expect(dock?.from.id).toBe("a");
+    expect(dock?.fromY).toBeNull();
+  });
+});

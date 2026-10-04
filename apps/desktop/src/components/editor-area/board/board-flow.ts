@@ -158,6 +158,10 @@ export interface Dock {
   box: Box;
   shift: Point;
   heads: (ShapeEl | StickyEl)[];
+  /** Where `from` moves (y only) to sit level with the middle of its next
+   *  steps once the group has landed; null when it stays (already there, or
+   *  that spot is taken). */
+  fromY: number | null;
 }
 
 /**
@@ -217,7 +221,33 @@ export function dockTarget(scene: BoardScene, moving: BoardEl[]): Dock | null {
   const h = Math.max(...boxes.map((b) => b.y + b.h)) - y0;
   const side: Side = "e";
   const box = nextStepBox(from, side, scene, { w, h }, ids);
-  return { from, side, box, shift: { x: box.x - x0, y: box.y - y0 }, heads };
+  const shift = { x: box.x - x0, y: box.y - y0 };
+
+  // Re-centre `from` on its next steps: the cards it already points to
+  // (outside the group) plus the heads where they will land.
+  const centres: number[] = heads.map((c) => c.y + shift.y + c.h / 2);
+  for (const l of links) {
+    if (l.b1?.el !== from.id || !l.b2 || ids.has(l.b2.el)) continue;
+    const next = scene.els.find((el) => el.id === l.b2?.el);
+    if (next && canQuickConnect(next)) centres.push(next.y + next.h / 2);
+  }
+  let fromY: number | null = Math.round(
+    (Math.min(...centres) + Math.max(...centres)) / 2 - from.h / 2,
+  );
+  if (fromY === from.y) fromY = null;
+  if (fromY !== null) {
+    const spot = { x: from.x, y: fromY, w: from.w, h: from.h };
+    const taken = scene.els.some(
+      (el) =>
+        el.id !== from.id &&
+        !ids.has(el.id) &&
+        !isLinker(el) &&
+        el.t !== "frame" &&
+        boxesOverlap(elementBounds(el), spot),
+    );
+    if (taken) fromY = null;
+  }
+  return { from, side, box, shift, heads, fromY };
 }
 
 /** A blank copy of `src` (same kind, size and style; no text) at `box`. */

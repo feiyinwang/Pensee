@@ -707,8 +707,23 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (interaction.kind === "drag" && interaction.dock) {
       // The dragged cards dock after the lit one: where each will land is
       // outlined, with a dashed link from the lit card to each head.
-      const { from, shift, heads } = interaction.dock;
-      const fromBox = elementBounds(from);
+      const { from, shift, heads, fromY } = interaction.dock;
+      const fromBox = fromY === null ? elementBounds(from) : { ...elementBounds(from), y: fromY };
+      if (fromY !== null) {
+        // The lit card's own new spot, level with its next steps.
+        overlay.append(
+          svgEl("rect", {
+            x: fromBox.x,
+            y: fromBox.y,
+            width: fromBox.w,
+            height: fromBox.h,
+            rx: 8,
+            class: "wr-board-ghost",
+            "stroke-width": px(1.5),
+            "stroke-dasharray": `${px(5)} ${px(4)}`,
+          }),
+        );
+      }
       for (const id of interaction.startEls.keys()) {
         const el = findEl(scene, id);
         if (!el || isLinker(el)) continue;
@@ -2642,6 +2657,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             // points into each head. The heads moved there, so arrows that
             // led into them from outside the group go; arrows within the
             // group and out of it stay.
+            const from = findEl(scene, dock.from.id);
+            if (from && dock.fromY !== null) {
+              from.y = dock.fromY;
+              assignFrame(from);
+            }
             const heads = new Set(dock.heads.map((h) => h.id));
             scene.els = scene.els.filter(
               (o) => !(isLinker(o) && heads.has(o.b2?.el ?? "") && o.b1 && !ids.has(o.b1.el)),
