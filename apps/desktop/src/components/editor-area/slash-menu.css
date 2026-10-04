@@ -1,13 +1,13 @@
 /* Slash menu — visual tokens borrowed from the block handle panel so the two
    insert surfaces read as one thing. CodeMirror owns the tooltip element, so
-   these selectors hang off its class names. */
+   these selectors hang off its class names. Row/section spacing and radii
+   live in the editor theme in wiki-link-extension.ts — they must out-rank
+   CodeMirror's baseTheme, which a plain stylesheet rule cannot. */
 
 .cm-tooltip.cm-tooltip-autocomplete > ul > li {
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 5px 10px;
-  border-radius: 7px;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
@@ -16,8 +16,6 @@
 }
 
 .cm-tooltip.cm-tooltip-autocomplete > ul > completion-section {
-  padding: 8px 10px 4px;
-  border: 0;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;

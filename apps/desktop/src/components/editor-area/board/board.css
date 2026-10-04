@@ -160,12 +160,13 @@
 /* ------------------------------------------------- .board.svg preview */
 
 /* The preview is the file itself in a plain <img>; this only frames it and
-   adds the Open button. */
+   adds the Open button. The frame fills the text column like the inline
+   `.wr-board-card` does, at the same fixed height; the drawing is scaled to
+   fit inside it and centered. */
 .wr-board-image {
   position: relative;
   display: block;
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
   border: 1px solid var(--line-subtle);
   border-radius: var(--wr-board-radius);
   background: var(--surface-card);
@@ -179,8 +180,9 @@
 
 .wr-board-image img {
   display: block;
-  max-width: 100%;
-  max-height: var(--wr-board-card-height);
+  width: 100%;
+  height: var(--wr-board-card-height);
+  object-fit: contain;
   cursor: zoom-in;
 }
 

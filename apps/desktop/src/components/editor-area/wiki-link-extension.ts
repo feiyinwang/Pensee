@@ -372,18 +372,34 @@ const wikiLinkTheme = EditorView.baseTheme({
   // (background, blur, border, radius) is inherited from `.surface-card,
   // [cmdk-dialog], .cm-tooltip.cm-tooltip-autocomplete` in App.css so the
   // wiki-link popover matches cmd+f, cmd+p, and the section-rail outline.
-  ".cm-tooltip-autocomplete": {
+  // Selectors mirror @codemirror/autocomplete's baseTheme
+  // (`.cm-tooltip.cm-tooltip-autocomplete > ul …`) so they tie on specificity
+  // and win on theme precedence; a shorter selector silently loses to its
+  // `maxHeight: 10em` and silver section divider. Radii are concentric with
+  // the 16px card: item radius = 16 − 6 padding.
+  ".cm-tooltip.cm-tooltip-autocomplete": {
     overflow: "hidden",
-    padding: "4px",
+    padding: "6px",
   },
-  ".cm-tooltip-autocomplete ul": {
+  ".cm-tooltip.cm-tooltip-autocomplete > ul": {
     fontFamily: "var(--ui-font) !important",
     fontSize: "13px",
-    maxHeight: "280px",
+    maxHeight: "320px",
+    // The app-wide 18px scrollbar gutter would leave the rows lopsided
+    // (wide gap on the right only); the clipped last row signals scroll.
+    scrollbarWidth: "none",
   },
-  ".cm-tooltip-autocomplete ul li": {
-    padding: "6px 10px !important",
-    borderRadius: "8px",
+  ".cm-tooltip.cm-tooltip-autocomplete > ul > li": {
+    padding: "7px 10px",
+    borderRadius: "10px",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete > ul > completion-section": {
+    padding: "12px 10px 6px",
+    borderBottom: "none",
+    opacity: 1,
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete > ul > completion-section:first-child": {
+    paddingTop: "6px",
   },
   ".cm-tooltip-autocomplete ul li[aria-selected]": {
     backgroundColor: "var(--surface-selected) !important",
