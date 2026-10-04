@@ -137,9 +137,10 @@ export function blankCopy(src: ShapeEl | StickyEl, box: Box): ShapeEl | StickyEl
 const OPPOSITE: Record<Side, Side> = { n: "s", e: "w", s: "n", w: "e" };
 
 /** An elbow arrow bound at both ends — it follows either shape when moved.
- *  With `side` (where `b` was placed relative to `a`) the arrow enters `b`
- *  from that side — a step placed to the right is entered on its left, even
- *  when it slid down past its siblings — while `a` keeps the facing side. */
+ *  With `side` (where `b` was placed relative to `a`) both ends are pinned:
+ *  it leaves the middle of `a`'s side `side` and enters `b` from the facing
+ *  side, so every step placed to the right of `a` hangs off one trunk into
+ *  its left side, even one that slid down past its siblings. */
 export function connectorBetween(a: BoardEl, b: BoardEl, side?: Side | null): LinkerEl {
   const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
   const bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
@@ -157,7 +158,7 @@ export function connectorBetween(a: BoardEl, b: BoardEl, side?: Side | null): Li
       [0, 0],
       [bc.x - ac.x, bc.y - ac.y],
     ],
-    b1: { el: a.id, fx: 0, gap: 4 },
+    b1: side ? { el: a.id, fx: 0, gap: 4, sd: side } : { el: a.id, fx: 0, gap: 4 },
     b2: side ? { el: b.id, fx: 0, gap: 4, sd: OPPOSITE[side] } : { el: b.id, fx: 0, gap: 4 },
     hd: { s: "none", e: "triangle" },
     st: defaultStyle(),

@@ -71,9 +71,12 @@ describe("connectorBetween with a placement side", () => {
     const route = routeLinker(scene, arrow);
     const end = route[route.length - 1];
     expect(end).toEqual({ x: b.x - 4, y: b.y + b.h / 2 });
-    // Leaves the source from the bottom, then turns right: an L.
-    expect(route).toHaveLength(3);
-    expect(route[0]).toEqual({ x: 80, y: 110 + 4 });
+    // Leaves the middle of the source's right side, down a trunk halfway
+    // across the gap, then right into the new card: a Z.
+    expect(arrow.b1?.sd).toBe("e");
+    expect(route[0]).toEqual({ x: 160 + 4, y: 55 });
+    expect(route).toHaveLength(4);
+    expect(route[1].x).toBe(160 + QUICK_GAP / 2);
   });
 
   test("keeps the pinned side through a save and load", () => {
@@ -81,7 +84,7 @@ describe("connectorBetween with a placement side", () => {
     const back = parseBoard(serializeBoard(scene));
     const arrow = back.scene.els.find((el) => el.t === "arrow") as LinkerEl;
     expect(arrow.b2?.sd).toBe("w");
-    expect(arrow.b1?.sd).toBeUndefined();
+    expect(arrow.b1?.sd).toBe("e");
   });
 });
 
