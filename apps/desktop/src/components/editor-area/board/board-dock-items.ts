@@ -2,7 +2,7 @@
  * The tools Dock's items as data — ids, labels and shortcuts, no icons — so
  * the layout rules are testable without JSX. `board-dock.tsx` adds the icons.
  *
- * Ids: "select" | "hand" | "text" | "pen" | "mind" | "image"
+ * Ids: "select" | "hand" | "text" | "pen" | "mind" | "image" | "tidy" (an action)
  *      "shape:<kind>" | "sticky:<colour>" | "linker:<kind>:<route>" | "frame:<preset>"
  */
 
@@ -86,6 +86,7 @@ export const DOCK_SPEC: DockSpec[] = [
     })),
   },
   { id: "image", label: "Image" },
+  { id: "tidy", label: "Tidy up" },
 ];
 
 /** Dock geometry (dock.tsx): a tray may be no wider than the bar minus its

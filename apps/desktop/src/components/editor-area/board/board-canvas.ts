@@ -62,6 +62,7 @@ import {
   routeLinker,
   snapMove,
 } from "./board-geometry";
+import { tidyFlow } from "./board-tidy";
 import {
   BOARD_FONT,
   LINE_HEIGHT,
@@ -1172,12 +1173,42 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       toolDock?.setValue(toolValue());
       return;
     }
+    if (kind === "tidy") {
+      tidyUp();
+      toolDock?.setValue(toolValue());
+      host.focus();
+      return;
+    }
     if (kind === "shape") tools.shape = a as ShapeKind;
     else if (kind === "sticky") tools.sticky = a as StickyColor;
     else if (kind === "linker") tools.linker = { kind: a as LinkerKind, shape: b as LinkerShape };
     else if (kind === "frame") tools.frame = a as FramePreset;
     setTool(kind as ToolId);
     host.focus();
+  }
+
+  /** Lays out the joined cards as tidy trees (see `tidyFlow`): the groups
+   *  holding the selected cards, or every group when none is selected. One
+   *  undo step; nothing happens when there is nothing to move. */
+  function tidyUp(): void {
+    if (opts.readOnly) return;
+    const before = cloneScene(scene);
+    const scope = selection.size ? new Set(selection) : undefined;
+    const moved = tidyFlow(scene, scope);
+    if (!moved.length) {
+      scene = before;
+      return;
+    }
+    const after = scene;
+    scene = before;
+    pushHistory();
+    scene = after;
+    for (const id of moved) {
+      const el = findEl(scene, id);
+      if (el) assignFrame(el);
+    }
+    draw();
+    markDirty();
   }
 
   function setTool(tool: ToolId): void {

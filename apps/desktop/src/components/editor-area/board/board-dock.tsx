@@ -29,6 +29,7 @@ import {
   Star,
   Triangle,
   Type,
+  WandSparkles,
 } from "lucide-react";
 import { Dock, type DockItem } from "@/components/arc/dock/dock";
 import type { ShapeKind } from "./board-model";
@@ -84,6 +85,7 @@ const TOP_ICONS: Record<string, ReactNode> = {
   mind: <Network />,
   frames: <Frame />,
   image: <ImageIcon />,
+  tidy: <WandSparkles />,
 };
 
 function iconFor(id: string): ReactNode {
