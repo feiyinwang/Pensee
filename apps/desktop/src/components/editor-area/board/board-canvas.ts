@@ -2033,28 +2033,43 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   /** Quick-connect click: a blank copy of the shape on that side, joined by
-   *  an elbow arrow, selected so typing labels it straight away. */
-  function addNextStep(srcId: string, side: Side): void {
+   *  an elbow arrow, selected so typing labels it straight away. Returns the
+   *  new item. */
+  function addNextStep(srcId: string, side: Side): BoardEl | null {
     const src = findEl(scene, srcId);
     if (isMind(src)) {
       // A topic's dot grows the map; the layout places the new topic.
       pushHistory();
       const topic = growMind(scene, src, side);
-      if (!topic) return;
+      if (!topic) return null;
       layoutMind(scene, mindRoot(scene, topic).id, measureText);
       selection = new Set([topic.id]);
       draw();
       markDirty();
       startTextEdit(topic);
-      return;
+      return topic;
     }
-    if (!canQuickConnect(src)) return;
+    if (!canQuickConnect(src)) return null;
     pushHistory();
     const next = blankCopy(src, nextStepBox(src, side, scene));
     scene.els.push(connectorBetween(src, next, side), next);
     selection = new Set([next.id]);
     draw();
     markDirty();
+    return next;
+  }
+
+  /** A key typed with one item selected (not editing). A shape or note that
+   *  already has text keeps it: the typing starts a new card to its right,
+   *  joined by an arrow. A blank one (just placed) or a text, connector or
+   *  topic is typed into. Clicking only selects; double-click edits. */
+  function typeOnSelected(el: BoardEl, key: string): void {
+    if (canQuickConnect(el) && textOf(el).trim()) {
+      const next = addNextStep(el.id, "e");
+      if (next) startTextEdit(next, key);
+      return;
+    }
+    startTextEdit(el, key);
   }
 
   function snapshot(ids: Iterable<string>): Map<string, BoardEl> {
@@ -2823,7 +2838,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (hold.active) return; // the tool stays until a click (or Esc)
     const only = selection.size === 1 ? findEl(scene, [...selection][0]) : null;
     if (only && (isShape(only) || only.t === "sticky" || only.t === "text" || isLinker(only))) {
-      startTextEdit(only, e.key);
+      typeOnSelected(only, e.key);
       return;
     }
     placeShape(hold.kind);
@@ -2970,13 +2985,13 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       onShapeKeyDown(e, shapeKey);
       return;
     }
-    // Typing on one selected shape, note or text edits it (Lark, FigJam). Tool
+    // Typing with one shape, note or text selected: see typeOnSelected. Tool
     // shortcuts still work with nothing selected.
     if (!mod && !e.altKey && e.key.length === 1 && selection.size === 1) {
       const el = findEl(scene, [...selection][0]);
       if (el && (isShape(el) || el.t === "sticky" || el.t === "text" || isLinker(el))) {
         e.preventDefault();
-        startTextEdit(el, e.key);
+        typeOnSelected(el, e.key);
         return;
       }
     }
