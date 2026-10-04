@@ -320,6 +320,15 @@
   pointer-events: none;
 }
 
+/* The shape a dropped card will connect to: lit border and a soft glow, so
+   it is obvious which one it is, and it moves as the cursor does. */
+.wr-board-connect-target {
+  fill: none;
+  stroke: var(--wr-board-blue);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--wr-board-blue) 55%, transparent));
+  pointer-events: none;
+}
+
 .wr-board-ghost-link {
   stroke: var(--wr-board-blue);
   stroke-opacity: 0.6;

@@ -682,7 +682,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             width: f.w + px(6),
             height: f.h + px(6),
             rx: px(6),
-            class: "wr-board-bind-hint",
+            class: "wr-board-connect-target",
             "stroke-width": px(2),
           }),
         );
@@ -2034,6 +2034,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     closeTextEdit();
     if (opts.readOnly) return;
 
+    if (keyHold) {
+      activateHold();
+      keyHold.clicked = true;
+    }
     const p = screenToScene(e.clientX, e.clientY);
     const tol = SCREEN.hitSlop / vp().zoom;
 
@@ -2198,6 +2202,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   function onPointerMove(e: PointerEvent): void {
     const p = screenToScene(e.clientX, e.clientY);
     pointerScene = p;
+    if (keyHold && !keyHold.active) activateHold();
 
     if (interaction.kind === "none") {
       updateGhost();
@@ -2647,14 +2652,65 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     drawOverlay();
   }
 
+  /* Shape keys (R, O, D). A tap drops the shape at the cursor at once (or, with
+     one item selected, types the letter into it, like any other key). Holding
+     the key — or moving the mouse while it is down — picks the shape tool
+     instead: the card follows the cursor, the shape it would connect to is
+     lit, and a click drops it there, connected. Releasing without a click
+     keeps the tool until a click or Esc. */
+  const SHAPE_KEYS: Record<string, ShapeKind> = { r: "roundRect", o: "ellipse", d: "diamond" };
+  const HOLD_MS = 160;
+  let keyHold: {
+    key: string;
+    kind: ShapeKind;
+    timer: number;
+    active: boolean;
+    clicked: boolean;
+  } | null = null;
+
+  function activateHold(): void {
+    if (!keyHold || keyHold.active) return;
+    window.clearTimeout(keyHold.timer);
+    keyHold.active = true;
+    tools.shape = keyHold.kind;
+    setTool("shape");
+    updateGhost();
+  }
+
+  function onShapeKeyDown(e: KeyboardEvent, key: string): void {
+    e.preventDefault();
+    if (e.repeat) return;
+    // A fresh press while a hold is recorded means its key-up was lost (the
+    // window lost focus mid-hold): start over rather than ignore the key.
+    if (keyHold) window.clearTimeout(keyHold.timer);
+    keyHold = {
+      key,
+      kind: SHAPE_KEYS[key],
+      timer: window.setTimeout(activateHold, HOLD_MS),
+      active: false,
+      clicked: false,
+    };
+  }
+
+  function onShapeKeyUp(e: KeyboardEvent): void {
+    const hold = keyHold;
+    if (!hold || e.key.toLowerCase() !== hold.key) return;
+    window.clearTimeout(hold.timer);
+    keyHold = null;
+    if (hold.active) return; // the tool stays until a click (or Esc)
+    const only = selection.size === 1 ? findEl(scene, [...selection][0]) : null;
+    if (only && (isShape(only) || only.t === "sticky" || only.t === "text" || isLinker(only))) {
+      startTextEdit(only, e.key);
+      return;
+    }
+    placeShape(hold.kind);
+  }
+
   const TOOL_KEYS: Record<string, () => void> = {
     v: () => setTool("select"),
     m: () => setTool("mind"),
     p: () => setTool("pen"),
     h: () => setTool("hand"),
-    r: () => placeShape("roundRect"),
-    o: () => placeShape("ellipse"),
-    d: () => placeShape("diamond"),
     t: () => setTool("text"),
     n: () => setTool("sticky"),
     l: () => {
@@ -2786,6 +2842,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       setTool("frame");
       return;
     }
+    const shapeKey = e.key.toLowerCase();
+    if (!mod && !e.altKey && !e.shiftKey && SHAPE_KEYS[shapeKey]) {
+      onShapeKeyDown(e, shapeKey);
+      return;
+    }
     // Typing on one selected shape, note or text edits it (Lark, FigJam). Tool
     // shortcuts still work with nothing selected.
     if (!mod && !e.altKey && e.key.length === 1 && selection.size === 1) {
@@ -2827,6 +2888,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   function onKeyUp(e: KeyboardEvent): void {
+    onShapeKeyUp(e);
     if (e.key === " ") {
       spaceDown = false;
       delete host.dataset.panning;
