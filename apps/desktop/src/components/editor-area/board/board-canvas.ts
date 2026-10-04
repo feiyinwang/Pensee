@@ -60,6 +60,7 @@ import {
   rotate,
   polylineMidpoint,
   routeLinker,
+  segmentCrossesBox,
   snapMove,
 } from "./board-geometry";
 import { tidyFlow } from "./board-tidy";
@@ -2625,15 +2626,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
       case "marquee": {
         const box = normalizeBox(current.origin, current.current);
-        // Touching any part selects (FigJam). Sections and connectors need to
-        // be fully inside: a marquee within a section would otherwise always
-        // grab the section, and a connector's box spans far past its line.
+        // Touching any part selects (FigJam). A connector counts when the box
+        // crosses its drawn line (its bounding box spans far past an elbow).
+        // Sections need to be fully inside: a marquee within a section would
+        // otherwise always grab the section.
         const ids = scene.els
-          .filter((el) =>
-            el.t === "frame" || isLinker(el)
-              ? boxContains(box, isLinker(el) ? routeBounds(el) : elementBounds(el))
-              : boxesOverlap(box, elementBounds(el)),
-          )
+          .filter((el) => {
+            if (el.t === "frame") return boxContains(box, elementBounds(el));
+            if (isLinker(el)) {
+              const route = routeLinker(scene, el);
+              return route.some((q, i) => i > 0 && segmentCrossesBox(route[i - 1], q, box));
+            }
+            return boxesOverlap(box, elementBounds(el));
+          })
           .map((el) => el.id);
         select(expandByGroup(ids), current.additive);
         break;

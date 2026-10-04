@@ -620,7 +620,8 @@ export function elbowRoute(a: Point, b: Point, avoid: BoardEl[]): Point[] {
   return cost(first) <= cost(second) ? first : second;
 }
 
-function segmentCrossesBox(a: Point, b: Point, box: Box): boolean {
+/** True when segment a→b passes through (or has an end inside) `box`. */
+export function segmentCrossesBox(a: Point, b: Point, box: Box): boolean {
   if (box.w <= 0 || box.h <= 0) return false;
   if (pointInBox(a, box) || pointInBox(b, box)) return true;
   const corners = [
