@@ -143,12 +143,19 @@ describe("dockTarget", () => {
     expect(dock?.box).toEqual({ x: 160 + QUICK_GAP, y: 0, w: 160, h: 110 });
   });
 
-  test("nothing when out of reach, overlapping, or already joined", () => {
+  test("a card it overlaps beats a nearer-looking one it doesn't touch", () => {
+    // The dragged card half covers "one"; "two" sits just above, not touched.
+    const one = rect("one", 0, 200);
+    const two = rect("two", 0, 0);
+    const card = rect("card", 60, 260);
+    const dock = dockTarget({ ...emptyScene(), els: [one, two, card] }, card);
+    expect(dock?.from.id).toBe("one");
+  });
+
+  test("nothing when out of reach or already joined", () => {
     const a = rect("a", 0, 0);
     const far = rect("far", 160 + 400, 0);
     expect(dockTarget({ ...emptyScene(), els: [a, far] }, far)).toBeNull();
-    const onTop = rect("top", 40, 40);
-    expect(dockTarget({ ...emptyScene(), els: [a, onTop] }, onTop)).toBeNull();
     const near = rect("near", 160 + 50, 0);
     const joined = { ...emptyScene(), els: [a, near, connectorBetween(a, near, "e")] };
     expect(dockTarget(joined, near)).toBeNull();

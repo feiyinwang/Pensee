@@ -145,7 +145,7 @@ export const DOCK_REACH = 120;
 
 /**
  * Docking a dragged card: the shape or note it has come within `DOCK_REACH`
- * of (nearest, edge to edge, not overlapping), the side of that one it is on,
+ * of (nearest, edge to edge; overlapping counts as nearest), the side of that one it is on,
  * and the slot beside it the card snaps into on drop. Null when nothing is in
  * reach, or the nearest one is already joined to the card.
  */
@@ -154,16 +154,19 @@ export function dockTarget(
   card: ShapeEl | StickyEl,
 ): { from: ShapeEl | StickyEl; side: Side; box: Box } | null {
   const c = elementBounds(card);
-  let best: { el: ShapeEl | StickyEl; d: number } | null = null;
+  // Nearest by edge gap; one the card overlaps has a gap of 0, so it beats
+  // any card merely near. Ties (several overlapped) go to the nearer centre.
+  let best: { el: ShapeEl | StickyEl; d: number; cd: number } | null = null;
+  const cc = { x: c.x + c.w / 2, y: c.y + c.h / 2 };
   for (const el of scene.els) {
     if (el.id === card.id || !canQuickConnect(el)) continue;
     const b = elementBounds(el);
     const dx = Math.max(b.x - (c.x + c.w), 0, c.x - (b.x + b.w));
     const dy = Math.max(b.y - (c.y + c.h), 0, c.y - (b.y + b.h));
-    if (dx === 0 && dy === 0) continue; // on top of it is not next to it
     const d = Math.hypot(dx, dy);
     if (d > DOCK_REACH) continue;
-    if (!best || d < best.d) best = { el, d };
+    const cd = Math.hypot(b.x + b.w / 2 - cc.x, b.y + b.h / 2 - cc.y);
+    if (!best || d < best.d || (d === best.d && cd < best.cd)) best = { el, d, cd };
   }
   if (!best) return null;
   const from = best.el;

@@ -2617,9 +2617,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
               const el = findEl(scene, id);
               if (!el) continue;
               if (dock) {
-                // Docked: into the slot after the lit card, joined to it.
+                // Docked: into the slot after the lit card, joined to it. It
+                // moves there, so the arrows that led into it go; its own
+                // next steps stay attached.
                 el.x = dock.box.x;
                 el.y = dock.box.y;
+                scene.els = scene.els.filter((o) => !(isLinker(o) && o.b2?.el === el.id && o.b1));
                 scene.els.push(connectorBetween(dock.from, el, dock.side));
               }
               assignFrame(el);
