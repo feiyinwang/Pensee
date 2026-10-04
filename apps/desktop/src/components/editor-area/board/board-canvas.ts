@@ -2565,9 +2565,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
       case "marquee": {
         const box = normalizeBox(current.origin, current.current);
-        // Fully-contained only. "Touch to select" makes large frames unusable.
+        // Touching any part selects (FigJam). Sections and connectors need to
+        // be fully inside: a marquee within a section would otherwise always
+        // grab the section, and a connector's box spans far past its line.
         const ids = scene.els
-          .filter((el) => boxContains(box, elementBounds(el)))
+          .filter((el) =>
+            el.t === "frame" || isLinker(el)
+              ? boxContains(box, isLinker(el) ? routeBounds(el) : elementBounds(el))
+              : boxesOverlap(box, elementBounds(el)),
+          )
           .map((el) => el.id);
         select(expandByGroup(ids), current.additive);
         break;
