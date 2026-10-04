@@ -17,6 +17,7 @@ import { mermaidToElements } from "./board-mermaid";
 import { measureText } from "./board-render";
 import { isBoardFile, readBoardSvg, relativePath, renderBoardSvg } from "./board-file";
 import { openBoardFullscreen } from "./board-fullscreen";
+import { prefetchBoardChrome } from "./board-canvas";
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const PASSTHROUGH = /^(https?:|data:|blob:|asset:)/;
@@ -251,6 +252,7 @@ export function boardImageEnhancer(getFilePath: () => string | null) {
     image.dataset.boardPath = absolute;
     if (versions.has(absolute)) image.src = previewSrc(absolute);
     dom.classList.add("wr-board-image");
+    prefetchBoardChrome();
     image.title = "Open board";
 
     const open = (present = false): void => {

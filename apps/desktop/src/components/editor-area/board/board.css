@@ -304,6 +304,10 @@
 
 /* ------------------------------------------------------------ fullscreen */
 
+/* The stage covers the whole window, so the overlay itself paints nothing:
+   no backdrop, no blur (a full-window backdrop-filter was GPU work on every
+   opening frame for a layer nobody could see). Only the stage animates: a
+   100ms ease-out fade with a slight scale, so the board is there at once. */
 .wr-board-fullscreen {
   position: fixed;
   inset: 0;
@@ -311,14 +315,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
-  backdrop-filter: blur(6px);
-  opacity: 0;
-  transition: opacity var(--motion-base) var(--ease-out);
-}
-
-.wr-board-fullscreen.is-open {
-  opacity: 1;
 }
 
 .wr-board-stage {
@@ -333,9 +329,16 @@
   background: var(--wr-board-surface);
   transform: scale(0.985);
   transition:
-    transform var(--motion-base) var(--ease-out),
-    opacity var(--motion-base) var(--ease-out);
+    transform var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-board-stage {
+    transform: none;
+    transition: none;
+  }
 }
 
 .wr-board-fullscreen.is-open .wr-board-stage {

@@ -18,7 +18,7 @@ import { syntaxTree } from "@codemirror/language";
 import { foldableSyntaxFacet } from "@/lib/prosemark-core/main";
 import { formatMarkdownDestination, getParentDir } from "@/lib/paths";
 import { BOARD_FENCE_INFO, type BoardScene, fenceFor, parseBoard, sceneSize } from "./board-model";
-import { renderStaticBoard } from "./board-canvas";
+import { prefetchBoardChrome, renderStaticBoard } from "./board-canvas";
 import { openBoardFullscreen } from "./board-fullscreen";
 import {
   boardImageEnhancer,
@@ -62,6 +62,7 @@ class BoardWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
+    prefetchBoardChrome();
     const wrapper = document.createElement("div");
     wrapper.className = "wr-board-card-wrap";
 

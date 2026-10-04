@@ -192,6 +192,27 @@ type Interaction =
   | { kind: "create"; origin: Point; el: BoardEl }
   | { kind: "linking"; el: LinkerEl; origin: Point };
 
+let chromePrefetched = false;
+
+/** Fetches and evaluates the lazily split board chrome (selection toolbar,
+ *  dock: React, motion, Arc) while the note is idle, without mounting it.
+ *  Called when a board shows up in a note, so opening it doesn't spend its
+ *  first frames on that — measured ~350ms on a cold first open. */
+export function prefetchBoardChrome(): void {
+  if (chromePrefetched) return;
+  chromePrefetched = true;
+  const load = (): void => {
+    const failed = (error: unknown): void => console.error("[board] chrome prefetch failed", error);
+    import("./board-selection-toolbar").catch(failed);
+    import("./board-dock").catch(failed);
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(load, { timeout: 2000 });
+  } else {
+    window.setTimeout(load, 300);
+  }
+}
+
 export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): BoardCanvasHandle {
   let scene = cloneScene(opts.scene);
   let selection = new Set<string>();
