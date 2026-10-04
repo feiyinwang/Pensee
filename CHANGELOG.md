@@ -2,6 +2,7 @@
 
 ## 2026-10-04
 
+- Board templates are gone. A new board opens blank instead of showing the template picker.
 - Fixed: an opened board had a thin orange outline round the whole window. It was the keyboard focus ring meant for buttons, drawn on the board itself; buttons inside the board still show theirs.
 - Boards open faster from a note. The board's toolbar and dock code now loads in the background as soon as a board appears in the note, so the first open no longer waits for it. The board fades in over 100ms instead of 160ms. The blurred backdrop behind it is gone; the board covers the whole window, so it was never visible but was redrawn on every frame of the fade. Measured on a 3,000-item board: the first open goes from about 435ms to about 350ms before the first frame, and later opens take about 100ms. Opening time no longer grows with the number of items, because only what's on screen is drawn.
 - Fixed: in a narrower window, a board in a note ran under the table-of-contents ticks on the right. Boards now stop about 16px short of them. In a wide window nothing changes, because the page margin already leaves that room.

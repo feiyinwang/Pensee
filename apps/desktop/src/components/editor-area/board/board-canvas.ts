@@ -33,7 +33,6 @@ import {
   cloneScene,
   defaultStyle,
   newShapeStyle,
-  emptyScene,
   findEl,
   hasStyle,
   isLinker,
@@ -77,7 +76,6 @@ import { gridSpec } from "./board-grid";
 import { fitView, lerpBox, lerpView, slideOrder } from "./board-present";
 import { findMatches, replaceInElement } from "./board-search";
 import { exportSubset, svgToPngBase64 } from "./board-export";
-import { TEMPLATES } from "./board-templates";
 import * as tauri from "@/lib/tauri";
 import {
   addMindChild,
@@ -1470,76 +1468,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     return a === "c" ? "center" : a === "r" ? "right" : "left";
   }
 
-  /* -------------------------------------------------------- templates */
-
-  const picker = document.createElement("div");
-  picker.className = "wr-board-templates";
-  picker.hidden = true;
-  picker.setAttribute("role", "dialog");
-  picker.setAttribute("aria-label", "Start from a template");
-  picker.addEventListener("pointerdown", (e) => e.stopPropagation());
-  picker.addEventListener("keydown", (e) => {
-    e.stopPropagation();
-    if (e.key === "Escape") hideTemplates();
-  });
-  host.append(picker);
-
-  function hideTemplates(): void {
-    picker.hidden = true;
-    picker.replaceChildren();
-    host.focus();
-  }
-
-  function showTemplates(): void {
-    if (presenting) return;
-    picker.replaceChildren();
-    const panel = document.createElement("div");
-    panel.className = "wr-board-templates-panel";
-    const head = document.createElement("div");
-    head.className = "wr-board-templates-head";
-    head.textContent = scene.els.length ? "Add a template" : "Start from a template";
-    const grid = document.createElement("div");
-    grid.className = "wr-board-templates-grid";
-    const card = (
-      name: string,
-      description: string,
-      preview: Element | null,
-      onPick: () => void,
-    ) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "wr-board-template";
-      const thumb = document.createElement("span");
-      thumb.className = "wr-board-template-thumb";
-      if (preview) thumb.append(preview);
-      const label = document.createElement("strong");
-      label.textContent = name;
-      const sub = document.createElement("span");
-      sub.textContent = description;
-      b.append(thumb, label, sub);
-      b.addEventListener("click", onPick);
-      return b;
-    };
-    if (!scene.els.length) {
-      grid.append(card("Blank", "An empty board", null, () => hideTemplates()));
-    }
-    for (const t of TEMPLATES) {
-      const preview = { ...emptyScene(), els: t.build(measureText) };
-      grid.append(
-        card(t.name, t.description, renderStaticBoard(preview, 196, 112, opts.resolveSrc), () => {
-          const wasEmpty = scene.els.length === 0;
-          placeImported(t.build(measureText), viewCenterScene());
-          hideTemplates();
-          if (wasEmpty) zoomToFit();
-        }),
-      );
-    }
-    panel.append(head, grid);
-    picker.append(panel);
-    picker.hidden = false;
-    (grid.firstElementChild as HTMLElement | null)?.focus();
-  }
-
   /* ----------------------------------------------------------- export */
 
   /** The selection if there is one, otherwise the whole board. */
@@ -2818,8 +2746,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   draw();
   toolbar.setHistory(false, false);
   if (opts.present) requestAnimationFrame(() => startPresenting(0));
-  // A new, empty board offers templates first (Lark).
-  else if (!scene.els.length && !opts.readOnly) showTemplates();
 
   return {
     destroy() {
