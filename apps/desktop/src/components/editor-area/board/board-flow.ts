@@ -15,6 +15,7 @@ import {
   type ShapeEl,
   type StickyEl,
   defaultStyle,
+  isLinker,
   isShape,
   newId,
 } from "./board-model";
@@ -66,21 +67,37 @@ export function nextStepBox(
     w,
     h,
   };
+  // Connectors don't block a spot: their stored points can span a whole
+  // column of cards they no longer follow, which used to fill every slot.
   const others = scene.els
-    .filter((el) => el.id !== src.id && el.id !== ignore && el.t !== "frame")
+    .filter((el) => el.id !== src.id && el.id !== ignore && el.t !== "frame" && !isLinker(el))
     .map(elementBounds);
+  const clear = QUICK_GAP / 4;
+  const free = (box: Box): boolean =>
+    !others.some((o) =>
+      boxesOverlap(o, {
+        x: box.x - clear,
+        y: box.y - clear,
+        w: box.w + 2 * clear,
+        h: box.h + 2 * clear,
+      }),
+    );
   const shift = sx !== 0 ? h + QUICK_GAP / 2 : w + QUICK_GAP / 2;
-  for (let i = 0; i < 8; i += 1) {
+  // Down (or right) first, then up, further out each round until a spot is
+  // free; a board can't fill MAX_SLIDES slots both ways, but stop regardless.
+  for (let i = 0; i < MAX_SLIDES * 2 + 1; i += 1) {
     const k = i === 0 ? 0 : Math.ceil(i / 2) * (i % 2 ? 1 : -1);
     const box: Box = {
       ...base,
       x: base.x + (sx === 0 ? k * shift : 0),
       y: base.y + (sy === 0 ? k * shift : 0),
     };
-    if (!others.some((o) => boxesOverlap(o, box))) return box;
+    if (free(box)) return box;
   }
   return base;
 }
+
+const MAX_SLIDES = 200;
 
 /** How close (scene units, edge to cursor) a shape or note must be for a new
  *  one dropped at the cursor to attach to it. */

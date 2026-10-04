@@ -10,9 +10,14 @@ import {
   ATTACH_REACH,
   QUICK_GAP,
   connectorBetween,
+  nextStepBox,
   placeNear,
 } from "../src/components/editor-area/board/board-flow";
-import { nearestSide, routeLinker } from "../src/components/editor-area/board/board-geometry";
+import {
+  boxesOverlap,
+  nearestSide,
+  routeLinker,
+} from "../src/components/editor-area/board/board-geometry";
 
 const rect = (id: string, x: number, y: number): ShapeEl => ({
   id,
@@ -105,5 +110,24 @@ describe("nearestSide", () => {
     line.b2 = { el: "b", fx: 0, gap: 6, sd: "s" };
     const route = routeLinker({ ...emptyScene(), els: [box, b] }, line);
     expect(route[route.length - 1]).toEqual({ x: 480, y: 116 });
+  });
+});
+
+describe("nextStepBox never overlaps", () => {
+  test("slides past a full column, ignoring arrows that span it", () => {
+    const src = rect("src", 0, 0);
+    const x = 160 + QUICK_GAP;
+    // Ten cards stacked to the right, both above and below the source.
+    const column = Array.from({ length: 10 }, (_, i) => rect(`c${i}`, x, (i - 5) * 150));
+    // A connector whose stored points cover the whole column.
+    const stale = connectorBetween(src, column[9]);
+    stale.pts = [
+      [0, -2000],
+      [400, 2000],
+    ];
+    const scene = { ...emptyScene(), els: [src, ...column, stale] };
+    const box = nextStepBox(src, "e", scene);
+    expect(box.x).toBe(x);
+    for (const c of column) expect(boxesOverlap(box, c)).toBe(false);
   });
 });
