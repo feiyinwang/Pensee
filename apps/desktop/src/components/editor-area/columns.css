@@ -351,7 +351,7 @@
     transform var(--wr-dur-press) var(--wr-ease-out);
 }
 
-/* Type chip, then the dots, then the block. One grip for a paragraph, a
+/* The type chip, then the block. One grip for a paragraph, a
    picture and a caption alike — what differs is the chip, which says what you
    are about to pick up. Width is mirrored in `GRIP_WIDTH`.
 
@@ -392,10 +392,26 @@
   --wr-kind-color: var(--wr-kind-text-tint);
 }
 /* A heading's chip is drawn by `heading-level-labels.ts`, always, in this very
-   box. The grip keeps the slot (so the dots stay put) but shows nothing in it,
-   leaving the H1–H6 label underneath visible. */
+   box. The grip lies over it as a clear box, so the H1–H6 label underneath is
+   what you see — and what you press to drag. */
 .wr-gutter-kind[data-kind="heading"] {
-  visibility: hidden;
+  border-color: transparent;
+  background: transparent;
+}
+.wr-gutter-kind[data-kind="heading"]::before {
+  content: none;
+}
+/* The chip is the handle, so it answers the pointer like one. */
+.wr-gutter-grab[data-wr-handle] .wr-gutter-kind {
+  transition: border-color var(--wr-dur-hover) var(--wr-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wr-gutter-grab[data-wr-handle]:hover .wr-gutter-kind {
+    border-color: color-mix(in srgb, var(--wr-kind-color) 70%, transparent);
+  }
+  .wr-gutter-grab[data-wr-handle]:hover .wr-gutter-kind[data-kind="heading"] {
+    border-color: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  }
 }
 .wr-gutter-kind[data-kind="image"] {
   --wr-kind-color: var(--accent, #ff6a00);
@@ -413,14 +429,11 @@
   -webkit-mask-image: var(--wr-kind-image);
   mask-image: var(--wr-kind-image);
 }
-/* The dots are a flex item here, not an overlay: they sit beside the chip. */
+/* No dots on the margin grip: the chip is the handle (press to drag, hover
+   for the menu), so it is the whole grip — `GRIP_WIDTH` is the chip's 24px.
+   Column and caption grips, and the drag lift, keep their dots. */
 .wr-gutter-grab[data-wr-handle]::after {
-  position: static;
-  flex: 0 0 16px;
-  width: 16px;
-  height: 20px;
-  -webkit-mask-size: 16px 20px;
-  mask-size: 16px 20px;
+  content: none;
 }
 .wr-gutter-grab.wr-gutter-on {
   opacity: 1;

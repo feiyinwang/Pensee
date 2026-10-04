@@ -12,9 +12,9 @@ import "./heading-level-labels.css";
 // The label sits in exactly the box the gutter grip's type chip uses: same
 // left edge (`GRIP_WIDTH` in from the text column) and the same vertical
 // centring on the measured first line box (`firstLineBox` + `gripTop`). When
-// the grip parks on a heading it hides its own chip and adds only its dots, so
-// hovering a heading reads as the label growing a handle rather than a second
-// chip appearing on top of the first.
+// the grip parks on a heading it lies over the label as a clear box (a ring
+// on hover), so the label itself is the handle rather than a second chip
+// appearing on top of the first.
 //
 // The labels live in `view.dom`, beside the grip, not in the lines: they sit in
 // the page padding, outside any line box, and CodeMirror's DOM observer would

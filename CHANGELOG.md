@@ -2,6 +2,7 @@
 
 ## 2026-10-04
 
+- The six-dot grip beside a block is gone. The type chip (the "T" box, or a heading's H1–H6 label) is now the handle: press and drag it to move the block, hover it for the block menu. It sits right next to the text and gets a stronger outline on hover.
 - Board tool labels are now nearly instant: hovering a tool shows its name after 60ms (was 200ms) and it settles in about 100ms.
 - Board templates are gone. A new board opens blank instead of showing the template picker.
 - Fixed: an opened board had a thin orange outline round the whole window. It was the keyboard focus ring meant for buttons, drawn on the board itself; buttons inside the board still show theirs.

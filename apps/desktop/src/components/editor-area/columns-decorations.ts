@@ -1909,9 +1909,10 @@ function startResize(view: EditorView, handle: HTMLElement, event: PointerEvent)
 
 /* ------------------------------------------------------------ gutter handle */
 
-/** Width the grip occupies in the margin: the type chip, the gap, the dots.
- *  Mirrored in `columns.css` — if you change one, change the other. */
-export const GRIP_WIDTH = 44;
+/** Width the grip occupies in the margin: just the type chip. The chip IS the
+ *  handle — press it to drag, hover it for the menu — so there are no dots
+ *  beside it any more. Mirrored in `columns.css` — change one, change the other. */
+export const GRIP_WIDTH = 24;
 
 /** Height of the grip's box. Mirrored in `columns.css` — change one, change
  *  the other, same as `GRIP_WIDTH`. */
