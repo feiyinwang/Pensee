@@ -312,6 +312,20 @@
   cursor: pointer;
 }
 
+/* Where a click with the shape or note tool will drop its item. */
+.wr-board-ghost {
+  fill: color-mix(in srgb, var(--wr-board-blue) 8%, transparent);
+  stroke: var(--wr-board-blue);
+  stroke-opacity: 0.6;
+  pointer-events: none;
+}
+
+.wr-board-ghost-link {
+  stroke: var(--wr-board-blue);
+  stroke-opacity: 0.6;
+  pointer-events: none;
+}
+
 /* ------------------------------------------------------------ fullscreen */
 
 /* The stage covers the whole window, so the overlay itself paints nothing:

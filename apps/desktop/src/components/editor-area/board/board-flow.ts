@@ -43,20 +43,32 @@ export function quickDots(box: Box, offset: number): Record<Side, Point> {
 const STEP: Record<Side, [number, number]> = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 
 /**
- * The next step's position: `QUICK_GAP` past `src` on `side`. If that spot is
- * taken (a branch already went that way) it slides sideways, alternating
- * either side of the axis, so repeated clicks fan out instead of stacking.
+ * The next step's position: `QUICK_GAP` past `src` on `side`, centred on
+ * `src`'s axis, sized `size` (default: `src`'s own). If that spot is taken (a
+ * branch already went that way) it slides sideways, alternating either side
+ * of the axis, so repeated clicks fan out instead of stacking.
  */
-export function nextStepBox(src: BoardEl, side: Side, scene: BoardScene): Box {
+export function nextStepBox(
+  src: BoardEl,
+  side: Side,
+  scene: BoardScene,
+  size: { w: number; h: number } = src,
+  ignore?: string,
+): Box {
   const [sx, sy] = STEP[side];
+  const { w, h } = size;
   const base: Box = {
-    x: src.x + sx * (src.w + QUICK_GAP),
-    y: src.y + sy * (src.h + QUICK_GAP),
-    w: src.w,
-    h: src.h,
+    x:
+      sx > 0 ? src.x + src.w + QUICK_GAP : sx < 0 ? src.x - QUICK_GAP - w : src.x + (src.w - w) / 2,
+    y:
+      sy > 0 ? src.y + src.h + QUICK_GAP : sy < 0 ? src.y - QUICK_GAP - h : src.y + (src.h - h) / 2,
+    w,
+    h,
   };
-  const others = scene.els.filter((el) => el.id !== src.id && el.t !== "frame").map(elementBounds);
-  const shift = sx !== 0 ? src.h + QUICK_GAP / 2 : src.w + QUICK_GAP / 2;
+  const others = scene.els
+    .filter((el) => el.id !== src.id && el.id !== ignore && el.t !== "frame")
+    .map(elementBounds);
+  const shift = sx !== 0 ? h + QUICK_GAP / 2 : w + QUICK_GAP / 2;
   for (let i = 0; i < 8; i += 1) {
     const k = i === 0 ? 0 : Math.ceil(i / 2) * (i % 2 ? 1 : -1);
     const box: Box = {
@@ -67,6 +79,46 @@ export function nextStepBox(src: BoardEl, side: Side, scene: BoardScene): Box {
     if (!others.some((o) => boxesOverlap(o, box))) return box;
   }
   return base;
+}
+
+/** How close (scene units, edge to cursor) a shape or note must be for a new
+ *  one dropped at the cursor to attach to it. */
+export const ATTACH_REACH = 160;
+
+/**
+ * Where a new `w × h` shape or note dropped at `at` lands. Near an existing
+ * shape or note (within `ATTACH_REACH` of its edge, not on top of it) it goes
+ * beside that one — on the side facing the cursor, a gap away, lined up on its
+ * axis — and `from` names it, so the caller connects the two. Otherwise it is
+ * centred on the cursor. `ignore` is the new item itself while it is in the
+ * scene (a click in progress).
+ */
+export function placeNear(
+  scene: BoardScene,
+  at: Point,
+  w: number,
+  h: number,
+  ignore?: string,
+): { box: Box; from: ShapeEl | StickyEl | null; side: Side | null } {
+  let best: { el: ShapeEl | StickyEl; d: number } | null = null;
+  for (const el of scene.els) {
+    if (el.id === ignore || !canQuickConnect(el)) continue;
+    const b = elementBounds(el);
+    const dx = Math.max(b.x - at.x, 0, at.x - (b.x + b.w));
+    const dy = Math.max(b.y - at.y, 0, at.y - (b.y + b.h));
+    const d = Math.hypot(dx, dy);
+    // On top of a shape is not "next to" it.
+    if (d === 0 || d > ATTACH_REACH) continue;
+    if (!best || d < best.d) best = { el, d };
+  }
+  if (!best) return { box: { x: at.x - w / 2, y: at.y - h / 2, w, h }, from: null, side: null };
+  const b = elementBounds(best.el);
+  // Which side faces the cursor: the larger offset, measured in half-sizes so
+  // a wide shape doesn't always win left/right.
+  const ox = (at.x - (b.x + b.w / 2)) / (b.w / 2 || 1);
+  const oy = (at.y - (b.y + b.h / 2)) / (b.h / 2 || 1);
+  const side: Side = Math.abs(ox) >= Math.abs(oy) ? (ox > 0 ? "e" : "w") : oy > 0 ? "s" : "n";
+  return { box: nextStepBox(best.el, side, scene, { w, h }, ignore), from: best.el, side };
 }
 
 /** A blank copy of `src` (same kind, size and style; no text) at `box`. */

@@ -110,6 +110,7 @@ import {
   canQuickConnect,
   connectorBetween,
   nextStepBox,
+  placeNear,
   quickDots,
 } from "./board-flow";
 import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
@@ -220,6 +221,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   let selection = new Set<string>();
   let interaction: Interaction = { kind: "none" };
   let spaceDown = false;
+  /** The cursor on the board, in scene units; null while it is off the board.
+   *  Shortcuts that add an item put it here. */
+  let pointerScene: Point | null = null;
+  /** Where a click with the shape or note tool would drop its item, drawn as
+   *  a faint outline (and the arrow it would get) that follows the cursor. */
+  let ghost: ReturnType<typeof placeNear> | null = null;
   let hoverTarget: string | null = null;
   let disposed = false;
   /** Arc Dock for tools; null until its lazy chunk arrives (see below). */
@@ -302,7 +309,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   fileInput.addEventListener("change", () => {
     const file = fileInput.files?.[0];
     fileInput.value = "";
-    if (file) void placeImageFile(file, viewCenterScene());
+    if (file) void placeImageFile(file, pointerScene ?? viewCenterScene());
   });
   host.append(fileInput);
 
@@ -658,6 +665,47 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     overlay.replaceChildren();
     const z = vp().zoom;
     const px = (n: number) => n / z;
+
+    if (ghost) {
+      const g = ghost.box;
+      overlay.append(
+        svgEl("rect", {
+          x: g.x,
+          y: g.y,
+          width: g.w,
+          height: g.h,
+          rx: tools.tool === "sticky" ? px(2) : 8,
+          class: "wr-board-ghost",
+          "stroke-width": px(1.5),
+          "stroke-dasharray": `${px(5)} ${px(4)}`,
+        }),
+      );
+      if (ghost.from && ghost.side) {
+        const f = elementBounds(ghost.from);
+        const mid = (b: { x: number; y: number; w: number; h: number }, side: Side) =>
+          side === "e"
+            ? { x: b.x + b.w, y: b.y + b.h / 2 }
+            : side === "w"
+              ? { x: b.x, y: b.y + b.h / 2 }
+              : side === "s"
+                ? { x: b.x + b.w / 2, y: b.y + b.h }
+                : { x: b.x + b.w / 2, y: b.y };
+        const opposite: Record<Side, Side> = { e: "w", w: "e", n: "s", s: "n" };
+        const a = mid(f, ghost.side);
+        const b = mid(g, opposite[ghost.side]);
+        overlay.append(
+          svgEl("line", {
+            x1: a.x,
+            y1: a.y,
+            x2: b.x,
+            y2: b.y,
+            class: "wr-board-ghost-link",
+            "stroke-width": px(1.5),
+            "stroke-dasharray": `${px(5)} ${px(4)}`,
+          }),
+        );
+      }
+    }
 
     if (matches.length) {
       for (const [i, id] of matches.entries()) {
@@ -1062,6 +1110,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function setTool(tool: ToolId): void {
     tools.tool = tool;
+    if (tool !== "shape" && tool !== "sticky") ghost = null;
     toolbar.setTool(tool);
     toolDock?.setValue(toolValue());
     host.dataset.tool = tool;
@@ -2136,8 +2185,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function onPointerMove(e: PointerEvent): void {
     const p = screenToScene(e.clientX, e.clientY);
+    pointerScene = p;
 
     if (interaction.kind === "none") {
+      updateGhost();
       if (tools.tool === "linker") {
         const next = linkTargetAt(p)?.id ?? null;
         if (next !== hoverTarget) {
@@ -2393,9 +2444,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           } else if (isShape(el)) {
             el.w = SHAPE_DEFAULT.w;
             el.h = SHAPE_DEFAULT.h;
-            el.x = current.origin.x - SHAPE_DEFAULT.w / 2;
-            el.y = current.origin.y - SHAPE_DEFAULT.h / 2;
           }
+        }
+        // A click (not a drag) with the shape or note tool drops the item at
+        // the cursor — beside a shape it is near, connected to it.
+        const clicked =
+          el.t === "sticky"
+            ? Math.hypot(p.x - current.origin.x, p.y - current.origin.y) <
+              SCREEN.minDrag / vp().zoom
+            : tooSmall && isShape(el);
+        const spot = clicked ? placeNear(scene, current.origin, el.w, el.h, el.id) : null;
+        if (spot) {
+          el.x = spot.box.x;
+          el.y = spot.box.y;
         }
         scene.els = scene.els.filter((e2) => e2.id !== el.id);
         if (el.t !== "text" && (el.w < 2 || el.h < 2)) {
@@ -2403,12 +2464,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           break;
         }
         pushHistory();
-        assignFrame(el);
-        scene.els.push(el);
-        selection = new Set([el.id]);
-        setTool("select");
-        draw();
-        markDirty();
+        addPlaced(el, spot?.from ?? null);
         if (el.t === "text" || el.t === "sticky") startTextEdit(el);
         break;
       }
@@ -2532,24 +2588,51 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  so repeated presses don't stack invisibly. */
   function placeShape(kind: ShapeKind): void {
     tools.shape = kind;
-    const c = viewCenterScene();
-    const el = makeElement("shape", c) as ShapeEl;
-    el.x = c.x - SHAPE_DEFAULT.w / 2;
-    el.y = c.y - SHAPE_DEFAULT.h / 2;
+    const el = makeElement("shape", { x: 0, y: 0 }) as ShapeEl;
     el.w = SHAPE_DEFAULT.w;
     el.h = SHAPE_DEFAULT.h;
-    const step = 24 / vp().zoom;
-    while (scene.els.some((o) => o.x === el.x && o.y === el.y)) {
-      el.x += step;
-      el.y += step;
+    // At the cursor when it is over the board, beside a shape it is near.
+    const at = pointerScene ?? viewCenterScene();
+    const spot = pointerScene ? placeNear(scene, at, el.w, el.h) : null;
+    el.x = spot ? spot.box.x : at.x - el.w / 2;
+    el.y = spot ? spot.box.y : at.y - el.h / 2;
+    if (!spot?.from) {
+      // Repeated presses on one spot step down-right instead of stacking.
+      const step = 24 / vp().zoom;
+      while (scene.els.some((o) => o.x === el.x && o.y === el.y)) {
+        el.x += step;
+        el.y += step;
+      }
     }
     pushHistory();
+    addPlaced(el, spot?.from ?? null);
+  }
+
+  /** Adds a newly placed shape or note — and, when it was placed beside
+   *  `from`, the arrow from `from` to it — selects it, and saves. The caller
+   *  has pushed the undo step. */
+  function addPlaced(el: BoardEl, from: BoardEl | null): void {
     assignFrame(el);
     scene.els.push(el);
+    if (from) scene.els.push(connectorBetween(from, el));
     selection = new Set([el.id]);
+    ghost = null;
     setTool("select");
     draw();
     markDirty();
+  }
+
+  function updateGhost(): void {
+    const kind = tools.tool;
+    const next =
+      pointerScene && interaction.kind === "none" && (kind === "shape" || kind === "sticky")
+        ? kind === "shape"
+          ? placeNear(scene, pointerScene, SHAPE_DEFAULT.w, SHAPE_DEFAULT.h)
+          : placeNear(scene, pointerScene, STICKY_SIZE, STICKY_SIZE)
+        : null;
+    if (!next && !ghost) return;
+    ghost = next;
+    drawOverlay();
   }
 
   const TOOL_KEYS: Record<string, () => void> = {
@@ -2764,7 +2847,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         const file = item.getAsFile();
         if (!file) continue;
         e.preventDefault();
-        void placeImageFile(file, viewCenterScene());
+        void placeImageFile(file, pointerScene ?? viewCenterScene());
         return;
       }
     }
@@ -2804,6 +2887,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   svg.addEventListener("pointerdown", onPointerDown);
   svg.addEventListener("pointermove", onPointerMoveRaw);
+  svg.addEventListener("pointerleave", () => {
+    pointerScene = null;
+    updateGhost();
+  });
   svg.addEventListener("pointerup", onPointerUp);
   svg.addEventListener("pointercancel", onPointerUp);
   svg.addEventListener("dblclick", onDoubleClick);
