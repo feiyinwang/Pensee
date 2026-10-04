@@ -488,8 +488,16 @@ export function routeLinker(scene: BoardScene, el: LinkerEl): Point[] {
   const t1 = el.b1 ? findEl(scene, el.b1.el) : undefined;
   const t2 = el.b2 ? findEl(scene, el.b2.el) : undefined;
 
-  if (t1 && el.b1) start = bindingPoint(t1, el.b1.fx, el.b1.gap, t2 ? centerOf(t2) : end);
-  if (t2 && el.b2) end = bindingPoint(t2, el.b2.fx, el.b2.gap, t1 ? centerOf(t1) : start);
+  if (t1 && el.b1) {
+    start = el.b1.sd
+      ? pinnedAnchor(t1, el.b1.sd, el.b1.gap).p
+      : bindingPoint(t1, el.b1.fx, el.b1.gap, t2 ? centerOf(t2) : end);
+  }
+  if (t2 && el.b2) {
+    end = el.b2.sd
+      ? pinnedAnchor(t2, el.b2.sd, el.b2.gap).p
+      : bindingPoint(t2, el.b2.fx, el.b2.gap, t1 ? centerOf(t1) : start);
+  }
 
   if (el.sh === "elbow" && t1 && t2 && el.b1 && el.b2) {
     // Flowchart style: leave and arrive at the facing side midpoints, unless
@@ -525,6 +533,19 @@ export function sideAnchor(el: BoardEl, toward: Point, gap: number): SideAnchor 
     return { p: { x: dx >= 0 ? b.x + b.w + gap : b.x - gap, y: c.y }, horizontal: true };
   }
   return { p: { x: c.x, y: dy >= 0 ? b.y + b.h + gap : b.y - gap }, horizontal: false };
+}
+
+/** The side of `el`'s box nearest `p` — where a connector end dropped at `p`
+ *  attaches, so any side can be picked by dropping close to it. */
+export function nearestSide(el: BoardEl, p: Point): BoxSide {
+  const b = elementBounds(el);
+  const d: [BoxSide, number][] = [
+    ["n", Math.abs(p.y - b.y)],
+    ["s", Math.abs(p.y - (b.y + b.h))],
+    ["w", Math.abs(p.x - b.x)],
+    ["e", Math.abs(p.x - (b.x + b.w))],
+  ];
+  return d.reduce((best, cur) => (cur[1] < best[1] ? cur : best))[0];
 }
 
 /** Midpoint of `side` of `el`, pushed out by `gap`. */

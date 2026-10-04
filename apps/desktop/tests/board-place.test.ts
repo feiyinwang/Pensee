@@ -12,7 +12,7 @@ import {
   connectorBetween,
   placeNear,
 } from "../src/components/editor-area/board/board-flow";
-import { routeLinker } from "../src/components/editor-area/board/board-geometry";
+import { nearestSide, routeLinker } from "../src/components/editor-area/board/board-geometry";
 
 const rect = (id: string, x: number, y: number): ShapeEl => ({
   id,
@@ -82,5 +82,25 @@ describe("connectorBetween with a placement side", () => {
     const arrow = back.scene.els.find((el) => el.t === "arrow") as LinkerEl;
     expect(arrow.b2?.sd).toBe("w");
     expect(arrow.b1?.sd).toBeUndefined();
+  });
+});
+
+describe("nearestSide", () => {
+  const box = rect("a", 0, 0); // 160 × 110
+
+  test("picks the side closest to the drop point, any of the four", () => {
+    expect(nearestSide(box, { x: 10, y: 55 })).toBe("w");
+    expect(nearestSide(box, { x: 150, y: 55 })).toBe("e");
+    expect(nearestSide(box, { x: 80, y: 5 })).toBe("n");
+    expect(nearestSide(box, { x: 80, y: 105 })).toBe("s");
+  });
+
+  test("a pinned side holds on a straight line too", () => {
+    const b = rect("b", 400, 0);
+    const line = connectorBetween(box, b);
+    line.sh = "straight";
+    line.b2 = { el: "b", fx: 0, gap: 6, sd: "s" };
+    const route = routeLinker({ ...emptyScene(), els: [box, b] }, line);
+    expect(route[route.length - 1]).toEqual({ x: 480, y: 116 });
   });
 });

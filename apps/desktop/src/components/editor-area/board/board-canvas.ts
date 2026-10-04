@@ -14,6 +14,7 @@
 
 import {
   type BoardEl,
+  type Binding,
   type BoardScene,
   type FramePreset,
   type ImageEl,
@@ -50,7 +51,7 @@ import {
   boxesOverlap,
   boxesUnion,
   absLinkerPoints,
-  computeFocus,
+  nearestSide,
   elementAt,
   elementBounds,
   frameAt,
@@ -1959,6 +1960,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     return null;
   }
 
+  /** A binding to the side of `target` nearest `p`, where an end was dropped. */
+  function sideBinding(target: BoardEl, p: Point): Binding {
+    return { el: target.id, fx: 0, gap: 6, sd: nearestSide(target, p) };
+  }
+
   /** Moves end `end` of `el` to the free point `p`, keeping the other points. */
   function setLinkerEnd(el: LinkerEl, end: 1 | 2, p: Point): void {
     const abs = absLinkerPoints(el);
@@ -2300,7 +2306,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         el.t = "arrow";
         el.sh = "elbow";
         el.hd = { s: "none", e: "triangle" };
-        el.b1 = { el: src.id, fx: 0, gap: 4 };
+        el.b1 = { el: src.id, fx: 0, gap: 4, sd: interaction.side };
         scene.els.push(el);
         interaction = { kind: "linking", el, origin: o };
         onPointerMove(e);
@@ -2436,14 +2442,20 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       case "relink": {
         const el = findEl(scene, interaction.id);
         if (!el || !isLinker(el)) return;
-        // While dragged the end is free; it binds again on drop.
-        if (interaction.end === 1) delete el.b1;
-        else delete el.b2;
         // Never onto the shape the other end is on: that would be a loop.
         const fixed = interaction.end === 1 ? el.b2?.el : el.b1?.el;
-        const candidate = linkTargetAt(p)?.id ?? null;
-        hoverTarget = candidate === fixed ? null : candidate;
+        const candidate = linkTargetAt(p);
+        const target = candidate && candidate.id !== fixed ? candidate : null;
+        hoverTarget = target?.id ?? null;
+        // Over a shape the end snaps to the side nearest the cursor, so the
+        // route shows where it will attach; elsewhere it is free.
         setLinkerEnd(el, interaction.end, p);
+        const binding = target ? sideBinding(target, p) : undefined;
+        if (interaction.end === 1) {
+          if (binding) el.b1 = binding;
+          else delete el.b1;
+        } else if (binding) el.b2 = binding;
+        else delete el.b2;
         draw();
         return;
       }
@@ -2530,9 +2542,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         hoverTarget = null;
         const el = findEl(scene, current.id);
         if (!el || !isLinker(el)) break;
-        const [a, b] = linkerEnds(el);
-        const moved = current.end === 1 ? a : b;
-        const other = current.end === 1 ? b : a;
+        const moved = p;
         const start = current.startEls.get(current.id) as LinkerEl;
         const startEnd = linkerEnds(start)[current.end - 1];
         if (
@@ -2549,9 +2559,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           // brings back the old binding of the dragged end: set it explicitly.
           const live = findEl(scene, current.id);
           if (!live || !isLinker(live)) return;
-          const binding = target
-            ? { el: target.id, fx: computeFocus(target, moved, other), gap: 6 }
-            : undefined;
+          const binding = target ? sideBinding(target, moved) : undefined;
           if (current.end === 1) {
             if (binding) live.b1 = binding;
             else delete live.b1;
@@ -2615,10 +2623,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         ];
         if (el.b1) {
           const src = findEl(scene, el.b1.el);
-          if (src) el.b1.fx = computeFocus(src, start, end);
+          // Out of a quick-connect dot the side is that dot's; otherwise the
+          // side nearest where the drag started.
+          if (src && !el.b1.sd) el.b1 = sideBinding(src, start);
           else delete el.b1;
         }
-        if (target) el.b2 = { el: target.id, fx: computeFocus(target, end, start), gap: 6 };
+        if (target) el.b2 = sideBinding(target, end);
         pushHistory();
         scene.els.push(el);
         selection = new Set([el.id]);
