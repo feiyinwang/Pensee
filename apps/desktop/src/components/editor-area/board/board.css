@@ -71,8 +71,20 @@
 
 /* ------------------------------------------------------------------ card */
 
+/* The section rail's ticks reach 34px into the editor from the column's
+   outer edge (rail inset 12 + ticks 22, past the 18px scrollbar gutter).
+   At narrow widths the column's right inset shrinks to the side padding
+   (min 24px), so a full-width board would run under them. Pull the board in
+   by whatever the side padding is short of the ticks plus a 16px gap; at
+   wide widths the padding covers it and this is 0. */
+.wr-board-card-wrap,
+.wr-board-image {
+  /* Computed here, not on :root: tab columns set their own side padding. */
+  --wr-board-rail-clearance: max(0px, calc(50px - var(--writer-editor-side-padding, 4rem)));
+}
+
 .wr-board-card-wrap {
-  padding: 8px 0;
+  padding: 8px var(--wr-board-rail-clearance) 8px 0;
 }
 
 .wr-board-card {
@@ -188,7 +200,7 @@
 .wr-board-image {
   position: relative;
   display: block;
-  width: 100%;
+  margin-right: var(--wr-board-rail-clearance);
   border: 1px solid var(--line-subtle);
   border-radius: var(--wr-board-radius);
   background: var(--surface-card);
