@@ -125,6 +125,9 @@ const SCREEN = {
   minDrag: 4,
 } as const;
 
+/** A shape placed by a click or a shortcut instead of a drag, in scene units. */
+const SHAPE_DEFAULT = { w: 160, h: 110 } as const;
+
 const CULL_THRESHOLD = 300;
 /** Screen pixels the svg extends beyond each edge of the stage. A pan moves
  *  the painted svg on the compositor and repaints only once it has used most
@@ -2368,10 +2371,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             el.w = 800;
             el.h = 600;
           } else if (isShape(el)) {
-            el.w = 160;
-            el.h = 110;
-            el.x = current.origin.x - 80;
-            el.y = current.origin.y - 55;
+            el.w = SHAPE_DEFAULT.w;
+            el.h = SHAPE_DEFAULT.h;
+            el.x = current.origin.x - SHAPE_DEFAULT.w / 2;
+            el.y = current.origin.y - SHAPE_DEFAULT.h / 2;
           }
         }
         scene.els = scene.els.filter((e2) => e2.id !== el.id);
@@ -2503,23 +2506,40 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /* -------------------------------------------------------- keyboard */
 
+  /** Shape shortcuts drop a default-sized shape in the middle of the view,
+   *  selected, so it is on the board at once; resize it to change its size.
+   *  Each press lands one step down-right of a shape already sitting there,
+   *  so repeated presses don't stack invisibly. */
+  function placeShape(kind: ShapeKind): void {
+    tools.shape = kind;
+    const c = viewCenterScene();
+    const el = makeElement("shape", c) as ShapeEl;
+    el.x = c.x - SHAPE_DEFAULT.w / 2;
+    el.y = c.y - SHAPE_DEFAULT.h / 2;
+    el.w = SHAPE_DEFAULT.w;
+    el.h = SHAPE_DEFAULT.h;
+    const step = 24 / vp().zoom;
+    while (scene.els.some((o) => o.x === el.x && o.y === el.y)) {
+      el.x += step;
+      el.y += step;
+    }
+    pushHistory();
+    assignFrame(el);
+    scene.els.push(el);
+    selection = new Set([el.id]);
+    setTool("select");
+    draw();
+    markDirty();
+  }
+
   const TOOL_KEYS: Record<string, () => void> = {
     v: () => setTool("select"),
     m: () => setTool("mind"),
     p: () => setTool("pen"),
     h: () => setTool("hand"),
-    r: () => {
-      tools.shape = "roundRect";
-      setTool("shape");
-    },
-    o: () => {
-      tools.shape = "ellipse";
-      setTool("shape");
-    },
-    d: () => {
-      tools.shape = "diamond";
-      setTool("shape");
-    },
+    r: () => placeShape("roundRect"),
+    o: () => placeShape("ellipse"),
+    d: () => placeShape("diamond"),
     t: () => setTool("text"),
     n: () => setTool("sticky"),
     l: () => {

@@ -2,6 +2,7 @@
 
 ## 2026-10-04
 
+- On a board, pressing **R** now puts a rounded rectangle (160 × 110) on the board straight away, in the middle of the view and selected, instead of waiting for you to drag one out. It keeps that size until you resize it. **O** (ellipse) and **D** (diamond) work the same way. Pressing the key again places the next shape a little down and to the right, so shapes don't pile up invisibly on top of each other. Picking a shape from the dock still lets you drag out any size.
 - The slash menu has room to breathe. Rows sit an even 6px inside the card on every side (the right edge used to have an extra 18px scrollbar gutter), the highlight's corners follow the card's, the section heading ("Basics") has space above it and no longer has a grey line under it, and the menu shows about nine items before scrolling instead of three and a half. Wiki-link suggestions get the same spacing.
 - A board preview in a note (`.board.svg`) now spans the full width of the text column, like the inline board card, instead of shrinking to the drawing. The drawing is scaled to fit and centred.
 - Grow mind maps with the blue dots, like flowcharts. Select the central topic and click the dot on its left or right to add a branch on that side. Select any other topic and click the dot on its outer side to add a child, or the dot above or below it to add a parallel topic there. The map lays itself out each time and the new topic is ready to type into. Drag from any of a topic's dots to draw an arrow to another topic or shape, so you can connect parallel ideas.
