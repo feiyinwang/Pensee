@@ -72,6 +72,7 @@ import {
 } from "./board-render";
 import { mermaidToElements } from "./board-mermaid";
 import { strokeFrom } from "./board-draw";
+import { gridSpec } from "./board-grid";
 import { fitView, lerpBox, lerpView, slideOrder } from "./board-present";
 import { findMatches, replaceInElement } from "./board-search";
 import { exportSubset, svgToPngBase64 } from "./board-export";
@@ -128,10 +129,9 @@ const CULL_THRESHOLD = 300;
  *  of this margin, so panning costs the same on any board. Culled boards draw
  *  exactly this far out. */
 const OVERSCAN = 256;
-/** Below this zoom, labels are hidden (see `.is-far` in board.css). */
+/** Below this zoom, boards big enough to cull hide their labels (see `.is-far`
+ *  in board.css). */
 const FAR_ZOOM = 0.3;
-/** Grid spacing in scene units. */
-const GRID_STEP = 24;
 const HISTORY_LIMIT = 120;
 const ZOOM_STEP = 1.2;
 
@@ -218,7 +218,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   // The dot grid is a CSS background on its own composited layer, NOT an SVG
   // <pattern>: WebKit re-rasterised the full-screen pattern whenever its
   // transform was touched, which made every pan frame ~45ms (measured; 8ms
-  // with it gone). Panning now only moves this layer, snapped to the spacing.
+  // with it gone). Panning only moves this layer, snapped to the spacing.
   const gridLayer = document.createElement("div");
   gridLayer.className = "wr-board-grid-layer";
   host.append(gridLayer);
@@ -307,20 +307,24 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   let gridKey = "";
-  /** Re-tiles only when zoom or grid kind changes; a pan is one transform.
-   *  Returns that transform ("" when the grid is hidden). */
+  /** Re-tiles only when the zoom level or grid kind changes; a pan is one
+   *  transform. Returns that transform ("" when the grid is hidden). */
   function applyGrid(v: Viewport): string {
-    const size = GRID_STEP * v.zoom;
-    // Like Excalidraw, no fine grid once its spacing drops under 10px.
-    const show = scene.header.bg !== "none" && size >= 10;
-    gridLayer.hidden = !show;
-    if (!show) return "";
-    const key = `${scene.header.bg}|${size}`;
+    const kind = scene.header.bg;
+    gridLayer.hidden = kind === "none";
+    if (kind === "none") return "";
+    const spec = gridSpec(v.zoom);
+    const key = `${kind}|${spec.spacing}`;
     if (key !== gridKey) {
       gridKey = key;
-      gridLayer.dataset.kind = scene.header.bg;
-      gridLayer.style.setProperty("--grid", `${size}px`);
+      gridLayer.dataset.kind = kind;
+      // The coarse layer is only drawn while the fine dots fade out.
+      gridLayer.dataset.fading = spec.fineAlpha < 1 ? "1" : "0";
+      gridLayer.style.setProperty("--grid", `${spec.spacing}px`);
+      gridLayer.style.setProperty("--grid-coarse", `${spec.coarse}px`);
+      gridLayer.style.setProperty("--grid-fine", `${Math.round(spec.fineAlpha * 100)}%`);
     }
+    const size = spec.coarse;
     const mod = (n: number) => ((n % size) + size) % size;
     const ox = mod(-v.x * v.zoom) - size;
     const oy = mod(-v.y * v.zoom) - size;
@@ -347,7 +351,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       `translate(${OVERSCAN - v.x * v.zoom} ${OVERSCAN - v.y * v.zoom}) scale(${v.zoom})`,
     );
     paintedGrid = applyGrid(v);
-    host.classList.toggle("is-far", v.zoom < FAR_ZOOM);
+    // Only where painting them costs: a small board keeps its labels.
+    host.classList.toggle("is-far", v.zoom < FAR_ZOOM && scene.els.length >= CULL_THRESHOLD);
     recullSoon();
     toolbar.setZoom(v.zoom);
     placeSelectionToolbar();
@@ -387,7 +392,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
      transform from the last painted viewport to the live one, committed as a
      real repaint once the gesture rests. Re-rendering the SVG and re-tiling
      the grid on every step measured ~23ms a frame even on a tiny board. */
-  const ZOOM_SETTLE_MS = 160;
+  /** How long a zoom gesture must rest before the real repaint. Short where
+   *  that repaint is cheap, so a small board sharpens sooner; longer on big
+   *  boards, where a commit mid-gesture would be a visible stall. */
+  const zoomSettleMs = (): number => (scene.els.length < CULL_THRESHOLD ? 100 : 160);
   let zoomSettleTimer = -1;
 
   /** Shows the live viewport by moving the svg as last painted, on the
@@ -429,7 +437,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       zoomSettleTimer = -1;
       applyViewport();
       draw();
-    }, ZOOM_SETTLE_MS);
+    }, zoomSettleMs());
   }
 
   function zoomBy(factor: number): void {

@@ -314,23 +314,48 @@
   font-family: var(--ui-font);
 }
 
-/* One tile wider and taller than the stage: it is shifted by up to one tile. */
+/* Levels from board-grid.ts: --grid is the fine spacing, --grid-coarse every
+   fourth dot, --grid-fine the fine dots' strength while they fade out. One
+   coarse tile larger than the stage: it is shifted by up to one tile. */
 .wr-board-grid-layer {
+  --grid-fine-dot: color-mix(in srgb, var(--wr-board-dot) var(--grid-fine, 100%), transparent);
   position: absolute;
   top: 0;
   left: 0;
-  width: calc(100% + var(--grid, 24px));
-  height: calc(100% + var(--grid, 24px));
+  width: calc(100% + var(--grid-coarse, 96px));
+  height: calc(100% + var(--grid-coarse, 96px));
   background-image: radial-gradient(circle at 1px 1px, var(--wr-board-dot) 1px, transparent 1.5px);
   background-size: var(--grid, 24px) var(--grid, 24px);
   pointer-events: none;
   will-change: transform;
 }
 
+.wr-board-grid-layer[data-fading="1"] {
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--grid-fine-dot) 1px, transparent 1.5px),
+    radial-gradient(circle at 1px 1px, var(--wr-board-dot) 1px, transparent 1.5px);
+  background-size:
+    var(--grid) var(--grid),
+    var(--grid-coarse) var(--grid-coarse);
+}
+
 .wr-board-grid-layer[data-kind="grid"] {
   background-image:
     linear-gradient(to right, var(--wr-board-dot) 1px, transparent 1px),
     linear-gradient(to bottom, var(--wr-board-dot) 1px, transparent 1px);
+}
+
+.wr-board-grid-layer[data-kind="grid"][data-fading="1"] {
+  background-image:
+    linear-gradient(to right, var(--grid-fine-dot) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-fine-dot) 1px, transparent 1px),
+    linear-gradient(to right, var(--wr-board-dot) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--wr-board-dot) 1px, transparent 1px);
+  background-size:
+    var(--grid) var(--grid),
+    var(--grid) var(--grid),
+    var(--grid-coarse) var(--grid-coarse),
+    var(--grid-coarse) var(--grid-coarse);
 }
 
 .wr-board-grid-layer[hidden] {
@@ -346,9 +371,10 @@
   will-change: transform;
 }
 
-/* Zoomed far out, labels are 3-6px tall and unreadable, yet painting them was
-   two thirds of every frame on a busy board. Shapes keep their outlines and
-   fills; free text and section titles stay. Toggled at commit, never per frame. */
+/* Zoomed far out on a big board (300+ elements), labels are 3-6px tall and
+   unreadable, yet painting them was two thirds of every frame. Shapes keep
+   their outlines and fills; free text and section titles stay. Toggled at
+   commit, never per frame; small boards keep their labels. */
 .wr-board-host.is-far
   .wr-board-content
   [data-type]:not([data-type="text"], [data-type="frame"])
