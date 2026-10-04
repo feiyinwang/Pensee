@@ -353,6 +353,15 @@
   font-family: var(--ui-font);
 }
 
+/* The board focuses its own host (and the overlay can take focus) so keys
+   reach it; App.css's global :focus-visible ring then drew an accent outline
+   round the whole board. Only the container opts out — buttons inside keep
+   their keyboard ring, which `[data-no-focus-ring]` would also have removed. */
+.wr-board-host:focus-visible,
+.wr-board-fullscreen:focus-visible {
+  outline: none;
+}
+
 /* Levels from board-grid.ts: --grid is the fine spacing, --grid-coarse every
    fourth dot, --grid-fine the fine dots' strength while they fade out. One
    coarse tile larger than the stage: it is shifted by up to one tile. */
