@@ -177,10 +177,9 @@ export function dockTarget(
         (el.b1?.el === card.id && el.b2?.el === from.id)),
   );
   if (joined) return null;
-  const b = elementBounds(from);
-  const ox = (c.x + c.w / 2 - (b.x + b.w / 2)) / (b.w / 2 || 1);
-  const oy = (c.y + c.h / 2 - (b.y + b.h / 2)) / (b.h / 2 || 1);
-  const side: Side = Math.abs(ox) >= Math.abs(oy) ? (ox > 0 ? "e" : "w") : oy > 0 ? "s" : "n";
+  // A docked card always comes next to the right — the flow's direction —
+  // wherever it was dropped; the slot slides down past existing steps.
+  const side: Side = "e";
   return { from, side, box: nextStepBox(from, side, scene, card, card.id) };
 }
 

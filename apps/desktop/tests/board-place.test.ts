@@ -161,3 +161,13 @@ describe("dockTarget", () => {
     expect(dockTarget(joined, near)).toBeNull();
   });
 });
+
+describe("dockTarget direction", () => {
+  test("docks to the right even when dropped below", () => {
+    const a = rect("a", 0, 0);
+    const card = rect("card", 0, 110 + 40);
+    const dock = dockTarget({ ...emptyScene(), els: [a, card] }, card);
+    expect(dock?.side).toBe("e");
+    expect(dock?.box.x).toBe(160 + QUICK_GAP);
+  });
+});
