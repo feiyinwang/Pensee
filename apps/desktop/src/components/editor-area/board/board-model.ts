@@ -143,6 +143,9 @@ export interface ShapeEl extends Base {
   t: ShapeKind;
   st: Style;
   lb?: Label;
+  /** Height before the label's caret grew the shape to fit its text; present
+   *  only while expanded, and what the caret shrinks it back to. */
+  ex?: number;
 }
 
 export interface TextEl extends Base {
@@ -423,7 +426,14 @@ function parseElement(raw: unknown): BoardEl | null {
     return el.src ? el : null;
   }
   if ((SHAPE_KINDS as string[]).includes(t)) {
-    return { ...base, t: t as ShapeKind, st: parseStyle(o.st), lb: parseLabel(o.lb) };
+    const shape: ShapeEl = {
+      ...base,
+      t: t as ShapeKind,
+      st: parseStyle(o.st),
+      lb: parseLabel(o.lb),
+    };
+    if (typeof o.ex === "number" && Number.isFinite(o.ex) && o.ex > 0) shape.ex = o.ex;
+    return shape;
   }
   if (t === "draw") {
     const raw = Array.isArray(o.pts) ? o.pts : [];
@@ -569,6 +579,7 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
         if (el.lb.c && el.lb.c !== "ink") lb.c = el.lb.c;
         o.lb = lb;
       }
+      if (el.ex) o.ex = R(el.ex);
     }
   }
   return o;

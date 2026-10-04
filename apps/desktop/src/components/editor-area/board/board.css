@@ -302,6 +302,16 @@
   opacity: 1;
 }
 
+/* The label caret is a board control: in the in-note preview card it would
+   be a button that does nothing. (Files hide it in their own style block.) */
+.wr-board-card .wr-board-expand {
+  display: none;
+}
+
+.wr-board-expand {
+  cursor: pointer;
+}
+
 /* ------------------------------------------------------------ fullscreen */
 
 /* The stage covers the whole window, so the overlay itself paints nothing:

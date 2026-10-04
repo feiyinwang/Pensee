@@ -2,6 +2,8 @@
 
 ## 2026-10-04
 
+- Bold and italic on boards. While typing in a shape, note, text, mind-map topic or arrow label, **Cmd+B** and **Cmd+I** wrap the selection in `**…**` or `*…*`; the board shows it bold or italic once you finish typing. With shapes or notes selected (not typing), Cmd+B and Cmd+I toggle the style on their whole text. Text is stored as markdown, so the file still reads sensibly anywhere.
+- Long text in a shape no longer spills out. It shrinks to fit down to 11px; past that it is cut off with "…" and a small caret at the bottom of the shape. Click the caret to grow the shape to show everything (one undo step, arrows follow), and click it again to shrink it back. Sticky notes, which have a fixed size, get the "…" without the caret. See [SPECs/board-rich-text-spec.md](./SPECs/board-rich-text-spec.md).
 - The six-dot grip beside a block is gone. The type chip (the "T" box, or a heading's H1–H6 label) is now the handle: press and drag it to move the block, hover it for the block menu. It sits right next to the text and gets a stronger outline on hover.
 - Board tool labels are now nearly instant: hovering a tool shows its name after 60ms (was 200ms) and it settles in about 100ms.
 - Board templates are gone. A new board opens blank instead of showing the template picker.

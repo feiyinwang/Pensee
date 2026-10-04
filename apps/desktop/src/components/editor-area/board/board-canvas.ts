@@ -67,10 +67,14 @@ import {
   STICKY_FONT_MIN,
   SceneRenderer,
   fitFontSize,
+  hitShapeCaret,
   measureText,
+  shapeFitHeight,
+  shapeLabel,
   svgEl,
 } from "./board-render";
 import { mermaidToElements } from "./board-mermaid";
+import { type Emphasis, toggleEmphasis, toggleEmphasisAll } from "./board-emphasis";
 import { strokeFrom } from "./board-draw";
 import { gridSpec } from "./board-grid";
 import { fitView, lerpBox, lerpView, slideOrder } from "./board-present";
@@ -1313,6 +1317,62 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     else delete el.fr;
   }
 
+  /* ------------------------------------------------------- emphasis */
+
+  /** Cmd+B / Cmd+I (Ctrl elsewhere), nothing else held. */
+  function emphasisKey(e: KeyboardEvent): Emphasis | null {
+    if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return null;
+    const k = e.key.toLowerCase();
+    return k === "b" ? "bold" : k === "i" ? "italic" : null;
+  }
+
+  /** Bold / italic on every selected element's whole text, as one undo step. */
+  function toggleSelectionEmphasis(kind: Emphasis): void {
+    const targets = [...selection]
+      .map((id) => findEl(scene, id))
+      .filter((el): el is BoardEl => Boolean(el && textOf(el).trim()));
+    if (!targets.length) return;
+    pushHistory();
+    const minds = new Set<string>();
+    for (const el of targets) {
+      setTextOf(el, toggleEmphasisAll(textOf(el), kind));
+      if (isMind(el)) minds.add(mindRoot(scene, el).id);
+    }
+    for (const id of minds) layoutMind(scene, id, measureText);
+    draw();
+    markDirty();
+  }
+
+  /* ------------------------------------------------ label truncation */
+
+  /** The topmost shape whose label caret is under `p`. */
+  function caretShapeAt(p: Point): ShapeEl | null {
+    for (let i = scene.els.length - 1; i >= 0; i--) {
+      const el = scene.els[i];
+      if (isShape(el) && hitShapeCaret(el, p)) return el;
+    }
+    return null;
+  }
+
+  /** The caret under a cut-off label grows the shape to fit the whole text;
+   *  on a grown shape it shrinks it back. One undo step either way. */
+  function toggleLabelExpand(el: ShapeEl): void {
+    const label = shapeLabel(el);
+    if (!label?.caret) return;
+    pushHistory();
+    if (label.caret === "expand") {
+      // Still cut off after editing a grown shape: grow again, but keep the
+      // height it started from, which is what collapsing returns to.
+      el.ex ??= el.h;
+      el.h = Math.max(el.h, shapeFitHeight(el));
+    } else {
+      el.h = el.ex ?? el.h;
+      delete el.ex;
+    }
+    draw();
+    markDirty();
+  }
+
   /* --------------------------------------------------- text editing */
 
   let activeEditor: HTMLTextAreaElement | null = null;
@@ -1425,6 +1485,15 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     area.addEventListener("input", fit);
     area.addEventListener("keydown", (e) => {
       e.stopPropagation();
+      const emphasis = emphasisKey(e);
+      if (emphasis) {
+        e.preventDefault();
+        const r = toggleEmphasis(area.value, area.selectionStart, area.selectionEnd, emphasis);
+        area.value = r.value;
+        area.setSelectionRange(r.start, r.end);
+        fit();
+        return;
+      }
       if (e.key === "Escape") {
         e.preventDefault();
         commit();
@@ -1908,6 +1977,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const tol = SCREEN.hitSlop / vp().zoom;
 
     if (tools.tool === "select") {
+      const caret = caretShapeAt(p);
+      if (caret) {
+        toggleLabelExpand(caret);
+        return;
+      }
       const side = quickDotAt(p);
       if (side) {
         interaction = { kind: "quick", side, src: [...selection][0], origin: p };
@@ -2547,6 +2621,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (mod && e.key.toLowerCase() === "d") {
       e.preventDefault();
       duplicateSelection();
+      return;
+    }
+    const emphasis = emphasisKey(e);
+    if (emphasis && selection.size) {
+      e.preventDefault();
+      toggleSelectionEmphasis(emphasis);
       return;
     }
     if (mod && e.key.toLowerCase() === "g") {

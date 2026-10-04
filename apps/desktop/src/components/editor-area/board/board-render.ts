@@ -84,75 +84,205 @@ const measureCache = new Map<string, number>();
 export const BOARD_FONT =
   'ui-sans-serif, -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
 
+/** Width of one line of label text as drawn: emphasis marks removed, bold
+ *  and italic runs measured in their own face. */
 export function measureText(text: string, size: number): number {
-  return measure(text, size);
+  return parseInline(text).reduce((w, r) => w + runWidth(r, size, 400), 0);
 }
 
-function measure(text: string, size: number, weight = 400): number {
-  const key = `${size}|${weight}|${text}`;
+function measure(text: string, size: number, weight = 400, italic = false): number {
+  const key = `${size}|${weight}|${italic ? "i" : ""}|${text}`;
   const cached = measureCache.get(key);
   if (cached !== undefined) return cached;
-  if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
-  if (!measureCtx) return text.length * size * 0.55;
-  measureCtx.font = `${weight} ${size}px ${BOARD_FONT}`;
+  // No DOM (unit tests): the same estimate as a missing canvas context.
+  if (!measureCtx && typeof document !== "undefined") {
+    measureCtx = document.createElement("canvas").getContext("2d");
+  }
+  if (!measureCtx) return text.length * size * (weight >= 600 ? 0.6 : 0.55);
+  measureCtx.font = `${italic ? "italic " : ""}${weight} ${size}px ${BOARD_FONT}`;
   const width = measureCtx.measureText(text).width;
   if (measureCache.size > 4000) measureCache.clear();
   measureCache.set(key, width);
   return width;
 }
 
-/** Greedy wrap. Breaks inside a run of CJK or a too-long word so a single
- *  pasted URL cannot blow out the box. */
-export function wrapText(text: string, size: number, maxWidth: number): string[] {
-  const out: string[] = [];
-  for (const paragraph of text.split("\n")) {
-    if (!paragraph) {
-      out.push("");
-      continue;
+/* ------------------------------------------------------------ rich text */
+
+/** A run of label text with its emphasis. Labels are stored as markdown, so a
+ *  file opened anywhere still reads `**bold**` and `*italic*`. */
+export interface Run {
+  text: string;
+  b?: boolean;
+  i?: boolean;
+}
+
+/** A wrapped line: its runs, left to right. */
+export type RichLine = Run[];
+
+/* Markdown emphasis, CommonMark-ish: the mark must hug non-space text on both
+   sides (so `2 * 3 * 4` stays literal), `_` only at word edges (so snake_case
+   stays literal), and `***` is both. Alternation order matters: at one
+   position the longer mark wins. Unclosed marks stay literal. */
+const EMPHASIS =
+  /\*\*\*(?=\S)(.+?)(?<=\S)\*\*\*|\*\*(?=\S)(.+?)(?<=\S)\*\*|__(?=\S)(.+?)(?<=\S)__|(?<![*\w])\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?!\*)|(?<!\w)_(?=[^\s_])(.+?)(?<=[^\s_])_(?!\w)/;
+
+/** One paragraph (no newlines) into styled runs, markers removed. */
+export function parseInline(src: string, style: { b?: boolean; i?: boolean } = {}): Run[] {
+  const out: Run[] = [];
+  const push = (text: string, st: { b?: boolean; i?: boolean }): void => {
+    if (!text) return;
+    const last = out[out.length - 1];
+    if (last && Boolean(last.b) === Boolean(st.b) && Boolean(last.i) === Boolean(st.i)) {
+      last.text += text;
+      return;
     }
-    let line = "";
-    const tokens = paragraph.match(/\s+|[^\s]+/g) ?? [];
-    for (const token of tokens) {
-      const candidate = line + token;
-      if (measure(candidate, size) <= maxWidth || !line) {
-        if (measure(candidate, size) <= maxWidth) {
-          line = candidate;
-          continue;
-        }
-        // Single token wider than the box — hard-break it character by character.
-        let chunk = "";
-        for (const ch of token) {
-          if (measure(chunk + ch, size) > maxWidth && chunk) {
-            out.push(chunk);
-            chunk = ch;
-          } else {
-            chunk += ch;
-          }
-        }
-        line = chunk;
-        continue;
-      }
-      out.push(line.trimEnd());
-      line = token.trimStart();
+    const run: Run = { text };
+    if (st.b) run.b = true;
+    if (st.i) run.i = true;
+    out.push(run);
+  };
+  let rest = src;
+  while (rest) {
+    const m = EMPHASIS.exec(rest);
+    if (!m) {
+      push(rest, style);
+      break;
     }
-    out.push(line.trimEnd());
+    push(rest.slice(0, m.index), style);
+    const [, both, bold, bold2, it, it2] = m;
+    const inner = both ?? bold ?? bold2 ?? it ?? it2 ?? "";
+    const next = {
+      b: style.b || both !== undefined || bold !== undefined || bold2 !== undefined,
+      i: style.i || both !== undefined || it !== undefined || it2 !== undefined,
+    };
+    for (const r of parseInline(inner, next)) push(r.text, r);
+    rest = rest.slice(m.index + m[0].length);
   }
   return out;
 }
 
-/** Shrinks the font until the wrapped text fits, then stops at `min`. */
+const BOLD_WEIGHT = 700;
+
+function runWidth(r: Run, size: number, weight: number): number {
+  return measure(r.text, size, r.b ? Math.max(BOLD_WEIGHT, weight) : weight, r.i);
+}
+
+/** Greedy wrap over styled runs. Words are kept whole across style changes
+ *  (`**bo**ld` is one word); a single word wider than the box is broken
+ *  character by character so a pasted URL cannot blow it out. */
+export function wrapRich(text: string, size: number, maxWidth: number, weight = 400): RichLine[] {
+  const out: RichLine[] = [];
+  for (const paragraph of text.split("\n")) {
+    // Tokens: words and spaces, each a list of runs (a word may span styles).
+    const tokens: { runs: Run[]; space: boolean }[] = [];
+    for (const run of parseInline(paragraph)) {
+      for (const piece of run.text.match(/\s+|[^\s]+/g) ?? []) {
+        const space = /^\s/.test(piece);
+        const part: Run = { ...run, text: piece };
+        const last = tokens[tokens.length - 1];
+        if (last && !space && !last.space) last.runs.push(part);
+        else tokens.push({ runs: [part], space });
+      }
+    }
+    const width = (runs: Run[]) => runs.reduce((w, r) => w + runWidth(r, size, weight), 0);
+    let line: Run[] = [];
+    let lineW = 0;
+    const flush = (): void => {
+      while (line.length && /^\s+$/.test(line[line.length - 1].text)) {
+        lineW -= runWidth(line[line.length - 1], size, weight);
+        line.pop();
+      }
+      out.push(line);
+      line = [];
+      lineW = 0;
+    };
+    for (const tok of tokens) {
+      const w = width(tok.runs);
+      if (lineW + w <= maxWidth) {
+        line.push(...tok.runs);
+        lineW += w;
+        continue;
+      }
+      if (tok.space) {
+        flush();
+        continue;
+      }
+      if (line.length) flush();
+      if (w <= maxWidth) {
+        line.push(...tok.runs);
+        lineW = w;
+        continue;
+      }
+      // Hard-break an over-long word, keeping each character's style.
+      for (const r of tok.runs) {
+        for (const ch of r.text) {
+          const cw = runWidth({ ...r, text: ch }, size, weight);
+          if (lineW + cw > maxWidth && line.length) flush();
+          line.push({ ...r, text: ch });
+          lineW += cw;
+        }
+      }
+    }
+    flush();
+  }
+  return out.map(mergeRuns);
+}
+
+function mergeRuns(line: Run[]): Run[] {
+  const out: Run[] = [];
+  for (const r of line) {
+    const last = out[out.length - 1];
+    if (last && Boolean(last.b) === Boolean(r.b) && Boolean(last.i) === Boolean(r.i)) {
+      last.text += r.text;
+    } else out.push({ ...r });
+  }
+  return out;
+}
+
+/** Plain-string wrap, for callers that only need line breaks. */
+export function wrapText(text: string, size: number, maxWidth: number): string[] {
+  return wrapRich(text, size, maxWidth).map((l) => l.map((r) => r.text).join(""));
+}
+
+/** Shrinks the font until the wrapped text fits, then stops at `min`.
+ *  `fits` is false when even `min` overflows — the caller truncates. */
 export function fitFontSize(
   text: string,
   boxW: number,
   boxH: number,
   max: number,
   min: number,
-): { size: number; lines: string[] } {
+): { size: number; lines: RichLine[]; fits: boolean } {
   for (let size = max; size >= min; size -= 1) {
-    const lines = wrapText(text, size, boxW);
-    if (lines.length * size * LINE_HEIGHT <= boxH) return { size, lines };
+    const lines = wrapRich(text, size, boxW);
+    if (lines.length * size * LINE_HEIGHT <= boxH) return { size, lines, fits: true };
   }
-  return { size: min, lines: wrapText(text, min, boxW) };
+  return { size: min, lines: wrapRich(text, min, boxW), fits: false };
+}
+
+/** The first `max` lines, the last one ending in an ellipsis that fits. */
+export function truncateLines(
+  lines: RichLine[],
+  max: number,
+  size: number,
+  boxW: number,
+  weight = 400,
+): RichLine[] {
+  if (lines.length <= max) return lines;
+  const kept = lines.slice(0, Math.max(1, max)).map((l) => l.map((r) => ({ ...r })));
+  const last = kept[kept.length - 1];
+  const ell = "\u2026";
+  const total = () => last.reduce((w, r) => w + runWidth(r, size, weight), 0);
+  const ellW = measure(ell, size, weight);
+  while (last.length && total() + ellW > boxW) {
+    const r = last[last.length - 1];
+    r.text = r.text.slice(0, -1);
+    if (!r.text) last.pop();
+  }
+  const tail = last[last.length - 1];
+  if (tail) tail.text = tail.text.trimEnd() + ell;
+  else last.push({ text: ell });
+  return kept;
 }
 
 export const LINE_HEIGHT = 1.35;
@@ -190,7 +320,7 @@ export function baselineIn(lineTop: number, size: number): number {
  */
 function appendLines(
   parent: SVGElement,
-  lines: string[],
+  lines: RichLine[],
   opts: {
     x: number;
     y: number;
@@ -212,9 +342,23 @@ function appendLines(
     "text-anchor": anchor,
     "xml:space": "preserve",
   });
+  const base = opts.weight ?? 400;
   lines.forEach((line, i) => {
+    // One absolutely placed tspan per line (a text chunk, so text-anchor
+    // aligns the whole line), holding one tspan per styled run.
     const tspan = svgEl("tspan", { x: opts.x, dy: i === 0 ? 0 : lineH });
-    tspan.textContent = line || " ";
+    if (!line.length) tspan.textContent = " ";
+    for (const run of line) {
+      if (!run.b && !run.i) {
+        tspan.append(run.text);
+        continue;
+      }
+      const styled = svgEl("tspan");
+      if (run.b) styled.setAttribute("font-weight", String(Math.max(BOLD_WEIGHT, base)));
+      if (run.i) styled.setAttribute("font-style", "italic");
+      styled.textContent = run.text;
+      tspan.append(styled);
+    }
     text.append(tspan);
   });
   parent.append(text);
@@ -265,23 +409,114 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
   if (dash) node.setAttribute("stroke-dasharray", dash);
   g.append(node);
 
-  if (el.lb?.tx) {
-    const pad = 10;
-    const { size, lines } = fitFontSize(
-      el.lb.tx,
-      Math.max(el.w - pad * 2, 20),
-      Math.max(el.h - pad * 2, 16),
-      el.lb.sz,
-      9,
-    );
-    appendLines(g, lines, {
-      x: el.lb.al === "c" ? el.w / 2 : el.lb.al === "r" ? el.w - pad : pad,
-      y: centredTop(el.h, lines.length, size, pad),
-      size,
+  const label = shapeLabel(el);
+  if (label && el.lb) {
+    appendLines(g, label.lines, {
+      x: el.lb.al === "c" ? el.w / 2 : el.lb.al === "r" ? el.w - SHAPE_PAD : SHAPE_PAD,
+      y: label.top,
+      size: label.size,
       align: el.lb.al,
       fill: colorVar(el.lb.c ?? "ink"),
     });
+    if (label.caret) g.append(caretNode(el, label.caret));
   }
+}
+
+/* ------------------------------------------------- shape label truncation */
+
+const SHAPE_PAD = 10;
+/** Smallest a shape's label shrinks to before it is cut off instead. */
+export const SHAPE_FONT_MIN = 11;
+/** Room kept at the bottom of the box for the caret. */
+const CARET_ROOM = 16;
+const CARET_R = 8;
+
+export interface ShapeLabelLayout {
+  size: number;
+  lines: RichLine[];
+  /** Top of the first line box. */
+  top: number;
+  /** "expand" when the text is cut off, "collapse" when the shape was grown
+   *  to fit it (`ex`), otherwise null. */
+  caret: "expand" | "collapse" | null;
+}
+
+/** How a shape's label is laid out: shrunk to fit, and when even the minimum
+ *  size overflows, cut to the lines that fit with an ellipsis and a caret.
+ *  The renderer draws this and the canvas hit-tests the same caret. */
+export function shapeLabel(el: ShapeEl): ShapeLabelLayout | null {
+  if (!el.lb?.tx) return null;
+  const boxW = Math.max(el.w - SHAPE_PAD * 2, 20);
+  const room = el.ex ? CARET_ROOM : 0;
+  const boxH = Math.max(el.h - SHAPE_PAD * 2 - room, 16);
+  const fit = fitFontSize(el.lb.tx, boxW, boxH, el.lb.sz, Math.min(SHAPE_FONT_MIN, el.lb.sz));
+  if (fit.fits) {
+    return {
+      size: fit.size,
+      lines: fit.lines,
+      top: centredTop(el.h - room, fit.lines.length, fit.size, SHAPE_PAD),
+      caret: el.ex ? "collapse" : null,
+    };
+  }
+  const lineH = fit.size * LINE_HEIGHT;
+  const max = Math.max(1, Math.floor((el.h - SHAPE_PAD * 2 - CARET_ROOM) / lineH));
+  const lines = truncateLines(fit.lines, max, fit.size, boxW);
+  return {
+    size: fit.size,
+    lines,
+    top: centredTop(el.h - CARET_ROOM, lines.length, fit.size, SHAPE_PAD),
+    caret: "expand",
+  };
+}
+
+/** Height that shows the whole label at its own size, with the caret row. */
+export function shapeFitHeight(el: ShapeEl): number {
+  if (!el.lb?.tx) return el.h;
+  const lines = wrapRich(el.lb.tx, el.lb.sz, Math.max(el.w - SHAPE_PAD * 2, 20));
+  return Math.ceil(lines.length * el.lb.sz * LINE_HEIGHT + SHAPE_PAD * 2 + CARET_ROOM);
+}
+
+/** Caret centre in the shape's own (unrotated) frame. */
+function caretCentre(el: ShapeEl): Point {
+  return { x: el.w / 2, y: el.h - CARET_ROOM / 2 - 2 };
+}
+
+/** Whether scene point `p` is on the shape's caret. */
+export function hitShapeCaret(el: ShapeEl, p: Point, slop = 0): boolean {
+  const label = shapeLabel(el);
+  if (!label?.caret) return false;
+  // Into the shape's frame: undo the rotation about its centre.
+  const cx = el.x + el.w / 2;
+  const cy = el.y + el.h / 2;
+  const cos = Math.cos(-el.a);
+  const sin = Math.sin(-el.a);
+  const lx = (p.x - cx) * cos - (p.y - cy) * sin + el.w / 2;
+  const ly = (p.x - cx) * sin + (p.y - cy) * cos + el.h / 2;
+  const c = caretCentre(el);
+  return Math.hypot(lx - c.x, ly - c.y) <= CARET_R + 2 + slop;
+}
+
+function caretNode(el: ShapeEl, kind: "expand" | "collapse"): SVGGElement {
+  const c = caretCentre(el);
+  const g = svgEl("g", { class: "wr-board-expand", transform: `translate(${c.x} ${c.y})` });
+  g.append(
+    svgEl("circle", {
+      r: CARET_R,
+      fill: "var(--wr-board-surface)",
+      stroke: "var(--wr-board-muted)",
+      "stroke-opacity": 0.35,
+      "stroke-width": 1,
+    }),
+    svgEl("path", {
+      d: kind === "expand" ? "M-3.5 -1.5 L0 2 L3.5 -1.5" : "M-3.5 1.5 L0 -2 L3.5 1.5",
+      fill: "none",
+      stroke: "var(--wr-board-muted)",
+      "stroke-width": 1.5,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    }),
+  );
+  return g;
 }
 
 function renderMind(g: SVGGElement, el: MindEl, ctx: RenderContext): void {
@@ -314,7 +549,7 @@ function renderMind(g: SVGGElement, el: MindEl, ctx: RenderContext): void {
     }),
   );
   const size = mindFontSize(depth);
-  const lines = (el.tx || " ").split("\n");
+  const lines = (el.tx || " ").split("\n").map((p) => parseInline(p));
   appendLines(g, lines, {
     x: el.w / 2,
     y: centredTop(el.h, lines.length, size, 0),
@@ -364,13 +599,14 @@ function renderSticky(g: SVGGElement, el: BoardEl & { c: string; tx: string }): 
     const pad = 16;
     // Lark-style: centred both ways, as large as fits — a two-word note reads
     // from across the room, a paragraph shrinks to fit.
-    const { size, lines } = fitFontSize(
-      el.tx,
-      STICKY_SIZE - pad * 2,
-      STICKY_SIZE - pad * 2,
-      STICKY_FONT_MAX,
-      STICKY_FONT_MIN,
-    );
+    const box = STICKY_SIZE - pad * 2;
+    const fit = fitFontSize(el.tx, box, box, STICKY_FONT_MAX, STICKY_FONT_MIN);
+    const { size } = fit;
+    // A note has a fixed size, so text that overflows even the smallest size
+    // is cut off with an ellipsis (no caret: the note cannot grow).
+    const lines = fit.fits
+      ? fit.lines
+      : truncateLines(fit.lines, Math.floor(box / (size * LINE_HEIGHT)), size, box);
     appendLines(g, lines, {
       x: STICKY_SIZE / 2,
       y: centredTop(STICKY_SIZE, lines.length, size, pad),
@@ -385,7 +621,7 @@ function renderText(
   g: SVGGElement,
   el: BoardEl & { tx: string; sz: number; al: "l" | "c" | "r"; c: ColorToken },
 ): void {
-  const lines = wrapText(el.tx || "", el.sz, Math.max(el.w, 20));
+  const lines = wrapRich(el.tx || "", el.sz, Math.max(el.w, 20));
   appendLines(g, lines, {
     x: el.al === "c" ? el.w / 2 : el.al === "r" ? el.w : 0,
     y: 0,
@@ -467,9 +703,11 @@ function renderLinker(g: SVGGElement, el: LinkerEl, ctx: RenderContext): void {
   if (el.lb?.tx) {
     // On a knock-out of the board colour, so the line does not run through it.
     const m = polylineMidpoint(pts);
-    const lines = el.lb.tx.split("\n");
+    const lines = el.lb.tx.split("\n").map((p) => parseInline(p));
     const size = el.lb.sz;
-    const w = Math.max(...lines.map((l) => measure(l, size))) + LINKER_LABEL_PAD * 2;
+    const w =
+      Math.max(...lines.map((l) => l.reduce((n, r) => n + runWidth(r, size, 400), 0))) +
+      LINKER_LABEL_PAD * 2;
     const h = lines.length * size * LINE_HEIGHT;
     g.append(
       svgEl("rect", {
