@@ -20,6 +20,7 @@ import {
   newId,
 } from "./board-model";
 import { type Box, type Point, boxesOverlap, elementBounds } from "./board-geometry";
+import { isMind } from "./board-mind";
 
 export type Side = BoxSide;
 export const SIDES: Side[] = ["n", "e", "s", "w"];
@@ -28,6 +29,32 @@ export const QUICK_GAP = 80;
 
 export function canQuickConnect(el: BoardEl | null | undefined): el is ShapeEl | StickyEl {
   return Boolean(el && (isShape(el) || el.t === "sticky"));
+}
+
+/** A card: something with text you type into — a shape, note, text or topic. */
+export function isCard(el: BoardEl | null | undefined): el is BoardEl {
+  return Boolean(el && (isShape(el) || el.t === "sticky" || el.t === "text" || isMind(el)));
+}
+
+/** The cards in reading order, for Tab / Shift+Tab: rows top to bottom, each
+ *  row left to right. A card joins the current row when its vertical centre
+ *  falls within the row's first card, so slightly misaligned cards still
+ *  read as one row. */
+export function cardsInReadingOrder(els: BoardEl[]): BoardEl[] {
+  const cards = els.filter(isCard).sort((a, b) => a.y - b.y || a.x - b.x);
+  const out: BoardEl[] = [];
+  let row: BoardEl[] = [];
+  let rowBottom = -Infinity;
+  for (const card of cards) {
+    if (row.length && card.y + card.h / 2 > rowBottom) {
+      out.push(...row.sort((a, b) => a.x - b.x));
+      row = [];
+    }
+    if (!row.length) rowBottom = card.y + card.h;
+    row.push(card);
+  }
+  out.push(...row.sort((a, b) => a.x - b.x));
+  return out;
 }
 
 /** Where each side's dot sits: centred on the side, `offset` outside it. */

@@ -112,8 +112,10 @@ import {
   type Side,
   blankCopy,
   canQuickConnect,
+  cardsInReadingOrder,
   connectorBetween,
   dockTarget,
+  isCard,
   nextStepBox,
   placeNear,
   quickDots,
@@ -1295,6 +1297,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       if (additive && selection.has(id)) selection.delete(id);
       else selection.add(id);
     }
+    if (selection.size === 1) {
+      const only = [...selection][0];
+      if (isCard(findEl(scene, only))) lastCardId = only;
+    }
     // Selection never changes how elements are drawn: only the handles and
     // the toolbar need updating, not a stamp pass over the whole board.
     drawOverlay();
@@ -1586,12 +1592,16 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   /* --------------------------------------------------- text editing */
 
   let activeEditor: HTMLTextAreaElement | null = null;
+  /** The card last selected or edited, so Tab steps on from it even after
+   *  a click on empty board cleared the selection. */
+  let lastCardId: string | null = null;
 
   /** `typed` starts the edit from a keystroke: it is appended, caret at the
    *  end. Without it the existing text is selected (double-click / Enter). */
   function startTextEdit(el: BoardEl, typed?: string): void {
     if (opts.readOnly) return;
     closeTextEdit();
+    if (isCard(el)) lastCardId = el.id;
     const v = vp();
     const area = document.createElement("textarea");
     // Zero chrome: this must read as the text itself, not as a form control.
@@ -1718,12 +1728,21 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         isMind(el) &&
         !e.metaKey &&
         !e.ctrlKey &&
-        (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))
+        !e.shiftKey &&
+        (e.key === "Tab" || e.key === "Enter")
       ) {
         e.preventDefault();
         commit();
         const fresh = findEl(scene, el.id);
         if (isMind(fresh)) addTopic(fresh, e.key === "Tab" ? "child" : "sibling");
+        return;
+      }
+      // Tab / Shift+Tab leave the card for the next or previous one, as when
+      // it is merely selected.
+      if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        commit();
+        stepCard(e.shiftKey ? -1 : 1);
       }
     });
     // Hide the drawn text while the field shows it, or it reads double.
@@ -1883,21 +1902,45 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     const el = matchIndex >= 0 ? findEl(scene, matches[matchIndex]) : undefined;
     if (el) {
       selection = new Set([el.id]);
-      const box = elementBounds(el);
-      const rect = stageRect();
-      const v = vp();
-      const onScreen =
-        box.x >= v.x &&
-        box.y >= v.y &&
-        box.x + box.w <= v.x + rect.width / v.zoom &&
-        box.y + box.h <= v.y + rect.height / v.zoom;
-      if (!onScreen) {
-        v.x = box.x + box.w / 2 - rect.width / v.zoom / 2;
-        v.y = box.y + box.h / 2 - rect.height / v.zoom / 2;
-        applyViewport();
-      }
+      revealEl(el);
     }
     draw();
+  }
+
+  /** Centres the view on `el` when any part of it is off screen. */
+  function revealEl(el: BoardEl): void {
+    const box = elementBounds(el);
+    const rect = stageRect();
+    const v = vp();
+    const onScreen =
+      box.x >= v.x &&
+      box.y >= v.y &&
+      box.x + box.w <= v.x + rect.width / v.zoom &&
+      box.y + box.h <= v.y + rect.height / v.zoom;
+    if (!onScreen) {
+      v.x = box.x + box.w / 2 - rect.width / v.zoom / 2;
+      v.y = box.y + box.h / 2 - rect.height / v.zoom / 2;
+      applyViewport();
+    }
+  }
+
+  /** Tab / Shift+Tab: select the next or previous card in reading order,
+   *  wrapping. With nothing selected (say, after clicking off a card being
+   *  edited) it steps on from the card last selected or edited. */
+  function stepCard(dir: 1 | -1): void {
+    const order = cardsInReadingOrder(scene.els);
+    if (!order.length) return;
+    const anchor = selection.size === 1 ? [...selection][0] : lastCardId;
+    const at = anchor ? order.findIndex((el) => el.id === anchor) : -1;
+    const next =
+      at < 0
+        ? order[dir === 1 ? 0 : order.length - 1]
+        : order[(at + dir + order.length) % order.length];
+    lastCardId = next.id;
+    selection = new Set([next.id]);
+    revealEl(next);
+    drawOverlay();
+    renderStyle();
   }
 
   function afterReplace(touched: BoardEl[]): void {
@@ -2132,14 +2175,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /** Tab / Enter on a topic: add a child or a sibling, lay the map out again,
    *  and start typing in the new topic. */
-  function addTopic(from: MindEl, kind: "child" | "sibling"): void {
+  function addTopic(from: MindEl, kind: "child" | "sibling", typed?: string): void {
     pushHistory();
     const topic = kind === "child" ? addMindChild(scene, from) : addMindSibling(scene, from);
     layoutMind(scene, mindRoot(scene, topic).id, measureText);
     selection = new Set([topic.id]);
     draw();
     markDirty();
-    startTextEdit(topic);
+    startTextEdit(topic, typed);
   }
 
   function quickDotAt(p: Point): Side | null {
@@ -2186,14 +2229,19 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     return next;
   }
 
-  /** A key typed with one item selected (not editing). A shape or note that
-   *  already has text keeps it: the typing starts a new card to its right,
-   *  joined by an arrow. A blank one (just placed) or a text, connector or
-   *  topic is typed into. Clicking only selects; double-click edits. */
+  /** A key typed with one item selected (not editing) — any key, letter
+   *  shortcuts included. A shape or note that already has text keeps it: the
+   *  typing starts a new card to its right, joined by an arrow; a topic with
+   *  text starts a sibling topic. A blank one (just placed) or a text or
+   *  connector is typed into. Clicking only selects; double-click edits. */
   function typeOnSelected(el: BoardEl, key: string): void {
     if (canQuickConnect(el) && textOf(el).trim()) {
       const next = addNextStep(el.id, "e");
       if (next) startTextEdit(next, key);
+      return;
+    }
+    if (isMind(el) && textOf(el).trim()) {
+      addTopic(el, "sibling", key);
       return;
     }
     startTextEdit(el, key);
@@ -2988,8 +3036,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     drawOverlay();
   }
 
-  /* Shape keys (R, O, D). A tap drops the shape at the cursor at once (or, with
-     one item selected, types the letter into it, like any other key). Holding
+  /* Shape keys (R, O, D), with no card selected (with one, they are typed like
+     any other key). A tap drops the shape at the cursor at once. Holding
      the key — or moving the mouse while it is down — picks the shape tool
      instead: the card follows the cursor, the shape it would connect to is
      lit, and a click drops it there, connected. Releasing without a click
@@ -3034,11 +3082,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     window.clearTimeout(hold.timer);
     keyHold = null;
     if (hold.active) return; // the tool stays until a click (or Esc)
-    const only = selection.size === 1 ? findEl(scene, [...selection][0]) : null;
-    if (only && (isShape(only) || only.t === "sticky" || only.t === "text" || isLinker(only))) {
-      typeOnSelected(only, e.key);
-      return;
-    }
     placeShape(hold.kind);
   }
 
@@ -3156,7 +3199,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       deleteSelection();
       return;
     }
-    if ((e.key === "Tab" || e.key === "Enter") && selection.size === 1 && !mod) {
+    if (((e.key === "Tab" && !e.shiftKey) || e.key === "Enter") && selection.size === 1 && !mod) {
       const el = findEl(scene, [...selection][0]);
       if (isMind(el)) {
         e.preventDefault();
@@ -3165,6 +3208,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         return;
       }
     }
+    if (e.key === "Tab" && !mod && !e.altKey) {
+      e.preventDefault();
+      stepCard(e.shiftKey ? -1 : 1);
+      return;
+    }
     if (e.key === "Enter" && selection.size === 1) {
       const el = findEl(scene, [...selection][0]);
       if (el && el.t !== "image" && el.t !== "frame") {
@@ -3172,6 +3220,17 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         startTextEdit(el);
       }
       return;
+    }
+    // Typing with one card or connector selected goes to it (see
+    // typeOnSelected) before any letter shortcut, so a word that starts with
+    // R, O, D or a capital S is typed rather than picking a tool.
+    if (!mod && !e.altKey && e.key.length === 1 && selection.size === 1) {
+      const el = findEl(scene, [...selection][0]);
+      if (el && (isCard(el) || isLinker(el))) {
+        e.preventDefault();
+        typeOnSelected(el, e.key);
+        return;
+      }
     }
     if (e.key === "S" && e.shiftKey && !mod) {
       e.preventDefault();
@@ -3182,16 +3241,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (!mod && !e.altKey && !e.shiftKey && SHAPE_KEYS[shapeKey]) {
       onShapeKeyDown(e, shapeKey);
       return;
-    }
-    // Typing with one shape, note or text selected: see typeOnSelected. Tool
-    // shortcuts still work with nothing selected.
-    if (!mod && !e.altKey && e.key.length === 1 && selection.size === 1) {
-      const el = findEl(scene, [...selection][0]);
-      if (el && (isShape(el) || el.t === "sticky" || el.t === "text" || isLinker(el))) {
-        e.preventDefault();
-        typeOnSelected(el, e.key);
-        return;
-      }
     }
     if (!mod && !e.shiftKey && !e.altKey) {
       const handler = TOOL_KEYS[e.key.toLowerCase()];

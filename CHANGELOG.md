@@ -2,6 +2,8 @@
 
 ## 2026-10-05
 
+- Fixed: typing on a selected card could change it instead of starting a new card. Words that began with **R**, **O** or **D** switched shapes, and a capital **S** opened the section tool. Now every key you type with a card selected goes to a new card beside it, so the selected card stays as it is. A selected mind-map topic that already has text gets a new sibling topic with your typing. Blank cards, text boxes and arrows still take the typing directly. The R/O/D/S shortcuts work as before when nothing is selected.
+- **Tab** and **Shift+Tab** move between cards on a board, left to right and top to bottom, wrapping round at the end. They work while a card is selected, while you're typing in one (this saves the text first), and after you click away from a card, starting from the last card you were on. On a mind-map topic, Tab still adds a child topic; Shift+Tab moves back.
 - Docking on a board now looks electric. While you drag cards near another card, that card crackles with light round its outline in its own outline colour (blue for notes and cards without one). The edge facing your cards glows, and a small bolt arcs from it to each dragged card. Let go and a pulse of light runs down the new arrow, into the card, round its outline and across it, then fades. It's under a second and doesn't block anything. With Reduce Motion on, the glow stays still and nothing plays on drop.
 
 ## 2026-10-04
