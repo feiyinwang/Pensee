@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-05
+
+- Docking on a board now looks electric. While you drag cards near another card, that card crackles with light round its outline in its own outline colour (blue for notes and cards without one). The edge facing your cards glows, and a small bolt arcs from it to each dragged card. Let go and a pulse of light runs down the new arrow, into the card, round its outline and across it, then fades. It's under a second and doesn't block anything. With Reduce Motion on, the glow stays still and nothing plays on drop.
+
 ## 2026-10-04
 
 - After you dock cards onto a card, that card now moves up or down so it sits level with the middle of all the cards that come after it, the same as Tidy up does. A dashed outline shows its new spot while you drag. It stays where it is if it's already centred or if the new spot would overlap another card.

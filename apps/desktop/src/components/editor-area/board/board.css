@@ -335,6 +335,79 @@
   pointer-events: none;
 }
 
+/* Docking spark (board-spark.ts). Each group sets --wr-spark to the target
+   card's outline colour. Lit lines are three strokes: a wide soft glow, the
+   coloured body, and a near-white core, which is what makes them read as
+   light rather than paint. */
+.wr-board-spark {
+  pointer-events: none;
+}
+
+.wr-board-spark-glow,
+.wr-board-spark-body,
+.wr-board-spark-core,
+.wr-board-spark-strand,
+.wr-board-spark-halo,
+.wr-board-spark-ring {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wr-board-spark-glow {
+  stroke: var(--wr-spark);
+  stroke-opacity: 0.28;
+  filter: drop-shadow(0 0 6px var(--wr-spark));
+}
+
+.wr-board-spark-body {
+  stroke: var(--wr-spark);
+}
+
+.wr-board-spark-body.is-fork {
+  stroke-opacity: 0.7;
+}
+
+.wr-board-spark-core {
+  stroke: color-mix(in oklch, var(--wr-spark) 30%, white);
+}
+
+.wr-board-spark-halo {
+  stroke: var(--wr-spark);
+  stroke-opacity: 0.12;
+  filter: blur(4px);
+}
+
+.wr-board-spark-strand {
+  stroke: color-mix(in oklch, var(--wr-spark) 55%, white);
+  stroke-opacity: 0.85;
+  filter: drop-shadow(0 0 3px var(--wr-spark));
+}
+
+.wr-board-spark-strand.is-faint {
+  stroke-opacity: 0.4;
+}
+
+.wr-board-spark-ring {
+  stroke: var(--wr-spark);
+  filter: drop-shadow(0 0 4px var(--wr-spark));
+}
+
+.wr-board-spark-dot {
+  fill: color-mix(in oklch, var(--wr-spark) 25%, white);
+  filter: drop-shadow(0 0 5px var(--wr-spark));
+}
+
+.wr-board-spark-cloud {
+  fill: var(--wr-spark);
+  opacity: 0.32;
+  filter: blur(14px);
+}
+
+.wr-board-spark-stop {
+  stop-color: var(--wr-spark);
+}
+
 /* ------------------------------------------------------------ fullscreen */
 
 /* The stage covers the whole window, so the overlay itself paints nothing:

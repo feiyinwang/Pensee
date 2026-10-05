@@ -120,6 +120,7 @@ import {
 } from "./board-flow";
 import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
 import type { ToolDockHandle } from "./board-dock";
+import { CRACKLE_MS, type Charge, drawCharge, playFlow, sideOf } from "./board-spark";
 
 /* -------------------------------------------------------------- constants */
 
@@ -280,7 +281,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   const world = svgEl("g", { class: "wr-board-world" });
   const content = svgEl("g", { class: "wr-board-content" });
   const overlay = svgEl("g", { class: "wr-board-overlay" });
-  world.append(content, overlay);
+  // The current that flows through a card once it docks; outlives overlay
+  // redraws, so it has its own layer.
+  const flowLayer = svgEl("g", { class: "wr-board-overlay" });
+  world.append(content, overlay, flowLayer);
   svg.append(world);
   host.append(svg);
 
@@ -678,6 +682,31 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
   }
 
+  /** The charged dock target being drawn, and the layer it is in. */
+  let charge: { layer: SVGGElement; charge: Charge } | null = null;
+  let crackleFrame = 0;
+  let crackleAt = 0;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  /** Re-crackles the charge every `CRACKLE_MS` while it is shown and the
+   *  pointer rests (moving redraws it anyway). */
+  function crackle(): void {
+    if (crackleFrame || reduceMotion.matches) return;
+    crackleAt = performance.now();
+    const tick = (now: number) => {
+      crackleFrame = 0;
+      if (disposed || !charge || !charge.layer.isConnected) return;
+      if (now - crackleAt >= CRACKLE_MS) {
+        crackleAt = now;
+        drawCharge(charge.layer, charge.charge, (n) => n / vp().zoom);
+      }
+      crackleFrame = requestAnimationFrame(tick);
+    };
+    crackleFrame = requestAnimationFrame(tick);
+  }
+
+  let stopFlow: (() => void) | null = null;
+
   function drawOverlay(): void {
     overlay.replaceChildren();
     const z = vp().zoom;
@@ -705,9 +734,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       );
     }
 
+    charge = null;
     if (interaction.kind === "drag" && interaction.dock) {
       // The dragged cards dock after the lit one: where each will land is
-      // outlined, with a dashed link from the lit card to each head.
+      // outlined, and the lit card is charged, arcing to each dragged head.
       const { from, shift, heads, fromY } = interaction.dock;
       const fromBox = fromY === null ? elementBounds(from) : { ...elementBounds(from), y: fromY };
       if (fromY !== null) {
@@ -730,7 +760,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         if (!el || isLinker(el)) continue;
         const b = elementBounds(el);
         const g = { x: b.x + shift.x, y: b.y + shift.y, w: b.w, h: b.h };
-        if (heads.some((h) => h.id === id)) connectHint(fromBox, g);
         overlay.append(
           svgEl("rect", {
             x: g.x,
@@ -744,6 +773,18 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           }),
         );
       }
+      const layer = svgEl("g", { class: "wr-board-spark" });
+      overlay.append(layer);
+      charge = {
+        layer,
+        charge: {
+          target: from,
+          targetBox: fromBox,
+          heads: heads.map((h) => findEl(scene, h.id) ?? h) as Charge["heads"],
+        },
+      };
+      drawCharge(layer, charge.charge, px);
+      crackle();
     }
 
     /** Rings `f` (what a card will connect to) and runs a dashed line from
@@ -2646,6 +2687,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       case "drag": {
         if (current.moved) {
           const dock = current.dock;
+          const docked: LinkerEl[] = [];
           restoreAndCommit(current.startEls, () => {
             const ids = current.startEls;
             for (const id of ids.keys()) {
@@ -2673,9 +2715,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             );
             for (const id of heads) {
               const head = findEl(scene, id);
-              if (head) scene.els.push(connectorBetween(dock.from, head, dock.side));
+              if (head) {
+                const link = connectorBetween(dock.from, head, dock.side);
+                scene.els.push(link);
+                docked.push(link);
+              }
             }
           });
+          if (docked.length) flowCurrent(docked);
         } else {
           // A click: redraw so the overlay is the resting one (with the
           // quick-connect dots), whatever the gesture drew.
@@ -2798,6 +2845,21 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /** Rewinds to the pre-drag state, pushes that onto history, then re-applies —
    *  so one gesture is one undo step rather than one per pointermove. */
+  /** Current flows down each just-docked arrow and through its card. */
+  function flowCurrent(links: LinkerEl[]): void {
+    stopFlow?.();
+    stopFlow = null;
+    if (reduceMotion.matches) return;
+    const flows = links.flatMap((link) => {
+      const from = findEl(scene, link.b1?.el ?? "");
+      const card = findEl(scene, link.b2?.el ?? "");
+      if (!canQuickConnect(from) || !canQuickConnect(card)) return [];
+      const route = routeLinker(scene, link);
+      return [{ from, card, route, entry: sideOf(elementBounds(card), route[route.length - 1]) }];
+    });
+    if (flows.length) stopFlow = playFlow(flowLayer, flows, (n) => n / vp().zoom);
+  }
+
   function restoreAndCommit(startEls: Map<string, BoardEl>, after?: () => void): void {
     const final = new Map<string, BoardEl>();
     for (const id of startEls.keys()) {
@@ -3275,6 +3337,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       svg.removeEventListener("pointermove", onPointerMoveRaw);
       if (moveFrame) cancelAnimationFrame(moveFrame);
       if (recullFrame) cancelAnimationFrame(recullFrame);
+      if (crackleFrame) cancelAnimationFrame(crackleFrame);
+      stopFlow?.();
       svg.removeEventListener("pointerup", onPointerUp);
       svg.removeEventListener("pointercancel", onPointerUp);
       svg.removeEventListener("dblclick", onDoubleClick);
