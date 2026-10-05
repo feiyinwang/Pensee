@@ -38,6 +38,10 @@ same keys to its own viewport and wins while it is focused. The View menu carrie
 the same three actions; its accelerators only fire when the page did not consume
 the key, so a press never zooms twice.
 
+On a focused board, Alt+ArrowLeft / Alt+ArrowRight are claimed for card travel
+(out to the card leading into the selected one / into its next steps) and do not
+navigate history; Tab / Shift+Tab step between cards on the same level.
+
 ## Menu Accelerators
 
 These shortcuts are bound to the native app menu (Tauri menu accelerators) rather than the global JS handler.

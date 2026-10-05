@@ -112,7 +112,8 @@ import {
   type Side,
   blankCopy,
   canQuickConnect,
-  cardsInReadingOrder,
+  cardSiblings,
+  cardTree,
   connectorBetween,
   dockTarget,
   isCard,
@@ -1924,23 +1925,64 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     }
   }
 
-  /** Tab / Shift+Tab: select the next or previous card in reading order,
-   *  wrapping. With nothing selected (say, after clicking off a card being
-   *  edited) it steps on from the card last selected or edited. */
-  function stepCard(dir: 1 | -1): void {
-    const order = cardsInReadingOrder(scene.els);
-    if (!order.length) return;
-    const anchor = selection.size === 1 ? [...selection][0] : lastCardId;
-    const at = anchor ? order.findIndex((el) => el.id === anchor) : -1;
-    const next =
-      at < 0
-        ? order[dir === 1 ? 0 : order.length - 1]
-        : order[(at + dir + order.length) % order.length];
-    lastCardId = next.id;
-    selection = new Set([next.id]);
-    revealEl(next);
+  /** The card keyboard travel starts from: the one selected or, with
+   *  nothing selected (say, after clicking off a card being edited), the one
+   *  last selected or edited. */
+  function travelAnchor(tree: ReturnType<typeof cardTree>): string | null {
+    const id = selection.size === 1 ? [...selection][0] : lastCardId;
+    return id && tree.order.some((el) => el.id === id) ? id : null;
+  }
+
+  /** The child Alt+Right goes back into, keyed by parent: the one Alt+Left
+   *  last left from, like a tree view's remembered position. */
+  const lastChildOf = new Map<string, string>();
+
+  function travelTo(el: BoardEl): void {
+    lastCardId = el.id;
+    selection = new Set([el.id]);
+    revealEl(el);
     drawOverlay();
     renderStyle();
+  }
+
+  /** Tab / Shift+Tab: the next or previous card on the same level — the
+   *  cards one arrow leads into, or the cards nothing leads into — in reading
+   *  order, wrapping. Alt+Left / Alt+Right leave the level. */
+  function stepCard(dir: 1 | -1): void {
+    const tree = cardTree(scene.els);
+    if (!tree.order.length) return;
+    const anchor = travelAnchor(tree);
+    if (!anchor) {
+      const tops = cardSiblings(tree, tree.order[0].id);
+      travelTo(tops[dir === 1 ? 0 : tops.length - 1]);
+      return;
+    }
+    const level = cardSiblings(tree, anchor);
+    const at = level.findIndex((el) => el.id === anchor);
+    travelTo(level[(at + dir + level.length) % level.length]);
+  }
+
+  /** Alt+Right: into the selected card's next steps (the one last visited
+   *  there, else the first). Alt+Left: back out to the card leading into it. */
+  function stepLevel(dir: 1 | -1): void {
+    const tree = cardTree(scene.els);
+    const anchor = travelAnchor(tree);
+    if (!anchor) {
+      stepCard(1);
+      return;
+    }
+    if (dir === -1) {
+      const from = tree.parent.get(anchor);
+      const up = from === undefined ? undefined : tree.order.find((el) => el.id === from);
+      if (!up) return;
+      lastChildOf.set(up.id, anchor);
+      travelTo(up);
+      return;
+    }
+    const kids = tree.kids.get(anchor);
+    if (!kids?.length) return;
+    const remembered = kids.find((el) => el.id === lastChildOf.get(anchor));
+    travelTo(remembered ?? kids[0]);
   }
 
   function afterReplace(touched: BoardEl[]): void {
@@ -3211,6 +3253,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (e.key === "Tab" && !mod && !e.altKey) {
       e.preventDefault();
       stepCard(e.shiftKey ? -1 : 1);
+      return;
+    }
+    if (e.altKey && !mod && !e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      // Claimed here, so the app's Alt+Arrow back / forward does not fire
+      // under an open board.
+      e.preventDefault();
+      e.stopPropagation();
+      stepLevel(e.key === "ArrowRight" ? 1 : -1);
       return;
     }
     if (e.key === "Enter" && selection.size === 1) {

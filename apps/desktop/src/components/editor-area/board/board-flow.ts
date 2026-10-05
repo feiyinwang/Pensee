@@ -57,6 +57,47 @@ export function cardsInReadingOrder(els: BoardEl[]): BoardEl[] {
   return out;
 }
 
+/** The cards as a tree, for keyboard travel. A card's parent is the card an
+ *  arrow into it comes from (the first in reading order when several do), or
+ *  a topic's parent topic. Children are listed in reading order. */
+export interface CardTree {
+  order: BoardEl[];
+  parent: Map<string, string>;
+  kids: Map<string, BoardEl[]>;
+}
+
+export function cardTree(els: BoardEl[]): CardTree {
+  const order = cardsInReadingOrder(els);
+  const rank = new Map(order.map((el, i) => [el.id, i]));
+  const parent = new Map<string, string>();
+  const offer = (child: string, from: string): void => {
+    if (child === from || !rank.has(child) || !rank.has(from)) return;
+    const had = parent.get(child);
+    if (had === undefined || (rank.get(from) as number) < (rank.get(had) as number)) {
+      parent.set(child, from);
+    }
+  };
+  for (const el of els) {
+    if (isLinker(el) && el.b1 && el.b2) offer(el.b2.el, el.b1.el);
+    else if (isMind(el) && el.pa) offer(el.id, el.pa);
+  }
+  const kids = new Map<string, BoardEl[]>();
+  for (const el of order) {
+    const from = parent.get(el.id);
+    if (from !== undefined) kids.set(from, [...(kids.get(from) ?? []), el]);
+  }
+  return { order, parent, kids };
+}
+
+/** The cards on the same level as `id`: its parent's children, or — for a
+ *  card with no parent — every card without one. In reading order. */
+export function cardSiblings(tree: CardTree, id: string): BoardEl[] {
+  const from = tree.parent.get(id);
+  return from === undefined
+    ? tree.order.filter((el) => !tree.parent.has(el.id))
+    : (tree.kids.get(from) ?? []);
+}
+
 /** Where each side's dot sits: centred on the side, `offset` outside it. */
 export function quickDots(box: Box, offset: number): Record<Side, Point> {
   const cx = box.x + box.w / 2;
