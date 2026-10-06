@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-06
+
+- Paste a link onto its own line and the page itself shows right there in your note, in a frame you can scroll and click around in. Its header shows the page's title, with buttons to reload it or open it in your browser. Links already on a line of their own show the same way. Click the header to edit the address. The file still holds just the link, so it reads the same in other apps. Some sites, like GitHub, Google and X, don't allow their pages to be shown inside other apps. For those you see the page's picture, title and description instead, with an **Open in browser** button. To show a page, Writer loads it from the site the way a browser does. Links inside a sentence, in lists or in quotes look the same as before.
+
 ## 2026-10-05
 
 - Fixed: typing on a selected card could change it instead of starting a new card. Words that began with **R**, **O** or **D** switched shapes, and a capital **S** opened the section tool. Now every key you type with a card selected goes to a new card beside it, so the selected card stays as it is. A selected mind-map topic that already has text gets a new sibling topic with your typing. Blank cards, text boxes and arrows still take the typing directly. The R/O/D/S shortcuts work as before when nothing is selected.

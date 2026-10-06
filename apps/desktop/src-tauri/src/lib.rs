@@ -647,6 +647,7 @@ pub fn run() {
             commands::images::import_image_file,
             commands::images::read_file_data_url,
             commands::images::write_export_file,
+            commands::link_preview::fetch_link_preview,
             commands::settings::get_settings,
             commands::settings::get_setting,
             commands::settings::set_setting,

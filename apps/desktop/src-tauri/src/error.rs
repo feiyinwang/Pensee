@@ -12,6 +12,10 @@ pub enum AppError {
     InvalidPath(String),
     #[error("No workspace is open")]
     NoWorkspace,
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(String),
+    #[error("Network error: {0}")]
+    Network(String),
 }
 
 impl Serialize for AppError {

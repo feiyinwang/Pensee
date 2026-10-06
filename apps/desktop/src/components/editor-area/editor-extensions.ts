@@ -24,6 +24,7 @@ import { columnsDecorations, columnsParserExtension } from "./columns-decoration
 import { boardDecorations } from "./board/board-decorations";
 import { imageSrcResolver } from "./image-src-resolver";
 import { linkNavigationExtension } from "./link-navigation";
+import { linkPreviews } from "./link-preview";
 import { emptyHeadingKeymap, markdownFormatting } from "./markdown-formatting";
 import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
@@ -138,6 +139,7 @@ export function createEditorExtensions(
     // land in this note's assets folder instead of being inlined.
     boardDecorations(getFilePath),
     mathDecorations(),
+    linkPreviews(),
     headingDecorations,
     headingLevelLabels,
     imageSrcResolver(getFilePath),

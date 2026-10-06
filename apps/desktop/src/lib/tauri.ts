@@ -328,6 +328,24 @@ export function readFileDataUrl(path: string): Promise<string> {
   return invoke("read_file_data_url", { path });
 }
 
+/** Title, description, image and icon of a web page, read in Rust from its
+ *  Open Graph / HTML head tags, and whether its headers allow framing.
+ *  Absent fields are null. */
+export interface LinkPreview {
+  url: string;
+  title: string | null;
+  description: string | null;
+  site_name: string | null;
+  image: string | null;
+  icon: string | null;
+  /** False when the site forbids being shown in a frame. */
+  embeddable: boolean;
+}
+
+export function fetchLinkPreview(url: string): Promise<LinkPreview> {
+  return invoke("fetch_link_preview", { url });
+}
+
 export function saveClipboardImage(
   markdownFilePath: string,
   imageData: number[],
