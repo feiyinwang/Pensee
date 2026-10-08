@@ -13,9 +13,17 @@ Pasting a link onto a line of its own shows the linked page itself, live, in a f
 - Sites that forbid framing (`X-Frame-Options`, or a CSP `frame-ancestors` list without `*` — GitHub, Google, X and many others) would show a blank box. For those the frame shows the site's own summary instead: preview image, title, description, a line saying the site doesn't allow being shown inside other apps, and an Open in browser button.
 - If the header check itself fails (offline, bot wall, error status), the frame tries to load the page anyway; the engine's own error page is the honest answer.
 
+## Inline links
+
+- Every other bare web address (`http(s)://…` or `www.…`, bare or in `<…>`) in running text, list items, quotes and so on folds to a link icon. `[text](url)` links, images, mail addresses and other schemes are unchanged.
+- Clicking the icon opens the page in the browser. The caret reaching the address (arrow keys) unfolds it to text, like other folded syntax.
+- Hovering the icon opens a 560px hover card holding the same frame (or summary) as the line preview, at 400px tall, shrinking when the window is short. Its header adds an Edit link button that puts the caret at the address.
+- Hover timing, placement and dismissal are shared with the `[[page]]` hover card in `hover-card.ts`.
+
 ## Implementation
 
 - `fetch_link_preview` (`src-tauri/src/commands/link_preview.rs`) fetches the page in Rust (the webview's CSP blocks cross-origin `fetch`), decides `embeddable` from the response headers (`frame_allowed`), reads at most 512 KB or up to `</head>`, and parses Open Graph → Twitter → plain `<title>` / `description` tags plus the icon link. Only `http` and `https` are accepted.
+- `link-preview.ts` registers `linkChips()`: a `foldableSyntaxFacet` spec on `URL` nodes (skipping `Link`/`Image` children and lines that already get the page preview) and a `hoverCard` showing `linkFrame(url)`.
 - `link-preview.ts` registers a `foldableSyntaxFacet` spec on `Document/Paragraph` that decides per line, and caches one request per URL for the life of the app (failures included).
 - The CSP's `frame-src` now allows `https:` and `http:`.
 - The iframe is sandboxed `allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox` with `referrerpolicy="no-referrer"`. The page keeps its own origin so logins and scripts work; that origin is never the editor's, so it cannot reach the editor document or Tauri IPC (remote origins have no capabilities). No `allow-top-navigation`, so it cannot navigate the Writer window.
@@ -28,5 +36,5 @@ Showing a preview means Writer loads the linked page (and its image and favicon)
 
 - A setting to turn previews off, or per-link "show as plain link".
 - Drag to resize the frame (needs somewhere portable to store the height for a bare URL).
-- Previews inside list items.
+- Full-width previews inside list items (they get the inline icon today).
 - Moving the caret onto the line rebuilds the widget, which reloads the page.

@@ -172,3 +172,55 @@
 .cm-link-preview [hidden] {
   display: none;
 }
+
+/* A web address in running text, folded to a link icon (`linkChips`). */
+.cm-link-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  margin: 0 0.1em;
+  vertical-align: -0.2em;
+  border-radius: 4px;
+  color: var(--link-color);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+
+.cm-link-chip:hover {
+  background-color: var(--surface-subtle);
+}
+
+.cm-link-chip svg {
+  width: 0.95em;
+  height: 0.95em;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+/* The same frame in the hover card: the card is the border, and the body
+   shrinks with the card when the window is short. */
+.wr-web-link-card .cm-link-preview {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+.wr-web-link-card .cm-link-preview-header {
+  flex: none;
+  cursor: default;
+}
+
+.wr-web-link-card .cm-link-preview-body {
+  height: 400px;
+  min-height: 0;
+  flex: 0 1 auto;
+}

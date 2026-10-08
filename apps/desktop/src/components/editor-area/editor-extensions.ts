@@ -24,7 +24,7 @@ import { columnsDecorations, columnsParserExtension } from "./columns-decoration
 import { boardDecorations } from "./board/board-decorations";
 import { imageSrcResolver } from "./image-src-resolver";
 import { linkNavigationExtension } from "./link-navigation";
-import { linkPreviews } from "./link-preview";
+import { linkChips, linkPreviews } from "./link-preview";
 import { emptyHeadingKeymap, markdownFormatting } from "./markdown-formatting";
 import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
@@ -140,6 +140,7 @@ export function createEditorExtensions(
     boardDecorations(getFilePath),
     mathDecorations(),
     linkPreviews(),
+    linkChips(),
     headingDecorations,
     headingLevelLabels,
     imageSrcResolver(getFilePath),

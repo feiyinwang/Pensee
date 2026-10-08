@@ -2,6 +2,7 @@
 
 ## 2026-10-08
 
+- A web address in the middle of a sentence or in a list now shows as a small link icon instead of the long address. Click the icon to open the page in your browser. Hold the pointer over it and the page shows in a card beside it, the same frame a link on its own line gets (or the site's summary, for sites that don't allow being shown inside other apps). The card's pencil button, or moving the cursor onto the icon with the arrow keys, shows the address as text so you can edit it. The file still holds the plain address.
 - Type **@** in a note to link to a daily note. A small menu offers **Today**, **Tomorrow** and **Yesterday**, with each one's date beside it. Keep typing to narrow it (`@to` shows Today and Tomorrow), then press Enter. You get a link like `[[2026-10-08]]` that opens that day's note. If that note doesn't exist yet, it's made in your Daily Note Folder, the same note **Today's note** opens. Linking any `[[YYYY-MM-DD]]` by hand now makes the missing note there too, instead of next to the note you're writing in. An **@** in the middle of a word, like an email address, doesn't open the menu.
 
 ## 2026-10-06
