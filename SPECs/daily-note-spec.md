@@ -36,6 +36,24 @@ filename every morning.
 - Failures (folder escape, filesystem errors) surface to the user with the neutral
   prefix **Failed to open today's note** rather than being swallowed.
 
+## `@` date links
+
+- Typing `@` at the start of a line or after whitespace/an opening bracket opens
+  a completion menu with **Today**, **Tomorrow** and **Yesterday** (detail: the
+  `YYYY-MM-DD` date). The text after `@` filters by label prefix; no match
+  closes the menu. It never opens mid-word (`me@example.com`), inside code,
+  tables, math, frontmatter or links, or without a workspace.
+- Choosing an item replaces `@query` with `[[YYYY-MM-DD]]` in one dispatch, so
+  one undo removes it. The link is an ordinary wiki link; following, previewing
+  and auto-creating it go through the wiki-link machinery.
+- A page created from a bare `[[YYYY-MM-DD]]` link (the `@` menu's or one typed
+  by hand) goes in the daily-note folder rather than beside the linking note:
+  `newPagePath` routes date-named pages through `resolveDailyNoteFile`, the
+  same resolver Today's note uses. An escaping folder setting falls back to the
+  ordinary beside-the-note rule (the error is reported by Today's note).
+- Owner: `components/editor-area/date-mention.ts`, registered beside the slash
+  menu in `wiki-link-extension.ts`.
+
 ## Ownership
 
 - `apps/desktop/shared/settings.schema.json` owns the setting key, label,

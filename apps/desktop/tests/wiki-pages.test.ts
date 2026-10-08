@@ -72,6 +72,32 @@ describe("newPagePath", () => {
   });
 });
 
+describe("newPagePath for daily notes", () => {
+  test("a bare date lands in the daily-note folder, not beside the note", () => {
+    expect(newPagePath("2026-10-08", ROOT, "/vault/money/plan.md", "Journal/Daily")).toBe(
+      "/vault/Journal/Daily/2026-10-08.md",
+    );
+  });
+  test("an empty folder means the workspace root", () => {
+    expect(newPagePath("2026-10-08", ROOT, "/vault/money/plan.md", "")).toBe(
+      "/vault/2026-10-08.md",
+    );
+  });
+  test("an escaping folder falls back to the ordinary rule", () => {
+    expect(newPagePath("2026-10-08", ROOT, "/vault/money/plan.md", "../out")).toBe(
+      "/vault/money/2026-10-08.md",
+    );
+  });
+  test("non-date names and callers without the setting are unchanged", () => {
+    expect(newPagePath("Budget", ROOT, "/vault/money/plan.md", "Journal")).toBe(
+      "/vault/money/Budget.md",
+    );
+    expect(newPagePath("2026-10-08", ROOT, "/vault/money/plan.md")).toBe(
+      "/vault/money/2026-10-08.md",
+    );
+  });
+});
+
 describe("ensureWikiPage", () => {
   test("creates a missing page with its name as the title", async () => {
     const { files, deps } = fakeFs();

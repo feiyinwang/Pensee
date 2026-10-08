@@ -38,6 +38,7 @@ import { openWikiPage } from "./wiki-pages-extension";
 // elsewhere would silently disable this one — so the slash menu's source joins
 // the array below rather than installing its own config.
 import { slashCompletions, slashOptionIcon } from "./slash-menu";
+import { dateMentionCompletions, dateMentionIcon } from "./date-mention";
 import { getEffectiveSelectionRanges } from "./drag-selection-gate";
 
 // ---------------------------------------------------------------------------
@@ -430,9 +431,9 @@ export function wikiLinkExtension(
     // `"fixed"` on non-iOS.
     tooltips({ parent: document.body }),
     autocompletion({
-      override: [wikiLinkCompletions, slashCompletions],
+      override: [wikiLinkCompletions, slashCompletions, dateMentionCompletions],
       icons: false,
-      addToOptions: [slashOptionIcon],
+      addToOptions: [slashOptionIcon, dateMentionIcon],
     }),
   ];
 }

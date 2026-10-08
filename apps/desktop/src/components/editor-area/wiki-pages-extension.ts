@@ -20,6 +20,7 @@ import {
   pageFromSelection,
 } from "@/lib/wiki-pages";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useUIStore } from "@/stores/ui-store";
 import { showEditorNotice } from "./editor-notice-store";
 
@@ -40,6 +41,8 @@ export const tauriWikiPageDeps: WikiPageDeps = {
   fileExists: tauri.fileExists,
   createFile: tauri.createFile,
   writeFile: tauri.writeFile,
+  dailyNoteFolder: () =>
+    useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "",
 };
 
 /** Shown in menus (via `chordToAccelerator`). Not bound through `keymap`: see
@@ -234,7 +237,8 @@ export function completeMoveToPage(target: MoveTarget) {
         // Picked "new", but the page may exist after all (created meanwhile,
         // or not yet in the search index): add to it rather than fail.
         const existing = await findWikiPage(name, root, currentFile, tauriWikiPageDeps);
-        path = existing ?? newPagePath(name, root, currentFile);
+        path =
+          existing ?? newPagePath(name, root, currentFile, tauriWikiPageDeps.dailyNoteFolder?.());
         if (path === currentFile) throw new Error("that is the page the text is on");
         const moved = textMovedToPage(text, name);
         if (existing) {

@@ -37,7 +37,17 @@ export type DailyNotePath = { ok: true; path: string } | { ok: false; error: str
  * cannot quietly start writing notes outside the vault.
  */
 export function resolveDailyNotePath(root: string, folder: string, date: Date): DailyNotePath {
-  const fileName = `${formatDailyNoteDate(date)}.md`;
+  return resolveDailyNoteFile(root, folder, `${formatDailyNoteDate(date)}.md`);
+}
+
+/** Where the daily note named `fileName` (`YYYY-MM-DD.md`) lives: the same
+ *  folder rules as `resolveDailyNotePath`, for any day rather than one read off
+ *  a clock. Pages created from a `[[YYYY-MM-DD]]` link go here too. */
+export function resolveDailyNoteFile(
+  root: string,
+  folder: string,
+  fileName: string,
+): DailyNotePath {
   const trimmedFolder = folder.trim();
   const base = root.replace(/\/$/, "");
 

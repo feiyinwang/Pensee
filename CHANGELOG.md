@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-08
+
+- Type **@** in a note to link to a daily note. A small menu offers **Today**, **Tomorrow** and **Yesterday**, with each one's date beside it. Keep typing to narrow it (`@to` shows Today and Tomorrow), then press Enter. You get a link like `[[2026-10-08]]` that opens that day's note. If that note doesn't exist yet, it's made in your Daily Note Folder, the same note **Today's note** opens. Linking any `[[YYYY-MM-DD]]` by hand now makes the missing note there too, instead of next to the note you're writing in. An **@** in the middle of a word, like an email address, doesn't open the menu.
+
 ## 2026-10-06
 
 - Paste a link onto its own line and the page itself shows right there in your note, in a frame you can scroll and click around in. Its header shows the page's title, with buttons to reload it or open it in your browser. Links already on a line of their own show the same way. Click the header to edit the address. The file still holds just the link, so it reads the same in other apps. Some sites, like GitHub, Google and X, don't allow their pages to be shown inside other apps. For those you see the page's picture, title and description instead, with an **Open in browser** button. To show a page, Writer loads it from the site the way a browser does. Links inside a sentence, in lists or in quotes look the same as before.

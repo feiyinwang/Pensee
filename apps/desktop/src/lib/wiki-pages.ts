@@ -1,5 +1,6 @@
 import { getFileStem, getParentDir, normalizePath } from "./paths";
 import { parseWikiLink, resolveWikiLink } from "./wiki-links";
+import { isDailyNoteName, resolveDailyNoteFile } from "./daily-note";
 import type { SearchResult } from "@/types/fs";
 
 // Pages behind `[[wiki links]]`: naming, where a new one lives, and creating
@@ -12,6 +13,8 @@ export interface WikiPageDeps {
   /** Create the file, failing if it already exists. */
   createFile: (path: string) => Promise<unknown>;
   writeFile: (path: string, content: string) => Promise<unknown>;
+  /** The `workspace.daily-note-folder` setting, read at call time. */
+  dailyNoteFolder?: () => string;
 }
 
 /** Characters that cannot or should not be in a page's file name: path
@@ -38,14 +41,24 @@ export function pageNameFromWikiTarget(inner: string): string | null {
 /** Where a new page for `name` goes. A name with a `/` is workspace-relative,
  *  matching how `resolveWikiLink` reads it; a bare name lands next to the note
  *  that links to it (or at the workspace root when that note is outside the
- *  workspace), so a folder of notes stays together. */
+ *  workspace), so a folder of notes stays together. The exception is a bare
+ *  `YYYY-MM-DD`: that is a daily note, which lives in the daily-note folder
+ *  whenever the caller knows it (`dailyNoteFolder` given and inside the
+ *  workspace), so `[[2026-10-08]]` and Today's note are the same file. */
 export function newPagePath(
   name: string,
   workspaceRoot: string,
   currentFilePath: string | null,
+  dailyNoteFolder?: string,
 ): string {
   const root = workspaceRoot.replace(/\/$/, "");
   if (name.includes("/")) return normalizePath(`${root}/${name}.md`);
+  if (dailyNoteFolder !== undefined && isDailyNoteName(`${name}.md`)) {
+    const daily = resolveDailyNoteFile(root, dailyNoteFolder, `${name}.md`);
+    // An escaping folder is reported by `openDailyNote`; here the page
+    // just falls back to the ordinary rule below.
+    if (daily.ok) return daily.path;
+  }
   const inWorkspace = currentFilePath?.startsWith(`${root}/`) ?? false;
   const dir = inWorkspace ? getParentDir(currentFilePath!) : root;
   return normalizePath(`${dir}/${name}.md`);
@@ -68,7 +81,7 @@ export async function findWikiPage(
   name: string,
   workspaceRoot: string,
   currentFilePath: string | null,
-  deps: Pick<WikiPageDeps, "fuzzySearch" | "fileExists">,
+  deps: Pick<WikiPageDeps, "fuzzySearch" | "fileExists" | "dailyNoteFolder">,
 ): Promise<string | null> {
   const resolved = await resolveWikiLink(
     name,
@@ -78,7 +91,7 @@ export async function findWikiPage(
     currentFilePath,
   );
   if (resolved.kind === "internal") return resolved.path;
-  const path = newPagePath(name, workspaceRoot, currentFilePath);
+  const path = newPagePath(name, workspaceRoot, currentFilePath, deps.dailyNoteFolder?.());
   return (await deps.fileExists(path)) ? path : null;
 }
 
@@ -99,7 +112,7 @@ export async function ensureWikiPage(
   const existing = await findWikiPage(name, workspaceRoot, currentFilePath, deps);
   if (existing) return existing;
 
-  const path = newPagePath(name, workspaceRoot, currentFilePath);
+  const path = newPagePath(name, workspaceRoot, currentFilePath, deps.dailyNoteFolder?.());
   const pending = inFlight.get(path);
   if (pending) return pending;
 

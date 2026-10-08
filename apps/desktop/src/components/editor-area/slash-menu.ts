@@ -206,6 +206,8 @@ function relativeTo(base: string, to: string): string {
 
 /* ----------------------------------------------------------------- icons */
 
+export const CALENDAR_ICON = ["M5 6h14v13H5z", "M5 10h14", "M9 4v4", "M15 4v4"];
+
 const I: Record<string, string[]> = {
   text: ["M5 6h14", "M12 6v13", "M9 19h6"],
   h1: ["M5 5v14", "M13 5v14", "M5 12h8", "M17 9l2-1v11"],
@@ -225,7 +227,7 @@ const I: Record<string, string[]> = {
   board: ["M4 6h16v10H4z", "M9 16l-2 4", "M15 16l2 4", "M8 9.5h3.5", "M8 12.5h6"],
   mermaid: ["M5 5h5v4H5z", "M14 15h5v4h-5z", "M7.5 9v3.5h9V15"],
   columns: ["M4 5h6v14H4z", "M14 5h6v14h-6z"],
-  today: ["M5 6h14v13H5z", "M5 10h14", "M9 4v4", "M15 4v4"],
+  today: CALENDAR_ICON,
   now: ["M20 12a8 8 0 11-16 0 8 8 0 0116 0z", "M12 8v4l2.5 2"],
   html: ["M4 5h16v14H4z", "M4 9h16", "M9 13l-2 2 2 2", "M15 13l2 2-2 2"],
 };
@@ -387,7 +389,7 @@ const SECTIONS = {
 
 const ICON_BY_TYPE = new Map(ITEMS.map((item) => [`slash-${item.id}`, item.paths]));
 
-function iconNode(paths: string[]): HTMLElement {
+export function iconNode(paths: string[]): HTMLElement {
   const wrap = document.createElement("span");
   wrap.className = "wr-slash-icon";
   const svg = document.createElementNS(svgNS, "svg");
@@ -440,7 +442,7 @@ const BLOCKED_NODES = new Set([
   "Link",
 ]);
 
-function inBlockedContext(context: CompletionContext): boolean {
+export function inBlockedContext(context: CompletionContext): boolean {
   const tree = syntaxTree(context.state);
   let node: { name: string; parent: unknown } | null = tree.resolveInner(context.pos, -1);
   while (node) {
