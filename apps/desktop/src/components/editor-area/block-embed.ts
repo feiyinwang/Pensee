@@ -185,13 +185,15 @@ class BlockEmbedWidget extends WidgetType {
     const source = document.createElement("button");
     source.type = "button";
     source.className = "cm-block-embed-source";
-    source.textContent = this.page ? getFileStem(this.page) : "This page";
-    source.title = "Open the page this block lives in";
+    source.setAttribute("aria-label", "Open the page this block lives in");
+    source.title = this.page ? `From ${getFileStem(this.page)}` : "From this page";
     source.disabled = true;
     header.append(source);
 
     const body = document.createElement("span");
     body.className = "cm-block-embed-body";
+    // Opt out of the page editor's width, inset and bottom padding.
+    body.dataset.inlineEditor = "";
     root.append(header, body);
 
     void resolvePage(this.page, this.hostPath, this.root)
@@ -199,7 +201,7 @@ class BlockEmbedWidget extends WidgetType {
         if (!mounted.has(root)) return;
         if (!path) return this.renderMissing(view, root, "Page not found");
         source.disabled = false;
-        source.textContent = getFileStem(path);
+        source.title = `From ${getFileStem(path)} — click to open`;
         source.addEventListener("mousedown", (event) => event.preventDefault());
         source.addEventListener("click", () => void editorApi.openLinkedPage(path));
         const text = await loadPageText(path);

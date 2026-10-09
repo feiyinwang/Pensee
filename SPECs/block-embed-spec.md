@@ -22,7 +22,7 @@ Fences, tables, HTML blocks, column rows and rules can't be linked in v1, becaus
 ## Behaviour
 
 - **Copy link to block** in the block handle menu gives the block an id (once; one undo removes it again) and copies `![[Page#^id]]`. A notice says so.
-- Pasted or typed, `![[Page#^id]]` renders as the block itself in a small live editor. A thin accent rule on the left marks it, and it becomes an outline with the source page's name (click it to open that page) while hovered or focused.
+- Pasted or typed, `![[Page#^id]]` renders as the block itself, looking like an ordinary block of the page: same text column, type and line height, with no frame. Its inner editor opts out of page-editor styling with `data-inline-editor` (the shared reset in `columns.css`); without that, the page's 40vh bottom padding and side inset made it fill the column. Two quiet signs mark it as linked. A thin accent rule sits in the left margin. A ↗ appears at its right edge while it's hovered or focused, in 24px reserved for it, because the page scroller clips anything past the text column. The ↗'s tooltip names the source page, and clicking it opens that page.
 - Typing in the embed edits the source page:
   - **The source page is shown in an editor:** the change is dispatched into that editor as a minimal change. It saves, undoes and updates the store exactly like typing there.
   - **Open but not shown:** written into the editor store, which saves it.

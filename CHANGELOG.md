@@ -2,6 +2,7 @@
 
 ## 2026-10-09
 
+- A linked block now looks like any other block in the note: same size, same line spacing, lined up with the text around it. Before, it could fill the whole column with a big frame around it. A thin line in the left margin is the only sign it comes from another note. Hold the pointer over it and a small ↗ appears at the right; click it to open the original note.
 - Pictures and links now keep working when you copy them from one note and paste into a note in a different folder. Writer rewrites the path so it still points at the same file, for example `assets/photo.png` becomes `../journal/assets/photo.png`. Web addresses and text inside code blocks are pasted as they are.
 - Copy and paste linked blocks with the keyboard. With the cursor anywhere in a paragraph, list item, heading or picture, press **⌘⇧C** to copy a reference to it. In another note, press **⌘⇧V** to paste it there as a linked block. On an empty line it takes that line's place, in a list it becomes the next item, and anywhere else it goes on its own line below. Both are in the right-click menu too, as **Copy block reference** and **Paste as linked block**. Pressing **⌘⇧C** inside a linked block copies that block's reference again, so you can pass it on to a third note.
 - Referencing a bullet now brings everything under it. The linked block shows the bullet and all its sub-bullets, and you can add, edit or remove sub-bullets right there; the original note changes to match. A freshly pasted linked block shows straight away instead of as raw `![[...]]` text.
