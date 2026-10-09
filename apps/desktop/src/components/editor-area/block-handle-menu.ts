@@ -15,6 +15,7 @@ import {
   moveTarget,
   type ActionTarget,
 } from "./block-actions";
+import { canLinkToBlock, copyBlockLink } from "./block-embed";
 import "./block-handle-menu.css";
 
 /**
@@ -78,6 +79,10 @@ const ICON = {
   trash: svg(
     `<path d="M3.8 5.5h12.4"/><path d="M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5"/>` +
       `<path d="M5.5 5.5 6.2 16a1 1 0 0 0 1 .9h5.6a1 1 0 0 0 1-.9l.7-10.5"/>`,
+  ),
+  link: svg(
+    `<path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-.9.9"/>` +
+      `<path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.6 2.6a3 3 0 0 0 4.2 4.2l.9-.9"/>`,
   ),
   caret: svg(`<path d="M8 5.5 12.5 10 8 14.5"/>`),
 } as const;
@@ -375,6 +380,15 @@ export class BlockHandleMenu {
         },
         { label: "Cut", icon: ICON.cut, run: () => this.act(() => cutTarget(view, target)) },
         { label: "Copy", icon: ICON.copy, run: () => this.act(() => copyTarget(view, target)) },
+        ...(canLinkToBlock(view, target)
+          ? [
+              {
+                label: "Copy link to block",
+                icon: ICON.link,
+                run: () => this.act(() => copyBlockLink(view, target)),
+              },
+            ]
+          : []),
         {
           label: target.kind === "col" ? "Delete column" : "Delete",
           icon: ICON.trash,

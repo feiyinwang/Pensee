@@ -22,6 +22,7 @@ import { headingLevelLabels } from "./heading-level-labels";
 import { htmlBlockDecorations, htmlBlockParserExtension } from "./html-block-decorations";
 import { columnsDecorations, columnsParserExtension } from "./columns-decorations";
 import { boardDecorations } from "./board/board-decorations";
+import { blockEmbeds } from "./block-embed";
 import { imageSrcResolver } from "./image-src-resolver";
 import { linkNavigationExtension } from "./link-navigation";
 import { linkChips, linkPreviews } from "./link-preview";
@@ -144,6 +145,9 @@ export function createEditorExtensions(
     headingDecorations,
     headingLevelLabels,
     imageSrcResolver(getFilePath),
+    // Before wikiLinkExtension: its facet tells the wiki-link decorations to
+    // leave `![[Page#^id]]` to the linked-block widget.
+    blockEmbeds(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     wikiPagesExtension(getFilePath, isDisposed),
     wikiLinkPreview(getFilePath),

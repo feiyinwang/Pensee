@@ -178,6 +178,16 @@ Reloading an opaque-origin frame: `contentWindow.location.reload()` is refused a
 
 Do not add `iframe` to the inline-HTML sanitizer allow list (`html-block-decorations.ts`) to get the same effect; that admits remote URLs too.
 
+## Linked blocks write through the source page's live editor
+
+`![[Page#^id]]` (`block-embed.ts`) holds a nested `EditorView` with just that block. Everything that reads or writes the page goes through `linked-block-sync.ts`, never straight to `write_file`:
+
+- **Writes** go to the page's live main editor when one shows it, as a minimal change carrying the `linkedBlockSync` annotation. That edit then saves, undoes and reaches the store exactly like typing there. Otherwise they go to the store (open but not shown), and only when the page isn't open at all to `write_file`, debounced.
+- **Live editors are registered on the `writer.swap` transaction**, not on the path getter. The getter flips before the doc is swapped, and a write landing in between would go into the wrong page.
+- **Incoming changes are applied in a microtask.** The change may be this embed's own write echoing back, inside its own update, and a view can't be dispatched to mid-update.
+- **A transaction filter refuses edits that would split the block** (`findBlock` must still start at 0). Otherwise text silently leaves the embed while staying in the page.
+- **Nested editors have no `blockEmbedHost` facet**, so `![[Page#^id]]` inside them is a plain link. That rule is what stops an embed from containing itself.
+
 ## File map
 
 - `mermaid-decorations.ts` — canonical replace-only block widget with in-widget editing. Reference for live position lookup (`findEnclosingFencedCode`) and writing the fence back from a nested editor.
@@ -188,5 +198,6 @@ Do not add `iframe` to the inline-HTML sanitizer allow list (`html-block-decorat
 - `editor-scroll.ts` — `findOuterScroller` / `scrollPosToSafeTop`, the one place that scrolls the ancestor container to a document position.
 - `editor-extensions.ts` — `createEditorExtensions`, the one place the extension list is assembled. Pieces: `editor-search-extensions.ts` (hidden search panel, `EditorView.scrollHandler` for the ancestor-scroller case, Mod-f / Mod-g / Escape), `link-navigation.ts` (click-to-follow, `followLink`), `editor-clipboard.ts` (image + frontmatter paste), `editor-body-menu.ts` (right-click menu), `viewport-parse.ts`. `use-prosemark-editor.ts` only mounts, swaps, and disposes the view.
 - `html-embed-widget.ts` — inline-replace widget from a ViewPlugin (no block decorations allowed there), sandboxed iframe, `updateDOM` keeping the frame across a height rewrite, `fs:file-changed` reload registry.
+- `block-embed.ts` / `linked-block-sync.ts` / `lib/block-refs.ts` — linked blocks: the widget and id hiding, the one read/write owner for a linked page, and the pure text rules (SPECs/block-embed-spec.md).
 - `lib/wiki-links.ts` — `findWikiLinkAt`: the one scanner for `[[...]]` / `![[...]]` tokens on a line, used by the decorator, click handler and widgets.
 - `node_modules/@prosemark/core/dist/main.js:30` — `selectionTouchesRange` semantics.

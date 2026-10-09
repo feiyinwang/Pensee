@@ -11,6 +11,14 @@ export function getOpenFiles() {
   return useEditorStore.getState().openFiles;
 }
 
+/** Call `listener` whenever the set of open files or any file's content
+ *  changes. Returns the unsubscribe. */
+export function subscribeOpenFiles(listener: () => void) {
+  return useEditorStore.subscribe((state, prev) => {
+    if (state.openFiles !== prev.openFiles) listener();
+  });
+}
+
 export function getActiveFilePath() {
   return useEditorStore.getState().activeFilePath;
 }

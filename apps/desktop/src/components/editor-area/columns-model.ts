@@ -71,7 +71,9 @@ export type BandName = keyof Bands;
 
 export const BAND_ORDER: readonly BandName[] = ["above", "anchor", "below"];
 
-export const IMAGE_BLOCK = /^!\[[^\]]*\]\([^)\s]+\)$/;
+// A trailing ` ^id` (a linked block, SPECs/block-embed-spec.md) is still a
+// picture block.
+export const IMAGE_BLOCK = /^!\[[^\]]*\]\([^)\s]+\)(?:[ \t]+\^[A-Za-z0-9-]+)?$/;
 
 /**
  * Split markdown into blocks at blank lines, keeping fenced code and `$$` math

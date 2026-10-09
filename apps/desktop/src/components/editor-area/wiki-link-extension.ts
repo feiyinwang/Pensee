@@ -30,7 +30,9 @@ import {
   resolveWikiLink,
 } from "@/lib/wiki-links";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
+import { parseBlockEmbedTarget } from "@/lib/block-refs";
 import { HtmlEmbedWidget } from "./html-embed-widget";
+import { blockEmbedHost } from "./linked-block-sync";
 import { resolveEmbedPath } from "./wiki-embed-resolver";
 import { openWikiPage } from "./wiki-pages-extension";
 // The editor's completion sources are registered together here. CodeMirror's
@@ -163,6 +165,9 @@ function buildDecorations(view: EditorView, getFilePath: () => string): Decorati
   const ranges = getEffectiveSelectionRanges(view.state);
   const workspaceRoot = getWorkspaceRoot();
   const currentFilePath = getFilePath() || null;
+  // Linked blocks (`![[Page#^id]]`) are drawn by `block-embed.ts` in the main
+  // editor. Nested editors have no host, and show them as plain links.
+  const blockEmbedsDrawn = view.state.facet(blockEmbedHost) !== null;
 
   for (const { from, to } of view.visibleRanges) {
     const text = doc.sliceString(from, to);
@@ -170,6 +175,7 @@ function buildDecorations(view: EditorView, getFilePath: () => string): Decorati
     let match;
     while ((match = WIKI_LINK_RE.exec(text)) !== null) {
       const inner = match[2]!;
+      if (match[1] && blockEmbedsDrawn && parseBlockEmbedTarget(inner)) continue;
       const embedTarget = match[1] ? parseWikiImageEmbedTarget(inner) : null;
       const htmlEmbed = match[1] && !embedTarget ? parseWikiHtmlEmbedTarget(inner) : null;
       // Other embeds (note transclusions, PDFs) keep the plain link
