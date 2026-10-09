@@ -2,6 +2,7 @@
 
 ## 2026-10-09
 
+- Fixed: the cursor grew taller when it moved into a linked block. It's now the same size everywhere.
 - Fixed: a linked numbered item looked slightly indented next to ordinary bullets when the original had two spaces after its number. It now lines up exactly.
 - Fixed: deleting the start of a linked numbered item (Backspace at the beginning of its text) could move its link to the item above in the original note. Edits that would change any block other than the linked one are now refused, so the link always stays on the block you linked.
 - A linked item from a numbered list no longer brings its number. Pasted on its own it shows as a bullet; pasted into a list it takes that list's bullet or number. The original note keeps its number.

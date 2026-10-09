@@ -177,3 +177,18 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* One cursor, the drawn one. The page editor's drawSelection theme gives any
+   focused element inside it `caret-color: initial` (`.cm-content :focus`),
+   and the embed's editor is exactly that, so the browser's native caret came
+   back on top of the drawn one. In WebKit the native caret is as tall as the
+   whole line, so the cursor seemed to grow on entering a linked block. The
+   native selection highlight leaks the same way. */
+.cm-block-embed .cm-block-embed-body .cm-editor .cm-content,
+.cm-block-embed .cm-block-embed-body .cm-editor .cm-content:focus {
+  caret-color: transparent !important;
+}
+.cm-block-embed .cm-block-embed-body .cm-editor .cm-content ::selection,
+.cm-block-embed .cm-block-embed-body .cm-editor .cm-content::selection {
+  background-color: transparent !important;
+}
