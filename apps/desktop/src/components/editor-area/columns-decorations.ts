@@ -67,6 +67,7 @@ import {
   type Column,
 } from "./columns-model";
 import {
+  listItemAt,
   rowAfterBandRemoval,
   rowAfterRemoval,
   rowRefAt,
@@ -563,10 +564,17 @@ export interface BlockRef {
  *  the one under the pointer — the grip parks on `block.from`, so it visibly
  *  jumped up a line before the menu even opened.
  *
- *  Only plain paragraphs split. A list, a quote or a table is genuinely one
- *  thing across its lines, and a picture with words under it stays whole
- *  because the two are a single unit here — see the `lines` note in `place`. */
+ *  A list narrows the same way, to the item under the pointer: every bullet
+ *  is its own thought, and a grip that addressed the whole list let the first
+ *  line's menu convert all of them (`listItemAt`).
+ *
+ *  A quote or a table is genuinely one thing across its lines, and a picture
+ *  with words under it stays whole because the two are a single unit here —
+ *  see the `lines` note in `place`. */
 function proseLineAt(state: EditorState, block: BlockRef | null, pos: number): BlockRef | null {
+  if (block && (block.name === "BulletList" || block.name === "OrderedList")) {
+    return listItemAt(state, pos) ?? block;
+  }
   if (!block || block.name !== "Paragraph") return block;
   const clamped = Math.min(Math.max(pos, block.from), block.to);
   const line = state.doc.lineAt(clamped);
@@ -575,6 +583,26 @@ function proseLineAt(state: EditorState, block: BlockRef | null, pos: number): B
   if (line.from <= block.from && line.to >= block.to) return block;
   if (IMAGE_BLOCK.test(state.doc.sliceString(block.from, block.to).trim())) return block;
   return { from: line.from, to: line.to, name: block.name };
+}
+
+/** The unit the grip hands out at `pos` — what a drag SOURCE must be
+ *  re-resolved with, or a line or list item would be checked against its
+ *  whole paragraph or list and the removal would take all of it. */
+function gripBlockAt(state: EditorState, pos: number): BlockRef | null {
+  return proseLineAt(state, topBlockAt(state, pos), pos);
+}
+
+/** What removing a dragged block takes out. A list item goes with its
+ *  indentation (or a whitespace line is left inside the list) and exactly one
+ *  newline: eating the blank line after the last item would glue the
+ *  paragraph below onto the list as a lazy continuation. */
+function removalRange(view: EditorView, block: BlockRef): { from: number; to: number } {
+  if (block.name !== "ListItem") return { from: block.from, to: eatNewline(view, block.to) };
+  const doc = view.state.doc;
+  const from = doc.lineAt(block.from).from;
+  return block.to < doc.length
+    ? { from, to: block.to + 1 }
+    : { from: Math.max(0, from - 1), to: block.to };
 }
 
 function topBlockAt(state: EditorState, pos: number): BlockRef | null {
@@ -1597,10 +1625,10 @@ function discardSource(view: EditorView, source: DragSource): void {
     return;
   }
   if (source.kind === "block") {
-    const live = topBlockAt(view.state, source.block.from);
+    const live = gripBlockAt(view.state, source.block.from);
     if (!live || live.from !== source.block.from) return;
     view.dispatch({
-      changes: { from: live.from, to: eatNewline(view, live.to), insert: "" },
+      changes: { ...removalRange(view, live), insert: "" },
       userEvent: "delete.wr-block",
     });
   }
@@ -1828,9 +1856,9 @@ function commitDrop(view: EditorView, state: DragState, target: DragTarget): voi
     if (!removal) return;
     changes.push(removal);
   } else if (source.kind === "block") {
-    const live = topBlockAt(view.state, source.block.from);
+    const live = gripBlockAt(view.state, source.block.from);
     if (!live || live.from !== source.block.from) return;
-    changes.push({ from: live.from, to: eatNewline(view, live.to), insert: "" });
+    changes.push({ ...removalRange(view, live), insert: "" });
   }
 
   // --- insert at the target
@@ -2435,7 +2463,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
         gripTrace("hide: posAtCoords found nothing", { target: describeTarget(el) });
         return this.hide();
       }
-      const block = proseLineAt(view.state, topBlockAt(view.state, pos), pos);
+      const block = gripBlockAt(view.state, pos);
       // Rows have their own per-column handles; a row is never dragged whole.
       if (!block || block.name === "ColumnRow") {
         gripTrace("hide: no draggable block here", {

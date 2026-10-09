@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-09
+
+- Every item in a list now has its own handle. Point at any bullet or number and the handle beside it opens a menu for that item alone: change it to a heading, a to-do or plain text without touching the rest of the list, move it up or down among its neighbours (the numbers stay in order), add an item above or below, duplicate it or delete it. Before, only the first line had a handle, and it changed the whole list at once. Turning an item into plain text, a heading or a quote lifts it out of the list, so the items around it stay a list.
+
 ## 2026-10-08
 
 - A web address in the middle of a sentence or in a list now shows as a small link icon instead of the long address. Click the icon to open the page in your browser. Hold the pointer over it and the page shows in a card beside it, the same frame a link on its own line gets (or the site's summary, for sites that don't allow being shown inside other apps). The card's pencil button, or moving the cursor onto the icon with the arrow keys, shows the address as text so you can edit it. The file still holds the plain address.

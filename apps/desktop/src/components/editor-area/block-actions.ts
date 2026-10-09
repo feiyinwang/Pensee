@@ -1,4 +1,9 @@
-import { EditorSelection, type EditorState, type TransactionSpec } from "@codemirror/state";
+import {
+  EditorSelection,
+  type EditorState,
+  type Text,
+  type TransactionSpec,
+} from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
@@ -90,6 +95,72 @@ export function rowAfterBandRemoval(
   if (!md) return rowAfterRemoval(ref, index);
   const columns = ref.columns.map((c, i) => (i === index ? { ...c, md } : c));
   return { from: ref.from, to: ref.to, insert: serializeColumns(columns) };
+}
+
+/* ---------------------------------------------------------------- list items */
+
+/**
+ * Each list item is its own block under the grip, the way each line of a
+ * paragraph is. A list is one markdown node, but to the reader every bullet is
+ * a separate thought — pointing at item 2 and getting a menu that converts the
+ * whole list was "the first line controls every bullet".
+ *
+ * An item's extent stops before its nested list: the children are items of
+ * their own, with their own grip, and converting a parent must not drag them
+ * along.
+ */
+const LIST_NODES = new Set(["BulletList", "OrderedList"]);
+
+function itemSpan(doc: Text, item: SyntaxNode): Span {
+  for (let c = item.firstChild; c; c = c.nextSibling) {
+    if (LIST_NODES.has(c.name)) {
+      return { from: item.from, to: Math.max(item.from, doc.lineAt(c.from).from - 1) };
+    }
+  }
+  return { from: item.from, to: item.to };
+}
+
+/** The innermost list item whose own lines include `pos`'s line. */
+export function listItemAt(
+  state: EditorState,
+  pos: number,
+): { from: number; to: number; name: "ListItem" } | null {
+  const doc = state.doc;
+  const line = doc.lineAt(Math.min(Math.max(pos, 0), doc.length));
+  let hit: Span | undefined;
+  syntaxTree(state).iterate({
+    from: line.from,
+    to: line.to,
+    enter: (n) => {
+      if (n.name !== "ListItem") return;
+      const span = itemSpan(doc, n.node);
+      // Preorder: a nested item is entered after its parent, so it wins.
+      if (span.from <= line.to && span.to >= line.from) hit = span;
+    },
+  });
+  const found = hit as Span | undefined; // assigned in the callback; TS cannot see it
+  return found ? { from: found.from, to: found.to, name: "ListItem" } : null;
+}
+
+/** The `ListItem` node starting exactly at `from`. */
+function listItemNode(state: EditorState, from: number): SyntaxNode | null {
+  let node: SyntaxNode | null = syntaxTree(state).resolveInner(from, 1);
+  while (node && !(node.name === "ListItem" && node.from === from)) node = node.parent;
+  return node;
+}
+
+/** `- `, `12. ` — the marker and the space after it. */
+const ITEM_MARKER = /^(?:[-*+]|\d+[.)])[ \t]?/;
+/** The same, plus an unticked box when the item has one: what a new sibling
+ *  of a task item should start with. */
+const NEW_ITEM_PREFIX = /^(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/;
+
+const LIST_TYPES = new Set<BlockTypeId>(["bullet", "numbered", "task"]);
+
+type ListItemTarget = Extract<ActionTarget, { kind: "block" }> & { name: "ListItem" };
+
+function isListItem(target: ActionTarget): target is ListItemTarget {
+  return target.kind === "block" && target.name === "ListItem";
 }
 
 /* ------------------------------------------------------------------- targets */
@@ -203,9 +274,39 @@ export function applyBlockType(view: BlockEditor, target: ActionTarget, id: Bloc
   const md = targetMarkdown(view, target);
   if (md == null) return false;
   const current = blockTypeOf(md.trim());
-  const next = setBlockType(md.trim(), current === id ? "text" : id);
+  const nextId = current === id ? "text" : id;
+  const next = setBlockType(md.trim(), nextId);
   if (next === md.trim()) return false;
+  if (isListItem(target) && !LIST_TYPES.has(nextId)) {
+    return writeListItemOut(view, target, next, `input.block.${id}`);
+  }
   return writeTarget(view, target, next, `input.block.${id}`);
+}
+
+/** An item that stops being a list item has to leave the list: written in
+ *  place, a paragraph line between two items is read as a lazy continuation of
+ *  the item above, and the item below folds into the paragraph. Blank lines on
+ *  both sides split the list around it. */
+function writeListItemOut(
+  view: BlockEditor,
+  target: ListItemTarget,
+  md: string,
+  userEvent: string,
+): boolean {
+  const doc = view.state.doc;
+  // From the line start: a nested item's indentation goes too, or the
+  // paragraph would sit indented under nothing.
+  const from = doc.lineAt(target.from).from;
+  const to = target.to;
+  const before = from > 0 && doc.lineAt(from - 1).text.trim() ? "\n" : "";
+  const after = to < doc.length && doc.lineAt(to + 1).text.trim() ? "\n" : "";
+  view.dispatch({
+    changes: { from, to, insert: `${before}${md}${after}` },
+    selection: EditorSelection.cursor(from + before.length),
+    userEvent,
+    scrollIntoView: true,
+  });
+  return true;
 }
 
 /* -------------------------------------------------------------------- moving */
@@ -253,7 +354,7 @@ export function canMove(view: BlockEditor, target: ActionTarget, dir: -1 | 1): b
     const next = target.index + dir;
     return next >= 0 && next < ref.columns.length;
   }
-  const spans = topLevelSpans(view);
+  const spans = isListItem(target) ? siblingItemSpans(view, target.from) : topLevelSpans(view);
   const i = spanIndex(spans, target.from);
   return i >= 0 && i + dir >= 0 && i + dir < spans.length;
 }
@@ -279,6 +380,8 @@ export function moveTarget(view: BlockEditor, target: ActionTarget, dir: -1 | 1)
     });
     return true;
   }
+
+  if (isListItem(target)) return moveListItem(view, target, dir);
 
   const spans = topLevelSpans(view);
   const i = spanIndex(spans, target.from);
@@ -306,6 +409,48 @@ export function moveTarget(view: BlockEditor, target: ActionTarget, dir: -1 | 1)
   return true;
 }
 
+/** An item moves among its siblings only — never out to the paragraph next to
+ *  the list, never into a different depth. Each sibling span covers the whole
+ *  item, nested children included, so they travel with it. */
+function siblingItemSpans(view: BlockEditor, from: number): Span[] {
+  const list = listItemNode(view.state, from)?.parent;
+  const spans: Span[] = [];
+  for (let c = list?.firstChild; c; c = c.nextSibling) {
+    if (c.name === "ListItem") spans.push({ from: c.from, to: c.to });
+  }
+  return spans;
+}
+
+/** Swap the bodies and leave the markers where they are: swapping `1.` and `2.`
+ *  along with the text would number the list `2, 1`, which markdown renders as
+ *  a list starting at 2. */
+function moveListItem(view: BlockEditor, target: ActionTarget, dir: -1 | 1): boolean {
+  if (target.kind !== "block") return false;
+  const spans = siblingItemSpans(view, target.from);
+  const i = spanIndex(spans, target.from);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= spans.length) return false;
+  const a = spans[dir < 0 ? j : i]!;
+  const b = spans[dir < 0 ? i : j]!;
+  const doc = view.state.doc;
+  const aText = doc.sliceString(a.from, a.to);
+  const bText = doc.sliceString(b.from, b.to);
+  const aMark = ITEM_MARKER.exec(aText)?.[0] ?? "";
+  const bMark = ITEM_MARKER.exec(bText)?.[0] ?? "";
+  const aBody = aText.slice(aMark.length);
+  const bBody = bText.slice(bMark.length);
+  const gap = doc.sliceString(a.to, b.from);
+  const first = aMark + bBody;
+  const landing = dir < 0 ? a.from : a.from + first.length + gap.length;
+  view.dispatch({
+    changes: { from: a.from, to: b.to, insert: `${first}${gap}${bMark}${aBody}` },
+    selection: EditorSelection.cursor(landing),
+    userEvent: "move.block",
+    scrollIntoView: true,
+  });
+  return true;
+}
+
 /* ----------------------------------------------------------------- inserting */
 
 /** A new empty block beside this one, with the caret in it. Only plain blocks:
@@ -321,6 +466,23 @@ export function insertBlock(
   where: "above" | "below",
 ): boolean {
   if (target.kind !== "block") return false;
+  if (isListItem(target)) {
+    // A new sibling, not a blank line: `\n\n` inside a list makes it loose.
+    const doc = view.state.doc;
+    const indent = doc.sliceString(doc.lineAt(target.from).from, target.from);
+    const prefix = NEW_ITEM_PREFIX.exec(doc.sliceString(target.from, target.to))?.[0] ?? "- ";
+    const marker = prefix.replace(/\[[xX]\]/, "[ ]");
+    const insert = where === "above" ? `${marker}\n${indent}` : `\n${indent}${marker}`;
+    const at = where === "above" ? target.from : target.to;
+    view.dispatch({
+      changes: { from: at, insert },
+      selection: EditorSelection.cursor(at + (where === "above" ? marker.length : insert.length)),
+      userEvent: `input.block.insert.${where}`,
+      scrollIntoView: true,
+    });
+    view.focus?.();
+    return true;
+  }
   const at = where === "above" ? target.from : target.to;
   const caret = where === "above" ? at : at + 2;
   view.dispatch({
@@ -338,6 +500,18 @@ export function insertBlock(
 export function duplicateTarget(view: BlockEditor, target: ActionTarget): boolean {
   const md = targetMarkdown(view, target)?.trim();
   if (!md) return false;
+
+  if (isListItem(target)) {
+    const doc = view.state.doc;
+    const indent = doc.sliceString(doc.lineAt(target.from).from, target.from);
+    view.dispatch({
+      changes: { from: target.to, insert: `\n${indent}${md}` },
+      selection: EditorSelection.cursor(target.to + 1 + indent.length),
+      userEvent: "input.block.duplicate",
+      scrollIntoView: true,
+    });
+    return true;
+  }
 
   if (target.kind === "block") {
     view.dispatch({
@@ -373,6 +547,21 @@ export function deleteTarget(view: BlockEditor, target: ActionTarget): boolean {
   if (target.kind !== "block") return writeTarget(view, target, "", "delete.block");
 
   const doc = view.state.doc;
+  if (isListItem(target)) {
+    // Its own line, indentation included, and one newline — eating the blank
+    // line after the last item would glue the paragraph below onto the list.
+    let from = doc.lineAt(target.from).from;
+    let to = Math.min(target.to, doc.length);
+    if (to < doc.length) to++;
+    else if (from > 0) from--;
+    view.dispatch({
+      changes: { from, to },
+      selection: EditorSelection.cursor(Math.min(from, doc.length - (to - from))),
+      userEvent: "delete.block",
+      scrollIntoView: true,
+    });
+    return true;
+  }
   let from = target.from;
   let to = Math.min(target.to, doc.length);
   // Take the blank line with it, or deleting the middle block of three leaves

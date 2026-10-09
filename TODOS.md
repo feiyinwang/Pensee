@@ -9,6 +9,8 @@
 
 ## Done
 
+- Per-item list handles: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md#list-items) — the gutter grip and its menu address one list item at a time (`listItemAt`), not the whole list: type tiles convert that item (non-list shapes lift it out with blank lines), move swaps bodies with siblings and keeps markers, insert/duplicate add a sibling, delete and drag remove one line with its indent. Drag sources now re-resolve through `gripBlockAt`, which also fixes a dragged paragraph line being checked against its whole paragraph.
+
 - Inline link icons: [`SPECs/link-preview-spec.md`](SPECs/link-preview-spec.md#inline-links) — bare web addresses in running text fold to a link icon that opens the page on click and shows it in a hover card; the `[[page]]` hover card's timing/placement moved into a shared `hover-card.ts`.
 - `@` date links: [`SPECs/daily-note-spec.md`](SPECs/daily-note-spec.md#-date-links) — `@` opens Today / Tomorrow / Yesterday and inserts a `[[YYYY-MM-DD]]` link; a missing day is created in the daily-note folder via `newPagePath`. Follow-ups: weekday names (`@friday`), typed dates (`@2026-10-12`).
 - Link preview: [`SPECs/link-preview-spec.md`](SPECs/link-preview-spec.md) — a line that is only a web address (what pasting a link onto an empty line gives) shows the page itself, live, in a fixed 480px sandboxed frame with a title/reload/open header. Sites that forbid framing (checked in Rust by `fetch_link_preview` from `X-Frame-Options` / `frame-ancestors`) get their Open Graph summary card instead. The markdown stays a plain URL. Follow-ups: an off switch, drag-to-resize, previews in list items, no reload when the caret enters the line.

@@ -14,6 +14,7 @@ import {
   deleteTarget,
   duplicateTarget,
   insertBlock,
+  listItemAt,
   moveTarget,
   targetMarkdown,
   type ActionTarget,
@@ -438,5 +439,67 @@ describe("clearEmptyHeadingOnEnter", () => {
     expect(press("- ", 2).handled).toBe(false);
     expect(press("#hashtag", 8).handled).toBe(false);
     expect(press("####### seven", 13).handled).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// List items: each bullet is its own block under the grip
+// ---------------------------------------------------------------------------
+
+describe("list items", () => {
+  const item = (from: number, to: number): ActionTarget => block(from, to, "ListItem");
+  const LIST = "1. one\n2. two\n3. three";
+
+  test("the grip resolves the item on the hovered line, not the whole list", () => {
+    const ed = new Fake(LIST);
+    expect(listItemAt(ed.state, 9)).toEqual({ from: 7, to: 13, name: "ListItem" });
+  });
+
+  test("a nested line resolves to the nested item, and a parent stops before it", () => {
+    const ed = new Fake("- a\n  - b\n- c");
+    expect(listItemAt(ed.state, 8)).toEqual({ from: 6, to: 9, name: "ListItem" });
+    expect(listItemAt(ed.state, 1)).toEqual({ from: 0, to: 3, name: "ListItem" });
+  });
+
+  test("the tile reflects the item, and converting one item leaves its siblings", () => {
+    const ed = new Fake("- a\n- b\n- c");
+    expect(currentBlockType(ed, item(4, 7))).toBe("bullet");
+    expect(applyBlockType(ed, item(4, 7), "task")).toBe(true);
+    expect(ed.doc).toBe("- a\n- [ ] b\n- c");
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("turning an item into text splits the list around it", () => {
+    const ed = new Fake(LIST);
+    expect(applyBlockType(ed, item(7, 13), "numbered")).toBe(true);
+    expect(ed.doc).toBe("1. one\n\ntwo\n\n3. three");
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("moving swaps bodies with a sibling and keeps the numbering", () => {
+    const ed = new Fake(LIST);
+    expect(canMove(ed, item(0, 6), -1)).toBe(false);
+    expect(moveTarget(ed, item(0, 6), 1)).toBe(true);
+    expect(ed.doc).toBe("1. two\n2. one\n3. three");
+    expect(ed.caret).toBe(7);
+  });
+
+  test("insert below adds an empty sibling item", () => {
+    const ed = new Fake("- [x] a\n- b");
+    expect(insertBlock(ed, item(0, 7), "below")).toBe(true);
+    expect(ed.doc).toBe("- [x] a\n- [ ] \n- b");
+    expect(ed.caret).toBe(14);
+  });
+
+  test("duplicate stays inside the list", () => {
+    const ed = new Fake("- a\n- b");
+    expect(duplicateTarget(ed, item(0, 3))).toBe(true);
+    expect(ed.doc).toBe("- a\n- a\n- b");
+  });
+
+  test("deleting the last item keeps the paragraph below separate", () => {
+    const ed = new Fake("- a\n- b\n\npara");
+    expect(deleteTarget(ed, item(4, 7))).toBe(true);
+    expect(ed.doc).toBe("- a\n\npara");
   });
 });

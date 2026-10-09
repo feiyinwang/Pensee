@@ -91,7 +91,8 @@ greyed out.
 
 | Target                            | Type tiles | Move / insert                    | Duplicate | Cut / Copy | Delete                        |
 | --------------------------------- | ---------- | -------------------------------- | --------- | ---------- | ----------------------------- |
-| Paragraph, heading, list, quote   | yes        | up / down / insert above / below | yes       | yes        | no confirm                    |
+| Paragraph line, heading, quote    | yes        | up / down / insert above / below | yes       | yes        | no confirm                    |
+| List item                         | yes        | up / down among siblings / insert a sibling | yes (as a sibling) | yes | no confirm          |
 | Picture, fence, table, HTML, rule | no         | up / down / insert above / below | yes       | yes        | no confirm                    |
 | Band (a column's caption)         | yes        | —                                | yes       | yes        | no confirm                    |
 | Column                            | no         | left / right                     | yes       | yes        | **confirm, with block count** |
@@ -163,4 +164,26 @@ prefix, which is what the name promises and what the Text tile does.
 
 - No submenus yet; the two rows that would have them are inert.
 - No keyboard path to the menu — the grip is still `aria-hidden`.
-- List blocks are addressed whole; there is no drill-down to one `li`.
+- Converting a nested item to a non-list shape lifts it out to a top-level
+  paragraph; its own children stay where they were.
+
+## List items
+
+Each list item is its own target, the way each line of a paragraph is: the
+grip parks on the item under the pointer and its menu converts, moves,
+duplicates and deletes that item only. `listItemAt()` resolves the innermost
+item whose own lines contain the pointer's line; an item's extent stops before
+its nested list, so a parent never carries its children into a conversion.
+
+- **Type tiles.** Bullet / numbered / to-do rewrite the item in place. Any
+  other shape takes the item out of the list with a blank line on each side —
+  written in place, a paragraph line between two items is a lazy continuation
+  of the item above and swallows the item below.
+- **Move** swaps with a sibling in the same list only, children travelling with
+  their item. Bodies swap and markers stay put, so `1. 2. 3.` keeps counting.
+- **Insert / duplicate** add a sibling (`\n` + indent + marker), never `\n\n`,
+  which would make the list loose. A to-do sibling starts unticked.
+- **Delete / drag** remove the item's line with its indentation and exactly one
+  newline. Drag sources re-resolve through `gripBlockAt()`, the same narrowing
+  the grip uses, so a dragged item or paragraph line is never checked against —
+  and removed as — its whole list or paragraph.
