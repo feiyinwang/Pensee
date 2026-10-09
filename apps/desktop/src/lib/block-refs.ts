@@ -118,6 +118,41 @@ export function blockLinkPage(filePath: string, workspaceRoot: string | null): s
   return withoutExt.slice(withoutExt.lastIndexOf("/") + 1);
 }
 
+/** Every block id defined in `text` (the ` ^id` line endings). */
+export function blockIdsInText(text: string): string[] {
+  const ids = new Set<string>();
+  for (const match of text.matchAll(/[ \t]\^([A-Za-z0-9-]+)[ \t]*$/gm)) ids.add(match[1]!);
+  return [...ids];
+}
+
+export interface TextReference {
+  id: string;
+  /** 1-based. */
+  line: number;
+  text: string;
+}
+
+/** References to any of `ids` in `text`: `[[...#^id]]` or `![[...#^id|...]]`.
+ *  The same rule as the Rust scan (`find_block_references`), for open pages
+ *  whose newest text is not on disk yet. */
+export function referencesInText(text: string, ids: ReadonlySet<string>): TextReference[] {
+  if (!text.includes("#^")) return [];
+  const out: TextReference[] = [];
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (!line.includes("#^") || !line.includes("[[")) continue;
+    const seen = new Set<string>();
+    for (const match of line.matchAll(/#\^([A-Za-z0-9-]+)(?=[\]|])/g)) {
+      const id = match[1]!;
+      if (!ids.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ id, line: i + 1, text: line.trim() });
+    }
+  }
+  return out;
+}
+
 function lineAt(text: string, from: number): string {
   const nl = text.indexOf("\n", from);
   return text.slice(from, nl === -1 ? text.length : nl);

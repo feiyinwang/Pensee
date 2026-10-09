@@ -234,6 +234,20 @@ export function fuzzySearch(query: string, limit?: number): Promise<SearchResult
 }
 
 // Font commands
+export interface BlockReference {
+  id: string;
+  path: string;
+  /** 1-based. */
+  line: number;
+  text: string;
+}
+
+/** Every `[[Page#^id]]` / `![[Page#^id]]` naming one of `ids`, from the files
+ *  on disk (open pages may hold newer, unsaved text). */
+export function findBlockReferences(ids: string[]): Promise<BlockReference[]> {
+  return invoke("find_block_references", { ids });
+}
+
 export function listSystemFonts(): Promise<string[]> {
   return invoke("list_system_fonts");
 }

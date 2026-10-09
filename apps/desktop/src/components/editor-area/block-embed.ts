@@ -50,6 +50,7 @@ import {
   subscribePage,
   writeBlock,
 } from "./linked-block-sync";
+import { BacklinkBadge, backlinksField, blockBacklinks } from "./block-backlinks";
 import "./block-embed.css";
 
 // `![[Page#^id]]` shows block `id` of Page, live and editable where it is
@@ -279,6 +280,7 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
   const touches = (from: number, to: number) => ranges.some((r) => r.from <= to && r.to >= from);
   const hostPath = getFilePath() || null;
   const root = getWorkspaceRoot();
+  const backlinks = state.field(backlinksField, false);
   const decorations = [];
 
   for (const { from, to } of view.visibleRanges) {
@@ -314,6 +316,14 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
         decorations.push(
           (touches(line.from, line.to) ? visibleId : hiddenId).range(idFrom, line.to),
         );
+        // Shown elsewhere: say how many places, the way RemNote counts a
+        // Rem's references.
+        const count = backlinks?.get(id[1]!)?.length ?? 0;
+        if (count) {
+          decorations.push(
+            Decoration.widget({ widget: new BacklinkBadge(id[1]!, count), side: 1 }).range(line.to),
+          );
+        }
       }
       pos = line.to + 1;
     }
@@ -330,7 +340,13 @@ function blockEmbedDecorations(getFilePath: () => string) {
         this.decorations = build(view, getFilePath);
       }
       update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged || update.selectionSet) {
+        if (
+          update.docChanged ||
+          update.viewportChanged ||
+          update.selectionSet ||
+          update.startState.field(backlinksField, false) !==
+            update.state.field(backlinksField, false)
+        ) {
           this.decorations = build(update.view, getFilePath);
         }
       }
@@ -345,6 +361,7 @@ export function blockEmbeds(getFilePath: () => string): Extension {
   return [
     blockEmbedHost.of(getFilePath),
     liveEditorRegistry(getFilePath),
+    blockBacklinks(),
     blockEmbedDecorations(getFilePath),
   ];
 }

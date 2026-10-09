@@ -1,12 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
   blockIdOnLine,
+  blockIdsInText,
   blockLinkPage,
   blockText,
   findBlock,
   minimalChange,
   newBlockId,
   parseBlockEmbedTarget,
+  referencesInText,
   replaceBlock,
 } from "../src/lib/block-refs";
 
@@ -90,5 +92,21 @@ describe("helpers", () => {
     expect(blockLinkPage("/ws/Trip.md", "/ws")).toBe("Trip");
     expect(blockLinkPage("/ws/notes/Trip.md", "/ws/")).toBe("notes/Trip");
     expect(blockLinkPage("/elsewhere/Trip.md", "/ws")).toBe("Trip");
+  });
+});
+
+describe("backlink helpers", () => {
+  test("blockIdsInText lists each defined id once", () => {
+    expect(blockIdsInText("a ^x1\n\n- b ^y2\nc ^x1\nno^z\n")).toEqual(["x1", "y2"]);
+  });
+  test("referencesInText finds embeds and inline links, whole ids only", () => {
+    const text = "intro\n![[Source#^abc]]\nsee [[Source#^abc|that]] and [[Source#^abcd]]\n";
+    expect(referencesInText(text, new Set(["abc"]))).toEqual([
+      { id: "abc", line: 2, text: "![[Source#^abc]]" },
+      { id: "abc", line: 3, text: "see [[Source#^abc|that]] and [[Source#^abcd]]" },
+    ]);
+  });
+  test("referencesInText ignores the definition itself", () => {
+    expect(referencesInText("block ^abc\n", new Set(["abc"]))).toEqual([]);
   });
 });

@@ -186,6 +186,7 @@ Do not add `iframe` to the inline-HTML sanitizer allow list (`html-block-decorat
 - **Live editors are registered on the `writer.swap` transaction**, not on the path getter. The getter flips before the doc is swapped, and a write landing in between would go into the wrong page.
 - **Incoming changes are applied in a microtask.** The change may be this embed's own write echoing back, inside its own update, and a view can't be dispatched to mid-update.
 - **A transaction filter refuses edits that would split the block** (`findBlock` must still start at 0). Otherwise text silently leaves the embed while staying in the page.
+- **Backlink counts merge two sources** (`block-backlinks.ts`): the Rust scan for pages on disk, and an in-memory scan of open pages that replaces their disk copy. Re-ask disk whenever an open page closes: the app's own saves raise no watcher event, so the disk copy may be newer than the last scan.
 - **Nested editors have no `blockEmbedHost` facet**, so `![[Page#^id]]` inside them is a plain link. That rule is what stops an embed from containing itself.
 
 ## File map

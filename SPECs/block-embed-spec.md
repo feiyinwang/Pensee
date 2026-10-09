@@ -32,7 +32,20 @@ Fences, tables, HTML blocks, column rows and rules can't be linked in v1, becaus
 - If the page or block can't be found, the embed says so. If the id is deleted from the source while an embed is shown, the embed greys out and stops writing.
 - Moving the caret onto `![[...]]` shows its source text, like every other embed.
 
-## Performance
+## Backlinks
+
+Linking goes both ways, as in RemNote: a referenced block knows where it's used.
+
+- A block other pages show gets a small count at the end of its line: the number of places that show or link to it (`![[Page#^id]]` and `[[Page#^id]]` both count).
+- Hovering the count lists those places in the shared hover card: each row is the page's name plus the text around the reference on that line (or its line number). Clicking a row opens that page.
+- Counts are live. A reference pasted into an open page counts as soon as typing pauses, before it's saved.
+
+Where the counts come from (`block-backlinks.ts`):
+
+- **Pages on disk:** `find_block_references` (Rust, `commands/search.rs`) reads every indexed markdown file in parallel, off the UI thread. A file with no `#^` costs one substring scan.
+- **Open pages:** scanned in memory from the store (`referencesInText`, the same rule as the Rust scan). Their disk copy is ignored, so nothing counts twice and unsaved references count.
+- **When it runs:** a page with no ids starts nothing. A page with ids runs one disk scan when it opens. Another runs when a file changes outside the app, when the first index finishes, or when an open page closes (its saved text becomes the disk copy, and the app's own saves raise no watcher event). Store changes refresh the in-memory part only, debounced 300 ms.
+
 
 - Embeds are found by a regex over CodeMirror's visible ranges only. Off-screen embeds cost nothing.
 - Drawing an embed reads its page once: from the store if it's open, else one disk read shared by every embed of that page (bounded LRU of 64 pages).
@@ -45,12 +58,15 @@ Fences, tables, HTML blocks, column rows and rules can't be linked in v1, becaus
 - `lib/block-refs.ts`: pure text rules (parse, find, replace, ids, link text), unit tested in `tests/block-refs.test.ts`.
 - `components/editor-area/linked-block-sync.ts`: the single read/write owner for a linked page, plus the live-editor registry and the `blockEmbedHost` facet.
 - `components/editor-area/block-embed.ts`: the widget, the id hiding, and the menu action.
+- `components/editor-area/block-backlinks.ts`: backlink counts and the list (state field, watcher, badge widget).
 - Nested editors (embeds, hover previews) have no `blockEmbedHost`, so a `![[Page#^id]]` inside them renders as a plain link. An embed can never contain itself.
 
 ## Follow-ups
 
 - Ids for fences, tables and other opaque blocks (id on its own line beneath).
 - Embedding a whole heading section (`![[Page#Heading]]`).
-- A "linked from" count on the source block.
+- Jump to the exact line of a reference from the backlinks list (today it opens the page).
+- A page-level "Linked references" section listing every block of this page used elsewhere.
+- Typing `((` to search all blocks and insert a reference, RemNote-style.
 - Keyboard path into an embed (arrow into it from the line above).
 - A `^` completion in `[[Page#^` that lists the page's blocks.

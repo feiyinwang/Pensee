@@ -294,6 +294,115 @@ pub async fn find_file_by_name(
     .map_err(|e| AppError::Io(e.to_string()))?
 }
 
+/// One place that links to a block: `![[Page#^id]]` or `[[Page#^id]]`.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct BlockReference {
+    pub id: String,
+    pub path: String,
+    /// 1-based line number of the reference.
+    pub line: u32,
+    /// The referencing line, trimmed and capped, for showing in a list.
+    pub text: String,
+}
+
+const REFERENCE_TEXT_MAX: usize = 200;
+
+/// Every reference to any of `ids` across the workspace's markdown files. The
+/// back half of linked blocks (SPECs/block-embed-spec.md): a referenced block
+/// shows how many places use it. Reads files in parallel off the UI thread; a
+/// file with no `#^` in it costs one substring scan.
+#[tauri::command]
+pub async fn find_block_references(
+    ids: Vec<String>,
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+) -> Result<Vec<BlockReference>, AppError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let state = app.state::<AppState>().get_or_create(webview.label());
+    let paths: Vec<PathBuf> = state
+        .file_index
+        .read()
+        .iter()
+        .map(|f| f.path.clone())
+        .collect();
+    tauri::async_runtime::spawn_blocking(move || Ok(find_block_references_impl(&paths, &ids)))
+        .await
+        .map_err(|e| AppError::Io(e.to_string()))?
+}
+
+pub fn find_block_references_impl(paths: &[PathBuf], ids: &[String]) -> Vec<BlockReference> {
+    let needles: Vec<(String, &String)> = ids.iter().map(|id| (format!("#^{id}"), id)).collect();
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get().min(8))
+        .unwrap_or(4);
+    let chunk = paths.len().div_ceil(threads).max(1);
+    let mut out: Vec<BlockReference> = std::thread::scope(|scope| {
+        let workers: Vec<_> = paths
+            .chunks(chunk)
+            .map(|part| {
+                let needles = &needles;
+                scope.spawn(move || {
+                    let mut found = Vec::new();
+                    for path in part {
+                        let Ok(text) = std::fs::read_to_string(path) else {
+                            continue;
+                        };
+                        if !text.contains("#^") {
+                            continue;
+                        }
+                        references_in_text(&text, needles, &path.to_string_lossy(), &mut found);
+                    }
+                    found
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap_or_default())
+            .collect()
+    });
+    out.sort_by(|a, b| a.path.cmp(&b.path).then(a.line.cmp(&b.line)));
+    out
+}
+
+fn references_in_text(
+    text: &str,
+    needles: &[(String, &String)],
+    path: &str,
+    found: &mut Vec<BlockReference>,
+) {
+    for (index, line) in text.lines().enumerate() {
+        if !line.contains("#^") || !line.contains("[[") {
+            continue;
+        }
+        for (needle, id) in needles {
+            // The id must end there (`]]` or `|alias`), so `^ab` never
+            // matches a reference to `^abc`.
+            let hit = line.match_indices(needle.as_str()).any(|(at, _)| {
+                matches!(
+                    line.as_bytes().get(at + needle.len()),
+                    Some(b']') | Some(b'|')
+                )
+            });
+            if hit {
+                let trimmed = line.trim();
+                let text = match trimmed.char_indices().nth(REFERENCE_TEXT_MAX) {
+                    Some((cut, _)) => format!("{}…", &trimmed[..cut]),
+                    None => trimmed.to_string(),
+                };
+                found.push(BlockReference {
+                    id: (*id).clone(),
+                    path: path.to_string(),
+                    line: index as u32 + 1,
+                    text,
+                });
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -311,6 +420,27 @@ mod tests {
         fs::create_dir(dir.path().join(".git")).unwrap();
         fs::write(dir.path().join(".git").join("config.md"), "git").unwrap();
         dir
+    }
+
+    #[test]
+    fn test_find_block_references() {
+        let dir = setup_workspace();
+        let a = dir.path().join("a.md");
+        let b = dir.path().join("b.md");
+        fs::write(
+            &a,
+            "intro\n![[Source#^abc]]\nsee [[Source#^abc|that]] and [[Source#^abcd]]\n",
+        )
+        .unwrap();
+        fs::write(&b, "nothing to see\n").unwrap();
+        let refs = find_block_references_impl(&[a.clone(), b], &["abc".to_string()]);
+        assert_eq!(refs.len(), 2);
+        assert_eq!(refs[0].line, 2);
+        assert_eq!(refs[0].text, "![[Source#^abc]]");
+        assert_eq!(refs[1].line, 3);
+        assert!(refs
+            .iter()
+            .all(|r| r.id == "abc" && r.path == a.to_string_lossy()));
     }
 
     #[test]

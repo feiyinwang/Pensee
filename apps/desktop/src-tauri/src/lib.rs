@@ -643,6 +643,7 @@ pub fn run() {
             commands::search::index_workspace,
             commands::search::fuzzy_search,
             commands::search::find_file_by_name,
+            commands::search::find_block_references,
             commands::images::save_clipboard_image,
             commands::images::import_image_file,
             commands::images::read_file_data_url,

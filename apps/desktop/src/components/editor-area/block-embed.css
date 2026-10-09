@@ -12,6 +12,7 @@
   box-sizing: border-box;
   margin: 2px 0;
   padding: 2px 10px 2px 12px;
+  text-indent: 0;
   border-radius: 6px;
   box-shadow: inset 2px 0 0 color-mix(in oklab, var(--accent) 55%, transparent);
   transition: box-shadow var(--motion-fast) var(--ease-out);
@@ -115,4 +116,84 @@
   color: var(--text-muted);
   font-size: 0.8em;
   opacity: 0.7;
+}
+
+/* Backlink count at the end of a block other pages show (block-backlinks.ts).
+   A quiet pill, like RemNote's reference count; hover lists the places. */
+.cm-block-refs-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  /* List lines hang their bullet with a negative indent; don't inherit it. */
+  text-indent: 0;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 2px;
+  cursor: default;
+  user-select: none;
+  transition: background var(--motion-hover) var(--ease-out);
+}
+
+.cm-block-refs-badge:hover {
+  background: color-mix(in oklab, var(--accent) 35%, transparent);
+  color: var(--text-primary);
+}
+
+.wr-backlinks-title {
+  margin: 0;
+  padding: 10px 12px 6px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wr-backlinks-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px 6px;
+  overflow-y: auto;
+}
+
+.wr-backlinks-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  text-align: left;
+  font-family: var(--ui-font);
+  cursor: pointer;
+}
+
+.wr-backlinks-row:hover,
+.wr-backlinks-row:focus-visible {
+  background: var(--surface-selected);
+}
+
+.wr-backlinks-page {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.wr-backlinks-line {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
