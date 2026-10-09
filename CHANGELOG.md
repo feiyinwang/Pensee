@@ -2,6 +2,8 @@
 
 ## 2026-10-09
 
+- A linked block's link is never shown as text any more. The cursor steps over the block from either side, and Backspace or Delete next to it leave it alone. To remove a linked block, use its handle on the left (**T**, then **Delete**).
+- Hold the pointer over a block's count to see where it's used. Each place now shows a short preview: a couple of lines of that note with the block highlighted in the middle, so you can see the context at a glance. Click a note's name to open it.
 - Fixed: the cursor grew taller when it moved into a linked block. It's now the same size everywhere.
 - Fixed: a linked numbered item looked slightly indented next to ordinary bullets when the original had two spaces after its number. It now lines up exactly.
 - Fixed: deleting the start of a linked numbered item (Backspace at the beginning of its text) could move its link to the item above in the original note. Edits that would change any block other than the linked one are now refused, so the link always stays on the block you linked.

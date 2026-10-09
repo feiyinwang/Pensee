@@ -78,7 +78,9 @@
    with insets computed from its own width. Inside an embed the same rules
    compute from the embed's width and would cut off the right of its text. */
 .cm-block-embed-body .cm-editor .cm-scroller,
-.cm-block-embed-body .cm-editor .cm-selectionLayer {
+.cm-block-embed-body .cm-editor .cm-selectionLayer,
+.wr-backlinks-preview .cm-editor .cm-scroller,
+.wr-backlinks-preview .cm-editor .cm-selectionLayer {
   clip-path: none;
 }
 
@@ -146,36 +148,51 @@
   overflow-y: auto;
 }
 
-.wr-backlinks-row {
+.wr-backlinks-item {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 2px;
-  padding: 7px 8px;
-  border-radius: 8px;
-  text-align: left;
-  font-family: var(--ui-font);
-  cursor: pointer;
+  padding: 6px 8px 8px;
+  border-radius: 10px;
 }
 
-.wr-backlinks-row:hover,
-.wr-backlinks-row:focus-visible {
-  background: var(--surface-selected);
+.wr-backlinks-item + .wr-backlinks-item {
+  margin-top: 2px;
 }
 
 .wr-backlinks-page {
+  align-self: flex-start;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border-radius: 6px;
   color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.wr-backlinks-line {
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 12px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.wr-backlinks-page:hover,
+.wr-backlinks-page:focus-visible {
+  background: var(--surface-selected);
+}
+
+/* A few lines of the citing page, smaller than the page itself. */
+.wr-backlinks-preview {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.wr-backlinks-preview .cm-content {
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+/* The citation itself, in the middle of its context. */
+.wr-backlinks-preview .cm-line.wr-backlink-cite {
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+  color: var(--text-primary);
 }
 
 /* One cursor, the drawn one. The page editor's drawSelection theme gives any

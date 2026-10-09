@@ -41,7 +41,7 @@ Fences, tables, HTML blocks, column rows and rules can't be linked in v1, becaus
 - An edit that would split the block is refused, so text never silently drops out of the embed. That includes a blank line in a paragraph, or a sibling bullet next to a bullet.
 - On the source page the ` ^id` is hidden, and shows faintly while the caret is on its line.
 - If the page or block can't be found, the embed says so. If the id is deleted from the source while an embed is shown, the embed greys out and stops writing.
-- An embed shows its `![[...]]` source only while the caret is strictly inside it, or a selection covers it. A caret at either edge leaves it rendered, so a fresh paste doesn't look like raw text.
+- **The reference is never shown as text in the page that holds it.** The embed always renders as the block. Its `![[...]]` range is atomic (`EditorView.atomicRanges`), so arrow keys step over it from either side. `protectEmbeds` (a transaction filter) refuses Backspace and Delete next to it, and any edit that would cut it partway. A linked block is removed with its gutter handle's Delete, or by deleting a selection that covers it whole.
 
 ## Keyboard
 
@@ -60,7 +60,7 @@ Fences, tables, HTML blocks, column rows and rules can't be linked in v1, becaus
 Linking goes both ways, as in RemNote: a referenced block knows where it's used.
 
 - A block other pages show gets a small count at the end of its line: the number of places that show or link to it (`![[Page#^id]]` and `[[Page#^id]]` both count).
-- Hovering the count lists those places in the shared hover card: each row is the page's name plus the text around the reference on that line (or its line number). Clicking a row opens that page.
+- Hovering the count opens the shared hover card with a preview of each place (up to five; the rest are listed by name). A preview is the citing page's lines around the reference, two either side with blank edges trimmed (`citationContext`). The citation sits in the middle, drawn as the block's own first line (`renderCitation`) and highlighted. Previews are read-only editors built on hover (`previewExtensions`, shared with the `[[page]]` preview) and destroyed with the card. Clicking a page name opens that page.
 - Counts are live. A reference pasted into an open page counts as soon as typing pauses, before it's saved.
 
 Where the counts come from (`block-backlinks.ts`):

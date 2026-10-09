@@ -8,7 +8,14 @@ import {
   type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
-import { Compartment, EditorState, type Extension, Prec, Transaction } from "@codemirror/state";
+import {
+  Compartment,
+  EditorState,
+  type Extension,
+  Prec,
+  type Range,
+  Transaction,
+} from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
 import { history } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
@@ -458,11 +465,13 @@ function inListItem(state: EditorState, start: number): boolean {
   );
 }
 
-const embedEditingMark = Decoration.mark({ class: "cm-wiki-link-editing" });
 const hiddenId = Decoration.replace({});
 const visibleId = Decoration.mark({ class: "cm-block-id" });
 
-function build(view: EditorView, getFilePath: () => string): DecorationSet {
+function build(
+  view: EditorView,
+  getFilePath: () => string,
+): { all: DecorationSet; embeds: DecorationSet } {
   const { state } = view;
   const ranges = getEffectiveSelectionRanges(state);
   const touches = (from: number, to: number) => ranges.some((r) => r.from <= to && r.to >= from);
@@ -470,6 +479,7 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
   const root = getWorkspaceRoot();
   const backlinks = state.field(backlinksField, false);
   const decorations = [];
+  const embeds: Range<Decoration>[] = [];
   // A widget can split the viewport into several visible ranges that share a
   // line; each line's id is decorated once.
   let lastIdLine = -1;
@@ -486,27 +496,21 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
       const start = from + match.index;
       const end = start + match[0].length;
       if (inCode(state, start)) continue;
-      // Source shows only with the caret strictly inside, or a selection over
-      // it. A caret at either edge leaves the block rendered: right after a
-      // paste the caret sits at its end, and that must not look like raw text.
-      const revealed = ranges.some((r) =>
-        r.empty ? r.from > start && r.from < end : r.from >= start && r.to <= end,
-      );
-      if (revealed) {
-        decorations.push(embedEditingMark.range(start, end));
-      } else {
-        decorations.push(
-          Decoration.replace({
-            widget: new BlockEmbedWidget(
-              target.page,
-              target.id,
-              hostPath,
-              root,
-              inListItem(state, start),
-            ),
-          }).range(start, end),
-        );
-      }
+      // Always the block, never its `![[...]]`: the reference is not text to
+      // edit here. The range is atomic (`embedAtomicRanges`), so the caret
+      // steps over it, and `protectEmbeds` keeps Backspace/Delete off it —
+      // removing a linked block goes through its gutter handle.
+      const widget = Decoration.replace({
+        widget: new BlockEmbedWidget(
+          target.page,
+          target.id,
+          hostPath,
+          root,
+          inListItem(state, start),
+        ),
+      }).range(start, end);
+      decorations.push(widget);
+      embeds.push(widget);
     }
 
     // The ` ^id` that marks a referenced block: hidden, shown faintly while
@@ -533,15 +537,53 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
     }
   }
 
-  return Decoration.set(decorations, true);
+  return { all: Decoration.set(decorations, true), embeds: Decoration.set(embeds, true) };
 }
+
+/** `![[...#^id]]` tokens on the lines `from`–`to` touch. */
+function embedTokensAround(state: EditorState, from: number, to: number): Array<[number, number]> {
+  const tokens: Array<[number, number]> = [];
+  const first = state.doc.lineAt(from).number;
+  const last = state.doc.lineAt(Math.min(to, state.doc.length)).number;
+  for (let n = first; n <= last; n++) {
+    const line = state.doc.line(n);
+    if (!line.text.includes("#^")) continue;
+    WIKI_LINK_RE.lastIndex = 0;
+    let match;
+    while ((match = WIKI_LINK_RE.exec(line.text)) !== null) {
+      if (match[1] && parseBlockEmbedTarget(match[2]!)) {
+        tokens.push([line.from + match.index, line.from + match.index + match[0].length]);
+      }
+    }
+  }
+  return tokens;
+}
+
+/** Backspace and Delete never eat a linked block, and no edit cuts one in
+ *  half: it is removed from its gutter handle (or by a selection covering all
+ *  of it). Other edits, moves and the handle's own actions pass. */
+const protectEmbeds = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged || (!tr.isUserEvent("input") && !tr.isUserEvent("delete"))) return tr;
+  const keyDelete = tr.isUserEvent("delete.backward") || tr.isUserEvent("delete.forward");
+  let blocked = false;
+  tr.changes.iterChangedRanges((fromA, toA) => {
+    if (blocked || fromA === toA) return;
+    for (const [start, end] of embedTokensAround(tr.startState, fromA, toA)) {
+      if (toA <= start || fromA >= end) continue;
+      const whole = fromA <= start && toA >= end;
+      if (keyDelete || !whole) blocked = true;
+    }
+  });
+  return blocked ? [] : tr;
+});
 
 function blockEmbedDecorations(getFilePath: () => string) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
+      embeds: DecorationSet;
       constructor(view: EditorView) {
-        this.decorations = build(view, getFilePath);
+        ({ all: this.decorations, embeds: this.embeds } = build(view, getFilePath));
       }
       update(update: ViewUpdate) {
         if (
@@ -551,11 +593,16 @@ function blockEmbedDecorations(getFilePath: () => string) {
           update.startState.field(backlinksField, false) !==
             update.state.field(backlinksField, false)
         ) {
-          this.decorations = build(update.view, getFilePath);
+          ({ all: this.decorations, embeds: this.embeds } = build(update.view, getFilePath));
         }
       }
     },
-    { decorations: (v) => v.decorations },
+    {
+      decorations: (v) => v.decorations,
+      // The caret steps over a linked block instead of into its source.
+      provide: (plugin) =>
+        EditorView.atomicRanges.of((view) => view.plugin(plugin)?.embeds ?? Decoration.none),
+    },
   );
 }
 
@@ -567,6 +614,7 @@ export function blockEmbeds(getFilePath: () => string): Extension {
     liveEditorRegistry(getFilePath),
     blockBacklinks(),
     blockEmbedDecorations(getFilePath),
+    protectEmbeds,
     referenceKeymap,
   ];
 }

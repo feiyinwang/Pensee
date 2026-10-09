@@ -5,6 +5,8 @@ import {
   blockLinkPage,
   blockAfterInsertion,
   blockText,
+  citationContext,
+  renderCitation,
   displayAsBullet,
   isPictureBlock,
   findBlock,
@@ -206,5 +208,20 @@ describe("bodyFitsSource", () => {
   test("a sibling item doesn't fit; a child does", () => {
     expect(bodyFitsSource(page, "h1", "6. harness tools\n7. extra")).toBe(false);
     expect(bodyFitsSource(page, "h1", "6. harness tools\n   - child")).toBe(true);
+  });
+});
+
+describe("backlink previews", () => {
+  test("citationContext centres the citation and trims blank edges", () => {
+    const text = "a\n\nb\nc\nCITE\nd\n\n\ne";
+    expect(citationContext(text, 5, 2)).toEqual({ snippet: "b\nc\nCITE\nd", citeLine: 2 });
+    expect(citationContext("CITE\nx", 1, 3)).toEqual({ snippet: "CITE\nx", citeLine: 0 });
+  });
+  test("renderCitation shows the block where its link is", () => {
+    expect(renderCitation("  - ![[P#^x]]", "x", "6.  Harness tools\n   - child")).toBe(
+      "  - Harness tools",
+    );
+    expect(renderCitation("![[P#^x]]", "x", "6.  Harness tools")).toBe("- Harness tools");
+    expect(renderCitation("see [[P#^x|that]]", "x", "Plain")).toBe("see Plain");
   });
 });

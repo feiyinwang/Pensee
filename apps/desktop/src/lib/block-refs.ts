@@ -307,6 +307,36 @@ export function restoreMarker(display: string, marker: string | null): string {
   return `${bullet[1]}${marker}${display.slice(bullet[0].length)}`;
 }
 
+/** A few lines of `text` around 1-based `line`, for a backlink preview:
+ *  `radius` lines each side, blank edges trimmed. `citeLine` is the citation's
+ *  0-based index inside `snippet`. */
+export function citationContext(
+  text: string,
+  line: number,
+  radius = 3,
+): { snippet: string; citeLine: number } {
+  const lines = text.split("\n");
+  const at = Math.min(Math.max(line - 1, 0), Math.max(lines.length - 1, 0));
+  let from = Math.max(0, at - radius);
+  let to = Math.min(lines.length - 1, at + radius);
+  while (from < at && !lines[from]!.trim()) from++;
+  while (to > at && !lines[to]!.trim()) to--;
+  return { snippet: lines.slice(from, to + 1).join("\n"), citeLine: at - from };
+}
+
+/** The citing line with its `![[...#^id]]` replaced by the block's own first
+ *  line, so a preview reads as the page does. In a list item the host's marker
+ *  stays and the block's own goes, as the embed shows it. */
+export function renderCitation(hostLine: string, id: string, body: string): string {
+  const first = body.split("\n")[0] ?? "";
+  const inList = /^\s*(?:[-*+]|\d+[.)])[ \t]+/.test(hostLine);
+  const shown = inList
+    ? first.replace(/^\s*(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/, "")
+    : displayAsBullet(first).display;
+  const token = new RegExp(`!?\\[\\[[^\\]]*#\\^${escapeRegExp(id)}(?:\\|[^\\]]*)?\\]\\]`);
+  return hostLine.replace(token, () => shown);
+}
+
 function lineAt(text: string, from: number): string {
   const nl = text.indexOf("\n", from);
   return text.slice(from, nl === -1 ? text.length : nl);

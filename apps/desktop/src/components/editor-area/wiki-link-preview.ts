@@ -32,7 +32,9 @@ import { hoverCard, type HoverCardContent } from "./hover-card";
 const CARD_WIDTH = 440;
 const CARD_MAX_HEIGHT = 380;
 
-function previewExtensions(path: string, isDisposed: () => boolean): Extension[] {
+/** A read-only editor that looks like the page: shared with the backlink
+ *  previews (block-backlinks.ts). */
+export function previewExtensions(path: string, isDisposed: () => boolean): Extension[] {
   return [
     markdown({ codeLanguages: languages, extensions: [GFM, prosemarkMarkdownSyntaxExtensions] }),
     defaultHideExtensions,

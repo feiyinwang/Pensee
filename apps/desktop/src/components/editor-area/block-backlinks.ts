@@ -1,11 +1,19 @@
-import { type EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
-import { type Extension, StateEffect, StateField } from "@codemirror/state";
+import { Decoration, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
+import { EditorState, type Extension, StateEffect, StateField } from "@codemirror/state";
 import { listen } from "@tauri-apps/api/event";
 import * as tauri from "@/lib/tauri";
 import { getFileStem } from "@/lib/paths";
-import { blockIdsInText, referencesInText } from "@/lib/block-refs";
+import {
+  blockIdsInText,
+  blockText,
+  citationContext,
+  referencesInText,
+  renderCitation,
+} from "@/lib/block-refs";
 import * as editorApi from "@/hooks/editor-api";
 import { hoverCard, type HoverCardContent } from "./hover-card";
+import { loadPageText } from "./linked-block-sync";
+import { previewExtensions } from "./wiki-link-preview";
 
 // The back half of linked blocks (SPECs/block-embed-spec.md#backlinks): a
 // block other pages show carries a count of those places, and hovering the
@@ -243,10 +251,39 @@ export class BacklinkBadge extends WidgetType {
   }
 }
 
-function backlinkList(view: EditorView, badge: HTMLElement): HoverCardContent | null {
+/** At most this many places get a live preview; the rest are listed. */
+const MAX_PREVIEWS = 5;
+/** Lines of context each side of a citation: enough to place it, no more. */
+const CONTEXT_LINES = 2;
+
+const citeLine = Decoration.line({ class: "wr-backlink-cite" });
+
+/** The hover card: each place that shows the block, as a few lines of that
+ *  page with the citation in the middle — drawn as the block itself and
+ *  highlighted — so you see the context, not a line number. Built on hover,
+ *  destroyed with the card. */
+async function backlinkPreview(
+  view: EditorView,
+  badge: HTMLElement,
+  isStale: () => boolean,
+): Promise<HoverCardContent | null> {
   const id = badge.dataset.blockId;
   const refs = id ? view.state.field(backlinksField).get(id) : undefined;
-  if (!refs?.length) return null;
+  if (!id || !refs?.length) return null;
+  const body = blockText(view.state.doc.toString(), id) ?? "";
+  const previewed = refs.slice(0, MAX_PREVIEWS);
+  const texts = await Promise.all(
+    previewed.map((ref) =>
+      loadPageText(ref.path).catch((error: unknown) => {
+        console.error("[backlinks] Failed to read a citing page:", error);
+        return null;
+      }),
+    ),
+  );
+  if (isStale()) return null;
+
+  const views: EditorView[] = [];
+  let disposed = false;
   const content = document.createDocumentFragment();
   const title = document.createElement("p");
   title.className = "wr-backlinks-title";
@@ -254,25 +291,55 @@ function backlinkList(view: EditorView, badge: HTMLElement): HoverCardContent | 
   content.append(title);
   const list = document.createElement("div");
   list.className = "wr-backlinks-list";
-  for (const ref of refs) {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "wr-backlinks-row";
-    row.dataset.hoverCardClose = "";
-    const page = document.createElement("span");
-    page.className = "wr-backlinks-page";
-    page.textContent = getFileStem(ref.path);
-    const where = document.createElement("span");
-    where.className = "wr-backlinks-line";
-    // The line minus the link itself: what the block sits next to there.
-    const context = ref.text.replace(/!?\[\[[^\]]*\]\]/g, "").trim();
-    where.textContent = context || `line ${ref.line}`;
-    row.append(page, where);
-    row.addEventListener("click", () => void editorApi.openLinkedPage(ref.path));
-    list.append(row);
-  }
   content.append(list);
-  return { element: content, label: title.textContent };
+
+  refs.forEach((ref, index) => {
+    const item = document.createElement("div");
+    item.className = "wr-backlinks-item";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "wr-backlinks-page";
+    open.dataset.hoverCardClose = "";
+    open.textContent = getFileStem(ref.path);
+    open.title = "Open page";
+    open.addEventListener("click", () => void editorApi.openLinkedPage(ref.path));
+    item.append(open);
+
+    const text = index < previewed.length ? texts[index] : null;
+    if (text != null) {
+      const { snippet, citeLine: at } = citationContext(text, ref.line, CONTEXT_LINES);
+      const lines = snippet.split("\n");
+      lines[at] = renderCitation(lines[at] ?? "", id, body);
+      const doc = lines.join("\n");
+      const host = document.createElement("div");
+      host.className = "wr-backlinks-preview";
+      host.dataset.inlineEditor = "";
+      item.append(host);
+      const citeFrom = at === 0 ? 0 : lines.slice(0, at).join("\n").length + 1;
+      views.push(
+        new EditorView({
+          parent: host,
+          state: EditorState.create({
+            doc,
+            extensions: [
+              previewExtensions(ref.path, () => disposed),
+              EditorView.decorations.of(Decoration.set(citeLine.range(citeFrom))),
+            ],
+          }),
+        }),
+      );
+    }
+    list.append(item);
+  });
+
+  return {
+    element: content,
+    label: title.textContent,
+    destroy: () => {
+      disposed = true;
+      for (const preview of views) preview.destroy();
+    },
+  };
 }
 
 /** Backlink counts on referenced blocks, for the main editor. */
@@ -282,9 +349,9 @@ export function blockBacklinks(): Extension {
     backlinksPlugin,
     hoverCard({
       selector: ".cm-block-refs-badge",
-      width: 300,
-      maxHeight: 320,
-      build: async (badge, view) => backlinkList(view, badge),
+      width: 440,
+      maxHeight: 420,
+      build: (badge, view, isStale) => backlinkPreview(view, badge, isStale),
     }),
   ];
 }
