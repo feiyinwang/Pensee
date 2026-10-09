@@ -150,6 +150,23 @@ export function bodyStaysOneBlock(body: string, id: string): boolean {
   return !!range && range.from === 0 && range.to === text.length && bodyOf(text, range) === body;
 }
 
+/**
+ * Whether writing `body` as block `id` of `text` keeps that block exactly as
+ * the embed means it: the same block, starting on the same line, reading back
+ * as `body`. Checked against the real page, because what a block is depends
+ * on its neighbours — a numbered item that loses its marker becomes plain text
+ * that markdown joins to the item above, and the id would end up on the wrong
+ * line.
+ */
+export function bodyFitsSource(text: string, id: string, body: string): boolean {
+  const before = findBlock(text, id);
+  if (!before) return false;
+  const next = replaceBlock(text, id, body);
+  if (next === null) return false;
+  const after = findBlock(next, id);
+  return !!after && after.from === before.from && bodyOf(next, after) === body;
+}
+
 /** The id already on this line, if any. */
 export function blockIdOnLine(line: string): string | null {
   return BLOCK_ID_AT_END_RE.exec(line)?.[1] ?? null;
@@ -274,21 +291,20 @@ export function isPictureBlock(body: string): boolean {
  *  becomes `- text`; `marker` is what `restoreMarker` puts back on write, so
  *  the source keeps its `6.`. Bullets and non-list blocks pass through. */
 export function displayAsBullet(body: string): { display: string; marker: string | null } {
-  const ordered = /^(\s*)(\d+[.)])([ \t]+)/.exec(body);
+  // The source's own spacing (`6.··text`) goes into the marker and comes
+  // back on write; the display is always a single space, like any bullet.
+  const ordered = /^(\s*)(\d+[.)][ \t]+)/.exec(body);
   if (!ordered) return { display: body, marker: null };
-  return {
-    display: `${ordered[1]}-${ordered[3]}${body.slice(ordered[0].length)}`,
-    marker: ordered[2]!,
-  };
+  return { display: `${ordered[1]}- ${body.slice(ordered[0].length)}`, marker: ordered[2]! };
 }
 
-/** The inverse of `displayAsBullet`: the source's own marker back in place of
- *  the display bullet. */
+/** The inverse of `displayAsBullet`: the source's own marker (and spacing)
+ *  back in place of the display bullet. */
 export function restoreMarker(display: string, marker: string | null): string {
   if (!marker) return display;
-  const bullet = /^(\s*)-([ \t]+)/.exec(display);
+  const bullet = /^(\s*)- /.exec(display);
   if (!bullet) return display;
-  return `${bullet[1]}${marker}${bullet[2]}${display.slice(bullet[0].length)}`;
+  return `${bullet[1]}${marker}${display.slice(bullet[0].length)}`;
 }
 
 function lineAt(text: string, from: number): string {

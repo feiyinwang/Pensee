@@ -32,6 +32,7 @@ import {
   blockText,
   displayAsBullet,
   isPictureBlock,
+  bodyFitsSource,
   bodyStaysOneBlock,
   minimalChange,
   newBlockId,
@@ -268,7 +269,10 @@ function nestedExtensions(
         queueMicrotask(dropReference);
         return [];
       }
-      return bodyStaysOneBlock(restoreMarker(tr.newDoc.toString(), codec.marker), id) ? tr : [];
+      const body = restoreMarker(tr.newDoc.toString(), codec.marker);
+      const source = currentPageText(path);
+      const fits = source === null ? bodyStaysOneBlock(body, id) : bodyFitsSource(source, id, body);
+      return fits ? tr : [];
     }),
     EditorView.updateListener.of((update) => {
       if (!update.docChanged) return;

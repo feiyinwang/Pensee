@@ -16,6 +16,7 @@ import {
   referencesInText,
   replaceBlock,
   restoreMarker,
+  bodyFitsSource,
   bodyStaysOneBlock,
 } from "../src/lib/block-refs";
 
@@ -164,10 +165,10 @@ describe("bullet subtrees", () => {
 
 describe("numbered items show as bullets elsewhere", () => {
   test("6. becomes a bullet for display and comes back on write", () => {
-    const shown = displayAsBullet("6. Harness tools\n   - brands");
-    expect(shown).toEqual({ display: "- Harness tools\n   - brands", marker: "6." });
+    const shown = displayAsBullet("6.  Harness tools\n   - brands");
+    expect(shown).toEqual({ display: "- Harness tools\n   - brands", marker: "6.  " });
     expect(restoreMarker("- Harness tools, edited\n   - brands", shown.marker)).toBe(
-      "6. Harness tools, edited\n   - brands",
+      "6.  Harness tools, edited\n   - brands",
     );
   });
   test("bullets, tasks under bullets and paragraphs pass through", () => {
@@ -192,4 +193,18 @@ test("isPictureBlock", () => {
   expect(isPictureBlock("![[photo.JPG|300]]")).toBe(true);
   expect(isPictureBlock("![chart](a.png) and words")).toBe(false);
   expect(isPictureBlock("- item")).toBe(false);
+});
+
+describe("bodyFitsSource", () => {
+  const page = "5. seasoning\n6. harness tools ^h1\n7. next\n";
+  test("an ordinary edit fits", () => {
+    expect(bodyFitsSource(page, "h1", "6. harness tools, all brands")).toBe(true);
+  });
+  test("dropping the marker would join item 5, so it doesn't fit", () => {
+    expect(bodyFitsSource(page, "h1", "harness tools")).toBe(false);
+  });
+  test("a sibling item doesn't fit; a child does", () => {
+    expect(bodyFitsSource(page, "h1", "6. harness tools\n7. extra")).toBe(false);
+    expect(bodyFitsSource(page, "h1", "6. harness tools\n   - child")).toBe(true);
+  });
 });

@@ -3,7 +3,13 @@ import { Annotation, type Extension, Facet } from "@codemirror/state";
 import { listen } from "@tauri-apps/api/event";
 import * as tauri from "@/lib/tauri";
 import { LruCache } from "@/lib/lru";
-import { findBlock, minimalChange, replaceBlock, withIdMarker } from "@/lib/block-refs";
+import {
+  bodyFitsSource,
+  findBlock,
+  minimalChange,
+  replaceBlock,
+  withIdMarker,
+} from "@/lib/block-refs";
 import * as editorApi from "@/hooks/editor-api";
 import { showEditorNotice } from "./editor-notice-store";
 
@@ -219,6 +225,10 @@ export function writeBlock(path: string, id: string, body: string): boolean {
       const range = findBlock(doc, id);
       if (!range) continue;
       wrote = true;
+      if (!bodyFitsSource(doc, id, body)) {
+        console.error("[linked-block] Refused a write that would change the blocks around", id);
+        continue;
+      }
       const marker = doc.slice(range.idFrom, range.idTo);
       const change = minimalChange(doc.slice(range.from, range.to), withIdMarker(body, marker));
       if (!change) continue;
@@ -239,6 +249,10 @@ export function writeBlock(path: string, id: string, body: string): boolean {
   if (open !== null) {
     const next = replaceBlock(open, id, body);
     if (next === null) return false;
+    if (!bodyFitsSource(open, id, body)) {
+      console.error("[linked-block] Refused a write that would change the blocks around", id);
+      return true;
+    }
     if (next !== open) editorApi.updateContent(path, next);
     return true;
   }
@@ -247,6 +261,10 @@ export function writeBlock(path: string, id: string, body: string): boolean {
   if (disk === undefined) return false;
   const next = replaceBlock(disk, id, body);
   if (next === null) return false;
+  if (!bodyFitsSource(disk, id, body)) {
+    console.error("[linked-block] Refused a write that would change the blocks around", id);
+    return true;
+  }
   if (next === disk) return true;
   diskText.set(path, next);
   scheduleDiskWrite(path);

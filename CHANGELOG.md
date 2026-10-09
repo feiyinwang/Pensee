@@ -2,6 +2,8 @@
 
 ## 2026-10-09
 
+- Fixed: a linked numbered item looked slightly indented next to ordinary bullets when the original had two spaces after its number. It now lines up exactly.
+- Fixed: deleting the start of a linked numbered item (Backspace at the beginning of its text) could move its link to the item above in the original note. Edits that would change any block other than the linked one are now refused, so the link always stays on the block you linked.
 - A linked item from a numbered list no longer brings its number. Pasted on its own it shows as a bullet; pasted into a list it takes that list's bullet or number. The original note keeps its number.
 - Press **Enter** at the end of a linked block to start a new line under it, as Enter does anywhere else: the next bullet when it sits in a list or is itself a bullet, otherwise a new line.
 - Deleting a linked block removes only the link in the note you're in, never the original. Click a linked picture and press **Backspace** or **Delete** and the link goes away while the picture stays in its own note. Selecting all the text of a linked block and deleting it removes the link the same way. A linked picture now stays a picture while you click on it.
