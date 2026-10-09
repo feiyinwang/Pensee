@@ -3,7 +3,10 @@ import {
   blockIdOnLine,
   blockIdsInText,
   blockLinkPage,
+  blockAfterInsertion,
   blockText,
+  displayAsBullet,
+  isPictureBlock,
   findBlock,
   minimalChange,
   newBlockId,
@@ -12,6 +15,7 @@ import {
   referenceInsertion,
   referencesInText,
   replaceBlock,
+  restoreMarker,
   bodyStaysOneBlock,
 } from "../src/lib/block-refs";
 
@@ -156,4 +160,36 @@ describe("bullet subtrees", () => {
     expect(bodyStaysOneBlock("one\n\ntwo", "x")).toBe(false);
     expect(bodyStaysOneBlock("", "x")).toBe(true);
   });
+});
+
+describe("numbered items show as bullets elsewhere", () => {
+  test("6. becomes a bullet for display and comes back on write", () => {
+    const shown = displayAsBullet("6. Harness tools\n   - brands");
+    expect(shown).toEqual({ display: "- Harness tools\n   - brands", marker: "6." });
+    expect(restoreMarker("- Harness tools, edited\n   - brands", shown.marker)).toBe(
+      "6. Harness tools, edited\n   - brands",
+    );
+  });
+  test("bullets, tasks under bullets and paragraphs pass through", () => {
+    expect(displayAsBullet("- a")).toEqual({ display: "- a", marker: null });
+    expect(displayAsBullet("Plain")).toEqual({ display: "Plain", marker: null });
+    expect(displayAsBullet("2) [ ] task").display).toBe("- [ ] task");
+    expect(restoreMarker("- a", null)).toBe("- a");
+  });
+});
+
+describe("Enter after a linked block", () => {
+  test("a new sibling item in a list, a new line elsewhere", () => {
+    expect(blockAfterInsertion("  - ![[A#^x]]")).toBe("\n  - ");
+    expect(blockAfterInsertion("3. ![[A#^x]]")).toBe("\n4. ");
+    expect(blockAfterInsertion("![[A#^x]]")).toBe("\n");
+    expect(blockAfterInsertion("![[A#^x]]", true)).toBe("\n- ");
+  });
+});
+
+test("isPictureBlock", () => {
+  expect(isPictureBlock("![chart](a/b.png)")).toBe(true);
+  expect(isPictureBlock("![[photo.JPG|300]]")).toBe(true);
+  expect(isPictureBlock("![chart](a.png) and words")).toBe(false);
+  expect(isPictureBlock("- item")).toBe(false);
 });

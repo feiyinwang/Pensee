@@ -228,6 +228,15 @@ export function referenceFromClipboard(text: string): string | null {
   return `![[${match[1]}]]`;
 }
 
+/** The marker a new sibling of this list-item line starts with (`  - `,
+ *  `4. ` after `3.`), or null when the line is not a list item. */
+export function nextItemPrefix(line: string): string | null {
+  const item = /^(\s*)(?:([-*+])|(\d+)([.)]))[ \t]+/.exec(line);
+  if (!item) return null;
+  const marker = item[2] ?? `${Number(item[3]) + 1}${item[4]}`;
+  return `${item[1]}${marker} `;
+}
+
 /** How Paste as reference puts `embed` next to the caret's line: in place of
  *  a blank line, as a new sibling item under a list item, else as its own
  *  paragraph below the line. */
@@ -236,12 +245,50 @@ export function referenceInsertion(
   embed: string,
 ): { replaceLine: boolean; text: string } {
   if (!line.trim()) return { replaceLine: true, text: embed };
-  const item = /^(\s*)(?:([-*+])|(\d+)([.)]))[ \t]+/.exec(line);
-  if (item) {
-    const marker = item[2] ?? `${Number(item[3]) + 1}${item[4]}`;
-    return { replaceLine: false, text: `\n${item[1]}${marker} ${embed}` };
-  }
+  const prefix = nextItemPrefix(line);
+  if (prefix !== null) return { replaceLine: false, text: `\n${prefix}${embed}` };
   return { replaceLine: false, text: `\n\n${embed}` };
+}
+
+/** What Enter at the end of a linked block inserts after its host line: the
+ *  next item when the link sits in a list; a new bullet when the linked block
+ *  is itself a list item (it shows as a bullet); else a new line. */
+export function blockAfterInsertion(line: string, linkedIsItem = false): string {
+  const prefix = nextItemPrefix(line);
+  if (prefix !== null) return `\n${prefix}`;
+  return linkedIsItem ? `\n${/^\s*/.exec(line)![0]}- ` : "\n";
+}
+
+/** The block is just a picture (`![alt](src)` or `![[photo.png]]`): its
+ *  embed shows the picture, not source to edit. */
+export function isPictureBlock(body: string): boolean {
+  const text = body.trim();
+  return (
+    /^!\[[^\]]*\]\([^)\s]+\)$/.test(text) ||
+    /^!\[\[[^\]|]+\.(?:png|jpe?g|gif|webp|svg)(?:\|[^\]]*)?\]\]$/i.test(text)
+  );
+}
+
+/** A linked list item never keeps its own number in another page: the host
+ *  decides (a list it sits in, else a plain bullet). For display, `6. text`
+ *  becomes `- text`; `marker` is what `restoreMarker` puts back on write, so
+ *  the source keeps its `6.`. Bullets and non-list blocks pass through. */
+export function displayAsBullet(body: string): { display: string; marker: string | null } {
+  const ordered = /^(\s*)(\d+[.)])([ \t]+)/.exec(body);
+  if (!ordered) return { display: body, marker: null };
+  return {
+    display: `${ordered[1]}-${ordered[3]}${body.slice(ordered[0].length)}`,
+    marker: ordered[2]!,
+  };
+}
+
+/** The inverse of `displayAsBullet`: the source's own marker back in place of
+ *  the display bullet. */
+export function restoreMarker(display: string, marker: string | null): string {
+  if (!marker) return display;
+  const bullet = /^(\s*)-([ \t]+)/.exec(display);
+  if (!bullet) return display;
+  return `${bullet[1]}${marker}${bullet[2]}${display.slice(bullet[0].length)}`;
 }
 
 function lineAt(text: string, from: number): string {

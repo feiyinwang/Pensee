@@ -28,15 +28,19 @@ import {
   BLOCK_ID_AT_END_RE,
   blockIdOnLine,
   blockLinkPage,
+  blockAfterInsertion,
   blockText,
+  displayAsBullet,
+  isPictureBlock,
   bodyStaysOneBlock,
   minimalChange,
   newBlockId,
   parseBlockEmbedTarget,
   referenceFromClipboard,
   referenceInsertion,
+  restoreMarker,
 } from "@/lib/block-refs";
-import { WIKI_LINK_RE } from "@/lib/wiki-links";
+import { WIKI_LINK_RE, findWikiLinkAt } from "@/lib/wiki-links";
 import { findWikiPage } from "@/lib/wiki-pages";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as editorApi from "@/hooks/editor-api";
@@ -123,11 +127,78 @@ const hideOwnMarker: Extension = [
   EditorView.atomicRanges.of((view) => hiddenFirstMarker(view.state)),
 ];
 
+/** Display ↔ source text for one embed: a numbered item shows as a bullet,
+ *  and its number goes back on every write (`displayAsBullet`). */
+interface BodyCodec {
+  marker: string | null;
+}
+
+/** Remove this embed's `![[Page#^id]]` from the host page — the reference,
+ *  never the block it shows. A line left with nothing else on it (or only a
+ *  list marker) goes with it. */
+function removeReference(host: EditorView, root: HTMLElement) {
+  let pos: number;
+  try {
+    pos = host.posAtDOM(root);
+  } catch {
+    return;
+  }
+  const { doc } = host.state;
+  const match = findWikiLinkAt(doc, pos);
+  if (!match) return;
+  const line = doc.lineAt(match.from);
+  const rest = line.text.slice(0, match.from - line.from) + line.text.slice(match.to - line.from);
+  let from = match.from;
+  let to = match.to;
+  if (!rest.trim() || /^\s*(?:[-*+]|\d+[.)])[ \t]*$/.test(rest)) {
+    from = line.from;
+    to = line.to;
+    if (to < doc.length) to += 1;
+    else if (from > 0) from -= 1;
+    // Between two blank lines, take one of them too, so the blocks around it
+    // keep a single blank line between them.
+    const prevBlank = line.number > 1 && !doc.line(line.number - 1).text.trim();
+    const next = line.number < doc.lines ? doc.line(line.number + 1) : null;
+    if (prevBlank && next && !next.text.trim()) to = Math.min(doc.length, next.to + 1);
+  }
+  host.dispatch({
+    changes: { from, to },
+    selection: { anchor: from },
+    userEvent: "delete",
+    scrollIntoView: true,
+  });
+  host.focus();
+}
+
+/** Enter at the very end of an embed: a new block under it in the host page,
+ *  as Enter would give anywhere else, with the caret moved there. */
+function continueBelow(host: EditorView, root: HTMLElement, linkedIsItem: boolean) {
+  let pos: number;
+  try {
+    pos = host.posAtDOM(root);
+  } catch {
+    return; // The widget left the document.
+  }
+  const line = host.state.doc.lineAt(pos);
+  const insert = blockAfterInsertion(line.text, linkedIsItem);
+  host.dispatch({
+    changes: { from: line.to, insert },
+    selection: { anchor: line.to + insert.length },
+    userEvent: "input",
+    scrollIntoView: true,
+  });
+  host.focus();
+}
+
 function nestedExtensions(
   path: string,
   id: string,
+  codec: BodyCodec,
   inList: boolean,
   isDisposed: () => boolean,
+  exitBelow: () => void,
+  picture: boolean,
+  dropReference: () => void,
 ): Extension[] {
   // Unfocused, the embed has no caret of its own to show: its selection
   // (parked at 0) must not unfold a picture's `![](...)` or a link's source.
@@ -135,13 +206,38 @@ function nestedExtensions(
   return [
     markdown({ codeLanguages: languages, extensions: [GFM, prosemarkMarkdownSyntaxExtensions] }),
     inert.of(selectionInertFacet.of(true)),
-    EditorView.focusChangeEffect.of((_state, focusing) =>
-      inert.reconfigure(selectionInertFacet.of(!focusing)),
-    ),
+    // A picture stays a picture even while focused: there is nothing in it to
+    // edit here, and Backspace/Delete remove this reference, not the picture.
+    picture
+      ? [
+          EditorState.readOnly.of(true),
+          keymap.of([
+            { key: "Backspace", run: () => (dropReference(), true) },
+            { key: "Delete", run: () => (dropReference(), true) },
+          ]),
+        ]
+      : EditorView.focusChangeEffect.of((_state, focusing) =>
+          inert.reconfigure(selectionInertFacet.of(!focusing)),
+        ),
     // The page editor hides the native caret and draws its own; the embed
     // sits inside it and inherits the hidden caret, so it draws one too.
     drawSelection(),
     inList ? hideOwnMarker : [],
+    // Ahead of the list/markdown Enter handlers, which would try to split the
+    // block (and be refused by the filter below).
+    Prec.highest(
+      keymap.of([
+        {
+          key: "Enter",
+          run: (view) => {
+            const sel = view.state.selection.main;
+            if (!sel.empty || sel.head !== view.state.doc.length) return false;
+            exitBelow();
+            return true;
+          },
+        },
+      ]),
+    ),
     history(),
     prosemarkBasicSetup(),
     prosemarkBaseThemeSetup(),
@@ -166,12 +262,18 @@ function nestedExtensions(
     // under a bullet are fine — they belong to it.
     EditorState.transactionFilter.of((tr) => {
       if (!tr.docChanged || tr.annotation(linkedBlockSync)) return tr;
-      return bodyStaysOneBlock(tr.newDoc.toString(), id) ? tr : [];
+      // Deleting everything in the embed means "remove this reference": the
+      // original block stays as it is.
+      if (!tr.newDoc.toString().trim() && tr.startState.doc.toString().trim()) {
+        queueMicrotask(dropReference);
+        return [];
+      }
+      return bodyStaysOneBlock(restoreMarker(tr.newDoc.toString(), codec.marker), id) ? tr : [];
     }),
     EditorView.updateListener.of((update) => {
       if (!update.docChanged) return;
       if (update.transactions.every((tr) => tr.annotation(linkedBlockSync))) return;
-      if (!writeBlock(path, id, update.state.doc.toString())) {
+      if (!writeBlock(path, id, restoreMarker(update.state.doc.toString(), codec.marker))) {
         showEditorNotice("This block was removed from its page, so the edit wasn't saved.");
       }
     }),
@@ -262,15 +364,26 @@ class BlockEmbedWidget extends WidgetType {
     text: string,
   ) {
     const state = mounted.get(root)!;
-    const initial = blockText(text, this.id);
-    if (initial === null) return this.renderMissing(view, root, "Block not found");
+    const source = blockText(text, this.id);
+    if (source === null) return this.renderMissing(view, root, "Block not found");
+    const { display: initial, marker } = displayAsBullet(source);
+    const codec: BodyCodec = { marker };
 
     const inner = new EditorView({
       parent: body,
       state: EditorState.create({
         doc: initial,
         extensions: [
-          nestedExtensions(path, this.id, this.inList, () => state.inner === null),
+          nestedExtensions(
+            path,
+            this.id,
+            codec,
+            this.inList,
+            () => state.inner === null,
+            () => continueBelow(view, root, /^\s*-[ \t]/.test(initial)),
+            isPictureBlock(source),
+            () => removeReference(view, root),
+          ),
           EditorView.updateListener.of((update) => {
             // The block grew or shrank: the line holding it changed height.
             if (update.geometryChanged) view.requestMeasure();
@@ -285,7 +398,13 @@ class BlockEmbedWidget extends WidgetType {
     const apply = () => {
       if (state.inner !== inner) return;
       const latest = currentPageText(path);
-      const next = latest === null ? null : blockText(latest, this.id);
+      const nextSource = latest === null ? null : blockText(latest, this.id);
+      let next: string | null = null;
+      if (nextSource !== null) {
+        const shown = displayAsBullet(nextSource);
+        codec.marker = shown.marker;
+        next = shown.display;
+      }
       root.classList.toggle("is-orphaned", next === null);
       if (next === null) return;
       const change = minimalChange(inner.state.doc.toString(), next);
