@@ -2,7 +2,8 @@ import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import * as editorApi from "@/hooks/editor-api";
 import { parseDocument, parseFrontmatter } from "@/lib/frontmatter";
-import { formatMarkdownDestination } from "@/lib/paths";
+import { formatMarkdownDestination, getParentDir } from "@/lib/paths";
+import { rebaseMarkdownLinks } from "@/lib/rebase-markdown-links";
 import * as tauri from "@/lib/tauri";
 import { tabularPasteTransaction } from "@/lib/tabular-paste";
 import { showEditorNotice } from "./editor-notice-store";
@@ -55,6 +56,40 @@ function handleFrontmatterPaste(event: ClipboardEvent, view: EditorView, filePat
   return true;
 }
 
+// Relative image and link paths are relative to the note they live in, so
+// text copied out of one note must be rebased before landing in a note in
+// another folder. The clipboard can't carry the source path (CodeMirror clears
+// it to plain text), so remember the last copy and match it on paste.
+let lastCopy: { text: string; dir: string } | null = null;
+
+function normalizeClipboardText(text: string) {
+  return text.replace(/\r\n?/g, "\n").replace(/\n+$/, "");
+}
+
+// Mirrors what CodeMirror puts on the clipboard: the selected ranges, or the
+// caret lines when nothing is selected.
+function recordCopy(view: EditorView, filePath: string) {
+  const { state } = view;
+  const ranges = state.selection.ranges;
+  const text = ranges.some((range) => !range.empty)
+    ? ranges
+        .filter((range) => !range.empty)
+        .map((range) => state.sliceDoc(range.from, range.to))
+        .join(state.lineBreak)
+    : ranges.map((range) => state.doc.lineAt(range.head).text).join(state.lineBreak);
+  lastCopy = { text: normalizeClipboardText(text), dir: getParentDir(filePath) };
+}
+
+function handleRebasedPaste(event: ClipboardEvent, view: EditorView, filePath: string) {
+  const text = event.clipboardData?.getData("text/plain");
+  if (!text || !lastCopy || normalizeClipboardText(text) !== lastCopy.text) return false;
+  const rebased = rebaseMarkdownLinks(text, lastCopy.dir, getParentDir(filePath));
+  if (rebased === text) return false;
+  event.preventDefault();
+  view.dispatch(view.state.replaceSelection(rebased), { userEvent: "input.paste" });
+  return true;
+}
+
 // Typing `---` on the first line of a file without frontmatter opens an empty
 // frontmatter panel instead of leaving a horizontal rule in the body.
 function handleFrontmatterStart(event: KeyboardEvent, view: EditorView, filePath: string) {
@@ -79,13 +114,22 @@ function handleFrontmatterStart(event: KeyboardEvent, view: EditorView, filePath
 }
 
 /** Paste and keyboard handling that touches files: image paste to disk,
- *  frontmatter adoption on paste, tab-separated text pasted as a pipe table,
+ *  frontmatter adoption on paste, relative paths rebased when pasting text
+ *  copied from a note in another folder, tab-separated text pasted as a pipe table,
  *  and the `---` frontmatter shortcut. */
 export function editorClipboardExtension(
   getFilePath: () => string,
   isDisposed: () => boolean,
 ): Extension {
   return EditorView.domEventHandlers({
+    copy(_event, view) {
+      recordCopy(view, getFilePath());
+      return false;
+    },
+    cut(_event, view) {
+      recordCopy(view, getFilePath());
+      return false;
+    },
     paste(event, view) {
       if (handleFrontmatterPaste(event, view, getFilePath())) return true;
 
@@ -103,6 +147,8 @@ export function editorClipboardExtension(
         });
         return true;
       }
+
+      if (handleRebasedPaste(event, view, getFilePath())) return true;
 
       const text = event.clipboardData?.getData("text/plain");
       const tableTransaction = text ? tabularPasteTransaction(view.state, text) : null;
