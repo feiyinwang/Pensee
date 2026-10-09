@@ -13,7 +13,7 @@ import {
   EditorView,
 } from "@codemirror/view";
 import { eventHandlersWithClass, type RangeLike, selectionTouchesRange } from "../utils";
-import { unfurlFreezeFacet } from "../unfurlFreeze";
+import { selectionInertFacet, unfurlFreezeFacet } from "../unfurlFreeze";
 
 import type { SyntaxNodeRef } from "@lezer/common";
 import { syntaxTree } from "@codemirror/language";
@@ -80,6 +80,7 @@ const pathMatches = (path: string, nodePath: string | string[]): boolean => {
 const buildDecorations = (state: EditorState) => {
   const decorations: Range<Decoration>[] = [];
   const index = state.facet(foldableSyntaxFacet);
+  const ranges = state.facet(selectionInertFacet) ? [] : state.selection.ranges;
   syntaxTree(state).iterate({
     enter: (node) => {
       const candidates = index.byName.get(node.name);
@@ -88,13 +89,12 @@ const buildDecorations = (state: EditorState) => {
       let path: string | null = null;
       const getPath = () => (path ??= lineagePath(node));
       let touchesNode: boolean | null = null;
-      const selectionTouchesNodeRange = () =>
-        (touchesNode ??= selectionTouchesRange(state.selection.ranges, node));
+      const selectionTouchesNodeRange = () => (touchesNode ??= selectionTouchesRange(ranges, node));
 
       const run = (spec: FoldableSyntaxSpec): boolean => {
         // Check custom unfold zone
         const selectionTouchesRange_ = spec.unfoldZone
-          ? selectionTouchesRange(state.selection.ranges, spec.unfoldZone(state, node))
+          ? selectionTouchesRange(ranges, spec.unfoldZone(state, node))
           : selectionTouchesNodeRange();
 
         // A touched spec without `keepDecorationOnUnfold` ends processing for
@@ -140,7 +140,12 @@ export const foldExtension = StateField.define<DecorationSet>({
     if (tr.state.facet(unfurlFreezeFacet)) {
       return tr.docChanged ? deco.map(tr.changes) : deco;
     }
-    if (tr.docChanged || tr.selection || syntaxTree(tr.startState) !== syntaxTree(tr.state)) {
+    if (
+      tr.docChanged ||
+      tr.selection ||
+      syntaxTree(tr.startState) !== syntaxTree(tr.state) ||
+      tr.startState.facet(selectionInertFacet) !== tr.state.facet(selectionInertFacet)
+    ) {
       return buildDecorations(tr.state);
     }
     return deco.map(tr.changes);

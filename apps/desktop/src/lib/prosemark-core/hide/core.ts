@@ -3,7 +3,7 @@ import { type EditorState, Facet, type Range, StateField } from "@codemirror/sta
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNodeRef } from "@lezer/common";
 import { type RangeLike, rangeTouchesRange } from "../utils";
-import { unfurlFreezeFacet } from "../unfurlFreeze";
+import { selectionInertFacet, unfurlFreezeFacet } from "../unfurlFreeze";
 
 const hideTheme = EditorView.theme({
   ".cm-hidden-token": {
@@ -35,6 +35,7 @@ export const hideBlockDecoration = Decoration.replace({
 const buildDecorations = (state: EditorState) => {
   const decorations: Range<Decoration>[] = [];
   const specs = state.facet(hidableNodeFacet);
+  const ranges = state.facet(selectionInertFacet) ? [] : state.selection.ranges;
 
   syntaxTree(state).iterate({
     enter: (node) => {
@@ -64,7 +65,7 @@ const buildDecorations = (state: EditorState) => {
         // Check custom show zone
         if (spec.unhideZone) {
           const res = spec.unhideZone(state, node);
-          if (state.selection.ranges.some((range) => rangeTouchesRange(res, range))) {
+          if (ranges.some((range) => rangeTouchesRange(res, range))) {
             continue;
           }
         }
@@ -74,9 +75,7 @@ const buildDecorations = (state: EditorState) => {
         }
 
         const hideZone = spec.hideZone ? spec.hideZone(state, node) : node;
-        const selectionTouchesHideZone = state.selection.ranges.some((range) =>
-          rangeTouchesRange(hideZone, range),
-        );
+        const selectionTouchesHideZone = ranges.some((range) => rangeTouchesRange(hideZone, range));
         if (selectionTouchesHideZone) {
           continue;
         }
@@ -135,7 +134,12 @@ export const hideExtension = StateField.define<DecorationSet>({
     if (tr.state.facet(unfurlFreezeFacet)) {
       return tr.docChanged ? deco.map(tr.changes) : deco;
     }
-    if (tr.docChanged || tr.selection || syntaxTree(tr.startState) !== syntaxTree(tr.state)) {
+    if (
+      tr.docChanged ||
+      tr.selection ||
+      syntaxTree(tr.startState) !== syntaxTree(tr.state) ||
+      tr.startState.facet(selectionInertFacet) !== tr.state.facet(selectionInertFacet)
+    ) {
       return buildDecorations(tr.state);
     }
     return deco.map(tr.changes);

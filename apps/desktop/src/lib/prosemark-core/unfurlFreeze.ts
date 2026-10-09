@@ -13,3 +13,18 @@ import { Facet } from "@codemirror/state";
 export const unfurlFreezeFacet = Facet.define<boolean, boolean>({
   combine: (values) => values.some(Boolean),
 });
+
+/**
+ * When any provider contributes `true`, decorations that unfold under the
+ * selection (prosemark's fold and hide extensions, and the Writer decorations
+ * reading `getEffectiveSelectionRanges`) treat the selection as absent, so
+ * everything renders folded. For an editor that shows content without owning
+ * the caret: a linked-block embed that isn't focused keeps a selection at 0,
+ * which would otherwise unfold a picture's `![](...)` source on load.
+ *
+ * Fold and hide rebuild when this value flips; ViewPlugin readers should do
+ * the same (compare `startState` and `state`).
+ */
+export const selectionInertFacet = Facet.define<boolean, boolean>({
+  combine: (values) => values.some(Boolean),
+});

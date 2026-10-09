@@ -320,6 +320,15 @@ describe("shouldStartDragGate", () => {
     ).toBeNull();
   });
 
+  test("skips when target is inside a linked block (.cm-block-embed)", () => {
+    const embedTarget = {
+      closest: (sel: string) => (sel.includes(".cm-block-embed") ? ({} as Element) : null),
+    } as unknown as Element;
+    expect(
+      shouldStartDragGate(makeState(), { isPrimary: true, button: 0, target: embedTarget }),
+    ).toBeNull();
+  });
+
   test("skips when target is inside .cm-mermaid-widget (canvas pan / button click)", () => {
     expect(
       shouldStartDragGate(makeState(), {

@@ -1,7 +1,7 @@
 /* Linked block (`![[Page#^id]]`). It reads as an ordinary block of this
-   page: same text column, same type, no frame. Two quiet signs say it lives
-   elsewhere — a thin accent rule out in the left margin, and a ↗ at its right
-   edge while hovered or edited, which opens the source page. The inner
+   page: same text column, same type, no frame, no rule. The one sign it
+   lives elsewhere is a ↗ at its right edge while hovered or edited, which
+   opens the source page. The inner
    editor opts out of page-editor styling through `data-inline-editor`
    (columns.css), which is what keeps the page's 40vh bottom padding and side
    inset from leaking in. Inline-block because ViewPlugin decorations cannot be
@@ -17,23 +17,6 @@
      text column (its clip-path), so it can't sit out in the margin. */
   padding-right: 24px;
   text-indent: 0;
-}
-
-.cm-block-embed::before {
-  content: "";
-  position: absolute;
-  top: 0.35em;
-  bottom: 0.35em;
-  left: -12px;
-  width: 2px;
-  border-radius: 1px;
-  background: color-mix(in oklab, var(--accent) 45%, transparent);
-  transition: background var(--motion-fast) var(--ease-out);
-}
-
-.cm-block-embed:hover::before,
-.cm-block-embed:focus-within::before {
-  background: var(--accent);
 }
 
 .cm-block-embed-header {
@@ -91,9 +74,21 @@
   font-size: 13px;
 }
 
-.cm-block-embed.is-orphaned::before,
-.cm-block-embed.is-missing::before {
-  background: var(--text-muted);
+/* The page editor clips its scroller and selection layer to the text column
+   with insets computed from its own width. Inside an embed the same rules
+   compute from the embed's width and would cut off the right of its text. */
+.cm-block-embed-body .cm-editor .cm-scroller,
+.cm-block-embed-body .cm-editor .cm-selectionLayer {
+  clip-path: none;
+}
+
+/* Pasted as a list item: the host line's bullet is the marker, so the
+   embedded item's own marker is hidden (block-embed.ts) and its first line
+   drops the hanging indent that marker needed. Inline styles from the list
+   extension are on the line, hence !important. */
+.cm-block-embed.is-in-list .cm-content > .cm-line:first-child {
+  padding-inline-start: 0 !important;
+  text-indent: 0 !important;
 }
 
 /* The ` ^id` on the source block, shown only while the caret is on its line. */

@@ -1,13 +1,14 @@
 import {
   Decoration,
   type DecorationSet,
+  drawSelection,
   EditorView,
   keymap,
   ViewPlugin,
   type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
-import { EditorState, type Extension, Prec, Transaction } from "@codemirror/state";
+import { Compartment, EditorState, type Extension, Prec, Transaction } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
 import { history } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
@@ -19,6 +20,7 @@ import {
   prosemarkBasicSetup,
   prosemarkBaseThemeSetup,
   prosemarkMarkdownSyntaxExtensions,
+  selectionInertFacet,
 } from "@/lib/prosemark-core/main";
 import * as tauri from "@/lib/tauri";
 import { getFileStem } from "@/lib/paths";
@@ -104,9 +106,42 @@ async function resolvePage(
 
 /* ------------------------------------------------------------ the widget */
 
-function nestedExtensions(path: string, id: string, isDisposed: () => boolean): Extension[] {
+/** Pasted as a list item, the host line's bullet is the marker: hide the
+ *  embedded item's own (`- `, `6. `, a task box) so it reads as one bullet.
+ *  Atomic, so the caret steps over it. Only the first line is looked at. */
+const HOST_MARKER_RE = /^\s*(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/;
+
+function hiddenFirstMarker(state: EditorState): DecorationSet {
+  const marker = HOST_MARKER_RE.exec(state.doc.line(1).text);
+  return marker
+    ? Decoration.set(Decoration.replace({}).range(0, marker[0].length))
+    : Decoration.none;
+}
+
+const hideOwnMarker: Extension = [
+  EditorView.decorations.compute(["doc"], hiddenFirstMarker),
+  EditorView.atomicRanges.of((view) => hiddenFirstMarker(view.state)),
+];
+
+function nestedExtensions(
+  path: string,
+  id: string,
+  inList: boolean,
+  isDisposed: () => boolean,
+): Extension[] {
+  // Unfocused, the embed has no caret of its own to show: its selection
+  // (parked at 0) must not unfold a picture's `![](...)` or a link's source.
+  const inert = new Compartment();
   return [
     markdown({ codeLanguages: languages, extensions: [GFM, prosemarkMarkdownSyntaxExtensions] }),
+    inert.of(selectionInertFacet.of(true)),
+    EditorView.focusChangeEffect.of((_state, focusing) =>
+      inert.reconfigure(selectionInertFacet.of(!focusing)),
+    ),
+    // The page editor hides the native caret and draws its own; the embed
+    // sits inside it and inherits the hidden caret, so it draws one too.
+    drawSelection(),
+    inList ? hideOwnMarker : [],
     history(),
     prosemarkBasicSetup(),
     prosemarkBaseThemeSetup(),
@@ -156,6 +191,8 @@ class BlockEmbedWidget extends WidgetType {
     readonly id: string,
     readonly hostPath: string | null,
     readonly root: string | null,
+    /** Pasted as a list item: render as that item, without its own marker. */
+    readonly inList: boolean,
   ) {
     super();
   }
@@ -165,7 +202,8 @@ class BlockEmbedWidget extends WidgetType {
       this.page === other.page &&
       this.id === other.id &&
       this.hostPath === other.hostPath &&
-      this.root === other.root
+      this.root === other.root &&
+      this.inList === other.inList
     );
   }
 
@@ -175,7 +213,7 @@ class BlockEmbedWidget extends WidgetType {
 
   toDOM(view: EditorView): HTMLElement {
     const root = document.createElement("span");
-    root.className = "cm-block-embed";
+    root.className = this.inList ? "cm-block-embed is-in-list" : "cm-block-embed";
     root.contentEditable = "false";
     const state: Mounted = { inner: null, unsubscribe: null };
     mounted.set(root, state);
@@ -232,7 +270,7 @@ class BlockEmbedWidget extends WidgetType {
       state: EditorState.create({
         doc: initial,
         extensions: [
-          nestedExtensions(path, this.id, () => state.inner === null),
+          nestedExtensions(path, this.id, this.inList, () => state.inner === null),
           EditorView.updateListener.of((update) => {
             // The block grew or shrank: the line holding it changed height.
             if (update.geometryChanged) view.requestMeasure();
@@ -288,6 +326,15 @@ class BlockEmbedWidget extends WidgetType {
 
 /* ------------------------------------------------------------ decorations */
 
+/** The embed is a list item's whole body: `  - ![[Page#^id]]`. */
+function inListItem(state: EditorState, start: number): boolean {
+  const line = state.doc.lineAt(start);
+  return (
+    HOST_MARKER_RE.test(line.text.slice(0, start - line.from)) &&
+    HOST_MARKER_RE.exec(line.text)![0].length === start - line.from
+  );
+}
+
 const embedEditingMark = Decoration.mark({ class: "cm-wiki-link-editing" });
 const hiddenId = Decoration.replace({});
 const visibleId = Decoration.mark({ class: "cm-block-id" });
@@ -300,6 +347,9 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
   const root = getWorkspaceRoot();
   const backlinks = state.field(backlinksField, false);
   const decorations = [];
+  // A widget can split the viewport into several visible ranges that share a
+  // line; each line's id is decorated once.
+  let lastIdLine = -1;
 
   for (const { from, to } of view.visibleRanges) {
     const text = state.doc.sliceString(from, to);
@@ -324,7 +374,13 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
       } else {
         decorations.push(
           Decoration.replace({
-            widget: new BlockEmbedWidget(target.page, target.id, hostPath, root),
+            widget: new BlockEmbedWidget(
+              target.page,
+              target.id,
+              hostPath,
+              root,
+              inListItem(state, start),
+            ),
           }).range(start, end),
         );
       }
@@ -334,7 +390,8 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
     // the caret is on its line so it can be edited or deleted.
     for (let pos = from; pos <= to; ) {
       const line = state.doc.lineAt(pos);
-      const id = BLOCK_ID_AT_END_RE.exec(line.text);
+      const id = line.number > lastIdLine ? BLOCK_ID_AT_END_RE.exec(line.text) : null;
+      lastIdLine = Math.max(lastIdLine, line.number);
       if (id && !inCode(state, line.to)) {
         const idFrom = line.from + id.index;
         decorations.push(

@@ -7,7 +7,7 @@ import {
   Transaction,
 } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
-import { unfurlFreezeFacet } from "@/lib/prosemark-core/main";
+import { selectionInertFacet, unfurlFreezeFacet } from "@/lib/prosemark-core/main";
 
 /**
  * Pointer-drag selection gate.
@@ -74,6 +74,7 @@ function rangesTouchInclusive(
  * or the fallback.
  */
 function getEffectiveSelectionRanges(state: EditorState): readonly SelectionRange[] {
+  if (state.facet(selectionInertFacet)) return [];
   return state.field(dragFrozenSelectionField, false) ?? state.selection.ranges;
 }
 
@@ -98,6 +99,10 @@ const DRAG_END_USER_EVENT = "select.pointer.drag-end";
  * to `contentDOM`. Without the skip, every pan or button press would arm the
  * gate and the matching `pointerup` would dispatch a spurious drag-end
  * selection transaction into the outer editor.
+ *
+ * `.cm-block-embed` (a linked block) has an editor of its own: the drag-end
+ * selection re-assert would write the outer editor's DOM selection and pull
+ * focus out of the embed the moment the click lands.
  */
 function shouldStartDragGate(
   state: EditorState,
@@ -111,7 +116,7 @@ function shouldStartDragGate(
   if (
     target &&
     typeof target.closest === "function" &&
-    target.closest(".cm-mermaid-widget, .cm-table-widget")
+    target.closest(".cm-mermaid-widget, .cm-table-widget, .cm-block-embed")
   ) {
     return null;
   }

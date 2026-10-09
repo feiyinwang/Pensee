@@ -30,6 +30,7 @@ import {
   resolveWikiLink,
 } from "@/lib/wiki-links";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
+import { selectionInertFacet } from "@/lib/prosemark-core/main";
 import { parseBlockEmbedTarget } from "@/lib/block-refs";
 import { HtmlEmbedWidget } from "./html-embed-widget";
 import { blockEmbedHost } from "./linked-block-sync";
@@ -231,7 +232,12 @@ function wikiLinkDecorations(getFilePath: () => string) {
       }
 
       update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged || update.selectionSet) {
+        if (
+          update.docChanged ||
+          update.viewportChanged ||
+          update.selectionSet ||
+          update.startState.facet(selectionInertFacet) !== update.state.facet(selectionInertFacet)
+        ) {
           this.decorations = buildDecorations(update.view, getFilePath);
         }
       }
