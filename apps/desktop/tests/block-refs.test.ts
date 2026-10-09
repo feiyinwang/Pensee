@@ -8,8 +8,11 @@ import {
   minimalChange,
   newBlockId,
   parseBlockEmbedTarget,
+  referenceFromClipboard,
+  referenceInsertion,
   referencesInText,
   replaceBlock,
+  bodyStaysOneBlock,
 } from "../src/lib/block-refs";
 
 describe("parseBlockEmbedTarget", () => {
@@ -40,9 +43,12 @@ describe("findBlock / blockText", () => {
   test("a paragraph stops under a heading with no blank line", () => {
     expect(blockText("# Title\nbody ^p1\n", "p1")).toBe("body");
   });
-  test("a list item is its own line", () => {
-    const text = "- one\n- two ^li\n  - child\n- three\n";
-    expect(blockText(text, "li")).toBe("- two");
+  test("a list item carries everything nested under it", () => {
+    const text = "- one\n- two ^li\n  - child\n\n    deeper\n- three\n";
+    expect(blockText(text, "li")).toBe("- two\n  - child\n\n    deeper");
+  });
+  test("a list item with no children is its line", () => {
+    expect(blockText("- a ^li\n- b\n", "li")).toBe("- a");
   });
   test("a picture", () => {
     expect(blockText("text\n\n![](pics/a.png) ^img\n", "img")).toBe("![](pics/a.png)");
@@ -54,7 +60,13 @@ describe("findBlock / blockText", () => {
     expect(blockText("a ^abc\n\nb ^ab\n", "ab")).toBe("b");
   });
   test("first block of the file", () => {
-    expect(findBlock("hello ^h", "h")).toEqual({ from: 0, to: 5, end: 8 });
+    expect(findBlock("hello ^h", "h")).toEqual({
+      from: 0,
+      to: 8,
+      idFrom: 5,
+      idTo: 8,
+      idOnFirstLine: false,
+    });
   });
 });
 
@@ -108,5 +120,40 @@ describe("backlink helpers", () => {
   });
   test("referencesInText ignores the definition itself", () => {
     expect(referencesInText("block ^abc\n", new Set(["abc"]))).toEqual([]);
+  });
+});
+
+describe("paste as reference", () => {
+  test("referenceFromClipboard takes one block reference, embed or link", () => {
+    expect(referenceFromClipboard(" ![[Trip#^a1]]\n")).toBe("![[Trip#^a1]]");
+    expect(referenceFromClipboard("[[notes/Trip#^a1]]")).toBe("![[notes/Trip#^a1]]");
+    expect(referenceFromClipboard("[[Trip]]")).toBeNull();
+    expect(referenceFromClipboard("see ![[Trip#^a1]]")).toBeNull();
+    expect(referenceFromClipboard("")).toBeNull();
+  });
+  test("referenceInsertion: blank line, list item, paragraph", () => {
+    expect(referenceInsertion("   ", "E")).toEqual({ replaceLine: true, text: "E" });
+    expect(referenceInsertion("  - milk", "E")).toEqual({ replaceLine: false, text: "\n  - E" });
+    expect(referenceInsertion("3. eggs", "E")).toEqual({ replaceLine: false, text: "\n4. E" });
+    expect(referenceInsertion("Some text", "E")).toEqual({ replaceLine: false, text: "\n\nE" });
+  });
+});
+
+describe("bullet subtrees", () => {
+  test("replacing a bullet keeps its id on the bullet line, children below", () => {
+    const text = "- a ^li\n  - old\n- next\n";
+    expect(replaceBlock(text, "li", "- a\n  - new\n  - more")).toBe(
+      "- a ^li\n  - new\n  - more\n- next\n",
+    );
+  });
+  test("a bullet that gains its first child keeps the id on the bullet", () => {
+    expect(replaceBlock("- a ^li\n- b\n", "li", "- a\n  - c")).toBe("- a ^li\n  - c\n- b\n");
+  });
+  test("bodyStaysOneBlock: children yes, siblings and split paragraphs no", () => {
+    expect(bodyStaysOneBlock("- a\n  - child", "x")).toBe(true);
+    expect(bodyStaysOneBlock("- a\n- sibling", "x")).toBe(false);
+    expect(bodyStaysOneBlock("one\ntwo", "x")).toBe(true);
+    expect(bodyStaysOneBlock("one\n\ntwo", "x")).toBe(false);
+    expect(bodyStaysOneBlock("", "x")).toBe(true);
   });
 });

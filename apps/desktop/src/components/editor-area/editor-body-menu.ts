@@ -5,6 +5,7 @@ import { buildEditorBodyMenuItemsSpec, showNativeContextMenu } from "./editor-co
 import { followLink, linkHrefAtPos } from "./link-navigation";
 import { runEditorCommand } from "./markdown-formatting";
 import { moveSelectionToPage } from "./wiki-pages-extension";
+import { copyBlockReferenceAtCaret, pasteBlockReference } from "./block-embed";
 import { tabularPasteTransaction } from "@/lib/tabular-paste";
 
 /** Right-click menu over the editor body: clipboard, the command submenus,
@@ -66,6 +67,15 @@ export function editorBodyContextMenuExtension(
                   moveSelectionToPage(view, getFilePath, isDisposed);
                 }
               : undefined,
+            onCopyBlockReference: () => {
+              // The block under the click, not wherever the caret was.
+              if (pos !== null) view.dispatch({ selection: { anchor: pos } });
+              copyBlockReferenceAtCaret(view);
+            },
+            onPasteBlockReference: () => {
+              if (pos !== null) view.dispatch({ selection: { anchor: pos } });
+              pasteBlockReference(view, isDisposed);
+            },
             onRunCommand: (id) => {
               view.focus();
               runEditorCommand(view, id);

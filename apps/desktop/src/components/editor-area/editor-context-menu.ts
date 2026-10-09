@@ -15,6 +15,7 @@ import {
   type EditorCommandId,
 } from "./markdown-formatting";
 import { MOVE_SELECTION_TO_PAGE_CHORD } from "./wiki-pages-extension";
+import { COPY_BLOCK_REFERENCE_CHORD, PASTE_BLOCK_REFERENCE_CHORD } from "./block-embed";
 
 // -- Editor body menu --
 
@@ -25,7 +26,9 @@ export type EditorBodyMenuActionId =
   | "select-all"
   | "open-link"
   | "copy-link"
-  | "move-to-page";
+  | "move-to-page"
+  | "copy-block-reference"
+  | "paste-block-reference";
 
 export interface EditorBodyMenuHandlers {
   onCut: () => void;
@@ -37,6 +40,10 @@ export interface EditorBodyMenuHandlers {
   onRunCommand?: (id: EditorCommandId) => void;
   /** Present only when there is a selection to move. */
   onMoveToPage?: () => void;
+  /** Linked blocks (SPECs/block-embed-spec.md); absent outside the main
+   *  editor. */
+  onCopyBlockReference?: () => void;
+  onPasteBlockReference?: () => void;
 }
 
 // Menu ids stay stable for tests and telemetry; text and accelerator come from
@@ -115,6 +122,24 @@ export function buildEditorBodyMenuItemsSpec(
     { kind: "item", id: "copy", text: "Copy", action: handlers.onCopy },
     { kind: "item", id: "paste", text: "Paste", action: handlers.onPaste },
   ];
+
+  if (handlers.onCopyBlockReference && handlers.onPasteBlockReference) {
+    items.push({ kind: "separator" });
+    items.push({
+      kind: "item",
+      id: "copy-block-reference",
+      text: "Copy block reference",
+      action: handlers.onCopyBlockReference,
+      accelerator: chordToAccelerator(COPY_BLOCK_REFERENCE_CHORD),
+    });
+    items.push({
+      kind: "item",
+      id: "paste-block-reference",
+      text: "Paste as linked block",
+      action: handlers.onPasteBlockReference,
+      accelerator: chordToAccelerator(PASTE_BLOCK_REFERENCE_CHORD),
+    });
+  }
 
   if (handlers.onMoveToPage) {
     items.push({ kind: "separator" });

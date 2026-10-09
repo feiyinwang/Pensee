@@ -3,7 +3,7 @@ import { Annotation, type Extension, Facet } from "@codemirror/state";
 import { listen } from "@tauri-apps/api/event";
 import * as tauri from "@/lib/tauri";
 import { LruCache } from "@/lib/lru";
-import { findBlock, minimalChange, replaceBlock } from "@/lib/block-refs";
+import { findBlock, minimalChange, replaceBlock, withIdMarker } from "@/lib/block-refs";
 import * as editorApi from "@/hooks/editor-api";
 import { showEditorNotice } from "./editor-notice-store";
 
@@ -219,7 +219,8 @@ export function writeBlock(path: string, id: string, body: string): boolean {
       const range = findBlock(doc, id);
       if (!range) continue;
       wrote = true;
-      const change = minimalChange(doc.slice(range.from, range.to), body);
+      const marker = doc.slice(range.idFrom, range.idTo);
+      const change = minimalChange(doc.slice(range.from, range.to), withIdMarker(body, marker));
       if (!change) continue;
       view.dispatch({
         changes: {

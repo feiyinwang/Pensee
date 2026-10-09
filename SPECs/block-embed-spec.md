@@ -13,8 +13,9 @@ Obsidian's syntax, so the files stay portable markdown and Obsidian reads them t
 
 What counts as the block (`findBlock` in `lib/block-refs.ts`):
 
-- **A list item or a heading** is the one line carrying the id. The item's children are separate blocks.
-- **A paragraph** (pictures included) is the id line plus the lines above it, up to a blank line, a heading, a fence, or a line that starts its own block.
+- **A bullet (list item)** is its line plus everything nested under it: the following lines indented deeper than its marker, including blank lines between them. Copying a bullet copies its subtree, as in RemNote. Its id ends the bullet's own line, which is also where Obsidian reads it. In an embed you can add, edit or remove children. A new sibling bullet is refused, because it would fall outside the block. Where the id goes on write-back follows the new text (`withIdMarker`), so a bullet that gains its first child keeps the id on the bullet line.
+- **A paragraph** (pictures included) is the id line plus the lines above it, up to a blank line, a heading, a fence, or a line that starts its own block. The id always goes after the paragraph's last line.
+- **A heading** is its own line.
 
 Fences, tables, HTML blocks, column rows and rules can't be linked in v1, because a ` ^id` on their last line would change what they are. Obsidian puts the id on its own line under them, and that's the follow-up.
 
@@ -27,10 +28,22 @@ Fences, tables, HTML blocks, column rows and rules can't be linked in v1, becaus
   - **Open but not shown:** written into the editor store, which saves it.
   - **Not open:** spliced into the cached file text and written with `write_file`, debounced 300 ms.
 - Edits made anywhere else (the source tab, another embed, an external editor) show up in every embed of that block.
-- An edit that would split the block is refused, so text never silently drops out of the embed. That includes a blank line, or a new list item under a list item.
+- An edit that would split the block is refused (`bodyStaysOneBlock`), so text never silently drops out of the embed. That includes a blank line in a paragraph, or a sibling bullet next to a bullet.
 - On the source page the ` ^id` is hidden, and shows faintly while the caret is on its line.
 - If the page or block can't be found, the embed says so. If the id is deleted from the source while an embed is shown, the embed greys out and stops writing.
-- Moving the caret onto `![[...]]` shows its source text, like every other embed.
+- An embed shows its `![[...]]` source only while the caret is strictly inside it, or a selection covers it. A caret at either edge leaves it rendered, so a fresh paste doesn't look like raw text.
+
+## Keyboard
+
+- **⌘⇧C** copies a reference to the block the caret is in: the same block the gutter handle addresses (`gripBlockAt`). It tags the block the first time, exactly like **Copy link to block**. Inside an embed, it copies that embedded block's reference.
+- **⌘⇧V** reads the clipboard. If it holds one block reference (`![[Page#^id]]` or `[[Page#^id]]`), the reference is inserted as a linked block (`referenceInsertion`):
+  - on a blank line, in place of it;
+  - on a list item, as a new sibling item (a numbered item gets the next number);
+  - anywhere else, as its own paragraph below the line.
+  
+  Anything else on the clipboard shows a notice instead of pasting.
+- The editor's right-click menu carries both, as **Copy block reference** and **Paste as linked block**, with their shortcuts. They act on the block under the click.
+- A paragraph's tag always goes after its *last* line, even when the caret or grip was on an earlier one, so the whole paragraph is the block.
 
 ## Backlinks
 

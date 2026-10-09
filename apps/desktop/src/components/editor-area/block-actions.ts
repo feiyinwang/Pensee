@@ -142,6 +142,64 @@ export function listItemAt(
   return found ? { from: found.from, to: found.to, name: "ListItem" } : null;
 }
 
+/** Top-level block containing `pos` — the unit the gutter handle drags. */
+export interface BlockRef {
+  from: number;
+  to: number;
+  name: string;
+}
+
+/** For prose the unit under the grip is the LINE, not the markdown block.
+ *
+ *  A `Paragraph` is every consecutive non-blank line, so a single Enter leaves
+ *  two independent thoughts inside one node. Pointing at the second line and
+ *  getting the first is what made "make this a heading" head the line above
+ *  the one under the pointer — the grip parks on `block.from`, so it visibly
+ *  jumped up a line before the menu even opened.
+ *
+ *  A list narrows the same way, to the item under the pointer: every bullet
+ *  is its own thought, and a grip that addressed the whole list let the first
+ *  line's menu convert all of them (`listItemAt`).
+ *
+ *  A quote or a table is genuinely one thing across its lines, and a picture
+ *  with words under it stays whole because the two are a single unit here —
+ *  see the `lines` note in `place`. */
+function proseLineAt(state: EditorState, block: BlockRef | null, pos: number): BlockRef | null {
+  if (block && (block.name === "BulletList" || block.name === "OrderedList")) {
+    return listItemAt(state, pos) ?? block;
+  }
+  if (!block || block.name !== "Paragraph") return block;
+  const clamped = Math.min(Math.max(pos, block.from), block.to);
+  const line = state.doc.lineAt(clamped);
+  // Already a one-line paragraph: nothing to narrow, and returning the block
+  // keeps the identity the drag and move code compares against.
+  if (line.from <= block.from && line.to >= block.to) return block;
+  if (IMAGE_BLOCK.test(state.doc.sliceString(block.from, block.to).trim())) return block;
+  return { from: line.from, to: line.to, name: block.name };
+}
+
+/** The unit the grip hands out at `pos` — what a drag SOURCE must be
+ *  re-resolved with, or a line or list item would be checked against its
+ *  whole paragraph or list and the removal would take all of it. */
+export function gripBlockAt(state: EditorState, pos: number): BlockRef | null {
+  return proseLineAt(state, topBlockAt(state, pos), pos);
+}
+
+export function topBlockAt(state: EditorState, pos: number): BlockRef | null {
+  const clamped = Math.min(Math.max(pos, 0), state.doc.length);
+  const tree = syntaxTree(state);
+  // Both sides matter. At a block's *end* boundary `resolveInner(pos, 1)` looks
+  // forward and lands on the Document — so pointing past the end of a short
+  // line (very easy to do: the line box spans the whole text column) would
+  // report "no block here" and the drop would silently fall back to a gap.
+  for (const side of [1, -1] as const) {
+    let node: SyntaxNode | null = tree.resolveInner(clamped, side);
+    while (node?.parent?.parent) node = node.parent;
+    if (node?.parent) return { from: node.from, to: node.to, name: node.name };
+  }
+  return null; // genuinely a blank line
+}
+
 /** The `ListItem` node starting exactly at `from`. */
 function listItemNode(state: EditorState, from: number): SyntaxNode | null {
   let node: SyntaxNode | null = syntaxTree(state).resolveInner(from, 1);

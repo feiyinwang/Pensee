@@ -239,4 +239,22 @@ describe("buildTitleMenuItemsSpec", () => {
     }
     expect(handlers.calls).toEqual(["rename", "reveal", "copy-path"]);
   });
+
+  describe("block reference items", () => {
+    test("shown with their shortcuts when the editor offers them", () => {
+      const handlers = {
+        ...makeBodyHandlers(),
+        onCopyBlockReference: () => {},
+        onPasteBlockReference: () => {},
+      };
+      const spec = buildEditorBodyMenuItemsSpec(handlers, false);
+      const items = spec.flatMap((e) => (e.kind === "item" ? [[e.id, e.accelerator]] : []));
+      expect(items).toContainEqual(["copy-block-reference", "CmdOrCtrl+Shift+C"]);
+      expect(items).toContainEqual(["paste-block-reference", "CmdOrCtrl+Shift+V"]);
+    });
+    test("absent otherwise", () => {
+      const spec = buildEditorBodyMenuItemsSpec(makeBodyHandlers(), false);
+      expect(spec.some((e) => e.kind === "item" && e.id === "copy-block-reference")).toBe(false);
+    });
+  });
 });

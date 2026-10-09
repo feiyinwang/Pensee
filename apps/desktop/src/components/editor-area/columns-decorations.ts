@@ -3,7 +3,6 @@ import {
   Prec,
   StateEffect,
   StateField,
-  type EditorState,
   type Extension,
   type Range,
 } from "@codemirror/state";
@@ -20,10 +19,8 @@ import {
 } from "@codemirror/view";
 import { history, historyKeymap } from "@codemirror/commands";
 import { editorDefaultKeymap } from "@/lib/prosemark-core/basicSetup";
-import { syntaxTree } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { markdown } from "@codemirror/lang-markdown";
-import type { SyntaxNode } from "@lezer/common";
 import {
   GFM,
   type BlockContext,
@@ -67,12 +64,14 @@ import {
   type Column,
 } from "./columns-model";
 import {
-  listItemAt,
   rowAfterBandRemoval,
   rowAfterRemoval,
   rowRefAt,
   type ActionTarget,
   type RowRef,
+  gripBlockAt,
+  topBlockAt,
+  type BlockRef,
 } from "./block-actions";
 import { BlockHandleMenu, MENU_CLOSE_DELAY, MENU_OPEN_DELAY } from "./block-handle-menu";
 import { describeTarget, gripTrace } from "./grip-debug";
@@ -549,49 +548,6 @@ function rowRefFromDOM(view: EditorView, rowEl: HTMLElement): RowRef | null {
   return rowRefAt(view, pos) ?? rowRefAt(view, pos + 1);
 }
 
-/** Top-level block containing `pos` — the unit the gutter handle drags. */
-export interface BlockRef {
-  from: number;
-  to: number;
-  name: string;
-}
-
-/** For prose the unit under the grip is the LINE, not the markdown block.
- *
- *  A `Paragraph` is every consecutive non-blank line, so a single Enter leaves
- *  two independent thoughts inside one node. Pointing at the second line and
- *  getting the first is what made "make this a heading" head the line above
- *  the one under the pointer — the grip parks on `block.from`, so it visibly
- *  jumped up a line before the menu even opened.
- *
- *  A list narrows the same way, to the item under the pointer: every bullet
- *  is its own thought, and a grip that addressed the whole list let the first
- *  line's menu convert all of them (`listItemAt`).
- *
- *  A quote or a table is genuinely one thing across its lines, and a picture
- *  with words under it stays whole because the two are a single unit here —
- *  see the `lines` note in `place`. */
-function proseLineAt(state: EditorState, block: BlockRef | null, pos: number): BlockRef | null {
-  if (block && (block.name === "BulletList" || block.name === "OrderedList")) {
-    return listItemAt(state, pos) ?? block;
-  }
-  if (!block || block.name !== "Paragraph") return block;
-  const clamped = Math.min(Math.max(pos, block.from), block.to);
-  const line = state.doc.lineAt(clamped);
-  // Already a one-line paragraph: nothing to narrow, and returning the block
-  // keeps the identity the drag and move code compares against.
-  if (line.from <= block.from && line.to >= block.to) return block;
-  if (IMAGE_BLOCK.test(state.doc.sliceString(block.from, block.to).trim())) return block;
-  return { from: line.from, to: line.to, name: block.name };
-}
-
-/** The unit the grip hands out at `pos` — what a drag SOURCE must be
- *  re-resolved with, or a line or list item would be checked against its
- *  whole paragraph or list and the removal would take all of it. */
-function gripBlockAt(state: EditorState, pos: number): BlockRef | null {
-  return proseLineAt(state, topBlockAt(state, pos), pos);
-}
-
 /** What removing a dragged block takes out. A list item goes with its
  *  indentation (or a whitespace line is left inside the list) and exactly one
  *  newline: eating the blank line after the last item would glue the
@@ -603,21 +559,6 @@ function removalRange(view: EditorView, block: BlockRef): { from: number; to: nu
   return block.to < doc.length
     ? { from, to: block.to + 1 }
     : { from: Math.max(0, from - 1), to: block.to };
-}
-
-function topBlockAt(state: EditorState, pos: number): BlockRef | null {
-  const clamped = Math.min(Math.max(pos, 0), state.doc.length);
-  const tree = syntaxTree(state);
-  // Both sides matter. At a block's *end* boundary `resolveInner(pos, 1)` looks
-  // forward and lands on the Document — so pointing past the end of a short
-  // line (very easy to do: the line box spans the whole text column) would
-  // report "no block here" and the drop would silently fall back to a gap.
-  for (const side of [1, -1] as const) {
-    let node: SyntaxNode | null = tree.resolveInner(clamped, side);
-    while (node?.parent?.parent) node = node.parent;
-    if (node?.parent) return { from: node.from, to: node.to, name: node.name };
-  }
-  return null; // genuinely a blank line
 }
 
 /** Text of a block, ready to become a column. */

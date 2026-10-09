@@ -71,6 +71,8 @@ These shortcuts are handled by the `markdownFormatting` CodeMirror extension and
 | Cmd+Alt+1 ... Cmd+Alt+6 | Heading 1-6               |
 | Cmd+Alt+0               | Paragraph (strip heading) |
 | Cmd+Alt+N               | Move selection to page…    |
+| Cmd+Shift+C             | Copy block reference       |
+| Cmd+Shift+V             | Paste as linked block      |
 
 ## Editor (inherited from CodeMirror)
 

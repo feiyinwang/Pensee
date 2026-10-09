@@ -2,17 +2,19 @@ import {
   Decoration,
   type DecorationSet,
   EditorView,
+  keymap,
   ViewPlugin,
   type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
-import { EditorState, type Extension, Transaction } from "@codemirror/state";
+import { EditorState, type Extension, Prec, Transaction } from "@codemirror/state";
+import type { SyntaxNode } from "@lezer/common";
 import { history } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxTree } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { GFM } from "@lezer/markdown";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import {
   prosemarkBasicSetup,
   prosemarkBaseThemeSetup,
@@ -25,16 +27,18 @@ import {
   blockIdOnLine,
   blockLinkPage,
   blockText,
-  findBlock,
+  bodyStaysOneBlock,
   minimalChange,
   newBlockId,
   parseBlockEmbedTarget,
+  referenceFromClipboard,
+  referenceInsertion,
 } from "@/lib/block-refs";
 import { WIKI_LINK_RE } from "@/lib/wiki-links";
 import { findWikiPage } from "@/lib/wiki-pages";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as editorApi from "@/hooks/editor-api";
-import type { ActionTarget } from "./block-actions";
+import { gripBlockAt, type ActionTarget } from "./block-actions";
 import { getEffectiveSelectionRanges } from "./drag-selection-gate";
 import { showEditorNotice } from "./editor-notice-store";
 import { headingDecorations } from "./heading-decorations";
@@ -110,12 +114,24 @@ function nestedExtensions(path: string, id: string, isDisposed: () => boolean): 
     imageSrcResolver(() => path),
     wikiLinkExtension(() => path, isDisposed),
     markdownFormatting,
-    // Only edits that leave one block: a blank line (or a new list item under
-    // a list item) would split it, and the part above the id would quietly
-    // drop out of this embed while staying in the page.
+    // ⌘⇧C inside an embed: this block already has a reference; copy it.
+    keymap.of([
+      {
+        key: COPY_BLOCK_REFERENCE_CHORD,
+        run: () => {
+          copyReference(`![[${blockLinkPage(path, getWorkspaceRoot())}#^${id}]]`);
+          return true;
+        },
+        preventDefault: true,
+      },
+    ]),
+    // Only edits that leave one block: a blank line in a paragraph, or a
+    // sibling item next to a bullet, would split it, and that part would
+    // quietly drop out of this embed while staying in the page. Children
+    // under a bullet are fine — they belong to it.
     EditorState.transactionFilter.of((tr) => {
       if (!tr.docChanged || tr.annotation(linkedBlockSync)) return tr;
-      return findBlock(`${tr.newDoc.toString()} ^${id}`, id)?.from === 0 ? tr : [];
+      return bodyStaysOneBlock(tr.newDoc.toString(), id) ? tr : [];
     }),
     EditorView.updateListener.of((update) => {
       if (!update.docChanged) return;
@@ -295,7 +311,13 @@ function build(view: EditorView, getFilePath: () => string): DecorationSet {
       const start = from + match.index;
       const end = start + match[0].length;
       if (inCode(state, start)) continue;
-      if (ranges.some((r) => r.from >= start && r.to <= end)) {
+      // Source shows only with the caret strictly inside, or a selection over
+      // it. A caret at either edge leaves the block rendered: right after a
+      // paste the caret sits at its end, and that must not look like raw text.
+      const revealed = ranges.some((r) =>
+        r.empty ? r.from > start && r.from < end : r.from >= start && r.to <= end,
+      );
+      if (revealed) {
         decorations.push(embedEditingMark.range(start, end));
       } else {
         decorations.push(
@@ -363,6 +385,7 @@ export function blockEmbeds(getFilePath: () => string): Extension {
     liveEditorRegistry(getFilePath),
     blockBacklinks(),
     blockEmbedDecorations(getFilePath),
+    referenceKeymap,
   ];
 }
 
@@ -396,7 +419,11 @@ export function copyBlockLink(view: EditorView, target: ActionTarget): boolean {
   // A list item or heading carries its id on its own (first) line; a
   // paragraph on its last, so the id covers every line of it.
   const firstLineOnly = target.name === "ListItem" || /Heading/.test(target.name);
-  const end = target.to > target.from ? target.to - 1 : target.to;
+  // The grip (and the caret shortcut) narrow a paragraph to one line; the id
+  // still goes after its last line, or the lines below would fall outside.
+  const to =
+    target.name === "Paragraph" ? paragraphEnd(view.state, target.from, target.to) : target.to;
+  const end = to > target.from ? to - 1 : to;
   const line = firstLineOnly ? doc.lineAt(target.from) : doc.lineAt(Math.max(target.from, end));
   let id = blockIdOnLine(line.text);
   if (!id) {
@@ -406,13 +433,90 @@ export function copyBlockLink(view: EditorView, target: ActionTarget): boolean {
       userEvent: "input.block-id",
     });
   }
-  const link = `![[${blockLinkPage(path, getWorkspaceRoot())}#^${id}]]`;
-  writeText(link).then(
-    () => showEditorNotice("Block link copied. Paste it into any page to show this block there."),
-    (error) => {
-      console.error("[editor] Failed to copy block link:", error);
-      showEditorNotice("Couldn't copy the block link.");
-    },
-  );
+  copyReference(`![[${blockLinkPage(path, getWorkspaceRoot())}#^${id}]]`);
   return true;
 }
+
+function paragraphEnd(state: EditorState, from: number, to: number): number {
+  for (
+    let node: SyntaxNode | null = syntaxTree(state).resolveInner(from, 1);
+    node;
+    node = node.parent
+  ) {
+    if (node.name === "Paragraph") return Math.max(to, node.to);
+  }
+  return to;
+}
+
+function copyReference(link: string) {
+  writeText(link).then(
+    () =>
+      showEditorNotice("Reference copied. Press ⌘⇧V in any page to paste it as a linked block."),
+    (error) => {
+      console.error("[editor] Failed to copy block reference:", error);
+      showEditorNotice("Couldn't copy the block reference.");
+    },
+  );
+}
+
+/* ------------------------------------------------- keyboard: ⌘⇧C / ⌘⇧V */
+
+export const COPY_BLOCK_REFERENCE_CHORD = "Mod-Shift-c";
+export const PASTE_BLOCK_REFERENCE_CHORD = "Mod-Shift-v";
+
+/** ⌘⇧C: copy a reference to the block the caret is in — the same block the
+ *  gutter handle would act on. */
+export function copyBlockReferenceAtCaret(view: EditorView): boolean {
+  if (!view.state.facet(blockEmbedHost)?.()) return false;
+  const block = gripBlockAt(view.state, view.state.selection.main.head);
+  if (!block) {
+    showEditorNotice("Put the cursor in a block to copy a reference to it.");
+    return true;
+  }
+  const target: ActionTarget = { kind: "block", ...block };
+  if (!canLinkToBlock(view, target)) {
+    showEditorNotice("Code, tables and columns can't be referenced yet.");
+    return true;
+  }
+  return copyBlockLink(view, target);
+}
+
+/** ⌘⇧V: put the copied reference below the caret's line as a linked block —
+ *  a new item when the caret is in a list. */
+export function pasteBlockReference(view: EditorView, isDisposed: () => boolean = () => false) {
+  readText()
+    .then((text) => {
+      if (isDisposed()) return;
+      const embed = text ? referenceFromClipboard(text) : null;
+      if (!embed) {
+        showEditorNotice("Nothing to paste as a reference. Copy a block with ⌘⇧C first.");
+        return;
+      }
+      const line = view.state.doc.lineAt(view.state.selection.main.head);
+      const { replaceLine, text: insert } = referenceInsertion(line.text, embed);
+      const from = replaceLine ? line.from : line.to;
+      view.dispatch({
+        changes: { from, to: line.to, insert },
+        selection: { anchor: from + insert.length },
+        userEvent: "input.paste",
+        scrollIntoView: true,
+      });
+      view.focus();
+    })
+    .catch((error) => {
+      console.error("[editor] Failed to paste block reference:", error);
+      showEditorNotice("Couldn't read the clipboard.");
+    });
+  return true;
+}
+
+const referenceKeymap = Prec.high(
+  keymap.of([
+    { key: COPY_BLOCK_REFERENCE_CHORD, run: copyBlockReferenceAtCaret, preventDefault: true },
+    {
+      key: PASTE_BLOCK_REFERENCE_CHORD,
+      run: (view) => (view.state.facet(blockEmbedHost) ? pasteBlockReference(view) : false),
+      preventDefault: true,
+    },
+  ]),
+);
