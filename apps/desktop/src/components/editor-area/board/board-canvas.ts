@@ -31,7 +31,9 @@ import {
   FRAME_PRESETS,
   STICKY_SIZE,
   clampCoord,
+  boundGestureZoom,
   clampZoom,
+  stretchZoom,
   cloneScene,
   defaultStyle,
   newShapeStyle,
@@ -153,6 +155,9 @@ const OVERSCAN = 256;
 const FAR_ZOOM = 0.3;
 const HISTORY_LIMIT = 120;
 const ZOOM_STEP = 1.2;
+/** A pinch stretched past a zoom limit springs back over this long, on
+ *  --ease-spring: it matches --motion-settle. */
+const ZOOM_SPRING_MS = 180;
 /** A click on a link waits this long for a second click, so a double-click
  *  still edits the card's text instead of leaving the board. */
 const LINK_CLICK_DELAY_MS = 260;
@@ -404,11 +409,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function applyViewport(): void {
     const v = vp();
-    // Any real paint ends an in-flight zoom preview.
+    // Any real paint ends an in-flight zoom preview or spring-back.
     if (zoomSettleTimer !== -1) {
       window.clearTimeout(zoomSettleTimer);
       zoomSettleTimer = -1;
     }
+    endSpringBack();
     svg.style.transform = "";
     painted = { ...v };
     world.setAttribute(
@@ -423,11 +429,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     placeSelectionToolbar();
   }
 
-  /** Moves the viewport to `next` zoom, keeping `anchorClient` (or the centre)
-   *  fixed on screen. Updates state only; callers decide how to paint. */
-  function zoomViewport(next: number, anchorClient?: Point): void {
+  /** Moves the viewport to `zoom`, keeping `anchorClient` (or the centre)
+   *  fixed on screen. Updates state only; callers clamp and decide how to
+   *  paint. */
+  function zoomViewport(zoom: number, anchorClient?: Point): void {
     const v = vp();
-    const zoom = clampZoom(next);
     if (anchorClient) {
       const before = screenToScene(anchorClient.x, anchorClient.y);
       v.zoom = zoom;
@@ -447,7 +453,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   /** Buttons and shortcuts: one step, painted at once. No save — a viewport
    *  change is not an edit (it is written with the next change or on close). */
   function setZoom(next: number, anchorClient?: Point): void {
-    zoomViewport(next, anchorClient);
+    zoomViewport(clampZoom(next), anchorClient);
     applyViewport();
     draw();
   }
@@ -462,6 +468,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  boards, where a commit mid-gesture would be a visible stall. */
   const zoomSettleMs = (): number => (scene.els.length < CULL_THRESHOLD ? 100 : 160);
   let zoomSettleTimer = -1;
+  /** The zoom the current pinch asks for, before stretchZoom; -1 between
+   *  pinches. Kept apart from the viewport so pinching back from past a
+   *  limit unwinds the stretch instead of starting over from the edge. */
+  let gestureZoom = -1;
+  let springTimer = -1;
 
   /** Shows the live viewport by moving the svg as last painted, on the
    *  compositor (its transform-origin is the stage's corner, see board.css). */
@@ -474,7 +485,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     // A pure pan re-snaps the grid exactly; a zoom stretches it with the svg.
     if (s === 1) applyGrid(n);
     else gridLayer.style.transform = `${t} ${paintedGrid}`;
-    toolbar.setZoom(n.zoom);
+    // A stretch past a limit is not a zoom level; the label stays on it.
+    toolbar.setZoom(clampZoom(n.zoom));
     placeSelectionToolbar();
   }
 
@@ -494,15 +506,55 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     recullNow();
   }
 
-  function zoomGesture(next: number, anchorClient: Point): void {
-    zoomViewport(next, anchorClient);
+  /** One pinch or Cmd-scroll step. The preview follows the fingers with no
+   *  transition, stretched past a limit; once the gesture rests it commits,
+   *  springing back to the limit first if it was stretched. */
+  function zoomGesture(factor: number, anchorClient: Point): void {
+    endSpringBack();
+    if (gestureZoom < 0) gestureZoom = vp().zoom;
+    gestureZoom = boundGestureZoom(gestureZoom * factor);
+    zoomViewport(stretchZoom(gestureZoom), anchorClient);
     previewViewport();
     window.clearTimeout(zoomSettleTimer);
     zoomSettleTimer = window.setTimeout(() => {
       zoomSettleTimer = -1;
+      gestureZoom = -1;
+      const limit = clampZoom(vp().zoom);
+      if (limit !== vp().zoom) springBack(limit, anchorClient);
+      else {
+        applyViewport();
+        draw();
+      }
+    }, zoomSettleMs());
+  }
+
+  /** Eases a stretched pinch back to the limit about the same anchor, on the
+   *  compositor, then commits. Instant under reduced motion. */
+  function springBack(limit: number, anchorClient: Point): void {
+    zoomViewport(limit, anchorClient);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       applyViewport();
       draw();
-    }, zoomSettleMs());
+      return;
+    }
+    const spring = `transform var(--motion-settle) var(--ease-spring)`;
+    svg.style.transition = spring;
+    gridLayer.style.transition = spring;
+    previewViewport();
+    springTimer = window.setTimeout(() => {
+      springTimer = -1;
+      applyViewport();
+      draw();
+    }, ZOOM_SPRING_MS);
+  }
+
+  /** Stops a spring-back where it is: the next paint or pinch takes over. */
+  function endSpringBack(): void {
+    if (springTimer === -1) return;
+    window.clearTimeout(springTimer);
+    springTimer = -1;
+    svg.style.transition = "";
+    gridLayer.style.transition = "";
   }
 
   function zoomBy(factor: number): void {
@@ -3049,8 +3101,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     e.preventDefault();
     if (presenting) return;
     if (zoom) {
-      const factor = Math.exp(-e.deltaY / 260);
-      zoomGesture(vp().zoom * factor, { x: e.clientX, y: e.clientY });
+      zoomGesture(Math.exp(-e.deltaY / 260), { x: e.clientX, y: e.clientY });
       return;
     }
     const v = vp();

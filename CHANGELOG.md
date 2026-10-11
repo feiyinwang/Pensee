@@ -2,6 +2,7 @@
 
 ## 2026-10-11
 
+- Boards zoom much further: from 2% out to 3000% in (was 10% to 500%). Pinching feels the same speed as before. Pinch past either end and the board stretches a little, stiffer the further you go, then springs back to the limit when you let go.
 - Link to your notes from a board. In any sticky note, shape, text or mind-map topic, type **[[** and a list of matching notes appears; pick one with the arrow keys and **Enter**. The link shows in the card as underlined text in the accent colour. Click it to close the board and open that note (a note that doesn't exist yet is created, as in the editor). Double-clicking the card still edits its text, and dragging it still moves it. `[[Note|other words]]` shows the other words instead of the note's name.
 
 ## 2026-10-09

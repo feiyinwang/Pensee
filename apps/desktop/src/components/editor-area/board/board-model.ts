@@ -629,8 +629,33 @@ export function sceneSize(scene: BoardScene): { bytes: number; overBudget: boole
 
 /* ---------------------------------------------------------------- helpers */
 
+/** Zoom limits: 2% to 3000%. */
+export const ZOOM_MIN = 0.02;
+export const ZOOM_MAX = 30;
+
 export function clampZoom(z: number): number {
-  return Math.min(5, Math.max(0.1, z));
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+}
+
+/** How far past a limit a pinch can stretch the board (15%, as a log). */
+const ZOOM_STRETCH = Math.log(1.15);
+
+/** A pinch past a zoom limit keeps moving the board, ever more stiffly, and
+ *  never more than 15% past it; it springs back on release. Inside the
+ *  limits it is the identity, and it leaves the edge at the same speed it
+ *  arrived (tanh has slope 1 at 0), so there is no kink at the limit. */
+export function stretchZoom(z: number): number {
+  const edge = clampZoom(z);
+  if (edge === z) return z;
+  const over = Math.log(z / edge);
+  return edge * Math.exp(ZOOM_STRETCH * Math.tanh(over / ZOOM_STRETCH));
+}
+
+/** The furthest a pinch's own (unstretched) zoom runs past a limit. Beyond
+ *  this the stretch is flat, so reversing would only unwind dead travel. */
+export function boundGestureZoom(z: number): number {
+  const reach = Math.exp(3 * ZOOM_STRETCH);
+  return Math.min(ZOOM_MAX * reach, Math.max(ZOOM_MIN / reach, z));
 }
 
 /** Keeps runaway drags from pushing the scene bounds to infinity, which would
