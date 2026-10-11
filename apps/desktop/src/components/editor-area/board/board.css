@@ -1167,3 +1167,48 @@
 .wr-board-export-menu button:hover {
   background: var(--item-hover-bg);
 }
+
+/* ------------------------------------------------------ [[ link suggestions */
+
+/* Card chrome (background, blur, border, radius) comes from `.surface-card`,
+   so this matches the editor's wiki-link list. */
+.wr-board-link-menu {
+  position: absolute;
+  z-index: 6;
+  min-width: 220px;
+  max-width: 360px;
+  padding: 6px;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  pointer-events: auto;
+}
+
+.wr-board-link-menu[hidden] {
+  display: none;
+}
+
+.wr-board-link-option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.wr-board-link-option[aria-selected="true"] {
+  background: var(--surface-selected);
+}
+
+.wr-board-link-detail {
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A `[[link]]` in a card's text opens its page on click. */
+.wr-board-content .wr-board-wiki {
+  cursor: pointer;
+}

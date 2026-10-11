@@ -10,6 +10,8 @@
  * keyboard handling simple — there is no CodeMirror keymap above us to fight.
  */
 
+import * as editorApi from "@/hooks/editor-api";
+import { followWikiLink } from "../wiki-pages-extension";
 import { type BoardScene, cloneScene } from "./board-model";
 import { type BoardCanvasHandle, mountBoardCanvas } from "./board-canvas";
 
@@ -24,6 +26,8 @@ export interface BoardFullscreenOptions {
   /** Open straight into present mode; leaving it closes the board. */
   present?: boolean;
   exportSvg?: (scene: BoardScene) => Promise<string>;
+  /** The note the board belongs to: `[[links]]` in cards resolve from it. */
+  notePath?: string | null;
   /** Lets the host tell us the document changed underneath us. */
   onOpened?: (api: { warn: (message: string) => void; close: () => void }) => void;
 }
@@ -159,6 +163,15 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     importImage: opts.importImage,
     present: opts.present,
     exportSvg: opts.exportSvg,
+    onOpenLink: (inner) => {
+      // Close first: it writes the board back, and the page opens behind it.
+      close();
+      followWikiLink(inner, opts.notePath ?? null)
+        .then((path) => {
+          if (path) void editorApi.openLinkedPage(path);
+        })
+        .catch((error) => console.error("[board] Failed to follow wiki link:", error));
+    },
   });
 
   void overlay.getBoundingClientRect();

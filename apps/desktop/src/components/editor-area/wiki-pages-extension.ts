@@ -7,7 +7,7 @@ import { getFileStem } from "@/lib/paths";
 import { serializeDocument } from "@/lib/frontmatter";
 import { isSaveInFlight } from "@/lib/save";
 import * as editorApi from "@/hooks/editor-api";
-import { findWikiLinkAt } from "@/lib/wiki-links";
+import { findWikiLinkAt, resolveWikiLink } from "@/lib/wiki-links";
 import {
   type WikiPageDeps,
   appendPageBody,
@@ -73,6 +73,24 @@ export function openWikiPage(inner: string, currentFilePath: string | null) {
   const root = getWorkspaceRoot();
   if (!root) return Promise.resolve(null);
   return ensureWikiPage(inner, root, currentFilePath, tauriWikiPageDeps);
+}
+
+/** The page a `[[link]]` points at, created when it does not exist yet — what
+ *  clicking a link does in the editor and on a board. Null without a workspace. */
+export async function followWikiLink(
+  inner: string,
+  currentFilePath: string | null,
+): Promise<string | null> {
+  const root = getWorkspaceRoot();
+  if (!root) return null;
+  const result = await resolveWikiLink(
+    inner,
+    root,
+    tauri.fuzzySearch,
+    tauri.fileExists,
+    currentFilePath,
+  );
+  return result.kind === "internal" ? result.path : openWikiPage(inner, currentFilePath);
 }
 
 const CODE_NODES = new Set(["FencedCode", "InlineCode", "CodeBlock", "CodeText"]);

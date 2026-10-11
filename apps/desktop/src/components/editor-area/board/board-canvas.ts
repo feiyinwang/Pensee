@@ -12,6 +12,7 @@
  *     converter" is how the two-renderer height bug happened elsewhere.
  */
 
+import { attachLinkCompletion } from "./board-link-complete";
 import {
   type BoardEl,
   type Binding,
@@ -152,6 +153,9 @@ const OVERSCAN = 256;
 const FAR_ZOOM = 0.3;
 const HISTORY_LIMIT = 120;
 const ZOOM_STEP = 1.2;
+/** A click on a link waits this long for a second click, so a double-click
+ *  still edits the card's text instead of leaving the board. */
+const LINK_CLICK_DELAY_MS = 260;
 
 export interface BoardCanvasOptions {
   scene: BoardScene;
@@ -168,6 +172,8 @@ export interface BoardCanvasOptions {
   present?: boolean;
   /** The self-contained SVG for a scene (pictures inlined). Enables Export. */
   exportSvg?: (scene: BoardScene) => Promise<string>;
+  /** Follows a `[[wiki link]]` clicked in a card's text (the raw inner text). */
+  onOpenLink?: (inner: string) => void;
 }
 
 export interface BoardCanvasHandle {
@@ -1695,6 +1701,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         draw();
         markDirty();
       }
+      detachLinks();
       area.remove();
       drawn?.classList.remove("is-editing");
       if (activeEditor === area) activeEditor = null;
@@ -1704,6 +1711,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
     area.addEventListener("blur", commit);
     area.addEventListener("input", fit);
+    // Before the board's keydown below, so an open list takes Enter/Tab/Esc.
+    const detachLinks = attachLinkCompletion(area, editorLayer, fit);
     area.addEventListener("keydown", (e) => {
       e.stopPropagation();
       const emphasis = emphasisKey(e);
@@ -2298,8 +2307,25 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     return map;
   }
 
+  /** The `[[link]]` under a press, followed if the press turns out a click. */
+  let pressedLink: string | null = null;
+  let linkTimer = -1;
+
+  function linkAt(e: Event): string | null {
+    const t = e.target;
+    const run = t instanceof Element ? t.closest("[data-wiki]") : null;
+    return run?.getAttribute("data-wiki") ?? null;
+  }
+
+  function cancelLinkClick(): void {
+    window.clearTimeout(linkTimer);
+    linkTimer = -1;
+  }
+
   function onPointerDown(e: PointerEvent): void {
     cachedStageRect = null;
+    pressedLink = null;
+    cancelLinkClick();
     if (presenting) {
       // A click advances, like a slide deck; the board is not editable here.
       if (e.button === 0) goToSlide(presenting.index + 1);
@@ -2387,6 +2413,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
       const hit = elementAt(scene, p, tol);
       if (hit) {
+        if (!e.shiftKey && opts.onOpenLink) pressedLink = linkAt(e);
         if (!selection.has(hit.id)) select(expandByGroup([hit.id]), e.shiftKey);
         else if (e.shiftKey) {
           select([hit.id], true);
@@ -2817,6 +2844,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           // A click: redraw so the overlay is the resting one (with the
           // quick-connect dots), whatever the gesture drew.
           drawOverlay();
+          const link = pressedLink;
+          const follow = opts.onOpenLink;
+          if (link !== null && follow) {
+            linkTimer = window.setTimeout(() => {
+              linkTimer = -1;
+              follow(link);
+            }, LINK_CLICK_DELAY_MS);
+          }
         }
         break;
       }
@@ -2971,6 +3006,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   }
 
   function onDoubleClick(e: MouseEvent): void {
+    cancelLinkClick();
     if (presenting) return;
     if (opts.readOnly) return;
     const p = screenToScene(e.clientX, e.clientY);
@@ -3426,6 +3462,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   return {
     destroy() {
       disposed = true;
+      cancelLinkClick();
       resizeObserver.disconnect();
       selToolbarResize.disconnect();
       selToolbar?.destroy();

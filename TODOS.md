@@ -9,6 +9,7 @@
 
 ## Done
 
+- Board page links: [`SPECs/board-lark-parity-spec.md`](SPECs/board-lark-parity-spec.md#page-links-in-cards) — `[[Page]]` in any card's text shows as a link and opens the page on click (double-click still edits); typing `[[` in a card suggests pages. `followWikiLink` is now the one resolve-or-create path for the editor and the board.
 - Linked blocks: references are atomic and protected (delete only through the gutter handle), and the backlink card previews each citation in context: [`SPECs/block-embed-spec.md`](SPECs/block-embed-spec.md#backlinks).
 - Linked blocks behave like local blocks: [`SPECs/block-embed-spec.md`](SPECs/block-embed-spec.md#behaviour) — numbered items show as bullets (number restored on write), Enter at the end continues in the host page, and deleting (Backspace on a picture, or emptying the text) removes the reference, never the original.
 - Linked blocks blend in: [`SPECs/block-embed-spec.md`](SPECs/block-embed-spec.md#behaviour) — no margin rule; clicking in shows a drawn cursor (drag gate now skips `.cm-block-embed`, which was stealing focus back); a linked item pasted as a sub-bullet hides its own marker; unfocused embeds render folded via a new `selectionInertFacet` (so a picture shows without its source); clip-path reset; a block id decorated once per line across split visible ranges.

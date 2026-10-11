@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-11
+
+- Link to your notes from a board. In any sticky note, shape, text or mind-map topic, type **[[** and a list of matching notes appears; pick one with the arrow keys and **Enter**. The link shows in the card as underlined text in the accent colour. Click it to close the board and open that note (a note that doesn't exist yet is created, as in the editor). Double-clicking the card still edits its text, and dragging it still moves it. `[[Note|other words]]` shows the other words instead of the note's name.
+
 ## 2026-10-09
 
 - A linked block's link is never shown as text any more. The cursor steps over the block from either side, and Backspace or Delete next to it leave it alone. To remove a linked block, use its handle on the left (**T**, then **Delete**).

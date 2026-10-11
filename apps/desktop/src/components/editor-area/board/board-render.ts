@@ -21,6 +21,7 @@ import {
   isLinker,
   isShape,
 } from "./board-model";
+import { parseWikiLink } from "@/lib/wiki-links";
 import { smoothPath, strokeExtent } from "./board-draw";
 import {
   type SceneLookup,
@@ -114,6 +115,9 @@ export interface Run {
   text: string;
   b?: boolean;
   i?: boolean;
+  /** `[[wiki link]]` inner text (target, `#fragment`, `|alias`); `text` is
+   *  what it displays. Kept raw so a click resolves it like the editor does. */
+  ln?: string;
 }
 
 /** A wrapped line: its runs, left to right. */
@@ -126,24 +130,43 @@ export type RichLine = Run[];
 const EMPHASIS =
   /\*\*\*(?=\S)(.+?)(?<=\S)\*\*\*|\*\*(?=\S)(.+?)(?<=\S)\*\*|__(?=\S)(.+?)(?<=\S)__|(?<![*\w])\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?!\*)|(?<!\w)_(?=[^\s_])(.+?)(?<=[^\s_])_(?!\w)/;
 
+/** `[[Page]]`, `[[Page#Heading]]`, `[[Page|shown text]]` — the editor's wiki
+ *  links. No nesting, no line breaks. */
+const WIKI_LINK = /\[\[([^[\]\n]+?)\]\]/;
+
+function sameStyle(a: Run, b: { b?: boolean; i?: boolean; ln?: string }): boolean {
+  return Boolean(a.b) === Boolean(b.b) && Boolean(a.i) === Boolean(b.i) && a.ln === b.ln;
+}
+
 /** One paragraph (no newlines) into styled runs, markers removed. */
 export function parseInline(src: string, style: { b?: boolean; i?: boolean } = {}): Run[] {
   const out: Run[] = [];
-  const push = (text: string, st: { b?: boolean; i?: boolean }): void => {
+  const push = (text: string, st: { b?: boolean; i?: boolean; ln?: string }): void => {
     if (!text) return;
     const last = out[out.length - 1];
-    if (last && Boolean(last.b) === Boolean(st.b) && Boolean(last.i) === Boolean(st.i)) {
+    if (last && sameStyle(last, st)) {
       last.text += text;
       return;
     }
     const run: Run = { text };
     if (st.b) run.b = true;
     if (st.i) run.i = true;
+    if (st.ln !== undefined) run.ln = st.ln;
     out.push(run);
   };
   let rest = src;
   while (rest) {
     const m = EMPHASIS.exec(rest);
+    const link = WIKI_LINK.exec(rest);
+    // A link that starts first (or inside the emphasis' opening) wins: its
+    // target is a name, never markdown — `[[my_page]]` keeps its underscore.
+    if (link && (!m || link.index <= m.index)) {
+      push(rest.slice(0, link.index), style);
+      const inner = link[1];
+      push(parseWikiLink(inner).displayText || inner, { ...style, ln: inner });
+      rest = rest.slice(link.index + link[0].length);
+      continue;
+    }
     if (!m) {
       push(rest, style);
       break;
@@ -232,7 +255,7 @@ function mergeRuns(line: Run[]): Run[] {
   const out: Run[] = [];
   for (const r of line) {
     const last = out[out.length - 1];
-    if (last && Boolean(last.b) === Boolean(r.b) && Boolean(last.i) === Boolean(r.i)) {
+    if (last && sameStyle(last, r)) {
       last.text += r.text;
     } else out.push({ ...r });
   }
@@ -286,6 +309,8 @@ export function truncateLines(
 }
 
 export const LINE_HEIGHT = 1.35;
+const STICKY_LINK_FILL =
+  "color-mix(in oklch, var(--wr-board-accent) 45%, var(--wr-board-sticky-ink))";
 export const STICKY_FONT_MAX = 22;
 export const STICKY_FONT_MIN = 11;
 
@@ -328,6 +353,8 @@ function appendLines(
     align: "l" | "c" | "r";
     fill: string;
     weight?: number;
+    /** `[[link]]` colour; the accent unless the background needs another. */
+    linkFill?: string;
   },
 ): SVGTextElement {
   const anchor = opts.align === "c" ? "middle" : opts.align === "r" ? "end" : "start";
@@ -349,13 +376,21 @@ function appendLines(
     const tspan = svgEl("tspan", { x: opts.x, dy: i === 0 ? 0 : lineH });
     if (!line.length) tspan.textContent = " ";
     for (const run of line) {
-      if (!run.b && !run.i) {
+      if (!run.b && !run.i && run.ln === undefined) {
         tspan.append(run.text);
         continue;
       }
       const styled = svgEl("tspan");
       if (run.b) styled.setAttribute("font-weight", String(Math.max(BOLD_WEIGHT, base)));
       if (run.i) styled.setAttribute("font-style", "italic");
+      if (run.ln !== undefined) {
+        // Styled by attribute, not board.css, so the saved `.board.svg` shows
+        // links too. `data-wiki` is what a click reads back (`linkAt`).
+        styled.setAttribute("class", "wr-board-wiki");
+        styled.setAttribute("fill", opts.linkFill ?? "var(--wr-board-accent)");
+        styled.setAttribute("text-decoration", "underline");
+        styled.setAttribute("data-wiki", run.ln);
+      }
       styled.textContent = run.text;
       tspan.append(styled);
     }
@@ -613,6 +648,8 @@ function renderSticky(g: SVGGElement, el: BoardEl & { c: string; tx: string }): 
       size,
       align: "c",
       fill: "var(--wr-board-sticky-ink)",
+      // Notes stay pastel in dark mode too, where the accent turns light.
+      linkFill: STICKY_LINK_FILL,
     });
   }
 }

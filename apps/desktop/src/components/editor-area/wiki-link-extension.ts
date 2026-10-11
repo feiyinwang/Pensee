@@ -27,7 +27,6 @@ import {
   parseWikiHtmlEmbedTarget,
   parseWikiLink,
   parseWikiImageEmbedTarget,
-  resolveWikiLink,
 } from "@/lib/wiki-links";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
 import { selectionInertFacet } from "@/lib/prosemark-core/main";
@@ -35,7 +34,7 @@ import { parseBlockEmbedTarget } from "@/lib/block-refs";
 import { HtmlEmbedWidget } from "./html-embed-widget";
 import { blockEmbedHost } from "./linked-block-sync";
 import { resolveEmbedPath } from "./wiki-embed-resolver";
-import { openWikiPage } from "./wiki-pages-extension";
+import { followWikiLink } from "./wiki-pages-extension";
 // The editor's completion sources are registered together here. CodeMirror's
 // `override` is winner-takes-all — a second `autocompletion({override})`
 // elsewhere would silently disable this one — so the slash menu's source joins
@@ -336,23 +335,8 @@ function wikiLinkClickHandler(getFilePath: () => string, isDisposed: () => boole
         event.preventDefault();
         event.stopPropagation();
 
-        const workspaceRoot = getWorkspaceRoot();
-        if (!workspaceRoot) return true;
-
-        void resolveWikiLink(
-          rawTarget,
-          workspaceRoot,
-          tauri.fuzzySearch,
-          tauri.fileExists,
-          getFilePath(),
-        )
-          .then(async (result) => {
-            if (isDisposed()) return;
-            // No page yet: create it, the same page typing the link creates.
-            const path =
-              result.kind === "internal"
-                ? result.path
-                : await openWikiPage(rawTarget, getFilePath() || null);
+        void followWikiLink(rawTarget, getFilePath() || null)
+          .then((path) => {
             if (path && !isDisposed()) void editorApi.openLinkedPage(path);
           })
           .catch((error) => {

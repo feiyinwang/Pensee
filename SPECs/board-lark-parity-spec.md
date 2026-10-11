@@ -98,6 +98,16 @@ Not adopted: Excalidraw's per-element bitmap cache. It belongs to a `<canvas>` r
 
 A selected topic shows blue quick dots (`mindDots`, `growMind` in `board-mind.ts`). The root has one on each side and each adds a first-level branch pinned (`sd`) to that side. Any other topic has one on its outer side (a child) and one above and below (a parallel topic before or after it; a parallel first-level topic is pinned to the same side). There is no dot on the side the branch arrives from. A click grows the map, re-runs the layout and starts typing in the new topic, the same as Tab and Enter. A drag from any dot draws an arrow to whatever it is dropped on, like a shape's dots.
 
+## Page links in cards
+
+Any card text (sticky, shape label, text, mind topic, connector label) can hold the editor's `[[Page]]`, `[[Page#Heading]]` or `[[Page|shown text]]` links. Stored as typed, so the `.board.svg` source stays plain markdown.
+
+- **Render**: `parseInline` (`board-render.ts`) turns a link into a run with `ln` (the raw inner text) and shows the alias or page name. It wins over emphasis that starts at or after it, so `[[my_page]]` keeps its underscore; emphasis around it still applies. The tspan carries `data-wiki` plus `fill`/`text-decoration` attributes (not CSS), so the saved file shows links outside Writer too.
+- **Open**: a click on link text (`linkAt` in `board-canvas.ts`) waits `LINK_CLICK_DELAY_MS` for a second click, so a double-click still edits the text; a drag still moves the card. Then `onOpenLink` → the overlay closes (writing the board back) and `followWikiLink` (`wiki-pages-extension.ts`, shared with the editor's click handler) opens the page, creating it when missing.
+- **Type**: `[[` in the card's text field lists matching pages (`board-link-complete.ts`, same `fuzzySearch` and `canonicalWikiTarget` as the editor). Arrows move, Enter/Tab insert `[[Target]]` (eating an auto-typed `]]`), Esc closes the list without leaving the field.
+
+Not built: a hover preview of the linked page, `((` block references, a backlinks count for boards.
+
 ## Phases
 
 1. **Portable storage** (this change): the file format, the enhancer on image previews, `/board` creating a file, and fence migration.
