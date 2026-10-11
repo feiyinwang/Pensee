@@ -3,6 +3,7 @@ import { Annotation, type Extension, Facet } from "@codemirror/state";
 import { listen } from "@tauri-apps/api/event";
 import * as tauri from "@/lib/tauri";
 import { LruCache } from "@/lib/lru";
+import { parseFrontmatter, serializeFile } from "@/lib/frontmatter";
 import {
   bodyFitsSource,
   findBlock,
@@ -270,4 +271,52 @@ export function writeBlock(path: string, id: string, body: string): boolean {
   scheduleDiskWrite(path);
   notify(path);
   return true;
+}
+
+/** A page split the way the editor holds it: the editor shows only the body;
+ *  the frontmatter lives beside it in the store. */
+export interface PageParts {
+  frontmatter: string | null;
+  body: string;
+}
+
+/**
+ * Rewrite page `path` as a whole with `edit`, wherever the page lives: its
+ * live editors (one undoable change each), else the store, else the file on
+ * disk through `write_file`. `edit` must be pure — it runs once per place the
+ * page lives — and returns its input's values unchanged to skip a write. For
+ * writers that are not a linked block (the Apple Books import).
+ */
+export async function editPage(path: string, edit: (page: PageParts) => PageParts): Promise<void> {
+  const file = editorApi.getOpenFile(path);
+  if (file && !file.isLoading) {
+    const next = edit({ frontmatter: file.frontmatter, body: file.content });
+    const views = liveViews.get(path);
+    if (views?.size) {
+      // A view can be a keystroke ahead of the store, so each edits its own doc.
+      for (const view of views) {
+        const doc = view.state.doc.toString();
+        const change = minimalChange(doc, edit({ frontmatter: file.frontmatter, body: doc }).body);
+        if (change) view.dispatch({ changes: change, userEvent: "input.page-edit" });
+      }
+    } else if (next.body !== file.content) {
+      editorApi.updateContent(path, next.body);
+    }
+    if (next.frontmatter !== file.frontmatter) editorApi.updateFrontmatter(path, next.frontmatter);
+    return;
+  }
+
+  // Not open: read fresh rather than trust the cache, and go straight to disk.
+  // A linked-block write still pending for this page would overwrite this one.
+  if (pendingWrites.has(path)) throw new Error(`A linked block is still saving to ${path}`);
+  const disk = (await tauri.readFile(path)).content;
+  const parts = parseFrontmatter(disk);
+  const next = edit(parts);
+  if (next.body === parts.body && next.frontmatter === parts.frontmatter) return;
+  const text = serializeFile(next.frontmatter, next.body);
+  await tauri.writeFile(path, text);
+  if (diskText.get(path) !== undefined) {
+    diskText.set(path, text);
+    notify(path);
+  }
 }

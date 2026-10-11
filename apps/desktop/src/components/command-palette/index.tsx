@@ -17,6 +17,7 @@ import {
   useSetCommandPaletteSearch,
 } from "@/hooks/use-command-palette";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { syncAppleBooksNow } from "@/hooks/use-apple-books-sync";
 import { openTodaysNote } from "@/hooks/use-daily-note";
 import { useCloseWorkspace, useIsCompactFileMode, useWorkspace } from "@/hooks/use-workspace";
 import {
@@ -165,6 +166,15 @@ export function CommandPalette() {
       description: "Command",
       run: () => {
         void openTodaysNote();
+        close();
+      },
+    },
+    root && {
+      id: "sync-apple-books",
+      label: "Import Apple Books Highlights",
+      description: "Command",
+      run: () => {
+        void syncAppleBooksNow();
         close();
       },
     },

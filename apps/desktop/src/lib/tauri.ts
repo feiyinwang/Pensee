@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import sidebarEntryKinds from "@shared/sidebar-entry-kinds.json";
+import type { AppleBook } from "@/types/apple-books";
 import type {
   DirEntry,
   FileContent,
@@ -366,4 +367,10 @@ export function saveClipboardImage(
   format: string,
 ): Promise<{ relative_path: string; absolute_path: string }> {
   return invoke("save_clipboard_image", { markdownFilePath, imageData, format });
+}
+
+/** Every Apple Books highlight, grouped by book (macOS only). Read from a temp
+ *  copy of Books' databases; never writes to them. */
+export function readAppleBooksHighlights(): Promise<AppleBook[]> {
+  return invoke("read_apple_books_highlights");
 }

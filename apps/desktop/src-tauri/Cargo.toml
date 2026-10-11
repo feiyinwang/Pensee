@@ -45,6 +45,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
+rusqlite = "0.40.2"
 
 [features]
 # Embeds a W3C WebDriver server in the app for local E2E testing with

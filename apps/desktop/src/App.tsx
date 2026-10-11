@@ -3,6 +3,7 @@ import { CommandPalette } from "./components/command-palette";
 import { TelemetryConsentDialog } from "./components/telemetry-consent-dialog";
 import { WindowTitle } from "./components/window-title";
 import { useIsStartupResolved } from "./hooks/use-workspace";
+import { useAppleBooksSync } from "./hooks/use-apple-books-sync";
 import { useFileWatcher } from "./hooks/use-file-watcher";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useMenuEvents } from "./hooks/use-menu-events";
@@ -15,6 +16,7 @@ function App() {
   const isStartupResolved = useIsStartupResolved();
 
   useFileWatcher();
+  useAppleBooksSync();
   useKeyboardShortcuts();
   useMenuEvents();
   useOpenDrop();

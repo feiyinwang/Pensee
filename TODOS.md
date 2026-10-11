@@ -9,6 +9,7 @@
 
 ## Done
 
+- Apple Books highlights: [`SPECs/apple-books-highlights-spec.md`](SPECs/apple-books-highlights-spec.md) — an off-by-default workspace setting imports highlights and notes every 10 minutes (and from the palette), one page per book tagged `Book`: an existing page with the book's name gets them, otherwise a new page in the configured folder. Append-only by hidden ` ^bk-` block ids. Follow-ups: updated notes, chapter headings, watching the database.
 - Board page links: [`SPECs/board-lark-parity-spec.md`](SPECs/board-lark-parity-spec.md#page-links-in-cards) — `[[Page]]` in any card's text shows as a link and opens the page on click (double-click still edits); typing `[[` in a card suggests pages. `followWikiLink` is now the one resolve-or-create path for the editor and the board.
 - Linked blocks: references are atomic and protected (delete only through the gutter handle), and the backlink card previews each citation in context: [`SPECs/block-embed-spec.md`](SPECs/block-embed-spec.md#backlinks).
 - Linked blocks behave like local blocks: [`SPECs/block-embed-spec.md`](SPECs/block-embed-spec.md#behaviour) — numbered items show as bullets (number restored on write), Enter at the end continues in the host page, and deleting (Backspace on a picture, or emptying the text) removes the reference, never the original.
