@@ -8,14 +8,14 @@ import {
 } from "../src/components/editor-area/board/board-model";
 
 describe("board zoom limits", () => {
-  it("clamps to 2%–3000%", () => {
-    expect(clampZoom(0.001)).toBe(ZOOM_MIN);
+  it("clamps to 10%–500%", () => {
+    expect(clampZoom(0.01)).toBe(ZOOM_MIN);
     expect(clampZoom(1000)).toBe(ZOOM_MAX);
     expect(clampZoom(1.5)).toBe(1.5);
   });
 
   it("leaves zooms inside the limits alone", () => {
-    for (const z of [ZOOM_MIN, 0.5, 1, 12, ZOOM_MAX]) expect(stretchZoom(z)).toBe(z);
+    for (const z of [ZOOM_MIN, 0.5, 1, 3, ZOOM_MAX]) expect(stretchZoom(z)).toBe(z);
   });
 
   it("stretches past a limit, never more than 15%", () => {

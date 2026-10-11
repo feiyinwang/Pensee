@@ -629,9 +629,9 @@ export function sceneSize(scene: BoardScene): { bytes: number; overBudget: boole
 
 /* ---------------------------------------------------------------- helpers */
 
-/** Zoom limits: 2% to 3000%. */
-export const ZOOM_MIN = 0.02;
-export const ZOOM_MAX = 30;
+/** Zoom limits: 10% to 500%. */
+export const ZOOM_MIN = 0.1;
+export const ZOOM_MAX = 5;
 
 export function clampZoom(z: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));

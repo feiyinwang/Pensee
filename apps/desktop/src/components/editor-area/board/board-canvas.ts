@@ -155,6 +155,9 @@ const OVERSCAN = 256;
 const FAR_ZOOM = 0.3;
 const HISTORY_LIMIT = 120;
 const ZOOM_STEP = 1.2;
+/** Zoom per pixel of wheel delta: a pinch, and a Cmd-scroll. */
+const PINCH_ZOOM_GAIN = 1 / 130;
+const WHEEL_ZOOM_GAIN = 1 / 260;
 /** A pinch stretched past a zoom limit springs back over this long, on
  *  --ease-spring: it matches --motion-settle. */
 const ZOOM_SPRING_MS = 180;
@@ -3101,7 +3104,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     e.preventDefault();
     if (presenting) return;
     if (zoom) {
-      zoomGesture(Math.exp(-e.deltaY / 260), { x: e.clientX, y: e.clientY });
+      // WebKit sends a trackpad pinch as Ctrl-wheel with small deltas, so it
+      // gets twice the gain of a Cmd-scroll on a mouse wheel.
+      const gain = e.ctrlKey && !e.metaKey ? PINCH_ZOOM_GAIN : WHEEL_ZOOM_GAIN;
+      zoomGesture(Math.exp(-e.deltaY * gain), { x: e.clientX, y: e.clientY });
       return;
     }
     const v = vp();
