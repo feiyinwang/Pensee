@@ -654,6 +654,32 @@ function listPrefixBoundaryMove(state: EditorState, direction: "left" | "right")
   return null;
 }
 
+// Cmd+Left on a list line lands where the sentence starts, not before the
+// bullet. `visualStart` is where CodeMirror's own line-boundary move would go
+// (the start of the visual row, so wrapped rows keep their normal behaviour).
+// From the body start itself we return null, so a second press still reaches
+// the true line start through the default binding.
+function listLineStartMove(state: EditorState, visualStart: number): number | null {
+  const sel = state.selection.main;
+  const parsed = listLineAt(state, sel.head);
+  if (!parsed) return null;
+  if (sel.head <= parsed.bodyFrom || visualStart >= parsed.bodyFrom) return null;
+  return parsed.bodyFrom;
+}
+
+function runListLineStart(view: EditorView, extend: boolean): boolean {
+  const sel = view.state.selection.main;
+  const visualStart = view.moveToLineBoundary(EditorSelection.cursor(sel.head), false).head;
+  const pos = listLineStartMove(view.state, visualStart);
+  if (pos === null) return false;
+  view.dispatch({
+    selection: extend ? EditorSelection.range(sel.anchor, pos) : { anchor: pos },
+    scrollIntoView: true,
+    userEvent: extend ? "select.extend" : "select",
+  });
+  return true;
+}
+
 function markerColumnWidthPx(target: HTMLElement): number {
   const style = getComputedStyle(target);
   const raw = style.getPropertyValue("--cm-list-marker-width").trim();
@@ -712,6 +738,11 @@ const listPrefixMouseHandler = Prec.highest(
 
 const listPrefixArrowKeymap = Prec.highest(
   keymap.of([
+    {
+      key: "Mod-ArrowLeft",
+      run: (view) => runListLineStart(view, false),
+      shift: (view) => runListLineStart(view, true),
+    },
     {
       key: "ArrowLeft",
       run: (view) => {
@@ -986,6 +1017,7 @@ export const __test = {
   computeCheckboxToggleFromLine,
   isOnListLine,
   listPrefixBoundaryMove,
+  listLineStartMove,
   parseBulletTaskLine,
   parseListItemLine,
   findPrevListItem,

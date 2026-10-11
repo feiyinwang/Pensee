@@ -2,6 +2,7 @@
 
 ## 2026-10-11
 
+- **⌘←** on a bullet or to-do now jumps to the start of its text, after the bullet or checkbox, instead of before it. Press it again to go all the way to the start of the line. **⇧⌘←** selects to the same place.
 - Pinch-zooming a board is twice as fast, so it takes less finger travel to get where you're going. Zooming with ⌘ and the scroll wheel is unchanged. Pinch past the closest or furthest zoom and the board stretches a little, stiffer the further you go, then springs back when you let go.
 - Link to your notes from a board. In any sticky note, shape, text or mind-map topic, type **[[** and a list of matching notes appears; pick one with the arrow keys and **Enter**. The link shows in the card as underlined text in the accent colour. Click it to close the board and open that note (a note that doesn't exist yet is created, as in the editor). Double-clicking the card still edits its text, and dragging it still moves it. `[[Note|other words]]` shows the other words instead of the note's name.
 

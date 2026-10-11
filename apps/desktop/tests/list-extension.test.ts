@@ -15,6 +15,7 @@ const {
   computeCheckboxToggleFromLine,
   isOnListLine,
   listPrefixBoundaryMove,
+  listLineStartMove,
   parseBulletTaskLine,
   parseListItemLine,
   findPrevListItem,
@@ -229,6 +230,19 @@ describe("list prefix caret zones", () => {
   test("does not get stuck on top-level items where line start equals marker start", () => {
     expect(listPrefixBoundaryMove(makeState("- item", 0), "left")).toBeNull();
     expect(listPrefixBoundaryMove(makeState("- item", 0), "right")).toBe(2);
+  });
+});
+
+describe("listLineStartMove (Cmd+Left)", () => {
+  test("lands at the start of the sentence, not before the bullet", () => {
+    expect(listLineStartMove(makeState("- item", 5), 0)).toBe(2);
+    expect(listLineStartMove(makeState("- [ ] task", 8), 0)).toBe(6);
+  });
+
+  test("falls through from the body start, on wrapped rows, and off lists", () => {
+    expect(listLineStartMove(makeState("- item", 2), 0)).toBeNull();
+    expect(listLineStartMove(makeState("- item long", 9), 7)).toBeNull();
+    expect(listLineStartMove(makeState("plain", 3), 0)).toBeNull();
   });
 });
 
