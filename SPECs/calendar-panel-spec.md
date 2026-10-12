@@ -24,6 +24,8 @@ periods the user is in now.
   `2026-10-12.md`, `2026-W42.md` (ISO week and week-year), `2026-10.md`,
   `2026-Q4.md`, `2026.md`, in the daily-note folder. These are the Obsidian
   Periodic Notes default names. Existing day notes keep their names.
+- Cmd+click (Ctrl+click off the Mac) does the same but opens the note in a
+  new column right of the active tab, or focuses the tab already showing it.
 - States: the current period reads in the accent colour. The open note gets the
   accent fill (on days, Arc's gliding selection disc). A note that exists shows a
   dot under its label. The folder is re-read on every watcher event.

@@ -29,15 +29,16 @@ const PERIOD_LABELS: Record<PeriodKind, string> = {
   year: "the year's note",
 };
 
-/** Create-or-open the note for the `kind` period holding `date` (the calendar panel). */
-export async function openPeriodNote(kind: PeriodKind, date: Date): Promise<void> {
+/** Create-or-open the note for the `kind` period holding `date` (the calendar
+ *  panel). `beside` opens it in a new column right of the active tab (Cmd+click). */
+export async function openPeriodNote(kind: PeriodKind, date: Date, beside = false): Promise<void> {
   const { root } = useWorkspaceStore.getState();
-  const { openFile } = useEditorStore.getState();
+  const { openFile, openFileBeside } = useEditorStore.getState();
   await openDatedNote(
     root,
     dailyNoteFolder(),
     `${periodNoteStem(kind, date)}.md`,
     PERIOD_LABELS[kind],
-    createDailyNoteDependencies(openFile),
+    createDailyNoteDependencies(beside ? openFileBeside : openFile),
   );
 }

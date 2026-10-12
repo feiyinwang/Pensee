@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/arc/calendar/calendar";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
@@ -23,6 +23,13 @@ const VIEWS: { value: View; label: string }[] = [
 ];
 
 const DAY_STEM = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
+
+/** Cmd+click (Ctrl+click off the Mac) opens the note in a column to the right. */
+function wantsBeside(event: { metaKey: boolean; ctrlKey: boolean }): boolean {
+  return IS_MAC ? event.metaKey : event.ctrlKey;
+}
 
 /** The daily-note folder, or null without a workspace or with a folder setting
  *  that escapes it (opening a note reports that error). */
@@ -84,6 +91,12 @@ export default function CalendarPanelContent() {
   const activeStem =
     folder && activePath && getParentDir(activePath) === folder ? getFileStem(activePath) : null;
   const openDay = activeStem?.match(DAY_STEM);
+  // Arc's Calendar reports a picked day without its event, so the modifier of
+  // the click (or Enter) that picked it is caught on the way down.
+  const besideRef = useRef(false);
+  const noteModifier = (event: SyntheticEvent<HTMLElement, MouseEvent | KeyboardEvent>) => {
+    besideRef.current = wantsBeside(event.nativeEvent);
+  };
 
   const cell: CellFor = (kind, date) => {
     const stem = periodNoteStem(kind, date);
@@ -91,7 +104,7 @@ export default function CalendarPanelContent() {
       exists: stems.has(stem),
       isOpen: stem === activeStem,
       isCurrent: stem === periodNoteStem(kind, now),
-      onOpen: () => void openPeriodNote(kind, date),
+      onOpen: () => void openPeriodNote(kind, date, besideRef.current),
     };
   };
 
@@ -142,7 +155,11 @@ export default function CalendarPanelContent() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-3">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto pb-3"
+        onClickCapture={noteModifier}
+        onKeyDownCapture={noteModifier}
+      >
         {view === "days" && (
           <Calendar
             month={month}
@@ -152,7 +169,7 @@ export default function CalendarPanelContent() {
                 ? new Date(Number(openDay[1]), Number(openDay[2]) - 1, Number(openDay[3]))
                 : undefined
             }
-            onChange={(date) => void openPeriodNote("day", date)}
+            onChange={(date) => void openPeriodNote("day", date, besideRef.current)}
             markedDates={(date) => stems.has(periodNoteStem("day", date))}
             weekStartsOn={1}
             weekLabel={(monday) => (

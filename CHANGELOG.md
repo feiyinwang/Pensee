@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- **⌘-click** a day, week, month, quarter or year in the calendar to open its note in a new column to the right, next to the page you're on. A plain click still opens it in place.
 - A calendar for your notes. Press **⌘]**, or click the panel button at the top right, to open it on the right; do the same to close it. Click a day to create or open that day's note, or a week number (**W42**) on the left for the week's note. Switch to **Months** to do the same for a month or a quarter (**Q1–Q4** on the left), or to **Years** for a year. A dot means the note already exists, and the note you have open is filled in. Notes are saved in your daily-note folder as `2026-10-12`, `2026-W42`, `2026-10`, `2026-Q4` and `2026`, the same names Obsidian's Periodic Notes plugin uses. **⌘[** still toggles the sidebar.
 - The agent chat also reads your notes for this year, quarter, month, week and today, so it can answer with your current goals and plans in mind.
 - The word, character and paragraph counts at the bottom of a page are in sentence case now ("10 words") instead of all capitals.
