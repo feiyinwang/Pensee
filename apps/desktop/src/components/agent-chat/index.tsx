@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AiChat02Icon } from "@hugeicons/core-free-icons";
+import { Cursor02Icon } from "@hugeicons/core-free-icons";
 import { useAgentStore } from "@/stores/agent-store";
 import "./agent-chat.css";
 
@@ -32,7 +32,7 @@ export function AgentChat() {
         title="Agent (⌘J)"
         className="agent-launcher fixed z-40 flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] aria-expanded:bg-[var(--item-active-bg)] aria-expanded:text-[var(--text-primary)]"
       >
-        <HugeiconsIcon icon={AiChat02Icon} size={16} color="currentColor" strokeWidth={2} />
+        <HugeiconsIcon icon={Cursor02Icon} size={16} color="currentColor" strokeWidth={2} />
         Agent
       </button>
     </>
