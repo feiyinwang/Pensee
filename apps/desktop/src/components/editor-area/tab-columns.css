@@ -26,7 +26,13 @@
 }
 
 /* Zoomed into a book or its page: the two share the panel as one block,
-   half each, a hairline between (book-pair.ts). */
+   half each, a hairline between (book-pair.ts). Both halves lay out as
+   columns do (compact top padding), so the strip keeps the columns' room
+   for the tab row above and the footer stats below. */
+.tab-columns[data-pair] {
+  padding-top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
+  padding-bottom: 44px;
+}
 .tab-columns[data-pair] > .tab-column:not([data-hidden]) {
   flex: 1 1 0;
 }

@@ -62,7 +62,9 @@ to explain or define something.
   the column right after it and comes into view. Otherwise the book opens and
   its page follows to its right (`openBook`).
 - **Pinch.** Zooming into a book or its page shows the two side by side as one
-  block, half each, with a hairline between them (`book-pair.ts`). Zooming
+  block, half each, with a hairline between them (`book-pair.ts`). Like the
+  columns, the pair keeps clear of the tab row above and the footer stats
+  below. Zooming
   into a book page whose book is closed opens the book first. Zooming out
   brings back every column.
 - **Reopening a book:**
