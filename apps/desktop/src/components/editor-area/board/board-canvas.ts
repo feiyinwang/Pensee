@@ -26,7 +26,6 @@ import {
   type ShapeEl,
   type ShapeKind,
   type StickyColor,
-  type StickyEl,
   type TextEl,
   type Viewport,
   FRAME_PRESETS,
@@ -194,8 +193,8 @@ export interface BoardCanvasHandle {
   find: () => void;
   /** Undo or redo on the board (⌘Z routed here when focus is outside it). */
   history: (dir: "undo" | "redo") => void;
-  /** Adds a note with `text` in view, as near the `side` edge as there is
-   *  room (a book highlight made beside the board). One undo step. */
+  /** Adds a rectangle labelled `text` in view, as near the `side` edge as
+   *  there is room (a book highlight made beside the board). One undo step. */
   addCard: (text: string, side: "w" | "e") => void;
 }
 
@@ -1596,6 +1595,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   /** Screen room the chrome takes at each edge (top bar; dock and zoom), so a
    *  card added from outside never lands under a toolbar. */
   const CHROME_INSET = { top: 64, bottom: 96, side: 16 };
+  /** A highlight's rectangle: a fixed width, tall enough for the passage up to
+   *  a cap; past that the label's own caret expands it. */
+  const HIGHLIGHT_CARD = { w: 240, maxH: 320 };
 
   function addCard(text: string, side: "w" | "e"): void {
     const v = vp();
@@ -1606,16 +1608,20 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       w: Math.max(0, width - CHROME_INSET.side * 2) / v.zoom,
       h: Math.max(0, height - CHROME_INSET.top - CHROME_INSET.bottom) / v.zoom,
     };
-    const box = placeFromSide(scene, view, side, STICKY_SIZE, STICKY_SIZE);
-    const el: StickyEl = {
+    const el: ShapeEl = {
       id: newId(),
-      t: "sticky",
-      ...box,
+      t: "rect",
+      x: 0,
+      y: 0,
+      w: HIGHLIGHT_CARD.w,
+      h: SHAPE_DEFAULT.h,
       a: 0,
       op: 1,
-      c: tools.sticky,
-      tx: text,
+      st: newShapeStyle(),
     };
+    setTextOf(el, text);
+    el.h = Math.min(Math.max(shapeFitHeight(el), SHAPE_DEFAULT.h), HIGHLIGHT_CARD.maxH);
+    Object.assign(el, placeFromSide(scene, view, side, el.w, el.h));
     pushHistory();
     assignFrame(el);
     scene.els.push(el);
