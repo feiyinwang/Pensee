@@ -32,11 +32,14 @@ vi.mock("@/lib/tauri", () => ({
 const { adoptProjectNote, createProjectNote, findNoteNamed, searchNotes } =
   await import("../src/hooks/use-spaces");
 const { useWorkspaceStore } = await import("../src/stores/workspace-store");
+const { clearVaultTemplates, forgetVaultTemplates } = await import("../src/hooks/vault-templates");
+const tauri = await import("../src/lib/tauri");
 const { parseDay } = await import("../src/lib/projects");
 
 describe("createProjectNote", () => {
   beforeEach(() => {
     files.clear();
+    clearVaultTemplates();
     useWorkspaceStore.setState({ root: "/vault" });
   });
 
@@ -85,6 +88,7 @@ describe("createProjectNote from the vault's template", () => {
 
   beforeEach(() => {
     files.clear();
+    clearVaultTemplates();
     useWorkspaceStore.setState({ root: "/vault" });
     files.set(
       settings,
@@ -125,9 +129,66 @@ describe("createProjectNote from the vault's template", () => {
   });
 });
 
+describe("reading the vault's templates", () => {
+  const settings = "/vault/.obsidian/plugins/templater-obsidian/data.json";
+
+  beforeEach(() => {
+    files.clear();
+    clearVaultTemplates();
+    useWorkspaceStore.setState({ root: "/vault" });
+    files.set(
+      settings,
+      JSON.stringify({
+        folder_templates: [
+          { folder: "People", template: "T/Person.md" },
+          { folder: "Daily", template: "T/Daily.md" },
+          { folder: "1. Project", template: "T/Project template.md" },
+        ],
+      }),
+    );
+    files.set("/vault/T/Person.md", "---\nType: People\n---\n");
+    files.set("/vault/T/Daily.md", "---\nType: Daily\n---\n");
+    files.set("/vault/T/Project template.md", "---\nType: Project\nStatus: Done\n---\n# Tasks\n");
+    vi.mocked(tauri.readFile).mockClear();
+  });
+
+  const reads = () => vi.mocked(tauri.readFile).mock.calls.map(([path]) => path);
+
+  test("reads only the template named for projects, once for every new project", async () => {
+    await createProjectNote("Trip", { status: "" });
+    await createProjectNote("Garden", { status: "" });
+    expect(reads()).toEqual([settings, "/vault/T/Project template.md"]);
+    expect(files.get("/vault/1. Project/Garden.md")).toContain("# Tasks");
+  });
+
+  test("a changed template is read again", async () => {
+    await createProjectNote("Trip", { status: "" });
+    files.set("/vault/T/Project template.md", "---\nType: Project\n---\n# Plan\n");
+    forgetVaultTemplates("/vault/T/Project template.md");
+    await createProjectNote("Garden", { status: "" });
+    expect(files.get("/vault/1. Project/Garden.md")).toContain("# Plan");
+  });
+
+  test("without one named for projects, the rest are read to find it", async () => {
+    files.set(
+      settings,
+      JSON.stringify({
+        folder_templates: [
+          { folder: "People", template: "T/Person.md" },
+          { folder: "Work", template: "T/Work.md" },
+        ],
+      }),
+    );
+    files.set("/vault/T/Work.md", "---\nType: Project\n---\n");
+    await createProjectNote("Trip", { status: "" });
+    expect(files.has("/vault/Work/Trip.md")).toBe(true);
+  });
+});
+
 describe("findNoteNamed", () => {
   beforeEach(() => {
     files.clear();
+    clearVaultTemplates();
     useWorkspaceStore.setState({ root: "/vault" });
   });
 
@@ -157,6 +218,7 @@ describe("findNoteNamed", () => {
 describe("template folders", () => {
   beforeEach(() => {
     files.clear();
+    clearVaultTemplates();
     useWorkspaceStore.setState({ root: "/vault" });
   });
 
@@ -190,6 +252,7 @@ describe("template folders", () => {
 describe("adoptProjectNote", () => {
   beforeEach(() => {
     files.clear();
+    clearVaultTemplates();
     useWorkspaceStore.setState({ root: "/vault" });
   });
 

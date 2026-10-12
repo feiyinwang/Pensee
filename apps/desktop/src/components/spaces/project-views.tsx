@@ -25,6 +25,8 @@ import {
   searchNotes,
   type TypedNote,
 } from "@/hooks/use-spaces";
+import { loadProjectTemplate } from "@/hooks/vault-templates";
+import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import { getFileStem } from "@/lib/paths";
 import type { SearchResult } from "@/types/fs";
 import {
@@ -55,6 +57,12 @@ import styles from "./project-views.module.css";
  *  list, a kanban or a timeline. Edits write the project note's frontmatter. */
 export default function ProjectViews({ notes, view }: { notes: TypedNote[]; view: SpaceView }) {
   ensureArcTokens();
+  // Read the project template now, so a new project doesn't wait on it (in an
+  // iCloud vault its first read can take seconds).
+  const root = useWorkspaceRoot();
+  useEffect(() => {
+    if (root) void loadProjectTemplate(root);
+  }, [root]);
   const { projects, columns, edit, add } = useProjects(notes);
   return (
     <div className={styles.projectViews}>

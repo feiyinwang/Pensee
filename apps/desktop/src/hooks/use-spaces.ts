@@ -21,15 +21,13 @@ import {
 } from "@/lib/projects";
 import { getFileStem } from "@/lib/paths";
 import { parseFrontmatter, serializeFile } from "@/lib/frontmatter";
+import { fillTemplate, inFolders } from "@/lib/project-template";
 import {
-  CORE_TEMPLATES_SETTINGS,
-  TEMPLATER_SETTINGS,
-  fillTemplate,
-  folderTemplates,
-  inFolders,
-  isProjectTemplate,
-  templateFolder,
-} from "@/lib/project-template";
+  knownTemplateFolders,
+  loadProjectTemplate,
+  loadTemplateFolders,
+  useTemplateFolders,
+} from "@/hooks/vault-templates";
 import * as tauri from "@/lib/tauri";
 import { editPage, readPageParts } from "@/components/editor-area/linked-block-sync";
 import type { SpaceLocation } from "@/components/editor-area/page-kinds";
@@ -52,7 +50,7 @@ const SPACE_TYPES = [SPACE_NOTE_TYPE];
 const lastReads = new Map<string, tauri.TypedNote[]>();
 
 /** Notes whose `Type` is one of `types`, newest edit first, leaving out the
- *  vault's templates (see `readTemplateFolders`); `null` until the first read
+ *  vault's templates (hooks/vault-templates.ts); `null` until the first read
  *  lands. Reads at once on mount; rereads when files change. */
 export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | null {
   const root = useWorkspaceRoot();
@@ -73,11 +71,7 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
   useEffect(() => {
     if (!root || !key) return;
     const types = typesKey.split("\n");
-    const folders = readTemplateFolders(root);
-    const list = async (cachedOnly: boolean) => {
-      const [notes, skip] = await Promise.all([tauri.listTypedNotes(types, cachedOnly), folders]);
-      return notes.filter((note) => !inFolders(note.relative_path, skip));
-    };
+    const list = (cachedOnly: boolean) => tauri.listTypedNotes(types, cachedOnly);
     const delay = readKey.current === key ? REFETCH_DELAY_MS : 0;
     let cancelled = false;
     let landed = false;
@@ -117,8 +111,17 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
     };
   }, [root, key, typesKey, metadataVersion]);
 
-  if (!key) return null;
-  return read?.key === key ? read.notes : (lastReads.get(key) ?? null);
+  // Templates leave the list as soon as their folders are known, without
+  // holding the list back while the settings are read.
+  const folders = useTemplateFolders(root);
+  const notes = !key ? null : read?.key === key ? read.notes : (lastReads.get(key) ?? null);
+  return useMemo(
+    () =>
+      notes && folders.length > 0
+        ? notes.filter((note) => !inFolders(note.relative_path, folders))
+        : notes,
+    [notes, folders],
+  );
 }
 
 /** Built-in spaces, then the spaces you added (`Type: Space` notes) by name. */
@@ -199,37 +202,18 @@ async function createNoteIn(
   return { path, stem };
 }
 
-/** The vault-relative folders whose notes are templates: Templater's
- *  `templates_folder`, and the core Templates plugin's `folder`. Read fresh, so
- *  a change in Obsidian applies to the next read; a settings file that is
- *  missing or unreadable names none. */
-async function readTemplateFolders(root: string): Promise<string[]> {
-  const read = async (file: string, key: "templates_folder" | "folder") => {
-    const path = `${root}/${file}`;
-    try {
-      if (!(await tauri.fileExists(path))) return null;
-      return templateFolder((await tauri.readFile(path)).content, key);
-    } catch (error: unknown) {
-      console.error(`[spaces] reading ${file} failed`, error);
-      return null;
-    }
-  };
-  const folders = await Promise.all([
-    read(TEMPLATER_SETTINGS, "templates_folder"),
-    read(CORE_TEMPLATES_SETTINGS, "folder"),
-  ]);
-  return folders.filter((folder) => folder !== null);
-}
-
 /** Markdown notes matching `query` (fuzzy, best first), leaving out the
- *  vault's templates: what Add project offers and takes. */
+ *  vault's templates: what Add project offers as you type. Uses the template
+ *  folders known so far, since waiting for them would hold every keystroke on
+ *  an iCloud read the first time; `findNoteNamed` waits. */
 export async function searchNotes(query: string, limit: number): Promise<SearchResult[]> {
   const root = useWorkspaceStore.getState().root;
   if (!root) return [];
-  const [found, skip] = await Promise.all([
-    tauri.fuzzySearch(query, limit),
-    readTemplateFolders(root),
-  ]);
+  void loadTemplateFolders(root);
+  return withoutTemplates(await tauri.fuzzySearch(query, limit), knownTemplateFolders(root));
+}
+
+function withoutTemplates(found: SearchResult[], skip: readonly string[]): SearchResult[] {
   return found.filter(
     (r) => /\.(md|markdown)$/i.test(r.filename) && !inFolders(r.relative_path, skip),
   );
@@ -249,7 +233,9 @@ export async function findNoteNamed(
   const stem = spaceFileStem(name);
   if (!stem) throw new Error("Enter a name first");
   const wanted = stem.toLowerCase();
-  const matches = (await searchNotes(stem, 50))
+  // Waits for the template folders: the one search that adds a note must never take a template.
+  const [found, skip] = await Promise.all([tauri.fuzzySearch(stem, 50), loadTemplateFolders(root)]);
+  const matches = withoutTemplates(found, skip)
     .filter((r) => getFileStem(r.filename).toLowerCase() === wanted)
     .map((r) => r.path)
     .sort((a, b) => Number(preferred(b)) - Number(preferred(a)) || a.length - b.length);
@@ -281,7 +267,8 @@ export async function createProjectNote(
   name: string,
   edit: ProjectEdit,
 ): Promise<{ path: string; stem: string }> {
-  const template = await readProjectTemplate();
+  const root = useWorkspaceStore.getState().root;
+  const template = root ? await loadProjectTemplate(root) : null;
   if (!template) return createRootNote(name, () => projectNoteContent(edit));
   return createNoteIn(template.folder, name, (stem) => {
     const { frontmatter, body } = parseFrontmatter(
@@ -289,22 +276,6 @@ export async function createProjectNote(
     );
     return serializeFile(asProjectFrontmatter(frontmatter, edit), body);
   });
-}
-
-/** The Templater folder template that makes project notes, read fresh so an
- *  edit to it in Obsidian applies to the next project; null when there is none. */
-async function readProjectTemplate(): Promise<{ folder: string; content: string } | null> {
-  const root = useWorkspaceStore.getState().root;
-  if (!root) return null;
-  const settings = `${root}/${TEMPLATER_SETTINGS}`;
-  if (!(await tauri.fileExists(settings))) return null;
-  for (const { folder, template } of folderTemplates((await tauri.readFile(settings)).content)) {
-    const path = `${root}/${template}`;
-    if (!(await tauri.fileExists(path))) continue;
-    const { content } = await tauri.readFile(path);
-    if (isProjectTemplate(content)) return { folder, content };
-  }
-  return null;
 }
 
 /** The Files space tree's inline-rename target, shared with the sidebar's
