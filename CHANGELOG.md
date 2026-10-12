@@ -2,8 +2,10 @@
 
 ## 2026-10-12
 
+- A book in **Library** whose saved cover is one flat colour, like the solid black one an Apple Books export can produce, now shows its default book cover, with its title and author, instead of a black block.
 - A passage highlighted onto a board now has the same rounded corners as a rectangle you draw, instead of square ones.
 - The board's zoom controls now sit in the top-right corner, across from the top bar, instead of beside the tools at the bottom. On a narrow board they drop just below the top bar.
+- **Library** has a **Bookmarks** tab for what you save from X. Each bookmark is a card showing the post itself, with its first picture at the bottom labelled with the video's length, GIF, or how many photos; short posts are set large, like a quote. Under it are the author and whether it's a single post or a thread, and how many posts. The line at the top says when Writer last synced with X, with **Sync now**, or **Connect X** if you haven't connected yet.
 - Bring your X bookmarks into Writer. In **Settings → X Bookmarks**, paste the Client ID of your own X developer app and click **Connect X**; X opens in your browser to ask. From then on, every post you bookmark on X is saved as a note in your **Bookmarks** folder, with the author's whole thread in order and its photos, videos and GIFs saved beside it, so it still works offline and after the post is deleted on X. Writer checks every 15 minutes while it's open, and **Sync now** checks straight away. Deleting a bookmark note keeps it deleted; Writer never removes a note itself. Your X sign-in is kept in the macOS Keychain.
 - **Library** scrolls smoothly again, even with hundreds of covers. Covers saved in your notes are now shown as small copies made for the gallery, instead of the full-size picture, so scrolling through Books no longer stutters or freezes. The small copies are kept in Writer's cache; your notes and their pictures don't change.
 - Clicking a book in **Library** now opens its book next to its note, when the book file is there. A book note without a PDF or EPUB opens on its own, as before.

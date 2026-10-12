@@ -3,8 +3,10 @@
 //! (SPECs/spaces-spec.md, "Covers"). The URL is `convertFileSrc(path,
 //! "thumb")` plus `?w=<px>&h=<px>`, the box in device pixels. Scaled copies
 //! are cached in the app's cache folder, keyed by the file's path, size and
-//! modified time, so each cover is shrunk once. Requests run on the blocking
-//! pool, never on the main thread that also drives scrolling.
+//! modified time, so each cover is shrunk once. A picture of one flat colour
+//! (an Apple Books export can come out all black) is refused with 422, so the
+//! card draws its default cover instead. Requests run on the blocking pool,
+//! never on the main thread that also drives scrolling.
 
 use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, ImageFormat};
 use std::hash::{Hash, Hasher};
@@ -19,6 +21,9 @@ pub const SCHEME: &str = "thumb";
 /// The largest box a request may ask for: covers are drawn small.
 const MAX_BOX: u32 = 2048;
 const JPEG_QUALITY: u8 = 82;
+/// How far apart, per channel, the pixels of a sample may be for a picture to
+/// still count as one flat colour (JPEG noise on a solid fill stays under it).
+const BLANK_SPREAD: u8 = 12;
 
 /// Encoded bytes, the cache file's extension and the MIME type.
 type Encoded = (Vec<u8>, &'static str, &'static str);
@@ -97,6 +102,9 @@ fn respond(path: &Path, box_size: (u32, u32), cache_dir: Option<&Path>) -> Respo
     let key = format!("{:016x}", hasher.finish());
 
     if let Some(dir) = cache_dir {
+        if dir.join(format!("{key}.blank")).is_file() {
+            return status(StatusCode::UNPROCESSABLE_ENTITY);
+        }
         for (ext, mime) in [("jpg", "image/jpeg"), ("png", "image/png")] {
             if let Ok(bytes) = std::fs::read(dir.join(format!("{key}.{ext}"))) {
                 return image_response(bytes, mime);
@@ -108,7 +116,24 @@ fn respond(path: &Path, box_size: (u32, u32), cache_dir: Option<&Path>) -> Respo
         Ok(bytes) => bytes,
         Err(_) => return status(StatusCode::NOT_FOUND),
     };
-    match scale(&source, box_size) {
+    let img = match image::load_from_memory(&source) {
+        Ok(img) => img,
+        // A format the decoder doesn't read (GIF, AVIF…): the webview may.
+        Err(e) => {
+            eprintln!("thumb: couldn't decode {}: {e}", path.display());
+            return image_response(source, original_mime(path));
+        }
+    };
+    if is_blank(&img) {
+        eprintln!("thumb: {} is one flat colour, not a cover", path.display());
+        if let Some(dir) = cache_dir {
+            if let Err(e) = write_cache(dir, &format!("{key}.blank"), &[]) {
+                eprintln!("thumb: couldn't cache {}: {e}", path.display());
+            }
+        }
+        return status(StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    match scale(&img, box_size) {
         Ok(Some((bytes, ext, mime))) => {
             if let Some(dir) = cache_dir {
                 if let Err(e) = write_cache(dir, &format!("{key}.{ext}"), &bytes) {
@@ -119,7 +144,6 @@ fn respond(path: &Path, box_size: (u32, u32), cache_dir: Option<&Path>) -> Respo
         }
         // Already no bigger than the box: the original is the thumbnail.
         Ok(None) => image_response(source, original_mime(path)),
-        // A format the decoder doesn't read (GIF, AVIF…): the webview may.
         Err(e) => {
             eprintln!("thumb: couldn't scale {}: {e}", path.display());
             image_response(source, original_mime(path))
@@ -127,10 +151,29 @@ fn respond(path: &Path, box_size: (u32, u32), cache_dir: Option<&Path>) -> Respo
     }
 }
 
+/// Whether the picture is one flat colour throughout, judged on a small sample.
+fn is_blank(img: &DynamicImage) -> bool {
+    let sample = img.thumbnail(32, 32).to_rgba8();
+    let mut pixels = sample.pixels();
+    let Some(first) = pixels.next() else {
+        return true;
+    };
+    let (mut lo, mut hi) = (first.0, first.0);
+    for p in pixels {
+        for c in 0..4 {
+            lo[c] = lo[c].min(p.0[c]);
+            hi[c] = hi[c].max(p.0[c]);
+        }
+    }
+    (0..4).all(|c| hi[c] - lo[c] <= BLANK_SPREAD)
+}
+
 /// The picture scaled to cover `box_size`, encoded as JPEG (PNG when it has
 /// transparency), or `None` when it is no larger than the box already.
-fn scale(source: &[u8], (box_w, box_h): (u32, u32)) -> Result<Option<Encoded>, image::ImageError> {
-    let img = image::load_from_memory(source)?;
+fn scale(
+    img: &DynamicImage,
+    (box_w, box_h): (u32, u32),
+) -> Result<Option<Encoded>, image::ImageError> {
     let (w, h) = (img.width(), img.height());
     // Cover fit: the image fills the box, as `object-fit: cover` draws it.
     let factor = (box_w as f64 / w as f64).max(box_h as f64 / h as f64);
@@ -196,6 +239,13 @@ mod tests {
     use super::*;
     use image::{Rgb, RgbImage, Rgba, RgbaImage};
 
+    /// A picture that isn't one flat colour: a gradient across its width.
+    fn gradient(w: u32, h: u32) -> DynamicImage {
+        DynamicImage::ImageRgb8(RgbImage::from_fn(w, h, |x, _| {
+            Rgb([(x * 255 / w) as u8, 40, 90])
+        }))
+    }
+
     fn encode(img: DynamicImage, format: ImageFormat) -> Vec<u8> {
         let mut out = Vec::new();
         img.write_to(&mut Cursor::new(&mut out), format).unwrap();
@@ -204,10 +254,7 @@ mod tests {
 
     #[test]
     fn scales_to_cover_the_box() {
-        let src = encode(
-            DynamicImage::ImageRgb8(RgbImage::from_pixel(700, 1024, Rgb([200, 10, 10]))),
-            ImageFormat::Jpeg,
-        );
+        let src = DynamicImage::ImageRgb8(RgbImage::from_pixel(700, 1024, Rgb([200, 10, 10])));
         let (bytes, ext, _) = scale(&src, (320, 480)).unwrap().unwrap();
         assert_eq!(ext, "jpg");
         let out = image::load_from_memory(&bytes).unwrap();
@@ -217,10 +264,7 @@ mod tests {
 
     #[test]
     fn a_wide_picture_fills_a_tall_box() {
-        let src = encode(
-            DynamicImage::ImageRgb8(RgbImage::from_pixel(1280, 720, Rgb([0, 0, 0]))),
-            ImageFormat::Png,
-        );
+        let src = DynamicImage::ImageRgb8(RgbImage::from_pixel(1280, 720, Rgb([0, 0, 0])));
         let (bytes, _, _) = scale(&src, (320, 480)).unwrap().unwrap();
         let out = image::load_from_memory(&bytes).unwrap();
         assert_eq!((out.width(), out.height()), (853, 480));
@@ -228,19 +272,13 @@ mod tests {
 
     #[test]
     fn keeps_a_picture_already_inside_the_box() {
-        let src = encode(
-            DynamicImage::ImageRgb8(RgbImage::from_pixel(200, 300, Rgb([0, 0, 0]))),
-            ImageFormat::Png,
-        );
+        let src = DynamicImage::ImageRgb8(RgbImage::from_pixel(200, 300, Rgb([0, 0, 0])));
         assert!(scale(&src, (320, 480)).unwrap().is_none());
     }
 
     #[test]
     fn transparency_stays_png() {
-        let src = encode(
-            DynamicImage::ImageRgba8(RgbaImage::from_pixel(1000, 1000, Rgba([0, 0, 0, 0]))),
-            ImageFormat::Png,
-        );
+        let src = DynamicImage::ImageRgba8(RgbaImage::from_pixel(1000, 1000, Rgba([0, 0, 0, 0])));
         let (_, ext, mime) = scale(&src, (320, 320)).unwrap().unwrap();
         assert_eq!((ext, mime), ("png", "image/png"));
     }
@@ -249,20 +287,42 @@ mod tests {
     fn responds_from_the_cache_the_second_time() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("cover.png");
-        std::fs::write(
-            &file,
-            encode(
-                DynamicImage::ImageRgb8(RgbImage::from_pixel(900, 900, Rgb([1, 2, 3]))),
-                ImageFormat::Png,
-            ),
-        )
-        .unwrap();
+        std::fs::write(&file, encode(gradient(900, 900), ImageFormat::Png)).unwrap();
         let cache = dir.path().join("cache");
         let first = respond(&file, (300, 300), Some(&cache));
         assert_eq!(first.status(), StatusCode::OK);
         assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 1);
         let second = respond(&file, (300, 300), Some(&cache));
         assert_eq!(first.body(), second.body());
+    }
+
+    #[test]
+    fn refuses_a_cover_of_one_flat_colour() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path().join("cache");
+        for (name, fill) in [("black.jpg", [0, 0, 0]), ("grey.jpg", [128, 128, 128])] {
+            let file = dir.path().join(name);
+            let flat = DynamicImage::ImageRgb8(RgbImage::from_pixel(600, 900, Rgb(fill)));
+            std::fs::write(&file, encode(flat, ImageFormat::Jpeg)).unwrap();
+            let first = respond(&file, (300, 450), Some(&cache));
+            assert_eq!(first.status(), StatusCode::UNPROCESSABLE_ENTITY, "{name}");
+            // Remembered, so the next request doesn't decode it again.
+            let second = respond(&file, (300, 450), Some(&cache));
+            assert_eq!(second.status(), StatusCode::UNPROCESSABLE_ENTITY, "{name}");
+        }
+    }
+
+    #[test]
+    fn a_cover_with_a_picture_is_not_blank() {
+        assert!(!is_blank(&gradient(600, 900)));
+        // A dark cover with a little light text on it still shows.
+        let mut dark = RgbImage::from_pixel(600, 900, Rgb([8, 8, 8]));
+        for x in 100..500 {
+            for y in 400..440 {
+                dark.put_pixel(x, y, Rgb([230, 230, 230]));
+            }
+        }
+        assert!(!is_blank(&DynamicImage::ImageRgb8(dark)));
     }
 
     #[test]
