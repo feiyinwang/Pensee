@@ -69,6 +69,11 @@ export function parseVideoLink(inner: string): { page: string; seconds: number }
 
 const EMPTY_ITEM_RE = /^(\s*)([-*+]|\d+[.)])[ \t]*$/;
 
+/** A line with no words yet: blank, or an item marker alone. */
+export function isBlankLine(line: string): boolean {
+  return !line.trim() || EMPTY_ITEM_RE.test(line);
+}
+
 /**
  * A pin on a line with nothing in it yet: a blank line becomes a bullet, an
  * empty item keeps its marker. Returns the line's new text and where the

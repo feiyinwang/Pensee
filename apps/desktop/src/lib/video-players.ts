@@ -12,6 +12,8 @@ export interface VideoPlayer {
   time: () => number;
   /** Play from `seconds`. */
   seek: (seconds: number) => void;
+  /** Pause if playing, else play. */
+  toggle: () => void;
   /** The player on screen, for placing a pin's card beside it on a board. */
   rect: () => DOMRect;
 }
@@ -65,6 +67,36 @@ export function seekVideo(notePath: string, seconds: number): boolean {
   lastUsed = notePath;
   player.seek(seconds);
   return true;
+}
+
+/** How long after a pause the first words typed in the note still count as
+ *  a note on that moment. */
+export const AUTO_PIN_WINDOW_MS = 15_000;
+/** An auto pin lands this far before the pause: by the time a thought makes
+ *  you stop the video, the moment it was about has passed. */
+export const AUTO_PIN_LEAD_SECONDS = 5;
+
+let armed: { notePath: string; seconds: number; at: number } | null = null;
+
+/** The video in `notePath` paused at `seconds`: the next words typed in that
+ *  note, if soon, get a pin a little before it. */
+export function armAutoPin(notePath: string, seconds: number, now = performance.now()): void {
+  armed = { notePath, seconds: Math.max(0, seconds - AUTO_PIN_LEAD_SECONDS), at: now };
+}
+
+export function disarmAutoPin(): void {
+  armed = null;
+}
+
+/** The second to pin when typing in `notePath` now, or null when no pause
+ *  there is recent enough. Doesn't disarm: the caller does once it acted. */
+export function autoPinFor(notePath: string, now = performance.now()): number | null {
+  if (!armed || armed.notePath !== notePath) return null;
+  if (now - armed.at > AUTO_PIN_WINDOW_MS) {
+    armed = null;
+    return null;
+  }
+  return armed.seconds;
 }
 
 let origin: Promise<string> | null = null;

@@ -32,6 +32,7 @@ import { mermaidDecorations } from "./mermaid-decorations";
 import { bookJump } from "./book-jump";
 import { tableDecorations } from "./table-decorations";
 import { tweetThread } from "./tweet-thread";
+import { videoAutoPin } from "./video-pin";
 import { viewportParsePlugin } from "./viewport-parse";
 import { wikiLinkExtension } from "./wiki-link-extension";
 import { wikiPagesExtension } from "./wiki-pages-extension";
@@ -151,6 +152,8 @@ export function createEditorExtensions(
     // leave `![[Page#^id]]` to the linked-block widget.
     blockEmbeds(getFilePath),
     bookJump(getFilePath),
+    // YouTube notes: words typed just after a pause pin that moment.
+    videoAutoPin(getFilePath),
     // X bookmark notes read as a thread: author header, posts on a spine.
     tweetThread(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),

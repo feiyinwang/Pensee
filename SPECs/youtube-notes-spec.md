@@ -20,7 +20,16 @@ selected.
   properties scroll away, it stays at the top of the note and the notes
   scroll beneath it. The band behind it has the page's background, so no
   text shows through around the video.
+- No YouTube chrome. YouTube's controls are off (`controls: 0`) and a
+  transparent shield covers its frame, so its title, share, **More videos**
+  and scrubber never wake. Its start and end screens sit under the video's
+  thumbnail until it plays. Clicking the video plays or pauses it. Moving
+  the pointer over it shows our own bar for 2s: play/pause, `m:ss / m:ss`,
+  and a track to click or drag to a time.
 - Under the video is one row with a **Pin** button and its shortcut (⌘⇧M).
+- **⌘⇧Space** plays or pauses the video anywhere in the window: the focused
+  note's, else the last one used. Plain Space is never taken, so it always
+  types.
 - The video keeps playing while you type. When you start it by clicking in
   the player, focus goes back to where it was (the note or the board). Your
   typing lands in the note, not in YouTube's keyboard controls.
@@ -50,6 +59,14 @@ selected.
     same indent, with the pin.
   - The caret ends on the pinned line, ready to type. When focus was
     elsewhere, the note's last caret position is used.
+
+- **Pin by writing.** Pause the video (any way but buffering or the end)
+  and start writing in its note within 15 seconds: once the caret's line
+  has words (not a bare `-` or `1.`), its block gets a pin 5 seconds before
+  the pause, as if ⌘⇧M had been pressed then. Playing again cancels it. A
+  block that already has an id, or one that can't carry one (code, table),
+  is left alone. It waits for an IME composition to end. Paste doesn't
+  count; only typing does.
 
 ### Pins on a board
 
@@ -88,14 +105,19 @@ selected.
     `127.0.0.1` sends one. Electron apps fix the same error the same way.
   - The page runs the YouTube IFrame API. It posts
     `{source:"writer-yt", type:"state"|"error", t, playing}` to its parent:
-    on ready, on every state change, and every 500ms while playing. It takes
-    `{cmd:"seek", t}`, `{cmd:"play"}` and `{cmd:"pause"}` back.
+    on ready, on every state change, and every 500ms while playing (with
+    YouTube's `state`, so a pause is told from buffering), and `release`
+    after any press so the app hands focus back to the note. It takes
+    `{cmd:"seek", t}`, `{cmd:"play"}`, `{cmd:"pause"}` and `{cmd:"toggle"}`
+    back. It draws the shield, poster and hover bar itself.
 - **Pure text (`lib/video-pins.ts`).** Pin ids, parsing, time formatting,
   the insert plan for a pin at a caret, and the note's video id from
   frontmatter.
 - **Players (`lib/video-players.ts`).** A registry of mounted players by note
   path, like `book-readers.ts`, plus the last-used player and pending seeks
-  for a note that is still opening. It also routes the shortcut.
+  for a note that is still opening, and the armed auto pin (note, second,
+  when). `video-pin.ts` routes both shortcuts and owns `videoAutoPin`, the
+  editor plugin that stamps the first typed block.
 - **The band (`components/editor-area/video-player.tsx`).** A sibling of the
   header in `EditorPane`, sticky inside the scroller. The mini player over
   the board is pure CSS on `[data-pane]:has(> .wr-board-inline)`: the
@@ -114,7 +136,7 @@ selected.
 
 ## Follow-ups
 
-- Play, pause and seek-back shortcuts while typing.
+- A seek-back shortcut while typing.
 - Pin widgets inside linked-block embeds on other pages (they show the id
   hidden today).
 - Pins on a full-screen board (it hides the player).

@@ -1,9 +1,11 @@
-import { EditorView, WidgetType } from "@codemirror/view";
+import type { Extension } from "@codemirror/state";
+import { EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
 
 import { blockIdsInText, blockIdOnLine } from "@/lib/block-refs";
 import {
   PIN_ICON_PATH,
   formatVideoTime,
+  isBlankLine,
   pinEmptyLine,
   pinnedItemAfter,
   videoLinkTarget,
@@ -11,6 +13,8 @@ import {
 } from "@/lib/video-pins";
 import {
   type VideoPlayer,
+  autoPinFor,
+  disarmAutoPin,
   hasVideoPlayers,
   lastUsedVideoPlayer,
   markVideoUsed,
@@ -173,15 +177,79 @@ export function pinMoment(prefer?: VideoPlayer): void {
   pinAtCaret(view, seconds);
 }
 
+/** Plays or pauses the focused note's video, else the last one used. */
+export function toggleVideo(): void {
+  const focused = focusedNote();
+  const player = (focused && videoPlayerFor(focused.path)) ?? lastUsedVideoPlayer();
+  if (!player) {
+    showEditorNotice("Open a note with a YouTube link to play its video.");
+    return;
+  }
+  player.toggle();
+}
+
+/**
+ * Words typed into a video's note soon after it paused are a note on that
+ * moment: the block they land in gets a pin a few seconds before the pause
+ * (AUTO_PIN_LEAD_SECONDS), as if ⌘⇧M had been pressed then. Waits for words,
+ * so a bullet marker alone doesn't pin, and for an IME composition to end.
+ * A block that already has an id keeps it.
+ */
+export function videoAutoPin(getFilePath: () => string): Extension {
+  return ViewPlugin.fromClass(
+    class {
+      constructor(readonly view: EditorView) {}
+
+      update(update: ViewUpdate): void {
+        if (!update.docChanged || autoPinFor(getFilePath()) === null) return;
+        if (!update.transactions.some((tr) => tr.isUserEvent("input.type"))) return;
+        // No dispatch inside an update.
+        if (!update.view.composing) queueMicrotask(() => autoPinAtCaret(this.view, getFilePath()));
+      }
+    },
+    {
+      eventHandlers: {
+        compositionend() {
+          // The composed text lands after the event.
+          setTimeout(() => autoPinAtCaret(this.view, getFilePath()), 0);
+        },
+      },
+    },
+  );
+}
+
+function autoPinAtCaret(view: EditorView, notePath: string): void {
+  if (view.composing) return;
+  const seconds = autoPinFor(notePath);
+  if (seconds === null) return;
+  const { state } = view;
+  const { head, empty } = state.selection.main;
+  if (!empty || isBlankLine(state.doc.lineAt(head).text)) return;
+  disarmAutoPin();
+  const block = gripBlockAt(state, head);
+  if (!block || !canCarryBlockId(block.name)) return;
+  const idLine = blockIdLine(state, block);
+  if (blockIdOnLine(idLine.text)) return;
+  const id = videoPinId(seconds, new Set(blockIdsInText(state.doc.toString())));
+  view.dispatch({
+    changes: { from: idLine.to, insert: ` ^${id}` },
+    // The caret stays before the pin, mid-word.
+    selection: { anchor: head },
+    userEvent: "input.video-pin",
+  });
+}
+
 export const PIN_SHORTCUT_LABEL = "⌘⇧M";
+export const PLAY_SHORTCUT_LABEL = "⌘⇧Space";
 
 let installed = false;
 /** Last element focused outside a player, so starting a video by clicking in
  *  it can hand focus straight back (typing goes to the note, not YouTube). */
 let lastFocus: HTMLElement | null = null;
 
-/** ⌘⇧M anywhere in the window while a player is mounted, and the focus
- *  tracking `returnFocus` needs. Installed once, by the first player. */
+/** ⌘⇧M (pin) and ⌘⇧Space (play/pause) anywhere in the window while a
+ *  player is mounted, and the focus tracking `returnFocus` needs. Installed
+ *  once, by the first player. */
 export function installVideoPinShortcut(): void {
   if (installed) return;
   installed = true;
@@ -189,10 +257,16 @@ export function installVideoPinShortcut(): void {
     "keydown",
     (event) => {
       if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey) return;
-      if (event.key.toLowerCase() !== "m" || !hasVideoPlayers()) return;
-      event.preventDefault();
-      event.stopPropagation();
-      pinMoment();
+      if (!hasVideoPlayers()) return;
+      if (event.key.toLowerCase() === "m") {
+        event.preventDefault();
+        event.stopPropagation();
+        pinMoment();
+      } else if (event.code === "Space") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!event.repeat) toggleVideo();
+      }
     },
     // Capture: before the board's and the editor's own keys.
     true,

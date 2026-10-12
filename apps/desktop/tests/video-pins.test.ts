@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
   formatVideoTime,
+  isBlankLine,
   parseVideoLink,
   parseVideoPinId,
   pinEmptyLine,
@@ -93,5 +94,17 @@ describe("pinnedItemAfter", () => {
 
   test("a top-level bullet after any other block", () => {
     expect(pinnedItemAfter("A paragraph ^yt-3", "yt-9")).toEqual({ text: "-  ^yt-9", caret: 2 });
+  });
+});
+
+describe("blank lines", () => {
+  test("nothing, or a marker alone, has no words yet", () => {
+    expect(isBlankLine("")).toBe(true);
+    expect(isBlankLine("   ")).toBe(true);
+    expect(isBlankLine("-")).toBe(true);
+    expect(isBlankLine("  - ")).toBe(true);
+    expect(isBlankLine("1. ")).toBe(true);
+    expect(isBlankLine("- a")).toBe(false);
+    expect(isBlankLine("a")).toBe(false);
   });
 });

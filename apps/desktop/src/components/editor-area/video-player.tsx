@@ -5,6 +5,8 @@ import { MapPin } from "lucide-react";
 import { videoIdOf } from "@/lib/video-pins";
 import {
   type VideoPlayer as VideoPlayerHandle,
+  armAutoPin,
+  disarmAutoPin,
   markVideoUsed,
   registerVideoPlayer,
   videoPlayerOrigin,
@@ -56,6 +58,9 @@ export function VideoPlayer({ filePath }: { filePath: string }) {
   return <VideoBand key={videoId} filePath={filePath} videoId={videoId} origin={origin} />;
 }
 
+/** YouTube's `PlayerState.PAUSED`. */
+const YT_PAUSED = 2;
+
 /** What the player page last said, and when, so the time can be read
  *  between its half-second reports. */
 interface Report {
@@ -101,6 +106,10 @@ function VideoBand({
         send({ cmd: "seek", t: seconds });
         report = { t: seconds, playing: true, at: performance.now() };
       },
+      toggle: () => {
+        markVideoUsed(filePath);
+        send({ cmd: "toggle" });
+      },
       rect: () => frameRef.current?.getBoundingClientRect() ?? new DOMRect(),
     };
     playerRef.current = player;
@@ -112,11 +121,18 @@ function VideoBand({
         type?: string;
         t?: number;
         playing?: boolean;
+        state?: number;
         code?: number;
       };
       if (message?.source !== "writer-yt") return;
       if (message.type === "error") {
         setError(Number(message.code) || 0);
+        return;
+      }
+      // A press in the player is done: typing goes back where it was, never
+      // to the player page.
+      if (message.type === "release") {
+        if (frameRef.current) returnFocusFrom(frameRef.current);
         return;
       }
       if (message.type !== "state") return;
@@ -126,13 +142,14 @@ function VideoBand({
         waiting = null;
       }
       const playing = Boolean(message.playing);
-      const toggled = playing !== report.playing;
-      report = { t: Number(message.t) || 0, playing, at: performance.now() };
-      if (playing) markVideoUsed(filePath);
-      // Played or paused by a click in the player: typing goes back where it
-      // was, never to YouTube's keys. Only on the change, so a menu opened in
-      // the player while it plays keeps focus.
-      if (toggled && frameRef.current) returnFocusFrom(frameRef.current);
+      const t = Number(message.t) || 0;
+      // Paused (not buffering or ended): words typed next pin this moment.
+      if (report.playing && message.state === YT_PAUSED) armAutoPin(filePath, t);
+      if (playing) {
+        markVideoUsed(filePath);
+        disarmAutoPin();
+      }
+      report = { t, playing, at: performance.now() };
     };
     window.addEventListener("message", onMessage);
     const unregister = registerVideoPlayer(player);
