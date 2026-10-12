@@ -53,10 +53,11 @@ to explain or define something.
 - **Book card.** While the book isn't open, its page shows a card under the
   properties: the book's cover, title, author and PDF/EPUB, and
   **Open beside**. It hides while the book is open (`book-card.tsx`).
-  - The cover is the page's `Cover` (a path from the page, or a web
-    address). Otherwise it comes from the book itself: the EPUB's cover image,
-    or the PDF's first page drawn small (`book-cover.ts`). That is loaded
-    lazily, once per book per session.
+  - The cover is the book's own: the EPUB's cover image, or the PDF's first
+    page drawn small (`book-cover.ts`), loaded lazily once per book per
+    session. That is what Apple Books shows. The page's `Cover` is only a
+    fallback while it loads or when the book has none: a saved Apple Books
+    cache image can come out black.
 - **Opening beside its page.** With the page already open, the book goes in
   the column right after it and comes into view. Otherwise the book opens and
   its page follows to its right (`openBook`).
@@ -68,6 +69,27 @@ to explain or define something.
   - **Open Book** in the palette, from a book page;
   - Cmd+click a highlight block;
   - a `[[Name.pdf]]` link.
+
+### Reading place
+
+- Each book reopens where it was left (`lib/book-positions.ts`). The saved
+  place is:
+  - the section at the middle of the view (PDF page or EPUB chapter);
+  - how far the top of the view sits from that section's top, in section
+    heights.
+- It is saved in the app's preferences by book file, 400ms after scrolling
+  settles and when the tab closes.
+- Restoring places it again until it holds, because EPUB chapters only lay out
+  as they come into view.
+- A highlight jump asked for on open (Cmd+click) wins over the saved place.
+
+### Selecting
+
+- App.css's global no-select rule leaves out `.book-reader-pages`, and the
+  reader sets `user-select: text` on them. "auto" would take the no-select
+  of the frame around them.
+- A highlight takes whole words: a selection that stops mid-word is widened
+  to the word's edges (`toWordEdges`), as in Apple Books.
 
 ### Library and search
 

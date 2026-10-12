@@ -117,3 +117,18 @@ describe("authors", () => {
     expect(sameAuthor("James Clear", "James Altucher")).toBe(false);
   });
 });
+
+describe("toWordEdges", () => {
+  test("widens a selection to whole words", async () => {
+    const { toWordEdges } = await import("../src/components/book-reader/reader-controller");
+    const text = "Habits are the compound interest of self-improvement.";
+    const s = text.indexOf("ound");
+    expect(text.slice(...toWordEdges(text, s, text.indexOf("inter") + 5))).toBe(
+      "compound interest",
+    );
+    expect(text.slice(...toWordEdges(text, text.indexOf("self") + 2, text.length - 4))).toBe(
+      "self-improvement",
+    );
+    expect(text.slice(...toWordEdges(text, 0, 6))).toBe("Habits");
+  });
+});

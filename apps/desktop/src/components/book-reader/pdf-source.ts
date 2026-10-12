@@ -200,6 +200,7 @@ export async function openPdf(
       slots[section - 1]?.rendered && !slots[section - 1]!.task
         ? (slots[section - 1]!.rendered!.querySelector<HTMLElement>(".textLayer") ?? null)
         : null,
+    sectionElement: (section) => slots[section - 1]?.el ?? null,
     sectionOf: (node) => {
       const el = (node instanceof Element ? node : node.parentElement)?.closest<HTMLElement>(
         ".book-pdf-page",

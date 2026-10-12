@@ -14,11 +14,14 @@ function coverSrc(cover: string, pagePath: string): string {
   return /^https?:\/\//i.test(cover) ? cover : convertFileSrc(`${getParentDir(pagePath)}/${cover}`);
 }
 
-/** The book's own cover, read from the file when the page names none. */
+/** The cover the book file carries (what Apple Books shows), falling back to
+ *  the page's `Cover` while it loads or when the book has none. The book
+ *  comes first: a saved `Cover` can be stale or broken (an Apple Books cache
+ *  image that converted to black). */
 function useBookCover(bookPath: string | null, fromPage: string | null): string | null {
   const [fromBook, setFromBook] = useState<{ path: string; url: string | null } | null>(null);
   useEffect(() => {
-    if (!bookPath || fromPage) return;
+    if (!bookPath) return;
     let current = true;
     void import("@/components/book-reader/book-cover")
       .then(({ bookCoverUrl }) => bookCoverUrl(bookPath))
@@ -28,13 +31,14 @@ function useBookCover(bookPath: string | null, fromPage: string | null): string 
     return () => {
       current = false;
     };
-  }, [bookPath, fromPage]);
-  return fromPage ?? (fromBook?.path === bookPath ? fromBook.url : null);
+  }, [bookPath]);
+  const own = fromBook?.path === bookPath ? fromBook.url : null;
+  return own ?? fromPage;
 }
 
 /**
  * On a book page whose book is not open, a card under the properties shows
- * the book (its cover, title, author) and opens it in the column beside the
+ * the book (its own cover, title, author) and opens it in the column beside the
  * page (SPECs/book-reader-spec.md). Hidden while the book is open, so it only
  * ever offers what isn't already on screen.
  */

@@ -334,8 +334,11 @@ body,
   background: transparent;
 }
 
-/* Prevent text selection everywhere except editor and form inputs */
-*:not(.cm-editor):not(.cm-content):not(.cm-line):not(textarea):not(input) {
+/* Prevent text selection everywhere except the editor, form inputs and a
+   book's pages (the reader selects text to highlight it). */
+*:not(.cm-editor):not(.cm-content):not(.cm-line):not(textarea):not(input):not(
+    .book-reader-pages
+  ):not(.book-reader-pages *) {
   -webkit-user-select: none;
   user-select: none;
 }

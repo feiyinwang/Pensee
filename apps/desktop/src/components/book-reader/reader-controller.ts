@@ -20,6 +20,7 @@ import {
   subscribePage,
 } from "@/components/editor-area/linked-block-sync";
 import { rangeAt, textOffset, type BookSource } from "./book-source";
+import { readingPlace, saveReadingPlace, type ReadingPlace } from "@/lib/book-positions";
 import { HighlightPainter } from "./highlight-painter";
 
 // Everything a book tab does outside React (SPECs/book-reader-spec.md): load
@@ -32,6 +33,18 @@ export interface SelectionInfo {
   text: string;
   location: BookLocation;
   rect: DOMRect;
+}
+
+const PLACE_SAVE_DELAY_MS = 400;
+const WORD_CHAR = /[\p{L}\p{N}'’-]/u;
+
+/** [start, end) widened to the edges of the words it starts and ends in. */
+export function toWordEdges(text: string, start: number, end: number): [number, number] {
+  let from = start;
+  let to = end;
+  while (from > 0 && WORD_CHAR.test(text[from - 1]!) && WORD_CHAR.test(text[from]!)) from--;
+  while (to < text.length && WORD_CHAR.test(text[to - 1]!) && WORD_CHAR.test(text[to]!)) to++;
+  return [from, to];
 }
 
 export type ReaderStatus =
@@ -104,7 +117,10 @@ export class ReaderController {
       this.#source = source;
       this.onStatus({ kind: "ready" });
       this.#scheduleRepaint();
+      // A jump the editor asked for wins over where the book was left.
       if (this.#pendingJump) this.jump(this.#pendingJump);
+      else await this.#restorePlace(source);
+      this.#trackPlace(source);
     } catch (error) {
       console.error(`[book] Couldn't open ${this.bookPath}:`, error);
       if (!this.#destroyed)
@@ -113,6 +129,53 @@ export class ReaderController {
           message: error instanceof Error ? error.message : String(error),
         });
     }
+  }
+
+  /** Where the reader is: the section at the middle of the view, and how
+   *  far the top of the view sits from that section's top, in its heights. */
+  #place(source: BookSource): ReadingPlace | null {
+    const section = source.currentSection();
+    const el = source.sectionElement(section);
+    if (!el || !el.offsetHeight) return null;
+    const fraction = (this.scroller.scrollTop - el.offsetTop) / el.offsetHeight;
+    return { unit: source.unit, section, fraction };
+  }
+
+  async #restorePlace(source: BookSource) {
+    const place = await readingPlace(this.bookPath).catch(() => null);
+    if (!place || place.unit !== source.unit || this.#destroyed) return;
+    await source.scrollToSection(place.section);
+    const el = source.sectionElement(place.section);
+    // Chapters lay out as they come into view (`content-visibility`), so the
+    // first placement can move what is above; place again until it holds.
+    for (let pass = 0; el && pass < 4 && !this.#destroyed; pass++) {
+      const target = el.offsetTop + place.fraction * el.offsetHeight;
+      if (Math.abs(this.scroller.scrollTop - target) < 1) break;
+      this.scroller.scrollTop = target;
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+    }
+  }
+
+  /** Save the place as reading goes (settled scrolls only) and on close. */
+  #trackPlace(source: BookSource) {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const save = () => {
+      timer = null;
+      const place = this.#place(source);
+      if (place) void saveReadingPlace(this.bookPath, place);
+    };
+    const onScroll = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(save, PLACE_SAVE_DELAY_MS);
+    };
+    this.scroller.addEventListener("scroll", onScroll, { passive: true });
+    this.#cleanups.push(() => {
+      this.scroller.removeEventListener("scroll", onScroll);
+      if (timer) {
+        clearTimeout(timer);
+        save();
+      }
+    });
   }
 
   async #refreshHighlights() {
@@ -154,12 +217,16 @@ export class ReaderController {
     const section = source.sectionOf(range.startContainer);
     const root = section === null ? null : source.textRoot(section);
     if (section === null || !root) return null;
-    const start = textOffset(root, range.startContainer, range.startOffset);
-    const end =
+    const all = root.textContent ?? "";
+    const selected = [
+      textOffset(root, range.startContainer, range.startOffset),
       source.sectionOf(range.endContainer) === section
         ? textOffset(root, range.endContainer, range.endOffset)
-        : (root.textContent ?? "").length;
-    const text = (root.textContent ?? "").slice(start, end).replace(/\s+/g, " ").trim();
+        : all.length,
+    ] as const;
+    // Whole words, as Apple Books does: a drag that stops mid-word takes it.
+    const [start, end] = toWordEdges(all, ...selected);
+    const text = all.slice(start, end).replace(/\s+/g, " ").trim();
     if (!text || end <= start) return null;
     return {
       text,

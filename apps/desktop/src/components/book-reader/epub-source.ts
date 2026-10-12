@@ -154,6 +154,7 @@ export async function openEpub(
   return {
     unit: "s",
     textRoot: (section) => sections[section] ?? null,
+    sectionElement: (section) => sections[section] ?? null,
     sectionOf: (node) => {
       const el = (node instanceof Element ? node : node.parentElement)?.closest<HTMLElement>(
         ".book-epub-section",

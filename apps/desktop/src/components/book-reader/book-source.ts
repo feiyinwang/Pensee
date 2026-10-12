@@ -12,6 +12,9 @@ export interface BookSource {
   unit: "p" | "s";
   /** The section's text root, or null while it is not rendered. */
   textRoot: (section: number) => HTMLElement | null;
+  /** The section's box in the scroller, rendered or not (a PDF page's
+   *  placeholder): where the reading place is measured from. */
+  sectionElement: (section: number) => HTMLElement | null;
   /** The section a DOM node belongs to. */
   sectionOf: (node: Node) => number | null;
   /** Bring the section into view; resolves once its text root is rendered. */

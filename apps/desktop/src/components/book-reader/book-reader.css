@@ -14,6 +14,13 @@
   overscroll-behavior: contain;
 }
 
+/* A book's text is selectable (App.css leaves the pages out of its global
+   no-select rule); "auto" would take the no-select of the frame around it. */
+.book-reader-pages {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .book-reader-status {
   position: absolute;
   inset: 0;
