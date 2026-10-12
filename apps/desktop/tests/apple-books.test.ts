@@ -33,6 +33,10 @@ describe("naming", () => {
       "Atomic Habits",
     ]);
     expect(bookPageNames("Dune")).toEqual(["Dune"]);
+    expect(bookPageNames("Skip the Line (James Altucher James Altucher )")).toEqual([
+      "Skip the Line (James Altucher James Altucher )",
+      "Skip the Line",
+    ]);
   });
 
   test("a highlight's block id comes from its Apple Books id", () => {

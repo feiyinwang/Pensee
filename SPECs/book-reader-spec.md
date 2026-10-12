@@ -13,9 +13,15 @@ to explain or define something.
 
 - Drop a `.pdf` or `.epub` on the window, or run **Import Book…** from the
   command palette.
-- **Book page.** The book page is found the way an Apple Books import finds
-  one (`bookPageNames` + `findWikiPage`), using the file's name without download-site tags (`(z-library.sk, 1lib.sk,
-  z-lib.sk)`, `[Z-Library]`, a bare `z-lib.sk`; `cleanBookTitle`). If none
+- **Book page.** An existing page is always used before a new one is made.
+  It is found the way an Apple Books import finds
+  one (`bookPageNames` + `findWikiPage`), from the file's name without
+  download-site tags (`(z-library.sk, 1lib.sk, z-lib.sk)`, `[Z-Library]`, a
+  bare `z-lib.sk`; `cleanBookTitle`). It tries the full title, then the title
+  without bracketed asides such as the author (`Skip the Line (James
+  Altucher)` matches `Skip the line.md`), then the title before a subtitle.
+  Opening a book whose page isn't known (a link) does the same before making
+  one. If none
   exists, a new page goes in the Book pages folder (`apple-books.folder`):
   ```
   Type: Book
@@ -25,7 +31,9 @@ to explain or define something.
   and nothing else: no H1 and no `## Highlights` heading, since headings are
   the writer's to add. An existing page gets
   `Type`, the `Book` tag and `Book` only where they are missing.
-- **The book file** is copied beside its page (`import_book`, which never
+- **The book file** is copied beside its page, unless the page already has
+  its `Book` file there (the same book dropped again), which is then opened
+  instead (`import_book`, which never
   overwrites; a taken name gets ` 2`, ` 3`, …). `Book` holds its file name,
   relative to the page.
 - The book opens in a tab with its page in a column to the right.

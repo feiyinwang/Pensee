@@ -52,8 +52,10 @@ export async function resolveBookNote(bookPath: string, hint: string | null): Pr
   if (root) {
     for (const name of bookPageNames(getFileStem(bookPath))) {
       const found = await findWikiPage(name, root, bookPath, tauriWikiPageDeps);
-      if (found && bookFileOf((await readPageParts(found)).frontmatter) === getFileName(bookPath))
-        return found;
+      if (!found) continue;
+      // An existing page for the book is its page, unless it reads another file.
+      const file = bookFileOf((await readPageParts(found)).frontmatter);
+      if (file === null || file === getFileName(bookPath)) return found;
     }
   }
   await tauri.createFile(sibling);
@@ -88,6 +90,16 @@ export async function importBook(sourcePath: string): Promise<void> {
   const isNew = !notePath;
   const name = names[names.length - 1]!;
   notePath ??= newPagePath(name, root, anchor.path);
+
+  // The page already has this book beside it (dropped again): open that copy.
+  if (!isNew) {
+    const existing = bookFileOf((await readPageParts(notePath)).frontmatter);
+    const existingPath = existing ? `${getParentDir(notePath)}/${existing}` : null;
+    if (existingPath && (await tauri.fileExists(existingPath))) {
+      await openBook(existingPath, notePath);
+      return;
+    }
+  }
 
   const bookPath = await tauri.importBook(
     sourcePath,

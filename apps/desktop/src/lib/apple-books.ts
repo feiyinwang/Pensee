@@ -28,13 +28,16 @@ export function highlightBlockId(highlight: Pick<AppleBookHighlight, "id">): str
     .toLowerCase()}`;
 }
 
-/** Page names a book can go by, best first: its full title, then the title
- *  before a subtitle (`Atomic Habits: An Easy…` → `Atomic Habits`). The last
- *  one is also the name a new page gets. */
+/** Page names a book can go by, best first: its full title, the title
+ *  without bracketed asides (`Skip the Line (James Altucher)` → `Skip the
+ *  Line`), then that before a subtitle (`Atomic Habits: An Easy…` → `Atomic
+ *  Habits`). The last one is also the name a new page gets. */
 export function bookPageNames(title: string): string[] {
   const full = safePageName(title);
-  const short = safePageName(title.split(/[:：]| [-–—] /)[0] ?? "");
-  return [...new Set([full, short].filter(Boolean))];
+  const unbracketed = title.replace(/\s*[([（][^()[\]（）]*[)\]）]/g, "");
+  const bare = safePageName(unbracketed);
+  const short = safePageName(unbracketed.split(/[:：]| [-–—] /)[0] ?? "");
+  return [...new Set([full, bare, short].filter(Boolean))];
 }
 
 /** One line of running text: highlights span paragraphs, a bullet does not.
@@ -69,7 +72,8 @@ function findPair(map: YAMLMap, name: string): Pair | undefined {
 
 /** One `key: value` line, quoted only when YAML needs it. */
 function yamlLine(key: string, value: string): string {
-  return `${key}: ${stringify(value).trimEnd()}`;
+  // One line whatever its length: a folded value is valid YAML but reads badly.
+  return `${key}: ${stringify(value, { lineWidth: 0 }).trimEnd()}`;
 }
 
 /** Whether `frontmatter` already has a cover, so none needs saving. */
