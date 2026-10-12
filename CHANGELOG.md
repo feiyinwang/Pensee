@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Switching tabs in **Library** (Books, Videos, Courses…) is quick. The selected tab moves as soon as you click. A tab you've already opened comes back at once, and a tab you point at gets ready before you click it.
 - Change the text size while reading an EPUB, as in Apple Books: click **Aa** at the top right of the book, then the small **A** or the large **A**. The size is the same for every book and stays after you close it, and the passage you were reading stays in view as the text grows or shrinks. PDFs keep their pages as they are.
 - A passage you highlight in a book lands on the open board as a rounded rectangle, the same shape a new shape on the board gets, instead of a square-cornered one. So does a video pin added to a board.
 - A book now reopens on the passage you left even when you were deep into it. Before, an EPUB read past its first chapters came back several screens off: its short opening pages changed height a moment after the book was placed, and the text slid away from your place.

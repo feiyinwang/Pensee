@@ -1,4 +1,14 @@
-import { lazy, Suspense, useState, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  lazy,
+  memo,
+  startTransition,
+  Suspense,
+  useDeferredValue,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { FileText, Plus } from "lucide-react";
 import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
@@ -9,7 +19,13 @@ import { openLibraryAdd } from "@/hooks/use-library-add";
 import { useSpaceDef, useTypedNotes, type SpaceDef, type TypedNote } from "@/hooks/use-spaces";
 import { libraryKindOfTab } from "@/lib/library-add";
 import { formatRelativeTime } from "@/lib/relative-time";
-import { SPACE_VIEW_LABELS, allTypes, notesInTab, type SpaceView } from "@/lib/spaces";
+import {
+  SPACE_VIEW_LABELS,
+  allTypes,
+  notesInTab,
+  type SpaceTab,
+  type SpaceView,
+} from "@/lib/spaces";
 import { useSpaceViewStore } from "@/stores/space-view-store";
 import { FilesSpace } from "./files-space";
 import { NoteGallery } from "./note-gallery";
@@ -80,15 +96,24 @@ function TypedSpace({ space }: { space: SpaceDef }) {
   ensureArcTokens();
   const notes = useTypedNotes(allTypes(space));
   const [tabId, setTabId] = useState(space.tabs[0]?.id ?? "");
-  const tab = space.tabs.find((t) => t.id === tabId) ?? space.tabs[0];
+  // The selected tab moves at once; the body follows in a background render
+  // React can interrupt. A tab's body stays mounted (hidden) once shown or
+  // hovered, so coming back to it, or opening one hovered first, is instant.
+  const shownId = useDeferredValue(tabId);
+  const [mounted, setMounted] = useState<ReadonlySet<string>>(() => new Set([tabId]));
+  const mount = (id: string) =>
+    startTransition(() => setMounted((prev) => (prev.has(id) ? prev : new Set(prev).add(id))));
+  const notesByTab = useMemo(
+    () => (notes ? new Map(space.tabs.map((t) => [t.id, notesInTab(notes, t)])) : null),
+    [notes, space.tabs],
+  );
   const picked = useSpaceViewStore((s) => s.views[space.key]);
   const setView = useSpaceViewStore((s) => s.setView);
   const view = picked && space.views?.includes(picked) ? picked : space.view;
+  const tab = space.tabs.find((t) => t.id === tabId) ?? space.tabs[0];
   if (!tab) return null;
-  const shown = notes ? notesInTab(notes, tab) : null;
-  // Library tabs filled by hand add through the palette's add mode, with the
-  // tab's own kind first (SPECs/add-to-library-spec.md); synced tabs don't.
-  const addKind = space.key === "library" && !tab.source ? libraryKindOfTab(tab.id) : null;
+  const shownTab = space.tabs.find((t) => t.id === shownId) ?? tab;
+  const addKind = addKindOf(space, tab);
 
   return (
     <>
@@ -101,12 +126,16 @@ function TypedSpace({ space }: { space: SpaceDef }) {
               className={styles.typeTabs}
               label={`${space.name} types`}
               value={tab.id}
-              onValueChange={setTabId}
+              onValueChange={(id) => {
+                setTabId(id);
+                mount(id);
+              }}
+              onOptionIntent={mount}
               options={space.tabs.map((t) => ({
                 value: t.id,
                 label: t.label,
-                accessory: notes ? (
-                  <span className={styles.tabCount}>{notesInTab(notes, t).length}</span>
+                accessory: notesByTab ? (
+                  <span className={styles.tabCount}>{notesByTab.get(t.id)?.length ?? 0}</span>
                 ) : undefined,
               }))}
             />
@@ -144,6 +173,39 @@ function TypedSpace({ space }: { space: SpaceDef }) {
           )}
         </div>
       </header>
+      {space.tabs
+        .filter((t) => t.id === shownTab.id || mounted.has(t.id))
+        .map((t) => (
+          <div key={t.id} hidden={t.id !== shownTab.id}>
+            <TabBody space={space} tab={t} shown={notesByTab?.get(t.id) ?? null} view={view} />
+          </div>
+        ))}
+    </>
+  );
+}
+
+/** Library tabs filled by hand add through the palette's add mode, with the
+ *  tab's own kind first (SPECs/add-to-library-spec.md); synced tabs don't. */
+function addKindOf(space: SpaceDef, tab: SpaceTab) {
+  return space.key === "library" && !tab.source ? libraryKindOfTab(tab.id) : null;
+}
+
+/** One tab's notes. Memoised: hidden tabs stay mounted and must not re-render
+ *  with every switch. */
+const TabBody = memo(function TabBody({
+  space,
+  tab,
+  shown,
+  view,
+}: {
+  space: SpaceDef;
+  tab: SpaceTab;
+  shown: TypedNote[] | null;
+  view: SpaceView;
+}) {
+  const addKind = addKindOf(space, tab);
+  return (
+    <>
       {tab.source === "x" && shown !== null && shown.length > 0 && <XSyncBar />}
       {shown === null ? null : shown.length === 0 && tab.source === "x" ? (
         <XBookmarksEmpty />
@@ -168,7 +230,7 @@ function TypedSpace({ space }: { space: SpaceDef }) {
       )}
     </>
   );
-}
+});
 
 function NoteList({ notes }: { notes: TypedNote[] }) {
   const onKeyDown = (event: KeyboardEvent<HTMLTableRowElement>, path: string) => {
