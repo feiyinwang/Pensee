@@ -1607,7 +1607,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  passage needs it, up to a cap; past that the label's own caret expands it. */
   const HIGHLIGHT_CARD = { maxH: 320 };
 
-  /** A rectangle labelled `text` placed in view from the `side` edge. */
+  /** A rounded rectangle (the default shape) labelled `text`, placed in view
+   *  from the `side` edge. */
   function placeCard(text: string, side: "w" | "e", link?: string): ShapeEl {
     const v = vp();
     const { width, height } = stageRect();
@@ -1619,7 +1620,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     };
     const el: ShapeEl = {
       id: newId(),
-      t: "rect",
+      t: SHAPE_DEFAULT_KIND,
       x: 0,
       y: 0,
       w: SHAPE_DEFAULT.w,

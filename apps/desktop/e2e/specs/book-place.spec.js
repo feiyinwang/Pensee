@@ -139,20 +139,26 @@ describe("Book reading place", function () {
     await openFromLibrary();
     await waitForBook();
 
-    // Read into the book: the middle of its sixth section.
+    // Read deep into the book, past the short opening sections whose late
+    // layout once slid a restored place ~840px away: partway down its
+    // second-to-last section, as a reader would (a wheel first, which ends
+    // the hold on a restored place).
     await browser.execute((sel) => {
       const scroller = [...document.querySelectorAll(".book-reader-scroller")].find(
         (el) => !el.closest(".tab-column[data-hidden]"),
       );
-      scroller.querySelectorAll(sel)[5].scrollIntoView({ block: "start" });
+      scroller.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+      const sections = scroller.querySelectorAll(sel);
+      sections[sections.length - 2].scrollIntoView({ block: "start" });
     }, SECTION);
     await browser.pause(300);
     await browser.execute((sel) => {
       const scroller = [...document.querySelectorAll(".book-reader-scroller")].find(
         (el) => !el.closest(".tab-column[data-hidden]"),
       );
-      const section = scroller.querySelectorAll(sel)[5];
-      scroller.scrollTop = section.offsetTop + section.offsetHeight / 2;
+      const sections = scroller.querySelectorAll(sel);
+      const section = sections[sections.length - 2];
+      scroller.scrollTop = section.offsetTop + section.offsetHeight * 0.57;
     }, SECTION);
     // The place saves once scrolling settles.
     await browser.pause(1000);

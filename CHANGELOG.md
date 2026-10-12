@@ -2,6 +2,8 @@
 
 ## 2026-10-12
 
+- A passage you highlight in a book lands on the open board as a rounded rectangle, the same shape a new shape on the board gets, instead of a square-cornered one. So does a video pin added to a board.
+- A book now reopens on the passage you left even when you were deep into it. Before, an EPUB read past its first chapters came back several screens off: its short opening pages changed height a moment after the book was placed, and the text slid away from your place.
 - The video at the top of a YouTube note has rounded corners and a soft shadow under it.
 - Press **⌘⇧L** anywhere to add something to **Library**. The New tab page shows the shortcut next to **Add to Library**. In a note, ⌘⇧L no longer selects every match of the selected text; ⌘D still adds the next one.
 - A YouTube video you bring into a note now comes with its transcript. It sits in a closed **Transcript** toggle at the top of the note, under the video; click it to read. This happens when you add a video to **Library** from its link, or put a YouTube link in an open note's properties. Older video notes stay as they are: click **Transcript** next to **Pin** under the video to get one. The transcript uses the creator's captions when there are any, else YouTube's automatic ones, in paragraphs of about a minute, each starting with its time.

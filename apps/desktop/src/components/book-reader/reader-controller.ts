@@ -39,6 +39,8 @@ export interface SelectionInfo {
 
 const PLACE_SAVE_DELAY_MS = 400;
 const MAX_PLACE_PASSES = 8;
+/** What the reader does to scroll the book themselves. */
+const OWN_SCROLL_EVENTS = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
 const WORD_CHAR = /[\p{L}\p{N}'’-]/u;
 
 /** [start, end) widened to the edges of the words it starts and ends in. */
@@ -63,6 +65,7 @@ export class ReaderController {
   #highlights: BookHighlight[] = [];
   #cleanups: Array<() => void> = [];
   #pendingJump: string | null = null;
+  #releasePlace: (() => void) | null = null;
   #repaintFrame = 0;
   #destroyed = false;
 
@@ -153,10 +156,32 @@ export class ReaderController {
     // Laying out the chapters around the place changes their heights and so
     // where the place is: place, lay out what is now in view, and place
     // again until nothing new lays out.
-    for (let pass = 0; pass < MAX_PLACE_PASSES && !this.#destroyed; pass++) {
+    const toPlace = () => {
       this.scroller.scrollTop = el.offsetTop + place.fraction * el.offsetHeight;
+    };
+    for (let pass = 0; pass < MAX_PLACE_PASSES && !this.#destroyed; pass++) {
+      toPlace();
       if (!source.layOutInView()) break;
     }
+    if (!this.#destroyed) this.#holdPlace(toPlace);
+  }
+
+  /** WebKit has no scroll anchoring: chapters above the place that lay out
+   *  after it (the short opening ones grow to their placeholder height a
+   *  frame later) would slide the passage out of view. Put it back on every
+   *  change in the book's height until the reader scrolls or jumps. */
+  #holdPlace(toPlace: () => void) {
+    const observer = new ResizeObserver(toPlace);
+    observer.observe(this.host);
+    const release = () => {
+      observer.disconnect();
+      for (const type of OWN_SCROLL_EVENTS) this.scroller.removeEventListener(type, release);
+      this.#releasePlace = null;
+    };
+    for (const type of OWN_SCROLL_EVENTS) {
+      this.scroller.addEventListener(type, release, { passive: true });
+    }
+    this.#releasePlace = release;
   }
 
   /** Save the place as reading goes (settled scrolls only) and on close. */
@@ -291,6 +316,7 @@ export class ReaderController {
     }
     this.#pendingJump = null;
     if (location.unit !== source.unit) return false;
+    this.#releasePlace?.();
     void source.scrollToSection(location.section).then(() => {
       const root = source.textRoot(location.section);
       const range = root && rangeAt(root, location.start, location.end);
@@ -310,6 +336,7 @@ export class ReaderController {
   destroy() {
     this.#destroyed = true;
     cancelAnimationFrame(this.#repaintFrame);
+    this.#releasePlace?.();
     for (const cleanup of this.#cleanups) cleanup();
     this.#painter.destroy();
     this.#source?.destroy();

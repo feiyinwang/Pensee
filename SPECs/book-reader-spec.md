@@ -89,6 +89,13 @@ to explain or define something.
   book, lays out every chapter in or near the view at once (`layOutInView`),
   and places it again until nothing new lays out, so the place never depends
   on how fast the browser catches up.
+- Chapters above the place can still change height after that (the short
+  opening ones the first frame laid out fall back to the placeholder), and
+  WebKit has no scroll anchoring, so the passage would slide away: a book
+  restored from 13 chapters in reopened ~840px off. The reader therefore puts
+  the place back on every change in the book's height (`#holdPlace`, a
+  ResizeObserver) until the reader scrolls (wheel, touch, pointer, key) or a
+  highlight jump takes over.
 - A highlight jump asked for on open (Cmd+click) wins over the saved place.
 - An open book tab is part of the session: after a restart it opens again at
   its saved place. Restoring the session reads only the tabs' documents, never
