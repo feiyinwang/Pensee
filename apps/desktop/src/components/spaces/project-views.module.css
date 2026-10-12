@@ -72,6 +72,22 @@
   --cell-base: transparent;
 }
 
+/* Short values stay on one line; the table keeps a width that fits them and
+   scrolls sideways inside its card when the pane is narrower (Arc's responsive
+   rule). Under 620px Arc folds each row into two lines itself, so leave it be. */
+@media (min-width: 621px) {
+  .projectViews table {
+    /* Name's minimum plus the fixed columns (LIST_WIDTHS in project-views.tsx). */
+    min-width: calc(200px + 116px + 124px + 204px + 136px);
+  }
+
+  .projectViews table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 /* Kanban: Arc's block, page-tall instead of its fixed 640px, without its own frame. */
 .projectViews .board {
   height: calc(100vh - 200px);

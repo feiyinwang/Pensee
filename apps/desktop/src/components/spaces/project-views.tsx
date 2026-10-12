@@ -318,6 +318,12 @@ interface ListRow extends Record<string, unknown> {
   edited: number;
 }
 
+/** Fixed widths for the short columns, sized for their longest value ("Overdue ·
+ *  Dec 20, 2023", "143 weeks ago") so nothing wraps. Arc's table would lock
+ *  them as percentages, which squeeze in a narrow column; below the sum plus
+ *  the name's minimum the table scrolls inside its card (Arc's rule). */
+const LIST_WIDTHS = { status: 116, start: 124, deadline: 204, edited: 136 };
+
 function ProjectList({ projects, columns }: { projects: Project[]; columns: StatusColumn[] }) {
   const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
   const rows = useMemo<ListRow[]>(
@@ -342,9 +348,9 @@ function ProjectList({ projects, columns }: { projects: Project[]; columns: Stat
       defaultSort={{ key: "edited", direction: "desc" }}
       columns={[
         {
+          // Takes the room the fixed columns leave.
           key: "name",
           label: "Name",
-          width: "40%",
           render: (_, row) => (
             <button
               type="button"
@@ -359,19 +365,22 @@ function ProjectList({ projects, columns }: { projects: Project[]; columns: Stat
           key: "status",
           label: "Status",
           numeric: false,
+          width: LIST_WIDTHS.status,
           render: (_, row) => <StatusTag status={byPath.get(row.path)!.status} columns={columns} />,
         },
-        { key: "start", label: "Start", numeric: false, render: day },
+        { key: "start", label: "Start", numeric: false, width: LIST_WIDTHS.start, render: day },
         {
           key: "deadline",
           label: "Deadline",
           numeric: false,
+          width: LIST_WIDTHS.deadline,
           render: (_, row) => <DeadlineTag project={byPath.get(row.path)!} now={now} />,
         },
         {
           key: "edited",
           label: "Last edited",
           numeric: false,
+          width: LIST_WIDTHS.edited,
           render: (value) => formatRelativeTime(value as number) ?? "",
         },
       ]}
