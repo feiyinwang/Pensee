@@ -57,8 +57,9 @@
 }
 
 /* Small-caps label voice: monospace, uppercase, tracked out. Used for section
-   headings, footer metadata and primary buttons so chrome text reads as
-   labels, distinct from the prose the editor holds. */
+   headings and primary buttons so chrome text reads as labels, distinct from
+   the prose the editor holds. The document footer's counts stay monospace but
+   in sentence case. */
 @utility label-mono {
   font-family: var(--mono-font);
   text-transform: uppercase;
