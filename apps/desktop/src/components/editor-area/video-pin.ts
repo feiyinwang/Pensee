@@ -14,9 +14,9 @@ import {
 import {
   type VideoPlayer,
   autoPinFor,
+  currentVideoPlayer,
   disarmAutoPin,
   hasVideoPlayers,
-  lastUsedVideoPlayer,
   markVideoUsed,
   seekVideo,
   videoPlayerFor,
@@ -147,7 +147,7 @@ function focusedNote(): { view: EditorView; path: string } | null {
 
 /**
  * Pins the moment playing now (SPECs/youtube-notes-spec.md#pins-on-a-board).
- * The video is `prefer`'s, else the focused note's, else the last one used.
+ * The video is `prefer`'s, else the focused note's, else `currentVideoPlayer`'s.
  * Focus on a board sends the pin there; focus in the video's own note puts it
  * at the caret; from anywhere else it goes to a board on screen, or else the
  * note.
@@ -155,7 +155,7 @@ function focusedNote(): { view: EditorView; path: string } | null {
 export function pinMoment(prefer?: VideoPlayer): void {
   const focused = focusedNote();
   const own = focused ? videoPlayerFor(focused.path) : null;
-  const player = prefer ?? own ?? lastUsedVideoPlayer();
+  const player = prefer ?? own ?? currentVideoPlayer();
   if (!player) {
     showEditorNotice("Play a video in a note with a YouTube link to pin a moment.");
     return;
@@ -177,10 +177,10 @@ export function pinMoment(prefer?: VideoPlayer): void {
   pinAtCaret(view, seconds);
 }
 
-/** Plays or pauses the focused note's video, else the last one used. */
+/** Plays or pauses the focused note's video, else `currentVideoPlayer`'s. */
 export function toggleVideo(): void {
   const focused = focusedNote();
-  const player = (focused && videoPlayerFor(focused.path)) ?? lastUsedVideoPlayer();
+  const player = (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
   if (!player) {
     showEditorNotice("Open a note with a YouTube link to play its video.");
     return;
@@ -247,7 +247,7 @@ let installed = false;
 let lastFocus: HTMLElement | null = null;
 
 /** The player `<` / `>` change the speed of: the focused note's, or with
- *  nothing editable focused, the last one used. Null while typing anywhere
+ *  nothing editable focused, `currentVideoPlayer`'s. Null while typing anywhere
  *  else (another note, a field, a board), where they type. */
 function speedKeyTarget(): VideoPlayer | null {
   const focused = focusedNote();
@@ -257,7 +257,7 @@ function speedKeyTarget(): VideoPlayer | null {
     active instanceof HTMLInputElement ||
     active instanceof HTMLTextAreaElement ||
     (active instanceof HTMLElement && active.isContentEditable);
-  return editing || boardHasFocus() ? null : lastUsedVideoPlayer();
+  return editing || boardHasFocus() ? null : currentVideoPlayer();
 }
 
 /** ⌘⇧M (pin) and ⌘⇧J (play/pause) anywhere in the window while a player is

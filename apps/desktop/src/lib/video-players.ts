@@ -18,16 +18,20 @@ export interface VideoPlayer {
   speed: (step: -1 | 1) => void;
   /** The player on screen, for placing a pin's card beside it on a board. */
   rect: () => DOMRect;
+  /** Whether it is on screen: an inactive tab keeps its player mounted but
+   *  hidden. */
+  shown: () => boolean;
 }
 
-const players = new Map<string, VideoPlayer>();
+/** By note; more than one when the note is open in more than one tab. */
+const players = new Map<string, VideoPlayer[]>();
 const pendingSeeks = new Map<string, number>();
 /** The note whose player was last played or pinned from: the one the pin
  *  shortcut means when focus is not in a video's own note. */
 let lastUsed: string | null = null;
 
 export function registerVideoPlayer(player: VideoPlayer): () => void {
-  players.set(player.notePath, player);
+  players.set(player.notePath, [...(players.get(player.notePath) ?? []), player]);
   const pending = pendingSeeks.get(player.notePath);
   if (pending !== undefined) {
     pendingSeeks.delete(player.notePath);
@@ -35,23 +39,35 @@ export function registerVideoPlayer(player: VideoPlayer): () => void {
     lastUsed = player.notePath;
   }
   return () => {
-    if (players.get(player.notePath) === player) players.delete(player.notePath);
+    const rest = (players.get(player.notePath) ?? []).filter((p) => p !== player);
+    if (rest.length > 0) players.set(player.notePath, rest);
+    else players.delete(player.notePath);
   };
 }
 
+/** `notePath`'s player: the one on screen, else the newest. */
 export function videoPlayerFor(notePath: string): VideoPlayer | null {
-  return players.get(notePath) ?? null;
+  const list = [...(players.get(notePath) ?? [])].reverse();
+  return list.find((p) => p.shown()) ?? list[0] ?? null;
 }
 
 export function markVideoUsed(notePath: string): void {
   lastUsed = notePath;
 }
 
-/** The player the pin shortcut uses when focus is in no video's note. */
-export function lastUsedVideoPlayer(): VideoPlayer | null {
-  const last = lastUsed ? players.get(lastUsed) : undefined;
+/**
+ * The player the shortcuts mean when focus is in no video's note: the last
+ * one used if it is on screen, else the only note's video on screen (a note
+ * just picked in the sidebar or tab bar), else the last one used even in a
+ * hidden tab, else the only one.
+ */
+export function currentVideoPlayer(): VideoPlayer | null {
+  const last = lastUsed ? videoPlayerFor(lastUsed) : null;
+  if (last?.shown()) return last;
+  const shown = [...players.keys()].filter((path) => videoPlayerFor(path)!.shown());
+  if (shown.length === 1) return videoPlayerFor(shown[0]!);
   if (last) return last;
-  return players.size === 1 ? [...players.values()][0]! : null;
+  return players.size === 1 ? videoPlayerFor([...players.keys()][0]!) : null;
 }
 
 export function hasVideoPlayers(): boolean {
@@ -61,7 +77,7 @@ export function hasVideoPlayers(): boolean {
 /** Play `notePath`'s video from `seconds` now if its player is mounted, else
  *  once it mounts. Returns whether it played now. */
 export function seekVideo(notePath: string, seconds: number): boolean {
-  const player = players.get(notePath);
+  const player = videoPlayerFor(notePath);
   if (!player) {
     pendingSeeks.set(notePath, seconds);
     return false;

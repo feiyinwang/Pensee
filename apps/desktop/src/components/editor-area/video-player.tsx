@@ -205,6 +205,7 @@ function VideoBand({
         send({ cmd: "speed", step });
       },
       rect: () => frameRef.current?.getBoundingClientRect() ?? new DOMRect(),
+      shown: () => frameRef.current?.checkVisibility({ visibilityProperty: true }) ?? false,
     };
     playerRef.current = player;
 

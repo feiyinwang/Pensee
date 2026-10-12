@@ -10,6 +10,7 @@
 
 ## Done
 
+- ⌘⇧J plays the video on screen: [`SPECs/youtube-notes-spec.md`](SPECs/youtube-notes-spec.md) — hidden file tabs keep their players mounted, so with focus outside the note's text ⌘⇧J went to the last-used (often hidden) video or nowhere. `currentVideoPlayer` now prefers the player on screen (`shown()`, `checkVisibility`); the registry keeps every player of a note open in two tabs.
 - Agent chat model choice: [`SPECs/agent-chat-spec.md`](SPECs/agent-chat-spec.md) — Haiku by default for fast answers; `/model` in the chat (or the model name by the composer) switches to Sonnet or Opus. Global setting `agent.model`, passed as `--model`.
 
 - Book text size: [`SPECs/book-reader-spec.md`](SPECs/book-reader-spec.md#text-size) — **Aa** at the top right of an EPUB opens smaller/larger buttons (13–34px ladder, one size for every book in `books.textSize`); the reader keeps the passage in view across a change (`setTextSize`). e2e: `specs/book-text-size.spec.js` (set `BOOK_EPUB`). Follow-up: PDF zoom.

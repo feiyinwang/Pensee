@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- **⌘⇧J** plays or pauses the video of the YouTube note you're looking at, even right after picking it in the sidebar or the tab bar, before you click into its text. Before, with another YouTube note open in a tab behind it, ⌘⇧J played or paused that hidden video instead, or did nothing.
 - The **Agent** chat answers faster. It now uses Claude **Haiku** unless you pick another model, instead of whatever model your terminal Claude uses (often the slowest, Opus). The model's name shows at the bottom right of the chat, next to the page; click it, or type `/model` in the chat as you would in the terminal, to switch to **Sonnet** or **Opus** for harder questions. The choice sticks for every chat and window, and is also in Settings under **Agent**.
 - Switching tabs in **Library** (Books, Videos, Courses…) is instant. Every tab is ready, covers included, by the time you click it, and the highlight under the selected tab slides over in a quick glide instead of a slow bounce.
 - Change the text size while reading an EPUB, as in Apple Books: click **Aa** at the top right of the book, then the small **A** or the large **A**. The size is the same for every book and stays after you close it, and the passage you were reading stays in view as the text grows or shrinks. PDFs keep their pages as they are.

@@ -46,7 +46,10 @@ selected.
   a video's note); with nothing editable focused they act on the last video
   used; anywhere else they type.
 - **⌘⇧J** plays or pauses the video anywhere in the window: the focused
-  note's, else the last one used. Plain Space is never taken, so it always
+  note's, else the one on screen (the last one used when several are), else
+  the last one used in a hidden tab. A note picked in the sidebar or tab bar
+  is on screen, so ⌘⇧J plays its video before you click into the text.
+  Plain Space is never taken, so it always
   types. (Not ⌘⇧Space: it clashes with system shortcuts.)
 - The video keeps playing while you type. When you start it by clicking in
   the player, focus goes back to where it was (the note or the board). Your
