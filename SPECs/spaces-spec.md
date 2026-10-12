@@ -71,7 +71,7 @@ Covers come from the note's own link (`url`, `link` or `source`, first non-blank
 
 ## Data
 
-`list_typed_notes(types)` (Rust, `commands/spaces.rs`) walks the workspace index and returns the markdown notes whose `Type` matches one of `types` (case-insensitive), with their top-level scalar frontmatter properties, title and first line of text. Each file's parse is cached by path, size and modification time, so repeat calls only re-read changed files. The frontend refetches when the sidebar metadata version changes.
+`list_typed_notes(types)` (Rust, `commands/spaces.rs`) walks the workspace index and returns the markdown notes whose `Type` matches one of `types` (case-insensitive), with their top-level scalar frontmatter properties, title and first line of text. Each file's parse is cached by path, size and modification time, so repeat calls only re-read changed files. `useTypedNotes` reads at once when a space opens and keeps the last read per workspace and set of types, so a space opened again paints its notes on the first frame while the reread runs behind it. Only rereads after a file change (the sidebar metadata version) wait 300 ms, so a burst of saves costs one read.
 
 ## Not in this pass
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSidebarMetadataVersion } from "@/hooks/use-file-tree";
 import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import {
@@ -29,38 +29,48 @@ const REFETCH_DELAY_MS = 300;
 
 const SPACE_TYPES = [SPACE_NOTE_TYPE];
 
+/** The last read per workspace and set of types, so a space opened again
+ *  paints its notes on the first frame while the reread runs behind it. */
+const lastReads = new Map<string, tauri.TypedNote[]>();
+
 /** Notes whose `Type` is one of `types`, newest edit first; `null` until the
- *  first read lands. Rereads when files change. */
+ *  first read lands. Reads at once on mount; rereads when files change. */
 export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | null {
   const root = useWorkspaceRoot();
   const metadataVersion = useSidebarMetadataVersion();
-  const [notes, setNotes] = useState<tauri.TypedNote[] | null>(null);
   const typesKey = types.join("\n");
+  const key = root && typesKey ? `${root}\n${typesKey}` : null;
+  const [read, setRead] = useState<{ key: string; notes: tauri.TypedNote[] } | null>(null);
+  // The key this hook last started a read for: only rereads after a file
+  // change wait. Set when the read starts, so an effect cancelled before then
+  // (StrictMode's double run) still reads at once.
+  const readKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!root || typesKey === "") return;
+    if (!key) return;
+    const delay = readKey.current === key ? REFETCH_DELAY_MS : 0;
     let cancelled = false;
-    const timer = window.setTimeout(
-      () => {
-        tauri
-          .listTypedNotes(typesKey.split("\n"))
-          .then((next) => {
-            if (!cancelled) setNotes(next);
-          })
-          .catch((error: unknown) => {
-            console.error("[spaces] list_typed_notes failed", error);
-            if (!cancelled) setNotes([]);
-          });
-      },
-      metadataVersion === 0 ? 0 : REFETCH_DELAY_MS,
-    );
+    const timer = window.setTimeout(() => {
+      readKey.current = key;
+      tauri
+        .listTypedNotes(typesKey.split("\n"))
+        .then((notes) => {
+          lastReads.set(key, notes);
+          if (!cancelled) setRead({ key, notes });
+        })
+        .catch((error: unknown) => {
+          console.error("[spaces] list_typed_notes failed", error);
+          if (!cancelled) setRead({ key, notes: [] });
+        });
+    }, delay);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [root, typesKey, metadataVersion]);
+  }, [key, typesKey, metadataVersion]);
 
-  return root ? notes : null;
+  if (!key) return null;
+  return read?.key === key ? read.notes : (lastReads.get(key) ?? null);
 }
 
 /** Built-in spaces, then the spaces you added (`Type: Space` notes) by name. */
