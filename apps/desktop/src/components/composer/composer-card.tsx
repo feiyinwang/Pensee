@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEve
 import {
   BookOpen,
   CalendarDays,
-  ChevronRight,
   Clapperboard,
   File,
   FileText,
@@ -30,7 +29,6 @@ import {
   dayLabel,
   effectiveKind,
   fileTitle,
-  headerLabel,
   submitLabel,
   withDay,
   withKind,
@@ -120,7 +118,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
   const libraryNotes = useTypedNotes(isLink ? LIBRARY_NOTE_TYPES : NO_TYPES);
   const target = composerTarget(draft, isLink ? libraryNotes : null);
   const now = new Date();
-  const label = submitLabel(target, Boolean(draft.body.trim()), now);
+  const label = submitLabel(target, kind, Boolean(draft.body.trim()), now);
   const canSubmit = target.kind !== "empty" && !busy;
 
   const titleRef = useRef<HTMLInputElement>(null);
@@ -242,25 +240,37 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
             <span className="truncate">{destination}</span>
           </span>
         )}
-        <ChevronRight size={14} className="shrink-0 text-[var(--text-icon-muted)]" aria-hidden />
-        <h2 className="composer-heading">{headerLabel(kind, draft.day)}</h2>
-        {variant === "dialog" && (
-          <button
-            type="button"
-            className="composer-icon-button ml-auto"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <X size={16} />
-          </button>
-        )}
+        <div className="composer-header-end">
+          {status}
+          {variant === "dialog" && (
+            <button
+              type="button"
+              className="composer-icon-button"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="composer-fields">
-        {titleLocked ? (
-          <p className="composer-title composer-title--locked">
-            {draft.day ?? fileTitle(draft.file!)}
-          </p>
+        {draft.file ? (
+          <div className="composer-title-row">
+            <p className="composer-title">{fileTitle(draft.file)}</p>
+            <button
+              type="button"
+              className="composer-icon-button"
+              aria-label="Remove the file"
+              title="Remove the file"
+              onClick={() => setDraft({ ...draft, file: null, kind: "note", kindPicked: false })}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : draft.day ? (
+          <p className="composer-title">{draft.day}</p>
         ) : (
           <input
             ref={titleRef}
@@ -289,55 +299,41 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
         />
       </div>
 
-      <div className="composer-chips">
-        <DropdownMenu
-          label={kindLabel}
-          icon={<KindIcon size={14} />}
-          items={kindItems}
-          align="start"
-        />
-        <DateChip
-          day={draft.day}
-          disabled={draft.file !== null}
-          onChange={(day) => setDraft(day ? withDay(draft, day) : { ...draft, day: null })}
-        />
-        {status}
+      <div className="composer-bar">
+        <div className="composer-bar-group">
+          <DropdownMenu
+            label={kindLabel}
+            icon={<KindIcon size={14} />}
+            items={kindItems}
+            align="start"
+          />
+          <DateChip
+            day={draft.day}
+            disabled={draft.file !== null}
+            onChange={(day) => setDraft(day ? withDay(draft, day) : { ...draft, day: null })}
+          />
+          <button
+            type="button"
+            className="composer-icon-button composer-icon-button--ring"
+            aria-label="Attach a PDF or EPUB"
+            title="Attach a PDF or EPUB"
+            onClick={() => void attach()}
+          >
+            <Paperclip size={14} />
+          </button>
+        </div>
+        <div className="composer-bar-group composer-bar-group--end">
+          <Switch
+            className="composer-switch"
+            label="Keep open"
+            checked={keepOpen}
+            onCheckedChange={setKeepOpen}
+          />
+          <button type="button" className="composer-submit" disabled={!canSubmit} onClick={submit}>
+            {label}
+          </button>
+        </div>
       </div>
-
-      <footer className="composer-footer">
-        <button
-          type="button"
-          className="composer-icon-button composer-icon-button--ring"
-          aria-label="Attach a PDF or EPUB"
-          title="Attach a PDF or EPUB"
-          onClick={() => void attach()}
-        >
-          <Paperclip size={16} />
-        </button>
-        {draft.file && (
-          <span className="composer-chip">
-            <Paperclip size={14} className="composer-chip-icon" aria-hidden />
-            <span className="truncate">{getFileName(draft.file)}</span>
-            <button
-              type="button"
-              className="composer-chip-remove"
-              aria-label="Remove the file"
-              onClick={() => setDraft({ ...draft, file: null, kind: "note", kindPicked: false })}
-            >
-              <X size={12} />
-            </button>
-          </span>
-        )}
-        <Switch
-          className="composer-switch ml-auto"
-          label="Keep open"
-          checked={keepOpen}
-          onCheckedChange={setKeepOpen}
-        />
-        <button type="button" className="composer-submit" disabled={!canSubmit} onClick={submit}>
-          {label}
-        </button>
-      </footer>
     </div>
   );
 }

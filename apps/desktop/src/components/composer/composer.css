@@ -38,16 +38,7 @@
   padding: 0 16px;
 }
 
-.composer-heading {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  color: var(--text-primary);
-}
-
-/* A chip that isn't a menu: the date trigger, a disabled destination, the
-   attached file. Matches Arc's dropdown trigger under the remap above. */
+/* A chip that isn't a menu: the date trigger and a fixed destination. Matches Arc's dropdown trigger under the remap above. */
 .composer-chip {
   display: inline-flex;
   align-items: center;
@@ -92,19 +83,6 @@ button.composer-chip:not(:disabled) {
   color: var(--text-secondary);
 }
 
-.composer-chip-remove {
-  display: flex;
-  margin-right: -6px;
-  padding: 3px;
-  border-radius: 999px;
-  color: var(--text-icon-muted);
-}
-
-.composer-chip-remove:hover {
-  background: var(--item-hover-bg);
-  color: var(--text-secondary);
-}
-
 /* Arc's trigger, sized to the chip row. */
 .composer [aria-haspopup="menu"] {
   height: var(--control-height-sm);
@@ -115,12 +93,12 @@ button.composer-chip:not(:disabled) {
 }
 
 /* The type chip keeps the width of its longest kind (Podcast), so switching
-   kinds never shifts the date chip beside it. */
-.composer-chips > [aria-haspopup="menu"]:first-child {
+   kinds never shifts the controls beside it. */
+.composer-bar-group > [aria-haspopup="menu"]:first-child {
   min-width: 124px;
 }
 
-.composer-chips > [aria-haspopup="menu"]:first-child > svg:last-child {
+.composer-bar-group > [aria-haspopup="menu"]:first-child > svg:last-child {
   margin-left: auto;
 }
 
@@ -172,12 +150,15 @@ button.composer-chip:not(:disabled) {
   line-height: 24px;
 }
 
-.composer-chips {
+/* Status (a link already in Library, an error) sits in the header's empty
+   right side, before the close button, so it never pushes the box taller. */
+.composer-header-end {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 12px;
+  flex: 1;
   min-width: 0;
-  padding: 16px 16px 0;
 }
 
 .composer-status {
@@ -185,7 +166,6 @@ button.composer-chip:not(:disabled) {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  margin-left: auto;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
@@ -198,20 +178,48 @@ button.composer-chip:not(:disabled) {
   text-underline-offset: 2px;
 }
 
-.composer-footer {
+/* One row under the text: properties on the left, Keep open and the button
+   on the right. Every control is 28px tall (the switch's 24px track centred),
+   so they share top and bottom edges. A narrow window wraps the right group
+   onto its own line, still right-aligned. */
+.composer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 16px;
+}
+
+.composer-bar-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
-  padding: 20px 16px 16px;
+}
+
+.composer-bar-group--end {
+  gap: 12px;
+  margin-left: auto;
+}
+
+.composer-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.composer-title-row .composer-title {
+  flex: 1;
+  min-width: 0;
 }
 
 .composer-icon-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   border-radius: 999px;
   color: var(--text-icon-muted);
@@ -242,9 +250,9 @@ button.composer-chip:not(:disabled) {
 }
 
 .composer-submit {
-  height: 32px;
+  height: 28px;
   flex-shrink: 0;
-  padding: 0 16px;
+  padding: 0 14px;
   border-radius: 999px;
   background: var(--text-primary);
   color: var(--surface-primary);

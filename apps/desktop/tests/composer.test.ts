@@ -64,6 +64,12 @@ describe("composerTarget", () => {
     expect(isDraftEmpty(EMPTY_DRAFT)).toBe(true);
   });
 
+  test("an empty draft's button still names its type", () => {
+    const empty = { kind: "empty" } as const;
+    expect(submitLabel(empty, "note", false, NOW)).toBe("Create note");
+    expect(submitLabel(empty, "book", false, NOW)).toBe("Add book");
+  });
+
   test("text without a title is an untitled note", () => {
     expect(composerTarget(draft({ body: "a thought" }), null)).toEqual({
       kind: "note",
@@ -84,13 +90,13 @@ describe("composerTarget", () => {
     const held = video("/vault/Talk.md", "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
     const target = composerTarget(draft({ title: "https://youtu.be/dQw4w9WgXcQ" }), [held]);
     expect(target).toMatchObject({ kind: "link", library: "video", existing: held });
-    expect(submitLabel(target, false, NOW)).toBe("Open note");
+    expect(submitLabel(target, "video", false, NOW)).toBe("Open note");
   });
 
   test("a Library kind with a title adds it by title", () => {
     const target = composerTarget(draft({ title: "Atomic Habits", kind: "book" }), null);
     expect(target).toEqual({ kind: "title", title: "Atomic Habits", library: "book" });
-    expect(submitLabel(target, false, NOW)).toBe("Add book");
+    expect(submitLabel(target, "book", false, NOW)).toBe("Add book");
   });
 
   test("an unpicked PDF leaves its kind to the import", () => {
@@ -113,8 +119,8 @@ describe("labels", () => {
 
   test("a day's button adds text, or opens the day without any", () => {
     const target = { kind: "day", day: "2026-10-12" } as const;
-    expect(submitLabel(target, true, NOW)).toBe("Add to today");
-    expect(submitLabel(target, false, NOW)).toBe("Open today");
+    expect(submitLabel(target, "note", true, NOW)).toBe("Add to today");
+    expect(submitLabel(target, "note", false, NOW)).toBe("Open today");
   });
 });
 

@@ -120,10 +120,17 @@ function lowerDay(label: string): string {
   return /^(Today|Tomorrow|Yesterday)$/.test(label) ? label.toLowerCase() : label;
 }
 
-/** The primary button: a verb for what this draft does. */
-export function submitLabel(target: ComposerTarget, hasBody: boolean, now: Date): string {
+/** The primary button: a verb for what this draft does. An empty draft
+ *  (button disabled) still names what its type chip would make. */
+export function submitLabel(
+  target: ComposerTarget,
+  kind: ComposerKind,
+  hasBody: boolean,
+  now: Date,
+): string {
   switch (target.kind) {
     case "empty":
+      return kind === "note" ? "Create note" : `Add ${LIBRARY_KIND_LABELS[kind].toLowerCase()}`;
     case "note":
       return "Create note";
     case "day": {
@@ -139,12 +146,6 @@ export function submitLabel(target: ComposerTarget, hasBody: boolean, now: Date)
     case "file":
       return target.library ? `Add ${target.library}` : "Add to Library";
   }
-}
-
-/** The header's name for what is being made. */
-export function headerLabel(kind: ComposerKind, day: string | null): string {
-  if (day) return "Daily note";
-  return kind === "note" ? "New note" : "Library";
 }
 
 /** Set a date: the title can't name a day's note, so a typed one moves to the
