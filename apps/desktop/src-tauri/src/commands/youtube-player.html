@@ -23,8 +23,8 @@
         height: 100%;
         border: 0;
       }
-      /* Over YouTube's frame, so its own hover chrome (title, share, More
-         videos, scrubber) never wakes: every pointer lands here. */
+      /* Over YouTube's frame, so its own chrome (title, share, More videos,
+         scrubber) never wakes: every pointer lands here. */
       #shield {
         z-index: 1;
       }
@@ -35,7 +35,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #000 center / cover no-repeat;
+        /* hqdefault is 4:3 with the 16:9 picture between black bars: scale
+           it so the picture fills the video's height, bars cropped. */
+        background: #000 center / auto 133.34% no-repeat;
         transition: opacity 150ms cubic-bezier(0.32, 0.72, 0, 1);
       }
       #poster[hidden] {
@@ -45,8 +47,8 @@
       }
       #poster span {
         display: flex;
-        width: 52px;
-        height: 52px;
+        width: 56px;
+        height: 56px;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
@@ -62,13 +64,10 @@
         bottom: 0;
         left: 0;
         z-index: 3;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 22px 12px 8px;
-        background: linear-gradient(to top, rgb(0 0 0 / 62%), transparent);
+        padding: 28px 14px 8px;
+        background: linear-gradient(to top, rgb(0 0 0 / 66%), transparent);
         color: #fff;
-        font-size: 12px;
+        font-size: 13px;
         font-variant-numeric: tabular-nums;
         opacity: 0;
         pointer-events: none;
@@ -79,45 +78,135 @@
         pointer-events: auto;
         transition: opacity 150ms cubic-bezier(0.32, 0.72, 0, 1);
       }
-      #toggle {
+      #row {
         display: flex;
-        width: 24px;
-        height: 24px;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+      }
+      #row .spacer {
+        flex: 1;
+      }
+      button {
+        display: flex;
+        height: 28px;
+        min-width: 28px;
         flex: none;
         align-items: center;
         justify-content: center;
-        padding: 0;
+        gap: 4px;
+        padding: 0 6px;
         border: 0;
+        border-radius: 6px;
         background: none;
         color: inherit;
+        font: inherit;
         cursor: default;
+        transition: background-color 120ms ease;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        button:hover {
+          background: rgb(255 255 255 / 14%);
+        }
+      }
+      button[aria-pressed="false"] {
+        opacity: 0.6;
       }
       #time {
         flex: none;
+        padding-inline: 4px;
         opacity: 0.9;
       }
+      #chapter {
+        min-width: 0;
+        flex: 0 1 auto;
+      }
+      #chapter span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #chapter[hidden] {
+        display: none;
+      }
+      /* The progress track, split where chapters start, like YouTube's. */
       #track {
         position: relative;
-        height: 14px;
-        flex: 1;
+        height: 16px;
         cursor: default;
       }
-      #track::before,
-      #fill {
+      .segment {
         position: absolute;
         top: 6px;
-        left: 0;
-        height: 3px;
-        border-radius: 2px;
-        content: "";
-      }
-      #track::before {
-        right: 0;
+        height: 4px;
+        overflow: hidden;
         background: rgb(255 255 255 / 28%);
       }
-      #fill {
-        width: 0;
+      .segment i {
+        position: absolute;
+        inset: 0;
         background: #fff;
+        transform-origin: left;
+      }
+      #tip {
+        position: absolute;
+        bottom: 20px;
+        max-width: 240px;
+        padding: 4px 8px;
+        overflow: hidden;
+        border-radius: 6px;
+        background: rgb(20 20 20 / 88%);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      #tip[hidden] {
+        display: none;
+      }
+      /* Chapter and speed lists, over the video above the bar. */
+      .menu {
+        position: absolute;
+        bottom: 56px;
+        z-index: 4;
+        max-height: calc(100% - 72px);
+        padding: 4px;
+        overflow-y: auto;
+        border-radius: 10px;
+        background: rgb(24 24 24 / 92%);
+        color: #fff;
+        font-size: 13px;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .menu[hidden] {
+        display: none;
+      }
+      #chapters {
+        left: 14px;
+        width: min(340px, calc(100% - 28px));
+      }
+      #speeds {
+        right: 14px;
+        min-width: 96px;
+      }
+      .menu button {
+        width: 100%;
+        height: auto;
+        min-height: 30px;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 6px 10px;
+        text-align: left;
+      }
+      .menu button[aria-current="true"] {
+        background: rgb(255 255 255 / 18%);
+      }
+      .menu time {
+        flex: none;
+        opacity: 0.7;
+        font-variant-numeric: tabular-nums;
       }
       svg {
         display: block;
@@ -137,36 +226,57 @@
     <div id="shield"></div>
     <div id="poster">
       <span aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg>
       </span>
     </div>
+    <div id="chapters" class="menu" role="menu" hidden></div>
+    <div id="speeds" class="menu" role="menu" hidden></div>
     <div id="bar">
-      <button id="toggle" type="button" aria-label="Play"></button>
-      <span id="time">0:00 / 0:00</span>
-      <div id="track"><div id="fill"></div></div>
+      <div id="track"><div id="tip" hidden></div></div>
+      <div id="row">
+        <button id="toggle" type="button" aria-label="Play"></button>
+        <span id="time">0:00 / 0:00</span>
+        <button id="chapter" type="button" aria-haspopup="menu" hidden>
+          <span></span>
+          <svg width="12" height="12" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6z" /></svg>
+        </button>
+        <span class="spacer"></span>
+        <button id="cc" type="button" aria-pressed="false" title="Subtitles">CC</button>
+        <button id="speed" type="button" aria-haspopup="menu" title="Speed">1×</button>
+      </div>
     </div>
     <script>
       // Writer's YouTube player (SPECs/youtube-notes-spec.md). Served from
       // 127.0.0.1 so the embed carries an http referrer; the app frames this
       // page and talks to it with postMessage. YouTube's controls are off:
-      // this page draws the little it needs and shows it only on hover.
+      // this page draws its own (play, time, chapters, subtitles, speed) and
+      // shows them only on hover.
       const query = new URLSearchParams(location.search);
       const videoId = query.get("v") || "";
       const start = Math.max(0, Math.floor(Number(query.get("t")) || 0));
+      let rate = Number(query.get("rate")) || 1;
+      let captions = query.get("cc") === "1";
       let player = null;
       let ready = false;
       let ticker = 0;
-      let pending = null;
+      let pending = [];
       let chromeTimer = 0;
       let scrubbing = false;
+      let chapters = [];
+      let segments = [];
 
       const $ = (id) => document.getElementById(id);
       const poster = $("poster");
       const toggleButton = $("toggle");
+      const chapterButton = $("chapter");
+      const ccButton = $("cc");
+      const speedButton = $("speed");
+      const track = $("track");
+      const tip = $("tip");
       const PLAY =
-        '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>';
+        '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>';
       const PAUSE =
-        '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
+        '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
       poster.style.backgroundImage = `url("https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg")`;
 
       const post = (message) => parent.postMessage({ source: "writer-yt", ...message }, "*");
@@ -179,20 +289,58 @@
         return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
       }
 
-      function playing() {
-        return ready && player.getPlayerState() === YT.PlayerState.PLAYING;
+      const duration = () => (ready && player.getDuration()) || 0;
+      const playing = () => ready && player.getPlayerState() === YT.PlayerState.PLAYING;
+
+      /** The chapter playing at `t`, or -1. */
+      function chapterAt(t) {
+        let found = -1;
+        for (let i = 0; i < chapters.length && chapters[i].start <= t; i++) found = i;
+        return found;
+      }
+
+      // One segment per chapter (one for the whole video without), with a
+      // 2px gap at each chapter start.
+      function layoutTrack() {
+        for (const segment of segments) segment.remove();
+        const total = duration();
+        const starts = chapters.length && total ? chapters.map((c) => c.start) : [0];
+        segments = starts.map((from, i) => {
+          const to = i + 1 < starts.length ? starts[i + 1] : total;
+          const segment = document.createElement("div");
+          segment.className = "segment";
+          segment.dataset.from = String(from);
+          segment.dataset.to = String(to);
+          const share = (x) => (total ? (x / total) * 100 : 0);
+          segment.style.left = `${share(from)}%`;
+          segment.style.width = total
+            ? `calc(${share(to - from)}% - ${i + 1 < starts.length ? 2 : 0}px)`
+            : "100%";
+          segment.append(document.createElement("i"));
+          track.insertBefore(segment, tip);
+          return segment;
+        });
       }
 
       function paint(at) {
         if (!ready) return;
-        const duration = player.getDuration() || 0;
+        const total = duration();
         const t = at ?? player.getCurrentTime();
-        $("time").textContent = `${clock(t)} / ${clock(duration)}`;
-        $("fill").style.width = duration ? `${Math.min(100, (t / duration) * 100)}%` : "0";
+        $("time").textContent = `${clock(t)} / ${clock(total)}`;
+        if (segments.length === 0 || (total && segments.at(-1).dataset.to === "0")) layoutTrack();
+        for (const segment of segments) {
+          const from = Number(segment.dataset.from);
+          const to = Number(segment.dataset.to) || total;
+          const fill = to > from ? Math.min(1, Math.max(0, (t - from) / (to - from))) : 0;
+          segment.firstChild.style.transform = `scaleX(${fill})`;
+        }
+        const index = chapterAt(t);
+        chapterButton.hidden = index < 0;
+        if (index >= 0) chapterButton.firstElementChild.textContent = chapters[index].title;
         const isPlaying = playing();
         toggleButton.innerHTML = isPlaying ? PAUSE : PLAY;
         toggleButton.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
-        toggleButton.title = `${isPlaying ? "Pause" : "Play"} (⌘⇧Space)`;
+        toggleButton.title = `${isPlaying ? "Pause" : "Play"} (⌘⇧J)`;
       }
 
       function report() {
@@ -213,6 +361,27 @@
         else player.playVideo();
       }
 
+      function seek(t) {
+        player.seekTo(Math.max(0, t), true);
+        paint(t);
+      }
+
+      // Subtitles: YouTube's captions module, on or off. The choice is the
+      // app's to keep (this page's origin changes every launch).
+      function applyCaptions() {
+        ccButton.setAttribute("aria-pressed", String(captions));
+        if (!ready) return;
+        if (captions) player.loadModule("captions");
+        else player.unloadModule("captions");
+      }
+
+      function applyRate() {
+        speedButton.textContent = `${rate}×`;
+        if (ready) player.setPlaybackRate(rate);
+      }
+
+      const savePrefs = () => post({ type: "prefs", rate, cc: captions });
+
       function run(message) {
         if (message.cmd === "seek") {
           player.seekTo(Math.max(0, Number(message.t) || 0), true);
@@ -226,50 +395,144 @@
         }
       }
 
-      // Hover chrome: shown on movement, gone after 2s still or on leave.
+      // Hover chrome: shown on movement, gone after 2s still or on leave,
+      // kept while a list is open or the track is held.
+      const menuOpen = () => !$("chapters").hidden || !$("speeds").hidden;
+      function sleep() {
+        if (!scrubbing && !menuOpen()) delete document.body.dataset.chrome;
+      }
       function wake() {
         document.body.dataset.chrome = "";
         clearTimeout(chromeTimer);
-        chromeTimer = setTimeout(() => {
-          if (!scrubbing) delete document.body.dataset.chrome;
-        }, 2000);
+        chromeTimer = setTimeout(sleep, 2000);
       }
       document.addEventListener("pointermove", wake);
       document.documentElement.addEventListener("pointerleave", () => {
         clearTimeout(chromeTimer);
-        if (!scrubbing) delete document.body.dataset.chrome;
+        closeMenus();
+        sleep();
       });
 
-      $("shield").addEventListener("click", toggle);
+      function closeMenus() {
+        $("chapters").hidden = true;
+        $("speeds").hidden = true;
+      }
+
+      function openMenu(menu, items) {
+        const wasOpen = !menu.hidden;
+        closeMenus();
+        if (wasOpen) return;
+        menu.replaceChildren(...items);
+        menu.hidden = false;
+        menu.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "center" });
+      }
+
+      function menuItem(label, current, onPick, time) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.setAttribute("role", "menuitem");
+        item.setAttribute("aria-current", String(current));
+        if (time !== undefined) {
+          const stamp = document.createElement("time");
+          stamp.textContent = clock(time);
+          item.append(stamp);
+        }
+        item.append(label);
+        item.addEventListener("click", () => {
+          closeMenus();
+          onPick();
+          wake();
+        });
+        return item;
+      }
+
+      chapterButton.addEventListener("click", () => {
+        const current = chapterAt(ready ? player.getCurrentTime() : 0);
+        openMenu(
+          $("chapters"),
+          chapters.map((c, i) => menuItem(c.title, i === current, () => seek(c.start), c.start)),
+        );
+      });
+
+      speedButton.addEventListener("click", () => {
+        const rates = (ready && player.getAvailablePlaybackRates()) || [0.5, 1, 1.25, 1.5, 2];
+        openMenu(
+          $("speeds"),
+          rates.map((r) =>
+            menuItem(r === 1 ? "Normal" : `${r}×`, r === rate, () => {
+              rate = r;
+              applyRate();
+              savePrefs();
+            }),
+          ),
+        );
+      });
+
+      ccButton.addEventListener("click", () => {
+        captions = !captions;
+        applyCaptions();
+        savePrefs();
+      });
+
+      $("shield").addEventListener("click", () => {
+        if (menuOpen()) closeMenus();
+        else toggle();
+      });
       poster.addEventListener("click", toggle);
       toggleButton.addEventListener("click", toggle);
 
-      const track = $("track");
+      // The track: click or drag to a time; hover names the chapter there.
       function timeAt(event) {
         const box = track.getBoundingClientRect();
         const share = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
-        return share * (player.getDuration() || 0);
+        return { t: share * duration(), x: share * box.width };
+      }
+      function showTip(event) {
+        const { t, x } = timeAt(event);
+        const index = chapterAt(t);
+        tip.textContent = index >= 0 ? `${chapters[index].title} · ${clock(t)}` : clock(t);
+        tip.style.left = `${Math.min(Math.max(x, 60), track.clientWidth - 60)}px`;
+        tip.hidden = false;
       }
       track.addEventListener("pointerdown", (event) => {
         if (!ready) return;
         scrubbing = true;
         track.setPointerCapture(event.pointerId);
-        paint(timeAt(event));
+        paint(timeAt(event).t);
       });
       track.addEventListener("pointermove", (event) => {
-        if (scrubbing) paint(timeAt(event));
+        if (!ready) return;
+        showTip(event);
+        if (scrubbing) paint(timeAt(event).t);
+      });
+      track.addEventListener("pointerleave", () => {
+        if (!scrubbing) tip.hidden = true;
       });
       track.addEventListener("pointerup", (event) => {
         if (!scrubbing) return;
         scrubbing = false;
-        player.seekTo(timeAt(event), true);
-        paint(timeAt(event));
+        tip.hidden = true;
+        seek(timeAt(event).t);
         wake();
       });
 
       // After any press, the app hands focus back to the note: typing goes
       // there, not here.
       document.addEventListener("pointerup", () => post({ type: "release" }));
+      // Scrolling or pinching over the video belongs to the note around it.
+      document.addEventListener(
+        "wheel",
+        (event) => {
+          event.preventDefault();
+          post({
+            type: "wheel",
+            deltaX: event.deltaX,
+            deltaY: event.deltaY,
+            ctrlKey: event.ctrlKey,
+          });
+        },
+        { passive: false },
+      );
 
       window.onYouTubeIframeAPIReady = () => {
         player = new YT.Player("player", {
@@ -283,21 +546,35 @@
             fs: 0,
             iv_load_policy: 3,
             origin: location.origin,
+            // Any value here, 0 too, turns the default track on.
+            ...(captions ? { cc_load_policy: 1 } : {}),
           },
           events: {
             onReady: () => {
               ready = true;
+              applyRate();
               report();
-              if (pending) run(pending);
-              pending = null;
+              for (const message of pending) run(message);
+              pending = [];
             },
             onStateChange: (event) => {
               const state = event.data;
-              if (state === YT.PlayerState.PLAYING) poster.hidden = true;
-              else if (state === YT.PlayerState.ENDED) poster.hidden = false;
+              if (state === YT.PlayerState.PLAYING) {
+                poster.hidden = true;
+                if (!captions) player.unloadModule("captions");
+              } else if (state === YT.PlayerState.ENDED) poster.hidden = false;
               report();
               clearInterval(ticker);
               if (state === YT.PlayerState.PLAYING) ticker = setInterval(report, 500);
+            },
+            // The captions module loads once playback starts, with the
+            // video's default track; keep it off unless asked for.
+            onApiChange: () => {
+              if (!captions) player.unloadModule("captions");
+            },
+            onPlaybackRateChange: (event) => {
+              rate = event.data;
+              speedButton.textContent = `${rate}×`;
             },
             onError: (event) => post({ type: "error", code: event.data }),
           },
@@ -308,9 +585,19 @@
         if (event.source !== parent) return;
         const message = event.data;
         if (!message || message.source !== "writer") return;
+        if (message.cmd === "chapters") {
+          chapters = Array.isArray(message.chapters) ? message.chapters : [];
+          segments.forEach((s) => s.remove());
+          segments = [];
+          paint();
+          return;
+        }
         if (ready) run(message);
-        else pending = message;
+        else pending = [message];
       });
+
+      applyRate();
+      applyCaptions();
     </script>
     <script src="https://www.youtube.com/iframe_api"></script>
   </body>

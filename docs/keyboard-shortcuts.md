@@ -27,7 +27,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+0           | Actual size (100%)            |
 | Cmd+J           | Toggle the agent chat         |
 | Cmd+Shift+M     | Pin the video's moment¹       |
-| Cmd+Shift+Space | Play / pause the video¹       |
+| Cmd+Shift+J     | Play / pause the video¹       |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...

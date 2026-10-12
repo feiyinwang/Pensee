@@ -11,6 +11,7 @@ import {
   registerVideoPlayer,
   videoPlayerOrigin,
 } from "@/lib/video-players";
+import { youtubeChapters } from "@/lib/tauri";
 import { useEditorStore } from "@/stores/editor-store";
 import { showEditorNotice } from "./editor-notice-store";
 import {
@@ -61,6 +62,32 @@ export function VideoPlayer({ filePath }: { filePath: string }) {
 /** YouTube's `PlayerState.PAUSED`. */
 const YT_PAUSED = 2;
 
+// Speed and subtitles carry over between videos and launches. Kept here,
+// not in the player page, whose loopback origin changes every launch.
+const PREFS_KEY = "writer.video-player";
+
+interface Prefs {
+  rate: number;
+  cc: boolean;
+}
+
+function readPrefs(): Prefs {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<Prefs>;
+    return { rate: Number(saved.rate) || 1, cc: saved.cc === true };
+  } catch {
+    return { rate: 1, cc: false };
+  }
+}
+
+function savePrefs(prefs: Prefs): void {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch (error) {
+    console.warn("[video] Couldn't save the player's speed and subtitles:", error);
+  }
+}
+
 /** What the player page last said, and when, so the time can be read
  *  between its half-second reports. */
 interface Report {
@@ -83,6 +110,14 @@ function VideoBand({
   const playerRef = useRef<VideoPlayerHandle | null>(null);
   const [error, setError] = useState<number | null>(null);
   const [stuck, setStuck] = useState(false);
+  // Read once per video: the page takes them in its address, so a change
+  // must not reload the frame.
+  const [src] = useState(() => {
+    const prefs = readPrefs();
+    const query = new URLSearchParams({ v: videoId, rate: String(prefs.rate) });
+    if (prefs.cc) query.set("cc", "1");
+    return `${origin}/youtube-player.html?${query}`;
+  });
 
   useEffect(() => {
     installVideoPinShortcut();
@@ -91,13 +126,27 @@ function VideoBand({
     // one waits for its first report.
     let ready = false;
     let waiting: Record<string, unknown> | null = null;
+    const post = (command: Record<string, unknown>) =>
+      frameRef.current?.contentWindow?.postMessage({ source: "writer", ...command }, origin);
     const send = (command: Record<string, unknown>) => {
       if (!ready) {
         waiting = command;
         return;
       }
-      frameRef.current?.contentWindow?.postMessage({ source: "writer", ...command }, origin);
+      post(command);
     };
+    // The chapters come from YouTube's watch page; they go to the page once
+    // both it and they are there.
+    let chapters: { start: number; title: string }[] | null = null;
+    let disposed = false;
+    youtubeChapters(videoId).then(
+      (list) => {
+        if (disposed) return;
+        chapters = list;
+        if (ready) post({ cmd: "chapters", chapters });
+      },
+      (reason: unknown) => console.warn("[video] Couldn't read the video's chapters:", reason),
+    );
 
     const player: VideoPlayerHandle = {
       notePath: filePath,
@@ -123,6 +172,11 @@ function VideoBand({
         playing?: boolean;
         state?: number;
         code?: number;
+        rate?: number;
+        cc?: boolean;
+        deltaX?: number;
+        deltaY?: number;
+        ctrlKey?: boolean;
       };
       if (message?.source !== "writer-yt") return;
       if (message.type === "error") {
@@ -135,11 +189,20 @@ function VideoBand({
         if (frameRef.current) returnFocusFrom(frameRef.current);
         return;
       }
+      if (message.type === "prefs") {
+        savePrefs({ rate: Number(message.rate) || 1, cc: message.cc === true });
+        return;
+      }
+      if (message.type === "wheel") {
+        forwardWheel(message.deltaX ?? 0, message.deltaY ?? 0, message.ctrlKey === true);
+        return;
+      }
       if (message.type !== "state") return;
       if (!ready) {
         ready = true;
         if (waiting) send(waiting);
         waiting = null;
+        if (chapters) post({ cmd: "chapters", chapters });
       }
       const playing = Boolean(message.playing);
       const t = Number(message.t) || 0;
@@ -151,14 +214,34 @@ function VideoBand({
       }
       report = { t, playing, at: performance.now() };
     };
+    // A scroll or pinch over the video happens in the page's frame, out of
+    // the note's reach: the page sends it here. A scroll moves the note; a
+    // pinch goes on as a wheel event from the frame, so the tab columns'
+    // pinch sees it like any other. Over a board (mini player) it does
+    // nothing.
+    const forwardWheel = (deltaX: number, deltaY: number, ctrlKey: boolean) => {
+      const frame = frameRef.current;
+      if (!frame || frame.closest("[data-pane]")?.querySelector(":scope > .wr-board-inline")) {
+        return;
+      }
+      if (ctrlKey) {
+        frame.dispatchEvent(
+          new WheelEvent("wheel", { deltaX, deltaY, ctrlKey, bubbles: true, cancelable: true }),
+        );
+      } else {
+        sentinelRef.current?.parentElement?.scrollBy({ left: deltaX, top: deltaY });
+      }
+    };
+
     window.addEventListener("message", onMessage);
     const unregister = registerVideoPlayer(player);
     return () => {
+      disposed = true;
       window.removeEventListener("message", onMessage);
       unregister();
       playerRef.current = null;
     };
-  }, [filePath, origin]);
+  }, [filePath, origin, videoId]);
 
   // Stuck once the properties above have scrolled away: only then does the
   // band need a backdrop of its own.
@@ -185,47 +268,43 @@ function VideoBand({
     <>
       <div ref={sentinelRef} className="video-band-sentinel" aria-hidden />
       <div className="video-band" data-stuck={stuck || undefined}>
-        <div className="video-band-inner">
-          <div className="video-band-player">
-            <div className="video-frame">
-              {error === null ? (
-                <iframe
-                  ref={frameRef}
-                  src={`${origin}/youtube-player.html?v=${encodeURIComponent(videoId)}`}
-                  title="YouTube video"
-                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                  allowFullScreen
-                />
-              ) : (
-                <div className="video-error">
-                  <p>
-                    {error === 100
-                      ? "This video is private or was removed."
-                      : "This video can't play inside Writer."}
-                  </p>
-                  <button type="button" onClick={openOnYouTube}>
-                    Open on YouTube
-                  </button>
-                </div>
-              )}
+        <div className="video-frame">
+          {error === null ? (
+            <iframe
+              ref={frameRef}
+              src={src}
+              title="YouTube video"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+          ) : (
+            <div className="video-error">
+              <p>
+                {error === 100
+                  ? "This video is private or was removed."
+                  : "This video can't play inside Writer."}
+              </p>
+              <button type="button" onClick={openOnYouTube}>
+                Open on YouTube
+              </button>
             </div>
-            {error === null && (
-              <div className="video-band-row">
-                <button
-                  type="button"
-                  className="video-pin-button"
-                  // Focus stays in the note or board, where the pin goes.
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => pinMoment(playerRef.current ?? undefined)}
-                >
-                  <MapPin size={13} aria-hidden />
-                  Pin
-                  <kbd>{PIN_SHORTCUT_LABEL}</kbd>
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
+        {error === null && (
+          <div className="video-band-row">
+            <button
+              type="button"
+              className="video-pin-button"
+              // Focus stays in the note or board, where the pin goes.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => pinMoment(playerRef.current ?? undefined)}
+            >
+              <MapPin size={13} aria-hidden />
+              Pin
+              <kbd>{PIN_SHORTCUT_LABEL}</kbd>
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

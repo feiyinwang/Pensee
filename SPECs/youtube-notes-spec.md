@@ -15,8 +15,9 @@ selected.
 - A note gets a player when its properties hold a YouTube link under `url`,
   `link` or `source`. These are the same keys and link shapes that Library
   covers read (`noteLink`, `youtubeVideoId` in `lib/covers.ts`).
-- The player sits under the properties, the full width of the text column,
-  16:9, and no taller than 38% of the pane. It is sticky: once the
+- The player sits under the properties, the full width of the pane, edge
+  to edge: 16:9, but no taller than 60% of the window (past that, the frame
+  keeps the width and YouTube letterboxes the picture). It is sticky: once the
   properties scroll away, it stays at the top of the note and the notes
   scroll beneath it. The band behind it has the page's background, so no
   text shows through around the video.
@@ -24,12 +25,22 @@ selected.
   transparent shield covers its frame, so its title, share, **More videos**
   and scrubber never wake. Its start and end screens sit under the video's
   thumbnail until it plays. Clicking the video plays or pauses it. Moving
-  the pointer over it shows our own bar for 2s: play/pause, `m:ss / m:ss`,
-  and a track to click or drag to a time.
+  the pointer over it shows our own bar for 2s (longer while a list is
+  open):
+  - play/pause and `m:ss / m:ss`;
+  - the track, split into the video's chapters with a gap at each start.
+    Hover names the chapter and time there; click or drag seeks;
+  - the current chapter's name, which opens the chapter list (current one
+    marked, each with its time) to jump from;
+  - **CC** (subtitles on/off) and the speed (0.25×–2×, YouTube's list).
+    Both are remembered for the next video, in the app's `localStorage`
+    under `writer.video-player`.
+- Scrolling over the video scrolls the note; pinching over it reaches the
+  tab columns' pinch like a pinch anywhere else.
 - Under the video is one row with a **Pin** button and its shortcut (⌘⇧M).
-- **⌘⇧Space** plays or pauses the video anywhere in the window: the focused
+- **⌘⇧J** plays or pauses the video anywhere in the window: the focused
   note's, else the last one used. Plain Space is never taken, so it always
-  types.
+  types. (Not ⌘⇧Space: it clashes with system shortcuts.)
 - The video keeps playing while you type. When you start it by clicking in
   the player, focus goes back to where it was (the note or the board). Your
   typing lands in the note, not in YouTube's keyboard controls.
@@ -108,8 +119,20 @@ selected.
     on ready, on every state change, and every 500ms while playing (with
     YouTube's `state`, so a pause is told from buffering), and `release`
     after any press so the app hands focus back to the note. It takes
-    `{cmd:"seek", t}`, `{cmd:"play"}`, `{cmd:"pause"}` and `{cmd:"toggle"}`
-    back. It draws the shield, poster and hover bar itself.
+    `{cmd:"seek", t}`, `{cmd:"play"}`, `{cmd:"pause"}`, `{cmd:"toggle"}` and
+    `{cmd:"chapters", chapters}` back. It draws the shield, poster and hover
+    bar itself. It also posts `prefs` (speed, subtitles) for the app to keep,
+    since its own origin changes every launch, and every `wheel`, which the
+    app turns into a scroll of the note or, with ctrl (a pinch), a wheel
+    event from the frame.
+  - YouTube's own controls can't be hidden while paused, so they stay off
+    (`controls: 0`). Subtitles go through the captions module
+    (`loadModule`/`unloadModule`); `cc_load_policy` is only passed to turn
+    them on, since any value turns the default track on.
+- **Chapters.** The IFrame API doesn't expose chapters. `youtube_chapters`
+  (Rust, `video_player.rs`) fetches the watch page and reads every
+  `chapterRenderer` (the creator's chapters or YouTube's own). Empty when
+  the video has none; a failure only loses the chapters.
 - **Pure text (`lib/video-pins.ts`).** Pin ids, parsing, time formatting,
   the insert plan for a pin at a caret, and the note's video id from
   frontmatter.

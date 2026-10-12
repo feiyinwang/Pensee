@@ -240,14 +240,13 @@ function autoPinAtCaret(view: EditorView, notePath: string): void {
 }
 
 export const PIN_SHORTCUT_LABEL = "⌘⇧M";
-export const PLAY_SHORTCUT_LABEL = "⌘⇧Space";
 
 let installed = false;
 /** Last element focused outside a player, so starting a video by clicking in
  *  it can hand focus straight back (typing goes to the note, not YouTube). */
 let lastFocus: HTMLElement | null = null;
 
-/** ⌘⇧M (pin) and ⌘⇧Space (play/pause) anywhere in the window while a
+/** ⌘⇧M (pin) and ⌘⇧J (play/pause) anywhere in the window while a
  *  player is mounted, and the focus tracking `returnFocus` needs. Installed
  *  once, by the first player. */
 export function installVideoPinShortcut(): void {
@@ -262,7 +261,7 @@ export function installVideoPinShortcut(): void {
         event.preventDefault();
         event.stopPropagation();
         pinMoment();
-      } else if (event.code === "Space") {
+      } else if (event.key.toLowerCase() === "j") {
         event.preventDefault();
         event.stopPropagation();
         if (!event.repeat) toggleVideo();

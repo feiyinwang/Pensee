@@ -21,6 +21,87 @@ const PAGE_PATH: &str = "/youtube-player.html";
 
 static ORIGIN: OnceLock<Result<String, String>> = OnceLock::new();
 
+/// A watch page is about 1.5 MB; the chapters sit in its `ytInitialData`.
+const MAX_WATCH_PAGE_BYTES: usize = 4 * 1024 * 1024;
+
+/// One of a video's chapters: where it starts, in seconds, and its title.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+pub struct Chapter {
+    pub start: f64,
+    pub title: String,
+}
+
+/// The chapters YouTube shows on the video's progress bar (the creator's,
+/// or the ones YouTube made), read from its watch page: the IFrame API has
+/// no way to ask. Empty when the video has none.
+#[tauri::command]
+pub async fn youtube_chapters(video_id: String) -> Result<Vec<Chapter>, AppError> {
+    let valid = video_id.len() == 11
+        && video_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
+    if !valid {
+        return Err(AppError::InvalidUrl(format!(
+            "not a YouTube id: {video_id}"
+        )));
+    }
+    let mut response = crate::commands::link_preview::client()?
+        .get(format!("https://www.youtube.com/watch?v={video_id}"))
+        .header(reqwest::header::ACCEPT, "text/html")
+        .header(reqwest::header::ACCEPT_LANGUAGE, "en")
+        // Past the EU consent page, which has no chapters.
+        .header(reqwest::header::COOKIE, "SOCS=CAI")
+        .send()
+        .await
+        .map_err(|e| AppError::Network(e.to_string()))?
+        .error_for_status()
+        .map_err(|e| AppError::Network(e.to_string()))?;
+    let mut body = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|e| AppError::Network(e.to_string()))?
+    {
+        body.extend_from_slice(&chunk);
+        if body.len() >= MAX_WATCH_PAGE_BYTES {
+            break;
+        }
+    }
+    Ok(chapters_in(&String::from_utf8_lossy(&body)))
+}
+
+/// Every `chapterRenderer` in a watch page, in order, once each.
+fn chapters_in(page: &str) -> Vec<Chapter> {
+    const HEAD: &str = r#""chapterRenderer":{"title":{"simpleText":"#;
+    const START: &str = r#"},"timeRangeStartMillis":"#;
+    let mut chapters = Vec::new();
+    let mut rest = page;
+    while let Some(at) = rest.find(HEAD) {
+        rest = &rest[at + HEAD.len()..];
+        let Some(len) = json_string_len(rest) else {
+            continue;
+        };
+        let (literal, after) = rest.split_at(len);
+        let Some(after) = after.strip_prefix(START) else {
+            continue;
+        };
+        let digits = after.bytes().take_while(u8::is_ascii_digit).count();
+        let (Ok(title), Ok(millis)) = (
+            serde_json::from_str::<String>(literal),
+            after[..digits].parse::<u64>(),
+        ) else {
+            continue;
+        };
+        chapters.push(Chapter {
+            start: millis as f64 / 1000.0,
+            title,
+        });
+    }
+    chapters.sort_by(|a, b| a.start.total_cmp(&b.start));
+    chapters.dedup_by(|a, b| a.start == b.start);
+    chapters
+}
+
 /// `http://127.0.0.1:<port>`, starting the server on the first call.
 #[tauri::command]
 pub fn video_player_origin() -> Result<String, AppError> {
@@ -85,6 +166,24 @@ fn respond(mut stream: TcpStream) -> std::io::Result<()> {
     stream.flush()
 }
 
+/// The length of the JSON string literal `text` starts with, quotes
+/// included, or None when it doesn't start with a whole one.
+fn json_string_len(text: &str) -> Option<usize> {
+    let bytes = text.as_bytes();
+    if bytes.first() != Some(&b'"') {
+        return None;
+    }
+    let mut i = 1;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' => i += 2,
+            b'"' => return Some(i + 1),
+            _ => i += 1,
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -97,6 +196,27 @@ mod tests {
         let mut response = String::new();
         stream.read_to_string(&mut response).unwrap();
         response
+    }
+
+    #[test]
+    fn chapters_from_a_watch_page() {
+        let page = r#"x"chapterRenderer":{"title":{"simpleText":"Intro \"one\""},"timeRangeStartMillis":0,"y"
+            "chapterRenderer":{"title":{"simpleText":"Dynamic routing"},"timeRangeStartMillis":1444720}
+            "chapterRenderer":{"title":{"simpleText":"Intro \"one\""},"timeRangeStartMillis":0}"#;
+        assert_eq!(
+            chapters_in(page),
+            vec![
+                Chapter {
+                    start: 0.0,
+                    title: "Intro \"one\"".into()
+                },
+                Chapter {
+                    start: 1444.72,
+                    title: "Dynamic routing".into()
+                },
+            ]
+        );
+        assert!(chapters_in("<html>no chapters</html>").is_empty());
     }
 
     #[test]

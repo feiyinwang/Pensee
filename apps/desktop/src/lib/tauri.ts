@@ -73,6 +73,11 @@ export function videoPlayerOrigin(): Promise<string> {
   return invoke("video_player_origin");
 }
 
+/** A YouTube video's chapters, read from its watch page; empty without. */
+export function youtubeChapters(videoId: string): Promise<{ start: number; title: string }[]> {
+  return invoke("youtube_chapters", { videoId });
+}
+
 export function fileExists(path: string): Promise<boolean> {
   return invoke("file_exists", { path });
 }
