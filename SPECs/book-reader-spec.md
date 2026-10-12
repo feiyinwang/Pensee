@@ -51,8 +51,19 @@ to explain or define something.
   relative to the page.
 - The book opens in a tab with its page in a column to the right.
 - **Book card.** While the book isn't open, its page shows a card under the
-  properties (book name, PDF/EPUB, **Open beside**) that opens it in a column
-  beside the page. It hides while the book is open (`book-card.tsx`).
+  properties: the book's cover, title, author and PDF/EPUB, and
+  **Open beside**. It hides while the book is open (`book-card.tsx`).
+  - The cover is the page's `Cover` (a path from the page, or a web
+    address). Otherwise it comes from the book itself: the EPUB's cover image,
+    or the PDF's first page drawn small (`book-cover.ts`). That is loaded
+    lazily, once per book per session.
+- **Opening beside its page.** With the page already open, the book goes in
+  the column right after it and comes into view. Otherwise the book opens and
+  its page follows to its right (`openBook`).
+- **Pinch.** Zooming into a book or its page shows the two side by side as one
+  block, half each, with a hairline between them (`book-pair.ts`). Zooming
+  into a book page whose book is closed opens the book first. Zooming out
+  brings back every column.
 - **Reopening a book:**
   - **Open Book** in the palette, from a book page;
   - Cmd+click a highlight block;

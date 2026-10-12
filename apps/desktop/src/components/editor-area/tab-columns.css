@@ -25,6 +25,15 @@
   pointer-events: none;
 }
 
+/* Zoomed into a book or its page: the two share the panel as one block,
+   half each, a hairline between (book-pair.ts). */
+.tab-columns[data-pair] > .tab-column:not([data-hidden]) {
+  flex: 1 1 0;
+}
+.tab-columns[data-pair] > .tab-column[data-pair-end] {
+  border-left: 1px solid var(--line-subtle);
+}
+
 .tab-column-body {
   position: relative;
   flex: 1 1 auto;

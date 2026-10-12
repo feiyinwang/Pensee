@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- The book card on a book page shows the book's cover (from the page's **Cover**, the EPUB's cover, or the PDF's first page) and its author, and **Open beside** now opens the book right next to its page and brings it into view. Pinch in on a book or its page and the two fill the window side by side, as one; if the book isn't open yet, pinching in on its page opens it.
 - Dropping a book uses the page that already has its name only when the author matches (or isn't given). A book by someone else gets its own page, titled with the author. Book pages now have an **Author** property, read from the book itself or from its file name.
 - Search finds your books. Every book you drop in or open is remembered for that workspace, and typing its name in the search shows it as a **Book**: pick it to open it beside its page.
 - Right-click a note's tab, or the header of its column, to **Rename** or **Delete** it. Rename edits the name right there in the header: press Enter to keep it, Escape to cancel. Delete moves the note to the Trash, so you can get it back from there.

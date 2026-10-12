@@ -12,6 +12,9 @@ import { useEditorStore } from "@/stores/editor-store";
 import { pageKind } from "./page-kinds";
 import { pageKindView } from "./page-kinds/views";
 import { showTabMenu } from "./tab-menu";
+import { bookPair } from "./book-pair";
+import { useBookPages } from "@/lib/book-readers";
+import { bookFileOf } from "@/lib/book-highlights";
 import { TabTitleRename } from "./tab-title-rename";
 import "./tab-columns.css";
 
@@ -26,6 +29,23 @@ const AUTOSCROLL_MAX_STEP_PX = 18;
 // tab and all columns, and the quiet gap that ends a pinch gesture.
 const PINCH_THRESHOLD = 40;
 const PINCH_END_MS = 250;
+
+/** Zooming into a book page whose book is not open opens it beside the page,
+ *  so the pinch lands on the pair (SPECs/book-reader-spec.md). */
+function openBookOfFocusedPage() {
+  const { tabs, activeTabId, openFiles } = useEditorStore.getState();
+  const active = tabs.find((tab) => tab.id === activeTabId);
+  if (active?.location.kind !== "file") return;
+  const path = active.location.path;
+  if (!bookFileOf(openFiles.get(path)?.frontmatter ?? null)) return;
+  const pages = useBookPages.getState().pages;
+  const open = tabs.some(
+    (tab) =>
+      tab.location.kind === "book" && (pages[tab.location.path] ?? tab.location.note) === path,
+  );
+  if (open) return;
+  void import("@/lib/book-import").then(({ openBookOfPage }) => openBookOfPage(path));
+}
 
 /** Tab ids are `tab-<sequence>`, increasing as tabs are created. */
 function tabSequence(id: string) {
@@ -60,6 +80,10 @@ export function TabColumns() {
   focusedOneRef.current = focusedOne;
   const canColumn = tabs.length > 1;
   const isColumns = canColumn && !focusedOne;
+  // Zoomed into a book or its page: the two show together, as one block.
+  const bookPages = useBookPages((s) => s.pages);
+  const pair = !isColumns && canColumn ? bookPair(tabs, activeTabId, bookPages) : null;
+  const shownAlone = new Set(pair ?? (activeTabId ? [activeTabId] : []));
   const domOrder = [...tabs].sort((a, b) => tabSequence(a.id) - tabSequence(b.id));
 
   const stripRef = useRef<HTMLDivElement | null>(null);
@@ -150,6 +174,7 @@ export function TabColumns() {
       if (focus && hoveredTab && hoveredTab !== useEditorStore.getState().activeTabId) {
         useEditorStore.getState().setActiveTab(hoveredTab);
       }
+      if (focus) openBookOfFocusedPage();
       setFocusedOne(focus);
     };
     // preventDefault stops the pinch from also zooming the page.
@@ -256,13 +281,19 @@ export function TabColumns() {
   );
 
   return (
-    <div ref={stripRef} className="tab-columns" data-columns={isColumns || undefined}>
+    <div
+      ref={stripRef}
+      className="tab-columns"
+      data-columns={isColumns || undefined}
+      data-pair={pair !== null || undefined}
+    >
       {domOrder.map((tab) => {
         const index = tabs.indexOf(tab);
         const isActive = tab.id === activeTabId;
-        // Without columns only the active tab shows; kinds that do not keep
-        // their state alive while hidden are not mounted at all.
-        if (!isColumns && !isActive && !pageKind(tab.location).keepAlive) return null;
+        const isShown = isColumns || shownAlone.has(tab.id);
+        // Without columns only the active tab (or its book pair) shows; kinds
+        // that do not keep their state alive while hidden are not mounted.
+        if (!isShown && !pageKind(tab.location).keepAlive) return null;
         const Component = pageKindView(tab.location).Component as React.ComponentType<{
           location: Tab["location"];
           isActive: boolean;
@@ -275,7 +306,8 @@ export function TabColumns() {
             style={{ order: index }}
             data-column-tab={tab.id}
             data-focused={(isColumns && isActive) || undefined}
-            data-hidden={(!isColumns && !isActive) || undefined}
+            data-hidden={!isShown || undefined}
+            data-pair-end={(pair && pair[1] === tab.id) || undefined}
             aria-label={isColumns ? `Column ${index + 1} of ${tabs.length}` : undefined}
             onPointerDownCapture={() => onColumnPointerDown(tab.id)}
           >
@@ -288,7 +320,11 @@ export function TabColumns() {
               />
             ) : null}
             <div className="tab-column-body">
-              <Component location={tab.location} isActive={isActive} inColumn={isColumns} />
+              <Component
+                location={tab.location}
+                isActive={isActive}
+                inColumn={isColumns || (pair !== null && isShown)}
+              />
             </div>
           </section>
         );

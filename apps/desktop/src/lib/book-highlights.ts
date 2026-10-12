@@ -123,6 +123,11 @@ export function bookFileOf(frontmatter: string | null): string | null {
   return pageProperty(frontmatter, "book");
 }
 
+/** The page's `Cover`: a path relative to the page, or a web address. */
+export function coverOf(frontmatter: string | null): string | null {
+  return pageProperty(frontmatter, "cover");
+}
+
 /** The page's `Author`. */
 export function authorOf(frontmatter: string | null): string | null {
   return pageProperty(frontmatter, "author");

@@ -1,3 +1,5 @@
+import { create } from "zustand";
+
 // The book readers open in this window (SPECs/book-reader-spec.md). A plain
 // registry, not a store: nothing renders from it. The editor asks it to jump
 // to a highlight, and the agent asks it for the passage on screen at send time,
@@ -22,18 +24,32 @@ export interface OpenReader {
 }
 
 const readers = new Set<OpenReader>();
+
+/** Each open book's page, by book path — reactive, so the column strip can
+ *  show a book and its page as one pair (SPECs/book-reader-spec.md). */
+export const useBookPages = create<{ pages: Record<string, string> }>(() => ({ pages: {} }));
 /** Jumps asked for before the book was open (Cmd+click on a highlight of a
  *  closed book), by book page. Taken by the reader as it registers. */
 const pendingJumps = new Map<string, string>();
 
 export function registerReader(reader: OpenReader): () => void {
   readers.add(reader);
+  if (reader.notePath) {
+    const notePath = reader.notePath;
+    useBookPages.setState((s) => ({ pages: { ...s.pages, [reader.bookPath]: notePath } }));
+  }
   const pending = reader.notePath ? pendingJumps.get(reader.notePath) : undefined;
   if (pending !== undefined) {
     pendingJumps.delete(reader.notePath!);
     reader.jump(pending);
   }
-  return () => readers.delete(reader);
+  return () => {
+    readers.delete(reader);
+    useBookPages.setState((s) => {
+      const { [reader.bookPath]: _gone, ...pages } = s.pages;
+      return { pages };
+    });
+  };
 }
 
 /** Jump to highlight `id` now if its book is open, else once it opens. */

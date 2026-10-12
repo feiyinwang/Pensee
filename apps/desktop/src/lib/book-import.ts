@@ -32,18 +32,40 @@ export function isBookFile(path: string): boolean {
 
 let tabSequence = 0;
 
-/** Show the book in a tab, and its page in a column to the right of it. */
+/**
+ * Show the book and its page next to each other. With the page already open,
+ * the book goes in the column right after it and comes into view; otherwise
+ * the book opens and its page follows to its right. An open book is just
+ * brought into view.
+ */
 export async function openBook(bookPath: string, notePath: string | null): Promise<void> {
   const store = useEditorStore.getState();
-  store.openOrFocus(
-    (tab) => tab.location.kind === "book" && tab.location.path === bookPath,
-    (): Tab => ({
-      id: `book-tab-${++tabSequence}`,
-      location: { kind: "book", path: bookPath, note: notePath ?? undefined },
-      back: [],
-      forward: [],
-    }),
-  );
+  const isBook = (tab: Tab) => tab.location.kind === "book" && tab.location.path === bookPath;
+  const existing = store.tabs.find(isBook);
+  if (existing) {
+    store.setActiveTab(existing.id);
+    return;
+  }
+  const noteTab = notePath
+    ? store.tabs.find((tab) => tab.location.kind === "file" && tab.location.path === notePath)
+    : undefined;
+  store.openOrFocus(isBook, () => ({
+    id: `book-tab-${++tabSequence}`,
+    location: { kind: "book", path: bookPath, note: notePath ?? undefined },
+    back: [],
+    forward: [],
+  }));
+  if (noteTab) {
+    const { tabs, moveTab, setActiveTab } = useEditorStore.getState();
+    const bookIndex = tabs.findIndex(isBook);
+    const noteIndex = tabs.findIndex((tab) => tab.id === noteTab.id);
+    if (bookIndex === -1 || noteIndex === -1) return;
+    const bookTab = tabs[bookIndex]!;
+    // `moveTab` takes the final index: right after the page either way.
+    moveTab(bookTab.id, bookIndex < noteIndex ? noteIndex : noteIndex + 1);
+    setActiveTab(bookTab.id);
+    return;
+  }
   if (notePath) await useEditorStore.getState().openFileBeside(notePath);
 }
 
