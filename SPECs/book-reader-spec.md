@@ -84,8 +84,11 @@ to explain or define something.
     heights.
 - It is saved in the app's preferences by book file, 400ms after scrolling
   settles and when the tab closes.
-- Restoring places it again until it holds, because EPUB chapters only lay out
-  as they come into view.
+- EPUB chapters off screen sit at a placeholder height until the browser lays
+  them out, which can be frames after a jump. Restoring therefore places the
+  book, lays out every chapter in or near the view at once (`layOutInView`),
+  and places it again until nothing new lays out, so the place never depends
+  on how fast the browser catches up.
 - A highlight jump asked for on open (Cmd+click) wins over the saved place.
 - An open book tab is part of the session: after a restart it opens again at
   its saved place. Restoring the session reads only the tabs' documents, never

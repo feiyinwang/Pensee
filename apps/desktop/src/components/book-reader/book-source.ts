@@ -21,6 +21,10 @@ export interface BookSource {
   scrollToSection: (section: number) => Promise<void>;
   /** The section at the middle of the viewport. */
   currentSection: () => number;
+  /** Lay out now every section in or near the view that the browser would
+   *  otherwise lay out a frame or more later, so their real heights are in
+   *  place before the reader measures. True when it laid out any. */
+  layOutInView: () => boolean;
   /** For the agent: the text on screen and where it is. */
   passage: () => Promise<{ where: string; text: string }>;
   destroy: () => void;

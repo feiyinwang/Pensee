@@ -24,14 +24,34 @@ async function invoke(command, args) {
   );
 }
 
-/** The scroll offset of the book on screen, or null with none. */
-function bookScrollTop() {
+/** Where the middle of the book on screen is: its section (PDF page or EPUB
+ *  chapter) and how far down it, or null with no book. Scroll offsets can't
+ *  be compared: chapters above the place may be at their real height on one
+ *  visit and a placeholder height on the next. */
+function place() {
   return browser.execute(() => {
     const scroller = [...document.querySelectorAll(".book-reader-scroller")].find(
       (el) => !el.closest(".tab-column[data-hidden]"),
     );
-    return scroller ? scroller.scrollTop : null;
+    if (!scroller) return null;
+    const r = scroller.getBoundingClientRect();
+    const middle = r.top + r.height / 2;
+    const section = [...scroller.querySelectorAll("[data-section]")].find((el) => {
+      const box = el.getBoundingClientRect();
+      return box.top <= middle && middle < box.bottom;
+    });
+    if (!section) return null;
+    const box = section.getBoundingClientRect();
+    return { section: section.dataset.section, at: (middle - box.top) / box.height };
   });
+}
+
+async function assertAt(expected, message) {
+  const actual = await place();
+  ok(
+    actual?.section === expected.section && Math.abs(actual.at - expected.at) < 0.01,
+    `${message}: ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`,
+  );
 }
 
 function bookTabs() {
@@ -96,6 +116,15 @@ describe("Book reading place", function () {
       path: `${root}/Place book.md`,
       content: `---\nBook: Place book.${EXT}\nType: Book\n---\n# Place book\n`,
     });
+    // Start from one plain tab, whatever an earlier run left open.
+    await invoke("save_session", {
+      workspaceRoot: root,
+      tabs: [{ location: { kind: "file", path: `${root}/Place book.md` }, back: [], forward: [] }],
+      activeIndex: 0,
+    });
+    await browser.execute(() => {
+      window.addEventListener("beforeunload", (event) => event.stopImmediatePropagation(), true);
+    });
     await browser.refresh();
     await $('[data-sidebar-surface][data-workspace-open="true"]').waitForExist({ timeout: 15_000 });
   });
@@ -127,8 +156,8 @@ describe("Book reading place", function () {
     }, SECTION);
     // The place saves once scrolling settles.
     await browser.pause(1000);
-    const left = await bookScrollTop();
-    ok(left > 0, "the book did not scroll");
+    const left = await place();
+    ok(left && Number(left.section) >= 5, `the book did not scroll: ${JSON.stringify(left)}`);
 
     // Another tab, then back.
     const ids = await browser.execute(() =>
@@ -139,18 +168,31 @@ describe("Book reading place", function () {
     );
     await switchTo(ids.find((tab) => !tab.book).id);
     await switchTo(ids.find((tab) => tab.book).id);
-    equal(await bookScrollTop(), left, "switching tabs moved the book");
+    await assertAt(left, "switching tabs moved the book");
 
     // Its Library card again.
     await openFromLibrary();
     await browser.pause(800);
-    equal(await bookScrollTop(), left, "the Library card moved the book");
+    await assertAt(left, "the Library card moved the book");
+
+    // Closed, then opened again from its Library card.
+    await browser.execute(() => {
+      document
+        .querySelector(".book-reader-scroller")
+        .closest(".tab-column")
+        .querySelector(".tab-column-close")
+        .click();
+    });
+    await browser.pause(500);
+    await openFromLibrary();
+    await waitForBook();
+    await assertAt(left, "the reopened book is not at its place");
 
     // A reload restores the book tab, at the same place.
     await browser.refresh();
     await $('[data-sidebar-surface][data-workspace-open="true"]').waitForExist({ timeout: 15_000 });
     await waitForBook();
     equal(await bookTabs(), 1, "the book tab was not restored");
-    ok(Math.abs((await bookScrollTop()) - left) < 2, "the restored book is not at its place");
+    await assertAt(left, "the restored book is not at its place");
   });
 });

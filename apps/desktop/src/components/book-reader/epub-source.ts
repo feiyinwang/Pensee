@@ -151,6 +151,26 @@ export async function openEpub(
     return index === -1 ? Math.max(0, sections.length - 1) : index;
   };
 
+  // A chapter off screen is skipped (`content-visibility: auto`) at a
+  // placeholder height until the browser gets to it, which can be frames
+  // after a jump. Measuring then would place the reader by the placeholder.
+  const laidOut = new Set<HTMLElement>();
+  const layOutInView = () => {
+    const from = scroller.scrollTop - scroller.clientHeight;
+    const to = scroller.scrollTop + scroller.clientHeight * 2;
+    let any = false;
+    for (const section of sections) {
+      if (laidOut.has(section)) continue;
+      const top = section.offsetTop;
+      if (top > to) break;
+      if (top + section.offsetHeight < from) continue;
+      section.style.contentVisibility = "visible";
+      laidOut.add(section);
+      any = true;
+    }
+    return any;
+  };
+
   return {
     unit: "s",
     textRoot: (section) => sections[section] ?? null,
@@ -165,6 +185,7 @@ export async function openEpub(
       sections[section]?.scrollIntoView({ block: "start" });
     },
     currentSection,
+    layOutInView,
     passage: async () => {
       const index = currentSection();
       const section = sections[index]!;

@@ -215,6 +215,8 @@ export async function openPdf(
       await slot.ready.promise;
     },
     currentSection,
+    // Pages are placeholders at their size from the start.
+    layOutInView: () => false,
     passage: async () => {
       const index = currentSection();
       const text = await pageText(index);

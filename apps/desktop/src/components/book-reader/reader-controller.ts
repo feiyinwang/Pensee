@@ -38,6 +38,7 @@ export interface SelectionInfo {
 }
 
 const PLACE_SAVE_DELAY_MS = 400;
+const MAX_PLACE_PASSES = 8;
 const WORD_CHAR = /[\p{L}\p{N}'’-]/u;
 
 /** [start, end) widened to the edges of the words it starts and ends in. */
@@ -148,13 +149,13 @@ export class ReaderController {
     if (!place || place.unit !== source.unit || this.#destroyed) return;
     await source.scrollToSection(place.section);
     const el = source.sectionElement(place.section);
-    // Chapters lay out as they come into view (`content-visibility`), so the
-    // first placement can move what is above; place again until it holds.
-    for (let pass = 0; el && pass < 4 && !this.#destroyed; pass++) {
-      const target = el.offsetTop + place.fraction * el.offsetHeight;
-      if (Math.abs(this.scroller.scrollTop - target) < 1) break;
-      this.scroller.scrollTop = target;
-      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+    if (!el) return;
+    // Laying out the chapters around the place changes their heights and so
+    // where the place is: place, lay out what is now in view, and place
+    // again until nothing new lays out.
+    for (let pass = 0; pass < MAX_PLACE_PASSES && !this.#destroyed; pass++) {
+      this.scroller.scrollTop = el.offsetTop + place.fraction * el.offsetHeight;
+      if (!source.layOutInView()) break;
     }
   }
 
