@@ -37,6 +37,12 @@
   min-width: 0;
 }
 
+/* Only the selected tab has a fill; the track behind the tabs has none. */
+.headerEnd .typeTabs {
+  border-color: transparent;
+  background: transparent;
+}
+
 .tabCount {
   margin-left: 6px;
   color: var(--text-muted);

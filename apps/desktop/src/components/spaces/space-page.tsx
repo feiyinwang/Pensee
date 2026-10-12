@@ -79,6 +79,7 @@ function TypedSpace({ space }: { space: SpaceDef }) {
         <div className={styles.headerEnd}>
           {space.tabs.length > 1 && (
             <SegmentedControl
+              className={styles.typeTabs}
               label={`${space.name} types`}
               value={tab.id}
               onValueChange={setTabId}
