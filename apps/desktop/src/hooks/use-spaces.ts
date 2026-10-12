@@ -13,6 +13,7 @@ import {
   type SpaceDef,
   type SpaceView,
 } from "@/lib/spaces";
+import { projectNoteContent, type ProjectEdit } from "@/lib/projects";
 import * as tauri from "@/lib/tauri";
 import type { SpaceLocation } from "@/components/editor-area/page-kinds";
 import { isSameSpace } from "@/components/editor-area/page-kinds/space";
@@ -108,9 +109,12 @@ export function useSpaceDef(location: SpaceLocation): SpaceDef | null | undefine
   return note ? spaceFromNote(note) : null;
 }
 
-/** Write `<Name>.md` at the vault root as a space note and open it. Throws a
- *  message fit to show when the name is unusable or taken. */
-export async function createSpaceNote(name: string, type: string, view: SpaceView): Promise<void> {
+/** Write `<Name>.md` at the vault root with the content `content(stem)` gives.
+ *  Throws a message fit to show when the name is unusable or taken. */
+async function createRootNote(
+  name: string,
+  content: (stem: string) => string,
+): Promise<{ path: string; stem: string }> {
   const root = useWorkspaceStore.getState().root;
   if (!root) throw new Error("Open a folder first");
   const stem = spaceFileStem(name);
@@ -119,8 +123,25 @@ export async function createSpaceNote(name: string, type: string, view: SpaceVie
   if (await tauri.fileExists(path)) throw new Error(`A note named "${stem}" already exists`);
   const created = await tauri.createFileIfMissing(path);
   if (created.content !== "") throw new Error(`A note named "${stem}" already exists`);
-  await tauri.writeFile(path, spaceNoteContent(type.trim() || stem, view));
+  await tauri.writeFile(path, content(stem));
+  return { path, stem };
+}
+
+/** Write `<Name>.md` at the vault root as a space note and open it. */
+export async function createSpaceNote(name: string, type: string, view: SpaceView): Promise<void> {
+  const { path } = await createRootNote(name, (stem) =>
+    spaceNoteContent(type.trim() || stem, view),
+  );
   openSpace({ kind: "space", space: "note", path });
+}
+
+/** Write `<Name>.md` at the vault root as a project note with `edit`'s fields
+ *  set; opens nothing. */
+export function createProjectNote(
+  name: string,
+  edit: ProjectEdit,
+): Promise<{ path: string; stem: string }> {
+  return createRootNote(name, () => projectNoteContent(edit));
 }
 
 /** The Files space tree's inline-rename target, shared with the sidebar's

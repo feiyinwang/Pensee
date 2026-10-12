@@ -22,6 +22,9 @@ export interface Project {
 
 export const NO_STATUS = "none";
 
+/** The `Type` that makes a note a project. */
+export const PROJECT_TYPE = "Project";
+
 const BASE_COLUMNS: readonly StatusColumn[] = [
   { id: NO_STATUS, label: "No status" },
   { id: "to-do", label: "To-do" },
@@ -159,6 +162,12 @@ export function withProjectEdit(frontmatter: string | null, edit: ProjectEdit): 
   if (edit.deadline !== undefined)
     next = withProperty(next, DEADLINE_KEYS, dayToIso(edit.deadline));
   return next;
+}
+
+/** A new project note: `Type: Project`, then the fields `edit` sets, written
+ *  the way `withProjectEdit` writes them so the views read them back. */
+export function projectNoteContent(edit: ProjectEdit): string {
+  return `---\n${withProjectEdit(`Type: ${PROJECT_TYPE}`, edit)}\n---\n`;
 }
 
 const KEY_LINE_RE = /^([^\s#:-][^:]*):(.*)$/;

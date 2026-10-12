@@ -5,15 +5,19 @@ import {
   useMemo,
   useRef,
   useState,
+  type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon } from "@hugeicons/core-free-icons";
 import { editPage } from "@/components/editor-area/linked-block-sync";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
-import type { TypedNote } from "@/hooks/use-spaces";
+import { createProjectNote, type TypedNote } from "@/hooks/use-spaces";
 import {
   NO_STATUS,
+  PROJECT_TYPE,
   dayToDate,
   formatDay,
   projectOf,
@@ -24,6 +28,7 @@ import {
   withProjectEdit,
   type Day,
   type Project,
+  type ProjectEdit,
   type StatusColumn,
 } from "@/lib/projects";
 import { formatRelativeTime } from "@/lib/relative-time";
@@ -35,9 +40,10 @@ import styles from "./project-views.module.css";
 /** Project views (SPECs/project-views-spec.md): one set of projects shown as a
  *  list, a kanban or a timeline. Edits write the project note's frontmatter. */
 export function ProjectViews({ notes, view }: { notes: TypedNote[]; view: SpaceView }) {
-  const { projects, columns, edit } = useProjects(notes);
-  if (view === "kanban") return <Kanban projects={projects} columns={columns} edit={edit} />;
-  if (view === "timeline") return <Timeline projects={projects} edit={edit} />;
+  const { projects, columns, edit, create } = useProjects(notes);
+  if (view === "kanban")
+    return <Kanban projects={projects} columns={columns} edit={edit} create={create} />;
+  if (view === "timeline") return <Timeline projects={projects} edit={edit} create={create} />;
   return <ProjectList projects={projects} columns={columns} />;
 }
 
@@ -49,6 +55,10 @@ interface Change {
 }
 
 type EditProject = (project: Project, change: Change) => void;
+
+/** Writes `<name>.md` as a project with `change` set; rejects with a message
+ *  fit to show when the name is empty or taken. */
+type CreateProject = (name: string, change: Change) => Promise<void>;
 
 interface Pending {
   change: Change;
@@ -73,11 +83,18 @@ function queueWrite(path: string, write: () => Promise<void>): Promise<void> {
 }
 
 /** Projects with any change still being written shown in place, so a moved
- *  card or bar doesn't jump back until the file is re-read. */
+ *  card or bar doesn't jump back until the file is re-read. A project created
+ *  here shows first until the re-read notes include it. */
 function useProjects(notes: TypedNote[]) {
   const [pending, setPending] = useState<ReadonlyMap<string, Pending>>(new Map());
+  const [created, setCreated] = useState<readonly Project[]>([]);
 
-  const base = useMemo(() => notes.map(projectOf), [notes]);
+  const base = useMemo(() => {
+    const read = notes.map(projectOf);
+    if (created.length === 0) return read;
+    const paths = new Set(notes.map((note) => note.path));
+    return [...created.filter((p) => !paths.has(p.note.path)), ...read];
+  }, [notes, created]);
   const columns = useMemo(() => statusColumns(base), [base]);
 
   const projects = useMemo(
@@ -103,13 +120,32 @@ function useProjects(notes: TypedNote[]) {
       }
       return next ?? current;
     });
+    const paths = new Set(notes.map((note) => note.path));
+    setCreated((current) =>
+      current.some((p) => paths.has(p.note.path))
+        ? current.filter((p) => !paths.has(p.note.path))
+        : current,
+    );
   }, [notes]);
+
+  // A status column id becomes the column's name, as the note stores it.
+  const toEdit = useCallback(
+    (change: Change): ProjectEdit => {
+      const column =
+        change.status === undefined ? undefined : columns.find((c) => c.id === change.status);
+      return {
+        status: column ? statusValue(column) : undefined,
+        start: change.start,
+        deadline: change.deadline,
+      };
+    },
+    [columns],
+  );
 
   const edit = useCallback<EditProject>(
     (project, change) => {
       const path = project.note.path;
-      const column =
-        change.status === undefined ? undefined : columns.find((c) => c.id === change.status);
+      const projectEdit = toEdit(change);
       setPending((current) => {
         const next = new Map(current);
         const entry = current.get(path);
@@ -132,11 +168,7 @@ function useProjects(notes: TypedNote[]) {
       void queueWrite(path, () =>
         editPage(path, (page) => ({
           ...page,
-          frontmatter: withProjectEdit(page.frontmatter, {
-            status: column ? statusValue(column) : undefined,
-            start: change.start,
-            deadline: change.deadline,
-          }),
+          frontmatter: withProjectEdit(page.frontmatter, projectEdit),
         })),
       ).then(
         () => settle(false),
@@ -149,10 +181,33 @@ function useProjects(notes: TypedNote[]) {
         },
       );
     },
-    [columns],
+    [toEdit],
   );
 
-  return { projects, columns, edit };
+  const create = useCallback<CreateProject>(
+    async (name, change) => {
+      const { path, stem } = await createProjectNote(name, toEdit(change));
+      const project: Project = {
+        note: {
+          path,
+          relative_path: `${stem}.md`,
+          name: stem,
+          title: null,
+          note_type: PROJECT_TYPE,
+          modified_at: 0,
+          properties: {},
+          excerpt: null,
+        },
+        status: change.status ?? NO_STATUS,
+        start: change.start ?? null,
+        deadline: change.deadline ?? null,
+      };
+      setCreated((current) => [project, ...current]);
+    },
+    [toEdit],
+  );
+
+  return { projects, columns, edit, create };
 }
 
 function isSpent(entry: Pending, note: TypedNote): boolean {
@@ -164,6 +219,76 @@ function openNote(event: MouseEvent | KeyboardEvent, path: string) {
   void open(path).catch((error: unknown) => {
     window.alert(`Failed to open: ${error instanceof Error ? error.message : String(error)}`);
   });
+}
+
+/** "+ New project", then a name field: Enter creates the project and keeps the
+ *  field open for the next one, Esc (or leaving it empty) closes it. */
+function NewProject({ onCreate }: { onCreate: (name: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const busy = useRef(false);
+
+  const close = () => {
+    setOpen(false);
+    setName("");
+    setError(null);
+  };
+
+  if (!open) {
+    return (
+      <button type="button" className={styles.newButton} onClick={() => setOpen(true)}>
+        <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={1.8} aria-hidden />
+        New project
+      </button>
+    );
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (busy.current) return;
+    busy.current = true;
+    onCreate(name)
+      .then(
+        () => {
+          setName("");
+          setError(null);
+        },
+        (reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)),
+      )
+      .finally(() => (busy.current = false));
+  };
+
+  return (
+    <form className={styles.newForm} onSubmit={submit}>
+      <input
+        className={styles.newInput}
+        value={name}
+        placeholder="Project name"
+        aria-label="New project name"
+        aria-invalid={error !== null}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- the field opens because the user asked to type a name
+        autoFocus
+        onChange={(event) => {
+          setName(event.target.value);
+          setError(null);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          close();
+        }}
+        onBlur={() => {
+          if (!name.trim() && !busy.current) close();
+        }}
+      />
+      {error && (
+        <div role="alert" className={styles.newError}>
+          {error}
+        </div>
+      )}
+    </form>
+  );
 }
 
 /* List ------------------------------------------------------------------ */
@@ -243,10 +368,12 @@ function Kanban({
   projects,
   columns,
   edit,
+  create,
 }: {
   projects: Project[];
   columns: StatusColumn[];
   edit: EditProject;
+  create: CreateProject;
 }) {
   const [drag, setDrag] = useState<CardDrag | null>(null);
   const [target, setTarget] = useState<string | null>(null);
@@ -393,6 +520,7 @@ function Kanban({
                 </button>
               ))}
             </div>
+            <NewProject onCreate={(name) => create(name, { status: column.id })} />
           </section>
         );
       })}
@@ -484,7 +612,15 @@ function changeOf(project: Project, next: BarDrag): Change {
   return change;
 }
 
-function Timeline({ projects, edit }: { projects: Project[]; edit: EditProject }) {
+function Timeline({
+  projects,
+  edit,
+  create,
+}: {
+  projects: Project[];
+  edit: EditProject;
+  create: CreateProject;
+}) {
   const now = today();
   const scroller = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<BarDrag | null>(null);
@@ -783,6 +919,12 @@ function Timeline({ projects, edit }: { projects: Project[]; edit: EditProject }
               ))}
             </>
           )}
+
+          <div className={styles.newRow}>
+            <div className={styles.newCell}>
+              <NewProject onCreate={(name) => create(name, { start: now })} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

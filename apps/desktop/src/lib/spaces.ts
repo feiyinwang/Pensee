@@ -1,3 +1,4 @@
+import { PROJECT_TYPE } from "./projects";
 import type { TypedNote } from "./tauri";
 
 // Spaces (SPECs/spaces-spec.md): saved questions about a note's `Type:`, never
@@ -59,7 +60,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     icon: "projects",
     view: "list",
     views: ["list", "kanban", "timeline"],
-    tabs: [tab("projects", "Projects", "project", ["Project"], "note")],
+    tabs: [tab("projects", "Projects", "project", [PROJECT_TYPE], "note")],
   },
   {
     key: "library",

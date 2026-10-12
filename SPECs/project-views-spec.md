@@ -30,11 +30,11 @@ Columns, left to right: **No status**, **To-do**, **Ongoing**, **Done**, then an
 - **List** — Name, Status, Start, Deadline, Last edited; newest edit first, as before.
 - **Kanban** — equal-width columns with a name and count; cards show the title and, when set, the deadline. Newest edit first in each column. Drag a card (pointer, 4px threshold) onto a column to move it; the target column highlights. Keyboard: Alt+Left / Alt+Right moves the focused card to the neighbouring column (history Back/Forward skips a key a control already handled). Esc cancels a drag. Click opens the note, Cmd+click opens it beside.
 - **Timeline** — a sticky name column and a day grid with month labels and a today line. Projects with a date are rows sorted by start; projects with neither date sit under **No dates**. Drag a bar to move both dates, drag an end to change one; a project with one date shows a short bar whose free end sets the other date. Click the empty row of a project with no dates to give it a start on that day. Keyboard on a bar: Left/Right moves it a day, Shift+Left/Right moves its deadline. **Today** scrolls back to today, which is where the timeline opens.
+- **New project** — **+ New project** sits at the foot of every kanban column and under the last timeline row. Click it, type a name, press Enter: Writer writes `<Name>.md` at the vault root (the name cleaned the way a new space's is) with `Type: Project`, plus `Status: <column name>` from a column (an empty `Status:` from No status) or `Start: <today>` from the timeline, and opens nothing. The field stays open and empty for the next one; Esc, or leaving it while empty, closes it. An empty name or one a note already has shows the reason under the field and writes nothing. The new project shows at once, first in its column or on today's row, until the notes are re-read with it. Both views create through one path (`createProjectNote` in `hooks/use-spaces.ts`, which shares the root-note write with `createSpaceNote`; the frontmatter comes from `projectNoteContent`, built with `withProjectEdit` so the keys are the ones the views read).
 - A move shows at once; the card or bar keeps its new place until the file is re-read with it. A failed write puts it back and says why.
 
 ## Not in this pass
 
-- New project from a column or a timeline row.
 - Ordering cards inside a column (there is no field for it).
 - Zoom levels on the timeline (one scale: a month is about 90px).
 - Kanban/Timeline for spaces you add (`View:` still takes `gallery`, `list`, `cards`).

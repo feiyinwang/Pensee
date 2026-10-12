@@ -3,6 +3,7 @@ import {
   NO_STATUS,
   dayToIso,
   parseDay,
+  projectNoteContent,
   projectOf,
   statusColumns,
   statusValue,
@@ -107,5 +108,39 @@ describe("withProperty", () => {
     expect(withProjectEdit(fm, { start: parseDay("2023-02-01")! })).toBe(
       "Type: Project\nDates: 2023-01-30 16:32\nStart: 2023-02-01",
     );
+  });
+});
+
+describe("projectNoteContent", () => {
+  test("a kanban column's project carries its status", () => {
+    expect(projectNoteContent({ status: "Ongoing" })).toBe(
+      "---\nType: Project\nStatus: Ongoing\n---\n",
+    );
+  });
+
+  test("No status writes an empty Status", () => {
+    expect(projectNoteContent({ status: "" })).toBe("---\nType: Project\nStatus:\n---\n");
+  });
+
+  test("a timeline project starts on the given day", () => {
+    expect(projectNoteContent({ start: parseDay("2026-10-12")! })).toBe(
+      "---\nType: Project\nStart: 2026-10-12\n---\n",
+    );
+  });
+
+  test("reads back as the project it was made for", () => {
+    const content = projectNoteContent({ status: "To-do", start: parseDay("2026-10-12")! });
+    const properties = Object.fromEntries(
+      content
+        .split("\n")
+        .filter((line) => line.includes(":"))
+        .map((line) => {
+          const [key, ...rest] = line.split(":");
+          return [key.trim().toLowerCase(), rest.join(":").trim()];
+        }),
+    );
+    const project = projectOf(note(properties));
+    expect(project.status).toBe("to-do");
+    expect(dayToIso(project.start!)).toBe("2026-10-12");
   });
 });
