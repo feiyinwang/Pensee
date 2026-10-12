@@ -1,11 +1,13 @@
 use crate::error::AppError;
 use crate::state::{AppState, IndexedFile};
 use parking_lot::Mutex;
-use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, LazyLock, Once};
+use std::time::{Duration, Instant};
 use tauri::Manager;
 
 /// A markdown note that declares a `Type:` in its frontmatter — what a space
@@ -23,7 +25,7 @@ pub struct TypedNote {
     pub excerpt: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 struct NoteMeta {
     properties: BTreeMap<String, String>,
     title: Option<String>,
@@ -40,6 +42,34 @@ const EXCERPT_MAX_CHARS: usize = 400;
 /// workspaces never collide.
 type MetaCache = HashMap<PathBuf, (u128, u64, Arc<NoteMeta>)>;
 static META_CACHE: LazyLock<Mutex<MetaCache>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// The meta cache is also kept on disk, so a launch only `stat`s each note
+/// instead of opening it. On an iCloud vault mid-sync an open can take
+/// seconds while a stat stays instant: without this, every launch reread all
+/// heads and Library stayed empty for the twenty-odd minutes that took.
+const META_CACHE_FILE: &str = "note-meta.json";
+const META_CACHE_VERSION: u32 = 1;
+/// How often a long scan saves what it has read so far, so quitting mid-scan
+/// keeps the progress.
+const META_CACHE_CHECKPOINT: Duration = Duration::from_secs(20);
+static META_CACHE_LOADED: Once = Once::new();
+/// Set when the in-memory cache has entries the file doesn't.
+static META_CACHE_DIRTY: AtomicBool = AtomicBool::new(false);
+static META_CACHE_SAVED_AT: LazyLock<Mutex<Instant>> = LazyLock::new(|| Mutex::new(Instant::now()));
+
+#[derive(Serialize, Deserialize)]
+struct MetaCacheFile {
+    version: u32,
+    entries: Vec<MetaCacheEntry>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct MetaCacheEntry {
+    path: PathBuf,
+    modified: u128,
+    size: u64,
+    meta: NoteMeta,
+}
 
 /// One `list_typed_notes` scan at a time. A scan reads every note on up to 8
 /// threads; when reads stall (an iCloud vault mid-sync), the rereads asked for
@@ -61,12 +91,39 @@ pub async fn list_typed_notes(
     let _scan = SCAN.lock().await;
     let state = app.state::<AppState>().get_or_create(webview.label());
     let files: Vec<IndexedFile> = state.file_index.read().clone();
-    tauri::async_runtime::spawn_blocking(move || Ok(list_typed_notes_impl(&files, &types)))
-        .await
-        .map_err(|e| AppError::Io(e.to_string()))?
+    let cache_file = match app.path().app_cache_dir() {
+        Ok(dir) => Some(dir.join(META_CACHE_FILE)),
+        Err(error) => {
+            eprintln!("list_typed_notes: no cache dir, heads are not kept on disk: {error}");
+            None
+        }
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(cache_file) = cache_file else {
+            return Ok(list_typed_notes_impl(&files, &types, &|| {}));
+        };
+        META_CACHE_LOADED.call_once(|| load_meta_cache(&cache_file));
+        let checkpoint = || {
+            if META_CACHE_SAVED_AT.lock().elapsed() >= META_CACHE_CHECKPOINT {
+                save_meta_cache(&cache_file);
+            }
+        };
+        let notes = list_typed_notes_impl(&files, &types, &checkpoint);
+        prune_meta_cache(&files);
+        save_meta_cache(&cache_file);
+        Ok(notes)
+    })
+    .await
+    .map_err(|e| AppError::Io(e.to_string()))?
 }
 
-pub fn list_typed_notes_impl(files: &[IndexedFile], types: &[String]) -> Vec<TypedNote> {
+/// `checkpoint` runs after each head read from the file itself (a cache
+/// miss), from the scan's worker threads.
+pub fn list_typed_notes_impl(
+    files: &[IndexedFile],
+    types: &[String],
+    checkpoint: &(dyn Fn() + Sync),
+) -> Vec<TypedNote> {
     let wanted: Vec<String> = types.iter().map(|t| t.trim().to_lowercase()).collect();
     let threads = std::thread::available_parallelism()
         .map(|n| n.get().min(8))
@@ -79,7 +136,7 @@ pub fn list_typed_notes_impl(files: &[IndexedFile], types: &[String]) -> Vec<Typ
                 let wanted = &wanted;
                 scope.spawn(move || {
                     part.iter()
-                        .filter_map(|file| typed_note(file, wanted))
+                        .filter_map(|file| typed_note(file, wanted, checkpoint))
                         .collect::<Vec<_>>()
                 })
             })
@@ -97,8 +154,12 @@ pub fn list_typed_notes_impl(files: &[IndexedFile], types: &[String]) -> Vec<Typ
     out
 }
 
-fn typed_note(file: &IndexedFile, wanted: &[String]) -> Option<TypedNote> {
-    let meta = cached_meta(&file.path)?;
+fn typed_note(
+    file: &IndexedFile,
+    wanted: &[String],
+    checkpoint: &(dyn Fn() + Sync),
+) -> Option<TypedNote> {
+    let meta = cached_meta(&file.path, checkpoint)?;
     let note_type = meta.properties.get("type")?;
     let first = note_type.split(',').next()?.trim();
     if !wanted.iter().any(|w| w.eq_ignore_ascii_case(first)) {
@@ -120,7 +181,7 @@ fn typed_note(file: &IndexedFile, wanted: &[String]) -> Option<TypedNote> {
     })
 }
 
-fn cached_meta(path: &Path) -> Option<Arc<NoteMeta>> {
+fn cached_meta(path: &Path, checkpoint: &(dyn Fn() + Sync)) -> Option<Arc<NoteMeta>> {
     let metadata = std::fs::metadata(path).ok()?;
     let modified = metadata
         .modified()
@@ -138,7 +199,101 @@ fn cached_meta(path: &Path) -> Option<Arc<NoteMeta>> {
     META_CACHE
         .lock()
         .insert(path.to_path_buf(), (modified, size, Arc::clone(&meta)));
+    META_CACHE_DIRTY.store(true, Ordering::Relaxed);
+    checkpoint();
     Some(meta)
+}
+
+/// Fill the meta cache from disk. Entries already in memory win: they were
+/// read this run. A missing file is a first launch; an unreadable one is
+/// logged and ignored, since every entry can be read again.
+fn load_meta_cache(file: &Path) {
+    let bytes = match std::fs::read(file) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return,
+        Err(error) => {
+            eprintln!("note meta cache: can't read {}: {error}", file.display());
+            return;
+        }
+    };
+    let saved: MetaCacheFile = match serde_json::from_slice(&bytes) {
+        Ok(saved) => saved,
+        Err(error) => {
+            eprintln!("note meta cache: ignoring {}: {error}", file.display());
+            return;
+        }
+    };
+    if saved.version != META_CACHE_VERSION {
+        return;
+    }
+    let mut cache = META_CACHE.lock();
+    for entry in saved.entries {
+        cache
+            .entry(entry.path)
+            .or_insert((entry.modified, entry.size, Arc::new(entry.meta)));
+    }
+}
+
+/// Write the meta cache to disk when it has changed. One writer at a time:
+/// a checkpoint that finds another save running skips.
+fn save_meta_cache(file: &Path) {
+    static SAVING: Mutex<()> = Mutex::new(());
+    let Some(_saving) = SAVING.try_lock() else {
+        return;
+    };
+    *META_CACHE_SAVED_AT.lock() = Instant::now();
+    if !META_CACHE_DIRTY.swap(false, Ordering::Relaxed) {
+        return;
+    }
+    let entries: Vec<MetaCacheEntry> = META_CACHE
+        .lock()
+        .iter()
+        .map(|(path, (modified, size, meta))| MetaCacheEntry {
+            path: path.clone(),
+            modified: *modified,
+            size: *size,
+            meta: NoteMeta::clone(meta),
+        })
+        .collect();
+    let saved = MetaCacheFile {
+        version: META_CACHE_VERSION,
+        entries,
+    };
+    if let Err(error) = write_atomically(file, &saved) {
+        META_CACHE_DIRTY.store(true, Ordering::Relaxed);
+        eprintln!("note meta cache: can't write {}: {error}", file.display());
+    }
+}
+
+fn write_atomically(file: &Path, saved: &MetaCacheFile) -> std::io::Result<()> {
+    if let Some(dir) = file.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let tmp = file.with_extension("json.tmp");
+    std::fs::write(&tmp, serde_json::to_vec(saved)?)?;
+    std::fs::rename(&tmp, file)
+}
+
+/// Drop cached heads of notes that are gone, so the file on disk doesn't
+/// grow forever. Entries this scan didn't list may belong to another
+/// window's workspace, so only a missing file removes one.
+fn prune_meta_cache(files: &[IndexedFile]) {
+    let listed: HashSet<&Path> = files.iter().map(|f| f.path.as_path()).collect();
+    let unlisted: Vec<PathBuf> = META_CACHE
+        .lock()
+        .keys()
+        .filter(|path| !listed.contains(path.as_path()))
+        .cloned()
+        .collect();
+    let gone: Vec<PathBuf> = unlisted.into_iter().filter(|p| !p.exists()).collect();
+    if gone.is_empty() {
+        return;
+    }
+    let mut cache = META_CACHE.lock();
+    for path in gone {
+        cache.remove(&path);
+    }
+    META_CACHE_DIRTY.store(true, Ordering::Relaxed);
 }
 
 fn read_head(path: &Path) -> Option<String> {
@@ -400,10 +555,41 @@ mod tests {
             write("d.md", "no frontmatter", 4),
             write("e.md", "---\nType: [Book, Paper]\n---\n", 5),
         ];
-        let notes = list_typed_notes_impl(&files, &["Book".into(), "youtube".into()]);
+        let notes = list_typed_notes_impl(&files, &["Book".into(), "youtube".into()], &|| {});
         let names: Vec<_> = notes.iter().map(|n| n.name.as_str()).collect();
         assert_eq!(names, vec!["e", "b", "a"]);
         assert_eq!(notes[2].note_type, "book");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn meta_cache_survives_a_restart() {
+        let dir = std::env::temp_dir().join(format!("writer-meta-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("kept.md");
+        std::fs::write(&path, "---\nType: Book\nCover: c.jpg\n---\nBlurb.\n").unwrap();
+        let file = IndexedFile {
+            path: path.clone(),
+            relative_path: "kept.md".into(),
+            name: "kept.md".into(),
+            modified_at: 1,
+        };
+        let cache_file = dir.join(META_CACHE_FILE);
+        list_typed_notes_impl(std::slice::from_ref(&file), &["Book".into()], &|| {});
+        META_CACHE_DIRTY.store(true, Ordering::Relaxed);
+        save_meta_cache(&cache_file);
+
+        // A new launch: nothing in memory until the file is loaded.
+        let cached = META_CACHE.lock().remove(&path).unwrap();
+        load_meta_cache(&cache_file);
+        assert_eq!(META_CACHE.lock().get(&path).unwrap().0, cached.0);
+        let notes = list_typed_notes_impl(&[file.clone()], &["Book".into()], &|| {});
+        assert_eq!(notes[0].properties.get("cover").unwrap(), "c.jpg");
+
+        // A deleted note leaves the cache.
+        std::fs::remove_file(&path).unwrap();
+        prune_meta_cache(&[]);
+        assert!(!META_CACHE.lock().contains_key(&path));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
