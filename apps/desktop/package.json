@@ -25,7 +25,6 @@
     "@lezer/highlight": "catalog:",
     "@lezer/markdown": "catalog:",
     "@lezer/yaml": "catalog:",
-    "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-dropdown-menu": "catalog:",
     "@radix-ui/react-popover": "catalog:",
     "@radix-ui/react-tooltip": "catalog:",

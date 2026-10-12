@@ -41,12 +41,21 @@ inert there and ⌘N keeps the palette's create field.
   → Book) unless the user picked a kind. A file allows only Book and Paper; an
   unpicked PDF reads **Book or paper** and is typed by its first pages once
   imported (SPECs/add-to-library-spec.md).
-- **Date chip:** No date, or Today / Tomorrow / Yesterday / `12 Oct`, from
-  Arc's calendar (weeks start Monday, as in the calendar panel). It works with
-  every type. The note is made as usual and that day's note (made if missing)
-  gets `- [[Note]]` at its end, joining a list the day already ends with.
-  With a date and no title (a plain note), the text itself goes to the end of
-  the day's note, a blank line apart; the title's placeholder says so.
+- **Date chip:** No date, or Today / Tomorrow / Yesterday / `12 Oct`, with
+  a time when one is set (`20 Oct, 2:30 PM`). The popover is Arc's calendar
+  (weeks start Monday, as in the calendar panel) with Arc's time picker under
+  it (the viewer's 12- or 24-hour clock, 15-minute steps, its list opening
+  upward so it stays in the window); it stays open after a day is picked so
+  a time can follow, and **No time** / **No date** clear them. It works with
+  every type:
+  - the note gets a `Date` property, `2026-10-20` or `2026-10-20T14:30`
+    (Obsidian's date and date & time forms); only that line is written, so a
+    page's other properties keep their formatting;
+  - that day's note (made if missing) gets `- [[Note]]` at its end, joining
+    a list the day already ends with;
+  - with a date and no title (a plain note), the text itself goes to the end
+    of the day's note instead, a blank line apart; the title's placeholder
+    says so.
 - **Status** in the header's right side, before close: a link already in
   Library ("Already in your Library: …"), or an error such as a name that's
   taken, with **Open it**. It never adds a line, so the box doesn't jump.
@@ -73,15 +82,17 @@ go first and the existing notices report progress and failures.
 None on the box: it opens from the keyboard, often, so it is simply there,
 like ⌘O (docs/motion.md). Arc's chips keep their own motion.
 
-## Not modal
+## A floating card, not a dialog
 
-The dialog is Radix's non-modal one. A modal Radix dialog sets
-`pointer-events: none` on `<body>` and restores what it saw on close; Arc's
-popover and menu bring other copies of Radix's layer code that do the same.
-The calendar took no clicks, and closing in the wrong order left the window
-unclickable. Non-modal, the dialog never touches `<body>`; Esc and a click
-outside still close it, and clicks in the chips' menus and calendar count as
-inside.
+The box is a plain card portaled to `<body>`, not a Radix dialog. A modal
+Radix dialog sets `pointer-events: none` on `<body>`, and Arc's popover and
+menu bring other copies of Radix's layer code: the calendar took no clicks,
+closing in the wrong order left the window unclickable, and one Esc closed a
+menu and the box together (or, once the dialog yielded, neither). The card's
+own listeners run in the bubble phase after Radix's capture-phase layers, so
+Esc closes an open menu or calendar first and the box on the next press, and
+a click outside closes it while clicks in the chips' menus and calendar count
+as inside.
 
 ## Files
 

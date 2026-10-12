@@ -6,8 +6,10 @@ import {
   EMPTY_DRAFT,
   appendBlock,
   appendListItem,
+  dateProperty,
   dayLinkLine,
   isDraftEmpty,
+  withDateProperty,
   withDay,
   withKind,
   type ComposerDraft,
@@ -121,6 +123,23 @@ async function dayNotePath(day: string): Promise<string> {
   return resolved.path;
 }
 
+/** Give a Library note or an imported book its `Date` property. */
+async function stampDate(path: string, draft: ComposerDraft): Promise<void> {
+  if (!draft.day) return;
+  const value = dateProperty(draft.day, draft.time);
+  try {
+    await editPage(path, (page) => ({
+      frontmatter: withDateProperty(page.frontmatter, value),
+      body: page.body,
+    }));
+  } catch (error) {
+    console.error(`[composer] Couldn't date ${path}:`, error);
+    showEditorNotice(
+      `Couldn't set the date of ${getFileStem(path)}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 /** Link the note at `path` from `day`'s note, at its end. */
 async function linkIntoDay(day: string, path: string): Promise<void> {
   try {
@@ -168,7 +187,10 @@ async function writeNote(
     });
     return;
   }
-  const created = await createNoteIn(target.folder, name, () => bodyText(draft.body));
+  const frontmatter = draft.day
+    ? `---\n${withDateProperty(null, dateProperty(draft.day, draft.time))}\n---\n`
+    : "";
+  const created = await createNoteIn(target.folder, name, () => frontmatter + bodyText(draft.body));
   if (draft.day) await linkIntoDay(draft.day, created.path);
   await finish(created.path, created.stem, open);
 }
@@ -227,7 +249,10 @@ export async function submitComposer(target: ComposerTarget, open = false): Prom
     path = await importAttached(target.path, target.library ?? undefined, draft.body, open);
   }
   if (!path) return;
-  if (draft.day) await linkIntoDay(draft.day, path);
+  if (draft.day) {
+    await stampDate(path, draft);
+    await linkIntoDay(draft.day, path);
+  }
   if (!open) {
     showEditorNotice(`Added ${getFileStem(path)}`, {
       label: "Open",

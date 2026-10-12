@@ -26,9 +26,12 @@ export interface ComposerDraft {
   kind: ComposerKind;
   /** The user (or a Library tab) chose `kind`, so a pasted link doesn't change it. */
   kindPicked: boolean;
-  /** `YYYY-MM-DD`: the note is linked from that day's note; with no title,
-   *  the text itself goes into the day's note. */
+  /** `YYYY-MM-DD`: the note gets it as its `Date` property and is linked
+   *  from that day's note; with no title, the text itself goes into the
+   *  day's note. */
   day: string | null;
+  /** `HH:MM`, with a day only: it joins the day in the `Date` property. */
+  time: string | null;
   /** Vault-relative folder for a plain note; null is the vault root. */
   folder: string | null;
   /** An attached PDF or EPUB, as an absolute path. */
@@ -41,6 +44,7 @@ export const EMPTY_DRAFT: ComposerDraft = {
   kind: "note",
   kindPicked: false,
   day: null,
+  time: null,
   folder: null,
   file: null,
 };
@@ -152,9 +156,32 @@ export function submitLabel(
   }
 }
 
-/** Set or clear the date chip. */
+/** Set or clear the date chip; clearing it clears the time too. */
 export function withDay(draft: ComposerDraft, day: string | null): ComposerDraft {
-  return { ...draft, day };
+  return { ...draft, day, time: day ? draft.time : null };
+}
+
+/** The `Date` property's value: `2026-10-20`, or `2026-10-20T14:30` with a
+ *  time (the form Obsidian's date & time property reads). */
+export function dateProperty(day: string, time: string | null): string {
+  return time ? `${day}T${time}` : day;
+}
+
+/** `frontmatter` with `Date` set to `value`: its top-level `Date:` line
+ *  (any case) replaced, else one added at the end. Only that line changes,
+ *  so the page's other properties keep their formatting. */
+export function withDateProperty(frontmatter: string | null, value: string): string {
+  const line = `Date: ${value}`;
+  if (frontmatter === null || !frontmatter.trim()) return line;
+  const lines = frontmatter.replace(/\s+$/, "").split("\n");
+  const at = lines.findIndex((text) => /^date\s*:/i.test(text));
+  if (at === -1) return [...lines, line].join("\n");
+  // A block value (a list under `Date:`) goes with the line it belongs to.
+  let end = at + 1;
+  while (end < lines.length && /^(\s|-\s)/.test(lines[end]!)) end++;
+  const key = lines[at]!.slice(0, lines[at]!.indexOf(":"));
+  lines.splice(at, end - at, `${key.trimEnd()}: ${value}`);
+  return lines.join("\n");
 }
 
 /** Pick a kind from the chip. */

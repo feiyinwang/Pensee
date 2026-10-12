@@ -51,9 +51,6 @@ catalogs:
     '@lezer/yaml':
       specifier: ^1.0.4
       version: 1.0.4
-    '@radix-ui/react-dialog':
-      specifier: ^1.1.15
-      version: 1.1.15
     '@radix-ui/react-dropdown-menu':
       specifier: ^2.2.0
       version: 2.2.0
@@ -203,9 +200,6 @@ importers:
       '@lezer/yaml':
         specifier: 'catalog:'
         version: 1.0.4
-      '@radix-ui/react-dialog':
-        specifier: 'catalog:'
-        version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@radix-ui/react-dropdown-menu':
         specifier: 'catalog:'
         version: 2.2.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
