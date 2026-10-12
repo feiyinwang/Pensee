@@ -2,10 +2,12 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   NO_STATUS,
   dayToIso,
+  deadlineTag,
   parseDay,
   projectNoteContent,
   projectOf,
   statusColumns,
+  statusTone,
   statusValue,
   withProjectEdit,
   withProperty,
@@ -142,5 +144,37 @@ describe("projectNoteContent", () => {
     const project = projectOf(note(properties));
     expect(project.status).toBe("to-do");
     expect(dayToIso(project.start!)).toBe("2026-10-12");
+  });
+});
+
+describe("tags", () => {
+  const now = parseDay("2026-10-12")!;
+  const due = (deadline: string, status = "ongoing") =>
+    deadlineTag({ ...projectOf(note({ deadline })), status }, now);
+
+  test("statuses carry their meaning in colour", () => {
+    expect(statusTone("to-do")).toBe("gray");
+    expect(statusTone("ongoing")).toBe("blue");
+    expect(statusTone("done")).toBe("green");
+    expect(statusTone(NO_STATUS)).toBeNull();
+  });
+
+  test("a status the vault adds never takes a colour that means something", () => {
+    for (const id of ["paused", "waiting", "someday", "blocked", "idea"]) {
+      expect(["purple", "brown", "pink", "yellow"]).toContain(statusTone(id));
+    }
+    expect(statusTone("paused")).toBe(statusTone("paused"));
+  });
+
+  test("deadlines are red when passed, orange within a week, gray after", () => {
+    expect(due("2023-12-20")).toEqual({ tone: "red", label: "Overdue · Dec 20, 2023" });
+    expect(due("2026-10-12")).toEqual({ tone: "orange", label: "Due today" });
+    expect(due("2026-10-13")).toEqual({ tone: "orange", label: "Due tomorrow" });
+    expect(due("2026-10-19")?.tone).toBe("orange");
+    expect(due("2026-10-20")?.tone).toBe("gray");
+  });
+
+  test("a done project's deadline is never an alarm", () => {
+    expect(due("2023-12-20", "done")).toEqual({ tone: "gray", label: "Due Dec 20, 2023" });
   });
 });

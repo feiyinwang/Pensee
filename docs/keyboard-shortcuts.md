@@ -44,11 +44,11 @@ On a focused board, Alt+ArrowLeft / Alt+ArrowRight are claimed for card travel
 navigate history; Tab / Shift+Tab step between cards on the same level.
 
 In the Projects space ([project views](../SPECs/project-views-spec.md)), a
-focused kanban card takes Alt+ArrowLeft / Alt+ArrowRight to move to the
-neighbouring status column, and a focused timeline bar takes ArrowLeft /
-ArrowRight (move a day) and Shift+ArrowLeft / Shift+ArrowRight (move its
-deadline). History navigation skips any Alt+Arrow a focused control has already
-handled (`defaultPrevented`).
+focused kanban card takes Space (lift, then drop), the arrow keys (move a
+lifted card) and Escape (put it back), as Arc's kanban board defines them; a
+focused timeline bar takes ArrowLeft / ArrowRight (move a day) and
+Shift+ArrowLeft / Shift+ArrowRight (move its deadline). History navigation
+skips any Alt+Arrow a focused control has already handled (`defaultPrevented`).
 
 ## Menu Accelerators
 

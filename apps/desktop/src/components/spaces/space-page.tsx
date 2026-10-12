@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type MouseEvent } from "react";
+import { lazy, Suspense, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { FileText } from "lucide-react";
 import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
 import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-container";
@@ -10,9 +10,11 @@ import { SPACE_VIEW_LABELS, allTypes, notesInTab, type SpaceView } from "@/lib/s
 import { useSpaceViewStore } from "@/stores/space-view-store";
 import { FilesSpace } from "./files-space";
 import { NoteGallery } from "./note-gallery";
-import { ProjectViews } from "./project-views";
 import { noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
+
+// Arc and motion load only when a space with views opens (docs/arc.md).
+const ProjectViews = lazy(() => import("./project-views"));
 
 /** A space's page (SPECs/spaces-spec.md): the notes of its types as a
  *  gallery, list or cards, or the folder tree for Files. */
@@ -94,6 +96,7 @@ function TypedSpace({ space }: { space: SpaceDef }) {
           )}
           {space.views && (
             <SegmentedControl
+              className={styles.typeTabs}
               label={`${space.name} views`}
               value={view}
               onValueChange={(next) => setView(space.key, next as SpaceView)}
@@ -119,7 +122,9 @@ function TypedSpace({ space }: { space: SpaceDef }) {
           text={`Any note with Type: ${tab.types[0]} shows up here.`}
         />
       ) : space.views ? (
-        <ProjectViews notes={shown} view={view} />
+        <Suspense fallback={null}>
+          <ProjectViews notes={shown} view={view} />
+        </Suspense>
       ) : space.view === "list" ? (
         <NoteList notes={shown} />
       ) : space.view === "cards" ? (

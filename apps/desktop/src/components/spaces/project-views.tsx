@@ -11,6 +11,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { Badge } from "@/components/arc/badge/badge";
+import { KanbanBoard, type KanbanCard } from "@/components/arc/blocks/kanban-board/kanban-board";
+import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
+import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { editPage } from "@/components/editor-area/linked-block-sync";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
@@ -22,7 +26,9 @@ import {
   formatDay,
   projectOf,
   statusColumns,
+  deadlineTag,
   statusLabel,
+  statusTone,
   statusValue,
   today,
   withProjectEdit,
@@ -30,21 +36,29 @@ import {
   type Project,
   type ProjectEdit,
   type StatusColumn,
+  type TagTone,
 } from "@/lib/projects";
 import { formatRelativeTime } from "@/lib/relative-time";
 import type { SpaceView } from "@/lib/spaces";
 import { noteTitle } from "./space-cover";
-import spaceStyles from "./spaces.module.css";
 import styles from "./project-views.module.css";
 
 /** Project views (SPECs/project-views-spec.md): one set of projects shown as a
  *  list, a kanban or a timeline. Edits write the project note's frontmatter. */
-export function ProjectViews({ notes, view }: { notes: TypedNote[]; view: SpaceView }) {
+export default function ProjectViews({ notes, view }: { notes: TypedNote[]; view: SpaceView }) {
+  ensureArcTokens();
   const { projects, columns, edit, create } = useProjects(notes);
-  if (view === "kanban")
-    return <Kanban projects={projects} columns={columns} edit={edit} create={create} />;
-  if (view === "timeline") return <Timeline projects={projects} edit={edit} create={create} />;
-  return <ProjectList projects={projects} columns={columns} />;
+  return (
+    <div className={styles.projectViews}>
+      {view === "kanban" ? (
+        <Kanban projects={projects} columns={columns} edit={edit} create={create} />
+      ) : view === "timeline" ? (
+        <Timeline projects={projects} edit={edit} create={create} />
+      ) : (
+        <ProjectList projects={projects} columns={columns} />
+      )}
+    </div>
+  );
 }
 
 /** What a view changes: a status column id, or days. */
@@ -214,7 +228,8 @@ function isSpent(entry: Pending, note: TypedNote): boolean {
   return entry.writing === 0 && note.modified_at !== entry.modifiedAt;
 }
 
-function openNote(event: MouseEvent | KeyboardEvent, path: string) {
+/** Opens a project's note; with Cmd held, beside the current page. */
+function openNote(event: { metaKey: boolean; ctrlKey: boolean }, path: string) {
   const open = event.metaKey || event.ctrlKey ? openLinkedPage : navigateToFile;
   void open(path).catch((error: unknown) => {
     window.alert(`Failed to open: ${error instanceof Error ? error.message : String(error)}`);
@@ -293,77 +308,102 @@ function NewProject({ onCreate }: { onCreate: (name: string) => Promise<void> })
 
 /* List ------------------------------------------------------------------ */
 
+interface ListRow extends Record<string, unknown> {
+  path: string;
+  name: string;
+  /** The column's place on the board, so sorting by status follows the board. */
+  status: number;
+  start: Day | null;
+  deadline: Day | null;
+  edited: number;
+}
+
 function ProjectList({ projects, columns }: { projects: Project[]; columns: StatusColumn[] }) {
-  const onKeyDown = (event: KeyboardEvent<HTMLTableRowElement>, path: string) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    openNote(event, path);
-  };
+  const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
+  const rows = useMemo<ListRow[]>(
+    () =>
+      projects.map((project) => ({
+        path: project.note.path,
+        name: noteTitle(project.note),
+        status: columns.findIndex((c) => c.id === project.status),
+        start: project.start,
+        deadline: project.deadline,
+        edited: project.note.modified_at,
+      })),
+    [projects, columns],
+  );
+  const day = (value: unknown) => (typeof value === "number" ? formatDay(value) : "");
+  const now = today();
   return (
-    <table className={spaceStyles.list}>
-      <colgroup>
-        <col style={{ width: "40%" }} />
-        <col style={{ width: "15%" }} />
-        <col style={{ width: "15%" }} />
-        <col style={{ width: "15%" }} />
-        <col style={{ width: "15%" }} />
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Status</th>
-          <th>Start</th>
-          <th>Deadline</th>
-          <th>Last edited</th>
-        </tr>
-      </thead>
-      <tbody>
-        {projects.map((project) => (
-          <tr
-            key={project.note.path}
-            tabIndex={0}
-            onClick={(event) => openNote(event, project.note.path)}
-            onKeyDown={(event) => onKeyDown(event, project.note.path)}
-          >
-            <td>{noteTitle(project.note)}</td>
-            <td>
-              <StatusPill status={project.status} columns={columns} />
-            </td>
-            <td>{project.start === null ? "" : formatDay(project.start)}</td>
-            <td>{project.deadline === null ? "" : formatDay(project.deadline)}</td>
-            <td>{formatRelativeTime(project.note.modified_at) ?? ""}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <SortableDataTable<ListRow>
+      rows={rows}
+      rowKey="path"
+      caption="Projects"
+      defaultSort={{ key: "edited", direction: "desc" }}
+      columns={[
+        {
+          key: "name",
+          label: "Name",
+          width: "40%",
+          render: (_, row) => (
+            <button
+              type="button"
+              className={styles.rowName}
+              onClick={(event) => openNote(event, row.path)}
+            >
+              {row.name}
+            </button>
+          ),
+        },
+        {
+          key: "status",
+          label: "Status",
+          numeric: false,
+          render: (_, row) => <StatusTag status={byPath.get(row.path)!.status} columns={columns} />,
+        },
+        { key: "start", label: "Start", numeric: false, render: day },
+        {
+          key: "deadline",
+          label: "Deadline",
+          numeric: false,
+          render: (_, row) => <DeadlineTag project={byPath.get(row.path)!} now={now} />,
+        },
+        {
+          key: "edited",
+          label: "Last edited",
+          numeric: false,
+          render: (value) => formatRelativeTime(value as number) ?? "",
+        },
+      ]}
+    />
   );
 }
 
-function StatusPill({ status, columns }: { status: string; columns: StatusColumn[] }) {
-  return status === NO_STATUS ? (
-    <span className={spaceStyles.status} data-empty="">
-      No status
-    </span>
-  ) : (
-    <span className={spaceStyles.status} data-status={status}>
-      {statusLabel(columns, status)}
-    </span>
+/** A Notion-style tag: Arc's badge in one of the palette's colours. */
+function Tag({ tone, children }: { tone: TagTone; children: string }) {
+  return (
+    <Badge size="sm" className={styles.tag} data-tone={tone}>
+      {children}
+    </Badge>
   );
+}
+
+function StatusTag({ status, columns }: { status: string; columns: StatusColumn[] }) {
+  const tone = statusTone(status);
+  if (tone === null) return <span className={styles.noStatus}>No status</span>;
+  return <Tag tone={tone}>{statusLabel(columns, status)}</Tag>;
+}
+
+function DeadlineTag({ project, now }: { project: Project; now: Day }) {
+  const tag = deadlineTag(project, now);
+  return tag ? <Tag tone={tag.tone}>{tag.label}</Tag> : null;
 }
 
 /* Kanban ---------------------------------------------------------------- */
 
-/** Pointer travel before a press on a card becomes a drag. */
-const DRAG_THRESHOLD_PX = 4;
-
-interface CardDrag {
-  project: Project;
-  /** The press point inside the card, so the card stays under the pointer. */
-  offsetX: number;
-  offsetY: number;
-  width: number;
-}
-
+/** Arc's kanban block over the projects: a card per project, a column per
+ *  status. Moving a card writes its Status; "Add project" makes a note. The
+ *  order inside a column has no field in the note, so it lasts this session. */
 function Kanban({
   projects,
   columns,
@@ -375,180 +415,68 @@ function Kanban({
   edit: EditProject;
   create: CreateProject;
 }) {
-  const [drag, setDrag] = useState<CardDrag | null>(null);
-  const [target, setTarget] = useState<string | null>(null);
-  const ghost = useRef<HTMLDivElement>(null);
-  const justDragged = useRef(false);
-  const [focusPath, setFocusPath] = useState<string | null>(null);
-  const board = useRef<HTMLDivElement>(null);
+  const [order, setOrder] = useState<readonly string[]>([]);
+  const now = today();
 
-  const byColumn = useMemo(() => {
-    const map = new Map<string, Project[]>(columns.map((c) => [c.id, []]));
-    for (const project of projects) map.get(project.status)?.push(project);
-    return map;
-  }, [projects, columns]);
-
-  // A card moved by keyboard lands in another column's list; keep focus on it.
-  useLayoutEffect(() => {
-    if (!focusPath) return;
-    const card = board.current?.querySelector<HTMLElement>(
-      `[data-card="${CSS.escape(focusPath)}"]`,
+  const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
+  const cards = useMemo<KanbanCard[]>(() => {
+    const rank = new Map(order.map((path, i) => [path, i]));
+    // Projects not placed by hand yet (new, or never moved) keep the newest-edit order, first.
+    const sorted = [...projects].sort(
+      (a, b) => (rank.get(a.note.path) ?? -1) - (rank.get(b.note.path) ?? -1),
     );
-    card?.focus();
-    setFocusPath(null);
-  }, [focusPath, projects]);
+    return sorted.map((project) => ({
+      id: project.note.path,
+      title: noteTitle(project.note),
+      column: project.status,
+      assignee: "",
+      meta: project.deadline === null ? undefined : <DeadlineTag project={project} now={now} />,
+    }));
+  }, [projects, order, now]);
 
-  const move = (project: Project, columnId: string) => {
-    if (columnId === project.status) return;
-    edit(project, { status: columnId });
+  const onCardsChange = (next: KanbanCard[]) => {
+    for (const card of next) {
+      const project = byPath.get(card.id);
+      if (!project) {
+        // "Add project" made a card with an id of its own: it becomes a note.
+        create(card.title, { status: card.column }).catch((error: unknown) => {
+          window.alert(error instanceof Error ? error.message : String(error));
+        });
+      } else if (project.status !== card.column) {
+        edit(project, { status: card.column });
+      }
+    }
+    setOrder(next.filter((card) => byPath.has(card.id)).map((card) => card.id));
   };
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>, project: Project) => {
-    if (event.button !== 0) return;
-    const card = event.currentTarget;
-    const rect = card.getBoundingClientRect();
-    const startX = event.clientX;
-    const startY = event.clientY;
-    let dragging: CardDrag | null = null;
-    let over: string | null = null;
-
-    const place = (x: number, y: number) => {
-      if (!dragging || !ghost.current) return;
-      ghost.current.style.transform = `translate(${x - dragging.offsetX}px, ${y - dragging.offsetY}px)`;
-    };
-    const columnAt = (x: number, y: number) =>
-      (document.elementFromPoint(x, y)?.closest("[data-column]") as HTMLElement | null)?.dataset
-        .column ?? null;
-
-    const onMove = (e: PointerEvent) => {
-      if (!dragging) {
-        if (Math.hypot(e.clientX - startX, e.clientY - startY) < DRAG_THRESHOLD_PX) return;
-        dragging = {
-          project,
-          offsetX: startX - rect.left,
-          offsetY: startY - rect.top,
-          width: rect.width,
+  return (
+    <KanbanBoard
+      className={styles.board}
+      columns={columns.map((column) => {
+        const tone = statusTone(column.id);
+        return {
+          id: column.id,
+          name: column.label,
+          label: tone ? <Tag tone={tone}>{column.label}</Tag> : column.label,
         };
-        setDrag(dragging);
-      }
-      place(e.clientX, e.clientY);
-      const next = columnAt(e.clientX, e.clientY);
-      if (next !== over) {
-        over = next;
-        setTarget(next);
-      }
-    };
-    const finish = (drop: boolean) => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onCancel);
-      window.removeEventListener("keydown", onKey, true);
-      if (!dragging) return;
-      // The click that ends a drag must not open the note.
-      justDragged.current = true;
-      window.setTimeout(() => (justDragged.current = false), 0);
-      setDrag(null);
-      setTarget(null);
-      if (drop && over) move(project, over);
-    };
-    const onUp = () => finish(true);
-    const onCancel = () => finish(false);
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key !== "Escape" || !dragging) return;
-      e.preventDefault();
-      finish(false);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onCancel);
-    window.addEventListener("keydown", onKey, true);
-  };
-
-  // The ghost's first frame sits where the card was, not at the corner.
-  useLayoutEffect(() => {
-    if (!drag || !ghost.current) return;
-    const card = board.current?.querySelector<HTMLElement>(
-      `[data-card="${CSS.escape(drag.project.note.path)}"]`,
-    );
-    const rect = card?.getBoundingClientRect();
-    if (rect) ghost.current.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
-  }, [drag]);
-
-  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, project: Project) => {
-    if (!event.altKey || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
-    event.preventDefault();
-    const index = columns.findIndex((c) => c.id === project.status);
-    const next = columns[index + (event.key === "ArrowLeft" ? -1 : 1)];
-    if (!next) return;
-    move(project, next.id);
-    setFocusPath(project.note.path);
-  };
-
-  return (
-    <div className={styles.kanban} ref={board} data-dragging={drag ? "" : undefined}>
-      {columns.map((column) => {
-        const cards = byColumn.get(column.id) ?? [];
-        return (
-          <section
-            key={column.id}
-            className={styles.column}
-            data-column={column.id}
-            data-target={
-              target === column.id && drag?.project.status !== column.id ? "" : undefined
-            }
-            aria-label={column.label}
-          >
-            <header className={styles.columnHeader}>
-              <span className={styles.columnName}>{column.label}</span>
-              <span className={styles.columnCount}>{cards.length}</span>
-            </header>
-            <div className={styles.columnCards}>
-              {cards.map((project) => (
-                <button
-                  key={project.note.path}
-                  type="button"
-                  data-card={project.note.path}
-                  data-lifted={drag?.project.note.path === project.note.path ? "" : undefined}
-                  className={styles.card}
-                  onPointerDown={(event) => onPointerDown(event, project)}
-                  onClick={(event) => {
-                    if (!justDragged.current) openNote(event, project.note.path);
-                  }}
-                  onKeyDown={(event) => onKeyDown(event, project)}
-                >
-                  <CardBody project={project} />
-                </button>
-              ))}
-            </div>
-            <NewProject onCreate={(name) => create(name, { status: column.id })} />
-          </section>
-        );
       })}
-      {drag && (
-        <div ref={ghost} className={styles.ghost} style={{ width: drag.width }} aria-hidden>
-          <div className={styles.card}>
-            <CardBody project={drag.project} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CardBody({ project }: { project: Project }) {
-  return (
-    <>
-      <span className={styles.cardTitle}>{noteTitle(project.note)}</span>
-      {project.deadline !== null && (
-        <span className={styles.cardMeta}>Due {formatDay(project.deadline)}</span>
-      )}
-    </>
+      people={[]}
+      currentUser=""
+      cards={cards}
+      onCardsChange={onCardsChange}
+      onCardOpen={(card, event) => openNote(event, card.id)}
+      toolbar={false}
+      showIds={false}
+      noun="project"
+    />
   );
 }
 
 /* Timeline -------------------------------------------------------------- */
 
 const DAY_PX = 3;
+/** Pointer travel before a press on a bar becomes a drag. */
+const DRAG_THRESHOLD_PX = 4;
 const MIN_BAR_PX = 20;
 /** Grab width of a bar's ends. */
 const HANDLE_PX = 6;
@@ -862,7 +790,7 @@ function Timeline({
                     role="button"
                     tabIndex={0}
                     data-bar={project.note.path}
-                    data-done={project.status === "done" ? "" : undefined}
+                    data-tone={statusTone(project.status) ?? "gray"}
                     data-dragging={preview?.path === project.note.path ? "" : undefined}
                     className={styles.bar}
                     style={{ left, width }}
@@ -878,6 +806,7 @@ function Timeline({
                   </div>
                   <span className={styles.barDates} style={{ left: left + width + 8 }}>
                     {datesLabel(project)}
+                    {alarm(project, now)}
                   </span>
                   {(before || after) && (
                     <button
@@ -929,6 +858,12 @@ function Timeline({
       </div>
     </div>
   );
+}
+
+/** The deadline tag beside a bar, only when it asks for attention. */
+function alarm(project: Project, now: Day) {
+  const tag = deadlineTag(project, now);
+  return tag && tag.tone !== "gray" ? <Tag tone={tag.tone}>{tag.label}</Tag> : null;
 }
 
 function datesLabel(project: Project): string {

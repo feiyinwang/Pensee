@@ -141,6 +141,53 @@ export function statusLabel(columns: readonly StatusColumn[], id: string): strin
   return columns.find((c) => c.id === id)?.label ?? id;
 }
 
+/** Tag colours, Notion's palette. Each carries one meaning: blue is work in
+ *  progress, green is done, red is overdue, orange is due soon, gray is
+ *  neither; the rest tell apart statuses the vault adds itself. */
+export type TagTone =
+  | "gray"
+  | "brown"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "purple"
+  | "pink"
+  | "red";
+
+const STATUS_TONES: Record<string, TagTone> = { "to-do": "gray", ongoing: "blue", done: "green" };
+/** Colours left for statuses the vault adds: none of the ones with a meaning. */
+const OTHER_TONES: readonly TagTone[] = ["purple", "brown", "pink", "yellow"];
+
+/** The tag colour of a status column; null for No status, which has no tag. */
+export function statusTone(id: string): TagTone | null {
+  if (id === NO_STATUS) return null;
+  return STATUS_TONES[id] ?? OTHER_TONES[hash(id) % OTHER_TONES.length];
+}
+
+function hash(text: string): number {
+  let h = 0;
+  for (let i = 0; i < text.length; i += 1) h = (Math.imul(h, 31) + text.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** Days ahead that count as due soon. */
+export const DUE_SOON_DAYS = 7;
+
+/** A project's deadline as a tag: red and "Overdue" once it has passed,
+ *  orange within a week, gray otherwise and for any done project. */
+export function deadlineTag(project: Project, now: Day): { tone: TagTone; label: string } | null {
+  if (project.deadline === null) return null;
+  const date = formatDay(project.deadline);
+  if (project.status === "done") return { tone: "gray", label: `Due ${date}` };
+  const days = project.deadline - now;
+  if (days < 0) return { tone: "red", label: `Overdue · ${date}` };
+  if (days === 0) return { tone: "orange", label: "Due today" };
+  if (days === 1) return { tone: "orange", label: "Due tomorrow" };
+  if (days <= DUE_SOON_DAYS) return { tone: "orange", label: `Due ${date}` };
+  return { tone: "gray", label: `Due ${date}` };
+}
+
 /** The value a column writes into `Status` (No status writes it empty). */
 export function statusValue(column: StatusColumn): string {
   return column.id === NO_STATUS ? "" : column.label;

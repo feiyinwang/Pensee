@@ -1,146 +1,110 @@
 /* Project views (SPECs/project-views-spec.md). */
 
-/* Kanban -------------------------------------------------------------- */
-
-.kanban {
-  display: grid;
-  grid-auto-columns: minmax(220px, 1fr);
-  grid-auto-flow: column;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 8px;
+/* Arc pieces (docs/arc.md): Arc tokens Writer doesn't define keep Arc's
+   opaque neutrals, so map them onto Writer's own here, as the agent panel does. */
+.projectViews {
+  --surface: transparent;
+  --surface-raised: var(--surface-primary);
+  --surface-muted: var(--surface-subtle);
+  --border: var(--line-subtler);
+  --border-subtle: var(--line-subtler);
+  --border-strong: var(--line-subtle);
+  --foreground: var(--text-primary);
 }
 
-.kanban[data-dragging] {
-  cursor: grabbing;
-  user-select: none;
+/* Tags (Notion's palette). A colour has one meaning: blue in progress, green
+   done, red overdue, orange due soon, gray neither (lib/projects.ts). The fill
+   is a soft tint and the text mixes the hue into the theme's text colour, so
+   both stay readable on light and dark themes. */
+.projectViews {
+  --tag-gray: oklch(66% 0.01 250);
+  --tag-brown: oklch(64% 0.06 55);
+  --tag-orange: oklch(72% 0.15 55);
+  --tag-yellow: oklch(82% 0.14 92);
+  --tag-green: oklch(70% 0.15 150);
+  --tag-blue: oklch(68% 0.13 245);
+  --tag-purple: oklch(68% 0.14 300);
+  --tag-pink: oklch(70% 0.14 350);
+  --tag-red: oklch(65% 0.2 25);
 }
 
-.column {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 240px;
-  padding: 8px;
-  border-radius: 12px;
-  background: var(--surface-subtle);
-  outline: 2px solid transparent;
-  outline-offset: -2px;
-  transition: outline-color var(--motion-fast) var(--ease-out);
+.projectViews [data-tone="gray"] {
+  --tag: var(--tag-gray);
+}
+.projectViews [data-tone="brown"] {
+  --tag: var(--tag-brown);
+}
+.projectViews [data-tone="orange"] {
+  --tag: var(--tag-orange);
+}
+.projectViews [data-tone="yellow"] {
+  --tag: var(--tag-yellow);
+}
+.projectViews [data-tone="green"] {
+  --tag: var(--tag-green);
+}
+.projectViews [data-tone="blue"] {
+  --tag: var(--tag-blue);
+}
+.projectViews [data-tone="purple"] {
+  --tag: var(--tag-purple);
+}
+.projectViews [data-tone="pink"] {
+  --tag: var(--tag-pink);
+}
+.projectViews [data-tone="red"] {
+  --tag: var(--tag-red);
 }
 
-.column[data-target] {
-  outline-color: var(--accent);
+.tag {
+  --badge-color: var(--tag);
+  --badge-background: color-mix(in oklab, var(--tag) 24%, transparent);
+  --badge-foreground: color-mix(in oklab, var(--tag) 45%, var(--fg-base));
+  --badge-border: transparent;
+  flex-shrink: 0;
+  border-radius: 6px;
 }
 
-.columnHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 6px;
-  margin-bottom: 6px;
+/* Arc's table tints the sorted column twice, its band and the cells, which
+   only reads once when the cells are opaque. On glass the band alone does it. */
+.projectViews table th[data-sorted],
+.projectViews table td[data-sorted] {
+  --cell-base: transparent;
 }
 
-.columnName {
+/* Kanban: Arc's block, page-tall instead of its fixed 640px, without its own frame. */
+.projectViews .board {
+  height: calc(100vh - 200px);
+  border: 0;
+  border-radius: 0;
+}
+
+/* List: the name opens the note; the rest of the row is Arc's table. */
+.rowName {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--fg-base);
-}
-
-.columnCount {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.columnCards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line-subtler);
-  background: var(--surface-primary);
   text-align: left;
-  cursor: grab;
-  touch-action: none;
 }
 
-/* The lift on hover is a shadow layer fading in, as on Library covers. */
-.card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: 0 6px 16px -6px rgb(0 0 0 / 0.3);
-  opacity: 0;
-  transition: opacity var(--motion-base) var(--ease-out);
+.rowName:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .kanban:not([data-dragging]) .card:hover::after {
-    opacity: 1;
-  }
-}
-
-.card:focus-visible {
+.rowName:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-.card[data-lifted] {
-  opacity: 0.4;
-}
-
-.cardTitle {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--fg-base);
-}
-
-.cardMeta {
+.noStatus {
   white-space: nowrap;
   font-size: 12px;
   color: var(--text-muted);
-}
-
-/* Follows the pointer every frame through `transform`, set from script. */
-.ghost {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 50;
-  pointer-events: none;
-  will-change: transform;
-}
-
-.ghost .card {
-  cursor: grabbing;
-  rotate: 1.5deg;
-}
-
-.ghost .card::after {
-  opacity: 1;
-  box-shadow: 0 14px 28px -10px rgb(0 0 0 / 0.35);
 }
 
 /* Timeline ------------------------------------------------------------ */
@@ -308,15 +272,10 @@
   top: 8px;
   height: calc(var(--row-height) - 16px);
   border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border: 1px solid color-mix(in oklab, var(--tag) 70%, transparent);
+  background: color-mix(in oklab, var(--tag) 35%, transparent);
   cursor: grab;
   touch-action: none;
-}
-
-.bar[data-done] {
-  border-color: var(--line-subtle);
-  background: var(--surface-selected);
 }
 
 .bar[data-dragging] {
@@ -347,7 +306,10 @@
 .barDates {
   position: absolute;
   top: 0;
-  line-height: var(--row-height);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--row-height);
   white-space: nowrap;
   font-size: 12px;
   color: var(--text-muted);
@@ -405,7 +367,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* New project (Kanban column foot, Timeline last row) ------------------ */
+/* New project (Timeline last row) ------------------------------------- */
 
 .newButton {
   display: flex;
@@ -491,12 +453,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .column,
-  .card::after,
   .newButton {
     transition: none;
-  }
-  .ghost .card {
-    rotate: none;
   }
 }

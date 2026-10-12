@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- **Projects** is now built from Arc components. **List** is a sortable table: click any header to sort by it. **Kanban** cards lift, tilt and spring into place as you drag them; with the keyboard, press **Space** to pick a card up, the arrow keys to move it and **Space** to drop it. Status and deadlines are coloured tags, as in Notion, and each colour means one thing: **To-do** is gray, **Ongoing** blue and **Done** green. A deadline that has passed is a red **Overdue** tag, one due within a week is orange, and the rest are gray, as is any deadline on a done project. Timeline bars take their status colour, with a red or orange tag beside them when the deadline needs attention.
 - A passage highlighted onto a board is now the same size as a rectangle you draw, instead of half again as wide. A long passage still makes it taller.
 - Spaces open faster. Library, Projects and Inspirations used to show an empty page for a moment before their notes appeared; now the notes are asked for straight away, and a space you've opened before shows its notes the instant you click it.
 - Add projects without leaving **Projects**: click **+ New project** at the bottom of a kanban column or under the last timeline row, type a name and press Enter. The note is made at the top of your vault with `Type: Project`, plus that column's **Status**, or a **Start** of today on the timeline, and shows right away. The field stays open so you can add the next one; press Esc to stop. A name that's empty or already taken says so instead.
