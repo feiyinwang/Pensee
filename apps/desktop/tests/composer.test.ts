@@ -1,0 +1,146 @@
+import { describe, expect, test } from "vite-plus/test";
+import {
+  EMPTY_DRAFT,
+  appendBlock,
+  composerTarget,
+  dayLabel,
+  effectiveKind,
+  isDraftEmpty,
+  submitLabel,
+  withDay,
+  withKind,
+  type ComposerDraft,
+} from "../src/lib/composer";
+import type { TypedNote } from "../src/lib/tauri";
+
+const NOW = new Date(2026, 9, 12, 15, 0);
+
+function draft(patch: Partial<ComposerDraft>): ComposerDraft {
+  return { ...EMPTY_DRAFT, ...patch };
+}
+
+function video(path: string, link: string): TypedNote {
+  return {
+    path,
+    relative_path: path.replace("/vault/", ""),
+    name: "Talk",
+    title: "Talk",
+    note_type: "YouTube",
+    properties: { link },
+  } as unknown as TypedNote;
+}
+
+describe("effectiveKind", () => {
+  test("a pasted link takes the site's kind", () => {
+    expect(effectiveKind(draft({ title: "https://youtu.be/dQw4w9WgXcQ" }))).toBe("video");
+    expect(effectiveKind(draft({ title: "https://arxiv.org/abs/2401.00001" }))).toBe("paper");
+  });
+
+  test("a site Writer doesn't know is a book, as in Library", () => {
+    expect(effectiveKind(draft({ title: "https://example.com/post" }))).toBe("book");
+  });
+
+  test("a kind the user picked wins over the link", () => {
+    expect(
+      effectiveKind(draft({ title: "https://youtu.be/x", kind: "course", kindPicked: true })),
+    ).toBe("course");
+  });
+
+  test("a date makes a note", () => {
+    expect(effectiveKind(draft({ kind: "video", day: "2026-10-12" }))).toBe("note");
+  });
+
+  test("an attached file is a book unless paper was picked", () => {
+    expect(effectiveKind(draft({ file: "/x/a.pdf" }))).toBe("book");
+    expect(effectiveKind(draft({ file: "/x/a.pdf", kind: "paper", kindPicked: true }))).toBe(
+      "paper",
+    );
+  });
+});
+
+describe("composerTarget", () => {
+  test("nothing typed makes nothing", () => {
+    expect(composerTarget(EMPTY_DRAFT, null)).toEqual({ kind: "empty" });
+    expect(isDraftEmpty(EMPTY_DRAFT)).toBe(true);
+  });
+
+  test("text without a title is an untitled note", () => {
+    expect(composerTarget(draft({ body: "a thought" }), null)).toEqual({
+      kind: "note",
+      name: "Untitled",
+      folder: null,
+    });
+  });
+
+  test("a note goes to its folder", () => {
+    expect(composerTarget(draft({ title: "Plan", folder: "Inbox" }), null)).toEqual({
+      kind: "note",
+      name: "Plan",
+      folder: "Inbox",
+    });
+  });
+
+  test("a link already in Library opens that note", () => {
+    const held = video("/vault/Talk.md", "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    const target = composerTarget(draft({ title: "https://youtu.be/dQw4w9WgXcQ" }), [held]);
+    expect(target).toMatchObject({ kind: "link", library: "video", existing: held });
+    expect(submitLabel(target, false, NOW)).toBe("Open note");
+  });
+
+  test("a Library kind with a title adds it by title", () => {
+    const target = composerTarget(draft({ title: "Atomic Habits", kind: "book" }), null);
+    expect(target).toEqual({ kind: "title", title: "Atomic Habits", library: "book" });
+    expect(submitLabel(target, false, NOW)).toBe("Add book");
+  });
+
+  test("an unpicked PDF leaves its kind to the import", () => {
+    expect(composerTarget(draft({ file: "/x/a.pdf" }), null)).toEqual({
+      kind: "file",
+      path: "/x/a.pdf",
+      library: null,
+    });
+  });
+});
+
+describe("labels", () => {
+  test("days read as words near today", () => {
+    expect(dayLabel("2026-10-12", NOW)).toBe("Today");
+    expect(dayLabel("2026-10-13", NOW)).toBe("Tomorrow");
+    expect(dayLabel("2026-10-11", NOW)).toBe("Yesterday");
+    expect(dayLabel("2026-10-20", NOW)).toBe("20 Oct");
+    expect(dayLabel("2025-10-20", NOW)).toBe("20 Oct 2025");
+  });
+
+  test("a day's button adds text, or opens the day without any", () => {
+    const target = { kind: "day", day: "2026-10-12" } as const;
+    expect(submitLabel(target, true, NOW)).toBe("Add to today");
+    expect(submitLabel(target, false, NOW)).toBe("Open today");
+  });
+});
+
+describe("chip changes", () => {
+  test("setting a date moves a typed title to the top of the text", () => {
+    const next = withDay(
+      draft({ title: "Standup", body: "went fine", kind: "video" }),
+      "2026-10-12",
+    );
+    expect(next).toMatchObject({ day: "2026-10-12", title: "", body: "Standup\nwent fine" });
+    expect(next.kind).toBe("note");
+  });
+
+  test("picking a Library kind clears the date", () => {
+    expect(withKind(draft({ day: "2026-10-12" }), "podcast")).toMatchObject({
+      kind: "podcast",
+      kindPicked: true,
+      day: null,
+    });
+  });
+});
+
+describe("appendBlock", () => {
+  test("adds a blank line apart from what is there", () => {
+    expect(appendBlock("- one\n\n", "two")).toBe("- one\n\ntwo\n");
+    expect(appendBlock("", "two")).toBe("two\n");
+    expect(appendBlock("keep", "  ")).toBe("keep");
+  });
+});

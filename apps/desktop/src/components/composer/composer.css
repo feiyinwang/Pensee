@@ -1,0 +1,314 @@
+/* The ⌘T composer (SPECs/composer-spec.md): Linear's new-issue layout on
+   Writer's card surface. Arc pieces (chip menus, the switch) draw on Writer's
+   translucent surfaces through the token remap below, as in the agent panel. */
+
+.composer {
+  --surface: var(--surface-subtle);
+  --surface-raised: transparent;
+  --surface-muted: var(--item-hover-bg);
+  --border: var(--line-subtler);
+  --border-subtle: var(--line-subtler);
+  --border-strong: var(--line-subtle);
+  --foreground: var(--text-primary);
+  --shadow-resting: none;
+  /* Chips are pills, 28px tall, like Linear's property row. */
+  --radius-control: 999px;
+  --control-height-sm: 28px;
+  --control-track: var(--surface-subtle-strong);
+  --control-track-hover: var(--surface-selected);
+  --control-on: var(--accent-solid);
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: inherit;
+  font-family: var(--ui-font);
+}
+
+.composer-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 52px;
+  flex-shrink: 0;
+  /* Same 16px insets as the chip row and footer, so the close button and the
+     main button share a right edge. */
+  padding: 0 16px;
+}
+
+.composer-heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+/* A chip that isn't a menu: the date trigger, a disabled destination, the
+   attached file. Matches Arc's dropdown trigger under the remap above. */
+.composer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 260px;
+  height: var(--control-height-sm);
+  padding: 0 12px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-hover) var(--ease-hover),
+    border-color var(--motion-hover) var(--ease-hover);
+}
+
+button.composer-chip:not(:disabled) {
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.composer-chip:not(:disabled):hover,
+  .composer-chip[data-state="open"] {
+    border-color: var(--border-strong);
+    background: var(--surface-muted);
+  }
+}
+
+.composer-chip:disabled,
+.composer-chip[aria-disabled="true"] {
+  color: var(--text-muted);
+}
+
+.composer-chip-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.composer-chip-remove {
+  display: flex;
+  margin-right: -6px;
+  padding: 3px;
+  border-radius: 999px;
+  color: var(--text-icon-muted);
+}
+
+.composer-chip-remove:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-secondary);
+}
+
+/* Arc's trigger, sized to the chip row. */
+.composer [aria-haspopup="menu"] {
+  height: var(--control-height-sm);
+  min-height: 0;
+  padding: 0 12px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* The type chip keeps the width of its longest kind (Podcast), so switching
+   kinds never shifts the date chip beside it. */
+.composer-chips > [aria-haspopup="menu"]:first-child {
+  min-width: 124px;
+}
+
+.composer-chips > [aria-haspopup="menu"]:first-child > svg:last-child {
+  margin-left: auto;
+}
+
+.composer-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  /* The text starts where the chips' icons do (16px row inset + 1px border + 12px chip
+     padding), as Linear lines its title up with its property pills. */
+  padding: 4px 29px 0;
+}
+
+.composer-title {
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 32px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composer-title::placeholder,
+.composer-body::placeholder {
+  color: var(--text-muted);
+}
+
+.composer-body {
+  min-height: 72px;
+  max-height: 40vh;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow-x: hidden;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.composer-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 16px 0;
+}
+
+.composer-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.composer-link {
+  flex-shrink: 0;
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.composer-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px 16px 16px;
+}
+
+.composer-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--text-icon-muted);
+  transition:
+    background-color var(--motion-hover) var(--ease-hover),
+    color var(--motion-hover) var(--ease-hover);
+}
+
+.composer-icon-button--ring {
+  border: 1px solid var(--line-subtler);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+
+.composer-icon-button:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-secondary);
+}
+
+.composer-switch {
+  flex-shrink: 0;
+  min-height: 0;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.composer-submit {
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--text-primary);
+  color: var(--surface-primary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-hover) var(--ease-hover),
+    scale var(--motion-fast) var(--ease-out);
+}
+
+.composer-submit:active:not(:disabled) {
+  scale: 0.97;
+}
+
+.composer-submit:disabled {
+  background: var(--surface-subtle-strong);
+  color: var(--text-muted);
+}
+
+.composer-date {
+  padding: 8px;
+}
+
+.composer-date-clear {
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.composer-date-clear:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+/* ⌘T: over the page, where ⌘O's palette sits. No entrance motion: it opens
+   from the keyboard, often, so it is simply there (docs/motion.md). */
+.composer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: transparent;
+}
+
+.composer-dialog {
+  position: fixed;
+  top: 16%;
+  left: 50%;
+  z-index: 51;
+  display: flex;
+  width: min(640px, calc(100vw - 32px));
+  max-height: 76vh;
+  transform: translateX(-50%);
+  outline: none;
+}
+
+/* The New tab page: the same card, in the page. */
+.composer-inline {
+  position: relative;
+  display: flex;
+  width: min(640px, 100%);
+  outline: none;
+}

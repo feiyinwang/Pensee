@@ -3,9 +3,7 @@ import {
   BookOpen,
   Clapperboard,
   FileText,
-  FileUp,
   GraduationCap,
-  Library,
   Mic,
   type LucideIcon,
 } from "lucide-react";
@@ -17,10 +15,9 @@ import {
   type LibraryKind,
 } from "@/lib/library-add";
 import type { TypedNote } from "@/lib/tauri";
-import { safePageName } from "@/lib/wiki-pages";
 
 // The palette's "Add to Library" rows (SPECs/add-to-library-spec.md): in ⌘O
-// when the query is a link, and in add mode for links, titles and files.
+// when the query is a link. Titles and files are added from the composer.
 // Rows are worked out from the query alone, with no network, so they never
 // change under the cursor.
 
@@ -47,10 +44,7 @@ export interface LibraryGroup {
 
 export interface LibraryActions {
   addLink: (link: NonNullable<ReturnType<typeof parseLibraryLink>>, kind: LibraryKind) => void;
-  addTitle: (title: string, kind: LibraryKind) => void;
   openNote: (path: string) => void;
-  chooseFile: () => void;
-  importAppleBooks: () => void;
 }
 
 /** `first`, then the other kinds in Library's tab order. */
@@ -64,76 +58,32 @@ function kindOfType(noteType: string): LibraryKind {
 }
 
 /**
- * The groups to show. `addMode` is the palette's add mode; otherwise (⌘O)
- * only a query that is one link gets rows. `notes` are the Library notes, or
- * null while they load (a link is then offered as new).
+ * The groups to show: rows only for a query that is one link. `notes` are
+ * the Library notes, or null while they load (a link is then offered as new).
  */
 export function libraryGroups({
   query,
-  addMode,
-  preferKind,
   notes,
   actions,
 }: {
   query: string;
-  addMode: boolean;
-  preferKind: LibraryKind | null;
   notes: readonly TypedNote[] | null;
   actions: LibraryActions;
 }): LibraryGroup[] {
   const link = parseLibraryLink(query);
-  if (link) {
-    const existing = notes ? findLibraryNote(notes, link.url) : null;
-    if (existing) {
-      return [
-        {
-          heading: "Already in your Library",
-          rows: [
-            {
-              value: `library:open:${existing.path}`,
-              label: existing.title ?? existing.name,
-              description: `${LIBRARY_KIND_LABELS[kindOfType(existing.note_type)]} · ${existing.relative_path}`,
-              icon: KIND_ICONS[kindOfType(existing.note_type)],
-              run: () => actions.openNote(existing.path),
-            },
-          ],
-        },
-      ];
-    }
-    const first = preferKind ?? link.guess;
+  if (!link) return [];
+  const existing = notes ? findLibraryNote(notes, link.url) : null;
+  if (existing) {
     return [
       {
-        heading: "Add to Library",
-        rows: kindsFrom(first).map((kind, index) => ({
-          value: `library:link:${kind}`,
-          label: `${LIBRARY_KIND_LABELS[kind]}: ${link.host}`,
-          description:
-            index === 0 && !preferKind && link.guess === kind ? "Guessed from the link" : undefined,
-          icon: KIND_ICONS[kind],
-          run: () => actions.addLink(link, kind),
-        })),
-      },
-    ];
-  }
-  if (!addMode) return [];
-
-  const title = safePageName(query);
-  if (!title) {
-    return [
-      {
-        heading: "Add to Library",
+        heading: "Already in your Library",
         rows: [
           {
-            value: "library:choose-file",
-            label: "Choose a PDF or EPUB…",
-            icon: FileUp,
-            run: actions.chooseFile,
-          },
-          {
-            value: "library:apple-books",
-            label: "Import Apple Books Highlights",
-            icon: Library,
-            run: actions.importAppleBooks,
+            value: `library:open:${existing.path}`,
+            label: existing.title ?? existing.name,
+            description: `${LIBRARY_KIND_LABELS[kindOfType(existing.note_type)]} · ${existing.relative_path}`,
+            icon: KIND_ICONS[kindOfType(existing.note_type)],
+            run: () => actions.openNote(existing.path),
           },
         ],
       },
@@ -142,12 +92,12 @@ export function libraryGroups({
   return [
     {
       heading: "Add to Library",
-      rows: kindsFrom(preferKind ?? "book").map((kind, index) => ({
-        value: `library:title:${kind}`,
-        label: `${LIBRARY_KIND_LABELS[kind]}: ${title}`,
-        description: index === 0 ? "Title only" : undefined,
+      rows: kindsFrom(link.guess).map((kind, index) => ({
+        value: `library:link:${kind}`,
+        label: `${LIBRARY_KIND_LABELS[kind]}: ${link.host}`,
+        description: index === 0 && link.guess === kind ? "Guessed from the link" : undefined,
         icon: KIND_ICONS[kind],
-        run: () => actions.addTitle(title, kind),
+        run: () => actions.addLink(link, kind),
       })),
     },
   ];

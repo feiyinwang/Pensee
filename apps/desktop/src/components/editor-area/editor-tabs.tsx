@@ -8,13 +8,13 @@ import {
   useIsFileLoading,
   useNavigateBack,
   useNavigateForward,
-  useOpenNewTab,
   useOpenTabs,
   useResolvedDocumentTitle,
   useSetActiveTab,
   type Tab,
 } from "@/hooks/use-tabs";
 import { ScrollFade } from "@/components/scroll-fade";
+import { openComposer } from "@/hooks/use-composer";
 import { useScrollActiveTabIntoView } from "@/hooks/use-scroll-active-tab-into-view";
 import { pageKind } from "./page-kinds";
 import { showTabMenu } from "./tab-menu";
@@ -106,7 +106,6 @@ export function EditorTabs() {
   const canNavigateForward = useCanNavigateForward();
   const navigateBack = useNavigateBack();
   const navigateForward = useNavigateForward();
-  const openNewTab = useOpenNewTab();
   const [, startTransition] = useTransition();
   useScrollActiveTabIntoView();
 
@@ -170,10 +169,10 @@ export function EditorTabs() {
         </ScrollFade>
         <button
           type="button"
-          onClick={openNewTab}
+          onClick={() => openComposer()}
           className="ml-1 flex h-[var(--chrome-control-height)] w-9 shrink-0 items-center justify-center rounded-lg text-base text-[var(--text-icon-muted)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--text-secondary)]"
-          title="New tab"
-          aria-label="New tab"
+          title="New note (⌘T)"
+          aria-label="New note"
         >
           +
         </button>

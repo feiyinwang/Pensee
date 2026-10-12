@@ -5,8 +5,7 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useAgentStore } from "@/stores/agent-store";
 import { toggleSidebar } from "@/hooks/use-sidebar";
 import { toggleCalendarPanel } from "@/hooks/use-calendar-panel";
-import { openTodaysNote } from "@/hooks/use-daily-note";
-import { openLibraryAdd } from "@/hooks/use-library-add";
+import { openComposer } from "@/hooks/use-composer";
 import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 
@@ -27,15 +26,8 @@ export function useKeyboardShortcuts() {
       // Read current state at event time
       const { openCommandPalette } = useUIStore.getState();
       const { root, chromeMode } = useWorkspaceStore.getState();
-      const {
-        tabs,
-        activeTabId,
-        setActiveTab,
-        openNewTab,
-        closeActiveTab,
-        navigateBack,
-        navigateForward,
-      } = useEditorStore.getState();
+      const { tabs, activeTabId, setActiveTab, closeActiveTab, navigateBack, navigateForward } =
+        useEditorStore.getState();
       const isCompactFileMode = getWorkspaceChromeMode(root, chromeMode) === "compact-file";
 
       // Alt+Arrow: history navigation when no editable target is focused and
@@ -108,26 +100,30 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+Shift+N — create or open today's dated note.
-      // Shift uppercases `key`, so this must be tested before the Cmd+N branch.
+      // Cmd+Shift+N — the composer, dated today: the text goes into today's
+      // note (Enter with no text just opens it). Shift uppercases `key`, so
+      // this must be tested before the Cmd+N branch.
       if (mod && e.shiftKey && (e.key === "n" || e.key === "N")) {
         e.preventDefault();
-        void openTodaysNote();
+        openComposer({ today: true });
         return;
       }
 
-      // Cmd+Shift+L — Add to Library (the palette's add mode). Needs a
-      // workspace's Library to file into, like the palette command.
+      // Cmd+Shift+L — the composer, ready for Library. The composer needs a
+      // workspace to file into and is inert in compact windows.
       if (mod && e.shiftKey && (e.key === "l" || e.key === "L")) {
         e.preventDefault();
-        if (root && !isCompactFileMode) openLibraryAdd();
+        openComposer({ library: true });
         return;
       }
 
-      // Cmd+N — create new note
+      // Cmd+N — the composer; a compact window (no workspace to file into)
+      // keeps the palette's create field.
       if (mod && e.key === "n") {
         e.preventDefault();
-        if (root) openCommandPalette("create-file");
+        if (!root) return;
+        if (isCompactFileMode) openCommandPalette("create-file");
+        else openComposer();
         return;
       }
 
@@ -146,11 +142,10 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+T — new tab
+      // Cmd+T — the composer, over the page (in place on the New tab page)
       if (mod && e.key === "t") {
         e.preventDefault();
-        if (isCompactFileMode) return;
-        if (root) openNewTab();
+        openComposer();
         return;
       }
 

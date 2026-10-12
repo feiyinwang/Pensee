@@ -17,19 +17,26 @@ import {
 } from "@/components/editor-area/editor-notice-store";
 import { bringInTranscript } from "@/components/editor-area/video-transcript";
 import { useEditorStore } from "@/stores/editor-store";
-import { useUIStore } from "@/stores/ui-store";
+import { openComposer } from "@/hooks/use-composer";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
-// Adding a Library note from the palette (SPECs/add-to-library-spec.md). The
-// palette rows never touch the network; the page's title is read only once a
-// row is picked, and the note is named by it.
+// Adding a Library note (SPECs/add-to-library-spec.md), from the composer or a
+// link pasted in ⌘O. Nothing touches the network until the add is chosen; the
+// page's title is read then, and the note is named by it.
 
 // A page slower than this gets a note named from its link instead.
 const TITLE_TIMEOUT_MS = 5000;
 
-/** Open the palette's add mode, with `kind` (a Library tab's) listed first. */
+/** Open the composer ready for Library; `kind` is a Library tab's. */
 export function openLibraryAdd(kind: LibraryKind | null = null): void {
-  useUIStore.getState().openLibraryAdd(kind);
+  openComposer({ library: kind ?? true });
+}
+
+export interface LibraryAddOptions {
+  /** Text under the note's properties. */
+  body?: string;
+  /** Open the note once it is written (the composer's Keep open turns it off). */
+  open?: boolean;
 }
 
 async function linkTitle(link: LibraryLink): Promise<string | null> {
@@ -50,8 +57,8 @@ async function linkTitle(link: LibraryLink): Promise<string | null> {
 }
 
 /** Write a root note named `name` (or `name 2`, `name 3`… when taken), open
- *  it, and return its path. */
-async function createAndOpen(name: string, content: string): Promise<string> {
+ *  it unless `open` is false, and return its path. */
+async function createAndOpen(name: string, content: string, open = true): Promise<string> {
   const root = useWorkspaceStore.getState().root;
   if (!root) throw new Error("Open a folder first");
   const base = safePageName(name);
@@ -61,7 +68,7 @@ async function createAndOpen(name: string, content: string): Promise<string> {
     if (!stem) throw new Error("That has no usable name");
     if (await tauri.fileExists(`${root}/${stem}.md`)) continue;
     const { path } = await createRootNote(candidate, () => content);
-    await useEditorStore.getState().openFile(path);
+    if (open) await useEditorStore.getState().openFile(path);
     return path;
   }
   throw new Error(`Too many notes are named "${base}"`);
@@ -74,29 +81,52 @@ function reportFailure(error: unknown): void {
   );
 }
 
-/** A note of `kind` for `link`, named by the page's title. */
-export async function addLinkToLibrary(link: LibraryLink, kind: LibraryKind): Promise<void> {
+function withBody(frontmatter: string, body: string | undefined): string {
+  const text = body?.trim();
+  return text ? `${frontmatter}${text}\n` : frontmatter;
+}
+
+/** A note of `kind` for `link`, named by the page's title. Returns its path,
+ *  or null when it couldn't be made (the failure is shown). */
+export async function addLinkToLibrary(
+  link: LibraryLink,
+  kind: LibraryKind,
+  { body, open = true }: LibraryAddOptions = {},
+): Promise<string | null> {
   try {
     showEditorNotice(`Adding ${link.host}…`);
     const title = (await linkTitle(link)) || fallbackLinkTitle(link);
     const path = await createAndOpen(
       title,
-      libraryNoteContent(libraryNoteType(kind, link.host), link.url),
+      withBody(libraryNoteContent(libraryNoteType(kind, link.host), link.url), body),
+      open,
     );
     dismissEditorNotice();
     // The note opens at once; its transcript follows (it notifies on failure).
     const videoId = youtubeVideoId(link.url);
     if (videoId) void bringInTranscript(path, videoId);
+    return path;
   } catch (error) {
     reportFailure(error);
+    return null;
   }
 }
 
-/** A note of `kind` with only a title: nothing is looked up. */
-export async function addTitleToLibrary(title: string, kind: LibraryKind): Promise<void> {
+/** A note of `kind` with only a title: nothing is looked up. Returns its
+ *  path, or null when it couldn't be made (the failure is shown). */
+export async function addTitleToLibrary(
+  title: string,
+  kind: LibraryKind,
+  { body, open = true }: LibraryAddOptions = {},
+): Promise<string | null> {
   try {
-    await createAndOpen(title, libraryNoteContent(libraryNoteType(kind, null), null));
+    return await createAndOpen(
+      title,
+      withBody(libraryNoteContent(libraryNoteType(kind, null), null), body),
+      open,
+    );
   } catch (error) {
     reportFailure(error);
+    return null;
   }
 }

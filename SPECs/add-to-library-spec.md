@@ -3,27 +3,27 @@
 ## Summary
 
 One way to put a book, video, podcast, course or paper into Library from a
-link, a title or a file. It reuses the command palette, so there is no new
-screen. The result is an ordinary note whose `Type:` puts it in its Library
+link, a title or a file. Since 2026-10-12 it happens in the composer
+(SPECs/composer-spec.md): its type chip is the Library kind, and a pasted link
+sets it. A link pasted in ⌘O still offers rows there. The result is an ordinary note whose `Type:` puts it in its Library
 tab (SPECs/spaces-spec.md).
 
 ## Ways in
 
-| Way in                                                                  | What it does                                                                        |
-| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Paste a link in ⌘O                                                      | An **Add to Library** group goes on top of the results, the guess selected          |
-| **⌘⇧L** anywhere, or **Add to Library** on the New tab page            | Opens the palette in add mode (⌘⇧L no longer selects all matches in the editor)    |
-| **Add to Library…** in ⌘O                                               | The same add mode                                                                   |
-| **Add <noun>** in an empty Library tab, and **+** in the Library header | Add mode with that tab's kind first; not on Bookmarks, which X sync fills           |
-| Drop a PDF or EPUB on the window                                        | As before (SPECs/book-reader-spec.md), plus the paper check below                   |
-| Import Book…, Import Apple Books Highlights                             | Unchanged, and also listed in add mode                                              |
+| Way in                                                                  | What it does                                                                     |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Paste a link in ⌘O                                                      | An **Add to Library** group goes on top of the results, the guess selected       |
+| **⌘⇧L** anywhere, or **Add to Library…** in ⌘O                         | The composer, type chip on Book until a link says otherwise                     |
+| **Add <noun>** in an empty Library tab, and **+** in the Library header | The composer with that tab's kind picked; not on Bookmarks, which X sync fills  |
+| Drop a PDF or EPUB on the window                                        | As before (SPECs/book-reader-spec.md); attached to the composer when it's open |
+| Import Book…, Import Apple Books Highlights                             | Unchanged palette commands                                                       |
 
-## The palette rows
+## The palette rows (⌘O, a pasted link)
 
 - Rows come from the query alone, never the network, so they don't change
   under the cursor and work offline.
 - **A link:** one row per kind, `<Kind>: <host>`, in Library's tab order with
-  the guess (or the tab's kind) first. The guess's second line says
+  the guess first. The guess's second line says
   "Guessed from the link". Hosts: YouTube, Vimeo → Video; Spotify episodes
   and shows, Apple Podcasts, Overcast, Pocket Casts → Podcast; arXiv, DOI,
   ACM, IEEE, OpenReview, Semantic Scholar, bioRxiv, SSRN → Paper; Coursera,
@@ -34,9 +34,9 @@ tab (SPECs/spaces-spec.md).
   opens that note instead. Matched by source: the YouTube id, the arXiv id
   without its version, a DOI in the link or in a `DOI:` property, else the
   address without scheme, `www.`, tracking parameters or trailing slash.
-- **Add mode, empty:** Choose a PDF or EPUB… and Import Apple Books Highlights.
-- **Add mode, a title:** `<Kind>: <title>`, Book first (or the tab's kind),
-  "Title only". Nothing is looked up, so no author or cover is made up.
+- Titles and files are added from the composer: a Library kind with a title
+  makes a note by that title, nothing looked up, so no author or cover is
+  made up; the paperclip (or a drop) attaches a PDF or EPUB.
 
 ## The note
 
@@ -68,8 +68,9 @@ and an existing page keeps its type.
 
 - `lib/library-add.ts`: link parsing, source keys, PDF verdict, note content,
   retyping (pure, `tests/library-add.test.ts`).
-- `hooks/use-library-add.ts`: opening add mode, writing and opening the note.
-- `components/command-palette/library-add-rows.tsx`: the rows for both modes.
+- `hooks/use-library-add.ts`: writing the note (with the composer's text and
+  Keep open), and `openLibraryAdd`, which opens the composer.
+- `components/command-palette/library-add-rows.tsx`: ⌘O's link rows.
 - `lib/book-import.ts` (`settlePdfType`), `book-reader/book-meta.ts`
   (`readPdfClues`), the editor notice's optional action.
 

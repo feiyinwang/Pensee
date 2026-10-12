@@ -182,7 +182,7 @@ export function createRootNote(
 /** Write `<Name>.md` in the vault-relative `folder` (the root when null), made
  *  if missing, with the content `content(stem)` gives. Throws a message fit to
  *  show when the name is unusable or taken. */
-async function createNoteIn(
+export async function createNoteIn(
   folder: string | null,
   name: string,
   content: (stem: string) => string,

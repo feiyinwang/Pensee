@@ -95,24 +95,36 @@ export async function resolveBookNote(bookPath: string, hint: string | null): Pr
   return sibling;
 }
 
+export interface ImportBookOptions {
+  /** The kind the user chose; left out, a new PDF's page is typed by its first
+   *  pages (`settlePdfType`). */
+  type?: "book" | "paper";
+  /** Open the book and its page once imported (default true). */
+  open?: boolean;
+}
+
 /** Copy `sourcePath` beside its book page (found, or made in the Book pages
- *  folder) and open both. */
-export async function importBook(sourcePath: string): Promise<void> {
+ *  folder) and open both unless `open` is false. Returns the page's path, or
+ *  null when nothing was imported (the reason is shown). */
+export async function importBook(
+  sourcePath: string,
+  { type, open = true }: ImportBookOptions = {},
+): Promise<string | null> {
   const root = useWorkspaceStore.getState().root;
-  if (!root) return;
+  if (!root) return null;
   const folder = useSettingsStore.getState().getSetting("apple-books.folder") ?? "";
   const anchor = resolveDailyNoteFile(root, folder, "_.md");
   if (!anchor.ok) {
     showEditorNotice(
       `Book pages folder "${folder}" is outside the workspace. Pick a folder inside it in Settings → Apple Books, or clear it.`,
     );
-    return;
+    return null;
   }
 
   const names = bookPageNames(safePageName(cleanBookTitle(getFileStem(sourcePath))));
   if (!names.length) {
     showEditorNotice("That book's file name has no usable title.");
-    return;
+    return null;
   }
   const author = (await readBookAuthor(sourcePath)) ?? authorFromFileName(getFileStem(sourcePath));
   const shortName = names[names.length - 1]!;
@@ -147,8 +159,8 @@ export async function importBook(sourcePath: string): Promise<void> {
         frontmatter: withBookProperties(page.frontmatter, { author }),
         body: page.body,
       }));
-      await openBook(existingPath, notePath);
-      return;
+      if (open) await openBook(existingPath, notePath);
+      return notePath;
     }
   }
 
@@ -161,14 +173,25 @@ export async function importBook(sourcePath: string): Promise<void> {
   if (isNew) {
     await tauri.createFile(notePath);
     await tauri.writeFile(notePath, newBookNote(bookFile, author));
-    if (getFileExtension(bookPath).toLowerCase() === "pdf") await settlePdfType(bookPath, notePath);
+    if (type === "paper") await retypeAsPaper(notePath);
+    else if (!type && getFileExtension(bookPath).toLowerCase() === "pdf") {
+      await settlePdfType(bookPath, notePath);
+    }
   } else {
     await editPage(notePath, (page) => ({
       frontmatter: withBookProperties(page.frontmatter, { book: bookFile, author }),
       body: page.body,
     }));
   }
-  await openBook(bookPath, notePath);
+  if (open) await openBook(bookPath, notePath);
+  return notePath;
+}
+
+function retypeAsPaper(notePath: string): Promise<void> {
+  return editPage(notePath, (page) => ({
+    frontmatter: withLibraryType(page.frontmatter, "Paper"),
+    body: page.body,
+  }));
 }
 
 /** Retype the new page of a PDF that reads as a paper; one nothing decides
@@ -176,11 +199,7 @@ export async function importBook(sourcePath: string): Promise<void> {
 async function settlePdfType(bookPath: string, notePath: string): Promise<void> {
   const clues = await readPdfClues(bookPath);
   const kind = clues ? pdfKind(clues) : null;
-  const toPaper = () =>
-    editPage(notePath, (page) => ({
-      frontmatter: withLibraryType(page.frontmatter, "Paper"),
-      body: page.body,
-    }));
+  const toPaper = () => retypeAsPaper(notePath);
   if (kind === "paper") {
     await toPaper();
   } else if (kind === null) {

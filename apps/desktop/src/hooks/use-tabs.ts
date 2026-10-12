@@ -41,10 +41,6 @@ export function useOpenFile() {
   return useEditorStore((s) => s.openFile);
 }
 
-export function useOpenNewTab() {
-  return useEditorStore((s) => s.openNewTab);
-}
-
 export function useCloseTab() {
   return useEditorStore((s) => s.closeTab);
 }
