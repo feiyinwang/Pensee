@@ -7,7 +7,7 @@
 
 use crate::error::AppError;
 use reqwest::Url;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -54,6 +54,16 @@ pub async fn fetch_link_preview(url: String) -> Result<LinkPreview, AppError> {
             "unsupported scheme: {}",
             parsed.scheme()
         )));
+    }
+
+    // A YouTube watch page is about 1.5 MB with its `<title>` past
+    // MAX_BODY_BYTES, so it would preview untitled. Its oEmbed answers in a
+    // few hundred bytes; a link it doesn't know (a channel) reads the page.
+    if is_youtube(&parsed) {
+        match youtube_preview(&parsed).await {
+            Ok(preview) => return Ok(preview),
+            Err(error) => eprintln!("[link-preview] YouTube oEmbed failed for {parsed}: {error}"),
+        }
     }
 
     let mut response = client()?
@@ -106,6 +116,55 @@ pub async fn fetch_link_preview(url: String) -> Result<LinkPreview, AppError> {
     Ok(LinkPreview {
         embeddable,
         ..parse_preview(&String::from_utf8_lossy(&body), &final_url)
+    })
+}
+
+fn is_youtube(url: &Url) -> bool {
+    let host = url.host_str().unwrap_or("").to_ascii_lowercase();
+    host == "youtu.be" || host == "youtube.com" || host.ends_with(".youtube.com")
+}
+
+fn youtube_oembed_url(url: &Url) -> Url {
+    let mut endpoint = Url::parse("https://www.youtube.com/oembed").expect("valid oEmbed URL");
+    endpoint
+        .query_pairs_mut()
+        .append_pair("url", url.as_str())
+        .append_pair("format", "json");
+    endpoint
+}
+
+#[derive(Deserialize)]
+struct OEmbed {
+    title: Option<String>,
+    thumbnail_url: Option<String>,
+    provider_name: Option<String>,
+}
+
+async fn youtube_preview(url: &Url) -> Result<LinkPreview, AppError> {
+    let oembed: OEmbed = client()?
+        .get(youtube_oembed_url(url))
+        .send()
+        .await
+        .and_then(|response| response.error_for_status())
+        .map_err(|e| AppError::Network(e.to_string()))?
+        .json()
+        .await
+        .map_err(|e| AppError::Network(e.to_string()))?;
+    let title = oembed
+        .title
+        .map(|t| clean_text(&t))
+        .filter(|t| !t.is_empty());
+    if title.is_none() {
+        return Err(AppError::Network("oEmbed gave no title".into()));
+    }
+    Ok(LinkPreview {
+        url: url.to_string(),
+        title,
+        site_name: oembed.provider_name,
+        image: oembed.thumbnail_url,
+        // Watch pages send `X-Frame-Options: SAMEORIGIN`.
+        embeddable: false,
+        ..LinkPreview::default()
     })
 }
 
@@ -397,6 +456,25 @@ mod tests {
 
     fn base() -> Url {
         Url::parse("https://example.com/articles/post").unwrap()
+    }
+
+    #[test]
+    fn youtube_links_ask_oembed() {
+        let watch = Url::parse("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42").unwrap();
+        assert!(is_youtube(&watch));
+        assert!(is_youtube(
+            &Url::parse("https://youtu.be/dQw4w9WgXcQ").unwrap()
+        ));
+        assert!(is_youtube(
+            &Url::parse("https://m.youtube.com/shorts/abc").unwrap()
+        ));
+        assert!(!is_youtube(
+            &Url::parse("https://notyoutube.com/watch").unwrap()
+        ));
+        assert_eq!(
+            youtube_oembed_url(&watch).as_str(),
+            "https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ%26t%3D42&format=json"
+        );
     }
 
     #[test]

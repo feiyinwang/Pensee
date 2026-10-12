@@ -41,7 +41,9 @@ tab (SPECs/spaces-spec.md).
 ## The note
 
 - Named by the page's Open Graph title, with the site's name and arXiv's
-  `[id]` trimmed. The title is read only after a row is picked ("Adding
+  `[id]` trimmed. A YouTube video's title comes from YouTube's oEmbed
+  (`fetch_link_preview` asks it for any YouTube link): the watch page is
+  about 1.5 MB with its `<title>` past the preview's 512 KB read. The title is read only after a row is picked ("Adding
   youtube.com…"); after 5 seconds or offline the note is named from its link
   (`youtu.be dQw4w9WgXcQ`). A taken name gets ` 2`, ` 3`, ….
 - Written at the vault root with properties only, no heading:

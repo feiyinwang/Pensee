@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Adding a YouTube video to **Library** names the note after the video's title, like `Rick Astley - Never Gonna Give You Up (Official Video)`, instead of `youtube.com dQw4w9WgXcQ`. A YouTube link's preview card in a note now shows its title and thumbnail too.
 - The tabs at the top of **Library** (Books, Videos, Courses…) look the same as the view switcher in **Projects**: the selected tab sits in a rounded pill instead of a square box.
 - In a YouTube note, **<** and **>** slow the video down and speed it up, one step at a time from 0.25× to 2×, and the new speed shows on the video for a moment. In a note with a video they no longer type < or >. A video's chapters now show every time: YouTube sometimes sent Writer a page without them, so they were often missing. The pin at the end of a line now sits on the line's baseline instead of dipping below the text.
 - Every note now has its own title at the top: the file name, in large type above the properties and text. Click it to rename the note; press Enter or ↓ to carry on writing, or Escape to keep the old name. Press ↑ at the start of the text to get back to the title. A `# ` heading at the top of a note is now just a heading. It no longer renames the note in tabs, the sidebar or ⌘O. New notes start empty instead of with `# `, and so do pages made from a `[[link]]` or from **Move selection to page**. Your existing notes aren't changed: if one starts with a heading that repeats its name, you'll see it under the title until you delete it.
