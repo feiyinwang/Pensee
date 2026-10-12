@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Play } from "lucide-react";
-import { titleHash } from "@/lib/spaces";
+import { tweetAvatar } from "@/lib/spaces";
 import type { TypedNote } from "@/lib/tauri";
 import { coverSrc } from "./space-cover";
 import styles from "./spaces.module.css";
@@ -9,7 +9,6 @@ import styles from "./spaces.module.css";
 // post itself, its first paragraph and the thread's first picture, with the
 // author and thread length under it like every other gallery item.
 
-const TONES = 10;
 /** A post this short is set large, like a quote, instead of leaving most of
  *  its card empty. */
 const SHORT_POST_CHARS = 140;
@@ -73,17 +72,17 @@ export function TweetCover({ note }: { note: TypedNote }) {
 /** Author with an initial for an avatar, then `@handle · Thread · 7 posts`. */
 export function TweetCaption({ note }: { note: TypedNote }) {
   const { author, handle, posts } = note.properties;
-  const name = author ?? (handle ? `@${handle}` : note.name);
+  const avatar = tweetAvatar(author, handle, note.name);
   const count = Number(posts);
   const kind = count > 1 ? `Thread · ${count} posts` : "Post";
-  const tone = styles[`tone${titleHash(name) % TONES}`];
+  const tone = styles[`tone${avatar.tone}`];
   return (
     <>
       <span className={styles.tweetByline}>
         <span className={`${styles.tweetAvatar} ${tone}`} aria-hidden="true">
-          {Array.from(name.replace(/^@/, ""))[0]?.toUpperCase() ?? ""}
+          {avatar.initial}
         </span>
-        <span className={styles.tweetAuthor}>{name}</span>
+        <span className={styles.tweetAuthor}>{avatar.name}</span>
       </span>
       <span className={`${styles.itemSub} ${styles.tweetSub}`}>
         {handle ? `@${handle} · ${kind}` : kind}

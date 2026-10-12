@@ -3,11 +3,9 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { Mic, Play } from "lucide-react";
 import { getParentDir } from "@/lib/paths";
 import { liveCoverSrc } from "@/lib/covers";
-import { bylineOf, titleHash, type CoverKind } from "@/lib/spaces";
+import { TONES, bylineOf, titleHash, type CoverKind } from "@/lib/spaces";
 import type { TypedNote } from "@/lib/tauri";
 import styles from "./spaces.module.css";
-
-const TONES = 10;
 
 /** The box, in device pixels, a gallery cover of each kind is drawn in at
  *  its widest (about one and a half times the grid's minimum column, at 2x),

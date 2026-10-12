@@ -178,6 +178,25 @@ export function titleHash(title: string): number {
   return hash >>> 0;
 }
 
+/** How many avatar and cover tones there are (`.tone0`…`.tone9` in
+ *  `spaces.module.css`). */
+export const TONES = 10;
+
+/** An X author's initial avatar, the same in Library and in the opened note:
+ *  the name shown (the author, else `@handle`), its first letter, and a tone. */
+export function tweetAvatar(
+  author: string | null | undefined,
+  handle: string | null | undefined,
+  fallback: string,
+): { name: string; initial: string; tone: number } {
+  const name = author || (handle ? `@${handle}` : fallback);
+  return {
+    name,
+    initial: Array.from(name.replace(/^@/, ""))[0]?.toUpperCase() ?? "",
+    tone: titleHash(name) % TONES,
+  };
+}
+
 /** First author-like property of a note, for a cover's byline. */
 export function bylineOf(note: TypedNote): string | null {
   const p = note.properties;

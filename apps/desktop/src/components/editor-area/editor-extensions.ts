@@ -31,6 +31,7 @@ import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
 import { bookJump } from "./book-jump";
 import { tableDecorations } from "./table-decorations";
+import { tweetThread } from "./tweet-thread";
 import { viewportParsePlugin } from "./viewport-parse";
 import { wikiLinkExtension } from "./wiki-link-extension";
 import { wikiPagesExtension } from "./wiki-pages-extension";
@@ -150,6 +151,8 @@ export function createEditorExtensions(
     // leave `![[Page#^id]]` to the linked-block widget.
     blockEmbeds(getFilePath),
     bookJump(getFilePath),
+    // X bookmark notes read as a thread: author header, posts on a spine.
+    tweetThread(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     wikiPagesExtension(getFilePath, isDisposed),
     wikiLinkPreview(getFilePath),

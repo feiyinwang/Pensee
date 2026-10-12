@@ -93,7 +93,16 @@ Not built yet: the "new since your last visit" dot from the mock. It needs a rec
 
 Built: `![[*.mp4]]` (and `.mov`, `.m4v`, `.webm`) embeds play in every note (`video-embed-widget.ts`), with controls. A `*-gif.mp4` plays like a GIF: looping, muted, no controls, a GIF label, paused under Reduce Motion, click to pause or play. GIFs are saved under that name for this reason. The widget keeps every pointer event, so using the controls never drops the caret into the embed and swaps it for its source. The CSP has a `media-src` for `asset:`; without it every video failed with "source not supported".
 
-Not built yet: the thread view. A `Type: Tweet` note should open with an author header from the properties with **Open on X**, and the posts on one thin line instead of separated by rules.
+Built: the thread view (`components/editor-area/tweet-thread.ts`), only for `Type: Tweet` notes and drawn entirely with decorations, so nothing is written to the file.
+
+- **Header.** Above the body: the author's initial avatar (the same tone as the Library card, `tweetAvatar`), name, `@handle · Oct 8` from `Posted`, an **Open on X** button that opens `URL`, and a quiet `7 posts · Bookmarked Oct 10` from `Posts` and `Saved` (no count for a single post). The header takes no caret; the button keeps the editor's focus.
+- **Spine.** Every line of the thread sits 52px in, so the posts line up under the author's name. A 2px line runs down the avatar's middle with an 8px dot on each post's first line and the post number (`2/7`) under it. It is an overlay measured from the layout model, so it stays whole across a video, a link card or a `---` shown as source. A single post gets the header and the indent, but no spine.
+- **Separators.** The `---` between posts keeps its own fold widget, so it comes back as source (in the post column) when the caret enters it; inside the thread only its rule is hidden and its height shrinks to 0.5em.
+- **Quoted posts.** Their blockquote lines are drawn as one card with a 1px border and 12px corners instead of the quote bar, text at 0.875em. The hidden `> ` hangs into the padding so wrapped lines start where the first line's text does.
+- **Where the thread ends.** At the `Posts`-th `---`, or the first heading. Your own notes go under a `---` or a heading; text typed straight under the last post reads as part of it, since the file has no other marker.
+- Editing the note's properties in the panel redraws the header without touching the body.
+
+Verified in the running app by `e2e/specs/tweet-thread.spec.js`.
 
 ## States
 
@@ -111,4 +120,4 @@ Not built yet: the thread view. A `Type: Tweet` note should open with an author 
 1. Rust: OAuth + Keychain, bookmarks and thread fetch, media download (`commands/x_bookmarks.rs`).
 2. Frontend: note writing, sync loop and state, Settings → X Bookmarks.
 3. Library Bookmarks tab and card.
-4. Editor: `![[*.mp4]]` embeds and the thread view.
+4. Editor: `![[*.mp4]]` embeds and the thread view. Done.

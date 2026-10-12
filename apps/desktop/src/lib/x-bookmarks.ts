@@ -1,4 +1,4 @@
-import { stringify } from "yaml";
+import { isMap, isScalar, parseDocument, stringify } from "yaml";
 
 import { safePageName } from "./wiki-pages";
 
@@ -163,6 +163,48 @@ export function bookmarkNote(bookmark: XBookmark, media: SavedMedia[][], savedOn
   });
 
   return `---\n${properties.join("\n")}\n---\n\n${posts.join("\n\n---\n\n")}\n`;
+}
+
+/** What the opened note's thread view shows above the posts, from its
+ *  properties. */
+export interface TweetNoteProps {
+  author: string | null;
+  handle: string | null;
+  url: string | null;
+  posted: string | null;
+  saved: string | null;
+  /** The thread's length as written; null when missing or not a count. */
+  posts: number | null;
+}
+
+/** The properties of a `Type: Tweet` note (keys matched ignoring case), or
+ *  null for any other note. Values are read as text, so a YAML date or
+ *  number reads the same as a quoted one. */
+export function tweetNoteProps(frontmatter: string | null): TweetNoteProps | null {
+  // Most notes are not bookmarks: skip the YAML parse unless the type is there.
+  if (!frontmatter || !/^type\s*:\s*["']?tweet\b/im.test(frontmatter)) return null;
+  const doc = parseDocument(frontmatter);
+  if (doc.errors.length || !isMap(doc.contents)) return null;
+  const values = new Map<string, string>();
+  for (const pair of doc.contents.items) {
+    if (!isScalar(pair.key) || !isScalar(pair.value)) continue;
+    const value = pair.value.value;
+    if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+      continue;
+    }
+    const text = String(value).trim();
+    if (text) values.set(String(pair.key.value).toLowerCase(), text);
+  }
+  if (values.get("type")?.toLowerCase() !== TWEET_TYPE.toLowerCase()) return null;
+  const posts = Number(values.get("posts"));
+  return {
+    author: values.get("author") ?? null,
+    handle: values.get("handle")?.replace(/^@/, "") ?? null,
+    url: values.get("url") ?? null,
+    posted: values.get("posted") ?? null,
+    saved: values.get("saved") ?? null,
+    posts: Number.isInteger(posts) && posts > 0 ? posts : null,
+  };
 }
 
 export interface XSyncDeps {
