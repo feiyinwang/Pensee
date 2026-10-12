@@ -199,6 +199,8 @@ function AgentComposer({
     if (!el || !isOpen) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+    // Scroll only once the text outgrows the cap; below it the box fits exactly.
+    el.style.overflowY = el.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
   }, [draft, inputRef, isOpen]);
 
   const submit = () => {
@@ -227,7 +229,7 @@ function AgentComposer({
           placeholder="Ask Claude…"
           aria-label="Message"
           data-no-focus-ring
-          className="min-w-0 flex-1 resize-none bg-transparent py-[3px] text-[14px] leading-[21px] font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+          className="scrollbar-none min-w-0 flex-1 resize-none overflow-x-hidden bg-transparent py-[3px] text-[14px] leading-[21px] font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
         />
         {isRunning ? (
           <button
