@@ -4,10 +4,11 @@ const files = new Map<string, string>();
 
 vi.mock("@/lib/tauri", () => ({
   fileExists: vi.fn(async (path: string) => files.has(path)),
-  createFileIfMissing: vi.fn(async (path: string) => {
-    const content = files.get(path) ?? "";
-    if (!files.has(path)) files.set(path, "");
-    return { path, content };
+  // As the Rust command: made exclusively, with the new-note "# " in it.
+  createFile: vi.fn(async (path: string) => {
+    if (files.has(path)) throw `Already exists: ${path}`;
+    files.set(path, "# ");
+    return { path, content: "# ", modified_at: 1 };
   }),
   writeFile: vi.fn(async (path: string, content: string) => {
     files.set(path, content);
@@ -61,6 +62,66 @@ describe("createProjectNote", () => {
       'A note named "Trip" already exists',
     );
     expect(files.get("/vault/Trip.md")).toBe("# mine");
+  });
+});
+
+describe("createProjectNote from the vault's template", () => {
+  const settings = "/vault/.obsidian/plugins/templater-obsidian/data.json";
+  const template = [
+    "---",
+    "Type: Project",
+    "Organization: Container Living",
+    "Creation Dates: <% tp.file.creation_date() %>",
+    "Deadline: ",
+    "Status: Done",
+    "cssclasses:",
+    "  - cards",
+    "---",
+    "# Tasks",
+    "",
+    '```dataview\nWhere contains(Project, "<% tp.file.title %>")\n```',
+    "",
+  ].join("\n");
+
+  beforeEach(() => {
+    files.clear();
+    useWorkspaceStore.setState({ root: "/vault" });
+    files.set(
+      settings,
+      JSON.stringify({
+        folder_templates: [
+          { folder: "Practical/People", template: "T/Person.md" },
+          { folder: "1. Project", template: "T/Project.md" },
+        ],
+      }),
+    );
+    files.set("/vault/T/Person.md", "---\nType: People\n---\n");
+    files.set("/vault/T/Project.md", template);
+  });
+
+  test("is made in the template's folder with its properties and sections", async () => {
+    const created = await createProjectNote("Trip", { status: "Ongoing" });
+    expect(created.path).toBe("/vault/1. Project/Trip.md");
+    const content = files.get("/vault/1. Project/Trip.md")!;
+    expect(content).toMatch(
+      /^---\nType: Project\nOrganization: Container Living\nCreation Dates: \d{4}-\d{2}-\d{2} \d{2}:\d{2}\nDeadline: \nStatus: Ongoing\ncssclasses:\n {2}- cards\n---\n# Tasks\n/,
+    );
+    expect(content).toContain('contains(Project, "Trip")');
+    expect(content).not.toContain("<%");
+  });
+
+  test("No status empties the template's status", async () => {
+    await createProjectNote("Trip", { status: "" });
+    expect(files.get("/vault/1. Project/Trip.md")).toContain("\nStatus:\ncssclasses:");
+  });
+
+  test("without a project template it is just the fields, at the root", async () => {
+    files.set(
+      settings,
+      JSON.stringify({ folder_templates: [{ folder: "P", template: "T/Person.md" }] }),
+    );
+    await createProjectNote("Trip", { status: "Ongoing" });
+    expect(files.get("/vault/Trip.md")).toBe("---\nType: Project\nStatus: Ongoing\n---\n");
   });
 });
 

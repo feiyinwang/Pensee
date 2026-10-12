@@ -42,6 +42,8 @@ export interface KanbanBoardProps {
   showIds?: boolean;
   /** Writer patch: what one card is called, for "Add card", "Card title" and the add buttons' labels. */
   noun?: string;
+  /** Writer patch: renders the add field for a column in place of the block's own textarea; `close` hides it. */
+  composer?: (column: string, close: () => void) => ReactNode;
 }
 
 interface DragState { id: string; cell: string; index: number; width: number; height: number; origin: { cell: string; index: number }; dropping: boolean }
@@ -109,6 +111,7 @@ export function KanbanBoard({
   toolbar = true,
   showIds = true,
   noun = "card",
+  composer: renderComposer, // Writer patch: Projects renders its own add field
 }: KanbanBoardProps) {
   const uid = useId();
   const reduced = useReducedMotion() ?? false;
@@ -451,7 +454,7 @@ export function KanbanBoard({
     return <div key={key} className={styles.cell} data-cell={key} data-over={over(column) || undefined} data-target={drag && drag.cell === key && !drag.dropping ? "" : undefined}>
       {items}
       <AnimatePresence initial={false}>
-        {composing ? <motion.form key="composer" className={styles.composer} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={layoutTransition} onSubmit={event => { event.preventDefault(); addCard(key); }}>
+        {composing && renderComposer ? <motion.div key="composer" className={styles.composer} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={layoutTransition}>{renderComposer(column.id, () => setComposer(null))}</motion.div> : composing ? <motion.form key="composer" className={styles.composer} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={layoutTransition} onSubmit={event => { event.preventDefault(); addCard(key); }}>
           <textarea autoFocus rows={2} value={draft} placeholder={`${noun[0].toUpperCase()}${noun.slice(1)} name`} aria-label={`New ${noun} in ${column.name}`} onChange={event => setDraft(event.target.value)} onBlur={() => { if (!draft.trim()) setComposer(null); }} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); addCard(key); } if (event.key === "Escape") { setComposer(null); setDraft(""); } }} />
           <div className={styles.composerActions}><button type="submit" className={styles.primarySmall} disabled={!draft.trim()}>Add {noun}</button><button type="button" className={styles.ghostSmall} onMouseDown={event => event.preventDefault()} onClick={() => { setComposer(null); setDraft(""); }}>Cancel</button></div>
         </motion.form> : groupBy === "status" ? <motion.button key="add" type="button" layout="position" transition={layoutTransition} className={styles.addRow} onClick={() => { setDraft(""); setComposer(key); }}><Plus size={14} aria-hidden="true" /> Add {noun}</motion.button> : null}

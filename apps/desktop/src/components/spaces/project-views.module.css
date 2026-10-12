@@ -446,6 +446,69 @@
   border-color: var(--accent);
 }
 
+/* Notes the typed name matches, under the field: the exact name (or Create)
+   first. In the flow, not floating, so a kanban column or the timeline's
+   scroller never clips it. */
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--line-subtler);
+  border-radius: 10px;
+  background: var(--surface-primary);
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--fg-base);
+  cursor: pointer;
+}
+
+.suggestion[aria-selected="true"] {
+  background: var(--surface-subtle-strong);
+}
+
+.suggestion svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.suggestionName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestionName strong {
+  font-weight: 500;
+}
+
+.suggestionFolder {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* List: the add field under the table, as wide as a name. */
+.listNew {
+  max-width: 360px;
+  padding: 0 4px;
+}
+
 .newError {
   padding: 0 2px;
   font-size: 12px;

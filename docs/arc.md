@@ -16,7 +16,7 @@ pnpm dlx shadcn@latest add @uiarc-pro/<name>    # Pro
 - **Local patches** (the only exceptions — each line is marked `Writer patch` in the file; re-apply after reinstalling the item):
   - `dropdown-menu/dropdown-menu.tsx` — `align` and `alignOffset` props (upstream always aligns the menu to the trigger's end), so the calendar panel's view menu lines its items up under the title.
   - `calendar/calendar.tsx` + `calendar.module.css` — three props for the calendar panel ([SPECs/calendar-panel-spec.md](../SPECs/calendar-panel-spec.md)): `weekStartsOn` (Monday-first rows), `weekLabel` (a leading column, one cell per week row, whose six rows stretch to the month grid's) and `markedDates` (a dot under a day's number).
-  - `blocks/kanban-board/kanban-board.tsx` + `kanban-board-data.ts` — for the Projects space ([SPECs/project-views-spec.md](../SPECs/project-views-spec.md)): a plain `img` instead of `next/image`; props `onCardOpen` (a click opens the note, not the sample drawer), `toolbar` (hide the block's own title bar), `showIds`, `noun` ("Add project"); a column `label` and a card `meta` (tags); no empty meta row on a card with nothing to show.
+  - `blocks/kanban-board/kanban-board.tsx` + `kanban-board-data.ts` — for the Projects space ([SPECs/project-views-spec.md](../SPECs/project-views-spec.md)): a plain `img` instead of `next/image`; props `onCardOpen` (a click opens the note, not the sample drawer), `toolbar` (hide the block's own title bar), `showIds`, `noun` ("Add project"), `composer` (Projects renders its own add field, with note suggestions, in a column); a column `label` and a card `meta` (tags); no empty meta row on a card with nothing to show.
   - `dock/dock.tsx` — faster tool labels, because the Dock exposes no timing props: first-label delay 60ms (upstream 380) — just enough to skip a pointer sweeping across the dock, label enter spring 0.1 (upstream 0.22), exit 100ms ease-in (upstream 180ms), glide between items 0.2 (upstream 0.3).
 - **Dependencies:** every item needs `motion` and `lucide-react`. Both are installed.
 
@@ -36,7 +36,7 @@ Call `ensureArcTokens()` from `board/arc-tokens.ts` instead, from a lazy-loaded 
 
 Arc components then pick up Writer's accent, text colours and UI font, and nothing outside them changes. Keep Arc imports behind a dynamic `import()` so notes never pay for `motion` or Arc at startup (the agent panel is a `React.lazy` chunk for this reason).
 
-Arc tokens Writer does *not* define (`--surface`, `--border`, `--foreground`, …) keep Arc's opaque neutral values. Where an Arc piece sits on Writer's translucent glass, remap them on the container instead of editing the vendored file — see the `.agent-panel` block in `components/agent-chat/agent-chat.css`.
+Arc tokens Writer does _not_ define (`--surface`, `--border`, `--foreground`, …) keep Arc's opaque neutral values. Where an Arc piece sits on Writer's translucent glass, remap them on the container instead of editing the vendored file — see the `.agent-panel` block in `components/agent-chat/agent-chat.css`.
 
 ## Motion
 

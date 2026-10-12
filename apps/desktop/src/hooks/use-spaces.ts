@@ -20,6 +20,13 @@ import {
   type ProjectEdit,
 } from "@/lib/projects";
 import { getFileStem } from "@/lib/paths";
+import { parseFrontmatter, serializeFile } from "@/lib/frontmatter";
+import {
+  TEMPLATER_SETTINGS,
+  fillTemplate,
+  folderTemplates,
+  isProjectTemplate,
+} from "@/lib/project-template";
 import * as tauri from "@/lib/tauri";
 import { editPage, readPageParts } from "@/components/editor-area/linked-block-sync";
 import type { SpaceLocation } from "@/components/editor-area/page-kinds";
@@ -154,7 +161,18 @@ export function useSpaceDef(location: SpaceLocation): SpaceDef | null | undefine
 
 /** Write `<Name>.md` at the vault root with the content `content(stem)` gives.
  *  Throws a message fit to show when the name is unusable or taken. */
-export async function createRootNote(
+export function createRootNote(
+  name: string,
+  content: (stem: string) => string,
+): Promise<{ path: string; stem: string }> {
+  return createNoteIn(null, name, content);
+}
+
+/** Write `<Name>.md` in the vault-relative `folder` (the root when null), made
+ *  if missing, with the content `content(stem)` gives. Throws a message fit to
+ *  show when the name is unusable or taken. */
+async function createNoteIn(
+  folder: string | null,
   name: string,
   content: (stem: string) => string,
 ): Promise<{ path: string; stem: string }> {
@@ -162,10 +180,13 @@ export async function createRootNote(
   if (!root) throw new Error("Open a folder first");
   const stem = spaceFileStem(name);
   if (!stem) throw new Error("Enter a name first");
-  const path = `${root}/${stem}.md`;
-  if (await tauri.fileExists(path)) throw new Error(`A note named "${stem}" already exists`);
-  const created = await tauri.createFileIfMissing(path);
-  if (created.content !== "") throw new Error(`A note named "${stem}" already exists`);
+  const path = folder ? `${root}/${folder}/${stem}.md` : `${root}/${stem}.md`;
+  const taken = new Error(`A note named "${stem}" already exists`);
+  if (await tauri.fileExists(path)) throw taken;
+  // Made exclusively, so a note written meanwhile is never overwritten.
+  await tauri.createFile(path).catch((error: unknown) => {
+    throw String(error).startsWith("Already exists") ? taken : error;
+  });
   await tauri.writeFile(path, content(stem));
   return { path, stem };
 }
@@ -209,13 +230,38 @@ export async function adoptProjectNote(
   return true;
 }
 
-/** Write `<Name>.md` at the vault root as a project note with `edit`'s fields
- *  set; opens nothing. For a name no note has yet (see `findNoteNamed`). */
-export function createProjectNote(
+/** Write a project note named `name` with `edit`'s fields set; opens nothing.
+ *  For a name no note has yet (see `findNoteNamed`). It is made from the
+ *  vault's project template when Templater has one, in that template's folder
+ *  (lib/project-template.ts); otherwise it is just the fields, at the root. */
+export async function createProjectNote(
   name: string,
   edit: ProjectEdit,
 ): Promise<{ path: string; stem: string }> {
-  return createRootNote(name, () => projectNoteContent(edit));
+  const template = await readProjectTemplate();
+  if (!template) return createRootNote(name, () => projectNoteContent(edit));
+  return createNoteIn(template.folder, name, (stem) => {
+    const { frontmatter, body } = parseFrontmatter(
+      fillTemplate(template.content, stem, new Date()),
+    );
+    return serializeFile(asProjectFrontmatter(frontmatter, edit), body);
+  });
+}
+
+/** The Templater folder template that makes project notes, read fresh so an
+ *  edit to it in Obsidian applies to the next project; null when there is none. */
+async function readProjectTemplate(): Promise<{ folder: string; content: string } | null> {
+  const root = useWorkspaceStore.getState().root;
+  if (!root) return null;
+  const settings = `${root}/${TEMPLATER_SETTINGS}`;
+  if (!(await tauri.fileExists(settings))) return null;
+  for (const { folder, template } of folderTemplates((await tauri.readFile(settings)).content)) {
+    const path = `${root}/${template}`;
+    if (!(await tauri.fileExists(path))) continue;
+    const { content } = await tauri.readFile(path);
+    if (isProjectTemplate(content)) return { folder, content };
+  }
+  return null;
 }
 
 /** The Files space tree's inline-rename target, shared with the sidebar's

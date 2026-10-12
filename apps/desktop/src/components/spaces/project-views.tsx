@@ -3,9 +3,9 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useId,
   useRef,
   useState,
-  type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -25,6 +25,8 @@ import {
   type TypedNote,
 } from "@/hooks/use-spaces";
 import { getFileStem } from "@/lib/paths";
+import * as tauri from "@/lib/tauri";
+import type { SearchResult } from "@/types/fs";
 import {
   NO_STATUS,
   PROJECT_TYPE,
@@ -53,15 +55,15 @@ import styles from "./project-views.module.css";
  *  list, a kanban or a timeline. Edits write the project note's frontmatter. */
 export default function ProjectViews({ notes, view }: { notes: TypedNote[]; view: SpaceView }) {
   ensureArcTokens();
-  const { projects, columns, edit, create } = useProjects(notes);
+  const { projects, columns, edit, add } = useProjects(notes);
   return (
     <div className={styles.projectViews}>
       {view === "kanban" ? (
-        <Kanban projects={projects} columns={columns} edit={edit} create={create} />
+        <Kanban projects={projects} columns={columns} edit={edit} add={add} />
       ) : view === "timeline" ? (
-        <Timeline projects={projects} edit={edit} create={create} />
+        <Timeline projects={projects} columns={columns} edit={edit} add={add} />
       ) : (
-        <ProjectList projects={projects} columns={columns} />
+        <ProjectList projects={projects} columns={columns} add={add} />
       )}
     </div>
   );
@@ -76,9 +78,13 @@ interface Change {
 
 type EditProject = (project: Project, change: Change) => void;
 
-/** Writes `<name>.md` as a project with `change` set; rejects with a message
- *  fit to show when the name is empty or taken. */
-type CreateProject = (name: string, change: Change) => Promise<void>;
+/** Adds a project where `change` puts it: the note picked, or the note a
+ *  typed name names, else a new project note. Rejects with a message fit to
+ *  show when the name is empty or the write fails. */
+type AddProject = (choice: AddChoice, change: Change) => Promise<void>;
+
+/** What the add field picked: a note suggested while typing, or the name as typed. */
+type AddChoice = { path: string } | { name: string };
 
 interface Pending {
   change: Change;
@@ -225,21 +231,30 @@ function useProjects(notes: TypedNote[]) {
     setCreated((current) => [project, ...current]);
   }, []);
 
-  // A name a note already has takes that note: a project already here moves
-  // to where it was added, any other note becomes a project (asking first
-  // when it has another type). Only a new name writes a new note.
-  const create = useCallback<CreateProject>(
-    async (name, change) => {
-      const projectPaths = new Set(base.map((project) => project.note.path));
-      const found = await findNoteNamed(name, (path) => projectPaths.has(path));
-      if (found === null) {
-        const { path } = await createProjectNote(name, toEdit(change));
-        show(path, change);
-        return;
+  // A note that exists is used, never duplicated: a project already here
+  // moves to where it was added, any other note becomes a project (asking
+  // first when it has another type). A typed name takes the note it names;
+  // only a name no note has writes a new project note, from the vault's
+  // template, with No status unless the place sets one (the template's own
+  // status would put it anywhere).
+  const add = useCallback<AddProject>(
+    async (choice, change) => {
+      let found: string | null;
+      if ("path" in choice) {
+        found = choice.path;
+      } else {
+        const projectPaths = new Set(base.map((project) => project.note.path));
+        found = await findNoteNamed(choice.name, (path) => projectPaths.has(path));
+        if (found === null) {
+          const created = { status: NO_STATUS, ...change };
+          const { path } = await createProjectNote(choice.name, toEdit(created));
+          show(path, created);
+          return;
+        }
       }
       const known = base.find((project) => project.note.path === found);
       if (known) {
-        edit(known, change);
+        if (Object.keys(change).length > 0) edit(known, change);
         return;
       }
       const stem = getFileStem(found);
@@ -251,7 +266,7 @@ function useProjects(notes: TypedNote[]) {
     [toEdit, base, edit, show],
   );
 
-  return { projects, columns, edit, create };
+  return { projects, columns, edit, add };
 }
 
 function isSpent(entry: Pending, note: TypedNote): boolean {
@@ -266,20 +281,9 @@ function openNote(event: { metaKey: boolean; ctrlKey: boolean }, path: string) {
   });
 }
 
-/** "+ New project", then a name field: Enter creates the project and keeps the
- *  field open for the next one, Esc (or leaving it empty) closes it. */
-function NewProject({ onCreate }: { onCreate: (name: string) => Promise<void> }) {
+/** "+ New project", then the add field. */
+function NewProject(props: Omit<AddFieldProps, "onClose">) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const busy = useRef(false);
-
-  const close = () => {
-    setOpen(false);
-    setName("");
-    setError(null);
-  };
-
   if (!open) {
     return (
       <button type="button" className={styles.newButton} onClick={() => setOpen(true)}>
@@ -288,12 +292,108 @@ function NewProject({ onCreate }: { onCreate: (name: string) => Promise<void> })
       </button>
     );
   }
+  return <AddField {...props} onClose={() => setOpen(false)} />;
+}
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (busy.current) return;
+/** Notes suggested under the add field. */
+const MAX_SUGGESTIONS = 6;
+
+interface AddFieldProps {
+  projects: Project[];
+  columns: StatusColumn[];
+  /** Adds what was picked; rejects with a message to show under the field. */
+  onAdd: (choice: AddChoice) => Promise<void>;
+  onClose: () => void;
+}
+
+interface NoteOption {
+  kind: "note";
+  path: string;
+  stem: string;
+  /** Vault-relative folder; empty at the root. */
+  folder: string;
+}
+
+type Option = NoteOption | { kind: "new" };
+
+/** The name field every "Add project" opens. Typing lists the notes with a
+ *  matching name: one already on the board shows its status, any other its
+ *  folder. Enter takes the note named exactly that, else creates the project;
+ *  arrows or a click pick another. The field stays open for the next one; Esc,
+ *  or leaving it while empty, closes it. */
+function AddField({ projects, columns, onAdd, onClose }: AddFieldProps) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [focused, setFocused] = useState(true);
+  const [results, setResults] = useState<{ query: string; notes: SearchResult[] }>({
+    query: "",
+    notes: [],
+  });
+  // The highlighted row, kept only for the list it was moved in: a new list
+  // starts on its first row, the exact name or Create.
+  const [cursor, setCursor] = useState<{ list: Option[]; index: number } | null>(null);
+  const busy = useRef(false);
+  const listId = useId();
+
+  const query = name.trim();
+  useEffect(() => {
+    if (!query) return;
+    let live = true;
+    tauri.fuzzySearch(query, 30).then(
+      (found) => {
+        if (live)
+          setResults({ query, notes: found.filter((r) => /\.(md|markdown)$/i.test(r.filename)) });
+      },
+      (reason: unknown) => console.error("[projects] note search failed", reason),
+    );
+    return () => {
+      live = false;
+    };
+  }, [query]);
+
+  const statusByPath = useMemo(
+    () => new Map(projects.map((project) => [project.note.path, project.status])),
+    [projects],
+  );
+  const options = useMemo<Option[]>(() => {
+    if (!query) return [];
+    // Results for an older query would offer notes the name no longer matches.
+    const notes = results.query === query ? results.notes : [];
+    const named = notes.map<NoteOption>((r) => {
+      const slash = r.relative_path.lastIndexOf("/");
+      return {
+        kind: "note",
+        path: r.path,
+        stem: getFileStem(r.filename),
+        folder: slash === -1 ? "" : r.relative_path.slice(0, slash),
+      };
+    });
+    // The note named exactly this comes first (one on the board, then the
+    // shortest path, as findNoteNamed picks); without one, creating it does.
+    const wanted = query.toLowerCase();
+    const exact = named
+      .filter((o) => o.stem.toLowerCase() === wanted)
+      .sort(
+        (a, b) =>
+          Number(statusByPath.has(b.path)) - Number(statusByPath.has(a.path)) ||
+          a.path.length - b.path.length,
+      )[0];
+    const rest = named.filter((o) => o !== exact).slice(0, MAX_SUGGESTIONS - 1);
+    return exact ? [exact, ...rest] : [{ kind: "new" }, ...rest];
+  }, [query, results, statusByPath]);
+  const active = cursor?.list === options ? cursor.index : 0;
+
+  const close = () => {
+    setName("");
+    setError(null);
+    onClose();
+  };
+
+  const pick = (option: Option | undefined) => {
+    if (busy.current || !query) return;
     busy.current = true;
-    onCreate(name)
+    const choice: AddChoice = option?.kind === "note" ? { path: option.path } : { name: query };
+    onAdd(choice)
       .then(
         () => {
           setName("");
@@ -304,13 +404,35 @@ function NewProject({ onCreate }: { onCreate: (name: string) => Promise<void> })
       .finally(() => (busy.current = false));
   };
 
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (options.length === 0) return;
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setCursor({ list: options, index: (active + step + options.length) % options.length });
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      pick(options[active]);
+    }
+  };
+
+  const optionId = (i: number) => `${listId}-${i}`;
+  const showList = focused && options.length > 0;
   return (
-    <form className={styles.newForm} onSubmit={submit}>
+    <div className={styles.newForm}>
       <input
         className={styles.newInput}
         value={name}
         placeholder="Project name"
         aria-label="New project name"
+        role="combobox"
+        aria-expanded={showList}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={showList ? optionId(active) : undefined}
         aria-invalid={error !== null}
         // eslint-disable-next-line jsx-a11y/no-autofocus -- the field opens because the user asked to type a name
         autoFocus
@@ -318,21 +440,56 @@ function NewProject({ onCreate }: { onCreate: (name: string) => Promise<void> })
           setName(event.target.value);
           setError(null);
         }}
-        onKeyDown={(event) => {
-          if (event.key !== "Escape") return;
-          event.preventDefault();
-          close();
-        }}
+        onKeyDown={onKeyDown}
+        onFocus={() => setFocused(true)}
         onBlur={() => {
-          if (!name.trim() && !busy.current) close();
+          setFocused(false);
+          if (!query && !busy.current) close();
         }}
       />
+      {showList && (
+        <div id={listId} role="listbox" aria-label="Projects to add" className={styles.suggestions}>
+          {options.map((option, i) => (
+            <div
+              key={option.kind === "note" ? option.path : "new"}
+              id={optionId(i)}
+              role="option"
+              aria-selected={i === active}
+              className={styles.suggestion}
+              // Keeps focus in the field, so the list stays and the next name can follow.
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setCursor({ list: options, index: i })}
+              onClick={() => pick(option)}
+            >
+              {option.kind === "new" ? (
+                <>
+                  <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={1.8} aria-hidden />
+                  <span className={styles.suggestionName}>
+                    Create “<strong>{query}</strong>”
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className={styles.suggestionName}>{option.stem}</span>
+                  {statusByPath.has(option.path) ? (
+                    <StatusTag status={statusByPath.get(option.path)!} columns={columns} />
+                  ) : (
+                    option.folder && (
+                      <span className={styles.suggestionFolder}>{option.folder}</span>
+                    )
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {error && (
         <div role="alert" className={styles.newError}>
           {error}
         </div>
       )}
-    </form>
+    </div>
   );
 }
 
@@ -354,7 +511,15 @@ interface ListRow extends Record<string, unknown> {
  *  the name's minimum the table scrolls inside its card (Arc's rule). */
 const LIST_WIDTHS = { status: 116, start: 124, deadline: 204, edited: 136 };
 
-function ProjectList({ projects, columns }: { projects: Project[]; columns: StatusColumn[] }) {
+function ProjectList({
+  projects,
+  columns,
+  add,
+}: {
+  projects: Project[];
+  columns: StatusColumn[];
+  add: AddProject;
+}) {
   const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
   const rows = useMemo<ListRow[]>(
     () =>
@@ -371,50 +536,57 @@ function ProjectList({ projects, columns }: { projects: Project[]; columns: Stat
   const day = (value: unknown) => (typeof value === "number" ? formatDay(value) : "");
   const now = today();
   return (
-    <SortableDataTable<ListRow>
-      rows={rows}
-      rowKey="path"
-      caption="Projects"
-      defaultSort={{ key: "edited", direction: "desc" }}
-      columns={[
-        {
-          // Takes the room the fixed columns leave.
-          key: "name",
-          label: "Name",
-          render: (_, row) => (
-            <button
-              type="button"
-              className={styles.rowName}
-              onClick={(event) => openNote(event, row.path)}
-            >
-              {row.name}
-            </button>
-          ),
-        },
-        {
-          key: "status",
-          label: "Status",
-          numeric: false,
-          width: LIST_WIDTHS.status,
-          render: (_, row) => <StatusTag status={byPath.get(row.path)!.status} columns={columns} />,
-        },
-        { key: "start", label: "Start", numeric: false, width: LIST_WIDTHS.start, render: day },
-        {
-          key: "deadline",
-          label: "Deadline",
-          numeric: false,
-          width: LIST_WIDTHS.deadline,
-          render: (_, row) => <DeadlineTag project={byPath.get(row.path)!} now={now} />,
-        },
-        {
-          key: "edited",
-          label: "Last edited",
-          numeric: false,
-          width: LIST_WIDTHS.edited,
-          render: (value) => formatRelativeTime(value as number) ?? "",
-        },
-      ]}
-    />
+    <>
+      <SortableDataTable<ListRow>
+        rows={rows}
+        rowKey="path"
+        caption="Projects"
+        defaultSort={{ key: "edited", direction: "desc" }}
+        columns={[
+          {
+            // Takes the room the fixed columns leave.
+            key: "name",
+            label: "Name",
+            render: (_, row) => (
+              <button
+                type="button"
+                className={styles.rowName}
+                onClick={(event) => openNote(event, row.path)}
+              >
+                {row.name}
+              </button>
+            ),
+          },
+          {
+            key: "status",
+            label: "Status",
+            numeric: false,
+            width: LIST_WIDTHS.status,
+            render: (_, row) => (
+              <StatusTag status={byPath.get(row.path)!.status} columns={columns} />
+            ),
+          },
+          { key: "start", label: "Start", numeric: false, width: LIST_WIDTHS.start, render: day },
+          {
+            key: "deadline",
+            label: "Deadline",
+            numeric: false,
+            width: LIST_WIDTHS.deadline,
+            render: (_, row) => <DeadlineTag project={byPath.get(row.path)!} now={now} />,
+          },
+          {
+            key: "edited",
+            label: "Last edited",
+            numeric: false,
+            width: LIST_WIDTHS.edited,
+            render: (value) => formatRelativeTime(value as number) ?? "",
+          },
+        ]}
+      />
+      <div className={styles.listNew}>
+        <NewProject projects={projects} columns={columns} onAdd={(choice) => add(choice, {})} />
+      </div>
+    </>
   );
 }
 
@@ -447,12 +619,12 @@ function Kanban({
   projects,
   columns,
   edit,
-  create,
+  add,
 }: {
   projects: Project[];
   columns: StatusColumn[];
   edit: EditProject;
-  create: CreateProject;
+  add: AddProject;
 }) {
   const [order, setOrder] = useState<readonly string[]>([]);
   const now = today();
@@ -490,14 +662,7 @@ function Kanban({
   const onCardsChange = (next: KanbanCard[]) => {
     for (const card of next) {
       const project = byPath.get(card.id);
-      if (!project) {
-        // "Add project" made a card with an id of its own: it becomes a note.
-        create(card.title, { status: card.column }).catch((error: unknown) => {
-          window.alert(error instanceof Error ? error.message : String(error));
-        });
-      } else if (project.status !== card.column) {
-        edit(project, { status: card.column });
-      }
+      if (project && project.status !== card.column) edit(project, { status: card.column });
     }
     setOrder(next.filter((card) => byPath.has(card.id)).map((card) => card.id));
   };
@@ -522,6 +687,14 @@ function Kanban({
         toolbar={false}
         showIds={false}
         noun="project"
+        composer={(column, close) => (
+          <AddField
+            projects={projects}
+            columns={columns}
+            onAdd={(choice) => add(choice, { status: column })}
+            onClose={close}
+          />
+        )}
       />
     </div>
   );
@@ -597,12 +770,14 @@ function changeOf(project: Project, next: BarDrag): Change {
 
 function Timeline({
   projects,
+  columns,
   edit,
-  create,
+  add,
 }: {
   projects: Project[];
+  columns: StatusColumn[];
   edit: EditProject;
-  create: CreateProject;
+  add: AddProject;
 }) {
   const now = today();
   const scroller = useRef<HTMLDivElement>(null);
@@ -908,7 +1083,11 @@ function Timeline({
 
           <div className={styles.newRow}>
             <div className={styles.newCell}>
-              <NewProject onCreate={(name) => create(name, { start: now })} />
+              <NewProject
+                projects={projects}
+                columns={columns}
+                onAdd={(choice) => add(choice, { start: now })}
+              />
             </div>
           </div>
         </div>
