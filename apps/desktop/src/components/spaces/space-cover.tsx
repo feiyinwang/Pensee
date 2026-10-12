@@ -9,11 +9,6 @@ import styles from "./spaces.module.css";
 
 const TONES = 10;
 
-/** The colour pair a note's default cover is printed in, by a hash of its title. */
-export function toneClass(title: string): string {
-  return styles[`tone${titleHash(title) % TONES}`]!;
-}
-
 /** `Cover:` as an image URL: a web address as is, a vault path (optionally in
  *  `[[ ]]`) from the note's folder through the asset protocol. */
 export function coverSrc(note: TypedNote): string | null {
@@ -45,13 +40,13 @@ function venueOf(note: TypedNote): string | null {
 
 /** A note's cover: its own `Cover:` image when it loads, else a video's
  *  YouTube thumbnail from its link, else the default cover for its kind,
- *  coloured by a hash of its title. Books draw as a stack instead
- *  (book-stack.tsx). */
+ *  coloured and laid out by a hash of its title. */
 export function SpaceCover({ note, kind }: { note: TypedNote; kind: CoverKind }) {
   const src = coverSrc(note) ?? liveCoverSrc(note, kind);
   const [failed, setFailed] = useState<string | null>(null);
   const title = noteTitle(note);
-  const tone = toneClass(title);
+  const hash = titleHash(title);
+  const tone = styles[`tone${hash % TONES}`];
   const showImage = src !== null && failed !== src;
 
   return (
@@ -67,15 +62,55 @@ export function SpaceCover({ note, kind }: { note: TypedNote; kind: CoverKind })
           onError={() => setFailed(src)}
         />
       ) : (
-        <DefaultCover note={note} kind={kind} title={title} />
+        <DefaultCover note={note} kind={kind} title={title} layout={(hash >>> 4) % 3} />
       )}
     </div>
   );
 }
 
-function DefaultCover({ note, kind, title }: { note: TypedNote; kind: CoverKind; title: string }) {
+function DefaultCover({
+  note,
+  kind,
+  title,
+  layout,
+}: {
+  note: TypedNote;
+  kind: CoverKind;
+  title: string;
+  layout: number;
+}) {
   const byline = bylineOf(note);
   switch (kind) {
+    case "book":
+      if (layout === 1) {
+        return (
+          <div className={styles.bookCentered}>
+            <div className={styles.bookRule} />
+            <div className={`${styles.bookTop} ${styles.serif}`}>{title}</div>
+            {byline && <div className={styles.bookByline}>{byline}</div>}
+            <div className={styles.bookRule} />
+          </div>
+        );
+      }
+      if (layout === 2) {
+        return (
+          <>
+            <div className={`${styles.bookInitial} ${styles.serif}`}>
+              {Array.from(title)[0] ?? ""}
+            </div>
+            <div className={styles.bookInitialTitle}>
+              {title}
+              {byline && <span>{byline}</span>}
+            </div>
+          </>
+        );
+      }
+      return (
+        <>
+          <div className={`${styles.bookTop} ${styles.serif}`}>{title}</div>
+          {byline && <div className={styles.bookByline}>{byline}</div>}
+        </>
+      );
     case "video":
       return (
         <>
@@ -121,7 +156,6 @@ function DefaultCover({ note, kind, title }: { note: TypedNote; kind: CoverKind;
         </>
       );
     }
-    case "book":
     case "note":
       return <div className={`${styles.bookTop} ${styles.serif}`}>{title}</div>;
   }

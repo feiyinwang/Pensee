@@ -8,7 +8,6 @@ import { useSpaceDef, useTypedNotes, type SpaceDef, type TypedNote } from "@/hoo
 import { formatRelativeTime } from "@/lib/relative-time";
 import { SPACE_VIEW_LABELS, allTypes, notesInTab, type SpaceView } from "@/lib/spaces";
 import { useSpaceViewStore } from "@/stores/space-view-store";
-import { BookStack } from "./book-stack";
 import { FilesSpace } from "./files-space";
 import { NoteGallery } from "./note-gallery";
 import { ProjectViews } from "./project-views";
@@ -125,8 +124,6 @@ function TypedSpace({ space }: { space: SpaceDef }) {
         <NoteList notes={shown} />
       ) : space.view === "cards" ? (
         <NoteCards notes={shown} />
-      ) : tab.cover === "book" ? (
-        <BookStack notes={shown} openNote={openNote} />
       ) : (
         <NoteGallery notes={shown} tab={tab} openNote={openNote} />
       )}
