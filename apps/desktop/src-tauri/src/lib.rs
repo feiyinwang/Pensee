@@ -9,6 +9,7 @@ mod macos;
 pub mod open_target;
 mod state;
 mod telemetry;
+mod thumbs;
 #[cfg(desktop)]
 mod updater;
 mod watcher;
@@ -544,6 +545,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_webdriver::init());
 
     builder
+        .register_asynchronous_uri_scheme_protocol(thumbs::SCHEME, thumbs::handle)
         .manage(AppState::new())
         .manage(commands::agent::AgentState::default())
         .setup(|app| {

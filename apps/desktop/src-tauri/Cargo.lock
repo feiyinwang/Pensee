@@ -865,6 +865,7 @@ dependencies = [
  "notify",
  "objc2",
  "parking_lot",
+ "percent-encoding",
  "regex-lite",
  "reqwest",
  "rusqlite",

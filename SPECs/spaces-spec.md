@@ -49,6 +49,8 @@ Clicking a card opens its note in place. When the note's `Book` file (a PDF or E
 
 A cover that fails to load falls back to the default cover.
 
+A local `Cover:` is drawn from a thumbnail, never the full picture: the gallery asks for `thumb://` (`convertFileSrc(path, "thumb")?w=&h=`, `src-tauri/src/thumbs.rs`) with the box its kind is drawn in at 2x (`THUMB_BOX` in `space-cover.tsx`), and the handler scales the image to cover that box, encodes it as JPEG (PNG when it has transparency) and caches it in the app's cache folder under `cover-thumbs/`, keyed by path, size and modified time. It runs on the blocking pool, not the main thread, and checks the asset protocol's scope. A picture already inside the box, or one the decoder can't read, is served as it is. Why: a Library of ~130 saved covers at ~700×1024 (some 2000×3000) made WebKit decode and downscale hundreds of megabytes of bitmaps while scrolling, and the gallery stalled.
+
 ### Covers from the web
 
 Covers come from the note's own link (`url`, `link` or `source`, first non-blank; a bare `youtube.com/…` gets `https://`). Parsing lives in `lib/covers.ts`.

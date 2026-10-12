@@ -9,9 +9,22 @@ import styles from "./spaces.module.css";
 
 const TONES = 10;
 
+/** The box, in device pixels, a gallery cover of each kind is drawn in at
+ *  its widest (about one and a half times the grid's minimum column, at 2x),
+ *  so a local cover is decoded at that size, not its own. */
+const THUMB_BOX: Record<CoverKind, readonly [number, number]> = {
+  book: [360, 540],
+  paper: [400, 533],
+  podcast: [400, 400],
+  course: [560, 420],
+  video: [640, 360],
+  note: [400, 400],
+};
+
 /** `Cover:` as an image URL: a web address as is, a vault path (optionally in
- *  `[[ ]]`) from the note's folder through the asset protocol. */
-export function coverSrc(note: TypedNote): string | null {
+ *  `[[ ]]`) from the note's folder scaled down to `kind`'s box by the `thumb`
+ *  protocol (src-tauri/src/thumbs.rs). */
+export function coverSrc(note: TypedNote, kind: CoverKind): string | null {
   const raw = note.properties.cover?.trim();
   if (!raw) return null;
   const value = raw
@@ -22,7 +35,8 @@ export function coverSrc(note: TypedNote): string | null {
   if (!value) return null;
   if (/^https?:\/\//i.test(value)) return value;
   const absolute = value.startsWith("/") ? value : `${getParentDir(note.path)}/${value}`;
-  return convertFileSrc(absolute);
+  const [w, h] = THUMB_BOX[kind];
+  return `${convertFileSrc(absolute, "thumb")}?w=${w}&h=${h}`;
 }
 
 export function noteTitle(note: TypedNote): string {
@@ -42,7 +56,7 @@ function venueOf(note: TypedNote): string | null {
  *  YouTube thumbnail from its link, else the default cover for its kind,
  *  coloured and laid out by a hash of its title. */
 export function SpaceCover({ note, kind }: { note: TypedNote; kind: CoverKind }) {
-  const src = coverSrc(note) ?? liveCoverSrc(note, kind);
+  const src = coverSrc(note, kind) ?? liveCoverSrc(note, kind);
   const [failed, setFailed] = useState<string | null>(null);
   const title = noteTitle(note);
   const hash = titleHash(title);
