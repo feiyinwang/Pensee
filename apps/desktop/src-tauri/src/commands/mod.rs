@@ -1,6 +1,7 @@
 pub mod agent;
 pub mod apple_books;
 pub mod books;
+pub mod covers;
 pub mod fonts;
 pub mod fs;
 pub mod images;

@@ -6,9 +6,10 @@ import type { SpaceLocation } from "@/components/editor-area/page-kinds";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
 import { useSpaceDef, useTypedNotes, type SpaceDef, type TypedNote } from "@/hooks/use-spaces";
 import { formatRelativeTime } from "@/lib/relative-time";
-import { allTypes, bylineOf, notesInTab, type SpaceTab } from "@/lib/spaces";
+import { allTypes, notesInTab } from "@/lib/spaces";
 import { FilesSpace } from "./files-space";
-import { SpaceCover, noteTitle } from "./space-cover";
+import { NoteGallery } from "./note-gallery";
+import { noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
 
 /** A space's page (SPECs/spaces-spec.md): the notes of its types as a
@@ -108,28 +109,9 @@ function TypedSpace({ space }: { space: SpaceDef }) {
       ) : space.view === "cards" ? (
         <NoteCards notes={shown} />
       ) : (
-        <NoteGallery notes={shown} tab={tab} />
+        <NoteGallery notes={shown} tab={tab} openNote={openNote} />
       )}
     </>
-  );
-}
-
-function NoteGallery({ notes, tab }: { notes: TypedNote[]; tab: SpaceTab }) {
-  return (
-    <div className={styles.gallery} data-cover={tab.cover}>
-      {notes.map((note) => (
-        <button
-          key={note.path}
-          type="button"
-          className={styles.item}
-          onClick={(event) => openNote(event, note.path)}
-        >
-          <SpaceCover note={note} kind={tab.cover} />
-          <span className={styles.itemTitle}>{noteTitle(note)}</span>
-          <span className={styles.itemSub}>{bylineOf(note) ?? ""}</span>
-        </button>
-      ))}
-    </div>
   );
 }
 

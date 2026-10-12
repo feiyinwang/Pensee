@@ -2,6 +2,7 @@ import { useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Mic, Play } from "lucide-react";
 import { getParentDir } from "@/lib/paths";
+import { liveCoverSrc } from "@/lib/covers";
 import { bylineOf, titleHash, type CoverKind } from "@/lib/spaces";
 import type { TypedNote } from "@/lib/tauri";
 import styles from "./spaces.module.css";
@@ -37,10 +38,11 @@ function venueOf(note: TypedNote): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-/** A note's cover: its own `Cover:` image when it loads, else the default
- *  cover for its kind, coloured and laid out by a hash of its title. */
+/** A note's cover: its own `Cover:` image when it loads, else a video's
+ *  YouTube thumbnail from its link, else the default cover for its kind,
+ *  coloured and laid out by a hash of its title. */
 export function SpaceCover({ note, kind }: { note: TypedNote; kind: CoverKind }) {
-  const src = coverSrc(note);
+  const src = coverSrc(note) ?? liveCoverSrc(note, kind);
   const [failed, setFailed] = useState<string | null>(null);
   const title = noteTitle(note);
   const hash = titleHash(title);

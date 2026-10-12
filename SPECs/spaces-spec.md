@@ -47,6 +47,15 @@ Library opens on Books. Its tabs are an Arc segmented control with the count of 
 
 A cover that fails to load falls back to the default cover.
 
+### Covers from the web
+
+Covers come from the note's own link (`url`, `link` or `source`, first non-blank; a bare `youtube.com/…` gets `https://`). Parsing lives in `lib/covers.ts`.
+
+- **Shown live:** a video with a YouTube link (`watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/`) and no `Cover:` shows `https://i.ytimg.com/vi/<id>/hqdefault.jpg` straight away. That is one image request per card, and nothing is written.
+- **Saved on request:** nothing is downloaded or written until the user asks. A card that has a cover to get (that YouTube thumbnail, or a podcast's page) shows a **Get cover** button over the cover's corner on hover. The gallery's "N covers not saved in their notes yet · **Get covers**" line gets them all, one at a time. `save_web_cover` (Rust, `commands/covers.rs`) runs the URL through `fetch_link_preview`. A direct image is used as is; a page gives its Open Graph image. The command downloads the image (`image/*` only, 10 MB cap) to `<stem>-assets/cover.<ext>` (`cover-2.<ext>` when one exists) and returns that path. The frontend writes it with `withCover` through `editPage`: it fills a blank or `null` `Cover:` line in place, else adds the line after `Type:`, and leaves every other line byte for byte. A cover the note already has is never replaced.
+- **Why not automatic:** saving changes the note's modified time, and Library sorts by last edited. Fetching on open would reorder the list and rewrite dozens of files without asking.
+- A failure shows an editor notice and leaves the note as it was.
+
 ## Sidebar
 
 - Today opens today's daily note (`openTodaysNote`).
@@ -66,7 +75,7 @@ A cover that fails to load falls back to the default cover.
 
 ## Not in this pass
 
-- Fetching covers from the web (YouTube thumbnails, podcast artwork).
+- Covers for other video hosts (Vimeo, Bilibili) and for books, courses and papers.
 - A `+ New` button inside a space.
 - Project status tabs (Active / Someday / Done): status values in the vault are mostly empty, so the list shows the raw `Status` or "No status".
 - Writing the matching notes into the space note as `[[links]]`.

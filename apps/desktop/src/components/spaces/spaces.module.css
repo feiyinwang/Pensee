@@ -146,19 +146,102 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .item:hover .cover {
+  .itemWrap:hover .cover,
+  .itemWrap:hover .getCover {
     translate: 0 -3px;
   }
-  .item:hover .cover::after {
+  .itemWrap:hover .cover::after {
     opacity: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .cover,
-  .cover::after {
+  .cover::after,
+  .getCover {
     transition: none;
   }
+}
+
+/* Get cover ------------------------------------------------------------ */
+
+/* The item is a button, so the "Get cover" button sits beside it in a
+   wrapper and is placed over the cover's top-right corner. */
+.itemWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.getCover {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgb(0 0 0 / 0.55);
+  color: white;
+  opacity: 0;
+  transition:
+    opacity var(--motion-fast) var(--ease-out),
+    translate var(--motion-base) var(--ease-out);
+}
+
+.itemWrap:hover .getCover,
+.getCover:focus-visible,
+.getCover[data-busy] {
+  opacity: 1;
+}
+
+.getCover:hover:not(:disabled) {
+  background: rgb(0 0 0 / 0.75);
+}
+
+.getCover:disabled {
+  cursor: default;
+}
+
+.getCover[data-busy] {
+  opacity: 0.6;
+}
+
+.getCover:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (hover: none) {
+  .getCover {
+    opacity: 1;
+  }
+}
+
+.coverBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.coverBarButton {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--fg-base);
+  background: var(--surface-subtle);
+}
+
+.coverBarButton:hover {
+  background: var(--surface-subtle-strong);
 }
 
 .cover[data-kind="book"] {

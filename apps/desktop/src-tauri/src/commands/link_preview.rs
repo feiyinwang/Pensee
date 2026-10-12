@@ -30,7 +30,7 @@ pub struct LinkPreview {
     pub embeddable: bool,
 }
 
-fn client() -> Result<&'static reqwest::Client, AppError> {
+pub(crate) fn client() -> Result<&'static reqwest::Client, AppError> {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     if let Some(client) = CLIENT.get() {
         return Ok(client);

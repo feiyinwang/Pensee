@@ -389,6 +389,13 @@ export function fetchLinkPreview(url: string): Promise<LinkPreview> {
   return invoke("fetch_link_preview", { url });
 }
 
+/** Download the cover at `url` (an image, or a page with an Open Graph image)
+ *  into the note's `<stem>-assets` folder; returns its path relative to the
+ *  note's folder, e.g. `My video-assets/cover.jpg`. */
+export function saveWebCover(url: string, markdownFilePath: string): Promise<string> {
+  return invoke("save_web_cover", { url, markdownFilePath });
+}
+
 export function saveClipboardImage(
   markdownFilePath: string,
   imageData: number[],
