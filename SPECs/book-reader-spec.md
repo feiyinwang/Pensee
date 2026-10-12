@@ -38,8 +38,10 @@ to explain or define something.
 - **Adding a highlight.** Select text in the book and choose **Highlight**,
   either in the pill that appears over the selection or in the right-click
   menu. This adds `- <text> ^bk-p<page>-<start>-<end>` (PDF) or
-  `^bk-s<section>-<start>-<end>` (EPUB) to the page's `## Highlights`, in
-  reading order.
+  `^bk-s<section>-<start>-<end>` (EPUB) to the page, in reading order among
+  its other highlights wherever the writer has put them. The first one goes
+  at the end of a `## Highlights` section the writer made, else at the end of
+  the page. No heading is ever added.
   - The id is the location: the page/section plus character offsets into
     that page's text, so no separate store is needed.
   - The id is hidden like every block id, and the block works as a linked
