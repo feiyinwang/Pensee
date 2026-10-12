@@ -44,6 +44,8 @@ async function waitForMount() {
 }
 
 async function openReadme() {
+  // The folder tree lives in the Files space (SPECs/spaces-spec.md).
+  await $('[data-space-key="files"]').click();
   const row = await $('[data-tree-path$="/README.md"]');
   await row.waitForExist({ timeout: 10_000 });
   await row.click();
@@ -101,6 +103,7 @@ describe("status bar and sidebar visibility settings", function () {
     await browser.refresh();
     await waitForMount();
     // The document restores without a footer, so wait on the editor instead.
+    await $('[data-space-key="files"]').click();
     const row = await $('[data-tree-path$="/README.md"]');
     await row.waitForExist({ timeout: 10_000 });
     await row.click();

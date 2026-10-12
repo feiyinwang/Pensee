@@ -1,0 +1,541 @@
+/* Spaces (SPECs/spaces-spec.md). Default covers are objects, not chrome: their
+   colours are fixed pairs that read the same in light and dark themes, like a
+   printed cover would. */
+
+.page {
+  margin: 0 auto;
+  max-width: 1100px;
+  padding: 8rem 2rem 6rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  margin-bottom: 24px;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.count {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.headerEnd {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tabCount {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+}
+
+.iconButton:hover {
+  background: var(--surface-subtle);
+  color: var(--fg-base);
+}
+
+/* Gallery ------------------------------------------------------------- */
+
+.gallery {
+  display: grid;
+  gap: 28px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--cover-min), 1fr));
+}
+
+.gallery[data-cover="book"] {
+  --cover-min: 128px;
+}
+.gallery[data-cover="paper"] {
+  --cover-min: 140px;
+}
+.gallery[data-cover="podcast"] {
+  --cover-min: 140px;
+}
+.gallery[data-cover="course"] {
+  --cover-min: 190px;
+}
+.gallery[data-cover="video"] {
+  --cover-min: 220px;
+}
+.gallery[data-cover="note"] {
+  --cover-min: 160px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+  border-radius: 6px;
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.itemTitle {
+  margin-top: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--fg-base);
+}
+
+.itemSub {
+  margin-top: 2px;
+  min-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Covers -------------------------------------------------------------- */
+
+.cover {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  background: var(--cover-bg);
+  color: var(--cover-fg);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.12),
+    0 6px 16px -6px rgb(0 0 0 / 0.25);
+  transition: translate var(--motion-base) var(--ease-out);
+}
+
+/* The lift on hover is a shadow layer fading in, so nothing repaints. */
+.cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 14px 28px -10px rgb(0 0 0 / 0.35);
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .item:hover .cover {
+    translate: 0 -3px;
+  }
+  .item:hover .cover::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cover,
+  .cover::after {
+    transition: none;
+  }
+}
+
+.cover[data-kind="book"] {
+  aspect-ratio: 2 / 3;
+  border-radius: 2px 5px 5px 2px;
+}
+.cover[data-kind="paper"] {
+  aspect-ratio: 3 / 4;
+}
+.cover[data-kind="podcast"] {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+}
+.cover[data-kind="course"] {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+}
+.cover[data-kind="video"] {
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+}
+
+.coverImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Book: a spine fold down the left edge. */
+.cover[data-kind="book"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.18), rgb(255 255 255 / 0.08) 60%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.serif {
+  font-family: "New York", "Iowan Old Style", "Palatino", Georgia, serif;
+}
+
+.bookTop {
+  padding: 16px 14px 0 18px;
+  font-size: 17px;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.bookByline {
+  margin-top: auto;
+  padding: 0 14px 14px 18px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.bookRule {
+  margin: 0 16px 0 20px;
+  border-top: 1px solid currentColor;
+  opacity: 0.35;
+}
+
+.bookCentered {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.bookCentered .bookTop {
+  padding: 0 14px 0 18px;
+  font-size: 16px;
+}
+
+.bookCentered .bookByline {
+  margin-top: 0;
+  padding: 0 14px 0 18px;
+}
+
+.bookInitial {
+  padding: 8px 14px 0 16px;
+  font-size: 72px;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.bookInitialTitle {
+  margin-top: auto;
+  padding: 0 14px 14px 18px;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.bookInitialTitle span {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.videoTitle {
+  padding: 14px 16px 0;
+  max-width: 85%;
+  font-size: 16px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.videoPlay {
+  margin: auto 0 12px 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cover-fg);
+  color: var(--cover-bg);
+}
+
+.eyebrow {
+  padding: 12px 14px 0;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.courseTitle {
+  margin-top: auto;
+  padding: 0 14px 14px;
+  font-size: 16px;
+  line-height: 1.15;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.podcastMark {
+  padding: 12px 12px 0;
+  opacity: 0.85;
+}
+
+.podcastTitle {
+  margin-top: auto;
+  padding: 0 12px 12px;
+  font-size: 22px;
+  line-height: 0.98;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+/* Paper: a typeset first page on off-white stock. */
+.cover[data-kind="paper"] {
+  --cover-bg: #fbfaf6;
+  --cover-fg: #23211d;
+  padding: 14px 13px;
+  gap: 6px;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.06),
+    0 1px 2px rgb(0 0 0 / 0.1),
+    0 6px 16px -6px rgb(0 0 0 / 0.2);
+}
+
+.paperVenue {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a8578;
+}
+
+.paperTitle {
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.paperAuthors {
+  font-size: 9px;
+  text-align: center;
+  color: #5f5b52;
+}
+
+.paperLines {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.paperLines span {
+  height: 3px;
+  border-radius: 2px;
+  background: #dcd8cd;
+}
+
+.paperLines + .paperLines span {
+  background: #e9e6dd;
+}
+
+.tone0 {
+  --cover-bg: #efe6d6;
+  --cover-fg: #3a2e1f;
+}
+.tone1 {
+  --cover-bg: #23262b;
+  --cover-fg: #f2ede4;
+}
+.tone2 {
+  --cover-bg: #1f4d3f;
+  --cover-fg: #e6f2ec;
+}
+.tone3 {
+  --cover-bg: #d9825b;
+  --cover-fg: #2b140a;
+}
+.tone4 {
+  --cover-bg: #bfd7ea;
+  --cover-fg: #13283a;
+}
+.tone5 {
+  --cover-bg: #4a2c4f;
+  --cover-fg: #f3e6f2;
+}
+.tone6 {
+  --cover-bg: #c9d6b8;
+  --cover-fg: #1f2a14;
+}
+.tone7 {
+  --cover-bg: #e8b4b8;
+  --cover-fg: #3a1418;
+}
+.tone8 {
+  --cover-bg: #e3b23c;
+  --cover-fg: #2a1d02;
+}
+.tone9 {
+  --cover-bg: #1e2f55;
+  --cover-fg: #e3e9f7;
+}
+
+/* List ---------------------------------------------------------------- */
+
+.list {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.list th {
+  padding: 0 12px 8px;
+  text-align: left;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--line-subtler);
+}
+
+.list td {
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line-subtler);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.list td:first-child {
+  color: var(--fg-base);
+}
+
+.list tbody tr {
+  cursor: pointer;
+}
+
+.list tbody tr:hover td {
+  background: var(--surface-subtle);
+}
+
+.list tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--surface-subtle);
+  color: var(--fg-base);
+}
+
+.status[data-empty] {
+  background: transparent;
+  border: 1px dashed var(--line-subtle);
+  color: var(--text-muted);
+}
+
+/* Cards --------------------------------------------------------------- */
+
+.cards {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line-subtler);
+  background: var(--surface-card);
+  text-align: left;
+}
+
+.card:hover {
+  border-color: var(--line-subtle);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg-base);
+}
+
+.cardText {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Empty --------------------------------------------------------------- */
+
+.empty {
+  padding: 96px 0;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg-base);
+}
+
+.emptyText {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}

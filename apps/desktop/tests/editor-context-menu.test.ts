@@ -199,7 +199,7 @@ describe("buildTabMenuItemsSpec", () => {
       "close-others:Close others",
       "close-all:Close all",
       "---",
-      "reveal-in-sidebar:Reveal in sidebar",
+      "reveal-in-sidebar:Show in Files",
       "copy-path:Copy path",
       "---",
       "rename:Rename",

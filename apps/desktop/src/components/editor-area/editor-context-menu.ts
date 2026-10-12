@@ -216,7 +216,7 @@ export function buildTabMenuItemsSpec(
     {
       kind: "item",
       id: "reveal-in-sidebar",
-      text: "Reveal in sidebar",
+      text: "Show in Files",
       action: handlers.onRevealInSidebar,
     },
     { kind: "item", id: "copy-path", text: "Copy path", action: handlers.onCopyPath },

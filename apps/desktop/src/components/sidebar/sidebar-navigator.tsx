@@ -24,10 +24,10 @@ import * as tauri from "@/lib/tauri";
 import { getFileStem, getParentDir, getRelativePath } from "@/lib/paths";
 import { duplicateFile } from "./duplicate-file";
 import { useMoveEntry } from "./use-move-entry";
-import { FileTree } from "./file-tree";
 import { FileTreeNode } from "./file-tree-node";
 import { showFileContextMenu } from "./file-context-menu";
 import { ShowMoreButton, SidebarSection } from "./sidebar-section";
+import { SidebarSpaces } from "./sidebar-spaces";
 import type { DirEntry } from "@/types/fs";
 
 interface SidebarNavigatorProps {
@@ -35,10 +35,6 @@ interface SidebarNavigatorProps {
   enableContextMenus?: boolean;
   onOpenFileComplete?: () => void;
   className?: string;
-  renamingPath: string | null;
-  onRenamingPathChange: (path: string | null) => void;
-  everythingCollapsed: boolean;
-  onEverythingCollapsedChange: (collapsed: boolean) => void;
 }
 
 function getExtension(name: string): string {
@@ -52,10 +48,6 @@ export function SidebarNavigator({
   enableContextMenus = true,
   onOpenFileComplete,
   className = "flex flex-col gap-4 py-2",
-  renamingPath,
-  onRenamingPathChange,
-  everythingCollapsed,
-  onEverythingCollapsedChange,
 }: SidebarNavigatorProps) {
   const { root } = useWorkspace();
   const defaultOpenFile = useOpenFile();
@@ -203,6 +195,8 @@ export function SidebarNavigator({
 
   return (
     <div className={className}>
+      <SidebarSpaces />
+
       {pinnedEntries.files.length > 0 && (
         <SidebarSection title="Pinned">
           <div role="tree" aria-label="Pinned files" className="flex flex-col gap-px">
@@ -254,20 +248,6 @@ export function SidebarNavigator({
           </div>
         </SidebarSection>
       )}
-
-      <SidebarSection
-        title="Everything"
-        collapsed={everythingCollapsed}
-        onCollapsedChange={onEverythingCollapsedChange}
-      >
-        <FileTree
-          rootPath={root}
-          openFile={openFileAndComplete}
-          enableContextMenus={enableContextMenus}
-          renamingPath={renamingPath}
-          onRenamingPathChange={onRenamingPathChange}
-        />
-      </SidebarSection>
     </div>
   );
 }

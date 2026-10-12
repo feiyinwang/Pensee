@@ -5,19 +5,7 @@ import { useBooleanSetting } from "@/hooks/use-settings";
 import { ScrollFade } from "@/components/scroll-fade";
 import { SidebarNavigator } from "./sidebar-navigator";
 
-interface FileBrowserProps {
-  renamingPath: string | null;
-  onRenamingPathChange: (path: string | null) => void;
-  everythingCollapsed: boolean;
-  onEverythingCollapsedChange: (collapsed: boolean) => void;
-}
-
-export function FileBrowser({
-  renamingPath,
-  onRenamingPathChange,
-  everythingCollapsed,
-  onEverythingCollapsedChange,
-}: FileBrowserProps) {
+export function FileBrowser() {
   const openCommandPalette = useOpenCommandPalette();
   const showSearch = useBooleanSetting("appearance.sidebar-show-search");
 
@@ -52,12 +40,7 @@ export function FileBrowser({
       )}
 
       <ScrollFade className="min-h-0 flex-1 overflow-y-scroll scrollbar-none">
-        <SidebarNavigator
-          renamingPath={renamingPath}
-          onRenamingPathChange={onRenamingPathChange}
-          everythingCollapsed={everythingCollapsed}
-          onEverythingCollapsedChange={onEverythingCollapsedChange}
-        />
+        <SidebarNavigator />
       </ScrollFade>
     </div>
   );

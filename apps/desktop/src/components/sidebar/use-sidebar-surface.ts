@@ -1,5 +1,6 @@
-import { useState, type MouseEventHandler } from "react";
+import type { MouseEventHandler } from "react";
 import { useRefreshDirectory } from "@/hooks/use-file-tree";
+import { openFilesSpace, startFileTreeRename } from "@/hooks/use-spaces";
 import { useBooleanSetting, useSetSetting } from "@/hooks/use-settings";
 import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import { getWorkspaceIdentity, isCurrentWorkspaceIdentity } from "@/hooks/workspace-api";
@@ -14,17 +15,16 @@ export function useSidebarSurface() {
   const showRecents = useBooleanSetting("appearance.sidebar-show-recents");
   const root = useWorkspaceRoot();
   const refreshDirectory = useRefreshDirectory();
-  const [renamingPath, setRenamingPath] = useState<string | null>(null);
-  const [everythingCollapsed, setEverythingCollapsed] = useState(false);
 
   const createRootEntry = (kind: tauri.SidebarEntryKind) => {
     if (!root) return;
     const identity = getWorkspaceIdentity();
     void createSidebarEntryAndRename(kind, {
-      expandParent: () => setEverythingCollapsed(false),
+      // The tree lives in the Files space (SPECs/spaces-spec.md).
+      expandParent: openFilesSpace,
       createEntry: (entryKind) => tauri.createSidebarEntry(root, entryKind),
       refreshRoot: () => refreshDirectory(root),
-      startRenaming: setRenamingPath,
+      startRenaming: startFileTreeRename,
       isCurrentWorkspace: () => isCurrentWorkspaceIdentity(identity),
     }).catch((error: unknown) => {
       window.alert(
@@ -70,11 +70,5 @@ export function useSidebarSurface() {
   return {
     hasWorkspace: root !== null,
     onContextMenu,
-    tree: {
-      renamingPath,
-      onRenamingPathChange: setRenamingPath,
-      everythingCollapsed,
-      onEverythingCollapsedChange: setEverythingCollapsed,
-    },
   };
 }

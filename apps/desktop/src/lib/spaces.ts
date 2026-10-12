@@ -1,0 +1,164 @@
+import type { TypedNote } from "./tauri";
+
+// Spaces (SPECs/spaces-spec.md): saved questions about a note's `Type:`, never
+// folders. The built-ins live here; a space you add is a markdown note with
+// `Type: Space`, read back through `spaceFromNote`.
+
+export type SpaceView = "gallery" | "list" | "cards" | "files";
+export type CoverKind = "book" | "video" | "course" | "podcast" | "paper" | "note";
+export type SpaceIcon = "projects" | "library" | "inspirations" | "files" | "space";
+
+/** One tab of a space: which types it shows and how its covers look. */
+export interface SpaceTab {
+  id: string;
+  label: string;
+  /** What one item is called, for the empty state ("Add your first book"). */
+  noun: string;
+  types: string[];
+  cover: CoverKind;
+}
+
+export interface SpaceDef {
+  /** A built-in id, or `note:<path>` for a space note. */
+  key: string;
+  name: string;
+  icon: SpaceIcon;
+  view: SpaceView;
+  tabs: SpaceTab[];
+  /** The space note, for a space you added. */
+  path?: string;
+}
+
+export const SPACE_NOTE_TYPE = "Space";
+export const SPACE_VIEWS = ["gallery", "list", "cards"] as const;
+
+const tab = (id: string, label: string, noun: string, types: string[], cover: CoverKind) => ({
+  id,
+  label,
+  noun,
+  types,
+  cover,
+});
+
+export const BUILT_IN_SPACES: readonly SpaceDef[] = [
+  {
+    key: "projects",
+    name: "Projects",
+    icon: "projects",
+    view: "list",
+    tabs: [tab("projects", "Projects", "project", ["Project"], "note")],
+  },
+  {
+    key: "library",
+    name: "Library",
+    icon: "library",
+    view: "gallery",
+    tabs: [
+      tab("books", "Books", "book", ["Book"], "book"),
+      tab("videos", "Videos", "video", ["YouTube", "Video"], "video"),
+      tab("courses", "Courses", "course", ["Course"], "course"),
+      tab("podcasts", "Podcasts", "podcast", ["Podcast"], "podcast"),
+      tab("papers", "Papers", "paper", ["Paper"], "paper"),
+    ],
+  },
+  {
+    key: "inspirations",
+    name: "Inspirations",
+    icon: "inspirations",
+    view: "cards",
+    tabs: [tab("inspirations", "Inspirations", "inspiration", ["Inspiration"], "note")],
+  },
+  { key: "files", name: "Files", icon: "files", view: "files", tabs: [] },
+];
+
+export const FILES_SPACE_KEY = "files";
+
+export function builtInSpace(key: string): SpaceDef | undefined {
+  return BUILT_IN_SPACES.find((space) => space.key === key);
+}
+
+export function noteSpaceKey(path: string): string {
+  return `note:${path}`;
+}
+
+const COVER_BY_TYPE: Record<string, CoverKind> = {
+  book: "book",
+  youtube: "video",
+  video: "video",
+  course: "course",
+  podcast: "podcast",
+  paper: "paper",
+};
+
+/** The cover a type draws in a space you added (`Shows: Book` looks like a book). */
+export function coverKindForType(type: string): CoverKind {
+  return COVER_BY_TYPE[type.trim().toLowerCase()] ?? "note";
+}
+
+export function splitTypes(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+function parseView(value: string | undefined): SpaceView {
+  const view = value?.trim().toLowerCase();
+  return SPACE_VIEWS.find((v) => v === view) ?? "gallery";
+}
+
+/** A space note (`Type: Space`) as a space. `Shows` falls back to the note's
+ *  own name, so "Recipes" with no `Shows` still means something. */
+export function spaceFromNote(note: TypedNote): SpaceDef {
+  const name = note.title ?? note.name;
+  const types = splitTypes(note.properties.shows);
+  const shown = types.length > 0 ? types : [note.name];
+  return {
+    key: noteSpaceKey(note.path),
+    name,
+    icon: "space",
+    view: parseView(note.properties.view),
+    tabs: [tab("all", name, shown[0].toLowerCase(), shown, coverKindForType(shown[0]))],
+    path: note.path,
+  };
+}
+
+/** The markdown a new space note starts with. */
+export function spaceNoteContent(type: string, view: SpaceView): string {
+  return `---\nType: ${SPACE_NOTE_TYPE}\nShows: ${type}\nView: ${view}\n---\n`;
+}
+
+/** A file name made from what was typed into "Name"; null when nothing usable is left. */
+export function spaceFileStem(name: string): string | null {
+  const stem = name
+    .replace(/[/\\:*?"<>|#^[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stem.length > 0 ? stem : null;
+}
+
+/** The notes that belong to `spaceTab`. */
+export function notesInTab(notes: readonly TypedNote[], spaceTab: SpaceTab): TypedNote[] {
+  const wanted = new Set(spaceTab.types.map((t) => t.toLowerCase()));
+  return notes.filter((note) => wanted.has(note.note_type.toLowerCase()));
+}
+
+export function allTypes(space: SpaceDef): string[] {
+  return space.tabs.flatMap((t) => t.types);
+}
+
+/** Stable small hash of a title, so a default cover keeps its colour and layout. */
+export function titleHash(title: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < title.length; i += 1) {
+    hash ^= title.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+/** First author-like property of a note, for a cover's byline. */
+export function bylineOf(note: TypedNote): string | null {
+  const p = note.properties;
+  return p.author ?? p.authors ?? p.channel ?? p.host ?? p.creator ?? p.by ?? null;
+}

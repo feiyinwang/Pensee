@@ -1,5 +1,7 @@
 # Sidebar Sections Spec
 
+> 2026-10-12: the `Everything` tree moved out of the sidebar into the Files space, and Today and Spaces now sit above Pinned and Recents. See [spaces-spec.md](./spaces-spec.md).
+
 ## Summary
 
 Redesign the sidebar into three ordered sections: `Pinned`, `Recents`, and `Everything`. `Everything` keeps the existing file tree. `Pinned` shows files explicitly pinned from the sidebar. `Recents` shows workspace markdown files ordered by metadata (`modified_at`) without rescanning the workspace on every page request.

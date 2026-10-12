@@ -94,6 +94,7 @@ describe("window zoom", function () {
     if (!workspaceRestored) return;
     mkdirSync(SHOTS, { recursive: true });
     await invoke("reset_setting", { key: "appearance.zoom", scope: "global" });
+    await $('[data-space-key="files"]').click();
     const row = await $('[data-tree-path$="/note.md"]');
     await row.waitForExist({ timeout: 10_000 });
     await row.click();

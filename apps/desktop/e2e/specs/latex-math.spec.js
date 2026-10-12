@@ -65,8 +65,9 @@ describe("LaTeX math rendering", function () {
 
   it("opens the seeded document from the sidebar", async function () {
     // The workspace watcher picks the new file up; it appears in the
-    // Everything tree under its title ("Math check") or filename stem
+    // Files space's tree under its title ("Math check") or filename stem
     // depending on the sidebar-file-label setting.
+    await $('[data-space-key="files"]').click();
     const row = await $(`span*=Math check`);
     await row.waitForExist({ timeout: 15_000 });
     await row.click();

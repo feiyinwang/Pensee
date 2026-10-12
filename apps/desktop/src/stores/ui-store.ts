@@ -12,6 +12,11 @@ interface UIState {
   openCommandPalette: (intent?: CommandPaletteIntent, initialSearch?: string) => void;
   closeCommandPalette: () => void;
   setCommandPaletteSearch: (search: string) => void;
+
+  /** The Files space's tree entry being renamed inline (a new file or folder
+   *  made from the sidebar lands here). */
+  fileTreeRenamingPath: string | null;
+  setFileTreeRenamingPath: (path: string | null) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -32,4 +37,7 @@ export const useUIStore = create<UIState>((set) => ({
       commandPaletteSearch: "",
     }),
   setCommandPaletteSearch: (search: string) => set({ commandPaletteSearch: search }),
+
+  fileTreeRenamingPath: null,
+  setFileTreeRenamingPath: (path) => set({ fileTreeRenamingPath: path }),
 }));

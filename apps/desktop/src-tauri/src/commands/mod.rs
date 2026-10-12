@@ -10,5 +10,6 @@ pub mod search;
 pub mod settings;
 #[cfg(target_os = "macos")]
 pub mod shell_install;
+pub mod spaces;
 pub mod startup;
 pub mod workspace;

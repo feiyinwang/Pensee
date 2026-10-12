@@ -2,6 +2,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 
 import { deleteFile } from "@/lib/file-actions";
 import { getRelativePath } from "@/lib/paths";
+import { openFilesSpace } from "@/hooks/use-spaces";
 import { revealPathInSidebar } from "@/lib/reveal-in-sidebar";
 import { useEditorStore, type Tab } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -32,8 +33,8 @@ export function showTabMenu(tab: Tab, onRename: () => void): boolean {
         for (const id of editor().tabs.map((t) => t.id)) editor().closeTab(id);
       },
       onRevealInSidebar: () => {
-        editor().setActiveTab(tab.id);
-        void revealPathInSidebar(filePath, { showSidebar: true });
+        openFilesSpace();
+        void revealPathInSidebar(filePath);
       },
       onCopyPath: () => void writeText(relative),
       onRename,

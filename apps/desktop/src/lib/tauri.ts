@@ -255,6 +255,28 @@ export function findBlockReferences(ids: string[]): Promise<BlockReference[]> {
   return invoke("find_block_references", { ids });
 }
 
+/** A note that declares `Type:` (SPECs/spaces-spec.md). `properties` holds the
+ *  top-level scalar frontmatter keys, lower-cased; lists are joined with ", ". */
+export interface TypedNote {
+  path: string;
+  relative_path: string;
+  /** File stem. */
+  name: string;
+  /** Frontmatter `title:`; the file stem names the note otherwise. */
+  title: string | null;
+  /** The first `Type` value, as written. */
+  note_type: string;
+  modified_at: number;
+  properties: Record<string, string>;
+  /** First line of body text. */
+  excerpt: string | null;
+}
+
+/** Notes whose `Type` is one of `types` (case-insensitive), newest edit first. */
+export function listTypedNotes(types: string[]): Promise<TypedNote[]> {
+  return invoke("list_typed_notes", { types });
+}
+
 export function listSystemFonts(): Promise<string[]> {
   return invoke("list_system_fonts");
 }

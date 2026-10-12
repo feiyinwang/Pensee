@@ -3,11 +3,13 @@ import { EditorPane } from "../editor-pane";
 import { DocumentFooter } from "../document-footer";
 import { NewTabPage } from "../new-tab-page";
 import { SettingsPanel } from "@/components/settings-panel";
+import { SpacePage } from "@/components/spaces/space-page";
 import type { Location } from "./index";
 import type { BookLocation } from "./book";
 import type { FileLocation } from "./file";
 import type { LauncherLocation } from "./launcher";
 import type { SettingsLocation } from "./settings";
+import type { SpaceLocation } from "./space";
 import type { PageKindView } from "./types";
 
 /**
@@ -58,6 +60,9 @@ const views = {
   book: {
     Component: BookTabBody,
   } satisfies PageKindView<BookLocation>,
+  space: {
+    Component: SpacePage,
+  } satisfies PageKindView<SpaceLocation>,
 } as const;
 
 /** Resolve a location to its registered view. Throws on an unknown kind —

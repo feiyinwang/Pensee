@@ -1,11 +1,4 @@
-import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-
-interface RevealOptions {
-  /** If the sidebar is currently hidden, flip the setting back on before
-   *  scrolling. Used by the explicit "Reveal in sidebar" menu action. */
-  showSidebar?: boolean;
-}
 
 const FRAME_BUDGET = 5;
 
@@ -41,25 +34,17 @@ async function waitForRow(path: string): Promise<HTMLElement | null> {
 }
 
 /**
- * Make `path`'s row visible in the sidebar tree: expand every ancestor folder
- * from the workspace root down to the file's parent, then scroll the row into
- * view. The explicit tab-context-menu action goes through here.
+ * Make `path`'s row visible in the Files space's tree (SPECs/spaces-spec.md):
+ * expand every ancestor folder from the workspace root down to the file's
+ * parent, then scroll the row into view. The caller shows the Files space
+ * first; the tab-context-menu "Show in Files" action goes through here.
  *
  * No-op when the workspace isn't open or the path lives outside the
  * workspace root. Concurrent calls cancel earlier ones via a module-level
  * token so back/forward held down doesn't scroll to a stale leaf.
  */
-export async function revealPathInSidebar(path: string, opts: RevealOptions = {}): Promise<void> {
+export async function revealPathInSidebar(path: string): Promise<void> {
   const token = ++latestToken;
-
-  if (opts.showSidebar) {
-    const settings = useSettingsStore.getState();
-    const isVisible = settings.settings["appearance.sidebar-visible"] !== false;
-    if (!isVisible) {
-      await settings.setSetting("appearance.sidebar-visible", true);
-      if (token !== latestToken) return;
-    }
-  }
 
   const { root } = useWorkspaceStore.getState();
   if (!root) return;

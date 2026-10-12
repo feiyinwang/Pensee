@@ -16,6 +16,7 @@ import {
   type FileLocation,
   type Location,
   type SerializedLocation,
+  type SpaceLocation,
 } from "@/components/editor-area/page-kinds";
 
 export interface OpenFile {
@@ -126,6 +127,10 @@ export function createFileTab(path: string, id = createTabId()): Tab {
 
 export function createSettingsTab(id = createTabId()): Tab {
   return { id, location: { kind: "settings" }, back: [], forward: [] };
+}
+
+export function createSpaceTab(location: SpaceLocation, id = createTabId()): Tab {
+  return { id, location, back: [], forward: [] };
 }
 
 const EMPTY_STATS: DocumentStats = { words: 0, characters: 0, paragraphs: 0 };
