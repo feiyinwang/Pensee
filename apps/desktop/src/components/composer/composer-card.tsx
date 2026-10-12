@@ -91,6 +91,21 @@ function useFolders(): string[] {
   }, [root, entries, activePath]);
 }
 
+let motionHolders = 0;
+
+/** Writer's faster motion for Arc while a composer card is mounted; the
+ *  menus and calendar portal to <body>, so the switch lives there. */
+function useComposerMotion(): void {
+  useEffect(() => {
+    motionHolders += 1;
+    document.body.classList.add("composer-motion");
+    return () => {
+      motionHolders -= 1;
+      if (motionHolders === 0) document.body.classList.remove("composer-motion");
+    };
+  }, []);
+}
+
 export interface ComposerCardProps {
   /** `dialog` floats over the page (⌘T); `inline` is the New tab page. */
   variant: "dialog" | "inline";
@@ -121,6 +136,8 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
 
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  useComposerMotion();
+
   useEffect(() => {
     (draft.file ? bodyRef.current : titleRef.current)?.focus();
     // Only a new focus request moves the caret, not a draft change.

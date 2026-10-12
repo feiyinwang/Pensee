@@ -270,12 +270,28 @@ button.composer-chip:not(:disabled) {
   color: var(--text-muted);
 }
 
+/* Arc's calendar wants room: 16px around it (Arc's own popover padding) and
+   a width that gives each day ~38px, instead of the 176px it was squeezed to. */
 .composer-date {
-  padding: 8px;
+  width: 296px;
+  max-width: calc(100vw - 20px);
+  padding: 16px;
+}
+
+/* While the composer shows, Arc's pieces in and around it (the menus and the
+   calendar portal to <body>) move on Writer's motion: ease-out, at most
+   180ms (docs/motion.md, emil-animations), not Arc's 580ms spring settle and
+   240ms staggers. Outranks both Arc's `:root body` tokens and the
+   `:root:root:root body` rule that keeps Writer's own --ease-spring
+   (arc-tokens.ts). */
+:root:root:root:root body.composer-motion {
+  --duration-spring: 180ms;
+  --ease-spring: var(--ease-out);
+  --duration-standard: 160ms;
 }
 
 .composer-time {
-  margin-top: 8px;
+  margin-top: 16px;
 }
 
 /* The time sits under the calendar at the popover's foot, so its list opens
@@ -288,8 +304,8 @@ button.composer-chip:not(:disabled) {
 
 .composer-date-actions {
   display: flex;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .composer-date-clear {

@@ -31,6 +31,8 @@ export interface CalendarProps {
   markedDates?: CalendarDateMatcher;
 }
 
+/** Writer patch: ease-out, 0.16s, for the selection glide (Writer's --ease-out and --motion-base). */
+const WRITER_GLIDE = { duration: 0.16, ease: [0.16, 1, 0.3, 1] as const };
 const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const monthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const sameDay = (a?: Date, b?: Date) => Boolean(a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate());
@@ -95,7 +97,8 @@ function SelectionDisc({ cell, reduced }: { cell: number; reduced: boolean }) {
     const nextCol = cell % 7, nextRow = Math.floor(cell / 7);
     const controls: AnimationPlaybackControls[] = [];
     if (hidden.current || reduced) { col.jump(nextCol); row.jump(nextRow); }
-    else controls.push(animate(col, nextCol, spring.morph), animate(row, nextRow, spring.morph));
+    // Writer patch: the selection glides on ease-out in 0.16s (docs/motion.md), not spring.morph's 0.42s bounce.
+    else controls.push(animate(col, nextCol, WRITER_GLIDE), animate(row, nextRow, WRITER_GLIDE));
     hidden.current = false;
     controls.push(animate(opacity, 1, reduced ? { duration: 0 } : { duration: duration.fast, ease: ease.enter }), animate(scale, 1, reduced ? { duration: 0 } : spring.snappy));
     return () => controls.forEach((control) => control.stop());

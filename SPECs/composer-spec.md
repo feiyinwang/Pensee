@@ -42,7 +42,8 @@ inert there and ⌘N keeps the palette's create field.
   unpicked PDF reads **Book or paper** and is typed by its first pages once
   imported (SPECs/add-to-library-spec.md).
 - **Date chip:** No date, or Today / Tomorrow / Yesterday / `12 Oct`, with
-  a time when one is set (`20 Oct, 2:30 PM`). The popover is Arc's calendar
+  a time when one is set (`20 Oct, 2:30 PM`). The popover (296px, 16px
+  padding, ~37px days) is Arc's calendar
   (weeks start Monday, as in the calendar panel) with Arc's time picker under
   it (the viewer's 12- or 24-hour clock, 15-minute steps, its list opening
   upward so it stays in the window); it stays open after a day is picked so
@@ -80,7 +81,11 @@ go first and the existing notices report progress and failures.
 ## Motion
 
 None on the box: it opens from the keyboard, often, so it is simply there,
-like ⌘O (docs/motion.md). Arc's chips keep their own motion.
+like ⌘O (docs/motion.md). The Arc pieces inside it (chips, menus, the
+calendar and time picker) move on Writer's timing while the box shows:
+ease-out, at most 180ms, instead of Arc's 580ms spring settle
+(`body.composer-motion`, docs/arc.md). The calendar's selected-day glide and
+the type chip's width change are 0.16s ease-out (Writer patches in Arc).
 
 ## A floating card, not a dialog
 
