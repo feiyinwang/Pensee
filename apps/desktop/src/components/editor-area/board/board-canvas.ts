@@ -1596,9 +1596,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   /** Screen room the chrome takes at each edge (top bar; dock and zoom), so a
    *  card added from outside never lands under a toolbar. */
   const CHROME_INSET = { top: 64, bottom: 96, side: 16 };
-  /** A highlight's rectangle: a fixed width, tall enough for the passage up to
-   *  a cap; past that the label's own caret expands it. */
-  const HIGHLIGHT_CARD = { w: 240, maxH: 320 };
+  /** A highlight's rectangle: the size of a drawn one, taller only when the
+   *  passage needs it, up to a cap; past that the label's own caret expands it. */
+  const HIGHLIGHT_CARD = { maxH: 320 };
 
   function addCard(text: string, side: "w" | "e", link?: string): void {
     const v = vp();
@@ -1614,7 +1614,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       t: "rect",
       x: 0,
       y: 0,
-      w: HIGHLIGHT_CARD.w,
+      w: SHAPE_DEFAULT.w,
       h: SHAPE_DEFAULT.h,
       a: 0,
       op: 1,

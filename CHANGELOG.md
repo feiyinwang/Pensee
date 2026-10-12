@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- A passage highlighted onto a board is now the same size as a rectangle you draw, instead of half again as wide. A long passage still makes it taller.
 - Spaces open faster. Library, Projects and Inspirations used to show an empty page for a moment before their notes appeared; now the notes are asked for straight away, and a space you've opened before shows its notes the instant you click it.
 - Add projects without leaving **Projects**: click **+ New project** at the bottom of a kanban column or under the last timeline row, type a name and press Enter. The note is made at the top of your vault with `Type: Project`, plus that column's **Status**, or a **Start** of today on the timeline, and shows right away. The field stays open so you can add the next one; press Esc to stop. A name that's empty or already taken says so instead.
 - Library's type tabs (Books, Videos, Courses, Podcasts, Papers) no longer sit in a grey bar; only the selected tab is filled.
