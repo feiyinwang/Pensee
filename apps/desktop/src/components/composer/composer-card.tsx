@@ -20,7 +20,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/arc/popover/popover";
-import { TimePicker } from "@/components/arc/time-picker/time-picker";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { submitComposer, attachToComposer } from "@/hooks/use-composer";
 import { useTypedNotes } from "@/hooks/use-spaces";
@@ -325,11 +324,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
             items={kindItems}
             align="start"
           />
-          <DateChip
-            day={draft.day}
-            time={draft.time}
-            onChange={(day, time) => setDraft({ ...withDay(draft, day), time: day ? time : null })}
-          />
+          <DateChip day={draft.day} onChange={(day) => setDraft(withDay(draft, day))} />
           <button
             type="button"
             className="composer-icon-button composer-icon-button--ring"
@@ -365,34 +360,15 @@ function dayNoteName(day: string, now: Date): string {
     : `the ${label} note`;
 }
 
-/** The viewer's clock: 12-hour where their locale uses it. */
-const USES_12H =
-  new Intl.DateTimeFormat(undefined, { hour: "numeric" }).resolvedOptions().hour12 ?? false;
-
-/** `14:30` the way the viewer reads times ("2:30 PM" or "14:30"). */
-function timeLabel(time: string): string {
-  const [h, m] = time.split(":").map(Number) as [number, number];
-  return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-/** The date chip: a day from the calendar and, optionally, a time. The
- *  popover stays open after a day is picked, so a time can follow. */
 function DateChip({
   day,
-  time,
   onChange,
 }: {
   day: string | null;
-  time: string | null;
-  onChange: (day: string | null, time: string | null) => void;
+  onChange: (day: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const now = new Date();
-  const label = day
-    ? time
-      ? `${dayLabel(day, now)}, ${timeLabel(time)}`
-      : dayLabel(day, now)
-    : "No date";
+  const label = day ? dayLabel(day, new Date()) : "No date";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -405,34 +381,17 @@ function DateChip({
       <PopoverContent className="composer-date">
         <Calendar
           value={day ? parseDay(day) : undefined}
-          onChange={(date) => onChange(formatDailyNoteDate(date), time)}
+          onChange={(date) => {
+            onChange(formatDailyNoteDate(date));
+            setOpen(false);
+          }}
           weekStartsOn={1}
           showToday
         />
-        <TimePicker
-          className="composer-time"
-          label="Time"
-          value={time ?? ""}
-          placeholder="No time"
-          format={USES_12H ? "12h" : "24h"}
-          // A time with no day yet is today's.
-          onChange={(next) => onChange(day ?? formatDailyNoteDate(now), next)}
-        />
         {day && (
-          <div className="composer-date-actions">
-            {time && (
-              <button
-                type="button"
-                className="composer-date-clear"
-                onClick={() => onChange(day, null)}
-              >
-                No time
-              </button>
-            )}
-            <PopoverClose className="composer-date-clear" onClick={() => onChange(null, null)}>
-              No date
-            </PopoverClose>
-          </div>
+          <PopoverClose className="composer-date-clear" onClick={() => onChange(null)}>
+            No date
+          </PopoverClose>
         )}
       </PopoverContent>
     </Popover>

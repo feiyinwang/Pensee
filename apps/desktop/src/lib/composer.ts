@@ -30,8 +30,6 @@ export interface ComposerDraft {
    *  from that day's note; with no title, the text itself goes into the
    *  day's note. */
   day: string | null;
-  /** `HH:MM`, with a day only: it joins the day in the `Date` property. */
-  time: string | null;
   /** Vault-relative folder for a plain note; null is the vault root. */
   folder: string | null;
   /** An attached PDF or EPUB, as an absolute path. */
@@ -44,7 +42,6 @@ export const EMPTY_DRAFT: ComposerDraft = {
   kind: "note",
   kindPicked: false,
   day: null,
-  time: null,
   folder: null,
   file: null,
 };
@@ -156,15 +153,9 @@ export function submitLabel(
   }
 }
 
-/** Set or clear the date chip; clearing it clears the time too. */
+/** Set or clear the date chip. */
 export function withDay(draft: ComposerDraft, day: string | null): ComposerDraft {
-  return { ...draft, day, time: day ? draft.time : null };
-}
-
-/** The `Date` property's value: `2026-10-20`, or `2026-10-20T14:30` with a
- *  time (the form Obsidian's date & time property reads). */
-export function dateProperty(day: string, time: string | null): string {
-  return time ? `${day}T${time}` : day;
+  return { ...draft, day };
 }
 
 /** `frontmatter` with `Date` set to `value`: its top-level `Date:` line

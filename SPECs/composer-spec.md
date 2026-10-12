@@ -41,17 +41,12 @@ inert there and ⌘N keeps the palette's create field.
   → Book) unless the user picked a kind. A file allows only Book and Paper; an
   unpicked PDF reads **Book or paper** and is typed by its first pages once
   imported (SPECs/add-to-library-spec.md).
-- **Date chip:** No date, or Today / Tomorrow / Yesterday / `12 Oct`, with
-  a time when one is set (`20 Oct, 2:30 PM`). The popover (296px, 16px
-  padding, ~37px days) is Arc's calendar
-  (weeks start Monday, as in the calendar panel) with Arc's time picker under
-  it (the viewer's 12- or 24-hour clock, 15-minute steps, its list opening
-  upward so it stays in the window); it stays open after a day is picked so
-  a time can follow, and **No time** / **No date** clear them. It works with
-  every type:
-  - the note gets a `Date` property, `2026-10-20` or `2026-10-20T14:30`
-    (Obsidian's date and date & time forms); only that line is written, so a
-    page's other properties keep their formatting;
+- **Date chip:** No date, or Today / Tomorrow / Yesterday / `12 Oct`. The
+  popover (296px, 16px padding, ~37px days) is Arc's calendar (weeks start
+  Monday, as in the calendar panel); picking a day closes it, and **No date**
+  clears it. No time: a day is enough. It works with every type:
+  - the note gets a `Date` property, `2026-10-20`; only that line is
+    written, so a page's other properties keep their formatting;
   - that day's note (made if missing) gets `- [[Note]]` at its end, joining
     a list the day already ends with;
   - with a date and no title (a plain note), the text itself goes to the end
@@ -82,7 +77,7 @@ go first and the existing notices report progress and failures.
 
 None on the box: it opens from the keyboard, often, so it is simply there,
 like ⌘O (docs/motion.md). The Arc pieces inside it (chips, menus, the
-calendar and time picker) move on Writer's timing while the box shows:
+calendar) move on Writer's timing while the box shows:
 ease-out, at most 180ms, instead of Arc's 580ms spring settle
 (`body.composer-motion`, docs/arc.md). The calendar's selected-day glide and
 the type chip's width change are 0.16s ease-out (Writer patches in Arc).

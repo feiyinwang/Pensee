@@ -5,7 +5,6 @@ import {
   appendListItem,
   composerTarget,
   dayLabel,
-  dateProperty,
   dayLinkLine,
   effectiveKind,
   isDraftEmpty,
@@ -167,26 +166,14 @@ describe("dates", () => {
 });
 
 describe("Date property", () => {
-  test("a day, or a day and time, in Obsidian's forms", () => {
-    expect(dateProperty("2026-10-20", null)).toBe("2026-10-20");
-    expect(dateProperty("2026-10-20", "14:30")).toBe("2026-10-20T14:30");
-  });
-
   test("set on empty, added to, or replacing a Date", () => {
     expect(withDateProperty(null, "2026-10-20")).toBe("Date: 2026-10-20");
-    expect(withDateProperty("Type: Video\nLink: https://x.y", "2026-10-20T14:30")).toBe(
-      "Type: Video\nLink: https://x.y\nDate: 2026-10-20T14:30",
+    expect(withDateProperty("Type: Video\nLink: https://x.y", "2026-10-20")).toBe(
+      "Type: Video\nLink: https://x.y\nDate: 2026-10-20",
     );
     expect(withDateProperty("date: 2025-01-01\nTags: [a]", "2026-10-20")).toBe(
       "date: 2026-10-20\nTags: [a]",
     );
-  });
-
-  test("clearing the date clears the time", () => {
-    expect(withDay(draft({ day: "2026-10-20", time: "14:30" }), null)).toMatchObject({
-      day: null,
-      time: null,
-    });
   });
 });
 

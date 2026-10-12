@@ -290,26 +290,9 @@ button.composer-chip:not(:disabled) {
   --duration-standard: 160ms;
 }
 
-.composer-time {
-  margin-top: 16px;
-}
-
-/* The time sits under the calendar at the popover's foot, so its list opens
-   upward over the calendar instead of running past the window's bottom. */
-.composer-time [role="listbox"] {
-  top: auto;
-  bottom: calc(100% + 6px);
-  transform-origin: bottom center;
-}
-
-.composer-date-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
 .composer-date-clear {
-  flex: 1;
+  width: 100%;
+  margin-top: 12px;
   height: 32px;
   border-radius: 8px;
   font-size: 13px;

@@ -6,7 +6,6 @@ import {
   EMPTY_DRAFT,
   appendBlock,
   appendListItem,
-  dateProperty,
   dayLinkLine,
   isDraftEmpty,
   withDateProperty,
@@ -126,7 +125,7 @@ async function dayNotePath(day: string): Promise<string> {
 /** Give a Library note or an imported book its `Date` property. */
 async function stampDate(path: string, draft: ComposerDraft): Promise<void> {
   if (!draft.day) return;
-  const value = dateProperty(draft.day, draft.time);
+  const value = draft.day;
   try {
     await editPage(path, (page) => ({
       frontmatter: withDateProperty(page.frontmatter, value),
@@ -187,9 +186,7 @@ async function writeNote(
     });
     return;
   }
-  const frontmatter = draft.day
-    ? `---\n${withDateProperty(null, dateProperty(draft.day, draft.time))}\n---\n`
-    : "";
+  const frontmatter = draft.day ? `---\n${withDateProperty(null, draft.day)}\n---\n` : "";
   const created = await createNoteIn(target.folder, name, () => frontmatter + bodyText(draft.body));
   if (draft.day) await linkIntoDay(draft.day, created.path);
   await finish(created.path, created.stem, open);
