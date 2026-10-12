@@ -267,7 +267,13 @@ export function Calendar({
     return index >= 0 && index < 42 ? index : -1;
   };
 
-  const renderMonth = (paneMonth: Date, present: boolean) => <>
+  // Writer patch: with weekLabel, each pane carries its own label column, so the labels slide with their weeks.
+  const renderMonth = (paneMonth: Date, present: boolean) => weekLabel ? <div className={styles.labelled}>
+    <div className={styles.weekLabels}>{makeWeeks(paneMonth, weekStartsOn).map((week) => <div key={dateKey(week[0]!)} className={styles.weekLabel} inert={!present}>{weekLabel(week[0]!)}</div>)}</div>
+    <div className={styles.labelledMonth}>{renderDays(paneMonth, present)}</div>
+  </div> : renderDays(paneMonth, present);
+
+  const renderDays = (paneMonth: Date, present: boolean) => <>
     <SelectionDisc cell={cellOf(paneMonth)} reduced={reducedMotion} />
     <div className={styles.grid} role="grid" aria-label={formatter.format(paneMonth)}>
     {makeWeeks(paneMonth, weekStartsOn).map((week) => <div key={dateKey(week[0]!)} className={styles.week} role="row">
@@ -314,17 +320,14 @@ export function Calendar({
           <button type="button" className={styles.navButton} aria-label="Next month" aria-disabled={nextDisabled || undefined} onClick={() => { if (!nextDisabled && nextMonth) changeMonth(nextMonth); }}><ChevronRight size={16} strokeWidth={1.75} aria-hidden="true" /></button>
         </div>
       </div>
-      {/* Writer patch: with weekLabel, the weekday row and the month sit beside a label column whose six rows stretch to the grid's. */}
+      {/* Writer patch: with weekLabel, the weekday row and each month sit beside a label column whose six rows stretch to the grid's. */}
       <div className={cx(weekLabel && styles.labelled)}>
       {weekLabel && <span aria-hidden="true" />}
       <div className={styles.weekdays} aria-hidden="true">{weekdays.map((day, index) => <span key={`${day}-${index}`}>{day.slice(0, 2)}</span>)}</div>
       </div>
-      <div className={cx(weekLabel && styles.labelled)}>
-      {weekLabel && <div className={styles.weekLabels}>{weeks.map((week) => <div key={dateKey(week[0]!)} className={styles.weekLabel}>{weekLabel(week[0]!)}</div>)}</div>}
       <div className={styles.monthViewport} ref={viewportRef}>
         {month ? paneIndexes.map((index) => <MonthPane key={index} index={index} position={position} present={index === target}>{renderMonth(fromIndex(index), index === target)}</MonthPane>)
           : <div className={styles.monthBody} aria-hidden="true"><div className={styles.grid}>{Array.from({ length: 6 }, (_, week) => <div key={week} className={styles.week}>{Array.from({ length: 7 }, (_, day) => <span key={day} className={styles.placeholderDay} />)}</div>)}</div></div>}
-      </div>
       </div>
     </section>;
 }

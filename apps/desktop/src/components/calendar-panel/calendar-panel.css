@@ -10,15 +10,15 @@
   /* The current period's text: Writer's own light accent (inherited before the
      override above), which reads on the backdrop where --accent-solid is dim. */
   --period-current: var(--link-color);
-  --week-label-width: 36px;
+  /* The week (and quarter) column keeps clear of the grid it labels. */
+  --week-label-width: 40px;
+  --week-label-gap: 8px;
   padding-inline: 12px;
 }
 
-/* The view switch sits on the tab row, centred on the same line, after the
-   panel's toggle button (28px + 4px gap, placed by app-layout). */
+/* The tab row: only the panel toggle sits here (placed by app-layout). */
 .calendar-panel-chrome {
   height: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2);
-  padding-left: 32px;
 }
 
 .calendar-panel-calendar {
@@ -37,22 +37,29 @@
   content: none !important;
 }
 
-/* Months and years views: the same header geometry as Arc Calendar's. */
+/* One header for every view, in Arc Calendar's geometry: the view dropdown
+   (titled by the period shown) and Today / previous / next. Arc Calendar's
+   own header is hidden so the three views share this one. */
+.calendar-panel-calendar > :first-child {
+  display: none;
+}
+/* The dropdown trigger reads as the title: no box at rest, a fill on hover. */
+.calendar-panel-view {
+  --border: transparent;
+  --border-strong: transparent;
+  --surface: transparent;
+  --shadow-resting: none;
+  min-width: 0;
+  margin-left: -12px;
+}
 .calendar-panel-header {
   display: grid;
+  margin-top: 4px;
   min-height: 34px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
   margin-bottom: 14px;
-}
-.calendar-panel-title {
-  margin: 0;
-  font-size: var(--text-base);
-  font-weight: 500;
-  line-height: var(--leading-body);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 .calendar-panel-nav {
   display: inline-flex;
@@ -78,9 +85,11 @@
   width: 32px;
   padding: 0;
 }
-.calendar-panel-nav-button:hover {
-  background: var(--surface-muted);
-  color: var(--text-primary);
+@media (hover: hover) and (pointer: fine) {
+  .calendar-panel-nav-button:hover {
+    background: var(--surface-muted);
+    color: var(--text-primary);
+  }
 }
 
 .calendar-panel-grid {
@@ -90,6 +99,10 @@
 }
 .calendar-panel-grid--labelled {
   grid-template-columns: var(--week-label-width) repeat(3, minmax(0, 1fr));
+}
+.calendar-panel-grid--labelled > :first-child,
+.calendar-panel-grid--labelled > :nth-child(4n + 1) {
+  margin-right: calc(var(--week-label-gap) - 4px);
 }
 .calendar-panel-grid .calendar-panel-cell {
   height: 48px;
@@ -121,8 +134,10 @@
   color: var(--period-current);
   font-weight: 600;
 }
-.calendar-panel-cell:hover {
-  background: var(--surface-muted);
+@media (hover: hover) and (pointer: fine) {
+  .calendar-panel-cell:hover {
+    background: var(--surface-muted);
+  }
 }
 .calendar-panel-cell[data-open] {
   background: var(--accent);
@@ -135,7 +150,7 @@
 .calendar-panel-cell[data-marked] .calendar-panel-cell-label::after {
   content: "";
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 3px);
   left: 50%;
   width: 4px;
   height: 4px;
@@ -143,4 +158,21 @@
   border-radius: 50%;
   background: currentColor;
   opacity: 0.6;
+}
+
+/* A label with a note dot under it rises by half the dot's footprint, so the
+   pair is centred in its cell and the dot never touches a filled cell's edge. */
+.calendar-panel-cell[data-marked] .calendar-panel-cell-label,
+.calendar-panel-calendar [data-marked] > span {
+  /* Half of the dot's footprint: 3px gap + 4px dot. */
+  translate: 0 -3.5px;
+}
+
+/* Motion follows docs/motion.md and Emil's rules: colour-only hover feedback
+   (100ms ease-out), no motion when the user asks for less. */
+@media (prefers-reduced-motion: reduce) {
+  .calendar-panel-nav-button,
+  .calendar-panel-cell {
+    transition: none;
+  }
 }

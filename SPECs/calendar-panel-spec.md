@@ -11,10 +11,10 @@ periods the user is in now.
 - **Cmd+]** toggles the panel (workspace windows only), and so does a toggle button that mirrors the sidebar's: on the panel's inner (left) edge in its header row while it is open, and 12px inside the editor's top-right corner while it is closed, with the tab row ending before it. **Cmd+[** and **Cmd+\\**
   keep toggling the left sidebar. The palette has **Toggle Calendar**. Visibility
   persists in the global `appearance.calendar-visible` setting (default off).
-- The panel is a fixed 288px column right of the editor. It snaps open and shut
+- The panel is a fixed 304px column right of the editor. It snaps open and shut
   like the sidebar (docs/motion.md). The tab row and the agent launcher move left
   by its width (`--right-panel-width`).
-- A segmented control switches three views, each starting on the current period:
+- The title ("October 2026") is an Arc dropdown that switches three views, each starting on the current period; Today and previous / next sit beside it:
   - **Days**: Arc Calendar, Monday-first, six rows. A week-number column (`W42`)
     sits left of the rows.
   - **Months**: the year's 12 months in 4 rows of 3; each row is a quarter, with
@@ -41,7 +41,7 @@ periods the user is in now.
   errors, shared by Today's note and every period note.
 - `hooks/use-daily-note.ts` `openPeriodNote`: binds the stores to it.
 - `components/calendar-panel/`: a lazy chunk, because it is built on Arc
-  (`calendar` with the Writer patch, `segmented-control`).
+  (`calendar` and `dropdown-menu`, both with Writer patches).
 - `lib/agent-open-files.ts` `collectAgentPeriodNotes` and `lib/agent-context.ts`:
   the agent context.
 

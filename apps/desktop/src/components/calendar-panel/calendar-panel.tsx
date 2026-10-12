@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/arc/calendar/calendar";
-import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { openPeriodNote } from "@/hooks/use-daily-note";
 import { useSidebarMetadataVersion } from "@/hooks/use-file-tree";
@@ -97,22 +97,52 @@ export default function CalendarPanelContent() {
 
   const year = month.getFullYear();
   const decadeStart = year - (year % 10);
-  const shiftYears = (amount: number) =>
-    setMonth((current) => new Date(current.getFullYear() + amount, current.getMonth(), 1));
+  const step = (direction: 1 | -1) =>
+    setMonth((current) =>
+      view === "days"
+        ? new Date(current.getFullYear(), current.getMonth() + direction, 1)
+        : new Date(current.getFullYear() + direction * (view === "months" ? 1 : 10), 0, 1),
+    );
+  const title =
+    view === "days"
+      ? month.toLocaleString(undefined, { month: "long", year: "numeric" })
+      : view === "months"
+        ? String(year)
+        : `${decadeStart}–${decadeStart + 9}`;
+  const unit = view === "days" ? "month" : view === "months" ? "year" : "decade";
 
   return (
     <aside aria-label="Calendar" className="calendar-panel flex h-full flex-col">
-      <div className="calendar-panel-chrome flex shrink-0 items-center">
-        <SegmentedControl
-          label="Calendar view"
-          options={VIEWS}
-          value={view}
-          onValueChange={(next) => setView(next as View)}
-          className="w-full"
-        />
+      {/* The tab row holds only the panel toggle (placed by app-layout), like the sidebar's header. */}
+      <div className="calendar-panel-chrome shrink-0" />
+
+      <div className="calendar-panel-header">
+        <div className="calendar-panel-view">
+          <DropdownMenu
+            label={title}
+            // Item labels start under the title's text (measured: the menu's
+            // inset, item padding and check column, less the trigger padding).
+            align="start"
+            alignOffset={-30}
+            items={VIEWS.map((option) => ({
+              label: option.label,
+              icon: view === option.value ? <Check size={15} strokeWidth={2} /> : <span />,
+              onSelect: () => setView(option.value),
+            }))}
+          />
+        </div>
+        <div className="calendar-panel-nav">
+          <HeaderButton onClick={() => setMonth(new Date())}>Today</HeaderButton>
+          <HeaderButton label={`Previous ${unit}`} onClick={() => step(-1)} icon>
+            <ChevronLeft size={16} strokeWidth={1.75} aria-hidden="true" />
+          </HeaderButton>
+          <HeaderButton label={`Next ${unit}`} onClick={() => step(1)} icon>
+            <ChevronRight size={16} strokeWidth={1.75} aria-hidden="true" />
+          </HeaderButton>
+        </div>
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 overflow-y-auto pb-3">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-3">
         {view === "days" && (
           <Calendar
             month={month}
@@ -128,18 +158,11 @@ export default function CalendarPanelContent() {
             weekLabel={(monday) => (
               <PeriodCell state={cell("week", monday)} label={`W${isoWeek(monday).week}`} muted />
             )}
-            showToday
             className="calendar-panel-calendar"
           />
         )}
         {view === "months" && (
           <>
-            <PeriodHeader
-              title={String(year)}
-              unit="year"
-              onStep={shiftYears}
-              onToday={() => setMonth(new Date())}
-            />
             <div className="calendar-panel-grid calendar-panel-grid--labelled">
               {[0, 1, 2, 3].map((quarter) => [
                 <PeriodCell
@@ -164,12 +187,6 @@ export default function CalendarPanelContent() {
         )}
         {view === "years" && (
           <>
-            <PeriodHeader
-              title={`${decadeStart}–${decadeStart + 9}`}
-              unit="decade"
-              onStep={(direction) => shiftYears(direction * 10)}
-              onToday={() => setMonth(new Date())}
-            />
             <div className="calendar-panel-grid">
               {/* The decade plus one year either side, three to a row. */}
               {Array.from({ length: 12 }, (_, i) => decadeStart - 1 + i).map((y) => (
@@ -185,35 +202,6 @@ export default function CalendarPanelContent() {
         )}
       </div>
     </aside>
-  );
-}
-
-/** The months and years views' header, laid out like Arc Calendar's so the
- *  title and controls stay put when the view changes. */
-function PeriodHeader({
-  title,
-  unit,
-  onStep,
-  onToday,
-}: {
-  title: string;
-  unit: string;
-  onStep: (direction: 1 | -1) => void;
-  onToday: () => void;
-}) {
-  return (
-    <div className="calendar-panel-header">
-      <h2 className="calendar-panel-title">{title}</h2>
-      <div className="calendar-panel-nav">
-        <HeaderButton onClick={onToday}>Today</HeaderButton>
-        <HeaderButton label={`Previous ${unit}`} onClick={() => onStep(-1)} icon>
-          <ChevronLeft size={16} strokeWidth={1.75} aria-hidden="true" />
-        </HeaderButton>
-        <HeaderButton label={`Next ${unit}`} onClick={() => onStep(1)} icon>
-          <ChevronRight size={16} strokeWidth={1.75} aria-hidden="true" />
-        </HeaderButton>
-      </div>
-    </div>
   );
 }
 

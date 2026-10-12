@@ -2,7 +2,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 
 /** Fixed width of the right-hand calendar panel; the layout reserves it and
  *  the agent launcher shifts left by it. */
-export const CALENDAR_PANEL_WIDTH = 288;
+export const CALENDAR_PANEL_WIDTH = 304;
 /** The panel's side padding; its toggle sits on the inner edge of it. */
 export const CALENDAR_PANEL_INSET = 12;
 
