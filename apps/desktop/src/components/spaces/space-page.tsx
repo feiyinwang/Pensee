@@ -4,6 +4,7 @@ import {
   startTransition,
   Suspense,
   useDeferredValue,
+  useEffect,
   useMemo,
   useState,
   type KeyboardEvent,
@@ -96,13 +97,14 @@ function TypedSpace({ space }: { space: SpaceDef }) {
   ensureArcTokens();
   const notes = useTypedNotes(allTypes(space));
   const [tabId, setTabId] = useState(space.tabs[0]?.id ?? "");
-  // The selected tab moves at once; the body follows in a background render
-  // React can interrupt. A tab's body stays mounted (hidden) once shown or
-  // hovered, so coming back to it, or opening one hovered first, is instant.
+  // The selected tab moves at once; the body follows in a render React can
+  // interrupt. Once the first tab has painted, the others render offstage in
+  // the background, so a switch only swaps which one shows.
   const shownId = useDeferredValue(tabId);
-  const [mounted, setMounted] = useState<ReadonlySet<string>>(() => new Set([tabId]));
-  const mount = (id: string) =>
-    startTransition(() => setMounted((prev) => (prev.has(id) ? prev : new Set(prev).add(id))));
+  const [warm, setWarm] = useState(false);
+  useEffect(() => {
+    if (notes && !warm) startTransition(() => setWarm(true));
+  }, [notes, warm]);
   const notesByTab = useMemo(
     () => (notes ? new Map(space.tabs.map((t) => [t.id, notesInTab(notes, t)])) : null),
     [notes, space.tabs],
@@ -126,11 +128,7 @@ function TypedSpace({ space }: { space: SpaceDef }) {
               className={styles.typeTabs}
               label={`${space.name} types`}
               value={tab.id}
-              onValueChange={(id) => {
-                setTabId(id);
-                mount(id);
-              }}
-              onOptionIntent={mount}
+              onValueChange={setTabId}
               options={space.tabs.map((t) => ({
                 value: t.id,
                 label: t.label,
@@ -174,9 +172,9 @@ function TypedSpace({ space }: { space: SpaceDef }) {
         </div>
       </header>
       {space.tabs
-        .filter((t) => t.id === shownTab.id || mounted.has(t.id))
+        .filter((t) => warm || t.id === shownTab.id)
         .map((t) => (
-          <div key={t.id} hidden={t.id !== shownTab.id}>
+          <div key={t.id} className={t.id === shownTab.id ? undefined : styles.offstage}>
             <TabBody space={space} tab={t} shown={notesByTab?.get(t.id) ?? null} view={view} />
           </div>
         ))}
@@ -190,8 +188,8 @@ function addKindOf(space: SpaceDef, tab: SpaceTab) {
   return space.key === "library" && !tab.source ? libraryKindOfTab(tab.id) : null;
 }
 
-/** One tab's notes. Memoised: hidden tabs stay mounted and must not re-render
- *  with every switch. */
+/** One tab's notes. Memoised: offstage tabs stay mounted and must not
+ *  re-render with every switch. */
 const TabBody = memo(function TabBody({
   space,
   tab,

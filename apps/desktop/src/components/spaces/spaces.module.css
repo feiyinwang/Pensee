@@ -9,9 +9,23 @@
   --surface-muted: var(--surface-subtle);
   --border: var(--line-subtler);
   --foreground: var(--text-primary);
+  position: relative;
   margin: 0 auto;
   max-width: 1100px;
   padding: 3rem 2rem 6rem;
+}
+
+/* A space's tabs that aren't showing stay rendered under the page, unseen and
+   clipped to its box, so switching tabs only swaps which one shows, and the
+   covers in the top of each are already loaded. */
+.offstage {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  contain: strict;
 }
 
 /* A lone tab's strip already leaves the tab row's height above the page
