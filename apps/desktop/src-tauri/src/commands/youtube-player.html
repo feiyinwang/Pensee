@@ -384,8 +384,16 @@
 
       function run(message) {
         if (message.cmd === "seek") {
-          player.seekTo(Math.max(0, Number(message.t) || 0), true);
-          player.playVideo();
+          const t = Math.max(0, Number(message.t) || 0);
+          const state = player.getPlayerState();
+          // Not started yet (the note just opened): seekTo + playVideo
+          // buffers, then falls back to unstarted. Loading at `t` plays.
+          if (state === YT.PlayerState.UNSTARTED || state === YT.PlayerState.CUED) {
+            player.loadVideoById({ videoId, startSeconds: t });
+          } else {
+            player.seekTo(t, true);
+            player.playVideo();
+          }
         } else if (message.cmd === "play") {
           player.playVideo();
         } else if (message.cmd === "pause") {
@@ -562,6 +570,8 @@
               if (state === YT.PlayerState.PLAYING) {
                 poster.hidden = true;
                 if (!captions) player.unloadModule("captions");
+                // A (re)load starts at normal speed.
+                if (player.getPlaybackRate() !== rate) player.setPlaybackRate(rate);
               } else if (state === YT.PlayerState.ENDED) poster.hidden = false;
               report();
               clearInterval(ticker);

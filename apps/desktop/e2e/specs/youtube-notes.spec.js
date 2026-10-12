@@ -158,7 +158,7 @@ describe("YouTube notes", function () {
     const frame = await $(".video-band iframe");
     await frame.waitForExist({ timeout: 15_000 });
     const src = await frame.getAttribute("src");
-    ok(/^http:\/\/127\.0\.0\.1:\d+\/youtube-player\.html\?v=aqz-KE-bpKQ$/.test(src), src);
+    ok(/^http:\/\/127\.0\.0\.1:\d+\/youtube-player\.html\?v=aqz-KE-bpKQ&/.test(src), src);
 
     // The page reports once YouTube's player is ready: no Error 153 from a
     // tauri:// referrer.
@@ -230,9 +230,9 @@ describe("YouTube notes", function () {
     await browser.waitUntil(
       async () =>
         browser.execute(() =>
-          window.__ytReports.some((r) => r.type === "state" && Math.abs(r.t - 42) < 3),
+          window.__ytReports.some((r) => r.type === "state" && r.playing && Math.abs(r.t - 42) < 3),
         ),
-      { timeout: 15_000, timeoutMsg: "the player never reached 0:42" },
+      { timeout: 15_000, timeoutMsg: "the player never played from 0:42" },
     );
     await shot("yt-02b-seeked");
   });
@@ -241,6 +241,8 @@ describe("YouTube notes", function () {
     const link = await $(`.cm-wiki-link*=${BOARD}`);
     await link.waitForExist({ timeout: 10_000 });
     await browser.execute((el) => {
+      // The video is tall: bring the link out from under it first.
+      el.scrollIntoView({ block: "end" });
       const r = el.getBoundingClientRect();
       const init = {
         bubbles: true,

@@ -125,6 +125,10 @@ selected.
     since its own origin changes every launch, and every `wheel`, which the
     app turns into a scroll of the note or, with ctrl (a pinch), a wheel
     event from the frame.
+  - `seek` on a video that hasn't started (the note just opened) loads it
+    at `t` (`loadVideoById` with `startSeconds`): `seekTo` + `playVideo`
+    there buffers, then falls back to unstarted, so a pin did nothing.
+    A started video seeks in place.
   - YouTube's own controls can't be hidden while paused, so they stay off
     (`controls: 0`). Subtitles go through the captions module
     (`loadModule`/`unloadModule`); `cc_load_policy` is only passed to turn
