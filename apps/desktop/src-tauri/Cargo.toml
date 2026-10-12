@@ -30,6 +30,10 @@ ignore = "0.4"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 uuid = { version = "1", features = ["v4"] }
 percent-encoding = "2"
+# A book's own cover for the Library's thumbnails (src/thumbs.rs). Both are
+# already in Cargo.lock; deflate reads compressed EPUB entries.
+zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
+roxmltree = "0.20"
 tokio = { version = "1", features = ["fs", "sync"] }
 parking_lot = "0.12"
 thiserror = "2"

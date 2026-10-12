@@ -5,12 +5,14 @@
 //! are cached in the app's cache folder, keyed by the file's path, size and
 //! modified time, so each cover is shrunk once. A picture of one flat colour
 //! (an Apple Books export can come out all black) is refused with 422, so the
-//! card draws its default cover instead. Requests run on the blocking pool,
-//! never on the main thread that also drives scrolling.
+//! card draws its default cover instead. The path may also be an `.epub`:
+//! then the picture is the cover inside the book, the one Apple Books shows,
+//! read from the zip without unpacking the rest. Requests run on the blocking
+//! pool, never on the main thread that also drives scrolling.
 
 use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, ImageFormat};
 use std::hash::{Hash, Hasher};
-use std::io::Cursor;
+use std::io::{Cursor, Read, Seek};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use tauri::http::{header, Request, Response, StatusCode};
@@ -24,6 +26,8 @@ const JPEG_QUALITY: u8 = 82;
 /// How far apart, per channel, the pixels of a sample may be for a picture to
 /// still count as one flat colour (JPEG noise on a solid fill stays under it).
 const BLANK_SPREAD: u8 = 12;
+/// The largest cover picture read out of an EPUB; anything bigger isn't one.
+const MAX_EPUB_COVER: u64 = 32 * 1024 * 1024;
 
 /// Encoded bytes, the cache file's extension and the MIME type.
 type Encoded = (Vec<u8>, &'static str, &'static str);
@@ -112,16 +116,23 @@ fn respond(path: &Path, box_size: (u32, u32), cache_dir: Option<&Path>) -> Respo
         }
     }
 
-    let source = match std::fs::read(path) {
-        Ok(bytes) => bytes,
-        Err(_) => return status(StatusCode::NOT_FOUND),
+    let (source, mime) = match read_source(path) {
+        Ok(Some(found)) => found,
+        Ok(None) => {
+            eprintln!("thumb: {} has no cover inside", path.display());
+            return status(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            eprintln!("thumb: couldn't read {}: {e}", path.display());
+            return status(StatusCode::NOT_FOUND);
+        }
     };
     let img = match image::load_from_memory(&source) {
         Ok(img) => img,
         // A format the decoder doesn't read (GIF, AVIF…): the webview may.
         Err(e) => {
             eprintln!("thumb: couldn't decode {}: {e}", path.display());
-            return image_response(source, original_mime(path));
+            return image_response(source, mime);
         }
     };
     if is_blank(&img) {
@@ -143,12 +154,125 @@ fn respond(path: &Path, box_size: (u32, u32), cache_dir: Option<&Path>) -> Respo
             image_response(bytes, mime)
         }
         // Already no bigger than the box: the original is the thumbnail.
-        Ok(None) => image_response(source, original_mime(path)),
+        Ok(None) => image_response(source, mime),
         Err(e) => {
             eprintln!("thumb: couldn't scale {}: {e}", path.display());
-            image_response(source, original_mime(path))
+            image_response(source, mime)
         }
     }
+}
+
+/// The picture's bytes and MIME type: the file itself, or for an `.epub` the
+/// cover inside it (`None` when the book has none).
+fn read_source(path: &Path) -> std::io::Result<Option<(Vec<u8>, &'static str)>> {
+    let is_epub = path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("epub"));
+    if !is_epub {
+        return Ok(Some((std::fs::read(path)?, original_mime(path))));
+    }
+    let cover = epub_cover(std::fs::File::open(path)?)?;
+    Ok(cover.map(|(bytes, name)| (bytes, original_mime(Path::new(&name)))))
+}
+
+/// The cover picture inside an EPUB and its name in the zip. The package file
+/// (named by `META-INF/container.xml`) marks it: EPUB 3 with
+/// `properties="cover-image"`, EPUB 2 with `<meta name="cover" content="id">`;
+/// else the first picture in the manifest, which is the cover in most books.
+fn epub_cover<R: Read + Seek>(reader: R) -> std::io::Result<Option<(Vec<u8>, String)>> {
+    let mut zip = zip::ZipArchive::new(reader).map_err(std::io::Error::other)?;
+    let Some(container) = zip_entry(&mut zip, "META-INF/container.xml")? else {
+        return Ok(None);
+    };
+    let container = parse_xml(&container)?;
+    let Some(opf_path) = container
+        .descendants()
+        .find(|n| n.has_tag_name("rootfile"))
+        .and_then(|n| n.attribute("full-path"))
+    else {
+        return Ok(None);
+    };
+    let Some(opf) = zip_entry(&mut zip, opf_path)? else {
+        return Ok(None);
+    };
+    let opf = parse_xml(&opf)?;
+    let items: Vec<_> = opf
+        .descendants()
+        .filter(|n| n.has_tag_name("item"))
+        .collect();
+    let cover_id = opf
+        .descendants()
+        .find(|n| n.has_tag_name("meta") && n.attribute("name") == Some("cover"))
+        .and_then(|n| n.attribute("content"));
+    let item = items
+        .iter()
+        .find(|i| {
+            i.attribute("properties")
+                .is_some_and(|p| p.split_whitespace().any(|w| w == "cover-image"))
+        })
+        .or_else(|| {
+            items
+                .iter()
+                .find(|i| cover_id.is_some() && i.attribute("id") == cover_id)
+        })
+        .or_else(|| {
+            items.iter().find(|i| {
+                i.attribute("media-type")
+                    .is_some_and(|t| t.starts_with("image/"))
+            })
+        });
+    let Some(href) = item.and_then(|i| i.attribute("href")) else {
+        return Ok(None);
+    };
+    let base = opf_path.rfind('/').map_or("", |i| &opf_path[..=i]);
+    let name = resolve_href(base, href);
+    Ok(zip_entry(&mut zip, &name)?.map(|bytes| (bytes, name)))
+}
+
+/// An entry's bytes, `None` when the zip has no such entry or it is too big
+/// to be a cover or a package file.
+fn zip_entry<R: Read + Seek>(
+    zip: &mut zip::ZipArchive<R>,
+    name: &str,
+) -> std::io::Result<Option<Vec<u8>>> {
+    let mut entry = match zip.by_name(name) {
+        Ok(entry) => entry,
+        Err(zip::result::ZipError::FileNotFound) => return Ok(None),
+        Err(e) => return Err(std::io::Error::other(e)),
+    };
+    if entry.size() > MAX_EPUB_COVER {
+        return Ok(None);
+    }
+    let mut bytes = Vec::with_capacity(entry.size() as usize);
+    entry.read_to_end(&mut bytes)?;
+    Ok(Some(bytes))
+}
+
+fn parse_xml(bytes: &[u8]) -> std::io::Result<roxmltree::Document<'_>> {
+    let text = std::str::from_utf8(bytes).map_err(std::io::Error::other)?;
+    let options = roxmltree::ParsingOptions {
+        allow_dtd: true,
+        ..Default::default()
+    };
+    roxmltree::Document::parse_with_options(text.trim_start_matches('\u{feff}'), options)
+        .map_err(std::io::Error::other)
+}
+
+/// A manifest `href` (percent-encoded, relative to the package file's folder)
+/// as a name in the zip.
+fn resolve_href(base: &str, href: &str) -> String {
+    let href = percent_encoding::percent_decode_str(href).decode_utf8_lossy();
+    let mut parts: Vec<&str> = Vec::new();
+    for part in base.split('/').chain(href.split('/')) {
+        match part {
+            ".." => {
+                parts.pop();
+            }
+            "" | "." => {}
+            part => parts.push(part),
+        }
+    }
+    parts.join("/")
 }
 
 /// Whether the picture is one flat colour throughout, judged on a small sample.
@@ -323,6 +447,146 @@ mod tests {
             }
         }
         assert!(!is_blank(&DynamicImage::ImageRgb8(dark)));
+    }
+
+    const CONTAINER: &str = r#"<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+</container>"#;
+
+    /// An EPUB whose package file has `manifest` and `metadata`, holding
+    /// `files` (name, bytes). Pictures are deflated, as real books store them.
+    fn epub(metadata: &str, manifest: &str, files: &[(&str, &[u8])]) -> Vec<u8> {
+        use zip::write::SimpleFileOptions;
+        let opf = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">{metadata}</metadata>
+  <manifest>{manifest}</manifest>
+</package>"#
+        );
+        let mut out = Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(&mut out);
+        let stored =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        let deflated =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        zip.start_file("mimetype", stored).unwrap();
+        zip.write_all(b"application/epub+zip").unwrap();
+        zip.start_file("META-INF/container.xml", deflated).unwrap();
+        zip.write_all(CONTAINER.as_bytes()).unwrap();
+        zip.start_file("OEBPS/content.opf", deflated).unwrap();
+        zip.write_all(opf.as_bytes()).unwrap();
+        for (name, bytes) in files {
+            zip.start_file(*name, deflated).unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        zip.finish().unwrap();
+        out.into_inner()
+    }
+
+    fn cover_name(book: Vec<u8>) -> Option<String> {
+        epub_cover(Cursor::new(book)).unwrap().map(|(_, name)| name)
+    }
+
+    use std::io::Write;
+
+    #[test]
+    fn finds_an_epub3_cover_image() {
+        let book = epub(
+            "",
+            r#"<item id="logo" href="images/logo.png" media-type="image/png"/>
+               <item id="c" href="images/cover%20art.jpg" media-type="image/jpeg" properties="cover-image"/>"#,
+            &[
+                ("OEBPS/images/logo.png", b"logo"),
+                ("OEBPS/images/cover art.jpg", b"cover"),
+            ],
+        );
+        let (bytes, name) = epub_cover(Cursor::new(book)).unwrap().unwrap();
+        assert_eq!(name, "OEBPS/images/cover art.jpg");
+        assert_eq!(bytes, b"cover");
+    }
+
+    #[test]
+    fn finds_an_epub2_cover_meta() {
+        let book = epub(
+            r#"<meta name="cover" content="cover-pic"/>"#,
+            r#"<item id="logo" href="logo.png" media-type="image/png"/>
+               <item id="cover-pic" href="../Images/front.jpeg" media-type="image/jpeg"/>"#,
+            &[("OEBPS/logo.png", b"logo"), ("Images/front.jpeg", b"front")],
+        );
+        assert_eq!(cover_name(book).as_deref(), Some("Images/front.jpeg"));
+    }
+
+    #[test]
+    fn falls_back_to_the_first_picture() {
+        let book = epub(
+            "",
+            r#"<item id="text" href="ch1.xhtml" media-type="application/xhtml+xml"/>
+               <item id="p1" href="first.png" media-type="image/png"/>
+               <item id="p2" href="second.png" media-type="image/png"/>"#,
+            &[("OEBPS/first.png", b"1"), ("OEBPS/second.png", b"2")],
+        );
+        assert_eq!(cover_name(book).as_deref(), Some("OEBPS/first.png"));
+    }
+
+    #[test]
+    fn a_book_without_pictures_has_no_cover() {
+        let book = epub(
+            "",
+            r#"<item id="text" href="ch1.xhtml" media-type="application/xhtml+xml"/>"#,
+            &[],
+        );
+        assert_eq!(cover_name(book), None);
+        // A cover the manifest names but the zip lacks.
+        let missing = epub(
+            "",
+            r#"<item id="c" href="gone.jpg" media-type="image/jpeg" properties="cover-image"/>"#,
+            &[],
+        );
+        assert_eq!(cover_name(missing), None);
+    }
+
+    #[test]
+    fn a_file_that_is_not_a_zip_is_an_error() {
+        assert!(epub_cover(Cursor::new(b"not a zip".to_vec())).is_err());
+    }
+
+    #[test]
+    fn serves_the_cover_inside_an_epub() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path().join("cache");
+        let jpeg = encode(gradient(700, 1050), ImageFormat::Jpeg);
+        let manifest =
+            r#"<item id="c" href="cover.jpg" media-type="image/jpeg" properties="cover-image"/>"#;
+        let file = dir.path().join("Skip the line.EPUB");
+        std::fs::write(&file, epub("", manifest, &[("OEBPS/cover.jpg", &jpeg)])).unwrap();
+        let response = respond(&file, (360, 540), Some(&cache));
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers()[header::CONTENT_TYPE].to_str().unwrap(),
+            "image/jpeg"
+        );
+        let out = image::load_from_memory(response.body()).unwrap();
+        assert_eq!((out.width(), out.height()), (360, 540));
+
+        // A book whose own cover is one flat colour is refused like any other.
+        let black = encode(
+            DynamicImage::ImageRgb8(RgbImage::from_pixel(600, 900, Rgb([0, 0, 0]))),
+            ImageFormat::Jpeg,
+        );
+        let flat = dir.path().join("flat.epub");
+        std::fs::write(&flat, epub("", manifest, &[("OEBPS/cover.jpg", &black)])).unwrap();
+        let refused = respond(&flat, (360, 540), Some(&cache));
+        assert_eq!(refused.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        // No cover inside: not found, so the card falls back to `Cover:`.
+        let bare = dir.path().join("bare.epub");
+        std::fs::write(&bare, epub("", "", &[])).unwrap();
+        assert_eq!(
+            respond(&bare, (360, 540), Some(&cache)).status(),
+            StatusCode::NOT_FOUND
+        );
     }
 
     #[test]

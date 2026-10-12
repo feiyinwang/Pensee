@@ -37,7 +37,7 @@ Clicking a card opens its note in place. When the note's `Book` file (a PDF or E
 
 ## Covers
 
-`Cover:` (relative to the note's folder, or an `https` URL) is shown when present. Otherwise each category draws its own default cover from the note's title and author, coloured by a hash of the title so a note keeps its colour:
+A book whose `Book:` is an EPUB shows the cover inside that file first (see below). Then `Cover:` (relative to the note's folder, or an `https` URL) is shown when present. Otherwise each category draws its own default cover from the note's title and author, coloured by a hash of the title so a note keeps its colour:
 
 | Category | Shape | Default cover |
 |---|---|---|
@@ -47,7 +47,9 @@ Clicking a card opens its note in place. When the note's `Book` file (a PDF or E
 | Podcast | 1:1 | show name set large with a microphone mark |
 | Paper | 3:4 | a typeset title page: venue and year, serif title, authors, text lines |
 
-A cover that fails to load falls back to the default cover.
+A cover that fails to load falls back to the next one: the book's own cover, then `Cover:`, then a video's live thumbnail, then the default cover.
+
+**A book's own cover.** When a note's `Book:` names an `.epub` (relative to the note's folder, optionally in `[[ ]]`), the gallery asks `thumb://` for that EPUB, and the handler serves the cover inside it, the one Apple Books shows. It reads only the zip's directory and three entries: `META-INF/container.xml` names the package file, the package file's manifest marks the cover (EPUB 3 `properties="cover-image"`, else EPUB 2 `<meta name="cover" content="<id>">`, else the first `image/*` item), and that entry is scaled, cached and checked for one flat colour exactly like a `Cover:` image. An EPUB without a cover answers 404, so the card moves on to `Cover:`. The book's cover wins over `Cover:` because a saved cover can be stale or solid black, and the note's page card (`book-card.tsx`) already prefers the book's own. Why on the server: reading whole EPUBs in the webview for every card would bring back the scrolling stalls the thumbnails fixed. A PDF book keeps its `Cover:`: drawing a PDF's first page would need a PDF renderer in Rust, and the page card does that in the webview only for the one book open.
 
 A local `Cover:` is drawn from a thumbnail, never the full picture: the gallery asks for `thumb://` (`convertFileSrc(path, "thumb")?w=&h=`, `src-tauri/src/thumbs.rs`) with the box its kind is drawn in at 2x (`THUMB_BOX` in `space-cover.tsx`), and the handler scales the image to cover that box, encodes it as JPEG (PNG when it has transparency) and caches it in the app's cache folder under `cover-thumbs/`, keyed by path, size and modified time. It runs on the blocking pool, not the main thread, and checks the asset protocol's scope. A picture already inside the box, or one the decoder can't read, is served as it is. A picture of one flat colour (every pixel of a 32×32 sample within 12 per channel) is refused with 422, and the refusal is cached as `<key>.blank`, so the card draws its default cover. Why: an Apple Books export can save a cover that is solid black, which reads as an error, not a cover. Why: a Library of ~130 saved covers at ~700×1024 (some 2000×3000) made WebKit decode and downscale hundreds of megabytes of bitmaps while scrolling, and the gallery stalled.
 
@@ -79,6 +81,6 @@ Covers come from the note's own link (`url`, `link` or `source`, first non-blank
 
 ## Not in this pass
 
-- Covers for other video hosts (Vimeo, Bilibili) and for books, courses and papers.
+- Covers for other video hosts (Vimeo, Bilibili), for courses and papers, and the first page of a PDF book.
 - A `+ New` button inside a space.
 - Writing the matching notes into the space note as `[[links]]`.

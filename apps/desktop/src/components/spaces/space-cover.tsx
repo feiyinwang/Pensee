@@ -22,22 +22,41 @@ const THUMB_BOX: Record<CoverKind, readonly [number, number]> = {
   note: [400, 400],
 };
 
-/** `Cover:` as an image URL: a web address as is, a vault path (optionally in
- *  `[[ ]]`) from the note's folder scaled down to `kind`'s box by the `thumb`
- *  protocol (src-tauri/src/thumbs.rs). */
-export function coverSrc(note: TypedNote, kind: CoverKind): string | null {
-  const raw = note.properties.cover?.trim();
-  if (!raw) return null;
+/** A frontmatter value (optionally in `[[ ]]`) as a web address, or a vault
+ *  path resolved from the note's folder. */
+function noteFile(note: TypedNote, raw: string | undefined): string | null {
   const value = raw
+    ?.trim()
     .replace(/^!?\[\[/, "")
     .replace(/\]\]$/, "")
     .split("|")[0]
-    .trim();
+    ?.trim();
   if (!value) return null;
   if (/^https?:\/\//i.test(value)) return value;
-  const absolute = value.startsWith("/") ? value : `${getParentDir(note.path)}/${value}`;
+  return value.startsWith("/") ? value : `${getParentDir(note.path)}/${value}`;
+}
+
+/** `path` scaled down to `kind`'s box by the `thumb` protocol
+ *  (src-tauri/src/thumbs.rs). */
+function thumbSrc(path: string, kind: CoverKind): string {
   const [w, h] = THUMB_BOX[kind];
-  return `${convertFileSrc(absolute, "thumb")}?w=${w}&h=${h}`;
+  return `${convertFileSrc(path, "thumb")}?w=${w}&h=${h}`;
+}
+
+/** `Cover:` as an image URL: a web address as is, a vault path as a thumbnail. */
+export function coverSrc(note: TypedNote, kind: CoverKind): string | null {
+  const file = noteFile(note, note.properties.cover);
+  if (!file) return null;
+  return /^https?:\/\//i.test(file) ? file : thumbSrc(file, kind);
+}
+
+/** The cover inside the note's `Book:` EPUB (what Apple Books shows), read
+ *  out of the zip by the `thumb` protocol. A PDF's first page would need a
+ *  renderer there, so a PDF book keeps its `Cover:`. */
+function bookFileSrc(note: TypedNote, kind: CoverKind): string | null {
+  const file = noteFile(note, note.properties.book);
+  if (!file || !/\.epub$/i.test(file) || /^https?:\/\//i.test(file)) return null;
+  return thumbSrc(file, kind);
 }
 
 export function noteTitle(note: TypedNote): string {
@@ -53,20 +72,24 @@ function venueOf(note: TypedNote): string | null {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-/** A note's cover: its own `Cover:` image when it loads, else a video's
- *  YouTube thumbnail from its link, else the default cover for its kind,
- *  coloured and laid out by a hash of its title. */
+/** A note's cover, the first that loads of: the cover inside its `Book:`
+ *  EPUB, its own `Cover:` image, a video's YouTube thumbnail from its link;
+ *  else the default cover for its kind, coloured and laid out by a hash of
+ *  its title. The book's own cover comes first because a saved `Cover:` can
+ *  be stale or blank (an Apple Books export can save one solid black). */
 export function SpaceCover({ note, kind }: { note: TypedNote; kind: CoverKind }) {
-  const src = coverSrc(note, kind) ?? liveCoverSrc(note, kind);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<readonly string[]>([]);
+  const src =
+    [bookFileSrc(note, kind), coverSrc(note, kind), liveCoverSrc(note, kind)].find(
+      (s): s is string => s !== null && !failed.includes(s),
+    ) ?? null;
   const title = noteTitle(note);
   const hash = titleHash(title);
   const tone = styles[`tone${hash % TONES}`];
-  const showImage = src !== null && failed !== src;
 
   return (
     <div className={`${styles.cover} ${tone}`} data-kind={kind}>
-      {showImage ? (
+      {src ? (
         <img
           className={styles.coverImage}
           src={src}
@@ -74,7 +97,7 @@ export function SpaceCover({ note, kind }: { note: TypedNote; kind: CoverKind })
           loading="lazy"
           decoding="async"
           draggable={false}
-          onError={() => setFailed(src)}
+          onError={() => setFailed((list) => [...list, src])}
         />
       ) : (
         <DefaultCover note={note} kind={kind} title={title} layout={(hash >>> 4) % 3} />
