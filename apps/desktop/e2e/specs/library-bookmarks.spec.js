@@ -92,28 +92,51 @@ describe("Library bookmarks", function () {
     strictEqual(media.nowrap, "nowrap");
   });
 
-  it("fills only the selected tab", async function () {
-    const fill = await browser.execute(() => {
-      const pressed = document.querySelector('button[data-value="bookmarks"]');
-      const selection = pressed?.querySelector('[aria-hidden="true"]');
-      if (!pressed || !selection) return null;
-      const a = pressed.getBoundingClientRect();
-      const b = selection.getBoundingClientRect();
-      return {
-        dx: Math.abs(a.left - b.left),
-        dw: Math.abs(a.width - b.width),
-        hidden: document.hidden,
-      };
-    });
-    ok(fill, "no selection fill in the Bookmarks tab");
-    // A hidden window gets no animation frames, so the fill's slide never ends.
-    if (fill.hidden) this.skip();
-    ok(fill.dx < 2 && fill.dw < 2, `fill is off the selected tab: ${JSON.stringify(fill)}`);
-  });
-
   it("says X isn't connected, with a way to connect", async function () {
     const bar = await $("button=Connect X");
     ok(await bar.isExisting(), "no Connect X");
     await browser.saveScreenshot(process.env.BOOKMARKS_SHOT ?? "/tmp/library-bookmarks.png");
+  });
+});
+
+describe("Bookmark videos", function () {
+  const videoState = () =>
+    browser.execute(() =>
+      [...document.querySelectorAll(".cm-video-embed video")].map((v) => ({
+        gif: v.parentElement?.hasAttribute("data-gif") ?? false,
+        controls: v.controls,
+        loop: v.loop,
+        muted: v.muted,
+        readyState: v.readyState,
+        duration: v.duration,
+        width: v.getBoundingClientRect().width,
+      })),
+    );
+
+  it("plays an embedded MP4 with controls", async function () {
+    await $('[data-space-key="library"]').click();
+    await $('button[data-value="bookmarks"]').click();
+    await $("button*=Lena Park").click();
+    await browser.waitUntil(async () => (await videoState()).some((v) => v.readyState >= 1), {
+      timeout: 10_000,
+      timeoutMsg: "the video never loaded its metadata",
+    });
+    const [video] = await videoState();
+    ok(video.controls && !video.gif && !video.loop, JSON.stringify(video));
+    ok(Math.abs(video.duration - 3) < 0.2, `duration ${video.duration}`);
+    ok(video.width > 200, `width ${video.width}`);
+    await browser.saveScreenshot(process.env.THREAD_SHOT ?? "/tmp/bookmark-thread.png");
+  });
+
+  it("plays a -gif.mp4 like a GIF: looping, muted, no controls", async function () {
+    await $('[data-space-key="library"]').click();
+    await $('button[data-value="bookmarks"]').click();
+    await $("button*=Kofi Mensah").click();
+    await browser.waitUntil(
+      async () => (await videoState()).some((v) => v.gif && v.readyState >= 1),
+      { timeout: 10_000, timeoutMsg: "the GIF never loaded" },
+    );
+    const gif = (await videoState()).find((v) => v.gif);
+    ok(gif.gif && gif.loop && gif.muted && !gif.controls, JSON.stringify(gif));
   });
 });

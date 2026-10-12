@@ -234,3 +234,21 @@ describe("syncXBookmarks", () => {
     expect(files.size).toBe(1);
   });
 });
+
+describe("media files", () => {
+  test("a GIF is named so the editor plays it like one", async () => {
+    const { mediaFileName } = await import("../src/lib/x-bookmarks");
+    const { parseWikiVideoEmbedTarget } = await import("../src/lib/wiki-links");
+    expect(mediaFileName(2, 1, "gif")).toBe("2-1-gif");
+    expect(mediaFileName(2, 1, "video")).toBe("2-1");
+    expect(parseWikiVideoEmbedTarget("Note-assets/2-1-gif.mp4")).toEqual({
+      path: "Note-assets/2-1-gif.mp4",
+      gif: true,
+    });
+    expect(parseWikiVideoEmbedTarget("Note-assets/3-1.mp4|400")).toEqual({
+      path: "Note-assets/3-1.mp4",
+      gif: false,
+    });
+    expect(parseWikiVideoEmbedTarget("Note-assets/3-1.jpg")).toBeNull();
+  });
+});

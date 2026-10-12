@@ -91,7 +91,9 @@ Not built yet: the "new since your last visit" dot from the mock. It needs a rec
 
 ## Reading
 
-A `Type: Tweet` note opens with the thread view: author header from the properties with **Open on X**, posts on one thin line, videos with player controls, GIFs looping muted (paused under Reduce Motion, click to pause). `![[*.mp4]]` embeds play everywhere, not only in bookmarks.
+Built: `![[*.mp4]]` (and `.mov`, `.m4v`, `.webm`) embeds play in every note (`video-embed-widget.ts`), with controls. A `*-gif.mp4` plays like a GIF: looping, muted, no controls, a GIF label, paused under Reduce Motion, click to pause or play. GIFs are saved under that name for this reason. The widget keeps every pointer event, so using the controls never drops the caret into the embed and swaps it for its source. The CSP has a `media-src` for `asset:`; without it every video failed with "source not supported".
+
+Not built yet: the thread view. A `Type: Tweet` note should open with an author header from the properties with **Open on X**, and the posts on one thin line instead of separated by rules.
 
 ## States
 

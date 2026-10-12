@@ -76,9 +76,10 @@ export function bookmarkNoteName(bookmark: XBookmark): string {
   return name || safePageName(`@${bookmark.authorHandle} ${bookmark.id}`);
 }
 
-/** The media file name for the `n`th item (from 1) of the `post`th post. */
-export function mediaFileName(post: number, n: number): string {
-  return `${post}-${n}`;
+/** The media file name for the `n`th item (from 1) of the `post`th post. A
+ *  GIF is saved as MP4, and `-gif` tells the editor to play it like one. */
+export function mediaFileName(post: number, n: number, kind: XMedia["kind"]): string {
+  return kind === "gif" ? `${post}-${n}-gif` : `${post}-${n}`;
 }
 
 /** Keep a post's text as text: a line that would start a heading, quote,
@@ -213,7 +214,7 @@ export async function syncXBookmarks(deps: XSyncDeps): Promise<XSyncResult> {
     for (const [p, post] of bookmark.posts.entries()) {
       const saved: SavedMedia[] = [];
       for (const [m, item] of post.media.entries()) {
-        const name = mediaFileName(p + 1, m + 1);
+        const name = mediaFileName(p + 1, m + 1, item.kind);
         const download = (url: string, file: string) =>
           deps.saveMedia(url, path, file).catch((error: unknown) => {
             console.error(`[x-bookmarks] Couldn't save ${url}:`, error);

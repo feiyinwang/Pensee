@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Videos in your notes play right there: `![[clip.mp4]]` (also `.mov`, `.m4v` and `.webm`) shows a player with controls instead of a link. A file whose name ends in `-gif.mp4`, which is how GIFs from X are saved, plays like a GIF: on a loop with no sound and no controls. Click it to pause or play; with Reduce Motion on, it starts paused.
 - A book in **Library** whose saved cover is one flat colour, like the solid black one an Apple Books export can produce, now shows its default book cover, with its title and author, instead of a black block.
 - A passage highlighted onto a board now has the same rounded corners as a rectangle you draw, instead of square ones.
 - The board's zoom controls now sit in the top-right corner, across from the top bar, instead of beside the tools at the bottom. On a narrow board they drop just below the top bar.

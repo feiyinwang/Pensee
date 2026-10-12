@@ -191,6 +191,24 @@ export function parseWikiImageEmbedTarget(raw: string): string | null {
   return parsed && WIKI_IMAGE_EXTENSIONS.has(parsed.ext) ? parsed.path : null;
 }
 
+// Videos embed as a player (`![[clip.mp4]]`). A file named `*-gif.mp4` is a
+// GIF saved as video (X serves GIFs that way) and plays like one: looping,
+// muted, no controls. Per SPECs/x-bookmarks-spec.md.
+const WIKI_VIDEO_EXTENSIONS = new Set(["mp4", "m4v", "mov", "webm"]);
+
+export interface WikiVideoEmbed {
+  path: string;
+  gif: boolean;
+}
+
+/** Parse the inner text of a `![[...]]` embed when its target is a video. */
+export function parseWikiVideoEmbedTarget(raw: string): WikiVideoEmbed | null {
+  const { target } = splitAlias(raw.trim());
+  const parsed = embedPathWithExtension(target);
+  if (!parsed || !WIKI_VIDEO_EXTENSIONS.has(parsed.ext)) return null;
+  return { path: parsed.path, gif: /-gif\.[^.]+$/i.test(parsed.path) };
+}
+
 export interface WikiHtmlEmbed {
   path: string;
   /** Frame height in px, clamped to the allowed range. */
