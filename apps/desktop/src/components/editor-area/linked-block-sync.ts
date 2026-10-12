@@ -55,6 +55,11 @@ function unregister(path: string, view: EditorView) {
   if (!views.size) liveViews.delete(path);
 }
 
+/** The main editors showing `path` right now. */
+export function liveEditorsFor(path: string): ReadonlySet<EditorView> {
+  return liveViews.get(path) ?? new Set();
+}
+
 export function liveEditorRegistry(getFilePath: () => string): Extension {
   return ViewPlugin.fromClass(
     class {

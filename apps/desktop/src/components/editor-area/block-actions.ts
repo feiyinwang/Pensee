@@ -185,6 +185,46 @@ export function gripBlockAt(state: EditorState, pos: number): BlockRef | null {
   return proseLineAt(state, topBlockAt(state, pos), pos);
 }
 
+/** Blocks whose last line cannot carry a ` ^id` without changing what they
+ *  are (a fence, a table row, a column row). */
+const UNLINKABLE = new Set([
+  "FencedCode",
+  "CodeBlock",
+  "Table",
+  "HTMLBlock",
+  "CommentBlock",
+  "ColumnRow",
+  "HorizontalRule",
+]);
+
+/** Whether a block of this kind can end with a ` ^id` (a linked block's or
+ *  a video pin's). */
+export function canCarryBlockId(name: string): boolean {
+  return !UNLINKABLE.has(name);
+}
+
+/** The line a block's ` ^id` goes on: a list item or heading carries it on
+ *  its own (first) line, a paragraph on its last, so the id covers every line
+ *  of it — even when the grip or the caret narrowed the paragraph to one. */
+export function blockIdLine(state: EditorState, block: BlockRef) {
+  const { doc } = state;
+  const firstLineOnly = block.name === "ListItem" || /Heading/.test(block.name);
+  const to = block.name === "Paragraph" ? paragraphEnd(state, block.from, block.to) : block.to;
+  const end = to > block.from ? to - 1 : to;
+  return firstLineOnly ? doc.lineAt(block.from) : doc.lineAt(Math.max(block.from, end));
+}
+
+function paragraphEnd(state: EditorState, from: number, to: number): number {
+  for (
+    let node: SyntaxNode | null = syntaxTree(state).resolveInner(from, 1);
+    node;
+    node = node.parent
+  ) {
+    if (node.name === "Paragraph") return Math.max(to, node.to);
+  }
+  return to;
+}
+
 export function topBlockAt(state: EditorState, pos: number): BlockRef | null {
   const clamped = Math.min(Math.max(pos, 0), state.doc.length);
   const tree = syntaxTree(state);

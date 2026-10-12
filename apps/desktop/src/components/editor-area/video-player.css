@@ -1,0 +1,163 @@
+/* A YouTube note's player (video-player.tsx, SPECs/youtube-notes-spec.md).
+   Sticky at the top of the note's scroller, aligned with the header's column;
+   the notes scroll beneath it. */
+
+.video-band-sentinel {
+  height: 1px;
+  margin-bottom: -1px;
+}
+
+.video-band {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding-block: 6px 4px;
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+
+/* Once the properties are gone, text passes under the band: give it the
+   page's surface, frosted, so nothing reads through around the video. */
+.video-band[data-stuck] {
+  border-bottom-color: var(--glass-border);
+  background: color-mix(in oklch, var(--bg-base) 78%, transparent);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+}
+
+.video-band-inner {
+  max-width: var(--writer-editor-outer-width);
+  margin-inline: auto;
+  padding-inline: var(--writer-editor-side-padding);
+  box-sizing: border-box;
+}
+
+/* 16:9, the column's width, no taller than 38% of the window. */
+.video-band-player {
+  width: min(100%, calc(38vh * 16 / 9));
+}
+
+.video-frame {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+  box-shadow: 0 0 0 1px var(--line-subtle);
+}
+
+.video-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-error {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 13px;
+}
+
+.video-error p {
+  margin: 0;
+}
+
+.video-error button {
+  padding: 5px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  transition: background-color var(--motion-hover) var(--ease-hover);
+}
+
+.video-band-row {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.video-pin-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding-inline: 7px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  transition:
+    color var(--motion-hover) var(--ease-hover),
+    background-color var(--motion-hover) var(--ease-hover);
+}
+
+.video-pin-button kbd {
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .video-pin-button:hover,
+  .video-error button:hover {
+    color: var(--text-primary);
+    background-color: var(--surface-subtle);
+  }
+}
+
+.video-pin-button:focus-visible,
+.video-error button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A board open over the note (Edit here) hides the page; the player stays,
+   as a mini player in the top-right corner over the board. The scroller is
+   not positioned, so `absolute` anchors to the pane and does not scroll. */
+[data-pane]:has(> .wr-board-inline) .video-band {
+  position: absolute;
+  top: 60px;
+  right: 16px;
+  z-index: 30;
+  width: 320px;
+  padding: 0;
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  visibility: visible;
+}
+
+[data-pane]:has(> .wr-board-inline) .video-band-inner {
+  max-width: none;
+  padding: 0;
+}
+
+[data-pane]:has(> .wr-board-inline) .video-band-player {
+  width: 100%;
+}
+
+[data-pane]:has(> .wr-board-inline) .video-frame {
+  box-shadow:
+    0 0 0 1px var(--line-subtle),
+    0 8px 24px rgb(0 0 0 / 18%);
+}
+
+[data-pane]:has(> .wr-board-inline) .video-band-row {
+  padding-top: 6px;
+}
+
+[data-pane]:has(> .wr-board-inline) .video-pin-button {
+  background: var(--surface-card);
+  box-shadow: 0 0 0 1px var(--line-subtle);
+}

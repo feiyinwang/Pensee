@@ -209,3 +209,37 @@
 .cm-block-embed .cm-block-embed-body .cm-editor .cm-content::selection {
   background-color: transparent !important;
 }
+
+/* A video pin at the end of a block (video-pin.ts, SPECs/youtube-notes-spec.md):
+   the `^yt-…` id drawn as a pin that plays its moment. Muted like the id it
+   stands for; the accent on hover says it can be pressed. */
+.cm-video-pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-inline-start: 4px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  vertical-align: -3px;
+  cursor: pointer;
+  transition:
+    color var(--motion-hover) var(--ease-hover),
+    background-color var(--motion-hover) var(--ease-hover);
+}
+
+.cm-video-pin:hover {
+  color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+}
+
+.cm-video-pin svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

@@ -8,7 +8,7 @@ import type { TypedNote } from "./tauri";
 // into the note's assets folder and writes `Cover:`, so it stays markdown.
 
 /** Frontmatter keys a note keeps its web address under, in order of trust. */
-const LINK_KEYS = ["url", "link", "source"] as const;
+export const LINK_KEYS = ["url", "link", "source"] as const;
 
 const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 const YOUTUBE_HOSTS = new Set([

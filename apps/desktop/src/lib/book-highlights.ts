@@ -107,7 +107,7 @@ export function cleanBookTitle(stem: string): string {
 }
 
 /** A text property of the page (key matched ignoring case), or null. */
-function pageProperty(frontmatter: string | null, name: string): string | null {
+export function pageProperty(frontmatter: string | null, name: string): string | null {
   if (!frontmatter?.trim()) return null;
   const doc = parseDocument(frontmatter);
   if (doc.errors.length || !isMap(doc.contents)) return null;

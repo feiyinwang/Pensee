@@ -26,11 +26,15 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+-           | Zoom out                      |
 | Cmd+0           | Actual size (100%)            |
 | Cmd+J           | Toggle the agent chat         |
+| Cmd+Shift+M     | Pin the video's moment¹       |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N, and history navigation still work.
 Cmd+Shift+N and Cmd+] need a workspace to file notes in, so they are inert there too.
+
+¹ Only while a YouTube note's player is open; handled in `video-pin.ts`, not
+the global hook ([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md)).
 
 Zoom scales the whole window (WebKit page zoom, persisted in the global
 `appearance.zoom` setting) and steps along the browser ladder 50 · 67 · 75 · 80 ·

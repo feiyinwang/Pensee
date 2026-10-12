@@ -200,6 +200,10 @@ export interface BoardCanvasHandle {
    *  the `side` edge as there is room (a book highlight made beside the
    *  board). One undo step. */
   addCard: (text: string, side: "w" | "e", link?: string) => void;
+  /** A video pin (SPECs/youtube-notes-spec.md): a child linking to `link`
+   *  under the one selected mind-map node, else a blank rectangle like
+   *  `addCard`'s; selected, with typing started in it. One undo step. */
+  addPin: (link: string, side: "w" | "e") => void;
 }
 
 type Interaction =
@@ -1603,7 +1607,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  passage needs it, up to a cap; past that the label's own caret expands it. */
   const HIGHLIGHT_CARD = { maxH: 320 };
 
-  function addCard(text: string, side: "w" | "e", link?: string): void {
+  /** A rectangle labelled `text` placed in view from the `side` edge. */
+  function placeCard(text: string, side: "w" | "e", link?: string): ShapeEl {
     const v = vp();
     const { width, height } = stageRect();
     const view = {
@@ -1614,7 +1619,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     };
     const el: ShapeEl = {
       id: newId(),
-      t: SHAPE_DEFAULT_KIND,
+      t: "rect",
       x: 0,
       y: 0,
       w: SHAPE_DEFAULT.w,
@@ -1630,8 +1635,26 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     pushHistory();
     assignFrame(el);
     scene.els.push(el);
+    return el;
+  }
+
+  function addCard(text: string, side: "w" | "e", link?: string): void {
+    placeCard(text, side, link);
     draw();
     markDirty();
+  }
+
+  function addPin(link: string, side: "w" | "e"): void {
+    const only = selection.size === 1 ? findEl(scene, [...selection][0]!) : null;
+    if (isMind(only)) {
+      addTopic(only, "child", undefined, link);
+      return;
+    }
+    const el = placeCard("", side, link);
+    selection = new Set([el.id]);
+    draw();
+    markDirty();
+    startTextEdit(el);
   }
 
   function assignFrame(el: BoardEl): void {
@@ -2327,9 +2350,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /** Tab / Enter on a topic: add a child or a sibling, lay the map out again,
    *  and start typing in the new topic. */
-  function addTopic(from: MindEl, kind: "child" | "sibling", typed?: string): void {
+  function addTopic(from: MindEl, kind: "child" | "sibling", typed?: string, link?: string): void {
     pushHistory();
     const topic = kind === "child" ? addMindChild(scene, from) : addMindSibling(scene, from);
+    if (link) topic.ln = link;
     layoutMind(scene, mindRoot(scene, topic).id, measureText);
     selection = new Set([topic.id]);
     draw();
@@ -3612,6 +3636,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       host.focus();
     },
     addCard,
+    addPin,
   };
 }
 

@@ -21,6 +21,7 @@ import {
   isLinker,
   isShape,
 } from "./board-model";
+import { PIN_ICON_PATH, formatVideoTime, parseVideoLink } from "@/lib/video-pins";
 import { parseWikiLink } from "@/lib/wiki-links";
 import { smoothPath, strokeExtent } from "./board-draw";
 import {
@@ -459,6 +460,41 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
     });
     if (label.caret) g.append(caretNode(el, label.caret));
   }
+  if (el.ln) appendPinBadge(g, el.w, el.ln);
+}
+
+/** A video pin's badge on the element's top-right corner: the pin, with the
+ *  moment as its tooltip; a click plays it (`data-wiki`, read by `linkAt`).
+ *  Styled by attribute so the saved `.board.svg` shows it too. */
+function appendPinBadge(g: SVGGElement, width: number, ln: string): void {
+  const link = parseVideoLink(ln);
+  if (!link) return;
+  const badge = svgEl("g", {
+    class: "wr-board-pin",
+    "data-wiki": ln,
+    transform: `translate(${width} 0)`,
+  });
+  const title = svgEl("title");
+  title.textContent = `Play from ${formatVideoTime(link.seconds)}`;
+  badge.append(
+    title,
+    svgEl("circle", {
+      r: 10,
+      fill: "var(--wr-board-surface)",
+      stroke: "var(--wr-board-accent)",
+      "stroke-width": 1.25,
+    }),
+    svgEl("path", {
+      d: PIN_ICON_PATH,
+      transform: "translate(-6 -6) scale(0.5)",
+      fill: "none",
+      stroke: "var(--wr-board-accent)",
+      "stroke-width": 2.25,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    }),
+  );
+  g.append(badge);
 }
 
 /* ------------------------------------------------- shape label truncation */
@@ -487,7 +523,8 @@ export function shapeLabel(el: ShapeEl): ShapeLabelLayout | null {
   const layout = shapeLabelLayout(el);
   // A linked shape (`ln`) is a link all over: every run carries it, so it
   // draws and clicks like a `[[link]]` in the text.
-  if (layout && el.ln) {
+  // A video pin is the corner badge's, not the label's: the text stays text.
+  if (layout && el.ln && !parseVideoLink(el.ln)) {
     const ln = el.ln;
     layout.lines = layout.lines.map((line) => line.map((run) => ({ ...run, ln })));
   }
@@ -608,6 +645,7 @@ function renderMind(g: SVGGElement, el: MindEl, ctx: RenderContext): void {
     fill: depth === 0 ? "var(--wr-board-surface)" : colorVar("ink"),
     weight: depth === 0 ? 600 : depth === 1 ? 500 : 400,
   });
+  if (el.ln) appendPinBadge(g, el.w, el.ln);
 }
 
 function renderDraw(g: SVGGElement, el: DrawEl): void {

@@ -68,6 +68,11 @@ export function importBook(sourcePath: string, dir: string, stem: string): Promi
   return invoke("import_book", { sourcePath, dir, stem });
 }
 
+/** The loopback origin that serves the YouTube player page. */
+export function videoPlayerOrigin(): Promise<string> {
+  return invoke("video_player_origin");
+}
+
 export function fileExists(path: string): Promise<boolean> {
   return invoke("file_exists", { path });
 }

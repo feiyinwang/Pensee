@@ -1277,3 +1277,8 @@
 .wr-board-content .wr-board-wiki {
   cursor: pointer;
 }
+
+/* A video pin's corner badge plays its moment on click. */
+.wr-board-content .wr-board-pin {
+  cursor: pointer;
+}

@@ -206,6 +206,8 @@ export interface MindEl extends Base {
   /** parent topic id; absent on the root */ pa?: string;
   /** branch colour, set on first-level topics and inherited below */ c?: ColorToken;
   /** side of the root a first-level topic grows on */ sd?: "l" | "r";
+  /** A video pin, `Page#^yt-<seconds>` (board-video-links.ts). */
+  ln?: string;
 }
 
 /**
@@ -463,6 +465,7 @@ function parseElement(raw: unknown): BoardEl | null {
     if (typeof o.pa === "string") el.pa = o.pa;
     if (isColor(o.c)) el.c = o.c;
     if (o.sd === "l" || o.sd === "r") el.sd = o.sd;
+    if (typeof o.ln === "string" && o.ln) el.ln = o.ln;
     return el;
   }
   return null;
@@ -547,6 +550,7 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
       if (el.pa) o.pa = el.pa;
       if (el.c) o.c = el.c;
       if (el.sd) o.sd = el.sd;
+      if (el.ln) o.ln = el.ln;
       break;
     }
     case "text": {

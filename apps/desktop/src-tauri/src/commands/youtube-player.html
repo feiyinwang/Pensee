@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube player</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      #player {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="player"></div>
+    <script>
+      // Writer's YouTube player (SPECs/youtube-notes-spec.md). Served from
+      // 127.0.0.1 so the embed carries an http referrer; the app frames this
+      // page and talks to it with postMessage.
+      const query = new URLSearchParams(location.search);
+      const videoId = query.get("v") || "";
+      const start = Math.max(0, Math.floor(Number(query.get("t")) || 0));
+      let player = null;
+      let ready = false;
+      let ticker = 0;
+      let pending = null;
+
+      const post = (message) => parent.postMessage({ source: "writer-yt", ...message }, "*");
+
+      function report() {
+        if (!ready) return;
+        post({
+          type: "state",
+          t: player.getCurrentTime(),
+          playing: player.getPlayerState() === YT.PlayerState.PLAYING,
+        });
+      }
+
+      function run(message) {
+        if (message.cmd === "seek") {
+          player.seekTo(Math.max(0, Number(message.t) || 0), true);
+          player.playVideo();
+        } else if (message.cmd === "play") {
+          player.playVideo();
+        } else if (message.cmd === "pause") {
+          player.pauseVideo();
+        }
+      }
+
+      window.onYouTubeIframeAPIReady = () => {
+        player = new YT.Player("player", {
+          videoId,
+          playerVars: { playsinline: 1, rel: 0, start, origin: location.origin },
+          events: {
+            onReady: () => {
+              ready = true;
+              report();
+              if (pending) run(pending);
+              pending = null;
+            },
+            onStateChange: (event) => {
+              report();
+              clearInterval(ticker);
+              if (event.data === YT.PlayerState.PLAYING) ticker = setInterval(report, 500);
+            },
+            onError: (event) => post({ type: "error", code: event.data }),
+          },
+        });
+      };
+
+      addEventListener("message", (event) => {
+        if (event.source !== parent) return;
+        const message = event.data;
+        if (!message || message.source !== "writer") return;
+        if (ready) run(message);
+        else pending = message;
+      });
+    </script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+  </body>
+</html>

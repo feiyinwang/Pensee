@@ -16,7 +16,6 @@ import {
   type Range,
   Transaction,
 } from "@codemirror/state";
-import type { SyntaxNode } from "@lezer/common";
 import { history } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxTree } from "@codemirror/language";
@@ -48,11 +47,12 @@ import {
   referenceInsertion,
   restoreMarker,
 } from "@/lib/block-refs";
+import { parseVideoPinId } from "@/lib/video-pins";
 import { WIKI_LINK_RE, findWikiLinkAt } from "@/lib/wiki-links";
 import { findWikiPage } from "@/lib/wiki-pages";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as editorApi from "@/hooks/editor-api";
-import { gripBlockAt, type ActionTarget } from "./block-actions";
+import { blockIdLine, canCarryBlockId, gripBlockAt, type ActionTarget } from "./block-actions";
 import { getEffectiveSelectionRanges } from "./drag-selection-gate";
 import { showEditorNotice } from "./editor-notice-store";
 import { headingDecorations } from "./heading-decorations";
@@ -69,6 +69,7 @@ import {
   writeBlock,
 } from "./linked-block-sync";
 import { BacklinkBadge, backlinksField, blockBacklinks } from "./block-backlinks";
+import { VideoPinWidget } from "./video-pin";
 import "./block-embed.css";
 
 // `![[Page#^id]]` shows block `id` of Page, live and editable where it is
@@ -521,9 +522,20 @@ function build(
       lastIdLine = Math.max(lastIdLine, line.number);
       if (id && !inCode(state, line.to)) {
         const idFrom = line.from + id.index;
-        decorations.push(
-          (touches(line.from, line.to) ? visibleId : hiddenId).range(idFrom, line.to),
-        );
+        const pinAt = parseVideoPinId(id[1]!);
+        if (pinAt !== null) {
+          // A video pin is always the pin, never its id: one atomic unit
+          // that plays its moment (SPECs/youtube-notes-spec.md).
+          const pin = Decoration.replace({
+            widget: new VideoPinWidget(pinAt, getFilePath),
+          }).range(idFrom, line.to);
+          decorations.push(pin);
+          embeds.push(pin);
+        } else {
+          decorations.push(
+            (touches(line.from, line.to) ? visibleId : hiddenId).range(idFrom, line.to),
+          );
+        }
         // Shown elsewhere: say how many places, the way RemNote counts a
         // Rem's references.
         const count = backlinks?.get(id[1]!)?.length ?? 0;
@@ -621,21 +633,9 @@ export function blockEmbeds(getFilePath: () => string): Extension {
 
 /* ------------------------------------------------------------ copy a link */
 
-/** Blocks whose last line cannot carry a ` ^id` without changing what they
- *  are (a fence, a table row, a column row). */
-const UNLINKABLE = new Set([
-  "FencedCode",
-  "CodeBlock",
-  "Table",
-  "HTMLBlock",
-  "CommentBlock",
-  "ColumnRow",
-  "HorizontalRule",
-]);
-
 /** Whether the handle's target can be linked to from another page. */
 export function canLinkToBlock(view: EditorView, target: ActionTarget): boolean {
-  if (target.kind !== "block" || UNLINKABLE.has(target.name)) return false;
+  if (target.kind !== "block" || !canCarryBlockId(target.name)) return false;
   return !!view.state.facet(blockEmbedHost)?.();
 }
 
@@ -644,17 +644,8 @@ export function canLinkToBlock(view: EditorView, target: ActionTarget): boolean 
 export function copyBlockLink(view: EditorView, target: ActionTarget): boolean {
   if (!canLinkToBlock(view, target) || target.kind !== "block") return false;
   const path = view.state.facet(blockEmbedHost)!();
-  const { doc } = view.state;
-  if (target.to > doc.length) return false;
-  // A list item or heading carries its id on its own (first) line; a
-  // paragraph on its last, so the id covers every line of it.
-  const firstLineOnly = target.name === "ListItem" || /Heading/.test(target.name);
-  // The grip (and the caret shortcut) narrow a paragraph to one line; the id
-  // still goes after its last line, or the lines below would fall outside.
-  const to =
-    target.name === "Paragraph" ? paragraphEnd(view.state, target.from, target.to) : target.to;
-  const end = to > target.from ? to - 1 : to;
-  const line = firstLineOnly ? doc.lineAt(target.from) : doc.lineAt(Math.max(target.from, end));
+  if (target.to > view.state.doc.length) return false;
+  const line = blockIdLine(view.state, target);
   let id = blockIdOnLine(line.text);
   if (!id) {
     id = newBlockId();
@@ -665,17 +656,6 @@ export function copyBlockLink(view: EditorView, target: ActionTarget): boolean {
   }
   copyReference(`![[${blockLinkPage(path, getWorkspaceRoot())}#^${id}]]`);
   return true;
-}
-
-function paragraphEnd(state: EditorState, from: number, to: number): number {
-  for (
-    let node: SyntaxNode | null = syntaxTree(state).resolveInner(from, 1);
-    node;
-    node = node.parent
-  ) {
-    if (node.name === "Paragraph") return Math.max(to, node.to);
-  }
-  return to;
 }
 
 function copyReference(link: string) {

@@ -666,6 +666,7 @@ pub fn run() {
             commands::apple_books::read_apple_books_highlights,
             commands::apple_books::save_apple_books_cover,
             commands::books::import_book,
+            commands::video_player::video_player_origin,
             commands::settings::get_settings,
             commands::settings::get_setting,
             commands::settings::set_setting,
