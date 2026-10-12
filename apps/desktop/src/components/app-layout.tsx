@@ -5,6 +5,7 @@ import { EditorTabs } from "./editor-area/editor-tabs";
 import { SidebarToggleButton } from "./sidebar/sidebar-toggle-button";
 import { CompactFileLayout } from "./compact-file-layout";
 import { WelcomeScreen } from "./welcome";
+import { AgentChat } from "./agent-chat";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useWorkspaceChromeMode, useWorkspaceRoot } from "@/hooks/use-workspace";
 import { resolveAppView } from "@/lib/app-view";
@@ -131,7 +132,11 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
   );
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-transparent text-text-primary">
+    <div
+      className="relative h-screen w-screen overflow-hidden bg-transparent text-text-primary"
+      // Document footers keep their counts clear of the agent launcher.
+      style={showWelcome ? undefined : { ["--agent-launcher-clearance" as string]: "112px" }}
+    >
       <div
         data-tauri-drag-region
         className="absolute inset-x-0 top-0 z-30"
@@ -194,6 +199,7 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
           </div>
         </div>
       </div>
+      {!showWelcome && <AgentChat />}
     </div>
   );
 }

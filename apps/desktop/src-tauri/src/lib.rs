@@ -545,6 +545,7 @@ pub fn run() {
 
     builder
         .manage(AppState::new())
+        .manage(commands::agent::AgentState::default())
         .setup(|app| {
             // Initialize the main window's per-window state (settings layer,
             // pending-open queue). `get_or_create` lazily builds the
@@ -649,6 +650,8 @@ pub fn run() {
             commands::images::read_file_data_url,
             commands::images::write_export_file,
             commands::link_preview::fetch_link_preview,
+            commands::agent::agent_send,
+            commands::agent::agent_cancel,
             commands::apple_books::read_apple_books_highlights,
             commands::apple_books::save_apple_books_cover,
             commands::settings::get_settings,

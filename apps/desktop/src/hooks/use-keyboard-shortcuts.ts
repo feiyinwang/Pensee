@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useUIStore } from "@/stores/ui-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useAgentStore } from "@/stores/agent-store";
 import { toggleSidebar } from "@/hooks/use-sidebar";
 import { openTodaysNote } from "@/hooks/use-daily-note";
 import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
@@ -114,6 +115,14 @@ export function useKeyboardShortcuts() {
       if (mod && e.key === "o") {
         e.preventDefault();
         if (root) openCommandPalette("search");
+        return;
+      }
+
+      // Cmd+J — toggle the agent chat (workspace windows only)
+      if (mod && !e.shiftKey && !e.altKey && e.key === "j") {
+        e.preventDefault();
+        if (isCompactFileMode || !root) return;
+        useAgentStore.getState().toggle();
         return;
       }
 

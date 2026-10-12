@@ -16,6 +16,9 @@ pub enum AppError {
     InvalidUrl(String),
     #[error("Network error: {0}")]
     Network(String),
+    /// A message written for the user as-is (no category prefix).
+    #[error("{0}")]
+    User(String),
 }
 
 impl Serialize for AppError {

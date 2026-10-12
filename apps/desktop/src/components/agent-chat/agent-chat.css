@@ -1,0 +1,49 @@
+/* Agent chat geometry. The launcher sits inside the editor glass panel's
+   bottom-right corner (the panel has an 8px outer margin), vertically centred
+   on the 44px document footer row. The chat card floats 8px above it and
+   shares its right edge. */
+.agent-launcher {
+  right: 16px;
+  bottom: 16px;
+}
+
+.agent-panel {
+  right: 16px;
+  bottom: 52px;
+  width: min(400px, calc(100vw - 32px));
+  /* Fixed height so the card doesn't grow and jump as replies stream in. */
+  height: min(640px, calc(100vh - 112px));
+  transform-origin: bottom right;
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    translate var(--motion-base) var(--ease-out),
+    scale var(--motion-base) var(--ease-out);
+}
+
+.agent-panel[hidden] {
+  display: none;
+}
+
+/* Entry only: opening rises in from the launcher; closing is instant. */
+@starting-style {
+  .agent-panel {
+    opacity: 0;
+    translate: 0 4px;
+    scale: 0.98;
+  }
+}
+
+.agent-reply p,
+.agent-reply li {
+  white-space: pre-wrap;
+}
+
+.agent-working {
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-panel {
+    transition: none;
+  }
+}

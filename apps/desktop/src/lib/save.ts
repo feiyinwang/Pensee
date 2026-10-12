@@ -36,6 +36,8 @@ interface SaveController {
   lastSaveTime: number;
   timer: ReturnType<typeof setTimeout> | null;
   inFlight: boolean;
+  /** The running save, so `flushSave` can wait for it. */
+  inFlightSave: Promise<void> | null;
   pending: boolean;
 }
 
@@ -48,6 +50,7 @@ function getSaveController(path: string): SaveController {
       lastSaveTime: 0,
       timer: null,
       inFlight: false,
+      inFlightSave: null,
       pending: false,
     };
     saveControllers.set(path, controller);
@@ -92,14 +95,38 @@ function queueSave(path: string, controller: SaveController) {
 
   const elapsed = Date.now() - controller.lastSaveTime;
   if (elapsed >= THROTTLE_MS) {
-    void performSave(path, controller);
+    void startSave(path, controller);
     return;
   }
 
   controller.timer = setTimeout(() => {
     controller.timer = null;
-    void performSave(path, controller);
+    void startSave(path, controller);
   }, THROTTLE_MS - elapsed);
+}
+
+function startSave(path: string, controller: SaveController): Promise<void> {
+  const save = performSave(path, controller);
+  controller.inFlightSave = save;
+  return save;
+}
+
+/**
+ * Write a dirty file now, skipping the throttle, and resolve once no save is
+ * running. Lets a reader outside the editor (the agent chat) see exactly what
+ * is on screen.
+ */
+export async function flushSave(path: string): Promise<void> {
+  const controller = getSaveController(path);
+  while (controller.inFlight && controller.inFlightSave) {
+    await controller.inFlightSave;
+  }
+  if (!requireStore().getOpenFile(path)?.isDirty) {
+    cleanupSaveController(path, controller);
+    return;
+  }
+  clearSaveTimer(controller);
+  await startSave(path, controller);
 }
 
 function applyFileProcessing(content: string): string {
