@@ -23,7 +23,8 @@ import { useOpenFile } from "@/hooks/use-tabs";
 import { useSetting } from "@/hooks/use-settings";
 import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import * as tauri from "@/lib/tauri";
-import { getFileStem, getParentDir } from "@/lib/paths";
+import { getParentDir } from "@/lib/paths";
+import { renameFileStem } from "@/lib/file-actions";
 import { useMoveEntry } from "./use-move-entry";
 import { useTreeDrag } from "./use-tree-drag";
 import { useFileTreeContextMenus } from "./use-file-tree-context-menus";
@@ -39,12 +40,6 @@ interface FileTreeProps {
   enableContextMenus?: boolean;
   renamingPath: string | null;
   onRenamingPathChange: (path: string | null) => void;
-}
-
-function getExtension(name: string): string {
-  const dot = name.lastIndexOf(".");
-  if (dot <= 0) return "";
-  return name.slice(dot);
 }
 
 export function FileTree({
@@ -194,27 +189,16 @@ export function FileTree({
       const trimmed = nextValue.trim();
       if (!trimmed) return;
 
-      const parent = getParentDir(entry.path);
-      let newPath: string;
-      let conflictMessage: string;
-      if (entry.is_dir) {
-        // For directories, the value is the full name.
-        if (trimmed === entry.name) return;
-        newPath = `${parent}/${trimmed}`;
-        conflictMessage = `A folder named "${trimmed}" already exists.`;
-      } else {
-        // For files, the value is the stem only.
-        const currentStem = getFileStem(entry.name);
-        if (trimmed === currentStem) return;
-        const ext = getExtension(entry.name);
-        newPath = `${parent}/${trimmed}${ext}`;
-        conflictMessage = `A file named "${trimmed}${ext}" already exists.`;
+      if (!entry.is_dir) {
+        await renameFileStem(entry.path, trimmed);
+        return;
       }
-      if (newPath === entry.path) return;
-
+      // For directories, the value is the full name.
+      if (trimmed === entry.name) return;
+      const newPath = `${getParentDir(entry.path)}/${trimmed}`;
       try {
         if (await tauri.fileExists(newPath)) {
-          window.alert(conflictMessage);
+          window.alert(`A folder named "${trimmed}" already exists.`);
           return;
         }
         await applyPathChange(entry, newPath);

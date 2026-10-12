@@ -1,5 +1,4 @@
-import { useCallback, useTransition, type MouseEvent } from "react";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { useState, useTransition } from "react";
 import {
   useActiveTabId,
   useCanNavigateBack,
@@ -17,28 +16,19 @@ import {
 } from "@/hooks/use-tabs";
 import { ScrollFade } from "@/components/scroll-fade";
 import { useScrollActiveTabIntoView } from "@/hooks/use-scroll-active-tab-into-view";
-import { useEditorStore } from "@/stores/editor-store";
-import { getRelativePath } from "@/lib/paths";
 import { pageKind } from "./page-kinds";
-import { buildTabMenuItemsSpec, showNativeContextMenu } from "./editor-context-menu";
-import { useWorkspaceRoot } from "@/hooks/use-workspace";
-import { revealPathInSidebar } from "@/lib/reveal-in-sidebar";
+import { showTabMenu } from "./tab-menu";
+import { TabTitleRename } from "./tab-title-rename";
 
 interface EditorTabButtonProps {
   tab: Tab;
   isActive: boolean;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
-  onContextMenu?: (event: MouseEvent<HTMLElement>, tab: Tab) => void;
 }
 
-function EditorTabButton({
-  tab,
-  isActive,
-  onSelect,
-  onClose,
-  onContextMenu,
-}: EditorTabButtonProps) {
+function EditorTabButton({ tab, isActive, onSelect, onClose }: EditorTabButtonProps) {
+  const [renaming, setRenaming] = useState(false);
   const kind = pageKind(tab.location);
   const filePath = kind.primaryPath(tab.location);
   const isLoading = useIsFileLoading(filePath ?? "");
@@ -59,9 +49,7 @@ function EditorTabButton({
         onSelect(tab.id);
       }}
       onContextMenu={(event) => {
-        if (!kind.supportsFileContextMenu || !onContextMenu) return;
-        event.preventDefault();
-        onContextMenu(event, tab);
+        if (showTabMenu(tab, () => setRenaming(true))) event.preventDefault();
       }}
       className={` group relative flex shrink-0 items-center overflow-hidden whitespace-nowrap rounded-[8px] px-3.5 text-[13px] leading-[1.15] select-none cursor-default max-w-[180px] h-[var(--chrome-control-height)] ${
         isActive
@@ -76,11 +64,19 @@ function EditorTabButton({
           className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff5f57]"
         />
       ) : null}
-      <span
-        className={`truncate group-hover:[mask-image:linear-gradient(to_right,black,black_calc(100%_-_28px),transparent)] group-hover:[-webkit-mask-image:linear-gradient(to_right,black,black_calc(100%_-_32px),transparent_calc(100%_-_8px))] ${isLoading ? "animate-pulse opacity-60" : ""}`}
-      >
-        {title}
-      </span>
+      {renaming && filePath ? (
+        <TabTitleRename
+          path={filePath}
+          className="tab-title-rename"
+          onDone={() => setRenaming(false)}
+        />
+      ) : (
+        <span
+          className={`truncate group-hover:[mask-image:linear-gradient(to_right,black,black_calc(100%_-_28px),transparent)] group-hover:[-webkit-mask-image:linear-gradient(to_right,black,black_calc(100%_-_32px),transparent_calc(100%_-_8px))] ${isLoading ? "animate-pulse opacity-60" : ""}`}
+        >
+          {title}
+        </span>
+      )}
       <div
         className="pointer-events-none absolute inset-y-0 right-0 flex translate-x-full items-center justify-end pr-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
         style={{ width: 40 }}
@@ -111,45 +107,8 @@ export function EditorTabs() {
   const navigateBack = useNavigateBack();
   const navigateForward = useNavigateForward();
   const openNewTab = useOpenNewTab();
-  const workspaceRoot = useWorkspaceRoot();
   const [, startTransition] = useTransition();
   useScrollActiveTabIntoView();
-
-  const handleTabContextMenu = useCallback(
-    (_event: MouseEvent<HTMLElement>, tab: Tab) => {
-      const kind = pageKind(tab.location);
-      if (!kind.supportsFileContextMenu) return;
-      const filePath = kind.primaryPath(tab.location);
-      if (!filePath) return;
-      const relative = workspaceRoot ? getRelativePath(filePath, workspaceRoot) : filePath;
-
-      void showNativeContextMenu(
-        buildTabMenuItemsSpec({
-          onClose: () => closeTab(tab.id),
-          onCloseOthers: () => {
-            const state = useEditorStore.getState();
-            for (const t of state.tabs) {
-              if (t.id !== tab.id) closeTab(t.id);
-            }
-          },
-          onCloseAll: () => {
-            const ids = useEditorStore.getState().tabs.map((t) => t.id);
-            for (const id of ids) {
-              closeTab(id);
-            }
-          },
-          onRevealInSidebar: () => {
-            setActiveTab(tab.id);
-            void revealPathInSidebar(filePath, { showSidebar: true });
-          },
-          onCopyPath: () => {
-            void writeText(relative);
-          },
-        }),
-      );
-    },
-    [closeTab, setActiveTab, workspaceRoot],
-  );
 
   return (
     <div
@@ -203,7 +162,6 @@ export function EditorTabs() {
                     isActive={isActive}
                     onSelect={(tabId) => startTransition(() => setActiveTab(tabId))}
                     onClose={closeTab}
-                    onContextMenu={handleTabContextMenu}
                   />
                 </div>
               );

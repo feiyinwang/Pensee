@@ -34,6 +34,8 @@ function makeTabHandlers(): TabMenuHandlers & { calls: string[] } {
   return {
     calls,
     onClose: () => calls.push("close"),
+    onRename: () => calls.push("rename"),
+    onDelete: () => calls.push("delete"),
     onCloseOthers: () => calls.push("close-others"),
     onCloseAll: () => calls.push("close-all"),
     onRevealInSidebar: () => calls.push("reveal-in-sidebar"),
@@ -199,6 +201,9 @@ describe("buildTabMenuItemsSpec", () => {
       "---",
       "reveal-in-sidebar:Reveal in sidebar",
       "copy-path:Copy path",
+      "---",
+      "rename:Rename",
+      "delete:Delete",
     ]);
   });
 
@@ -214,6 +219,8 @@ describe("buildTabMenuItemsSpec", () => {
       "close-all",
       "reveal-in-sidebar",
       "copy-path",
+      "rename",
+      "delete",
     ]);
   });
 });

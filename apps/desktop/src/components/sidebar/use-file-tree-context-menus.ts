@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import {
-  getOpenFile,
   getOpenFiles,
   openFileInNewTab as openFileInNewTabAction,
   removePathReferences,
   removePathsWithPrefix,
 } from "@/hooks/editor-api";
+import { deleteFile } from "@/lib/file-actions";
 import * as tauri from "@/lib/tauri";
 import { getWorkspaceIdentity, isCurrentWorkspaceIdentity } from "@/hooks/workspace-api";
 import { getParentDir, getRelativePath } from "@/lib/paths";
@@ -116,25 +116,7 @@ export function useFileTreeContextMenus({
           setRenamingPath(entry.path);
         },
         onDelete: () => {
-          void (async () => {
-            const openFileState = getOpenFile(entry.path);
-            if (openFileState?.isDirty) {
-              const confirmed = window.confirm(
-                `"${entry.name}" has unsaved changes. Delete anyway?`,
-              );
-              if (!confirmed) return;
-            }
-            try {
-              await tauri.deleteEntry(entry.path);
-              removePathReferences(entry.path);
-              removePinnedFile(entry.path);
-              await refreshDirectory(parent);
-            } catch (error) {
-              window.alert(
-                `Failed to delete: ${error instanceof Error ? error.message : String(error)}`,
-              );
-            }
-          })();
+          void deleteFile(entry.path);
         },
       });
     },

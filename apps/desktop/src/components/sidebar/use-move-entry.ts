@@ -1,12 +1,6 @@
 import { useCallback } from "react";
-import {
-  useRefreshDirectory,
-  useRewriteExpandedDir,
-  useRewritePinnedPath,
-} from "@/hooks/use-file-tree";
-import { renameOpenFile, rewritePathPrefix } from "@/hooks/editor-api";
+import { applyPathChange as applyPathChangeFor } from "@/lib/file-actions";
 import * as tauri from "@/lib/tauri";
-import { getParentDir } from "@/lib/paths";
 import type { DirEntry } from "@/types/fs";
 import { canMoveInto, computeMovePath } from "./tree-move";
 
@@ -22,30 +16,12 @@ export type MoveOutcome =
  * editor/workspace state rewrites stay in lockstep.
  */
 export function useMoveEntry() {
-  const refreshDirectory = useRefreshDirectory();
-  const rewriteExpandedDir = useRewriteExpandedDir();
-  const rewritePinnedPath = useRewritePinnedPath();
-
-  // Rename `entry` on disk to `newPath`, then rewrite editor/workspace state and
-  // refresh the affected directories. `newPath` may differ from `entry.path` in
-  // its name (rename) or its parent (move) — the handling is identical.
+  // Rename or move `entry` to `newPath` (lib/file-actions.ts): the name
+  // (rename) or the parent (move) may differ — the handling is identical.
   const applyPathChange = useCallback(
-    async (entry: DirEntry, newPath: string): Promise<void> => {
-      await tauri.renameEntry(entry.path, newPath);
-      if (entry.is_dir) {
-        rewritePathPrefix(entry.path, newPath);
-        rewriteExpandedDir(entry.path, newPath);
-        rewritePinnedPath(entry.path, newPath);
-      } else {
-        renameOpenFile(entry.path, newPath);
-        rewritePinnedPath(entry.path, newPath);
-      }
-      const fromParent = getParentDir(entry.path);
-      const toParent = getParentDir(newPath);
-      await refreshDirectory(fromParent);
-      if (toParent !== fromParent) await refreshDirectory(toParent);
-    },
-    [refreshDirectory, rewriteExpandedDir, rewritePinnedPath],
+    (entry: DirEntry, newPath: string): Promise<void> =>
+      applyPathChangeFor(entry.path, newPath, entry.is_dir),
+    [],
   );
 
   // Move `entry` into `destDir`, preserving its name. Returns an outcome instead

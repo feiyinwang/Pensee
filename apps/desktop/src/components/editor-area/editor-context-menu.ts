@@ -189,7 +189,9 @@ export type TabMenuActionId =
   | "close-others"
   | "close-all"
   | "reveal-in-sidebar"
-  | "copy-path";
+  | "copy-path"
+  | "rename"
+  | "delete";
 
 export interface TabMenuHandlers {
   onClose: () => void;
@@ -197,6 +199,8 @@ export interface TabMenuHandlers {
   onCloseAll: () => void;
   onRevealInSidebar: () => void;
   onCopyPath: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }
 
 export function buildTabMenuItemsSpec(
@@ -216,6 +220,9 @@ export function buildTabMenuItemsSpec(
       action: handlers.onRevealInSidebar,
     },
     { kind: "item", id: "copy-path", text: "Copy path", action: handlers.onCopyPath },
+    { kind: "separator" },
+    { kind: "item", id: "rename", text: "Rename", action: handlers.onRename },
+    { kind: "item", id: "delete", text: "Delete", action: handlers.onDelete },
   ];
 }
 

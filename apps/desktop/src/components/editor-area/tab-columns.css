@@ -160,6 +160,27 @@
   color: var(--text-secondary);
 }
 
+/* A note's name being renamed from its header menu (tab-title-rename.tsx),
+   in the tab bar or a column header: the title, made editable in place. */
+.tab-title-rename {
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 4px;
+  outline: 1px solid var(--focus-border, var(--accent));
+  background: var(--surface-input, var(--surface-subtle));
+  color: var(--text-primary);
+  font-family: inherit;
+  user-select: text;
+}
+/* In the tab bar it takes the tab's type; a column title sets its own. */
+.tab-title-rename:not(.tab-column-title) {
+  font-size: inherit;
+  line-height: inherit;
+}
+
 /* ---- dragging --------------------------------------------------------- */
 
 /* The lifted column follows the pointer with no transition; the columns it

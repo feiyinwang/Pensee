@@ -11,6 +11,8 @@ import { useActiveTabId, useOpenTabs, useResolvedDocumentTitle, type Tab } from 
 import { useEditorStore } from "@/stores/editor-store";
 import { pageKind } from "./page-kinds";
 import { pageKindView } from "./page-kinds/views";
+import { showTabMenu } from "./tab-menu";
+import { TabTitleRename } from "./tab-title-rename";
 import "./tab-columns.css";
 
 // Pointer travel before a header press becomes a drag, so a click that
@@ -306,6 +308,8 @@ function TabColumnHeader({ tab, index, count, onDragStart }: TabColumnHeaderProp
   const kind = pageKind(tab.location);
   const documentTitle = useResolvedDocumentTitle(kind.primaryPath(tab.location));
   const title = documentTitle || kind.title(tab.location);
+  const filePath = kind.primaryPath(tab.location);
+  const [renaming, setRenaming] = useState(false);
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const delta = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
@@ -315,7 +319,13 @@ function TabColumnHeader({ tab, index, count, onDragStart }: TabColumnHeaderProp
   };
 
   return (
-    <div className="tab-column-header" onPointerDown={(event) => onDragStart(event, tab.id)}>
+    <div
+      className="tab-column-header"
+      onPointerDown={(event) => onDragStart(event, tab.id)}
+      onContextMenu={(event) => {
+        if (showTabMenu(tab, () => setRenaming(true))) event.preventDefault();
+      }}
+    >
       <button
         type="button"
         className="tab-column-grip"
@@ -329,7 +339,15 @@ function TabColumnHeader({ tab, index, count, onDragStart }: TabColumnHeaderProp
           )}
         </svg>
       </button>
-      <span className="tab-column-title">{title}</span>
+      {renaming && filePath ? (
+        <TabTitleRename
+          path={filePath}
+          className="tab-column-title tab-title-rename"
+          onDone={() => setRenaming(false)}
+        />
+      ) : (
+        <span className="tab-column-title">{title}</span>
+      )}
       <button
         type="button"
         className="tab-column-close"
