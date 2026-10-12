@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- **Projects** opens on **Kanban** now, scrolled so **Ongoing** is in the middle when the board is wider than the window. If you already picked another view, Projects keeps opening on that one. **Timeline** no longer shows Done projects; they stay on the board and in the list.
 - A book you had open is still open after Writer restarts, at the page you left it on. Before, its tab closed when Writer started again, so you had to reopen it from **Library**.
 - The **+** beside **Spaces** in the sidebar is gone, along with the form it opened for making a new space. Spaces you already made still show.
 - **Library** shows your books right after Writer opens, even while your vault is syncing with iCloud. When iCloud was slow to open files, Library stayed empty until Writer had read the top of every note in the vault again, which could take over twenty minutes. Writer now keeps what it read between launches and only rereads notes that changed. The first time you open the new version it still reads everything once. Meanwhile **Library** and **Projects** fill in as notes are read instead of staying empty, and if you quit partway, Writer keeps what it has read.

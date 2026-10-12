@@ -8,7 +8,7 @@ import type { SpaceView } from "@/lib/spaces";
 const PREFERENCE_KEY = "spaces.views";
 
 interface SpaceViewState {
-  /** By space key; a space missing here shows its first view. */
+  /** By space key; a space missing here shows its default `view`. */
   views: Record<string, SpaceView>;
   setView: (space: string, view: SpaceView) => void;
 }

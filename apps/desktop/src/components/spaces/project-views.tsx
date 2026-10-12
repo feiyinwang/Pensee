@@ -457,6 +457,20 @@ function Kanban({
   const [order, setOrder] = useState<readonly string[]>([]);
   const now = today();
 
+  // Opens with Ongoing in the middle when the board is wider than the page.
+  // Arc's block is vendored (docs/arc.md), so this finds its column and scroller.
+  const host = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const cell = host.current?.querySelector<HTMLElement>('[data-cell="ongoing"]');
+    let scroller = cell?.parentElement;
+    while (scroller && scroller !== host.current && getComputedStyle(scroller).overflowX !== "auto")
+      scroller = scroller.parentElement;
+    if (!cell || !scroller || scroller === host.current) return;
+    const c = cell.getBoundingClientRect();
+    const s = scroller.getBoundingClientRect();
+    scroller.scrollLeft += c.left + c.width / 2 - (s.left + s.width / 2);
+  }, []);
+
   const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
   const cards = useMemo<KanbanCard[]>(() => {
     const rank = new Map(order.map((path, i) => [path, i]));
@@ -489,25 +503,27 @@ function Kanban({
   };
 
   return (
-    <KanbanBoard
-      className={styles.board}
-      columns={columns.map((column) => {
-        const tone = statusTone(column.id);
-        return {
-          id: column.id,
-          name: column.label,
-          label: tone ? <Tag tone={tone}>{column.label}</Tag> : column.label,
-        };
-      })}
-      people={[]}
-      currentUser=""
-      cards={cards}
-      onCardsChange={onCardsChange}
-      onCardOpen={(card, event) => openNote(event, card.id)}
-      toolbar={false}
-      showIds={false}
-      noun="project"
-    />
+    <div ref={host} className={styles.boardHost}>
+      <KanbanBoard
+        className={styles.board}
+        columns={columns.map((column) => {
+          const tone = statusTone(column.id);
+          return {
+            id: column.id,
+            name: column.label,
+            label: tone ? <Tag tone={tone}>{column.label}</Tag> : column.label,
+          };
+        })}
+        people={[]}
+        currentUser=""
+        cards={cards}
+        onCardsChange={onCardsChange}
+        onCardOpen={(card, event) => openNote(event, card.id)}
+        toolbar={false}
+        showIds={false}
+        noun="project"
+      />
+    </div>
   );
 }
 
@@ -595,12 +611,14 @@ function Timeline({
   const justDragged = useRef(false);
   const [focusPath, setFocusPath] = useState<string | null>(null);
 
+  // Done projects stay on the board and the list, not on the timeline.
+  const open = useMemo(() => projects.filter((p) => p.status !== "done"), [projects]);
   const shown = useMemo(
     () =>
-      projects.map((project) =>
+      open.map((project) =>
         preview?.path === project.note.path ? { ...project, ...preview } : project,
       ),
-    [projects, preview],
+    [open, preview],
   );
   const dated = useMemo(
     () =>
@@ -614,7 +632,7 @@ function Timeline({
   const undated = useMemo(() => shown.filter((p) => span(p) === null), [shown]);
 
   // The range stays put while a bar is dragged, so the grid doesn't slide under it.
-  const rangeProjects = preview ? projects : shown;
+  const rangeProjects = preview ? open : shown;
   const [rangeStart, rangeEnd] = useMemo(() => {
     let min = now;
     let max = now;

@@ -29,8 +29,8 @@ export interface SpaceDef {
   name: string;
   icon: SpaceIcon;
   view: SpaceView;
-  /** Views the page header switches between, `view` first
-   *  (SPECs/project-views-spec.md). */
+  /** Views the page header switches between, in tab order; `view` is the
+   *  default (SPECs/project-views-spec.md). */
   views?: readonly SpaceView[];
   tabs: SpaceTab[];
   /** The space note, for a space you added. */
@@ -63,7 +63,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     key: "projects",
     name: "Projects",
     icon: "projects",
-    view: "list",
+    view: "kanban",
     views: ["list", "kanban", "timeline"],
     tabs: [tab("projects", "Projects", "project", [PROJECT_TYPE], "note")],
   },
