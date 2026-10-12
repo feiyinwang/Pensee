@@ -71,7 +71,7 @@ Covers come from the note's own link (`url`, `link` or `source`, first non-blank
 
 - A `space` page kind (`page-kinds/space.ts`): `{ kind: "space", id }` for built-ins, `{ kind: "space", id: "note", path }` for a space note (follows renames, closes on delete).
 - Opening a note from a space replaces the space in that tab; Back returns to it.
-- Empty tab: "Add your first book" and "Any note with Type: Book shows up here."
+- Empty tab: "Add your first book" and "Any note with Type: Book shows up here." A Library tab you fill by hand also has **Add book** (its own noun), and the header a **+**; both open the palette's add mode (SPECs/add-to-library-spec.md).
 
 ## Data
 

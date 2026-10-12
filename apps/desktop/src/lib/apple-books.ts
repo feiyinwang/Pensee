@@ -1,7 +1,8 @@
-import { isMap, isScalar, isSeq, parseDocument, stringify, type Pair, type YAMLMap } from "yaml";
+import { isMap, isScalar, isSeq, parseDocument, type Pair, type YAMLMap } from "yaml";
 
 import { blockIdsInText } from "./block-refs";
 import { safePageName } from "./wiki-pages";
+import { yamlLine } from "./yaml-entries";
 import type { AppleBook, AppleBookHighlight } from "@/types/apple-books";
 
 // Apple Books highlights as pages, per SPECs/apple-books-highlights-spec.md.
@@ -68,12 +69,6 @@ function findPair(map: YAMLMap, name: string): Pair | undefined {
   return map.items.find(
     (pair) => isScalar(pair.key) && String(pair.key.value).toLowerCase() === name,
   );
-}
-
-/** One `key: value` line, quoted only when YAML needs it. */
-function yamlLine(key: string, value: string): string {
-  // One line whatever its length: a folded value is valid YAML but reads badly.
-  return `${key}: ${stringify(value, { lineWidth: 0 }).trimEnd()}`;
 }
 
 /** Whether `frontmatter` already has a cover, so none needs saving. */

@@ -13,6 +13,9 @@ to explain or define something.
 
 - Drop a `.pdf` or `.epub` on the window, or run **Import Book…** from the
   command palette.
+- **Book or paper.** A new page for a PDF is retyped `Paper` when its first
+  pages read like one, and a PDF nothing decides offers **Change to paper**
+  (SPECs/add-to-library-spec.md).
 - **Book page.** An existing page is always used before a new one is made.
   It is found the way an Apple Books import finds
   one (`bookPageNames` + `findWikiPage`), from the file's name without

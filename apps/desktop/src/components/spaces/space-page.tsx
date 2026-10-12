@@ -1,10 +1,12 @@
 import { lazy, Suspense, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
 import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-container";
 import type { SpaceLocation } from "@/components/editor-area/page-kinds";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
+import { openLibraryAdd } from "@/hooks/use-library-add";
 import { useSpaceDef, useTypedNotes, type SpaceDef, type TypedNote } from "@/hooks/use-spaces";
+import { libraryKindOfTab } from "@/lib/library-add";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { SPACE_VIEW_LABELS, allTypes, notesInTab, type SpaceView } from "@/lib/spaces";
 import { useSpaceViewStore } from "@/stores/space-view-store";
@@ -80,6 +82,9 @@ function TypedSpace({ space }: { space: SpaceDef }) {
   const view = picked && space.views?.includes(picked) ? picked : space.view;
   if (!tab) return null;
   const shown = notes ? notesInTab(notes, tab) : null;
+  // Library tabs filled by hand add through the palette's add mode, with the
+  // tab's own kind first (SPECs/add-to-library-spec.md); synced tabs don't.
+  const addKind = space.key === "library" && !tab.source ? libraryKindOfTab(tab.id) : null;
 
   return (
     <>
@@ -111,6 +116,17 @@ function TypedSpace({ space }: { space: SpaceDef }) {
               options={space.views.map((v) => ({ value: v, label: SPACE_VIEW_LABELS[v] }))}
             />
           )}
+          {addKind && (
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={`Add ${tab.noun}`}
+              title={`Add ${tab.noun}`}
+              onClick={() => openLibraryAdd(addKind)}
+            >
+              <Plus size={16} strokeWidth={1.75} />
+            </button>
+          )}
           {space.path && (
             <button
               type="button"
@@ -131,6 +147,9 @@ function TypedSpace({ space }: { space: SpaceDef }) {
         <Empty
           title={`Add your first ${tab.noun}`}
           text={`Any note with Type: ${tab.types[0]} shows up here.`}
+          action={
+            addKind ? { label: `Add ${tab.noun}`, run: () => openLibraryAdd(addKind) } : undefined
+          }
         />
       ) : space.views ? (
         <Suspense fallback={null}>
@@ -214,11 +233,24 @@ function NoteCards({ notes }: { notes: TypedNote[] }) {
   );
 }
 
-export function Empty({ title, text }: { title: string; text: string }) {
+export function Empty({
+  title,
+  text,
+  action,
+}: {
+  title: string;
+  text: string;
+  action?: { label: string; run: () => void };
+}) {
   return (
     <div className={styles.empty}>
       <div className={styles.emptyTitle}>{title}</div>
       <div className={styles.emptyText}>{text}</div>
+      {action && (
+        <button type="button" className={styles.emptyAction} onClick={action.run}>
+          {action.label}
+        </button>
+      )}
     </div>
   );
 }

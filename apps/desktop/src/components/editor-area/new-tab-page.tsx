@@ -1,5 +1,6 @@
 import { useOpenCommandPalette } from "@/hooks/use-command-palette";
 import { openTodaysNote } from "@/hooks/use-daily-note";
+import { openLibraryAdd } from "@/hooks/use-library-add";
 
 function Shortcut({ children }: { children: string }) {
   return (
@@ -38,6 +39,14 @@ export function NewTabPage() {
         >
           Search
           <Shortcut>⌘O</Shortcut>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openLibraryAdd()}
+          className="flex items-center gap-1.5 text-[13px] text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+        >
+          Add to Library
         </button>
       </div>
     </div>

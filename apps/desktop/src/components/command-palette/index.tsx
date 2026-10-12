@@ -32,6 +32,11 @@ import {
 } from "@/hooks/use-tabs";
 import { useTheme } from "@/hooks/use-theme";
 import { useFuzzySearch } from "./use-fuzzy-search";
+import { LibraryGroups, libraryGroups } from "./library-add-rows";
+import { useTypedNotes } from "@/hooks/use-spaces";
+import { addLinkToLibrary, addTitleToLibrary, openLibraryAdd } from "@/hooks/use-library-add";
+import { LIBRARY_NOTE_TYPES, parseLibraryLink } from "@/lib/library-add";
+import { useUIStore } from "@/stores/ui-store";
 import { useBookLibrary } from "./use-book-library";
 import { BookOpen } from "lucide-react";
 import type { LibraryBook } from "@/lib/book-library";
@@ -47,6 +52,9 @@ import {
 } from "@/components/editor-area/wiki-pages-extension";
 import * as tauri from "@/lib/tauri";
 import type { RecentFile } from "@/lib/tauri";
+
+// Read no notes when nothing in the palette needs Library's.
+const NO_TYPES: readonly string[] = [];
 
 function toCreatePath(root: string, rawName: string) {
   const trimmed = rawName.trim();
@@ -102,8 +110,9 @@ export function CommandPalette() {
 
   const isCreateIntent = intent === "create-file";
   const isMoveIntent = intent === "move-to-page";
+  const isAddIntent = intent === "add-to-library";
   const trimmedSearch = search.trim();
-  const fileQuery = isCreateIntent ? "" : search;
+  const fileQuery = isCreateIntent || isAddIntent ? "" : search;
   // Standalone compact windows have no workspace index — search filters the
   // global recents list client-side instead of hitting fuzzy_search.
   const results = useFuzzySearch(isCompactFileMode ? "" : fileQuery);
@@ -113,6 +122,42 @@ export function CommandPalette() {
   const createBaseDir = root ?? (activeFilePath ? getParentDir(activeFilePath) : null);
   const createPath =
     createBaseDir && trimmedSearch ? toCreatePath(createBaseDir, trimmedSearch) : null;
+
+  // "Add to Library" (SPECs/add-to-library-spec.md): add mode, or a link in ⌘O.
+  const libraryAddKind = useUIStore((s) => s.libraryAddKind);
+  const wantsLibrary =
+    Boolean(root) &&
+    !isCompactFileMode &&
+    (isAddIntent || (intent === "search" && parseLibraryLink(search) !== null));
+  const libraryNotes = useTypedNotes(wantsLibrary ? LIBRARY_NOTE_TYPES : NO_TYPES);
+  const visibleLibraryGroups = wantsLibrary
+    ? libraryGroups({
+        query: search,
+        addMode: isAddIntent,
+        preferKind: isAddIntent ? libraryAddKind : null,
+        notes: libraryNotes,
+        actions: {
+          addLink: (link, kind) => {
+            close();
+            void addLinkToLibrary(link, kind);
+          },
+          addTitle: (title, kind) => {
+            close();
+            void addTitleToLibrary(title, kind);
+          },
+          openNote: (path) => handleSelect(path),
+          chooseFile: () => {
+            close();
+            void import("@/lib/book-import").then(({ pickAndImportBook }) => pickAndImportBook());
+          },
+          importAppleBooks: () => {
+            void syncAppleBooksNow();
+            close();
+          },
+        },
+      })
+    : [];
+  const firstLibraryValue = visibleLibraryGroups[0]?.rows[0]?.value;
 
   function handleSelect(path: string) {
     void (isCompactFileMode ? openStandaloneFile(path) : openFile(path));
@@ -198,6 +243,13 @@ export function CommandPalette() {
         void import("@/lib/book-import").then(({ pickAndImportBook }) => pickAndImportBook());
       },
     },
+    root &&
+      !isCompactFileMode && {
+        id: "add-to-library",
+        label: "Add to Library…",
+        description: "Command",
+        run: () => openLibraryAdd(),
+      },
     root &&
       activeFilePath && {
         id: "open-book",
@@ -308,10 +360,12 @@ export function CommandPalette() {
   }
 
   const visibleFiles: SearchResult[] =
-    !isCreateIntent && !isMoveIntent && trimmedSearch && !isCompactFileMode ? results : [];
+    !isCreateIntent && !isMoveIntent && !isAddIntent && trimmedSearch && !isCompactFileMode
+      ? results
+      : [];
   // Books added to the workspace (the file index is markdown-only).
   const visibleBooks: LibraryBook[] =
-    !isCreateIntent && !isMoveIntent && trimmedSearch
+    !isCreateIntent && !isMoveIntent && !isAddIntent && trimmedSearch
       ? library.filter(
           (b) =>
             matchesSearch(b.title, trimmedSearch) ||
@@ -328,14 +382,15 @@ export function CommandPalette() {
         )
       : [];
   const visibleCommands =
-    isCreateIntent || isMoveIntent
+    isCreateIntent || isMoveIntent || isAddIntent
       ? []
       : trimmedSearch
         ? commands.filter((c) => matchesSearch(c.label, trimmedSearch))
         : commands;
   const firstValue = isMoveIntent
     ? (exactPage?.path ?? (newPageName ? newPageValue : (otherMovePages[0]?.path ?? "")))
-    : (visibleCommands[0]?.id ??
+    : (firstLibraryValue ??
+      visibleCommands[0]?.id ??
       visibleBooks[0]?.book ??
       visibleFiles[0]?.path ??
       visibleRecents[0]?.path ??
@@ -359,7 +414,9 @@ export function CommandPalette() {
     ? "Create a new note..."
     : isMoveIntent
       ? "Move selection to page…"
-      : "这是我的版本...";
+      : isAddIntent
+        ? "Paste a link, or type a title…"
+        : "这是我的版本...";
 
   return (
     <CommandDialog
@@ -416,6 +473,8 @@ export function CommandPalette() {
               </CommandGroup>
             )}
           </>
+        ) : isAddIntent ? (
+          <LibraryGroups groups={visibleLibraryGroups} />
         ) : isCreateIntent ? (
           <>
             {!trimmedSearch && <CommandEmpty>Type a note name to create it.</CommandEmpty>}
@@ -429,7 +488,9 @@ export function CommandPalette() {
           </>
         ) : (
           <>
-            {visibleFiles.length === 0 &&
+            <LibraryGroups groups={visibleLibraryGroups} />
+            {visibleLibraryGroups.length === 0 &&
+              visibleFiles.length === 0 &&
               visibleBooks.length === 0 &&
               visibleRecents.length === 0 &&
               visibleCommands.length === 0 && (

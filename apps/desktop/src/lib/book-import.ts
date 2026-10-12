@@ -8,9 +8,10 @@ import {
   newBookNote,
   sameAuthor,
 } from "./book-highlights";
-import { readBookAuthor } from "@/components/book-reader/book-meta";
+import { readBookAuthor, readPdfClues } from "@/components/book-reader/book-meta";
 import { resolveDailyNoteFile } from "./daily-note";
-import { getFileName, getFileStem, getParentDir } from "./paths";
+import { pdfKind, withLibraryType } from "./library-add";
+import { getFileExtension, getFileName, getFileStem, getParentDir } from "./paths";
 import * as tauri from "./tauri";
 import { findWikiPage, newPagePath, safePageName } from "./wiki-pages";
 import { editPage, readPageParts } from "@/components/editor-area/linked-block-sync";
@@ -160,6 +161,7 @@ export async function importBook(sourcePath: string): Promise<void> {
   if (isNew) {
     await tauri.createFile(notePath);
     await tauri.writeFile(notePath, newBookNote(bookFile, author));
+    if (getFileExtension(bookPath).toLowerCase() === "pdf") await settlePdfType(bookPath, notePath);
   } else {
     await editPage(notePath, (page) => ({
       frontmatter: withBookProperties(page.frontmatter, { book: bookFile, author }),
@@ -167,6 +169,31 @@ export async function importBook(sourcePath: string): Promise<void> {
     }));
   }
   await openBook(bookPath, notePath);
+}
+
+/** Retype the new page of a PDF that reads as a paper; one nothing decides
+ *  stays a book, the commoner kind, with one click to change it. */
+async function settlePdfType(bookPath: string, notePath: string): Promise<void> {
+  const clues = await readPdfClues(bookPath);
+  const kind = clues ? pdfKind(clues) : null;
+  const toPaper = () =>
+    editPage(notePath, (page) => ({
+      frontmatter: withLibraryType(page.frontmatter, "Paper"),
+      body: page.body,
+    }));
+  if (kind === "paper") {
+    await toPaper();
+  } else if (kind === null) {
+    showEditorNotice(`Added ${getFileStem(notePath)} as a book`, {
+      label: "Change to paper",
+      run: () => {
+        void toPaper().catch((error: unknown) => {
+          console.error(`[book] Couldn't make ${notePath} a paper:`, error);
+          showEditorNotice("Couldn't change it to a paper.");
+        });
+      },
+    });
+  }
 }
 
 export async function importBooks(paths: string[]): Promise<void> {

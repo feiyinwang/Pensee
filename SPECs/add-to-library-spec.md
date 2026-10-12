@@ -1,0 +1,78 @@
+# Add to Library Spec
+
+## Summary
+
+One way to put a book, video, podcast, course or paper into Library from a
+link, a title or a file. It reuses the command palette, so there is no new
+screen. The result is an ordinary note whose `Type:` puts it in its Library
+tab (SPECs/spaces-spec.md).
+
+## Ways in
+
+| Way in | What it does |
+|---|---|
+| Paste a link in ⌘O | An **Add to Library** group goes on top of the results, the guess selected |
+| **Add to Library** on the New tab page | Opens the palette in add mode (no shortcut: ⌘⇧L is the editor's select-all-matches) |
+| **Add to Library…** in ⌘O | The same add mode |
+| **Add <noun>** in an empty Library tab, and **+** in the Library header | Add mode with that tab's kind first; not on Bookmarks, which X sync fills |
+| Drop a PDF or EPUB on the window | As before (SPECs/book-reader-spec.md), plus the paper check below |
+| Import Book…, Import Apple Books Highlights | Unchanged, and also listed in add mode |
+
+## The palette rows
+
+- Rows come from the query alone, never the network, so they don't change
+  under the cursor and work offline.
+- **A link:** one row per kind, `<Kind>: <host>`, in Library's tab order with
+  the guess (or the tab's kind) first. The guess's second line says
+  "Guessed from the link". Hosts: YouTube, Vimeo → Video; Spotify episodes
+  and shows, Apple Podcasts, Overcast, Pocket Casts → Podcast; arXiv, DOI,
+  ACM, IEEE, OpenReview, Semantic Scholar, bioRxiv, SSRN → Paper; Coursera,
+  Udemy, edX, Maven, Skillshare, Khan Academy, Teachable, Domestika → Course;
+  Goodreads, Open Library, Google Books, Bookshop, Amazon product pages →
+  Book. Another site has no guess and lists Book first.
+- **A link already in Library:** a single **Already in your Library** row
+  opens that note instead. Matched by source: the YouTube id, the arXiv id
+  without its version, a DOI in the link or in a `DOI:` property, else the
+  address without scheme, `www.`, tracking parameters or trailing slash.
+- **Add mode, empty:** Choose a PDF or EPUB… and Import Apple Books Highlights.
+- **Add mode, a title:** `<Kind>: <title>`, Book first (or the tab's kind),
+  "Title only". Nothing is looked up, so no author or cover is made up.
+
+## The note
+
+- Named by the page's Open Graph title, with the site's name and arXiv's
+  `[id]` trimmed. The title is read only after a row is picked ("Adding
+  youtube.com…"); after 5 seconds or offline the note is named from its link
+  (`youtu.be dQw4w9WgXcQ`). A taken name gets ` 2`, ` 3`, ….
+- Written at the vault root with properties only, no heading:
+  `Type` (`YouTube` for YouTube links, `Video` for other videos, else the
+  kind) and `Link` (the key the vault's video and course notes use). It
+  opens at once; covers come from Library's Get cover.
+
+## A dropped PDF: book or paper
+
+A new page for a PDF is checked against its first four pages:
+
+- an ISBN, or more than 150 pages → Book;
+- an arXiv id, or an abstract in 50 pages or fewer → Paper (the page is
+  retyped and loses its `Book` tag);
+- otherwise it stays a Book, the commoner kind in the vault, and the notice
+  "Added <name> as a book" offers **Change to paper** for eight seconds.
+
+A DOI alone decides nothing: books carry them too. EPUBs are always books,
+and an existing page keeps its type.
+
+## Files
+
+- `lib/library-add.ts`: link parsing, source keys, PDF verdict, note content,
+  retyping (pure, `tests/library-add.test.ts`).
+- `hooks/use-library-add.ts`: opening add mode, writing and opening the note.
+- `components/command-palette/library-add-rows.tsx`: the rows for both modes.
+- `lib/book-import.ts` (`settlePdfType`), `book-reader/book-meta.ts`
+  (`readPdfClues`), the editor notice's optional action.
+
+## Follow-ups
+
+- Look up a title-only book on Open Library (author, cover, ISBN), as its own row.
+- Fill author, channel or venue from the page (YouTube oEmbed, arXiv API, Crossref).
+- Sentence case for palette commands, once decided for all of them.

@@ -129,7 +129,7 @@ export function useSpaceDef(location: SpaceLocation): SpaceDef | null | undefine
 
 /** Write `<Name>.md` at the vault root with the content `content(stem)` gives.
  *  Throws a message fit to show when the name is unusable or taken. */
-async function createRootNote(
+export async function createRootNote(
   name: string,
   content: (stem: string) => string,
 ): Promise<{ path: string; stem: string }> {

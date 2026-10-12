@@ -9,6 +9,12 @@ export interface YamlEntry {
   isComplex: boolean;
 }
 
+/** One `key: value` line, quoted only when YAML needs it. */
+export function yamlLine(key: string, value: string | number): string {
+  // One line whatever its length: a folded value is valid YAML but reads badly.
+  return `${key}: ${stringify(value, { lineWidth: 0 }).trimEnd()}`;
+}
+
 let nextEntryId = 0;
 export function makeEntryId(): string {
   return `fm-${nextEntryId++}`;

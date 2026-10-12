@@ -1,4 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
+import type { PdfClues } from "@/lib/library-add";
 
 // A book's author from the file itself, for matching it to its page on import
 // (SPECs/book-reader-spec.md): an EPUB's `dc:creator`s, a PDF's Author field.
@@ -57,6 +58,36 @@ export async function readBookAuthor(path: string): Promise<string | null> {
   } catch (error) {
     // A book without readable metadata still imports; its file name may say.
     console.error(`[book] Couldn't read the author of ${path}:`, error);
+    return null;
+  }
+}
+
+// Enough pages to reach an abstract or a copyright page's ISBN.
+const CLUE_PAGES = 4;
+
+/** A PDF's page count and the text of its first pages, so a dropped PDF can
+ *  be told apart as a paper or a book (SPECs/add-to-library-spec.md). Null
+ *  when the file can't be read. */
+export async function readPdfClues(path: string): Promise<PdfClues | null> {
+  try {
+    const response = await fetch(convertFileSrc(path));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = new Uint8Array(await response.arrayBuffer());
+    const { pdfjs } = await import("./pdfjs");
+    const task = pdfjs.getDocument({ data });
+    try {
+      const doc = await task.promise;
+      const texts: string[] = [];
+      for (let n = 1; n <= Math.min(CLUE_PAGES, doc.numPages); n++) {
+        const content = await (await doc.getPage(n)).getTextContent();
+        texts.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+      }
+      return { pages: doc.numPages, text: texts.join("\n") };
+    } finally {
+      void task.destroy();
+    }
+  } catch (error) {
+    console.error(`[book] Couldn't read the pages of ${path}:`, error);
     return null;
   }
 }
