@@ -446,12 +446,16 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
 
   const label = shapeLabel(el);
   if (label && el.lb) {
+    const fill = colorVar(el.lb.c ?? "ink");
     appendLines(g, label.lines, {
       x: el.lb.al === "c" ? el.w / 2 : el.lb.al === "r" ? el.w - SHAPE_PAD : SHAPE_PAD,
       y: label.top,
       size: label.size,
       align: el.lb.al,
-      fill: colorVar(el.lb.c ?? "ink"),
+      fill,
+      // A whole-label link (`ln`) keeps the label's colour: the underline
+      // alone marks it, where an all-accent label would shout.
+      linkFill: el.ln ? fill : undefined,
     });
     if (label.caret) g.append(caretNode(el, label.caret));
   }
