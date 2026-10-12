@@ -10,6 +10,9 @@ import {
 } from "@/lib/book-highlights";
 import { resolveBookNote } from "@/lib/book-import";
 import { registerReader } from "@/lib/book-readers";
+import { rememberBook } from "@/lib/book-library";
+import { getFileStem } from "@/lib/paths";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
   currentPageText,
   editPage,
@@ -62,6 +65,15 @@ export class ReaderController {
       const notePath = await resolveBookNote(this.bookPath, this.noteHint);
       if (this.#destroyed) return;
       this.notePath = notePath;
+      // Every book that opens goes in the workspace's library, so search finds it.
+      const root = useWorkspaceStore.getState().root;
+      if (root) {
+        void rememberBook(root, {
+          book: this.bookPath,
+          note: notePath,
+          title: getFileStem(notePath),
+        }).catch((error) => console.error("[book] Couldn't record the book:", error));
+      }
       this.#cleanups.push(
         subscribePage(notePath, () => void this.#refreshHighlights()),
         registerReader({

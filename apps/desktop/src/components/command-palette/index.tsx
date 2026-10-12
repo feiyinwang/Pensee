@@ -32,6 +32,9 @@ import {
 } from "@/hooks/use-tabs";
 import { useTheme } from "@/hooks/use-theme";
 import { useFuzzySearch } from "./use-fuzzy-search";
+import { useBookLibrary } from "./use-book-library";
+import { BookOpen } from "lucide-react";
+import type { LibraryBook } from "@/lib/book-library";
 import { useGlobalRecentFiles } from "@/hooks/use-global-recent-files";
 import { openStandaloneFile } from "@/hooks/use-open-drop";
 import { settingsKind } from "@/components/editor-area/page-kinds/settings";
@@ -105,6 +108,7 @@ export function CommandPalette() {
   // global recents list client-side instead of hitting fuzzy_search.
   const results = useFuzzySearch(isCompactFileMode ? "" : fileQuery);
   const { files: globalRecents } = useGlobalRecentFiles(30, isOpen && isCompactFileMode);
+  const library = useBookLibrary(isOpen && !isCompactFileMode ? root : null);
   // In standalone mode new files are created next to the active file.
   const createBaseDir = root ?? (activeFilePath ? getParentDir(activeFilePath) : null);
   const createPath =
@@ -113,6 +117,11 @@ export function CommandPalette() {
   function handleSelect(path: string) {
     void (isCompactFileMode ? openStandaloneFile(path) : openFile(path));
     close();
+  }
+
+  function handleOpenBook(entry: LibraryBook) {
+    close();
+    void import("@/lib/book-import").then(({ openLibraryBook }) => openLibraryBook(entry));
   }
 
   function handleCreate() {
@@ -300,6 +309,15 @@ export function CommandPalette() {
 
   const visibleFiles: SearchResult[] =
     !isCreateIntent && !isMoveIntent && trimmedSearch && !isCompactFileMode ? results : [];
+  // Books added to the workspace (the file index is markdown-only).
+  const visibleBooks: LibraryBook[] =
+    !isCreateIntent && !isMoveIntent && trimmedSearch
+      ? library.filter(
+          (b) =>
+            matchesSearch(b.title, trimmedSearch) ||
+            matchesSearch(getFileName(b.book), trimmedSearch),
+        )
+      : [];
   const visibleRecents: RecentFile[] =
     !isCreateIntent && isCompactFileMode && trimmedSearch
       ? globalRecents.filter(
@@ -317,7 +335,11 @@ export function CommandPalette() {
         : commands;
   const firstValue = isMoveIntent
     ? (exactPage?.path ?? (newPageName ? newPageValue : (otherMovePages[0]?.path ?? "")))
-    : (visibleCommands[0]?.id ?? visibleFiles[0]?.path ?? visibleRecents[0]?.path ?? "");
+    : (visibleCommands[0]?.id ??
+      visibleBooks[0]?.book ??
+      visibleFiles[0]?.path ??
+      visibleRecents[0]?.path ??
+      "");
 
   const listRef = useRef<HTMLDivElement>(null);
   const [selectedValue, setSelectedValue] = useState(firstValue);
@@ -408,6 +430,7 @@ export function CommandPalette() {
         ) : (
           <>
             {visibleFiles.length === 0 &&
+              visibleBooks.length === 0 &&
               visibleRecents.length === 0 &&
               visibleCommands.length === 0 && (
                 <CommandEmpty>
@@ -418,6 +441,7 @@ export function CommandPalette() {
               )}
 
             {(visibleFiles.length > 0 ||
+              visibleBooks.length > 0 ||
               visibleRecents.length > 0 ||
               visibleCommands.length > 0) && (
               <CommandGroup
@@ -430,6 +454,20 @@ export function CommandPalette() {
                     <div className="flex flex-col">
                       <span>{c.label}</span>
                       <span className="text-[13px] text-text-muted">{c.description}</span>
+                    </div>
+                  </CommandItem>
+                ))}
+
+                {visibleBooks.map((b) => (
+                  <CommandItem key={b.book} value={b.book} onSelect={() => handleOpenBook(b)}>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <BookOpen size={14} className="shrink-0 text-text-muted" aria-hidden />
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate">{b.title}</span>
+                        <span className="truncate text-[13px] text-text-muted">
+                          Book · {getFileName(b.book)}
+                        </span>
+                      </div>
                     </div>
                   </CommandItem>
                 ))}

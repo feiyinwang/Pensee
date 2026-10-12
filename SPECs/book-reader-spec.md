@@ -45,6 +45,18 @@ to explain or define something.
   - Cmd+click a highlight block;
   - a `[[Name.pdf]]` link.
 
+### Library and search
+
+- Every book that opens in the reader (dropped, imported, from its page's
+  card, a highlight or a link) is recorded in the workspace's library
+  (`lib/book-library.ts`): book file, book page, title. It is kept in the
+  app's `preferences.json` per workspace, never in the vault; the file index
+  stays markdown-only.
+- The command palette lists library books whose title or file name matches
+  the search, between commands and pages, marked **Book**. Picking one opens
+  it beside its page. A book whose file is gone is dropped from the library
+  with a notice.
+
 ### Highlights: the page is the record
 
 - **Adding a highlight.** Select text in the book and choose **Highlight**,

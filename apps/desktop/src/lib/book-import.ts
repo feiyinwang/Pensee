@@ -1,4 +1,5 @@
 import { bookPageNames, withBookProperties } from "./apple-books";
+import { forgetBook, type LibraryBook } from "./book-library";
 import { bookFileOf, cleanBookTitle, newBookNote } from "./book-highlights";
 import { resolveDailyNoteFile } from "./daily-note";
 import { getFileName, getFileStem, getParentDir } from "./paths";
@@ -151,4 +152,17 @@ export async function openBookOfPage(notePath: string): Promise<void> {
     return;
   }
   await openBook(bookPath, notePath);
+}
+
+/** A book picked from search: open it beside its page, or, when its file is
+ *  gone, say so and drop it from the library. */
+export async function openLibraryBook(entry: LibraryBook): Promise<void> {
+  if (!(await tauri.fileExists(entry.book))) {
+    const root = useWorkspaceStore.getState().root;
+    if (root) await forgetBook(root, entry.book);
+    showEditorNotice(`"${getFileName(entry.book)}" is no longer in the workspace.`);
+    return;
+  }
+  const note = entry.note && (await tauri.fileExists(entry.note)) ? entry.note : null;
+  await openBook(entry.book, note ?? (await resolveBookNote(entry.book, null)));
 }
