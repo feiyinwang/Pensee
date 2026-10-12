@@ -20,6 +20,20 @@
     scale var(--motion-base) var(--ease-out);
 }
 
+/* Arc pieces inside the panel (code block, copy button) draw on Writer's
+   translucent surfaces instead of Arc's opaque neutral greys, so they sit in
+   the card like the rest of the chat. Scoped here; Arc elsewhere is untouched. */
+.agent-panel {
+  --surface: var(--code-bg);
+  --surface-raised: transparent;
+  --surface-muted: var(--item-hover-bg);
+  --border: var(--line-subtler);
+  --border-subtle: var(--line-subtler);
+  --border-strong: var(--line-subtle);
+  --foreground: var(--text-primary);
+  --radius-panel: 12px;
+}
+
 .agent-panel[hidden] {
   display: none;
 }
@@ -36,10 +50,6 @@
 .agent-reply p,
 .agent-reply li {
   white-space: pre-wrap;
-}
-
-.agent-working {
-  color: var(--text-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

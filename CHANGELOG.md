@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- The agent chat now reads every open tab, not just the one in front of you, so you can ask about any page you have open. Boards count too, whether open on their own or shown in a page. While Claude is thinking, a soft light sweeps across **Thinking**, and code in a reply comes in a block with a **Copy code** button.
 - Chat with Claude without leaving Writer. Click **Agent** in the bottom-right corner (or press **⌘J**) and ask about or edit your notes. It runs your own Claude Code, so your sign-in, model and settings apply, and it can see every open tab. The tab you're on is shown above the message box; "this" means that page. Claude edits the files directly, replies in a sentence or two, and the page updates in place. **Stop** cancels a reply, **+** starts a new chat, and closing the panel keeps the conversation. Needs Claude Code installed.
 - Book pages from Apple Books now look like the rest of your book pages: each gets **Type: Book** and a **Cover**, the book's cover picture saved from Apple Books into the page's assets folder. Pages that already have a type or a cover keep theirs. A cover Apple Books hasn't shown yet (open your library in Apple Books once) is added on a later check. New pages also list the **Author**.
 

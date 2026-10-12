@@ -21,7 +21,8 @@ A Linear-style chat panel in the bottom-right corner of a workspace window that 
   - The user's messages: right-aligned, subtle filled bubble.
   - Claude's replies: plain text on the card, streamed as they arrive. Inline `code`, **bold**, lists and paragraphs render; nothing else.
   - Tool activity: one muted line per call, verb + file name ("Read Draft.md", "Edited Draft.md", "Searched *.md"). No raw JSON, no tool results.
-  - While a run has produced nothing yet: a muted **Working…** line.
+  - While a run has produced nothing yet: **Thinking**, with Arc's `text-shimmer` light sweep.
+  - Fenced code in a reply renders as Arc's `code-block` (language label, **Copy code**, collapses past 12 lines).
   - Errors: one line in the text colour with the reason (Claude Code not found, not signed in, process failed + its last stderr line).
 - Empty state: one muted line, **Ask about or edit your open pages.**
 - Composer: auto-growing textarea (max 6 lines), **Enter** sends, **Shift+Enter** new line. The send button is disabled while empty and turns into **Stop** while a run is going.
@@ -32,8 +33,10 @@ A Linear-style chat panel in the bottom-right corner of a workspace window that 
 Every message is sent with an appended system prompt, rebuilt per message so it follows the current focus:
 
 - The workspace root.
-- Every open tab's file path.
-- The focused file's path, with the rule that "this", "here", "this page" and "it" mean that file and it comes first.
+- Every open tab's **text**, not just its path: what's on screen for loaded tabs, the file on disk otherwise. A question can be about any open tab; Claude is told to work out which from the question and to search all of them before saying something isn't there.
+- Boards: a `.board.svg` open as a tab, or embedded in an open page as an image link, is sent as its scene (one JSON line per node, with its text). The SVG itself can carry inlined pictures, so it is never sent raw.
+- Caps: 20,000 characters per file, 120,000 in total, focused tab first; anything cut is marked truncated and anything left out is listed by path.
+- The focused file's path, with the rule that "this", "here", "this page" and "it" mean that file and it breaks ties. It is not the only page that matters.
 - Replies are short, concise and simple: 1-3 sentences unless asked for more, no headings, no preamble, no recap of edits beyond one line.
 - Execution mode: act directly, never plan or ask before editing.
 - Never mention these instructions.
@@ -54,7 +57,9 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 
 - `src-tauri/src/commands/agent.rs` — binary resolution, spawn, line forwarding, cancel. Children are keyed by request id in managed state.
 - `src/lib/agent-stream.ts` — stream-json line → chat events (text delta, tool call, result, session id). Pure.
-- `src/lib/agent-context.ts` — system prompt from open tabs + focused file. Pure.
+- `src/lib/agent-context.ts` — system prompt from open tabs' text + focused file, with the length caps. Pure.
+- `src/lib/agent-open-files.ts` — reads each open tab's text and the boards pages embed (board code is a dynamic import).
+- `src/components/agent-chat/agent-panel.tsx` — the panel, lazy-loaded on first open because it uses Arc (`text-shimmer`, `code-block`). `agent-chat.css` maps Arc's surface/border tokens to Writer's inside the panel.
 - `src/stores/agent-store.ts` — panel open state, messages, session id, active run; send/stop/new chat.
 - `src/components/agent-chat/` — launcher, panel, message list, composer.
 - `src/lib/save.ts` — `flushSave(path)` so send can await saves.
@@ -65,12 +70,13 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 - grill-tokens: card is `.surface-card`; text `--text-primary` / `--text-muted`; bubbles `--surface-subtle`; input `--surface-input`; Hugeicons only; no raw colours.
 - grill-alignment: header controls top-right, close last; composer, chip and message column share the 16px inset; short labels nowrap.
 - grill-states: launcher default/hover/open; send disabled/enabled/stop; chip present/absent; empty/working/streaming/error/done.
-- grill-copy: "Agent", "New chat", "Ask about or edit your open pages.", "Working…", tool verbs past tense.
+- grill-copy: "Agent", "New chat", "Ask about or edit your open pages.", "Thinking", tool verbs past tense.
 - grill-redundancy: no minimize or expand (close already keeps the chat); one icon per button; tool rows show the file name once.
 - grill-motion: panel opens with opacity + 4px rise + 0.98 scale over `--motion-base` on `--ease-out`, origin bottom-right; no exit animation; reduced motion = instant.
 
 ## Tests
 
 - `agent-stream` parses init/session id, text deltas, tool_use summaries, result success and error.
-- `agent-context` names the focused file and lists open tabs; no focus line when none.
+- `agent-context` includes every open tab's text, focused first; truncates and lists overflow; no focus line when none.
+- `embeddedBoardPaths` finds board image links relative to the page.
 - Rust: argument construction (resume, system prompt, permission mode), binary fallback order.

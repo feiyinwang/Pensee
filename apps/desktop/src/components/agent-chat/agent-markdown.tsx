@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
+import { CodeBlock } from "@/components/arc/code-block/code-block";
 
 /**
  * The small slice of markdown the agent's short replies use: paragraphs,
- * bullet and numbered lists, fenced code, inline `code` and **bold**.
+ * bullet and numbered lists, fenced code (Arc's code block, with copy),
+ * inline `code` and **bold**.
  * Anything else shows as its plain text, which is still readable.
  */
 export function AgentMarkdown({ text }: { text: string }) {
@@ -12,7 +14,7 @@ export function AgentMarkdown({ text }: { text: string }) {
 type Block =
   | { kind: "paragraph"; lines: string[] }
   | { kind: "list"; ordered: boolean; items: string[] }
-  | { kind: "code"; lines: string[] };
+  | { kind: "code"; language: string; lines: string[] };
 
 const BULLET = /^\s*[-*•]\s+(.*)$/;
 const NUMBERED = /^\s*\d+[.)]\s+(.*)$/;
@@ -33,7 +35,7 @@ function parseBlocks(text: string): Block[] {
     }
     if (line.trimStart().startsWith("```")) {
       flush();
-      current = { kind: "code", lines: [] };
+      current = { kind: "code", language: line.trim().slice(3).trim(), lines: [] };
       continue;
     }
     if (!line.trim()) {
@@ -69,12 +71,13 @@ function renderBlocks(text: string): ReactNode[] {
         return <p key={index}>{renderInline(block.lines.join("\n"))}</p>;
       case "code":
         return (
-          <pre
+          <CodeBlock
             key={index}
-            className="overflow-x-auto rounded-lg bg-[var(--code-bg)] px-3 py-2 font-[family-name:var(--mono-font)] text-[12px]"
-          >
-            {block.lines.join("\n")}
-          </pre>
+            code={block.lines.join("\n")}
+            filename="Code"
+            language={block.language || "text"}
+            maxLines={12}
+          />
         );
       case "list": {
         const List = block.ordered ? "ol" : "ul";

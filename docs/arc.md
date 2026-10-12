@@ -1,6 +1,6 @@
 # Arc UI
 
-[Arc](https://uiarc.dev) is a React + `motion` component library installed through shadcn registries. Writer uses it for board chrome (see [SPECs/board-lark-parity-spec.md](../SPECs/board-lark-parity-spec.md)).
+[Arc](https://uiarc.dev) is a React + `motion` component library installed through shadcn registries. Writer uses it for board chrome (see [SPECs/board-lark-parity-spec.md](../SPECs/board-lark-parity-spec.md)) and in the agent chat panel: `text-shimmer` for the thinking line, `code-block` (with `copy-button`) for code in replies (see [SPECs/agent-chat-spec.md](../SPECs/agent-chat-spec.md)).
 
 ## Installing items
 
@@ -31,7 +31,9 @@ Call `ensureArcTokens()` from `board/arc-tokens.ts` instead, from a lazy-loaded 
 - every Arc token name Writer already defines (measured at runtime, so new Tailwind utilities are covered) keeps Writer's value;
 - the focus rule is dropped.
 
-Arc components then pick up Writer's accent, text colours and UI font, and nothing outside them changes. Keep Arc imports behind a dynamic `import()` so notes never pay for `motion` or Arc at startup.
+Arc components then pick up Writer's accent, text colours and UI font, and nothing outside them changes. Keep Arc imports behind a dynamic `import()` so notes never pay for `motion` or Arc at startup (the agent panel is a `React.lazy` chunk for this reason).
+
+Arc tokens Writer does *not* define (`--surface`, `--border`, `--foreground`, …) keep Arc's opaque neutral values. Where an Arc piece sits on Writer's translucent glass, remap them on the container instead of editing the vendored file — see the `.agent-panel` block in `components/agent-chat/agent-chat.css`.
 
 ## Motion
 
