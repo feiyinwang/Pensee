@@ -1,0 +1,208 @@
+/* The Books stack (SPECs/book-stack-spec.md). A book is a 3D block: the spine
+   faces you and the top board lies flat behind it. Each book has its own
+   camera 480px above its spine, so every book in a long list shows the same
+   sliver of board (about 24px). Colours are the tone pairs from
+   spaces.module.css: objects, not chrome, so they read the same in both
+   themes. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.book {
+  --book-length: 600px;
+  --book-thickness: 48px;
+  /* Room for the board's sliver above (and the hover lift), the shadow below. */
+  --above: 32px;
+  --below: 16px;
+  /* Room each side for the focus ring. */
+  --side: 6px;
+  position: relative;
+  display: block;
+  width: min(calc(var(--book-length) + 2 * var(--side)), 100%);
+  height: calc(var(--above) + var(--book-thickness) + var(--below));
+  perspective: 8000px;
+  perspective-origin: 50% calc(var(--above) - 480px);
+  /* Off-screen books skip paint. The room above, below and each side keeps
+     the board, shadow and focus ring inside the clip this sets. */
+  content-visibility: auto;
+  text-align: left;
+}
+
+.box {
+  position: absolute;
+  left: var(--side);
+  right: var(--side);
+  top: var(--above);
+  height: var(--book-thickness);
+  transform-style: preserve-3d;
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+/* The front cover lying face up, its spine edge toward you. */
+.board {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: calc(var(--book-length) * 0.66);
+  transform-origin: 50% 100%;
+  transform: rotateX(90deg);
+  overflow: hidden;
+  container-type: size;
+  border-radius: 3px 3px 0 0;
+  background: var(--cover-bg);
+}
+
+/* Light falls from above, and the board's front edge is hard. */
+.board::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.35);
+}
+
+/* The cover turned so the book's head is on the left, like the spine text. */
+.boardImage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  translate: -50% -50%;
+  rotate: -90deg;
+  object-fit: cover;
+}
+
+/* The binding. */
+.spine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: grid;
+  /* The title keeps its width; author and publisher truncate first. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  padding: 0 22px;
+  border-radius: 2px 2px 4px 4px;
+  background: var(--cover-bg);
+  color: var(--cover-fg);
+}
+
+/* Rounded hardcover spine: a hard lip where the board meets it, light along
+   the upper middle, shade into the bottom edge, and a faint cloth weave. */
+.spine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.22) 0 1px,
+      rgb(0 0 0 / 0.1) 1px 3px,
+      rgb(255 255 255 / 0.1) 30%,
+      transparent 55%,
+      rgb(0 0 0 / 0.22) calc(100% - 2px),
+      rgb(0 0 0 / 0.45) 100%
+    ),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.035) 0 1px, transparent 1px 2px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 2px);
+}
+
+/* A cover image wraps onto the spine; text turns white over it. */
+.spineImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.book[data-image] .spine {
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+.book[data-image] .spine::before {
+  background-color: rgb(0 0 0 / 0.25);
+}
+
+.author,
+.title,
+.publisher {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.author {
+  font-style: italic;
+  font-size: clamp(11px, calc(var(--book-thickness) * 0.28), 15px);
+  opacity: 0.85;
+}
+
+.title {
+  max-width: 46ch;
+  font-size: clamp(13px, calc(var(--book-thickness) * 0.36), 20px);
+  letter-spacing: -0.005em;
+}
+
+.publisher {
+  justify-self: end;
+  max-width: 100%;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* The shadow the book casts on the page. */
+.book::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--side) + 3%);
+  right: calc(var(--side) + 3%);
+  top: calc(var(--above) + var(--book-thickness) + 2px);
+  height: 14px;
+  pointer-events: none;
+  background: radial-gradient(50% 50% at 50% 30%, rgb(0 0 0 / 0.22), transparent);
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    scale var(--motion-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .book:hover .box {
+    transform: translateY(-5px);
+  }
+  .book:hover::after {
+    opacity: 0.6;
+    scale: 0.96 1;
+  }
+}
+
+.book:focus-visible {
+  outline: none;
+}
+
+.book:focus-visible .spine {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box,
+  .book::after {
+    transition: none;
+  }
+}

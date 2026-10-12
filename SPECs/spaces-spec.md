@@ -39,7 +39,7 @@ Library opens on Books. Its tabs are an Arc segmented control with the count of 
 
 | Category | Shape | Default cover |
 |---|---|---|
-| Book | 2:3 | spine edge, serif title, author; three layouts picked by the hash |
+| Book | a 3D hardcover in a stack, not a grid ([book-stack-spec](book-stack-spec.md)) | spine with author, title and publisher; thickness from `Pages:` |
 | Video | 16:9 | title in a thumbnail frame with a play mark |
 | Course | 4:3 | "Course" eyebrow over the title |
 | Podcast | 1:1 | show name set large with a microphone mark |
