@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Nothing scrolls under the tab bar any more. With one tab open, a note's properties and text, a space like **Projects**, **Preferences** and a book used to slide up behind the tabs and show through them; now they stop just below. The video at the top of a YouTube note and Kanban's column headers also stick below the tabs instead of behind them, and jumping to a heading or a search match lands where you can see it. Pages still open in the same place.
 - **Projects** opens on **Kanban** now, scrolled so **Ongoing** is in the middle when the board is wider than the window. If you already picked another view, Projects keeps opening on that one. **Timeline** no longer shows Done projects; they stay on the board and in the list.
 - A book opens where you left it. Close it and open it again from **Library**, or restart Writer, and it's back on the same passage. Before, an EPUB often opened a chapter or more away from your place, and once you scrolled, that wrong place was saved over the right one. A book you had open is also still open after Writer restarts; before, its tab closed.
 - The **+** beside **Spaces** in the sidebar is gone, along with the form it opened for making a new space. Spaces you already made still show.

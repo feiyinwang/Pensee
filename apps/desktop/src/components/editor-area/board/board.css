@@ -255,10 +255,10 @@
 }
 
 /* Edit here: the board editor over the note's page (its pane), in place of
-   the note. Columns and a book pair already keep the pane clear of the tab
-   row and the footer stats; a lone tab's pane runs under both, so the board
-   leaves the same room there. The note underneath is hidden, not unmounted:
-   it comes back as it was. */
+   the note. Columns and a book pair already keep the pane clear of the
+   footer stats; a lone tab's pane runs under them, so the board leaves the
+   same room there. The note underneath is hidden, not unmounted: it comes
+   back as it was. */
 .wr-board-inline {
   position: absolute;
   inset: 0;
@@ -266,7 +266,6 @@
 }
 
 .tab-columns:not([data-columns], [data-pair]) .wr-board-inline {
-  top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
   bottom: 44px;
 }
 

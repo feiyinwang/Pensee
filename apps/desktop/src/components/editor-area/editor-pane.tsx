@@ -60,7 +60,7 @@ export const EditorPane = memo(function EditorPane({
     <div data-pane className={visibilityClass}>
       <EditorScrollContainer ref={scrollContainerRef}>
         <div
-          className={`mx-auto w-full pb-6 ${inColumn ? "pt-10" : "pt-32 md:pt-[9rem]"}`}
+          className={`mx-auto w-full pb-6 ${inColumn ? "pt-10" : "pt-20 md:pt-24"}`}
           style={{
             maxWidth: "var(--writer-editor-outer-width)",
             boxSizing: "border-box",

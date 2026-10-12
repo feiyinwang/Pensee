@@ -42,7 +42,7 @@ export function SpacePage({
       aria-hidden={!isShown}
     >
       <EditorScrollContainer>
-        <div className={styles.page}>
+        <div className={inColumn ? styles.page : `${styles.page} ${styles.lone}`}>
           {space === null ? (
             <Empty
               title="This note isn't a space any more"

@@ -126,7 +126,7 @@
    not positioned, so `absolute` anchors to the pane and does not scroll. */
 [data-pane]:has(> .wr-board-inline) .video-band {
   position: absolute;
-  top: 60px;
+  top: 12px;
   right: 16px;
   z-index: 30;
   width: 320px;

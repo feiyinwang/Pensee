@@ -97,7 +97,7 @@ export function SettingsPanel({
       aria-hidden={!isShown}
     >
       <EditorScrollContainer>
-        <div className="mx-auto max-w-2xl px-8 pt-32 pb-24 md:pt-[9rem]">
+        <div className="mx-auto max-w-2xl px-8 pt-20 pb-24 md:pt-24">
           <h1 className="mb-10 text-2xl font-semibold text-[var(--text-primary)]">Preferences</h1>
 
           {beforeThemes.map(([cat, defs]) => renderSection(cat, defs))}

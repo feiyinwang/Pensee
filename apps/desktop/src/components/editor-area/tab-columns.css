@@ -1,10 +1,14 @@
 /* Tab columns: with two or more tabs open, every tab side by side, each its
    own glass island, scrolled horizontally. See SPECs/tab-columns-spec.md. */
 
+/* Every layout starts under the tab row (app-layout.tsx), so nothing a tab
+   shows ever scrolls beneath it. The glass panel already sits 8px below the
+   window top. */
 .tab-columns {
   position: absolute;
   inset: 0;
   display: flex;
+  padding-top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
 }
 
 /* A single tab fills the panel exactly as it always has. */
@@ -28,9 +32,8 @@
 /* Zoomed into a book or its page: the two share the panel as one block,
    half each, a hairline between (book-pair.ts). Both halves lay out as
    columns do (compact top padding), so the strip keeps the columns' room
-   for the tab row above and the footer stats below. */
+   for the footer stats below. */
 .tab-columns[data-pair] {
-  padding-top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
   padding-bottom: 44px;
 }
 .tab-columns[data-pair] > .tab-column:not([data-hidden]) {
@@ -54,9 +57,7 @@
   column-gap: var(--tab-column-gap);
   overflow-x: auto;
   overflow-y: hidden;
-  /* Islands start under the tab row and stop above the footer stats. The
-     glass panel already sits 8px below the window top. */
-  padding-top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
+  /* Islands stop above the footer stats. */
   padding-bottom: 44px;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
