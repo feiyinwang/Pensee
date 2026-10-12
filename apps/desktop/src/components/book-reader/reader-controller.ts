@@ -21,6 +21,7 @@ import {
 } from "@/components/editor-area/linked-block-sync";
 import { rangeAt, textOffset, type BookSource } from "./book-source";
 import { readingPlace, saveReadingPlace, type ReadingPlace } from "@/lib/book-positions";
+import { bookTextSize, DEFAULT_BOOK_TEXT_SIZE, saveBookTextSize } from "@/lib/book-text-size";
 import { HighlightPainter } from "./highlight-painter";
 import { addHighlightToOpenBoard } from "@/components/editor-area/board/board-fullscreen";
 import { bookLinkTarget } from "@/components/editor-area/board/board-book-links";
@@ -66,6 +67,7 @@ export class ReaderController {
   #cleanups: Array<() => void> = [];
   #pendingJump: string | null = null;
   #releasePlace: (() => void) | null = null;
+  #textSize = DEFAULT_BOOK_TEXT_SIZE;
   #repaintFrame = 0;
   #destroyed = false;
 
@@ -110,7 +112,9 @@ export class ReaderController {
       const response = await fetch(convertFileSrc(this.bookPath));
       if (!response.ok) throw new Error(`Couldn't read the book (${response.status})`);
       const data = await response.arrayBuffer();
+      this.#textSize = await bookTextSize();
       if (this.#destroyed) return;
+      this.host.style.setProperty("--book-text-size", `${this.#textSize}px`);
       const hooks = { onSectionShown: () => this.#scheduleRepaint() };
       const open = this.bookPath.toLowerCase().endsWith(".epub")
         ? (await import("./epub-source")).openEpub
@@ -151,6 +155,11 @@ export class ReaderController {
     const place = await readingPlace(this.bookPath).catch(() => null);
     if (!place || place.unit !== source.unit || this.#destroyed) return;
     await source.scrollToSection(place.section);
+    this.#goToPlace(source, place);
+  }
+
+  /** Put the view at `place` in the book as laid out now. */
+  #goToPlace(source: BookSource, place: ReadingPlace) {
     const el = source.sectionElement(place.section);
     if (!el) return;
     // Laying out the chapters around the place changes their heights and so
@@ -327,6 +336,23 @@ export class ReaderController {
       this.#painter.flash(range);
     });
     return true;
+  }
+
+  /** The EPUB text size in px, one for every book. */
+  get textSize(): number {
+    return this.#textSize;
+  }
+
+  /** Change the text size, keeping the passage being read in view. */
+  setTextSize(size: number) {
+    const source = this.#source;
+    if (!source || size === this.#textSize) return;
+    const place = this.#place(source);
+    this.#releasePlace?.();
+    this.#textSize = size;
+    this.host.style.setProperty("--book-text-size", `${size}px`);
+    if (place) this.#goToPlace(source, place);
+    void saveBookTextSize(size);
   }
 
   async passage() {

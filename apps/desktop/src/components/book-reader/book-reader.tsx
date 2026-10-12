@@ -10,6 +10,7 @@ import type { BookLocation as BookTabLocation } from "@/components/editor-area/p
 import { askAgent } from "@/lib/agent-ask";
 import { speak } from "@/lib/speak";
 import { getFileStem } from "@/lib/paths";
+import { stepBookTextSize } from "@/lib/book-text-size";
 import { ReaderController, type ReaderStatus, type SelectionInfo } from "./reader-controller";
 import styles from "./book-reader.module.css";
 import "./book-reader.css";
@@ -56,6 +57,7 @@ export default function BookReader({
   const controllerRef = useRef<ReaderController | null>(null);
   const [status, setStatus] = useState<ReaderStatus>({ kind: "loading" });
   const [pill, setPill] = useState<Pill | null>(null);
+  const [textSize, setTextSize] = useState<number | null>(null);
   const reduceMotion = useReducedMotion();
   const bookName = getFileStem(location.path);
 
@@ -73,6 +75,7 @@ export default function BookReader({
       setStatus,
     );
     controllerRef.current = controller;
+    setTextSize(null);
     void controller.start();
     return () => {
       controller.destroy();
@@ -136,6 +139,20 @@ export default function BookReader({
     };
   }, [pill]);
 
+  // The text size control is EPUB only: a PDF's text is part of its page.
+  const isEpub = location.path.toLowerCase().endsWith(".epub");
+  useEffect(() => {
+    if (status.kind === "ready" && isEpub) setTextSize(controllerRef.current?.textSize ?? null);
+  }, [status.kind, isEpub]);
+
+  const stepTextSize = (direction: -1 | 1) => {
+    const controller = controllerRef.current;
+    if (!controller) return;
+    const size = stepBookTextSize(controller.textSize, direction);
+    controller.setTextSize(size);
+    setTextSize(size);
+  };
+
   const run = (action: (controller: ReaderController) => void) => {
     const controller = controllerRef.current;
     if (controller) action(controller);
@@ -160,6 +177,13 @@ export default function BookReader({
         <div className="book-reader-status" role="alert">
           Couldn't open {bookName}: {status.message}
         </div>
+      ) : null}
+      {textSize !== null ? (
+        <TextSizeControl
+          size={textSize}
+          onStep={stepTextSize}
+          reduceMotion={reduceMotion ?? false}
+        />
       ) : null}
       <AnimatePresence>
         {pill ? (
@@ -206,6 +230,89 @@ export default function BookReader({
                 Define
               </button>
             ) : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Apple Books' "Aa": a button that opens smaller/larger text buttons. */
+function TextSizeControl({
+  size,
+  onStep,
+  reduceMotion,
+}: {
+  size: number;
+  onStep: (direction: -1 | 1) => void;
+  reduceMotion: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const smallest = stepBookTextSize(size, -1) === size;
+  const largest = stepBookTextSize(size, 1) === size;
+
+  return (
+    <div ref={rootRef} className={styles.textSize}>
+      <button
+        type="button"
+        className={styles.textSizeTrigger}
+        aria-label="Text size"
+        aria-expanded={open}
+        data-open={open || undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
+        Aa
+      </button>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            className={`${styles.tray} ${styles.textSizeTray}`}
+            role="group"
+            aria-label="Text size"
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, transition: { duration: motionTokens.duration.instant } }}
+            transition={
+              reduceMotion
+                ? { duration: motionTokens.duration.instant }
+                : motionTokens.spring.snappy
+            }
+          >
+            <button
+              type="button"
+              className={`${styles.button} ${styles.textSizeStep}`}
+              aria-label="Smaller text"
+              disabled={smallest}
+              onClick={() => onStep(-1)}
+            >
+              <span className={styles.smallA}>A</span>
+            </button>
+            <span className={styles.divider} aria-hidden />
+            <button
+              type="button"
+              className={`${styles.button} ${styles.textSizeStep}`}
+              aria-label="Larger text"
+              disabled={largest}
+              onClick={() => onStep(1)}
+            >
+              <span className={styles.largeA}>A</span>
+            </button>
           </motion.div>
         ) : null}
       </AnimatePresence>

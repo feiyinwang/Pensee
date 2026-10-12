@@ -10,6 +10,7 @@
 
 ## Done
 
+- Book text size: [`SPECs/book-reader-spec.md`](SPECs/book-reader-spec.md#text-size) — **Aa** at the top right of an EPUB opens smaller/larger buttons (13–34px ladder, one size for every book in `books.textSize`); the reader keeps the passage in view across a change (`setTextSize`). e2e: `specs/book-text-size.spec.js` (set `BOOK_EPUB`). Follow-up: PDF zoom.
 - Video transcripts: [`SPECs/youtube-notes-spec.md`](SPECs/youtube-notes-spec.md#transcript) — a video added to Library, or a YouTube link set in an open note's properties, puts its transcript in a closed `<details>` toggle at the top of the note; **Transcript** under the player does it for older notes. `youtube_transcript` reads captions through the Android player API (the web caption links need a PO token).
 
 - YouTube titles for Library adds: [`SPECs/add-to-library-spec.md`](SPECs/add-to-library-spec.md#the-note) — `fetch_link_preview` asks YouTube's oEmbed for YouTube links (title, thumbnail, `YouTube`), since the watch page's `<title>` sits past the 512 KB read and every added video was named `youtube.com <id>`. A link oEmbed doesn't know (a channel) still reads the page.

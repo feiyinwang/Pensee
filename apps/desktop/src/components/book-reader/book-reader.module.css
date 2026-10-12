@@ -53,3 +53,87 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* The text size control (Apple Books' "Aa"), top right of the reader. The
+   tray drops from the button, right-aligned to it. */
+
+.textSize {
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  z-index: 6;
+  user-select: none;
+}
+
+.textSizeTrigger {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-control) - 6px);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.textSizeTrigger[data-open] {
+  background: var(--surface-muted);
+  color: var(--foreground);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .textSizeTrigger:hover {
+    background: var(--surface-muted);
+    color: var(--foreground);
+  }
+}
+
+.textSizeTrigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.textSizeTray {
+  top: calc(100% + 6px);
+  right: 0;
+  translate: none;
+  transform-origin: top right;
+}
+
+.textSizeStep {
+  justify-content: center;
+  width: 52px;
+  height: 36px;
+  padding: 0;
+  color: var(--foreground);
+  font-family: var(--editor-font);
+}
+
+.smallA {
+  font-size: 13px;
+}
+
+.largeA {
+  font-size: 21px;
+}
+
+.divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 6px 0;
+  background: var(--border);
+}

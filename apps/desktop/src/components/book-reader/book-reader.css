@@ -135,7 +135,8 @@
   padding: 32px 32px 40vh;
   color: var(--color-text-primary);
   font-family: var(--editor-font);
-  font-size: 17px;
+  /* The reader's text size (lib/book-text-size.ts), set on the host. */
+  font-size: var(--book-text-size, 17px);
   line-height: 1.65;
 }
 

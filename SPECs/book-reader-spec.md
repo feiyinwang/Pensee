@@ -101,6 +101,22 @@ to explain or define something.
   its saved place. Restoring the session reads only the tabs' documents, never
   the book file itself.
 
+### Text size
+
+- An EPUB has **Aa** at the top right of the reader, as in Apple Books. It
+  opens a small tray with a small **A** (smaller text) and a large **A**
+  (larger text). Escape or a click elsewhere closes it.
+- Each press steps along 13 · 14 · 15 · **17** · 19 · 21 · 24 · 27 · 30 · 34px
+  (`lib/book-text-size.ts`); a button is dimmed at its end of the ladder.
+- One size for every book, kept in the app's preferences (`books.textSize`).
+  A book opens at it before its place is restored.
+- The passage being read stays in view: the reader takes the place
+  (section + fraction, as for reopening), applies the size through
+  `--book-text-size` on the pages, and goes back to the place with the same
+  lay-out-and-place passes and hold as a restore (`setTextSize`).
+- No size control for PDFs: their text is part of the page.
+- ⌘+ / ⌘− stay the window zoom; they are not the text size.
+
 ### Selecting
 
 - App.css's global no-select rule leaves out `.book-reader-pages`, and the
@@ -158,6 +174,7 @@ to explain or define something.
 
   The book page is already an open tab, so the agent sees the user's notes
   too. When the book tab is in front, "this" means the passage.
+
 - Selecting text, or clicking or right-clicking a selection, shows one pill
   with **Highlight** and **Define**. Clicking a highlight shows **Remove
   highlight**. There is no second, right-click menu.
