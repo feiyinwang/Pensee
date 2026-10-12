@@ -10,10 +10,20 @@ export interface AgentOpenFile {
   text: string;
 }
 
+/** The note for the period holding today (see lib/periodic-notes.ts). */
+export interface AgentPeriodNote {
+  kind: "year" | "quarter" | "month" | "week" | "day";
+  path: string;
+  /** Null when the note is an open tab, which already carries its text. */
+  text: string | null;
+}
+
 export interface AgentContext {
   root: string;
   openFiles: AgentOpenFile[];
   focusedPath: string | null;
+  /** Broadest first. Only notes that exist. */
+  periodNotes?: AgentPeriodNote[];
 }
 
 /** Caps keep the prompt well under the OS argument limit (~1 MB) and the
@@ -29,7 +39,21 @@ function fileBlock(file: AgentOpenFile, budget: number): string {
   return `<open_file path="${file.path}">\n${text}${note}\n</open_file>`;
 }
 
-export function buildAgentSystemPrompt({ root, openFiles, focusedPath }: AgentContext): string {
+function periodNoteBlock(note: AgentPeriodNote): string {
+  if (note.text === null)
+    return `<period_note period="${note.kind}" path="${note.path}" open_tab="true" />`;
+  const truncated = note.text.length > MAX_FILE_CHARS;
+  const text = truncated ? note.text.slice(0, MAX_FILE_CHARS) : note.text;
+  const tail = truncated ? "\n[…truncated; read the file for the rest]" : "";
+  return `<period_note period="${note.kind}" path="${note.path}">\n${text}${tail}\n</period_note>`;
+}
+
+export function buildAgentSystemPrompt({
+  root,
+  openFiles,
+  focusedPath,
+  periodNotes = [],
+}: AgentContext): string {
   const lines = [
     "You are the assistant inside Writer, a desktop markdown editor. The user is chatting with you from a small side panel.",
     `Workspace: ${root}`,
@@ -69,6 +93,14 @@ export function buildAgentSystemPrompt({ root, openFiles, focusedPath }: AgentCo
       "",
       "Also open (not included for length; read when relevant):",
       ...omitted.map((p) => `- ${p}`),
+    );
+  }
+
+  if (periodNotes.length > 0) {
+    lines.push(
+      "",
+      "The user keeps a note per year, quarter, month, ISO week and day. These are the current ones, broadest first: their goals, plans and what they are working on now. Use them as background for every answer; one marked open_tab is included above as an open tab.",
+      ...periodNotes.map(periodNoteBlock),
     );
   }
 

@@ -1,7 +1,12 @@
-import { createDailyNoteDependencies, openDailyNote } from "@/lib/daily-note";
+import { createDailyNoteDependencies, openDailyNote, openDatedNote } from "@/lib/daily-note";
+import { periodNoteStem, type PeriodKind } from "@/lib/periodic-notes";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+
+function dailyNoteFolder(): string {
+  return useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "";
+}
 
 /**
  * Create-or-open today's dated note. Reads the workspace root and the
@@ -12,7 +17,27 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
  */
 export async function openTodaysNote(): Promise<void> {
   const { root } = useWorkspaceStore.getState();
-  const folder = useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "";
   const { openFile } = useEditorStore.getState();
-  await openDailyNote(root, folder, createDailyNoteDependencies(openFile));
+  await openDailyNote(root, dailyNoteFolder(), createDailyNoteDependencies(openFile));
+}
+
+const PERIOD_LABELS: Record<PeriodKind, string> = {
+  day: "the day's note",
+  week: "the week's note",
+  month: "the month's note",
+  quarter: "the quarter's note",
+  year: "the year's note",
+};
+
+/** Create-or-open the note for the `kind` period holding `date` (the calendar panel). */
+export async function openPeriodNote(kind: PeriodKind, date: Date): Promise<void> {
+  const { root } = useWorkspaceStore.getState();
+  const { openFile } = useEditorStore.getState();
+  await openDatedNote(
+    root,
+    dailyNoteFolder(),
+    `${periodNoteStem(kind, date)}.md`,
+    PERIOD_LABELS[kind],
+    createDailyNoteDependencies(openFile),
+  );
 }

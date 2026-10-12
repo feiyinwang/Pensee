@@ -6,6 +6,13 @@ import { SidebarToggleButton } from "./sidebar/sidebar-toggle-button";
 import { CompactFileLayout } from "./compact-file-layout";
 import { WelcomeScreen } from "./welcome";
 import { AgentChat } from "./agent-chat";
+import { CalendarPanel } from "./calendar-panel";
+import { CalendarToggleButton } from "./calendar-panel/calendar-toggle-button";
+import {
+  CALENDAR_PANEL_INSET,
+  CALENDAR_PANEL_WIDTH,
+  useCalendarPanelVisible,
+} from "@/hooks/use-calendar-panel";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useWorkspaceChromeMode, useWorkspaceRoot } from "@/hooks/use-workspace";
 import { resolveAppView } from "@/lib/app-view";
@@ -15,6 +22,8 @@ import { resolveAppView } from "@/lib/app-view";
 // on the same frame as the keypress (see docs/motion.md).
 const TRAFFIC_LIGHTS_CLEARANCE = 92;
 const SIDEBAR_EDGE_INSET = 12;
+/** The editor glass panel's outer margin (`.glass-panel` in App.css). */
+const EDITOR_PANEL_MARGIN = 8;
 /** Matches the button's `w-7`. */
 const TOGGLE_WIDTH = 28;
 
@@ -35,6 +44,15 @@ export function AppLayout() {
 
 function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
   const { isSidebarCollapsed, sidebarWidth, setSidebarWidth } = useSidebar();
+  // The calendar column snaps open and shut like the sidebar (docs/motion.md).
+  const calendarWidth = useCalendarPanelVisible() ? CALENDAR_PANEL_WIDTH : 0;
+  // Mirrors the sidebar toggle: on the panel's inner (left) edge, inside its
+  // header row, while open; in the window's top-right corner while closed,
+  // with the tab chrome ending before it.
+  const calendarToggleRight =
+    calendarWidth > 0
+      ? calendarWidth - CALENDAR_PANEL_INSET - TOGGLE_WIDTH
+      : EDITOR_PANEL_MARGIN + SIDEBAR_EDGE_INSET;
   const viewportWidth = typeof window === "undefined" ? 1200 : window.innerWidth;
   const maxSidebarWidth = Math.max(280, Math.min(420, Math.floor(viewportWidth * 0.35)));
   const draggingRef = useRef(false);
@@ -134,8 +152,12 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
   return (
     <div
       className="relative h-screen w-screen overflow-hidden bg-transparent text-text-primary"
-      // Document footers keep their counts clear of the agent launcher.
-      style={showWelcome ? undefined : { ["--agent-launcher-clearance" as string]: "112px" }}
+      // Document footers keep their counts clear of the agent launcher, and the
+      // launcher stays in the editor's corner when the calendar is open.
+      style={{
+        ["--right-panel-width" as string]: `${calendarWidth}px`,
+        ...(showWelcome ? {} : { ["--agent-launcher-clearance" as string]: "112px" }),
+      }}
     >
       <div
         data-tauri-drag-region
@@ -143,6 +165,7 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
         style={{
           height: "var(--chrome-drag-height)",
           left: isSidebarCollapsed ? 0 : draftSidebarWidth,
+          right: calendarWidth,
         }}
       />
       <div
@@ -159,10 +182,24 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
       </div>
       {!showWelcome && (
         <div
+          className="pointer-events-none absolute top-0 z-50 flex items-center"
+          style={{
+            right: calendarToggleRight,
+            height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
+            paddingBlock: "var(--chrome-control-padding)",
+          }}
+        >
+          <div className="pointer-events-auto">
+            <CalendarToggleButton />
+          </div>
+        </div>
+      )}
+      {!showWelcome && (
+        <div
           className="pointer-events-none absolute top-0 z-40"
           style={{
             left: tabChromeLeft,
-            right: 12,
+            right: calendarWidth > 0 ? 12 + calendarWidth : calendarToggleRight + TOGGLE_WIDTH + 4,
           }}
         >
           <div className="pointer-events-auto">
@@ -197,6 +234,11 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
           >
             {showWelcome ? <WelcomeScreen /> : <EditorArea />}
           </div>
+          {calendarWidth > 0 && (
+            <div className="shrink-0" style={{ width: calendarWidth, marginLeft: -8 }}>
+              <CalendarPanel />
+            </div>
+          )}
         </div>
       </div>
       {!showWelcome && <AgentChat />}

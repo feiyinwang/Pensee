@@ -16,7 +16,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+W           | Close current tab             |
 | Cmd+\\          | Toggle sidebar                |
 | Cmd+[           | Toggle sidebar                |
-| Cmd+]           | Toggle sidebar                |
+| Cmd+]           | Toggle the calendar panel     |
 | Ctrl+Tab        | Next tab                      |
 | Ctrl+Shift+Tab  | Previous tab                  |
 | Cmd+1 ... Cmd+9 | Jump to Nth tab               |
@@ -30,7 +30,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N, and history navigation still work.
-Cmd+Shift+N needs a workspace to file the note in, so it is inert there too.
+Cmd+Shift+N and Cmd+] need a workspace to file notes in, so they are inert there too.
 
 Zoom scales the whole window (WebKit page zoom, persisted in the global
 `appearance.zoom` setting) and steps along the browser ladder 50 · 67 · 75 · 80 ·
@@ -71,9 +71,9 @@ These shortcuts are handled by the `markdownFormatting` CodeMirror extension and
 | Cmd+Shift+Enter         | Task list                 |
 | Cmd+Alt+1 ... Cmd+Alt+6 | Heading 1-6               |
 | Cmd+Alt+0               | Paragraph (strip heading) |
-| Cmd+Alt+N               | Move selection to page…    |
-| Cmd+Shift+C             | Copy block reference       |
-| Cmd+Shift+V             | Paste as linked block      |
+| Cmd+Alt+N               | Move selection to page…   |
+| Cmd+Shift+C             | Copy block reference      |
+| Cmd+Shift+V             | Paste as linked block     |
 
 ## Editor (inherited from CodeMirror)
 

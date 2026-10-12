@@ -4,6 +4,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useAgentStore } from "@/stores/agent-store";
 import { toggleSidebar } from "@/hooks/use-sidebar";
+import { toggleCalendarPanel } from "@/hooks/use-calendar-panel";
 import { openTodaysNote } from "@/hooks/use-daily-note";
 import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
@@ -86,10 +87,17 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+\, Cmd+[ or Cmd+] — toggle sidebar. The editor's indent pair
-      // moved off Mod-[ / Mod-] to the shifted keys in `editorDefaultKeymap`
-      // so these are the only thing the brackets do.
-      if (mod && (e.key === "\\" || e.key === "[" || e.key === "]")) {
+      // Cmd+\ or Cmd+[ — toggle the sidebar; Cmd+] — toggle the calendar
+      // panel on the right. The editor's indent pair moved off Mod-[ / Mod-]
+      // to the shifted keys in `editorDefaultKeymap` so these are the only
+      // thing the brackets do.
+      if (mod && !e.shiftKey && e.key === "]") {
+        e.preventDefault();
+        if (isCompactFileMode || !root) return;
+        toggleCalendarPanel();
+        return;
+      }
+      if (mod && (e.key === "\\" || e.key === "[")) {
         e.preventDefault();
         if (isCompactFileMode) return;
         toggleSidebar();

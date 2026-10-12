@@ -1,0 +1,271 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar } from "@/components/arc/calendar/calendar";
+import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
+import { openPeriodNote } from "@/hooks/use-daily-note";
+import { useSidebarMetadataVersion } from "@/hooks/use-file-tree";
+import { useWorkspaceRoot } from "@/hooks/use-workspace";
+import { resolveDailyNoteFile } from "@/lib/daily-note";
+import { getFileStem, getParentDir } from "@/lib/paths";
+import { isoWeek, periodNoteStem, type PeriodKind } from "@/lib/periodic-notes";
+import * as tauri from "@/lib/tauri";
+import { useEditorStore } from "@/stores/editor-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import "./calendar-panel.css";
+
+type View = "days" | "months" | "years";
+
+const VIEWS: { value: View; label: string }[] = [
+  { value: "days", label: "Days" },
+  { value: "months", label: "Months" },
+  { value: "years", label: "Years" },
+];
+
+const DAY_STEM = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** The daily-note folder, or null without a workspace or with a folder setting
+ *  that escapes it (opening a note reports that error). */
+function useNoteFolder(): string | null {
+  const root = useWorkspaceRoot();
+  const folder = useSettingsStore(
+    (state) => (state.settings["workspace.daily-note-folder"] as string | undefined) ?? "",
+  );
+  if (!root) return null;
+  const probe = resolveDailyNoteFile(root, folder, "_.md");
+  return probe.ok ? getParentDir(probe.path) : null;
+}
+
+/** Stems of the `.md` files in the note folder, re-read whenever the watcher
+ *  reports a change, so a note created anywhere gets its dot. */
+function useExistingStems(folder: string | null): Set<string> {
+  const version = useSidebarMetadataVersion();
+  const [stems, setStems] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!folder) return;
+    let cancelled = false;
+    tauri
+      .readDirectory(folder)
+      .then((entries) => {
+        if (cancelled) return;
+        setStems(new Set(entries.filter((e) => e.is_markdown).map((e) => getFileStem(e.path))));
+      })
+      // A folder that doesn't exist yet just has no notes; the first click creates it.
+      .catch(() => !cancelled && setStems(new Set()));
+    return () => {
+      cancelled = true;
+    };
+  }, [folder, version]);
+  return stems;
+}
+
+interface CellState {
+  exists: boolean;
+  isOpen: boolean;
+  isCurrent: boolean;
+  onOpen: () => void;
+}
+type CellFor = (kind: PeriodKind, date: Date) => CellState;
+
+/**
+ * Right-hand calendar (Cmd+]): click a day, week, month, quarter or year to
+ * create-or-open its note. Days use Arc's Calendar; months and years are the
+ * same cells laid out by period. See SPECs/calendar-panel-spec.md.
+ */
+export default function CalendarPanelContent() {
+  ensureArcTokens();
+  const [view, setView] = useState<View>("days");
+  // The month shown in the days view; its year drives the other two views.
+  const [month, setMonth] = useState(() => new Date());
+  const now = new Date();
+  const folder = useNoteFolder();
+  const stems = useExistingStems(folder);
+  const activePath = useEditorStore((state) => state.activeFilePath);
+  const activeStem =
+    folder && activePath && getParentDir(activePath) === folder ? getFileStem(activePath) : null;
+  const openDay = activeStem?.match(DAY_STEM);
+
+  const cell: CellFor = (kind, date) => {
+    const stem = periodNoteStem(kind, date);
+    return {
+      exists: stems.has(stem),
+      isOpen: stem === activeStem,
+      isCurrent: stem === periodNoteStem(kind, now),
+      onOpen: () => void openPeriodNote(kind, date),
+    };
+  };
+
+  const year = month.getFullYear();
+  const decadeStart = year - (year % 10);
+  const shiftYears = (amount: number) =>
+    setMonth((current) => new Date(current.getFullYear() + amount, current.getMonth(), 1));
+
+  return (
+    <aside aria-label="Calendar" className="calendar-panel flex h-full flex-col">
+      <div className="calendar-panel-chrome flex shrink-0 items-center">
+        <SegmentedControl
+          label="Calendar view"
+          options={VIEWS}
+          value={view}
+          onValueChange={(next) => setView(next as View)}
+          className="w-full"
+        />
+      </div>
+
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto pb-3">
+        {view === "days" && (
+          <Calendar
+            month={month}
+            onMonthChange={setMonth}
+            value={
+              openDay
+                ? new Date(Number(openDay[1]), Number(openDay[2]) - 1, Number(openDay[3]))
+                : undefined
+            }
+            onChange={(date) => void openPeriodNote("day", date)}
+            markedDates={(date) => stems.has(periodNoteStem("day", date))}
+            weekStartsOn={1}
+            weekLabel={(monday) => (
+              <PeriodCell state={cell("week", monday)} label={`W${isoWeek(monday).week}`} muted />
+            )}
+            showToday
+            className="calendar-panel-calendar"
+          />
+        )}
+        {view === "months" && (
+          <>
+            <PeriodHeader
+              title={String(year)}
+              unit="year"
+              onStep={shiftYears}
+              onToday={() => setMonth(new Date())}
+            />
+            <div className="calendar-panel-grid calendar-panel-grid--labelled">
+              {[0, 1, 2, 3].map((quarter) => [
+                <PeriodCell
+                  key={`q${quarter}`}
+                  state={cell("quarter", new Date(year, quarter * 3, 1))}
+                  label={`Q${quarter + 1}`}
+                  muted
+                />,
+                ...[0, 1, 2].map((offset) => {
+                  const date = new Date(year, quarter * 3 + offset, 1);
+                  return (
+                    <PeriodCell
+                      key={offset}
+                      state={cell("month", date)}
+                      label={date.toLocaleString(undefined, { month: "short" })}
+                    />
+                  );
+                }),
+              ])}
+            </div>
+          </>
+        )}
+        {view === "years" && (
+          <>
+            <PeriodHeader
+              title={`${decadeStart}–${decadeStart + 9}`}
+              unit="decade"
+              onStep={(direction) => shiftYears(direction * 10)}
+              onToday={() => setMonth(new Date())}
+            />
+            <div className="calendar-panel-grid">
+              {/* The decade plus one year either side, three to a row. */}
+              {Array.from({ length: 12 }, (_, i) => decadeStart - 1 + i).map((y) => (
+                <PeriodCell
+                  key={y}
+                  state={cell("year", new Date(y, 0, 1))}
+                  label={String(y)}
+                  muted={y < decadeStart || y > decadeStart + 9}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+/** The months and years views' header, laid out like Arc Calendar's so the
+ *  title and controls stay put when the view changes. */
+function PeriodHeader({
+  title,
+  unit,
+  onStep,
+  onToday,
+}: {
+  title: string;
+  unit: string;
+  onStep: (direction: 1 | -1) => void;
+  onToday: () => void;
+}) {
+  return (
+    <div className="calendar-panel-header">
+      <h2 className="calendar-panel-title">{title}</h2>
+      <div className="calendar-panel-nav">
+        <HeaderButton onClick={onToday}>Today</HeaderButton>
+        <HeaderButton label={`Previous ${unit}`} onClick={() => onStep(-1)} icon>
+          <ChevronLeft size={16} strokeWidth={1.75} aria-hidden="true" />
+        </HeaderButton>
+        <HeaderButton label={`Next ${unit}`} onClick={() => onStep(1)} icon>
+          <ChevronRight size={16} strokeWidth={1.75} aria-hidden="true" />
+        </HeaderButton>
+      </div>
+    </div>
+  );
+}
+
+function HeaderButton({
+  label,
+  onClick,
+  icon = false,
+  children,
+}: {
+  label?: string;
+  onClick: () => void;
+  icon?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={`calendar-panel-nav-button${icon ? " calendar-panel-nav-button--icon" : ""}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * One clickable week, month, quarter or year, drawn like an Arc Calendar day:
+ * the current period reads in the accent, the open note gets the accent fill,
+ * and an existing note shows a dot under its label.
+ */
+function PeriodCell({
+  state,
+  label,
+  muted = false,
+}: {
+  state: CellState;
+  label: string;
+  muted?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="calendar-panel-cell"
+      data-muted={muted || undefined}
+      data-current={state.isCurrent || undefined}
+      data-open={state.isOpen || undefined}
+      data-marked={state.exists || undefined}
+      aria-current={state.isOpen ? "page" : undefined}
+      onClick={state.onOpen}
+    >
+      <span className="calendar-panel-cell-label">{label}</span>
+    </button>
+  );
+}

@@ -1,0 +1,146 @@
+/* Calendar panel (Cmd+]). Arc's Calendar and Segmented control draw on
+   Writer's translucent backdrop here, so their surfaces are remapped on the
+   container instead of in the vendored files (docs/arc.md). The accent fill
+   uses Writer's darker --accent-solid so a white day number stays readable. */
+.calendar-panel {
+  --accent: var(--accent-solid);
+  --accent-strong: color-mix(in srgb, var(--accent-solid) 85%, black);
+  --accent-foreground: white;
+  --surface-muted: var(--item-hover-bg);
+  /* The current period's text: Writer's own light accent (inherited before the
+     override above), which reads on the backdrop where --accent-solid is dim. */
+  --period-current: var(--link-color);
+  --week-label-width: 36px;
+  padding-inline: 12px;
+}
+
+/* The view switch sits on the tab row, centred on the same line, after the
+   panel's toggle button (28px + 4px gap, placed by app-layout). */
+.calendar-panel-chrome {
+  height: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2);
+  padding-left: 32px;
+}
+
+.calendar-panel-calendar {
+  width: 100%;
+}
+
+/* Today reads in the accent (like the current week, month, quarter, year);
+   the dot under a number means "has a note" (the Writer patch's markedDates),
+   so Arc's own today dot is turned off. */
+.calendar-panel-calendar [aria-current="date"]:not([aria-selected="true"]) {
+  color: var(--period-current);
+  font-weight: 600;
+}
+/* Arc's selector is three classes deep; !important keeps this one rule short. */
+.calendar-panel-calendar [aria-current="date"] > span::after {
+  content: none !important;
+}
+
+/* Months and years views: the same header geometry as Arc Calendar's. */
+.calendar-panel-header {
+  display: grid;
+  min-height: 34px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.calendar-panel-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: var(--leading-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.calendar-panel-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -6px;
+}
+.calendar-panel-nav-button {
+  display: grid;
+  height: 32px;
+  padding: 0 11px;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+.calendar-panel-nav-button--icon {
+  width: 32px;
+  padding: 0;
+}
+.calendar-panel-nav-button:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.calendar-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.calendar-panel-grid--labelled {
+  grid-template-columns: var(--week-label-width) repeat(3, minmax(0, 1fr));
+}
+.calendar-panel-grid .calendar-panel-cell {
+  height: 48px;
+}
+
+/* One period cell: a week or quarter label, a month or a year. Same states as
+   an Arc Calendar day. */
+.calendar-panel-cell {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+.calendar-panel-cell[data-muted] {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+.calendar-panel-cell[data-current] {
+  color: var(--period-current);
+  font-weight: 600;
+}
+.calendar-panel-cell:hover {
+  background: var(--surface-muted);
+}
+.calendar-panel-cell[data-open] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.calendar-panel-cell-label {
+  position: relative;
+  line-height: 1;
+}
+.calendar-panel-cell[data-marked] .calendar-panel-cell-label::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}

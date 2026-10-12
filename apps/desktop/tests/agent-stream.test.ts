@@ -132,3 +132,28 @@ describe("embeddedBoardPaths", () => {
     expect(isBoardPath("/w/x.svg")).toBe(false);
   });
 });
+
+describe("buildAgentSystemPrompt period notes", () => {
+  test("includes the current period notes, broadest first, and points at open ones", () => {
+    const prompt = buildAgentSystemPrompt({
+      root: "/vault",
+      openFiles: [{ path: "/vault/2026-W42.md", text: "week plan" }],
+      focusedPath: null,
+      periodNotes: [
+        { kind: "year", path: "/vault/2026.md", text: "Ship Writer 1.0" },
+        { kind: "week", path: "/vault/2026-W42.md", text: null },
+        { kind: "day", path: "/vault/2026-10-12.md", text: "Calendar panel" },
+      ],
+    });
+    expect(prompt).toContain('<period_note period="year" path="/vault/2026.md">\nShip Writer 1.0');
+    expect(prompt).toContain(
+      '<period_note period="week" path="/vault/2026-W42.md" open_tab="true" />',
+    );
+    expect(prompt.indexOf('period="year"')).toBeLessThan(prompt.indexOf('period="day"'));
+  });
+
+  test("says nothing about period notes when there are none", () => {
+    const prompt = buildAgentSystemPrompt({ root: "/vault", openFiles: [], focusedPath: null });
+    expect(prompt).not.toContain("period_note");
+  });
+});

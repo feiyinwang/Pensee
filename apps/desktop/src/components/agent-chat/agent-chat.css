@@ -3,12 +3,12 @@
    on the 44px document footer row. The chat card floats 8px above it and
    shares its right edge. */
 .agent-launcher {
-  right: 16px;
+  right: calc(16px + var(--right-panel-width, 0px));
   bottom: 16px;
 }
 
 .agent-panel {
-  right: 16px;
+  right: calc(16px + var(--right-panel-width, 0px));
   bottom: 52px;
   width: min(400px, calc(100vw - 32px));
   /* Fixed height so the card doesn't grow and jump as replies stream in. */

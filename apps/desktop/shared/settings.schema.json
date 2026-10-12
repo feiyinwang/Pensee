@@ -91,6 +91,14 @@
       "default": true
     },
     {
+      "key": "appearance.calendar-visible",
+      "label": "Calendar Visible",
+      "description": "Show the calendar panel on the right (Cmd+])",
+      "category": "Appearance",
+      "type": "boolean",
+      "default": false
+    },
+    {
       "key": "appearance.sidebar-file-label",
       "label": "Sidebar File Label",
       "description": "Show the document title or the filename for files in the sidebar",

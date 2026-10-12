@@ -5,7 +5,8 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { parseAgentLine, type AgentStreamEvent } from "@/lib/agent-stream";
 import { buildAgentSystemPrompt } from "@/lib/agent-context";
-import { collectAgentOpenFiles } from "@/lib/agent-open-files";
+import { useSettingsStore } from "@/stores/settings-store";
+import { collectAgentOpenFiles, collectAgentPeriodNotes } from "@/lib/agent-open-files";
 import { flushSave } from "@/lib/save";
 
 /** One row in the chat. `tool` and `status` rows are muted one-liners. */
@@ -135,8 +136,17 @@ async function currentContext(root: string) {
   const paths = [
     ...new Set(tabs.flatMap((tab) => (tab.location.kind === "file" ? [tab.location.path] : []))),
   ];
-  const files = await collectAgentOpenFiles(paths, openFiles);
-  return buildAgentSystemPrompt({ root, openFiles: files, focusedPath: activeFilePath });
+  const folder = useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "";
+  const [files, periodNotes] = await Promise.all([
+    collectAgentOpenFiles(paths, openFiles),
+    collectAgentPeriodNotes(root, folder, new Date(), new Set(paths), openFiles),
+  ]);
+  return buildAgentSystemPrompt({
+    root,
+    openFiles: files,
+    focusedPath: activeFilePath,
+    periodNotes,
+  });
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({

@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-command-palette";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { syncAppleBooksNow } from "@/hooks/use-apple-books-sync";
+import { toggleCalendarPanel } from "@/hooks/use-calendar-panel";
 import { openTodaysNote } from "@/hooks/use-daily-note";
 import { useCloseWorkspace, useIsCompactFileMode, useWorkspace } from "@/hooks/use-workspace";
 import {
@@ -151,6 +152,16 @@ export function CommandPalette() {
         description: "Command",
         run: () => {
           toggleSidebar();
+          close();
+        },
+      },
+    root &&
+      !isCompactFileMode && {
+        id: "toggle-calendar",
+        label: "Toggle Calendar",
+        description: "Command",
+        run: () => {
+          toggleCalendarPanel();
           close();
         },
       },

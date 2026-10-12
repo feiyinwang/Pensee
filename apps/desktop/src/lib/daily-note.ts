@@ -99,20 +99,36 @@ export function createDailyNoteDependencies(
 /**
  * Create-or-open today's note. Idempotent by construction: the backend owns the
  * create-or-read decision, so pressing the shortcut a second time reopens the
- * same note instead of racing a second creation. This is the single frontend
- * owner of daily-note errors.
+ * same note instead of racing a second creation.
  */
 export async function openDailyNote(
   root: string | null,
   folder: string,
   dependencies: DailyNoteDependencies,
 ): Promise<void> {
+  const fileName = `${formatDailyNoteDate(dependencies.now())}.md`;
+  await openDatedNote(root, folder, fileName, "today's note", dependencies);
+}
+
+/**
+ * Create-or-open the dated note `fileName` in the daily-note folder: today's
+ * note and every periodic note (week, month, quarter, year) go through here.
+ * This is the single frontend owner of dated-note errors; `label` names the
+ * note in them ("Failed to open today's note: …").
+ */
+export async function openDatedNote(
+  root: string | null,
+  folder: string,
+  fileName: string,
+  label: string,
+  dependencies: Omit<DailyNoteDependencies, "now">,
+): Promise<void> {
   // Matches Cmd+N: without a workspace there is nowhere for the note to live.
   if (!root) return;
 
-  const resolved = resolveDailyNotePath(root, folder, dependencies.now());
+  const resolved = resolveDailyNoteFile(root, folder, fileName);
   if (!resolved.ok) {
-    dependencies.showError(`Failed to open today's note: ${resolved.error}`);
+    dependencies.showError(`Failed to open ${label}: ${resolved.error}`);
     return;
   }
 
@@ -121,7 +137,7 @@ export async function openDailyNote(
     await dependencies.openFile(resolved.path);
   } catch (error) {
     dependencies.showError(
-      `Failed to open today's note: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to open ${label}: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

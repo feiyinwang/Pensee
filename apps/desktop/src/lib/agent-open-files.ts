@@ -4,7 +4,9 @@
  * its scene (one JSON line per node, with the node's text) is sent.
  */
 
-import type { AgentOpenFile } from "@/lib/agent-context";
+import type { AgentOpenFile, AgentPeriodNote } from "@/lib/agent-context";
+import { resolveDailyNoteFile } from "@/lib/daily-note";
+import { PERIOD_KINDS, periodNoteStem } from "@/lib/periodic-notes";
 import { serializeDocument } from "@/lib/frontmatter";
 import { getParentDir, resolveImagePath } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
@@ -71,4 +73,34 @@ export async function collectAgentOpenFiles(
     .flatMap((file) => (isBoardPath(file.path) ? [] : embeddedBoardPaths(file.path, file.text)))
     .filter((path) => !seen.has(path) && (seen.add(path), true));
   return [...tabs, ...(await Promise.all(boards.map(read)))];
+}
+
+/**
+ * The notes for the current year, quarter, month, week and day that exist,
+ * broadest first. One already open as a tab is listed without its text (the
+ * tab carries it). A missing note is left out; nothing is created.
+ */
+export async function collectAgentPeriodNotes(
+  root: string,
+  folder: string,
+  now: Date,
+  openPaths: Set<string>,
+  loaded: Map<string, LoadedFile>,
+): Promise<AgentPeriodNote[]> {
+  const notes = await Promise.all(
+    PERIOD_KINDS.map(async (kind): Promise<AgentPeriodNote | null> => {
+      const resolved = resolveDailyNoteFile(root, folder, `${periodNoteStem(kind, now)}.md`);
+      if (!resolved.ok) return null;
+      const { path } = resolved;
+      if (openPaths.has(path)) return { kind, path, text: null };
+      try {
+        if (!(await tauri.fileExists(path))) return null;
+        return { kind, path, text: await readText(path, loaded.get(path)) };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        return { kind, path, text: `[could not read: ${reason}]` };
+      }
+    }),
+  );
+  return notes.filter((note): note is AgentPeriodNote => note !== null);
 }

@@ -2,13 +2,13 @@
 
 ## In Progress
 
-
 - Block handle menu: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md) — hover the gutter grip to open block type / move / duplicate / clipboard / delete actions for plain blocks, pictures, caption bands and columns. First pass landed; submenus (Align and Indent, Color Options) are rendered inert pending a way to store non-markdown attributes, and there is still no keyboard path to the panel.
 
 - Reveal-in-sidebar + residual external-watcher misses: [`SPECs/reveal-in-sidebar-and-external-watcher-spec.md`](SPECs/reveal-in-sidebar-and-external-watcher-spec.md) — keep the explicit tab-context-menu "Reveal in sidebar" action working, leave ordinary file opens from expanding the Everything tree, and characterize the remaining external-file-watcher miss cases through a logging + manual-repro pass before patching further.
 
 ## Done
 
+- Calendar panel and periodic notes: [`SPECs/calendar-panel-spec.md`](SPECs/calendar-panel-spec.md) — Cmd+] opens a right-hand Arc calendar: days with ISO week numbers, months with quarters, years; each creates-or-opens its note (`YYYY-MM-DD`, `YYYY-Www`, `YYYY-MM`, `YYYY-Qn`, `YYYY`) in the daily-note folder via one `openDatedNote` path. The agent's hidden context carries the current period notes. Follow-ups: note templates per period, keyboard path into the week/quarter column, title inference for period names (`isDailyNoteName` only covers days).
 - Agent chat: [`SPECs/agent-chat-spec.md`](SPECs/agent-chat-spec.md) — Linear-style panel in the bottom-right corner running the user's Claude Code headless (`claude -p`, stream-json, `acceptEdits`), with open tabs as hidden context and the focused tab as "this". Follow-ups: shell commands are not pre-approved; per-window session only (not restored on relaunch).
 - Apple Books highlights: [`SPECs/apple-books-highlights-spec.md`](SPECs/apple-books-highlights-spec.md) — an off-by-default workspace setting imports highlights and notes every 10 minutes (and from the palette), one page per book tagged `Book`: an existing page with the book's name gets them, otherwise a new page in the configured folder. Append-only by hidden ` ^bk-` block ids. Follow-ups: updated notes, chapter headings, watching the database.
 - Board page links: [`SPECs/board-lark-parity-spec.md`](SPECs/board-lark-parity-spec.md#page-links-in-cards) — `[[Page]]` in any card's text shows as a link and opens the page on click (double-click still edits); typing `[[` in a card suggests pages. `followWikiLink` is now the one resolve-or-create path for the editor and the board.
