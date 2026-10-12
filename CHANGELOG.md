@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- In a book, left- and right-clicking a selection now show the same small bar: **Highlight** and **Define** (a word's meaning, or what a longer passage means here). The separate right-click menu is gone.
 - You can select text in a book again (it was blocked), and highlights take whole words, like Apple Books. Books open where you left off. The book card shows the cover from the book itself, the one Apple Books shows, instead of a saved copy that could come out black.
 - The book card on a book page shows the book's cover (from the page's **Cover**, the EPUB's cover, or the PDF's first page) and its author, and **Open beside** now opens the book right next to its page and brings it into view. Pinch in on a book or its page and the two fill the window side by side, as one; if the book isn't open yet, pinching in on its page opens it.
 - Dropping a book uses the page that already has its name only when the author matches (or isn't given). A book by someone else gets its own page, titled with the author. Book pages now have an **Author** property, read from the book itself or from its file name.

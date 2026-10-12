@@ -108,8 +108,7 @@ to explain or define something.
 ### Highlights: the page is the record
 
 - **Adding a highlight.** Select text in the book and choose **Highlight**,
-  either in the pill that appears over the selection or in the right-click
-  menu. This adds `- <text> ^bk-p<page>-<start>-<end>` (PDF) or
+  in the pill that appears over it. This adds `- <text> ^bk-p<page>-<start>-<end>` (PDF) or
   `^bk-s<section>-<start>-<end>` (EPUB) to the page, in reading order among
   its other highlights wherever the writer has put them. The first one goes
   at the end of a `## Highlights` section the writer made, else at the end of
@@ -143,15 +142,13 @@ to explain or define something.
 
   The book page is already an open tab, so the agent sees the user's notes
   too. When the book tab is in front, "this" means the passage.
-- Right-click on a selection in the book shows:
-  - **Highlight**
-  - **Explain**, which explains the selection in this passage's context;
-  - **Define**, offered when the selection is up to three words;
-  - **Copy**.
-
-  Explain and Define open the agent panel and send a short prompt quoting the
-  selection. While an answer is still running, a notice says so and nothing
-  is sent.
+- Selecting text, or clicking or right-clicking a selection, shows one pill
+  with **Highlight** and **Define**. Clicking a highlight shows **Remove
+  highlight**. There is no second, right-click menu.
+  - **Define** opens the agent panel and asks it to define a word or phrase
+    of up to three words as used in this passage, or to explain what a
+    longer selection means here.
+  - While an answer is still running, a notice says so and nothing is sent.
 
 ### Speed
 

@@ -6,10 +6,6 @@ import { Cursor02Icon } from "@hugeicons/core-free-icons";
 
 import { motionTokens } from "@/components/arc/lib/motion-tokens";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
-import {
-  showNativeContextMenu,
-  type MenuItemSpec,
-} from "@/components/editor-area/editor-context-menu";
 import type { BookLocation as BookTabLocation } from "@/components/editor-area/page-kinds/book";
 import { askAgent } from "@/lib/agent-ask";
 import { getFileStem } from "@/lib/paths";
@@ -24,14 +20,14 @@ type Pill =
   | { kind: "selection"; selection: SelectionInfo; x: number; y: number }
   | { kind: "highlight"; id: string; x: number; y: number };
 
+/** Up to this many words is a word or phrase to define; more is a passage
+ *  to explain. */
 const MAX_DEFINE_WORDS = 3;
 
-function explainPrompt(book: string, text: string): string {
-  return `Explain "${text}" from the book ${book}, in the context of the passage I'm reading.`;
-}
-
 function definePrompt(book: string, text: string): string {
-  return `Define "${text}" as it's used in the book ${book}, in the passage I'm reading. Keep it short.`;
+  return text.split(/\s+/).length <= MAX_DEFINE_WORDS
+    ? `Define "${text}" as it's used in the book ${book}, in the passage I'm reading. Keep it short.`
+    : `Explain what "${text}" means in the book ${book}, in the context of the passage I'm reading. Keep it short.`;
 }
 
 export default function BookReader({
@@ -77,81 +73,40 @@ export default function BookReader({
     return { x: rect.left + rect.width / 2 - frame.left, y: rect.top - frame.top };
   }, []);
 
-  const onMouseUp = useCallback(
-    (event: React.MouseEvent) => {
-      if (event.button !== 0) return;
+  /** The pill for what is under (x, y): the selection, else a highlight
+   *  there, else none. Left and right clicks both show it. */
+  const showPillAt = useCallback(
+    (x: number, y: number) => {
       const controller = controllerRef.current;
       if (!controller) return;
-      // Let the selection settle (a double-click selects a word after mouseup).
-      requestAnimationFrame(() => {
-        const selection = controller.selection();
-        if (selection) {
-          setPill({ kind: "selection", selection, ...pillAt(selection.rect) });
-          return;
-        }
-        const hit = controller.highlightAt(event.clientX, event.clientY);
-        setPill(hit ? { kind: "highlight", id: hit.highlight.id, ...pillAt(hit.rect) } : null);
-      });
+      const selection = controller.selection();
+      if (selection) {
+        setPill({ kind: "selection", selection, ...pillAt(selection.rect) });
+        return;
+      }
+      const hit = controller.highlightAt(x, y);
+      setPill(hit ? { kind: "highlight", id: hit.highlight.id, ...pillAt(hit.rect) } : null);
     },
     [pillAt],
   );
 
+  const onMouseUp = useCallback(
+    (event: React.MouseEvent) => {
+      if (event.button !== 0) return;
+      const { clientX, clientY } = event;
+      // Let the selection settle (a double-click selects a word after mouseup).
+      requestAnimationFrame(() => showPillAt(clientX, clientY));
+    },
+    [showPillAt],
+  );
+
+  // Right-click shows the same pill, never a second menu.
   const onContextMenu = useCallback(
     (event: React.MouseEvent) => {
-      const controller = controllerRef.current;
-      if (!controller) return;
-      const selection = controller.selection();
-      const hit = selection ? null : controller.highlightAt(event.clientX, event.clientY);
-      if (!selection && !hit) return;
       event.preventDefault();
-      setPill(null);
-      const spec: MenuItemSpec[] = [];
-      if (selection) {
-        const words = selection.text.split(/\s+/).length;
-        spec.push(
-          {
-            kind: "item",
-            id: "book-highlight",
-            text: "Highlight",
-            action: () => void controller.addHighlight(selection),
-          },
-          { kind: "separator" },
-          {
-            kind: "item",
-            id: "book-explain",
-            text: "Explain",
-            action: () => askAgent(explainPrompt(bookName, selection.text)),
-          },
-          ...(words <= MAX_DEFINE_WORDS
-            ? [
-                {
-                  kind: "item" as const,
-                  id: "book-define",
-                  text: `Define “${selection.text}”`,
-                  action: () => askAgent(definePrompt(bookName, selection.text)),
-                },
-              ]
-            : []),
-          { kind: "separator" },
-          {
-            kind: "item",
-            id: "book-copy",
-            text: "Copy",
-            action: () => void navigator.clipboard.writeText(selection.text),
-          },
-        );
-      } else if (hit) {
-        const { id } = hit.highlight;
-        spec.push({
-          kind: "item",
-          id: "book-remove-highlight",
-          text: "Remove Highlight",
-          action: () => void controller.removeHighlight(id),
-        });
-      }
-      void showNativeContextMenu(spec, { x: event.clientX, y: event.clientY });
+      showPillAt(event.clientX, event.clientY);
     },
-    [bookName],
+    [showPillAt],
   );
 
   // The pill belongs to one spot in the text: scrolling or Escape drops it.
@@ -232,10 +187,10 @@ export default function BookReader({
               <button
                 type="button"
                 className={styles.button}
-                onClick={() => run(() => askAgent(explainPrompt(bookName, pill.selection.text)))}
+                onClick={() => run(() => askAgent(definePrompt(bookName, pill.selection.text)))}
               >
                 <HugeiconsIcon icon={Cursor02Icon} size={14} color="currentColor" strokeWidth={2} />
-                Explain
+                Define
               </button>
             ) : null}
           </motion.div>
