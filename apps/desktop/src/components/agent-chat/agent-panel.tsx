@@ -7,12 +7,16 @@ import {
   File02Icon,
   PlusSignIcon,
   StopIcon,
+  Tick02Icon,
+  UnfoldMoreIcon,
 } from "@hugeicons/core-free-icons";
 import { TextShimmer } from "@/components/arc/text-shimmer/text-shimmer";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { useActiveFilePath, useResolvedDocumentTitle } from "@/hooks/use-tabs";
 import { getFileStem } from "@/lib/paths";
 import { useAgentStore, type AgentItem } from "@/stores/agent-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { agentModel, parseModelCommand, type AgentModel } from "@/lib/agent-models";
 import { AgentMarkdown } from "./agent-markdown";
 
 export default function AgentPanel() {
@@ -169,9 +173,17 @@ function AgentComposer({
   isOpen: boolean;
 }) {
   const [draft, setDraft] = useState("");
+  const [highlight, setHighlight] = useState(0);
   const send = useAgentStore((s) => s.send);
   const stop = useAgentStore((s) => s.stop);
-  const canSend = draft.trim().length > 0 && !isRunning;
+  const setModel = useAgentStore((s) => s.setModel);
+  const model = agentModel(
+    useSettingsStore((s) => s.settings["agent.model"] as string | undefined),
+  );
+  // A `/model` draft is handled here and never sent to Claude.
+  const modelCommand = parseModelCommand(draft);
+  const matches = modelCommand?.matches ?? [];
+  const canSend = draft.trim().length > 0 && !isRunning && !modelCommand;
 
   // Measured only while visible: a hidden panel reports scrollHeight 0.
   useLayoutEffect(() => {
@@ -183,14 +195,51 @@ function AgentComposer({
     el.style.overflowY = el.scrollHeight > MAX_INPUT_HEIGHT ? "auto" : "hidden";
   }, [draft, inputRef, isOpen]);
 
+  const changeDraft = (next: string) => {
+    setDraft(next);
+    setHighlight(0);
+  };
+
   const submit = () => {
     if (!canSend) return;
     void send(draft);
     setDraft("");
   };
 
+  const pickModel = (picked: AgentModel) => {
+    setModel(picked.id);
+    changeDraft("");
+  };
+
+  const openModelMenu = () => {
+    changeDraft("/model ");
+    inputRef.current?.focus();
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+    if (event.nativeEvent.isComposing) return;
+    if (modelCommand) {
+      if (event.key === "Escape") {
+        // Close the menu, not the panel.
+        event.preventDefault();
+        event.stopPropagation();
+        changeDraft("");
+        return;
+      }
+      if (matches.length > 0 && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+        event.preventDefault();
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        setHighlight((index) => (index + step + matches.length) % matches.length);
+        return;
+      }
+      if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
+        event.preventDefault();
+        const picked = matches[Math.min(highlight, matches.length - 1)];
+        if (picked) pickModel(picked);
+        return;
+      }
+    }
+    if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       submit();
     }
@@ -198,13 +247,39 @@ function AgentComposer({
 
   return (
     <div className="shrink-0 px-2 pb-2">
-      <FocusChip />
+      <div className="flex h-8 min-w-0 items-center gap-2 px-2">
+        <FocusChip />
+        <button
+          type="button"
+          onClick={openModelMenu}
+          title="Switch model (/model)"
+          className="-mr-1 ml-auto flex h-6 shrink-0 items-center gap-0.5 rounded-md pr-1 pl-1.5 text-[12px] font-medium whitespace-nowrap text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+        >
+          {model.name}
+          <HugeiconsIcon
+            icon={UnfoldMoreIcon}
+            size={12}
+            color="currentColor"
+            strokeWidth={2}
+            className="text-[var(--text-icon-muted)]"
+          />
+        </button>
+      </div>
+      {modelCommand && (
+        <ModelMenu
+          matches={matches}
+          highlight={Math.min(highlight, matches.length - 1)}
+          currentId={model.id}
+          onHighlight={setHighlight}
+          onPick={pickModel}
+        />
+      )}
       <div className="flex items-end gap-2 rounded-2xl bg-[var(--surface-input)] p-2">
         <textarea
           ref={inputRef}
           rows={1}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => changeDraft(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask Claude…"
           aria-label="Message"
@@ -245,7 +320,7 @@ function FocusChip() {
   if (!path) return null;
   return (
     <div
-      className="flex h-8 min-w-0 items-center gap-1.5 px-2 text-[12px] font-medium text-[var(--text-secondary)]"
+      className="flex min-w-0 items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)]"
       title={path}
     >
       <HugeiconsIcon
@@ -256,6 +331,53 @@ function FocusChip() {
         className="shrink-0 text-[var(--text-icon-muted)]"
       />
       <span className="truncate">{title || getFileStem(path)}</span>
+    </div>
+  );
+}
+
+/** The `/model` menu above the composer. Mouse-down keeps focus in the
+ *  textarea so the keyboard keeps working after a hover or click. */
+function ModelMenu({
+  matches,
+  highlight,
+  currentId,
+  onHighlight,
+  onPick,
+}: {
+  matches: AgentModel[];
+  highlight: number;
+  currentId: string;
+  onHighlight: (index: number) => void;
+  onPick: (model: AgentModel) => void;
+}) {
+  if (matches.length === 0) {
+    return (
+      <p className="mb-1 px-2 py-1.5 text-[13px] font-medium text-[var(--text-muted)]">
+        No model by that name. Try Haiku, Sonnet or Opus.
+      </p>
+    );
+  }
+  return (
+    <div role="listbox" aria-label="Model" className="mb-1 flex flex-col">
+      {matches.map((model, index) => (
+        <div
+          key={model.id}
+          role="option"
+          aria-selected={index === highlight}
+          onMouseDown={(event) => event.preventDefault()}
+          onMouseEnter={() => onHighlight(index)}
+          onClick={() => onPick(model)}
+          className="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-[13px] font-medium aria-selected:bg-[var(--item-hover-bg)]"
+        >
+          <span className="shrink-0 text-[var(--text-primary)]">{model.name}</span>
+          <span className="min-w-0 flex-1 truncate text-[var(--text-muted)]">{model.blurb}</span>
+          <span className="flex size-4 shrink-0 items-center justify-center text-[var(--text-secondary)]">
+            {model.id === currentId && (
+              <HugeiconsIcon icon={Tick02Icon} size={14} color="currentColor" strokeWidth={2} />
+            )}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

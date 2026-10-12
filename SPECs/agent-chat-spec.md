@@ -20,13 +20,15 @@ A Linear-style chat panel in the bottom-right corner of a workspace window that 
 - Messages:
   - The user's messages: right-aligned, subtle filled bubble.
   - Claude's replies: plain text on the card, streamed as they arrive. Inline `code`, **bold**, lists and paragraphs render; nothing else.
-  - Tool activity: one muted line per call, verb + file name ("Read Draft.md", "Edited Draft.md", "Searched *.md"). No raw JSON, no tool results.
+  - Tool activity: one muted line per call, verb + file name ("Read Draft.md", "Edited Draft.md", "Searched \*.md"). No raw JSON, no tool results.
   - While a run has produced nothing yet: **Thinking**, with Arc's `text-shimmer` light sweep.
   - Fenced code in a reply renders as Arc's `code-block` (language label, **Copy code**, collapses past 12 lines).
   - Errors: one line in the text colour with the reason (Claude Code not found, not signed in, process failed + its last stderr line).
 - Empty state: one muted line, **Ask about or edit your open pages.**
 - Composer: auto-growing textarea (max 6 lines), **Enter** sends, **Shift+Enter** new line. The send button is disabled while empty and turns into **Stop** while a run is going.
 - Context chip above the composer: the focused tab's page title with a file icon. It is the only visible trace of context. No chip when the focused tab is not a file (launcher, settings).
+- Model: the current model's name (**Haiku**, **Sonnet**, **Opus**) sits at the right end of the chip row. Clicking it, or typing `/model` in the composer (any prefix, from `/`), opens the model menu between that row and the input: one row per model with a short blurb (Fastest / Balanced / Smartest, slowest) and a tick on the current one. `/model o` narrows it to Opus; a name that matches nothing shows **No model by that name. Try Haiku, Sonnet or Opus.** ↑/↓ move, Enter or Tab picks, Esc clears the command (and doesn't close the panel), a click picks. Picking adds a muted **Model set to Opus** line to the chat and applies from the next message, in the same conversation. A `/model` draft is never sent to Claude.
+- The model is the global setting `agent.model` (Settings → Agent → Agent Model), default **haiku** because a fast answer matters more than depth for most questions while reading.
 
 ### Context (hidden from the user)
 
@@ -45,9 +47,10 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 
 ### Process
 
-- Each message spawns `claude -p <message> --output-format stream-json --verbose --include-partial-messages --permission-mode acceptEdits --append-system-prompt <context>` in the workspace root, with `--resume <session>` after the first reply. stdin is closed.
+- Each message spawns `claude -p <message> --output-format stream-json --verbose --include-partial-messages --model <model> --permission-mode acceptEdits --append-system-prompt <context>` in the workspace root, with `--resume <session>` after the first reply. stdin is closed.
 - `acceptEdits` is execution mode: file reads and edits run without prompts. Shell commands are not pre-approved, so headless Claude reports them as denied instead of running them. Trade-off: safer for a writing app; widen with `--allowedTools` later if wanted.
-- The user's own Claude Code config (model, hooks, skills, CLAUDE.md) applies, as in their terminal.
+- `--model <haiku|sonnet|opus>` comes from `agent.model`. These are Claude Code's aliases, so each tier follows the newest release without an app update. A different model on a later message resumes the same session.
+- The user's own Claude Code config (hooks, skills, CLAUDE.md) applies, as in their terminal; the model is Writer's choice, not their terminal default.
 - The binary and `PATH` are resolved once from the user's login shell (`$SHELL -lc`), since an app launched from Finder doesn't inherit the terminal's `PATH`. Fallbacks: `~/.local/bin/claude`, `/opt/homebrew/bin/claude`, `/usr/local/bin/claude`.
 - stdout lines are forwarded unparsed to the invoking window as `agent:line` events; parsing lives in TypeScript (`lib/agent-stream.ts`) so it is unit-testable. Exit is `agent:exit` with the code and last stderr line.
 - **Stop** kills the child. **New chat** stops any run and forgets the session id.
@@ -60,7 +63,8 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 - `src/lib/agent-context.ts` — system prompt from open tabs' text + focused file, with the length caps. Pure.
 - `src/lib/agent-open-files.ts` — reads each open tab's text and the boards pages embed (board code is a dynamic import).
 - `src/components/agent-chat/agent-panel.tsx` — the panel, lazy-loaded on first open because it uses Arc (`text-shimmer`, `code-block`). `agent-chat.css` maps Arc's surface/border tokens to Writer's inside the panel.
-- `src/stores/agent-store.ts` — panel open state, messages, session id, active run; send/stop/new chat.
+- `src/stores/agent-store.ts` — panel open state, messages, session id, active run; send/stop/new chat/set model.
+- `src/lib/agent-models.ts` — the model list and `/model` draft parsing. Pure.
 - `src/components/agent-chat/` — launcher, panel, message list, composer.
 - `src/lib/save.ts` — `flushSave(path)` so send can await saves.
 
@@ -77,6 +81,7 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 ## Tests
 
 - `agent-stream` parses init/session id, text deltas, tool_use summaries, result success and error.
+- `agent-models` parses `/model` drafts (prefixes, filtering, ordinary messages untouched) and falls back to Haiku.
 - `agent-context` includes every open tab's text, focused first; truncates and lists overflow; no focus line when none.
 - `embeddedBoardPaths` finds board image links relative to the page.
 - Rust: argument construction (resume, system prompt, permission mode), binary fallback order.

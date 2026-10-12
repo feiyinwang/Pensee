@@ -328,6 +328,16 @@
       "default": 10
     },
     {
+      "key": "agent.model",
+      "label": "Agent Model",
+      "description": "The Claude model the Agent chat uses. Haiku answers fastest; Sonnet and Opus think harder but take longer. Type /model in the chat to switch.",
+      "category": "Agent",
+      "type": "enum",
+      "options": ["haiku", "sonnet", "opus"],
+      "scope": "global",
+      "default": "haiku"
+    },
+    {
       "key": "workspace.daily-note-folder",
       "label": "Daily Note Folder",
       "description": "Folder inside the workspace where dated daily notes are created. Leave blank to create them at the workspace root.",

@@ -119,7 +119,12 @@ fn resolve_claude_binary(
     candidates.into_iter().find(|candidate| exists(candidate))
 }
 
-fn build_args(prompt: &str, session_id: Option<&str>, system_prompt: &str) -> Vec<String> {
+fn build_args(
+    prompt: &str,
+    session_id: Option<&str>,
+    system_prompt: &str,
+    model: &str,
+) -> Vec<String> {
     let mut args = vec![
         "-p".to_owned(),
         prompt.to_owned(),
@@ -127,6 +132,8 @@ fn build_args(prompt: &str, session_id: Option<&str>, system_prompt: &str) -> Ve
         "stream-json".to_owned(),
         "--verbose".to_owned(),
         "--include-partial-messages".to_owned(),
+        "--model".to_owned(),
+        model.to_owned(),
         // Execution mode: reads and edits run without prompts; nothing is planned first.
         "--permission-mode".to_owned(),
         "acceptEdits".to_owned(),
@@ -146,6 +153,7 @@ pub async fn agent_send(
     prompt: String,
     session_id: Option<String>,
     system_prompt: String,
+    model: String,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
@@ -163,7 +171,12 @@ pub async fn agent_send(
         })?;
         let mut command = Command::new(binary);
         command
-            .args(build_args(&prompt, session_id.as_deref(), &system_prompt))
+            .args(build_args(
+                &prompt,
+                session_id.as_deref(),
+                &system_prompt,
+                &model,
+            ))
             .current_dir(&root)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -263,7 +276,7 @@ mod tests {
 
     #[test]
     fn first_message_has_no_resume() {
-        let args = build_args("hi", None, "ctx");
+        let args = build_args("hi", None, "ctx", "haiku");
         assert_eq!(
             args,
             [
@@ -273,6 +286,8 @@ mod tests {
                 "stream-json",
                 "--verbose",
                 "--include-partial-messages",
+                "--model",
+                "haiku",
                 "--permission-mode",
                 "acceptEdits",
                 "--append-system-prompt",
@@ -283,7 +298,7 @@ mod tests {
 
     #[test]
     fn follow_up_resumes_session() {
-        let args = build_args("next", Some("abc"), "ctx");
+        let args = build_args("next", Some("abc"), "ctx", "opus");
         assert_eq!(&args[args.len() - 2..], ["--resume", "abc"]);
     }
 

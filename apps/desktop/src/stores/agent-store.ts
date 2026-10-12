@@ -9,6 +9,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { collectAgentOpenFiles, collectAgentPeriodNotes } from "@/lib/agent-open-files";
 import { openBookPassages } from "@/lib/book-readers";
 import { flushSave } from "@/lib/save";
+import { agentModel, type AgentModelId } from "@/lib/agent-models";
 
 /** One row in the chat. `tool` and `status` rows are muted one-liners. */
 export type AgentItem =
@@ -37,6 +38,8 @@ interface AgentState {
   send: (text: string) => Promise<void>;
   stop: () => void;
   newChat: () => void;
+  /** Switch the model for this and later messages; it is a global setting. */
+  setModel: (id: AgentModelId) => void;
 }
 
 let nextId = 0;
@@ -154,6 +157,10 @@ async function currentContext(root: string) {
   });
 }
 
+export function currentModel() {
+  return agentModel(useSettingsStore.getState().getSetting("agent.model"));
+}
+
 export const useAgentStore = create<AgentState>((set, get) => ({
   isOpen: false,
   items: [],
@@ -193,6 +200,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         prompt: text,
         sessionId: get().sessionId,
         systemPrompt,
+        model: currentModel().id,
       });
     } catch (error) {
       set((state) =>
@@ -217,5 +225,26 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const { run } = get();
     if (run) void invoke("agent_cancel", { requestId: run.requestId });
     set({ items: [], sessionId: null, run: null });
+  },
+
+  setModel: (id) => {
+    // Optimistic: the setting changes now and rolls back if saving fails.
+    useSettingsStore
+      .getState()
+      .setSetting("agent.model", id, "global")
+      .catch((error: unknown) =>
+        set((state) => ({
+          items: appendItem(state.items, {
+            role: "error",
+            text: `Couldn't save the model: ${errorMessage(error)}`,
+          }),
+        })),
+      );
+    set((state) => ({
+      items: appendItem(state.items, {
+        role: "status",
+        text: `Model set to ${agentModel(id).name}`,
+      }),
+    }));
   },
 }));
