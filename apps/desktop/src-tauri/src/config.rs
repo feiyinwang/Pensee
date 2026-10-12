@@ -444,19 +444,13 @@ impl Settings {
     }
 
     /// One-time migration: read theme from old `preferences.json` (tauri-plugin-store format)
-    /// and write it into the new config file. Removes the old file after migration.
+    /// and write it into the new config file. The file stays: the frontend's
+    /// preference store still lives in it (book places, text size, library).
     fn migrate_from_preferences(&mut self, app_data_dir: &Path) -> std::io::Result<()> {
-        let prefs_path = app_data_dir.join("preferences.json");
-        // Only migrate if the global config doesn't already have a theme set
         if self.global.contains_key("appearance.theme") {
-            // Old file exists but we already have settings — just clean up
-            return match std::fs::remove_file(&prefs_path) {
-                Ok(()) => Ok(()),
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-                Err(error) => Err(error),
-            };
+            return Ok(());
         }
-        let data = match std::fs::read_to_string(&prefs_path) {
+        let data = match std::fs::read_to_string(app_data_dir.join("preferences.json")) {
             Ok(data) => data,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
             Err(error) => return Err(error),
@@ -466,7 +460,7 @@ impl Settings {
                 self.set_global("appearance.theme", ConfigValue::String(theme.to_string()))?;
             }
         }
-        std::fs::remove_file(&prefs_path)
+        Ok(())
     }
 
     /// Load workspace-level config from `{workspace_root}/.writer/config`.
@@ -747,6 +741,25 @@ mod tests {
             settings.get("editor.font-size"),
             Some(&ConfigValue::Number(18.0))
         );
+    }
+
+    #[test]
+    fn test_preferences_store_survives_startup() {
+        // preferences.json is the frontend's live store (book places, etc.):
+        // loading settings must never delete it, theme set or not.
+        let dir = tempfile::tempdir().unwrap();
+        let prefs = dir.path().join("preferences.json");
+        std::fs::write(&prefs, r#"{"theme":"dark","books.textSize":20}"#).unwrap();
+
+        let settings = Settings::new(dir.path().to_path_buf()).unwrap();
+        assert_eq!(
+            settings.get("appearance.theme"),
+            Some(&ConfigValue::String("dark".into()))
+        );
+        assert!(prefs.exists());
+
+        Settings::new(dir.path().to_path_buf()).unwrap();
+        assert!(prefs.exists());
     }
 
     #[test]

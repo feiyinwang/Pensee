@@ -84,6 +84,11 @@ to explain or define something.
     heights.
 - It is saved in the app's preferences by book file, 400ms after scrolling
   settles and when the tab closes.
+- Those preferences are the frontend store, `preferences.json` in the app's
+  data folder. The Rust settings once deleted that file on every launch (an
+  old theme migration), so places, text size and the book library lasted only
+  until the app restarted. Startup now leaves the file alone
+  (`config.rs`, `test_preferences_store_survives_startup`).
 - EPUB chapters off screen sit at a placeholder height until the browser lays
   them out, which can be frames after a jump. Restoring therefore places the
   book, lays out every chapter in or near the view at once (`layOutInView`),

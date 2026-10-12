@@ -10,6 +10,7 @@
 
 ## Done
 
+- Book places survive quitting the app: [`SPECs/book-reader-spec.md`](SPECs/book-reader-spec.md#reading-place) — `Settings::migrate_from_preferences` deleted `preferences.json` on every launch once `appearance.theme` was set, wiping the frontend store (`books.place:*`, `books.textSize`, `books.library:*`, space views). It now only copies an old `theme` across and never deletes the file. Test: `test_preferences_store_survives_startup`.
 - ⌘⇧J plays the video on screen: [`SPECs/youtube-notes-spec.md`](SPECs/youtube-notes-spec.md) — hidden file tabs keep their players mounted, so with focus outside the note's text ⌘⇧J went to the last-used (often hidden) video or nowhere. `currentVideoPlayer` now prefers the player on screen (`shown()`, `checkVisibility`); the registry keeps every player of a note open in two tabs.
 - Agent chat model choice: [`SPECs/agent-chat-spec.md`](SPECs/agent-chat-spec.md) — Haiku by default for fast answers; `/model` in the chat (or the model name by the composer) switches to Sonnet or Opus. Global setting `agent.model`, passed as `--model`.
 
