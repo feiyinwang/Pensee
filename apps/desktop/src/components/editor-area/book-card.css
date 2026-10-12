@@ -1,0 +1,67 @@
+/* Book page → open its book (book-card.tsx). Same surface as the link
+   preview card (link-preview.css), so cards in a page read as one family. */
+
+.book-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  margin: 8px 0 4px;
+  padding: 0 6px 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--surface-card);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .book-card:hover {
+    background-color: var(--surface-subtle);
+  }
+}
+
+.book-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.book-card-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.book-card-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.book-card-kind {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.book-card-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.book-card:hover .book-card-action {
+  color: var(--text-primary);
+}

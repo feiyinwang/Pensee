@@ -29,6 +29,9 @@ to explain or define something.
   overwrites; a taken name gets ` 2`, ` 3`, …). `Book` holds its file name,
   relative to the page.
 - The book opens in a tab with its page in a column to the right.
+- **Book card.** While the book isn't open, its page shows a card under the
+  properties (book name, PDF/EPUB, **Open beside**) that opens it in a column
+  beside the page. It hides while the book is open (`book-card.tsx`).
 - **Reopening a book:**
   - **Open Book** in the palette, from a book page;
   - Cmd+click a highlight block;
