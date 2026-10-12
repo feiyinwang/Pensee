@@ -269,7 +269,7 @@ export interface TypedNote {
   note_type: string;
   modified_at: number;
   properties: Record<string, string>;
-  /** First line of body text. */
+  /** First paragraph of body text, line breaks kept, up to 400 characters. */
   excerpt: string | null;
 }
 

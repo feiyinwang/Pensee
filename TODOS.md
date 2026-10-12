@@ -2,7 +2,7 @@
 
 ## In Progress
 
-- X bookmarks in Library: [`SPECs/x-bookmarks-spec.md`](SPECs/x-bookmarks-spec.md) — bookmarks from X become notes (`Type: Tweet`) with the author's whole thread and its media, through the user's own X developer app. Done: sign-in (OAuth + PKCE, Keychain), bookmarks and thread fetch, media download, note writing, the 15-minute sync, Settings → X Bookmarks. Next: the Library **Bookmarks** tab and card (waits for the Library scroll-performance work in the gallery files), then `![[*.mp4]]` embeds and the thread view in the editor. Not yet run against the live X API.
+- X bookmarks in Library: [`SPECs/x-bookmarks-spec.md`](SPECs/x-bookmarks-spec.md) — bookmarks from X become notes (`Type: Tweet`) with the author's whole thread and its media, through the user's own X developer app. Done: sign-in (OAuth + PKCE, Keychain), bookmarks and thread fetch, media download, note writing, the 15-minute sync, Settings → X Bookmarks. The Library **Bookmarks** tab and card are done. Next: `![[*.mp4]]` embeds and the thread view in the editor (coordinate with the YouTube notes work in the editor), and the "new since last visit" dot. Not yet run against the live X API.
 
 - Block handle menu: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md) — hover the gutter grip to open block type / move / duplicate / clipboard / delete actions for plain blocks, pictures, caption bands and columns. First pass landed; submenus (Align and Indent, Color Options) are rendered inert pending a way to store non-markdown attributes, and there is still no keyboard path to the panel.
 

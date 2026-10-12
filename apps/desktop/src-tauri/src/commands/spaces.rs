@@ -31,9 +31,9 @@ struct NoteMeta {
 }
 
 /// Head of a file worth reading: enough for any real frontmatter and the
-/// first line of text after it.
+/// first paragraph of text after it.
 const HEAD_BYTES: usize = 8192;
-const EXCERPT_MAX_CHARS: usize = 160;
+const EXCERPT_MAX_CHARS: usize = 400;
 
 /// Parsed heads by path, keyed on (modified nanos, size) so a repeat call only
 /// re-reads files that changed. Paths are absolute, so windows on different
@@ -240,41 +240,65 @@ fn parse_note_head(text: &str) -> NoteMeta {
     // Only an explicit `title:` renames a note in a space: a book page's first
     // heading is usually a chapter or section, not the book.
     let title = properties.get("title").cloned();
-    let mut excerpt = None;
-    for line in body.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if trimmed.starts_with('#')
-            || trimmed.starts_with("![")
-            || trimmed.starts_with("```")
-            || trimmed.starts_with("<!--")
-            || trimmed.starts_with('|')
-            || trimmed == "---"
-        {
-            continue;
-        }
-        let text = trimmed
-            .trim_start_matches(['-', '*', '>', ' '])
-            .trim_start_matches("[ ] ")
-            .trim_start_matches("[x] ");
-        let text = match text.rfind(" ^") {
-            Some(i) if !text[i + 2..].contains(' ') => &text[..i],
-            _ => text,
-        }
-        .trim();
-        if text.is_empty() {
-            continue;
-        }
-        excerpt = Some(truncate_chars(text, EXCERPT_MAX_CHARS));
-        break;
-    }
+    let excerpt = first_paragraph(body).map(|text| truncate_chars(&text, EXCERPT_MAX_CHARS));
     NoteMeta {
         properties,
         title: title.filter(|t| !t.is_empty()),
         excerpt,
     }
+}
+
+/// One line of body text as plain text, or None for a line that isn't prose
+/// (blank, heading, embed, fence, comment, table, rule). List and quote marks,
+/// task boxes and a trailing block id are dropped.
+fn prose_line(line: &str) -> Option<&str> {
+    let trimmed = line.trim();
+    if trimmed.is_empty()
+        || trimmed.starts_with('#')
+        || trimmed.starts_with("![")
+        || trimmed.starts_with("```")
+        || trimmed.starts_with("<!--")
+        || trimmed.starts_with('|')
+        || trimmed == "---"
+    {
+        return None;
+    }
+    let text = trimmed
+        .trim_start_matches(['-', '*', '>', ' '])
+        .trim_start_matches("[ ] ")
+        .trim_start_matches("[x] ");
+    let text = match text.rfind(" ^") {
+        Some(i) if !text[i + 2..].contains(' ') => &text[..i],
+        _ => text,
+    }
+    .trim();
+    (!text.is_empty()).then_some(text)
+}
+
+/// The first paragraph of text, its lines kept, with markdown escapes
+/// (`\#`, `\-`) shown as the characters they stand for.
+fn first_paragraph(body: &str) -> Option<String> {
+    let mut lines = body.lines().skip_while(|line| prose_line(line).is_none());
+    let mut paragraph: Vec<&str> = Vec::new();
+    for line in lines.by_ref() {
+        match prose_line(line) {
+            Some(text) => paragraph.push(text),
+            None => break,
+        }
+    }
+    if paragraph.is_empty() {
+        return None;
+    }
+    let joined = paragraph.join("\n");
+    let mut text = String::with_capacity(joined.len());
+    let mut chars = joined.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' && chars.peek().is_some_and(|next| next.is_ascii_punctuation()) {
+            continue;
+        }
+        text.push(c);
+    }
+    Some(text)
 }
 
 fn truncate_chars(text: &str, max: usize) -> String {
@@ -326,6 +350,17 @@ mod tests {
         assert!(meta.properties.is_empty());
         let unclosed = parse_note_head("---\nType: Book\n");
         assert!(unclosed.properties.is_empty());
+    }
+
+    #[test]
+    fn excerpt_is_the_first_paragraph_without_escapes() {
+        let meta = parse_note_head(
+            "---\nType: Tweet\n---\n\n\\#buildinpublic day 3\nsecond line\n\nnext paragraph\n\n---\n\nnext post\n",
+        );
+        assert_eq!(
+            meta.excerpt.as_deref(),
+            Some("#buildinpublic day 3\nsecond line")
+        );
     }
 
     #[test]

@@ -83,7 +83,11 @@ Second post text.
 
 ## Library
 
-A **Bookmarks** tab after Papers shows `Type: Tweet`, cover kind `tweet` (4:5). The card shows the first post's text, and the cover picture at the bottom with its media label (video length, GIF, photos). Under it: author name, then `@handle · Thread · N posts` or `@handle · Post`. The tab's top line says when it last synced, with **Sync now**, or **Connect X** when not connected.
+A **Bookmarks** tab after Papers shows `Type: Tweet`, cover kind `tweet` (4:5), on the page's own surface instead of a printed cover colour. The card shows the note's first paragraph (the `excerpt` from `list_typed_notes`, which is now the first paragraph with its line breaks, up to 400 characters, markdown escapes shown as text). With a `Cover` the text stops at 4 lines and the picture sits at the bottom with its label (video length from `Duration`, GIF, or "N photos"); without, the text runs to 11 lines, and a post of 140 characters or less is set large like a quote. Under the card: an initial avatar and the author, then `@handle · Thread · N posts` or `@handle · Post`.
+
+The tab's top line (the same bar as "Get covers") says "Synced with X <time>" with **Sync now**, "Saving bookmarks · 38 of 214" while syncing, the last error when a sync failed, or "Not connected to X" with **Connect X**. The empty tab says "Bring in your X bookmarks" with **Connect X**, which signs in straight away when a Client ID is set and opens Settings otherwise.
+
+Not built yet: the "new since your last visit" dot from the mock. It needs a record of which bookmarks were seen, and Writer keeps none.
 
 ## Reading
 

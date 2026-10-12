@@ -10,6 +10,7 @@ import { SPACE_VIEW_LABELS, allTypes, notesInTab, type SpaceView } from "@/lib/s
 import { useSpaceViewStore } from "@/stores/space-view-store";
 import { FilesSpace } from "./files-space";
 import { NoteGallery } from "./note-gallery";
+import { XBookmarksEmpty, XSyncBar } from "./x-sync-bar";
 import { noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
 
@@ -123,7 +124,10 @@ function TypedSpace({ space }: { space: SpaceDef }) {
           )}
         </div>
       </header>
-      {shown === null ? null : shown.length === 0 ? (
+      {tab.source === "x" && shown !== null && shown.length > 0 && <XSyncBar />}
+      {shown === null ? null : shown.length === 0 && tab.source === "x" ? (
+        <XBookmarksEmpty />
+      ) : shown.length === 0 ? (
         <Empty
           title={`Add your first ${tab.noun}`}
           text={`Any note with Type: ${tab.types[0]} shows up here.`}

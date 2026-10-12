@@ -28,7 +28,7 @@ function note(partial: Partial<TypedNote> & { note_type: string }): TypedNote {
 }
 
 describe("built-in spaces", () => {
-  test("Library tabs cover the five media types, Books first", () => {
+  test("Library tabs cover the media types and X bookmarks, Books first", () => {
     const library = builtInSpace("library")!;
     expect(library.tabs.map((t) => t.label)).toEqual([
       "Books",
@@ -36,8 +36,10 @@ describe("built-in spaces", () => {
       "Courses",
       "Podcasts",
       "Papers",
+      "Bookmarks",
     ]);
     expect(allTypes(library)).toContain("YouTube");
+    expect(library.tabs.at(-1)).toMatchObject({ types: ["Tweet"], cover: "tweet", source: "x" });
   });
 
   test("Files has no types and the files view", () => {

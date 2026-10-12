@@ -93,6 +93,9 @@
 .gallery[data-cover="video"] {
   --cover-min: 220px;
 }
+.gallery[data-cover="tweet"] {
+  --cover-min: 208px;
+}
 .gallery[data-cover="note"] {
   --cover-min: 160px;
 }
@@ -282,6 +285,106 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Bookmark from X: the card is the post, on the page's own surface rather
+   than a printed cover colour. Text first; the thread's first picture sits
+   at the bottom (SPECs/x-bookmarks-spec.md). */
+.cover[data-kind="tweet"] {
+  aspect-ratio: 4 / 5;
+  --cover-bg: var(--surface-subtle);
+  --cover-fg: var(--text-primary);
+  outline: 1px solid var(--line-subtle);
+  outline-offset: -1px;
+  border-radius: 8px;
+}
+
+.tweetText {
+  margin: 0;
+  padding: 14px 14px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 11;
+}
+
+.cover[data-kind="tweet"][data-short] .tweetText {
+  padding: 18px 16px 0;
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.cover[data-kind="tweet"][data-media] .tweetText {
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-line-clamp: 4;
+}
+
+.tweetMedia {
+  position: relative;
+  flex-shrink: 0;
+  margin: auto 10px 10px;
+  aspect-ratio: 16 / 10;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-subtle);
+}
+
+.tweetBadge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  background: rgb(0 0 0 / 0.62);
+  color: white;
+}
+
+.tweetByline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 10px;
+}
+
+.tweetAvatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--cover-bg);
+  color: var(--cover-fg);
+}
+
+.tweetAuthor {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--fg-base);
+}
+
+/* Under the name, not under the avatar. */
+.tweetSub {
+  padding-left: 24px;
 }
 
 /* Book: a spine fold down the left edge. */
@@ -633,4 +736,28 @@
   margin-top: 6px;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.emptyAction {
+  margin-top: 16px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bg-base);
+  background: var(--text-primary);
+}
+
+.emptyAction:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.emptyAction:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.coverBarError {
+  color: var(--text-secondary);
 }

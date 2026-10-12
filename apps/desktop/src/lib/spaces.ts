@@ -1,4 +1,5 @@
 import { PROJECT_TYPE } from "./projects";
+import { TWEET_TYPE } from "./x-bookmarks";
 import type { TypedNote } from "./tauri";
 
 // Spaces (SPECs/spaces-spec.md): saved questions about a note's `Type:`, never
@@ -6,7 +7,7 @@ import type { TypedNote } from "./tauri";
 // `Type: Space`, read back through `spaceFromNote`.
 
 export type SpaceView = "gallery" | "list" | "cards" | "files" | "kanban" | "timeline";
-export type CoverKind = "book" | "video" | "course" | "podcast" | "paper" | "note";
+export type CoverKind = "book" | "video" | "course" | "podcast" | "paper" | "tweet" | "note";
 export type SpaceIcon = "projects" | "library" | "inspirations" | "files" | "space";
 
 /** One tab of a space: which types it shows and how its covers look. */
@@ -17,6 +18,9 @@ export interface SpaceTab {
   noun: string;
   types: string[];
   cover: CoverKind;
+  /** Where the tab's notes come from when Writer brings them in itself, so
+   *  the tab can show that sync's state (SPECs/x-bookmarks-spec.md). */
+  source?: "x";
 }
 
 export interface SpaceDef {
@@ -45,13 +49,14 @@ export const SPACE_VIEW_LABELS: Record<SpaceView, string> = {
   timeline: "Timeline",
 };
 
-const tab = (id: string, label: string, noun: string, types: string[], cover: CoverKind) => ({
-  id,
-  label,
-  noun,
-  types,
-  cover,
-});
+const tab = (
+  id: string,
+  label: string,
+  noun: string,
+  types: string[],
+  cover: CoverKind,
+  source?: SpaceTab["source"],
+): SpaceTab => ({ id, label, noun, types, cover, ...(source ? { source } : {}) });
 
 export const BUILT_IN_SPACES: readonly SpaceDef[] = [
   {
@@ -73,6 +78,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
       tab("courses", "Courses", "course", ["Course"], "course"),
       tab("podcasts", "Podcasts", "podcast", ["Podcast"], "podcast"),
       tab("papers", "Papers", "paper", ["Paper"], "paper"),
+      tab("bookmarks", "Bookmarks", "bookmark", [TWEET_TYPE], "tweet", "x"),
     ],
   },
   {
@@ -102,6 +108,7 @@ const COVER_BY_TYPE: Record<string, CoverKind> = {
   course: "course",
   podcast: "podcast",
   paper: "paper",
+  tweet: "tweet",
 };
 
 /** The cover a type draws in a space you added (`Shows: Book` looks like a book). */
