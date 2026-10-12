@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { FileText, Plus } from "lucide-react";
 import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
+import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-container";
 import type { SpaceLocation } from "@/components/editor-area/page-kinds";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
@@ -74,6 +75,9 @@ function openNote(event: MouseEvent | KeyboardEvent, path: string, book?: string
 }
 
 function TypedSpace({ space }: { space: SpaceDef }) {
+  // The tabs are Arc's segmented control; without Arc's tokens its radius and
+  // sizes are undefined and the selected tab renders as a square box.
+  ensureArcTokens();
   const notes = useTypedNotes(allTypes(space));
   const [tabId, setTabId] = useState(space.tabs[0]?.id ?? "");
   const tab = space.tabs.find((t) => t.id === tabId) ?? space.tabs[0];
