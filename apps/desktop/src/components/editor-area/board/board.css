@@ -254,6 +254,34 @@
   font-size: 12px;
 }
 
+/* Edit here: the board editor mounted in the frame in place of the picture.
+   Taller than the preview so the dock and toolbars have room; the frame
+   clips (not hides) for the reason given on `.wr-board-stage`. */
+.wr-board-inline {
+  display: block;
+  height: clamp(420px, 70vh, 760px);
+  cursor: default;
+  /* Inside the note's content, which sets text up for prose (pre-wrap,
+     its own line height); the board chrome was built against the body's. */
+  white-space: normal;
+  line-height: normal;
+}
+
+.wr-board-image:has(> .wr-board-inline) {
+  overflow: clip;
+  border-color: var(--focus-border);
+}
+
+.wr-board-image:has(> .wr-board-inline) > img,
+.wr-board-image:has(> .wr-board-inline) > .wr-board-image-actions {
+  display: none;
+}
+
+.wr-board-inline.is-open .wr-board-stage {
+  transform: scale(1);
+  opacity: 1;
+}
+
 /* ------------------------------------------------------------ code modal */
 
 .wr-board-code-modal {
@@ -464,7 +492,8 @@
    round the whole board. Only the container opts out — buttons inside keep
    their keyboard ring, which `[data-no-focus-ring]` would also have removed. */
 .wr-board-host:focus-visible,
-.wr-board-fullscreen:focus-visible {
+.wr-board-fullscreen:focus-visible,
+.wr-board-inline:focus-visible {
   outline: none;
 }
 

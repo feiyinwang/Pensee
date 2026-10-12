@@ -57,15 +57,22 @@ export function attachStableImageHeight(
 
 /** Host hook for images that are more than pictures (a `.board.svg` opens an
  *  editor). Runs after the `<img>` is built; each enhancer checks `url` itself
- *  and leaves anything it does not own alone. */
+ *  and leaves anything it does not own alone. It may return a cleanup, run when
+ *  CodeMirror drops the widget's DOM (scrolled out, edited away, editor gone).
+ *
+ *  UI an enhancer mounts inside `dom` that handles its own input (a board
+ *  edited in place) marks its root `data-owns-events`: the editor then ignores
+ *  every event from inside it. */
 export type ImageWidgetEnhancer = (
   dom: HTMLElement,
   image: HTMLImageElement,
   url: string,
   view: EditorView,
-) => void;
+) => void | (() => void);
 
 export const imageWidgetEnhancerFacet = Facet.define<ImageWidgetEnhancer>();
+
+const enhancerCleanups = new WeakMap<HTMLElement, (() => void)[]>();
 
 class ImageWidget extends WidgetType {
   constructor(
@@ -93,15 +100,23 @@ class ImageWidget extends WidgetType {
     attachStableImageHeight(image, this.url, view);
     image.src = resolveImageSrc(view.state, this.url);
     elem.appendChild(image);
+    const cleanups: (() => void)[] = [];
     for (const enhance of view.state.facet(imageWidgetEnhancerFacet)) {
-      enhance(elem, image, this.url, view);
+      const cleanup = enhance(elem, image, this.url, view);
+      if (cleanup) cleanups.push(cleanup);
     }
+    if (cleanups.length) enhancerCleanups.set(elem, cleanups);
     return elem;
   }
 
-  // allows clicks to pass through to the editor
-  ignoreEvent(_event: Event) {
-    return false;
+  destroy(dom: HTMLElement) {
+    for (const cleanup of enhancerCleanups.get(dom) ?? []) cleanup();
+    enhancerCleanups.delete(dom);
+  }
+
+  // Clicks on the picture pass through to the editor; see `data-owns-events`.
+  ignoreEvent(event: Event) {
+    return event.target instanceof Element && event.target.closest("[data-owns-events]") !== null;
   }
 }
 

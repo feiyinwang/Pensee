@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Hover a board in a note and click **Edit here** to edit it right in the note, without leaving the page. The board grows to give you room to work, and Esc or **Close** turns it back into the picture. **Open board** still opens it full screen.
 - **Define** on a single word in a book now says the word aloud, and the agent's answer starts with how it's pronounced.
 - In a book, left- and right-clicking a selection now show the same small bar: **Highlight** and **Define** (a word's meaning, or what a longer passage means here). The separate right-click menu is gone.
 - You can select text in a book again (it was blocked), and highlights take whole words, like Apple Books. Books open where you left off. The book card shows the cover from the book itself, the one Apple Books shows, instead of a saved copy that could come out black.

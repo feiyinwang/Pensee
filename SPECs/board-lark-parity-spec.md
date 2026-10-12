@@ -108,6 +108,15 @@ Any card text (sticky, shape label, text, mind topic, connector label) can hold 
 
 Not built: a hover preview of the linked page, `((` block references, a backlinks count for boards.
 
+## Edit in the note
+
+Hovering a board's preview shows **Present**, **Edit here** and **Open board**. **Edit here** mounts the same editor (`openBoardFullscreen` with `inline`) inside the preview frame instead of over the window: the picture is hidden while a `.wr-board-inline` child exists (CSS `:has`), the frame grows to `clamp(420px, 70vh, 760px)`, and Esc or Close puts the picture back. Saving is the full-screen path unchanged (debounced commits, a final write on close, then the preview refreshes).
+
+- **Events.** The board now sits inside CodeMirror's `contentDOM`. Its root carries `data-owns-events`, which the image widget's `ignoreEvent` honours, so the note's keymap, mouse selection and drop handling never see the board's input. Events still bubble to the document, so app shortcuts and Arc popovers' outside-click handling keep working. The overlay's ⌘F/⌘S/⌘Z handling applies only to keys typed into the board.
+- **Lifetime.** One board is open at a time. Opening another (here or full screen) closes the in-place one first, which saves it. An image enhancer can now return a cleanup that the widget's `destroy` runs, so when CodeMirror drops the preview (scrolled out of the viewport, edited away, note closed) the board is written back and torn down rather than orphaned.
+- **Position.** The canvas caches its screen rect; a capture-phase `scroll` listener on `window` drops the cache, because an in-place board moves when the note scrolls.
+- Wheel and trackpad gestures over the board pan and zoom it, not the note (that is the conflict the static card avoids). It is accepted here because editing in place is an explicit mode the user enters and leaves.
+
 ## Phases
 
 1. **Portable storage** (this change): the file format, the enhancer on image previews, `/board` creating a file, and fence migration.

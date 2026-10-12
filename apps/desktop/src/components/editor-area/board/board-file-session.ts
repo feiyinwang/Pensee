@@ -201,23 +201,33 @@ export async function createBoardFromMermaid(
 
 /* ---------------------------------------------------------------- open */
 
+export interface OpenBoardMode {
+  /** Straight into present mode; leaving it closes the board. */
+  present?: boolean;
+  /** Edit inside this element (the note's preview) instead of full screen. */
+  inline?: HTMLElement;
+  onClosed?: () => void;
+}
+
 export async function openBoardFile(
   absolute: string,
   notePath: string | null,
-  present = false,
-): Promise<void> {
+  { present = false, inline, onClosed }: OpenBoardMode = {},
+): Promise<{ close: () => void }> {
   const file = await tauri.readFile(absolute);
   const parsed = readBoardSvg(file.content);
   if (!parsed) throw new Error("This SVG has no Writer board inside it.");
   lastText.set(absolute, file.content);
   const dir = getParentDir(absolute);
-  openBoardFullscreen({
+  return openBoardFullscreen({
     scene: parsed.scene,
     resolveSrc: editorResolver(dir),
     importImage: importerFor(notePath, dir),
     onCommit: (scene) => void saveBoardFile(absolute, scene, false),
     onFinalCommit: (scene) => void saveBoardFile(absolute, scene),
     present,
+    inline,
+    onClosed,
     exportSvg: (scene) => boardFileText(scene, dir),
     notePath,
     onOpened: ({ warn }) => {
@@ -245,7 +255,7 @@ function cardButton(label: string, onOpen: () => void): HTMLButtonElement {
 /** Turns a `.board.svg` image preview into an openable board. The picture
  *  itself is still the plain `<img>` — that is what makes it instant. */
 export function boardImageEnhancer(getFilePath: () => string | null) {
-  return imageWidgetEnhancerFacet.of((dom, image, url, _view: EditorView) => {
+  return imageWidgetEnhancerFacet.of((dom, image, url, view: EditorView) => {
     if (!isBoardFile(url)) return;
     const notePath = getFilePath();
     if (!notePath) return;
@@ -256,20 +266,40 @@ export function boardImageEnhancer(getFilePath: () => string | null) {
     prefetchBoardChrome();
     image.title = "Open board";
 
-    const open = (present = false): void => {
+    /** The board being edited in this frame; closed with the widget so a
+     *  board scrolled out of the note is saved and torn down, not orphaned. */
+    let inPlace: { close: () => void } | null = null;
+    const open = (mode: OpenBoardMode = {}): void => {
       dom.querySelector(".wr-board-image-error")?.remove();
-      openBoardFile(absolute, getFilePath(), present).catch((error: unknown) => {
-        const note = document.createElement("span");
-        note.className = "wr-board-image-error";
-        note.textContent = `Couldn't open board: ${error instanceof Error ? error.message : String(error)}`;
-        dom.append(note);
-      });
+      openBoardFile(absolute, getFilePath(), mode)
+        .then((board) => {
+          if (!mode.inline) return;
+          // The widget went while the file was being read: nothing to edit in.
+          if (!dom.isConnected) return board.close();
+          inPlace = board;
+          view.requestMeasure();
+        })
+        .catch((error: unknown) => {
+          const note = document.createElement("span");
+          note.className = "wr-board-image-error";
+          note.textContent = `Couldn't open board: ${error instanceof Error ? error.message : String(error)}`;
+          dom.append(note);
+        });
     };
     const actions = document.createElement("span");
     actions.className = "wr-board-image-actions";
     // Present straight from the note: the board opens full-screen as slides.
     actions.append(
-      cardButton("Present", () => open(true)),
+      cardButton("Present", () => open({ present: true })),
+      cardButton("Edit here", () =>
+        open({
+          inline: dom,
+          onClosed: () => {
+            inPlace = null;
+            view.requestMeasure();
+          },
+        }),
+      ),
       cardButton("Open board", () => open()),
     );
     dom.append(actions);
@@ -277,5 +307,6 @@ export function boardImageEnhancer(getFilePath: () => string | null) {
       e.preventDefault();
       open();
     });
+    return () => inPlace?.close();
   });
 }

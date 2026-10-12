@@ -3509,6 +3509,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     draw();
   });
   resizeObserver.observe(host);
+  // A board edited in a note moves when the note scrolls. Capture on window
+  // hears every scroller; it only drops the cache, the next read refills it.
+  const onAnyScroll = (): void => {
+    cachedStageRect = null;
+  };
+  window.addEventListener("scroll", onAnyScroll, { capture: true, passive: true });
 
   setTool("select");
   applyViewport();
@@ -3521,6 +3527,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       disposed = true;
       cancelLinkClick();
       resizeObserver.disconnect();
+      window.removeEventListener("scroll", onAnyScroll, { capture: true });
       selToolbarResize.disconnect();
       selToolbar?.destroy();
       selToolbar = null;

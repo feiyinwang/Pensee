@@ -8,6 +8,10 @@
  *
  * Living outside the editor's `contentDOM` is also what makes the board's
  * keyboard handling simple — there is no CodeMirror keymap above us to fight.
+ *
+ * `inline` mounts the same board inside the note's preview frame instead. It
+ * then sits inside `contentDOM`, so its root carries `data-owns-events` (see
+ * the image widget) to keep CodeMirror's handlers out of it.
  */
 
 import * as editorApi from "@/hooks/editor-api";
@@ -30,11 +34,16 @@ export interface BoardFullscreenOptions {
   notePath?: string | null;
   /** Lets the host tell us the document changed underneath us. */
   onOpened?: (api: { warn: (message: string) => void; close: () => void }) => void;
+  /** Edit in place: mount inside this element (the note's board preview)
+   *  instead of over the whole window. */
+  inline?: HTMLElement;
+  /** After the board is gone (and written back). */
+  onClosed?: () => void;
 }
 
 const COMMIT_DEBOUNCE_MS = 600;
 
-let openInstance: { close: () => void } | null = null;
+let openInstance: { close: () => void; inline: boolean } | null = null;
 
 export function isBoardOpen(): boolean {
   return openInstance !== null;
@@ -45,14 +54,24 @@ export function closeOpenBoard(): void {
 }
 
 export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () => void } {
-  // Single instance: double-clicking a preview card must not stack overlays.
-  if (openInstance) return openInstance;
+  if (openInstance) {
+    // Single instance: double-clicking a preview card must not stack overlays.
+    if (!openInstance.inline) return openInstance;
+    // A board edited in a note gives way (saved) to the one asked for now.
+    openInstance.close();
+  }
+  const inline = opts.inline ?? null;
 
   const overlay = document.createElement("div");
-  overlay.className = "wr-board-fullscreen";
-  overlay.setAttribute("role", "dialog");
-  overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-label", "Board");
+  if (inline) {
+    overlay.className = "wr-board-inline";
+    overlay.dataset.ownsEvents = "";
+  } else {
+    overlay.className = "wr-board-fullscreen";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+  }
   overlay.tabIndex = -1;
 
   const stage = document.createElement("div");
@@ -96,12 +115,20 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     canvas = null;
     previouslyFocused?.focus({ preventScroll: true });
 
+    if (inline) {
+      // In place, the picture shows again the moment the board goes: no fade
+      // over an empty frame.
+      overlay.remove();
+      opts.onClosed?.();
+      return;
+    }
     overlay.classList.remove("is-open");
     let removed = false;
     const finalize = (): void => {
       if (removed) return;
       removed = true;
       overlay.remove();
+      opts.onClosed?.();
     };
     stage.addEventListener("transitionend", finalize, { once: true });
     // Slightly longer than --motion-fast so a normal exit fires transitionend
@@ -114,6 +141,8 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
   const SWALLOWED = new Set(["f", "p", "k", "s"]);
   const onKeyDown = (e: KeyboardEvent): void => {
     if (!overlay.isConnected) return;
+    // In place, the board owns only keys typed into it; the note keeps its own.
+    if (inline && !(e.target instanceof Node && overlay.contains(e.target))) return;
     const mod = e.metaKey || e.ctrlKey;
     if (mod && SWALLOWED.has(e.key.toLowerCase())) {
       e.preventDefault();
@@ -149,11 +178,13 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
   document.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("blur", onWindowBlur);
 
-  overlay.addEventListener("pointerdown", (e) => {
-    if (e.target === overlay) close();
-  });
+  if (!inline) {
+    overlay.addEventListener("pointerdown", (e) => {
+      if (e.target === overlay) close();
+    });
+  }
 
-  document.body.append(overlay);
+  (inline ?? document.body).append(overlay);
 
   canvas = mountBoardCanvas(stage, {
     scene: opts.scene,
@@ -178,7 +209,7 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
   requestAnimationFrame(() => overlay.classList.add("is-open"));
   canvas.focus();
 
-  openInstance = { close };
+  openInstance = { close, inline: inline !== null };
   opts.onOpened?.({
     warn: (message) => {
       const el = stage.querySelector(".wr-board-banner");
