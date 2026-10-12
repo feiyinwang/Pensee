@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useSidebarMetadataVersion } from "@/hooks/use-file-tree";
 import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import {
@@ -48,7 +49,12 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
   const metadataVersion = useSidebarMetadataVersion();
   const typesKey = types.join("\n");
   const key = root && typesKey ? `${root}\n${typesKey}` : null;
-  const [read, setRead] = useState<{ key: string; notes: tauri.TypedNote[] } | null>(null);
+  // `preview`: notes read so far, shown until the full read lands.
+  const [read, setRead] = useState<{
+    key: string;
+    notes: tauri.TypedNote[];
+    preview: boolean;
+  } | null>(null);
   // The key this hook last started a read for: only rereads after a file
   // change wait. Set when the read starts, so an effect cancelled before then
   // (StrictMode's double run) still reads at once.
@@ -56,24 +62,45 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
 
   useEffect(() => {
     if (!key) return;
+    const types = typesKey.split("\n");
     const delay = readKey.current === key ? REFETCH_DELAY_MS : 0;
     let cancelled = false;
+    let landed = false;
+    // Until the full read lands, show the notes read so far: the first scan
+    // of an iCloud vault can take many minutes. Never after it, nor over a
+    // read this hook already has.
+    const preview = () => {
+      tauri
+        .listTypedNotes(types, true)
+        .then((notes) => {
+          if (cancelled || landed) return;
+          setRead((current) =>
+            current?.key === key && !current.preview ? current : { key, notes, preview: true },
+          );
+        })
+        .catch((error: unknown) => console.error("[spaces] cached list_typed_notes failed", error));
+    };
+    if (delay === 0 && !lastReads.has(key)) preview();
+    const unlisten = listen(tauri.NOTES_READ_EVENT, preview);
     const timer = window.setTimeout(() => {
       readKey.current = key;
       tauri
-        .listTypedNotes(typesKey.split("\n"))
+        .listTypedNotes(types)
         .then((notes) => {
+          landed = true;
           lastReads.set(key, notes);
-          if (!cancelled) setRead({ key, notes });
+          if (!cancelled) setRead({ key, notes, preview: false });
         })
         .catch((error: unknown) => {
+          landed = true;
           console.error("[spaces] list_typed_notes failed", error);
-          if (!cancelled) setRead({ key, notes: [] });
+          if (!cancelled) setRead({ key, notes: [], preview: false });
         });
     }, delay);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      void unlisten.then((stop) => stop());
     };
   }, [key, typesKey, metadataVersion]);
 

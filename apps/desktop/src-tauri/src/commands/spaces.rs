@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Once};
 use std::time::{Duration, Instant};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 /// A markdown note that declares a `Type:` in its frontmatter — what a space
 /// lists (SPECs/spaces-spec.md). Properties are the top-level scalar keys,
@@ -77,20 +77,28 @@ struct MetaCacheEntry {
 /// per process and aborted. Waiting on an async lock holds no thread.
 static SCAN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// Sent while a long scan runs, at most every `PROGRESS_EVERY`, so a space
+/// waiting on it can paint the notes read so far (`cached_only`).
+const NOTES_READ_EVENT: &str = "spaces:notes-read";
+const PROGRESS_EVERY: Duration = Duration::from_secs(2);
+
 /// Every indexed note whose `Type` is one of `types` (case-insensitive), newest
 /// edit first. Reads in parallel off the UI thread, one scan at a time.
+///
+/// With `cached_only`, opens no file and takes no lock: it answers at once
+/// from the heads read so far, this launch or an earlier one, which may be
+/// stale. A space shows that while the first scan of an iCloud vault takes
+/// minutes, instead of nothing.
 #[tauri::command]
 pub async fn list_typed_notes(
     types: Vec<String>,
+    cached_only: Option<bool>,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<Vec<TypedNote>, AppError> {
     if types.is_empty() {
         return Ok(Vec::new());
     }
-    let _scan = SCAN.lock().await;
-    let state = app.state::<AppState>().get_or_create(webview.label());
-    let files: Vec<IndexedFile> = state.file_index.read().clone();
     let cache_file = match app.path().app_cache_dir() {
         Ok(dir) => Some(dir.join(META_CACHE_FILE)),
         Err(error) => {
@@ -98,23 +106,79 @@ pub async fn list_typed_notes(
             None
         }
     };
+    let load = move |cache_file: &Option<PathBuf>| {
+        if let Some(file) = cache_file {
+            META_CACHE_LOADED.call_once(|| load_meta_cache(file));
+        }
+    };
+    let state = app.state::<AppState>().get_or_create(webview.label());
+    if cached_only == Some(true) {
+        let files: Vec<IndexedFile> = state.file_index.read().clone();
+        return tauri::async_runtime::spawn_blocking(move || {
+            load(&cache_file);
+            Ok(cached_typed_notes(&files, &types))
+        })
+        .await
+        .map_err(|e| AppError::Io(e.to_string()))?;
+    }
+    let _scan = SCAN.lock().await;
+    // Read after the wait, so a queued scan sees the latest index.
+    let files: Vec<IndexedFile> = state.file_index.read().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let Some(cache_file) = cache_file else {
-            return Ok(list_typed_notes_impl(&files, &types, &|| {}));
-        };
-        META_CACHE_LOADED.call_once(|| load_meta_cache(&cache_file));
+        load(&cache_file);
+        let emitted_at = Mutex::new(Instant::now());
         let checkpoint = || {
-            if META_CACHE_SAVED_AT.lock().elapsed() >= META_CACHE_CHECKPOINT {
-                save_meta_cache(&cache_file);
+            {
+                let mut at = emitted_at.lock();
+                if at.elapsed() >= PROGRESS_EVERY {
+                    *at = Instant::now();
+                    let _ = app.emit(NOTES_READ_EVENT, ());
+                }
+            }
+            if let Some(file) = &cache_file {
+                if META_CACHE_SAVED_AT.lock().elapsed() >= META_CACHE_CHECKPOINT {
+                    save_meta_cache(file);
+                }
             }
         };
         let notes = list_typed_notes_impl(&files, &types, &checkpoint);
         prune_meta_cache(&files);
-        save_meta_cache(&cache_file);
+        if let Some(file) = &cache_file {
+            save_meta_cache(file);
+        }
         Ok(notes)
     })
     .await
     .map_err(|e| AppError::Io(e.to_string()))?
+}
+
+/// The notes of `types` among `files` whose heads are already cached; opens
+/// nothing.
+fn cached_typed_notes(files: &[IndexedFile], types: &[String]) -> Vec<TypedNote> {
+    let wanted = wanted_types(types);
+    let cache = META_CACHE.lock();
+    let mut out: Vec<TypedNote> = files
+        .iter()
+        .filter_map(|file| {
+            let (_, _, meta) = cache.get(&file.path)?;
+            note_from_meta(file, meta, &wanted)
+        })
+        .collect();
+    drop(cache);
+    sort_notes(&mut out);
+    out
+}
+
+fn wanted_types(types: &[String]) -> Vec<String> {
+    types.iter().map(|t| t.trim().to_lowercase()).collect()
+}
+
+fn sort_notes(notes: &mut [TypedNote]) {
+    notes.sort_by(|a, b| {
+        b.modified_at
+            .cmp(&a.modified_at)
+            .then_with(|| a.relative_path.cmp(&b.relative_path))
+    });
 }
 
 /// `checkpoint` runs after each head read from the file itself (a cache
@@ -124,7 +188,7 @@ pub fn list_typed_notes_impl(
     types: &[String],
     checkpoint: &(dyn Fn() + Sync),
 ) -> Vec<TypedNote> {
-    let wanted: Vec<String> = types.iter().map(|t| t.trim().to_lowercase()).collect();
+    let wanted = wanted_types(types);
     let threads = std::thread::available_parallelism()
         .map(|n| n.get().min(8))
         .unwrap_or(4);
@@ -146,11 +210,7 @@ pub fn list_typed_notes_impl(
             .flat_map(|w| w.join().unwrap_or_default())
             .collect()
     });
-    out.sort_by(|a, b| {
-        b.modified_at
-            .cmp(&a.modified_at)
-            .then_with(|| a.relative_path.cmp(&b.relative_path))
-    });
+    sort_notes(&mut out);
     out
 }
 
@@ -160,6 +220,10 @@ fn typed_note(
     checkpoint: &(dyn Fn() + Sync),
 ) -> Option<TypedNote> {
     let meta = cached_meta(&file.path, checkpoint)?;
+    note_from_meta(file, &meta, wanted)
+}
+
+fn note_from_meta(file: &IndexedFile, meta: &NoteMeta, wanted: &[String]) -> Option<TypedNote> {
     let note_type = meta.properties.get("type")?;
     let first = note_type.split(',').next()?.trim();
     if !wanted.iter().any(|w| w.eq_ignore_ascii_case(first)) {
@@ -583,8 +647,13 @@ mod tests {
         let cached = META_CACHE.lock().remove(&path).unwrap();
         load_meta_cache(&cache_file);
         assert_eq!(META_CACHE.lock().get(&path).unwrap().0, cached.0);
-        let notes = list_typed_notes_impl(&[file.clone()], &["Book".into()], &|| {});
+        let notes = list_typed_notes_impl(std::slice::from_ref(&file), &["Book".into()], &|| {});
         assert_eq!(notes[0].properties.get("cover").unwrap(), "c.jpg");
+
+        // Listing from the cache alone finds it without opening it.
+        let cached = cached_typed_notes(std::slice::from_ref(&file), &["book".into()]);
+        assert_eq!(cached[0].name, "kept");
+        assert!(cached_typed_notes(std::slice::from_ref(&file), &["Paper".into()]).is_empty());
 
         // A deleted note leaves the cache.
         std::fs::remove_file(&path).unwrap();

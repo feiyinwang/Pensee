@@ -278,10 +278,14 @@ export interface TypedNote {
   excerpt: string | null;
 }
 
-/** Notes whose `Type` is one of `types` (case-insensitive), newest edit first. */
-export function listTypedNotes(types: string[]): Promise<TypedNote[]> {
-  return invoke("list_typed_notes", { types });
+/** Notes whose `Type` is one of `types` (case-insensitive), newest edit first.
+ *  `cachedOnly` answers at once from the notes read so far, opening none. */
+export function listTypedNotes(types: string[], cachedOnly = false): Promise<TypedNote[]> {
+  return invoke("list_typed_notes", { types, cachedOnly });
 }
+
+/** Sent every 2 s while a vault scan runs, so `cachedOnly` has more to show. */
+export const NOTES_READ_EVENT = "spaces:notes-read";
 
 export function listSystemFonts(): Promise<string[]> {
   return invoke("list_system_fonts");
