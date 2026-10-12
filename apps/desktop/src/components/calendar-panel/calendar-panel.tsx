@@ -156,7 +156,7 @@ export default function CalendarPanelContent() {
             markedDates={(date) => stems.has(periodNoteStem("day", date))}
             weekStartsOn={1}
             weekLabel={(monday) => (
-              <PeriodCell state={cell("week", monday)} label={`W${isoWeek(monday).week}`} muted />
+              <PeriodCell state={cell("week", monday)} label={`W${isoWeek(monday).week}`} small />
             )}
             className="calendar-panel-calendar"
           />
@@ -169,7 +169,7 @@ export default function CalendarPanelContent() {
                   key={`q${quarter}`}
                   state={cell("quarter", new Date(year, quarter * 3, 1))}
                   label={`Q${quarter + 1}`}
-                  muted
+                  small
                 />,
                 ...[0, 1, 2].map((offset) => {
                   const date = new Date(year, quarter * 3 + offset, 1);
@@ -237,16 +237,20 @@ function PeriodCell({
   state,
   label,
   muted = false,
+  small = false,
 }: {
   state: CellState;
   label: string;
   muted?: boolean;
+  /** The week and quarter column: smaller, muted text. */
+  small?: boolean;
 }) {
   return (
     <button
       type="button"
       className="calendar-panel-cell"
-      data-muted={muted || undefined}
+      data-muted={muted || small || undefined}
+      data-small={small || undefined}
       data-current={state.isCurrent || undefined}
       data-open={state.isOpen || undefined}
       data-marked={state.exists || undefined}

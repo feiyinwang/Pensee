@@ -128,6 +128,8 @@
 }
 .calendar-panel-cell[data-muted] {
   color: var(--text-muted);
+}
+.calendar-panel-cell[data-small] {
   font-size: var(--text-xs);
 }
 .calendar-panel-cell[data-current] {
@@ -160,12 +162,18 @@
   opacity: 0.6;
 }
 
-/* A label with a note dot under it rises by half the dot's footprint, so the
-   pair is centred in its cell and the dot never touches a filled cell's edge. */
-.calendar-panel-cell[data-marked] .calendar-panel-cell-label,
-.calendar-panel-calendar [data-marked] > span {
+/* Every label rises by half the note dot's footprint, dot or not: numbers
+   share one line across a row, and a label with its dot stays centred in a
+   filled cell without the dot touching its edge. */
+.calendar-panel-cell .calendar-panel-cell-label,
+.calendar-panel-calendar [role="gridcell"] > span {
   /* Half of the dot's footprint: 3px gap + 4px dot. */
   translate: 0 -3.5px;
+}
+/* Smaller text (week, quarter) also rises by half the size difference, so its
+   top lines up with the numbers beside it. */
+.calendar-panel-cell[data-small] .calendar-panel-cell-label {
+  translate: 0 calc(-3.5px - (var(--text-sm) - var(--text-xs)) / 2);
 }
 
 /* Motion follows docs/motion.md and Emil's rules: colour-only hover feedback
