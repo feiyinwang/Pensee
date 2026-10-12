@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 import { describeToolCall, parseAgentLine } from "../src/lib/agent-stream";
 import {
-  buildAgentSystemPrompt,
+  buildAgentInstructions,
+  buildAgentMessage,
+  buildScreenContext,
   MAX_TOTAL_CHARS,
   SHORT_FILE_CHARS,
 } from "../src/lib/agent-context";
@@ -92,10 +94,35 @@ describe("describeToolCall", () => {
   });
 });
 
-describe("buildAgentSystemPrompt", () => {
+describe("buildAgentInstructions", () => {
+  test("names the workspace and the per-message context, and asks for short replies", () => {
+    const instructions = buildAgentInstructions("/w");
+    expect(instructions).toContain("Workspace: /w");
+    expect(instructions).toContain("<writer_context>");
+    expect(instructions).toContain("short, concise and simple");
+  });
+});
+
+describe("buildAgentMessage", () => {
+  test("puts the screen first, then what the user typed", () => {
+    const message = buildAgentMessage(
+      { openFiles: [{ path: "/w/A.md", text: "hi" }], focusedPath: "/w/A.md" },
+      "Define junior",
+    );
+    expect(message).toMatch(/^<writer_context>\nThe tab in front of the user is: \/w\/A\.md/);
+    expect(message.endsWith("</writer_context>\n\nDefine junior")).toBe(true);
+  });
+
+  test("says so when nothing is open", () => {
+    expect(buildScreenContext({ openFiles: [], focusedPath: null })).toBe(
+      "No pages or books are open.",
+    );
+  });
+});
+
+describe("buildScreenContext", () => {
   test("includes every open tab's text and names the focused one", () => {
-    const prompt = buildAgentSystemPrompt({
-      root: "/w",
+    const prompt = buildScreenContext({
       openFiles: [
         { path: "/w/A.md", text: "users roll left to right" },
         { path: "/w/B.md", text: "dopamine" },
@@ -107,14 +134,12 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain('<open_file path="/w/B.md">\ndopamine');
     // Focused tab comes first so a length cut never drops it.
     expect(prompt.indexOf('/w/B.md">')).toBeLessThan(prompt.indexOf('/w/A.md">'));
-    expect(prompt).toContain("short, concise and simple");
   });
 
   test("sends a long file only as its lines on screen, and lists one off screen", () => {
     const long = Array.from({ length: 2_000 }, (_, i) => `line ${i + 1}`).join("\n");
     expect(long.length).toBeGreaterThan(SHORT_FILE_CHARS);
-    const prompt = buildAgentSystemPrompt({
-      root: "/w",
+    const prompt = buildScreenContext({
       openFiles: [
         {
           path: "/w/Book.md",
@@ -138,14 +163,14 @@ describe("buildAgentSystemPrompt", () => {
   test("stops adding files at the total cap and lists what didn't fit", () => {
     const page = "x".repeat(SHORT_FILE_CHARS);
     const files = Array.from({ length: 12 }, (_, i) => ({ path: `/w/${i}.md`, text: page }));
-    const prompt = buildAgentSystemPrompt({ root: "/w", openFiles: files, focusedPath: null });
+    const prompt = buildScreenContext({ openFiles: files, focusedPath: null });
     expect(prompt).toContain("Also open (not included for length");
     expect(prompt).toContain("- /w/11.md");
     expect(prompt.length).toBeLessThan(MAX_TOTAL_CHARS + 10_000);
   });
 
   test("has no focus line on a non-file tab", () => {
-    const prompt = buildAgentSystemPrompt({ root: "/w", openFiles: [], focusedPath: null });
+    const prompt = buildScreenContext({ openFiles: [], focusedPath: null });
     expect(prompt).not.toContain("in front of the user is");
   });
 });
@@ -162,10 +187,9 @@ describe("embeddedBoardPaths", () => {
   });
 });
 
-describe("buildAgentSystemPrompt period notes", () => {
+describe("buildScreenContext period notes", () => {
   test("includes the current period notes, broadest first, and points at open ones", () => {
-    const prompt = buildAgentSystemPrompt({
-      root: "/vault",
+    const prompt = buildScreenContext({
       openFiles: [{ path: "/vault/2026-W42.md", text: "week plan" }],
       focusedPath: null,
       periodNotes: [
@@ -182,8 +206,7 @@ describe("buildAgentSystemPrompt period notes", () => {
   });
 
   test("points at a long period note instead of including it", () => {
-    const prompt = buildAgentSystemPrompt({
-      root: "/vault",
+    const prompt = buildScreenContext({
       openFiles: [],
       focusedPath: null,
       periodNotes: [
@@ -195,7 +218,7 @@ describe("buildAgentSystemPrompt period notes", () => {
   });
 
   test("says nothing about period notes when there are none", () => {
-    const prompt = buildAgentSystemPrompt({ root: "/vault", openFiles: [], focusedPath: null });
+    const prompt = buildScreenContext({ openFiles: [], focusedPath: null });
     expect(prompt).not.toContain("period_note");
   });
 });

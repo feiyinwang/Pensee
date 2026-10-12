@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { parseAgentLine, type AgentStreamEvent } from "@/lib/agent-stream";
-import { buildAgentSystemPrompt } from "@/lib/agent-context";
+import { buildAgentInstructions, buildAgentMessage } from "@/lib/agent-context";
 import { useSettingsStore } from "@/stores/settings-store";
 import { collectAgentOpenFiles, collectAgentPeriodNotes } from "@/lib/agent-open-files";
 import { openBookPassages } from "@/lib/book-readers";
@@ -40,6 +40,8 @@ interface AgentState {
   newChat: () => void;
   /** Switch the model for this and later messages; it is a global setting. */
   setModel: (id: AgentModelId) => void;
+  /** Start this window's Claude now, so the next question skips its startup. */
+  warm: () => void;
 }
 
 let nextId = 0;
@@ -117,6 +119,8 @@ function ensureListeners() {
       useAgentStore.setState((state) => {
         if (!state.run || state.run.requestId !== payload.requestId) return {};
         if (state.run.cancelled) {
+          // Stop killed the process; have the next one ready for the next question.
+          queueMicrotask(() => useAgentStore.getState().warm());
           return { run: null, items: appendItem(state.items, { role: "status", text: "Stopped" }) };
         }
         if (state.run.settled || payload.code === 0) return { run: null };
@@ -147,14 +151,13 @@ async function currentContext(root: string) {
     collectAgentPeriodNotes(root, folder, new Date(), new Set(paths), openFiles),
     openBookPassages(),
   ]);
-  return buildAgentSystemPrompt({
-    root,
+  return {
     openFiles: files,
     focusedPath: activeFilePath,
     periodNotes,
     books,
     focusedBook: activeTab?.location.kind === "book" ? activeTab.location.path : null,
-  });
+  };
 }
 
 export function currentModel() {
@@ -167,7 +170,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   sessionId: null,
   run: null,
 
-  toggle: () => set((state) => ({ isOpen: !state.isOpen })),
+  toggle: () => {
+    set((state) => ({ isOpen: !state.isOpen }));
+    if (get().isOpen) get().warm();
+  },
   close: () => set({ isOpen: false }),
 
   send: async (rawText) => {
@@ -184,7 +190,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
     try {
       await flushOpenFiles();
-      const systemPrompt = await currentContext(root);
+      const context = await currentContext(root);
       // Stopped (or reset) while saving or reading tabs: don't start the process.
       const run = get().run;
       if (run?.requestId !== requestId) return;
@@ -197,9 +203,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       }
       await invoke("agent_send", {
         requestId,
-        prompt: text,
+        prompt: buildAgentMessage(context, text),
         sessionId: get().sessionId,
-        systemPrompt,
+        instructions: buildAgentInstructions(root),
         model: currentModel().id,
       });
     } catch (error) {
@@ -222,9 +228,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   newChat: () => {
-    const { run } = get();
-    if (run) void invoke("agent_cancel", { requestId: run.requestId });
     set({ items: [], sessionId: null, run: null });
+    // Ending the process ends the conversation (and any reply in progress).
+    void invoke("agent_reset").then(() => get().warm());
   },
 
   setModel: (id) => {
@@ -246,5 +252,21 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         text: `Model set to ${agentModel(id).name}`,
       }),
     }));
+    get().warm();
+  },
+
+  warm: () => {
+    const root = useWorkspaceStore.getState().root;
+    // A run in progress already has its process; replacing it would end the reply.
+    if (!root || get().run) return;
+    ensureListeners();
+    invoke("agent_warm", {
+      sessionId: get().sessionId,
+      instructions: buildAgentInstructions(root),
+      model: currentModel().id,
+    }).catch((error: unknown) => {
+      // Not shown: the next send starts the process itself and reports the reason.
+      console.error("[agent] Couldn't start Claude ahead of time:", error);
+    });
   },
 }));

@@ -13,3 +13,8 @@ export function askAgent(prompt: string): void {
   if (!agent.isOpen) agent.toggle();
   void agent.send(prompt);
 }
+
+/** Start the agent's Claude ahead of a question (see agent-store `warm`). */
+export function warmAgent(): void {
+  useAgentStore.getState().warm();
+}

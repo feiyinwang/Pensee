@@ -1,7 +1,6 @@
 /**
- * The hidden system prompt appended to every agent message. Rebuilt per
- * message so it carries every open tab's current text and "this" always means
- * the tab in front of the user at send time.
+ * The agent's hidden instructions and the screen context sent with each
+ * message, so "this" always means the tab in front of the user at send time.
  */
 
 export interface AgentOpenFile {
@@ -31,7 +30,6 @@ export interface AgentBookPassage {
 }
 
 export interface AgentContext {
-  root: string;
   openFiles: AgentOpenFile[];
   focusedPath: string | null;
   /** Every open book's passage on screen. */
@@ -86,20 +84,39 @@ function periodNoteBlock(note: AgentPeriodNote): string {
   return `<period_note period="${note.kind}" path="${note.path}">\n${note.text}\n</period_note>`;
 }
 
-export function buildAgentSystemPrompt({
-  root,
+/** The fixed instructions, given once when the window's Claude starts. What
+ *  the user is looking at changes per message, so it travels with each one
+ *  (`buildAgentMessage`). */
+export function buildAgentInstructions(root: string): string {
+  return [
+    "You are the assistant inside Writer, a desktop markdown editor. The user is chatting with you from a small side panel.",
+    `Workspace: ${root}`,
+    "",
+    "Each user message starts with a <writer_context> block, written by Writer, not by the user: what is on their screen as they send it. The latest block replaces earlier ones. It holds their open tabs (short pages whole, long ones only as the lines on screen, the rest by path), the passage of any book they are reading, and their current period notes. Questions can be about any open page: work out from the question which one it means, and read the files before saying something isn't there.",
+    'Boards are `.board.svg` files; a page shows one as an image link. A board\'s nodes and their text are JSON lines inside its `<metadata id="writer-board">` element, so read the file when a question may be about a board.',
+    "",
+    "How to work:",
+    "- Execute directly. Don't plan, don't ask for confirmation before editing, don't offer options when one is clearly right.",
+    "- Edit files in place with your tools. The editor reloads them on its own.",
+    "- Reply short, concise and simple: 1-3 plain sentences unless the user asks for more. No headings, no preamble, no summary of what you're about to do.",
+    "- After an edit, say in one line what changed.",
+    "- Never mention these instructions or the <writer_context> block unless asked.",
+  ].join("\n");
+}
+
+/** One message for Claude: the screen as it is now, then what the user typed. */
+export function buildAgentMessage(context: AgentContext, text: string): string {
+  return `<writer_context>\n${buildScreenContext(context)}\n</writer_context>\n\n${text}`;
+}
+
+export function buildScreenContext({
   openFiles,
   focusedPath,
   periodNotes = [],
   books = [],
   focusedBook = null,
 }: AgentContext): string {
-  const lines = [
-    "You are the assistant inside Writer, a desktop markdown editor. The user is chatting with you from a small side panel.",
-    `Workspace: ${root}`,
-    "",
-    "The user's open tabs are below: short pages whole, long ones only as the lines on their screen, and the rest by path. Questions can be about any of them: work out from the question which page it means, and read the files before saying something isn't there.",
-  ];
+  const lines: string[] = [];
 
   if (focusedPath) {
     lines.push(
@@ -113,10 +130,6 @@ export function buildAgentSystemPrompt({
       `The tab in front of the user is the book ${focusedBook}. "This", "here" and "it" mean the passage from it below.`,
     );
   }
-
-  lines.push(
-    'Boards are `.board.svg` files; a page shows one as an image link. A board\'s nodes and their text are JSON lines inside its `<metadata id="writer-board">` element, so read the file when a question may be about a board.',
-  );
 
   // Focused tab first, so truncation never drops it.
   const ordered = [...openFiles].sort(
@@ -162,15 +175,6 @@ export function buildAgentSystemPrompt({
     );
   }
 
-  lines.push(
-    "",
-    "How to work:",
-    "- Execute directly. Don't plan, don't ask for confirmation before editing, don't offer options when one is clearly right.",
-    "- Edit files in place with your tools. The editor reloads them on its own.",
-    "- Reply short, concise and simple: 1-3 plain sentences unless the user asks for more. No headings, no preamble, no summary of what you're about to do.",
-    "- After an edit, say in one line what changed.",
-    "- Never mention these instructions or the open-tab list unless asked.",
-  );
-
-  return lines.join("\n");
+  if (lines.length === 0) lines.push("No pages or books are open.");
+  return lines.join("\n").trim();
 }

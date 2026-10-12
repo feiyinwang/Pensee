@@ -100,6 +100,7 @@ fn attach_window_handlers(app: &tauri::AppHandle, window: &WebviewWindow) {
             // Remove the state; the `WorkspaceState`'s `RecommendedWatcher`
             // drops on the last `Arc` release, unregistering FSEvents/inotify.
             handle.state::<AppState>().remove(&label);
+            commands::agent::close_window_session(&handle, &label);
         }
         _ => {}
     });
@@ -663,6 +664,8 @@ pub fn run() {
             commands::x_bookmarks::x_save_media,
             commands::agent::agent_send,
             commands::agent::agent_cancel,
+            commands::agent::agent_warm,
+            commands::agent::agent_reset,
             commands::apple_books::read_apple_books_highlights,
             commands::apple_books::save_apple_books_cover,
             commands::books::import_book,

@@ -1,5 +1,6 @@
-//! Agent chat: runs the user's own Claude Code headless in the workspace and
-//! forwards its stream-json stdout to the invoking window, one line per event.
+//! Agent chat: keeps one headless Claude Code per window running in the
+//! workspace, feeds it messages on stdin and forwards its stream-json stdout
+//! to that window, one line per event.
 //! Parsing lives in the frontend (`lib/agent-stream.ts`) so it stays testable
 //! without a process. See SPECs/agent-chat-spec.md.
 
@@ -9,9 +10,9 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::ffi::OsString;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
@@ -22,11 +23,10 @@ const STDERR_TAIL_LINES: usize = 8;
 /** The built-in tools the chat needs to read, find and edit pages. */
 const AGENT_TOOLS: &str = "Read,Edit,Write,Glob,Grep";
 
-/// Running agent processes, keyed by the frontend's request id so Stop can
-/// find the child after its stdout has been handed to the reader thread.
+/// Each window's Claude process, by window label.
 #[derive(Default)]
 pub struct AgentState {
-    children: Mutex<HashMap<String, Arc<Mutex<Child>>>>,
+    sessions: Mutex<HashMap<String, Arc<Session>>>,
 }
 
 #[derive(Clone, Serialize)]
@@ -121,15 +121,13 @@ fn resolve_claude_binary(
     candidates.into_iter().find(|candidate| exists(candidate))
 }
 
-fn build_args(
-    prompt: &str,
-    session_id: Option<&str>,
-    system_prompt: &str,
-    model: &str,
-) -> Vec<String> {
+fn build_args(session_id: Option<&str>, instructions: &str, model: &str) -> Vec<String> {
     let mut args = vec![
+        // One long-lived process per window: messages arrive as stream-json
+        // lines on stdin, so a question skips Claude Code's ~0.7 s startup.
         "-p".to_owned(),
-        prompt.to_owned(),
+        "--input-format".to_owned(),
+        "stream-json".to_owned(),
         "--output-format".to_owned(),
         "stream-json".to_owned(),
         "--verbose".to_owned(),
@@ -150,7 +148,7 @@ fn build_args(
         "--permission-mode".to_owned(),
         "acceptEdits".to_owned(),
         "--append-system-prompt".to_owned(),
-        system_prompt.to_owned(),
+        instructions.to_owned(),
     ];
     if let Some(session_id) = session_id {
         args.push("--resume".to_owned());
@@ -159,61 +157,163 @@ fn build_args(
     args
 }
 
+/// One user turn as a stream-json input line.
+fn message_line(prompt: &str) -> String {
+    serde_json::json!({
+        "type": "user",
+        "message": { "role": "user", "content": prompt },
+    })
+    .to_string()
+}
+
+/// What a running process was started with. A send or warm-up with a
+/// different key replaces the process (resuming the conversation).
+#[derive(Clone, PartialEq)]
+struct SpawnKey {
+    root: PathBuf,
+    model: String,
+    instructions: String,
+}
+
+/// A window's Claude process. Idle between messages; `current` is the request
+/// whose reply is streaming, and every stdout line is tagged with it.
+struct Session {
+    key: SpawnKey,
+    child: Mutex<Child>,
+    stdin: Mutex<ChildStdin>,
+    current: Mutex<Option<String>>,
+}
+
+/// The running process for this window, started (or replaced) when missing,
+/// exited, or started with a different key.
+fn ensure_session(
+    app: &tauri::AppHandle,
+    label: &str,
+    key: SpawnKey,
+    session_id: Option<&str>,
+) -> Result<Arc<Session>, AppError> {
+    let state = app.state::<AgentState>();
+    // Held across the spawn so a warm-up and a send can't both start one.
+    let mut sessions = state.sessions.lock();
+    if let Some(existing) = sessions.get(label) {
+        let alive = matches!(existing.child.lock().try_wait(), Ok(None));
+        if alive && existing.key == key {
+            return Ok(existing.clone());
+        }
+        let _ = existing.child.lock().kill();
+    }
+
+    let env = claude_env();
+    let binary = env.binary.as_ref().ok_or_else(|| {
+        AppError::User(
+            "Claude Code isn't installed. Install it from claude.com/code, then try again."
+                .to_owned(),
+        )
+    })?;
+    let mut command = Command::new(binary);
+    command
+        .args(build_args(session_id, &key.instructions, &key.model))
+        .current_dir(&key.root)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let Some(path) = &env.path {
+        command.env("PATH", path);
+    }
+    let mut child = command.spawn()?;
+    let stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| AppError::Io("no stdin".to_owned()))?;
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let session = Arc::new(Session {
+        key,
+        child: Mutex::new(child),
+        stdin: Mutex::new(stdin),
+        current: Mutex::new(None),
+    });
+    sessions.insert(label.to_owned(), session.clone());
+    start_forwarding(
+        app.clone(),
+        label.to_owned(),
+        session.clone(),
+        stdout,
+        stderr,
+    );
+    Ok(session)
+}
+
+fn spawn_key(
+    app: &tauri::AppHandle,
+    label: &str,
+    model: String,
+    instructions: String,
+) -> Result<SpawnKey, AppError> {
+    let state = app.state::<AppState>().get_or_create(label);
+    let (root, _) = state.workspace_snapshot().ok_or(AppError::NoWorkspace)?;
+    Ok(SpawnKey {
+        root,
+        model,
+        instructions,
+    })
+}
+
+/// Start this window's Claude ahead of the first question (panel opened, a
+/// book opened, model changed), so the question doesn't wait for startup.
 #[tauri::command]
-pub async fn agent_send(
-    request_id: String,
-    prompt: String,
+pub async fn agent_warm(
     session_id: Option<String>,
-    system_prompt: String,
+    instructions: String,
     model: String,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
     let label = webview.label().to_owned();
-    let state = app.state::<AppState>().get_or_create(&label);
-    let (root, _) = state.workspace_snapshot().ok_or(AppError::NoWorkspace)?;
-
-    let child = tauri::async_runtime::spawn_blocking(move || {
-        let env = claude_env();
-        let binary = env.binary.as_ref().ok_or_else(|| {
-            AppError::User(
-                "Claude Code isn't installed. Install it from claude.com/code, then try again."
-                    .to_owned(),
-            )
-        })?;
-        let mut command = Command::new(binary);
-        command
-            .args(build_args(
-                &prompt,
-                session_id.as_deref(),
-                &system_prompt,
-                &model,
-            ))
-            .current_dir(&root)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        if let Some(path) = &env.path {
-            command.env("PATH", path);
-        }
-        command.spawn().map_err(AppError::from)
+    let key = spawn_key(&app, &label, model, instructions)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        ensure_session(&app, &label, key, session_id.as_deref()).map(|_| ())
     })
     .await
-    .map_err(|error| AppError::Io(error.to_string()))??;
-
-    start_forwarding(app, label, request_id, child);
-    Ok(())
+    .map_err(|error| AppError::Io(error.to_string()))?
 }
 
-fn start_forwarding(app: tauri::AppHandle, label: String, request_id: String, mut child: Child) {
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-    let child = Arc::new(Mutex::new(child));
-    app.state::<AgentState>()
-        .children
-        .lock()
-        .insert(request_id.clone(), child.clone());
+#[tauri::command]
+pub async fn agent_send(
+    request_id: String,
+    prompt: String,
+    session_id: Option<String>,
+    instructions: String,
+    model: String,
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+) -> Result<(), AppError> {
+    let label = webview.label().to_owned();
+    let key = spawn_key(&app, &label, model, instructions)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let session = ensure_session(&app, &label, key, session_id.as_deref())?;
+        *session.current.lock() = Some(request_id);
+        let mut stdin = session.stdin.lock();
+        writeln!(stdin, "{}", message_line(&prompt))
+            .and_then(|()| stdin.flush())
+            .map_err(|error| {
+                let _ = session.child.lock().kill();
+                AppError::Io(format!(
+                    "Claude stopped before the message reached it: {error}"
+                ))
+            })
+    })
+    .await
+    .map_err(|error| AppError::Io(error.to_string()))?
+}
 
+fn start_forwarding(
+    app: tauri::AppHandle,
+    label: String,
+    session: Arc<Session>,
+    stdout: Option<ChildStdout>,
+    stderr: Option<ChildStderr>,
+) {
     let stderr_tail = Arc::new(Mutex::new(VecDeque::<String>::new()));
     let stderr_reader = stderr.map(|stderr| {
         let tail = stderr_tail.clone();
@@ -234,51 +334,84 @@ fn start_forwarding(app: tauri::AppHandle, label: String, request_id: String, mu
                 if line.trim().is_empty() {
                     continue;
                 }
-                let payload = AgentLine {
-                    request_id: request_id.clone(),
-                    line,
+                // Nothing is asked yet: startup output belongs to no request.
+                let Some(request_id) = session.current.lock().clone() else {
+                    continue;
                 };
-                let _ = app.emit_to(label.as_str(), "agent:line", payload);
+                let _ = app.emit_to(label.as_str(), "agent:line", AgentLine { request_id, line });
             }
         }
         if let Some(reader) = stderr_reader {
             let _ = reader.join();
         }
-        let code = child.lock().wait().ok().and_then(|status| status.code());
-        app.state::<AgentState>()
-            .children
+        let code = session
+            .child
             .lock()
-            .remove(&request_id);
-        let stderr = stderr_tail
-            .lock()
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("\n");
-        let _ = app.emit_to(
-            label.as_str(),
-            "agent:exit",
-            AgentExit {
-                request_id,
-                code,
-                stderr,
-            },
-        );
+            .wait()
+            .ok()
+            .and_then(|status| status.code());
+        {
+            let state = app.state::<AgentState>();
+            let mut sessions = state.sessions.lock();
+            if sessions
+                .get(&label)
+                .is_some_and(|s| Arc::ptr_eq(s, &session))
+            {
+                sessions.remove(&label);
+            }
+        }
+        // The frontend ignores this unless that request is still running, so
+        // an idle process being replaced or quitting stays silent.
+        if let Some(request_id) = session.current.lock().take() {
+            let stderr = stderr_tail
+                .lock()
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("\n");
+            let _ = app.emit_to(
+                label.as_str(),
+                "agent:exit",
+                AgentExit {
+                    request_id,
+                    code,
+                    stderr,
+                },
+            );
+        }
     });
 }
 
-/// Kill a running agent. The reader thread sees EOF and emits `agent:exit`.
-/// A request that already finished is a no-op.
+/// Kill a running agent. The reader thread sees EOF and emits `agent:exit`;
+/// the next send starts a new process resuming the conversation. A request
+/// that already finished is a no-op.
 #[tauri::command]
-pub fn agent_cancel(request_id: String, app: tauri::AppHandle) {
-    let child = app
+pub fn agent_cancel(request_id: String, webview: tauri::Webview, app: tauri::AppHandle) {
+    let session = app
         .state::<AgentState>()
-        .children
+        .sessions
         .lock()
-        .get(&request_id)
+        .get(webview.label())
         .cloned();
-    if let Some(child) = child {
-        let _ = child.lock().kill();
+    if let Some(session) = session {
+        if session.current.lock().as_deref() == Some(request_id.as_str()) {
+            let _ = session.child.lock().kill();
+        }
+    }
+}
+
+/// New chat: end this window's process so the next one starts a fresh
+/// conversation.
+#[tauri::command]
+pub fn agent_reset(webview: tauri::Webview, app: tauri::AppHandle) {
+    close_window_session(&app, webview.label());
+}
+
+/// Kill a window's process, if any. Also called when the window closes.
+pub fn close_window_session(app: &tauri::AppHandle, label: &str) {
+    let session = app.state::<AgentState>().sessions.lock().remove(label);
+    if let Some(session) = session {
+        let _ = session.child.lock().kill();
     }
 }
 
@@ -287,13 +420,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn first_message_has_no_resume() {
-        let args = build_args("hi", None, "ctx", "haiku");
+    fn first_process_has_no_resume() {
+        let args = build_args(None, "ctx", "haiku");
         assert_eq!(
             args,
             [
                 "-p",
-                "hi",
+                "--input-format",
+                "stream-json",
                 "--output-format",
                 "stream-json",
                 "--verbose",
@@ -315,9 +449,18 @@ mod tests {
     }
 
     #[test]
-    fn follow_up_resumes_session() {
-        let args = build_args("next", Some("abc"), "ctx", "opus");
+    fn replacement_process_resumes_session() {
+        let args = build_args(Some("abc"), "ctx", "opus");
         assert_eq!(&args[args.len() - 2..], ["--resume", "abc"]);
+    }
+
+    #[test]
+    fn message_is_one_stream_json_line() {
+        let line = message_line("two\nlines \"quoted\"");
+        assert!(!line.contains('\n'));
+        let value: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(value["type"], "user");
+        assert_eq!(value["message"]["content"], "two\nlines \"quoted\"");
     }
 
     #[test]

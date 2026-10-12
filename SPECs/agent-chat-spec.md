@@ -32,7 +32,7 @@ A Linear-style chat panel in the bottom-right corner of a workspace window that 
 
 ### Context (hidden from the user)
 
-Every message is sent with an appended system prompt, rebuilt per message so it follows the current focus:
+The fixed instructions (workspace root, how to work, reply style) are the process's `--append-system-prompt`. What's on screen changes per message, so each message starts with a `<writer_context>` block rebuilt at send time, followed by what the user typed; the instructions say the latest block replaces earlier ones. The block holds:
 
 - The workspace root.
 - What the user is looking at, not whole files, since every token is read before the first word of a reply:
@@ -52,20 +52,24 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 
 ### Process
 
-- Each message spawns `claude -p <message> --output-format stream-json --verbose --include-partial-messages --model <model> <lean flags, below> --permission-mode acceptEdits --append-system-prompt <context>` in the workspace root, with `--resume <session>` after the first reply. stdin is closed.
+- One Claude Code process per window, kept running: `claude -p --input-format stream-json --output-format stream-json --verbose --include-partial-messages --model <model> <lean flags, below> --permission-mode acceptEdits --append-system-prompt <instructions>` in the workspace root. Each message is one stream-json `user` line on its stdin. A warm process gets the first word in 0.7-1 s; starting one per message took about 1.5 s.
+- It starts ahead of the first question (`agent_warm`): 2 s after a workspace window opens, when the panel opens, when a book opens, after a model change, after Stop and after New chat. A send finds it running, or starts it itself.
+- A process is replaced, with `--resume <session>` so the conversation carries on, when the workspace root, model or instructions differ from what it was started with, or it has exited. A run in progress is never replaced by a warm-up.
+- Closing stdin ends it cleanly; the window's process is killed when the window closes. An idle process costs memory, not tokens.
 - `acceptEdits` is execution mode: file reads and edits run without prompts. Shell commands are not pre-approved, so headless Claude reports them as denied instead of running them. Trade-off: safer for a writing app; widen with `--allowedTools` later if wanted.
 - `--model <haiku|sonnet|opus>` comes from `agent.model`. These are Claude Code's aliases, so each tier follows the newest release without an app update. A different model on a later message resumes the same session.
 - A lean Claude Code, not the terminal's: `--strict-mcp-config` (no MCP servers), `--disable-slash-commands` (no skills), `--setting-sources project,local` (no user settings, so no plugins or their hooks, and no `~/.claude` rules) and `--tools Read,Edit,Write,Glob,Grep`. Measured with Haiku on a one-line question: 17-36 s to the first word with the terminal's setup, about 1.5 s lean. Sign-in is unaffected. The workspace's own `.claude/` settings and CLAUDE.md still apply. Trade-off: no web search and no MCP tools in the chat.
 - The binary and `PATH` are resolved once from the user's login shell (`$SHELL -lc`), since an app launched from Finder doesn't inherit the terminal's `PATH`. Fallbacks: `~/.local/bin/claude`, `/opt/homebrew/bin/claude`, `/usr/local/bin/claude`.
 - stdout lines are forwarded unparsed to the invoking window as `agent:line` events; parsing lives in TypeScript (`lib/agent-stream.ts`) so it is unit-testable. Exit is `agent:exit` with the code and last stderr line.
-- **Stop** kills the child. **New chat** stops any run and forgets the session id.
+- **Stop** kills the process; the next one resumes the conversation. **New chat** ends the process (`agent_reset`) and any reply in progress, forgets the session id and warms a fresh one.
+- Lines are tagged with the request being answered; output before any request is dropped, and a process that exits while idle reports nothing.
 - One run per window at a time.
 
 ## Ownership
 
-- `src-tauri/src/commands/agent.rs` — binary resolution, spawn, line forwarding, cancel. Children are keyed by request id in managed state.
+- `src-tauri/src/commands/agent.rs` — binary resolution, the per-window process (warm, send over stdin, cancel, reset), line forwarding. Processes are keyed by window label in managed state.
 - `src/lib/agent-stream.ts` — stream-json line → chat events (text delta, tool call, result, session id). Pure.
-- `src/lib/agent-context.ts` — system prompt from open tabs' text + focused file, with the length caps. Pure.
+- `src/lib/agent-context.ts` — the fixed instructions, and the per-message `<writer_context>` from open tabs' text + focused file, with the length caps. Pure.
 - `src/lib/agent-open-files.ts` — reads each open tab's text and the boards pages embed (board code is a dynamic import).
 - `src/components/agent-chat/agent-panel.tsx` — the panel, lazy-loaded on first open because it uses Arc (`text-shimmer`, `code-block`). `agent-chat.css` maps Arc's surface/border tokens to Writer's inside the panel.
 - `src/stores/agent-store.ts` — panel open state, messages, session id, active run; send/stop/new chat/set model.

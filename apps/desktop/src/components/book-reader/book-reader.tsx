@@ -7,7 +7,7 @@ import { Cursor02Icon } from "@hugeicons/core-free-icons";
 import { motionTokens } from "@/components/arc/lib/motion-tokens";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import type { BookLocation as BookTabLocation } from "@/components/editor-area/page-kinds/book";
-import { askAgent } from "@/lib/agent-ask";
+import { askAgent, warmAgent } from "@/lib/agent-ask";
 import { speak } from "@/lib/speak";
 import { getFileStem } from "@/lib/paths";
 import { stepBookTextSize } from "@/lib/book-text-size";
@@ -60,6 +60,9 @@ export default function BookReader({
   const [textSize, setTextSize] = useState<number | null>(null);
   const reduceMotion = useReducedMotion();
   const bookName = getFileStem(location.path);
+
+  // Define and Explain go to the agent, so have it running before they're asked.
+  useEffect(() => warmAgent(), []);
 
   useEffect(() => {
     ensureArcTokens();
