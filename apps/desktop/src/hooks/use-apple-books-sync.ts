@@ -3,8 +3,9 @@ import { useEffect } from "react";
 import { syncAppleBooks, type AppleBooksSyncResult } from "@/lib/apple-books";
 import { resolveDailyNoteFile } from "@/lib/daily-note";
 import * as tauri from "@/lib/tauri";
+import { getFileStem, getParentDir } from "@/lib/paths";
 import { findWikiPage, newPagePath } from "@/lib/wiki-pages";
-import { editPage } from "@/components/editor-area/linked-block-sync";
+import { editPage, readPageParts } from "@/components/editor-area/linked-block-sync";
 import { showEditorNotice } from "@/components/editor-area/editor-notice-store";
 import { tauriWikiPageDeps } from "@/components/editor-area/wiki-pages-extension";
 import { useBooleanSetting } from "@/hooks/use-settings";
@@ -47,6 +48,16 @@ async function run(root: string, manual: boolean): Promise<void> {
       readHighlights: tauri.readAppleBooksHighlights,
       findPage: (name) => findWikiPage(name, root, anchor.path, tauriWikiPageDeps),
       newPagePath: (name) => newPagePath(name, root, anchor.path),
+      readPage: readPageParts,
+      saveCover: async (book, pagePath) => {
+        // Beside the page in its `<stem>-assets` folder, like a pasted picture.
+        const cover = `${getFileStem(pagePath)}-assets/cover.jpg`;
+        const saved = await tauri.saveAppleBooksCover(
+          book.assetId,
+          `${getParentDir(pagePath)}/${cover}`,
+        );
+        return saved ? cover : null;
+      },
       createPage: async (path, content) => {
         await tauri.createFile(path);
         await tauri.writeFile(path, content);

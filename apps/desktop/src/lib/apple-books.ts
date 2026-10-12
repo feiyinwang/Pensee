@@ -1,18 +1,20 @@
-import { isMap, isScalar, isSeq, parseDocument } from "yaml";
+import { isMap, isScalar, isSeq, parseDocument, stringify, type Pair, type YAMLMap } from "yaml";
 
 import { blockIdsInText } from "./block-refs";
 import { safePageName } from "./wiki-pages";
 import type { AppleBook, AppleBookHighlight } from "@/types/apple-books";
 
 // Apple Books highlights as pages, per SPECs/apple-books-highlights-spec.md.
-// Each book is one page tagged `Book`; each highlight is a bullet carrying a
-// hidden block id taken from Apple Books' own annotation id, so a sync only
+// Each book is one page marked `Type: Book`, with its cover and the `Book`
+// tag; each highlight is a bullet carrying a hidden block id taken from Apple
+// Books' own annotation id, so a sync only
 // ever appends highlights the page does not have yet. Everything else on the
 // page — the writer's own notes, edits to imported highlights, highlights
 // moved elsewhere on the page — is left alone. Pure except `syncAppleBooks`,
 // whose effects are injected.
 
 export const BOOK_TAG = "Book";
+export const BOOK_TYPE = "Book";
 export const HIGHLIGHTS_HEADING = "## Highlights";
 
 const HIGHLIGHTS_HEADING_RE = /^##[ \t]+Highlights[ \t]*$/;
@@ -52,42 +54,108 @@ export function highlightMarkdown(highlight: AppleBookHighlight): string {
   return highlight.note ? `${line}\n    - ${inlineText(highlight.note)}` : line;
 }
 
-/** `frontmatter` with `Book` in its `tags`. A missing `tags` key is added as a
- *  line at the end, so the rest stays byte-for-byte; an existing list (or
- *  Obsidian's space/comma-separated string) gets `Book` appended. Returns the
- *  input when the tag is already there or the YAML cannot be read safely. */
-export function withBookTag(frontmatter: string | null): string | null {
+/** A frontmatter value that says nothing: missing, null or blank. */
+function isBlank(node: unknown): boolean {
+  if (node === undefined || node === null) return true;
+  return isScalar(node) && (node.value === null || String(node.value).trim() === "");
+}
+
+/** The pair whose key is `name`, ignoring case (`Type`, `type`). */
+function findPair(map: YAMLMap, name: string): Pair | undefined {
+  return map.items.find(
+    (pair) => isScalar(pair.key) && String(pair.key.value).toLowerCase() === name,
+  );
+}
+
+/** One `key: value` line, quoted only when YAML needs it. */
+function yamlLine(key: string, value: string): string {
+  return `${key}: ${stringify(value).trimEnd()}`;
+}
+
+/** Whether `frontmatter` already has a cover, so none needs saving. */
+export function hasCover(frontmatter: string | null): boolean {
+  if (!frontmatter?.trim()) return false;
+  const doc = parseDocument(frontmatter);
+  if (doc.errors.length || !isMap(doc.contents)) return true; // Left alone anyway.
+  return !isBlank(findPair(doc.contents, "cover")?.value);
+}
+
+/**
+ * `frontmatter` marked as a book, the way the writer's own book pages are:
+ * `Type: Book` (only when it has no type yet), `Cover: <cover>` (only when
+ * `cover` is given and it has no cover yet — a link the writer chose is never
+ * replaced) and `Book` in its `tags` (an existing list, or Obsidian's
+ * space/comma-separated string, gets it appended once). Keys are matched
+ * ignoring case. Missing keys are added as lines — `Type`/`Cover` at the top,
+ * `tags` at the end — so the rest stays byte-for-byte; filling a blank key or
+ * extending a tag list re-serializes. Returns the input when nothing changes
+ * or the YAML cannot be read safely.
+ */
+export function withBookProperties(
+  frontmatter: string | null,
+  { cover = null }: { cover?: string | null } = {},
+): string | null {
+  const top: string[] = [];
+  const typeLine = yamlLine("Type", BOOK_TYPE);
+  const coverLine = cover ? yamlLine("Cover", cover) : null;
   const tagLines = `tags:\n  - ${BOOK_TAG}`;
-  if (frontmatter === null || !frontmatter.trim()) return tagLines;
+  if (frontmatter === null || !frontmatter.trim()) {
+    return [typeLine, coverLine, tagLines].filter(Boolean).join("\n");
+  }
 
   const doc = parseDocument(frontmatter);
   if (doc.errors.length || !isMap(doc.contents)) {
-    console.error("[apple-books] Left unreadable frontmatter untagged");
+    console.error("[apple-books] Left unreadable frontmatter unchanged");
     return frontmatter;
   }
-  const tags = doc.get("tags", true);
-  if (tags === undefined || (isScalar(tags) && (tags.value === null || tags.value === ""))) {
-    if (tags === undefined) return `${frontmatter.replace(/\n+$/, "")}\n${tagLines}`;
-    doc.set("tags", [BOOK_TAG]);
-    return doc.toString().replace(/\n+$/, "");
+  const map = doc.contents;
+  let reserialize = false;
+
+  const type = findPair(map, "type");
+  if (!type) top.push(typeLine);
+  else if (isBlank(type.value)) {
+    type.value = doc.createNode(BOOK_TYPE);
+    reserialize = true;
   }
 
+  if (coverLine) {
+    const existing = findPair(map, "cover");
+    if (!existing) top.push(coverLine);
+    else if (isBlank(existing.value)) {
+      existing.value = doc.createNode(cover);
+      reserialize = true;
+    }
+  }
+
+  let bottom: string | null = null;
   const isBook = (value: unknown) =>
     String(value).replace(/^#/, "").toLowerCase() === BOOK_TAG.toLowerCase();
-  if (isSeq(tags)) {
-    if (tags.items.some((item) => isBook(isScalar(item) ? item.value : item))) return frontmatter;
-    tags.add(doc.createNode(BOOK_TAG));
+  const tagsPair = findPair(map, "tags");
+  const tags = tagsPair?.value;
+  if (!tagsPair) bottom = tagLines;
+  else if (isBlank(tags)) {
+    tagsPair.value = doc.createNode([BOOK_TAG]);
+    reserialize = true;
+  } else if (isSeq(tags)) {
+    if (!tags.items.some((item) => isBook(isScalar(item) ? item.value : item))) {
+      tags.add(doc.createNode(BOOK_TAG));
+      reserialize = true;
+    }
   } else if (isScalar(tags)) {
     const existing = String(tags.value)
       .split(/[\s,]+/)
       .filter(Boolean);
-    if (existing.some(isBook)) return frontmatter;
-    doc.set("tags", [...existing, BOOK_TAG]);
+    if (!existing.some(isBook)) {
+      tagsPair.value = doc.createNode([...existing, BOOK_TAG]);
+      reserialize = true;
+    }
   } else {
-    console.error("[apple-books] Left frontmatter with an unexpected `tags` shape untagged");
-    return frontmatter;
+    console.error("[apple-books] Left a `tags` value of an unexpected shape alone");
   }
-  return doc.toString().replace(/\n+$/, "");
+
+  if (!reserialize && !top.length && !bottom) return frontmatter;
+  const middle = (reserialize ? doc.toString() : frontmatter).replace(/\n+$/, "");
+  return [...top, middle, bottom].filter((part) => part !== null).join("\n");
 }
 
 /** `body` with `items` added at the end of its `## Highlights` section, or in
@@ -117,13 +185,15 @@ export interface MergeResult {
   added: number;
 }
 
-/** A page with `book` merged in: tagged, and with every highlight it does not
- *  already carry (by block id, anywhere on the page) appended. */
+/** A page with `book` merged in: marked as a book (with `cover` when it has
+ *  none), and with every highlight it does not already carry (by block id,
+ *  anywhere on the page) appended. */
 export function mergeBook(
   page: { frontmatter: string | null; body: string },
   book: AppleBook,
+  cover: string | null = null,
 ): MergeResult {
-  const frontmatter = withBookTag(page.frontmatter);
+  const frontmatter = withBookProperties(page.frontmatter, { cover });
   const present = new Set(blockIdsInText(page.body));
   const fresh = book.highlights.filter((h) => !present.has(highlightBlockId(h)));
   if (!fresh.length) return { frontmatter, body: page.body, added: 0 };
@@ -132,10 +202,15 @@ export function mergeBook(
 }
 
 /** The whole text of a new page for `book`, named `name`. */
-export function newBookPage(book: AppleBook, name: string): string {
-  const author = book.author ? `\nauthor: ${JSON.stringify(book.author)}` : "";
+export function newBookPage(book: AppleBook, name: string, cover: string | null = null): string {
+  const lines = [
+    yamlLine("Type", BOOK_TYPE),
+    cover ? yamlLine("Cover", cover) : null,
+    book.author ? yamlLine("Author", book.author) : null,
+    `tags:\n  - ${BOOK_TAG}`,
+  ].filter(Boolean);
   const items = book.highlights.map(highlightMarkdown).join("\n");
-  return `---\ntags:\n  - ${BOOK_TAG}${author}\n---\n# ${name}\n\n${HIGHLIGHTS_HEADING}\n\n${items}\n`;
+  return `---\n${lines.join("\n")}\n---\n# ${name}\n\n${HIGHLIGHTS_HEADING}\n\n${items}\n`;
 }
 
 export interface AppleBooksSyncDeps {
@@ -144,6 +219,11 @@ export interface AppleBooksSyncDeps {
   findPage: (name: string) => Promise<string | null>;
   /** Where a new page called `name` goes. */
   newPagePath: (name: string) => string;
+  /** The page's frontmatter and body as they are now (open or on disk). */
+  readPage: (path: string) => Promise<{ frontmatter: string | null; body: string }>;
+  /** Save `book`'s cover for the page at `pagePath`; the `Cover` value that
+   *  points at it, or null when Apple Books has no cover for the book. */
+  saveCover: (book: AppleBook, pagePath: string) => Promise<string | null>;
   /** Create `path` with `content`; fails if it exists. */
   createPage: (path: string, content: string) => Promise<void>;
   editPage: (
@@ -163,6 +243,21 @@ export interface AppleBooksSyncResult {
   failures: string[];
 }
 
+/** A missing cover is not worth failing the book's highlights over: logged,
+ *  and tried again on the next sync since the page still has no cover. */
+async function coverFor(
+  deps: AppleBooksSyncDeps,
+  book: AppleBook,
+  pagePath: string,
+): Promise<string | null> {
+  try {
+    return await deps.saveCover(book, pagePath);
+  } catch (error) {
+    console.error(`[apple-books] Couldn't save the cover of ${book.title}:`, error);
+    return null;
+  }
+}
+
 /** Bring every book's highlights into its page. One book failing does not
  *  stop the rest; failures come back by title for the caller to report. */
 export async function syncAppleBooks(deps: AppleBooksSyncDeps): Promise<AppleBooksSyncResult> {
@@ -180,16 +275,20 @@ export async function syncAppleBooks(deps: AppleBooksSyncDeps): Promise<AppleBoo
       }
       if (!deps.isCurrent()) break;
       if (path) {
+        const current = await deps.readPage(path);
+        const cover = hasCover(current.frontmatter) ? null : await coverFor(deps, book, path);
         let added = 0;
         await deps.editPage(path, (page) => {
-          const merged = mergeBook(page, book);
+          const merged = mergeBook(page, book, cover);
           added = merged.added;
           return { frontmatter: merged.frontmatter, body: merged.body };
         });
         result.highlightsAdded += added;
       } else {
         const name = names[names.length - 1]!;
-        await deps.createPage(deps.newPagePath(name), newBookPage(book, name));
+        const newPath = deps.newPagePath(name);
+        const cover = await coverFor(deps, book, newPath);
+        await deps.createPage(newPath, newBookPage(book, name, cover));
         result.pagesCreated++;
         result.highlightsAdded += book.highlights.length;
       }

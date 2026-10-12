@@ -374,3 +374,9 @@ export function saveClipboardImage(
 export function readAppleBooksHighlights(): Promise<AppleBook[]> {
   return invoke("read_apple_books_highlights");
 }
+
+/** Save the cover Apple Books shows for a book to `dest` as a JPEG. False when
+ *  Books has no cover cached for it; a file already at `dest` is kept. */
+export function saveAppleBooksCover(assetId: string, dest: string): Promise<boolean> {
+  return invoke("save_apple_books_cover", { assetId, dest });
+}

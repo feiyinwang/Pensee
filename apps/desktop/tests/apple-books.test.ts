@@ -6,7 +6,8 @@ import {
   mergeBook,
   newBookPage,
   syncAppleBooks,
-  withBookTag,
+  hasCover,
+  withBookProperties,
   type AppleBooksSyncDeps,
 } from "../src/lib/apple-books";
 import type { AppleBook, AppleBookHighlight } from "../src/types/apple-books";
@@ -53,26 +54,50 @@ describe("highlight markdown", () => {
   });
 });
 
-describe("withBookTag", () => {
-  test("adds tags to a page without frontmatter", () => {
-    expect(withBookTag(null)).toBe("tags:\n  - Book");
-  });
-
-  test("appends a tags key without touching the rest", () => {
-    expect(withBookTag("title: X  # keep\nauthor: Y")).toBe(
-      "title: X  # keep\nauthor: Y\ntags:\n  - Book",
+describe("withBookProperties", () => {
+  test("gives a page without frontmatter a type and the tag", () => {
+    expect(withBookProperties(null)).toBe("Type: Book\ntags:\n  - Book");
+    expect(withBookProperties(null, { cover: "A-assets/cover.jpg" })).toBe(
+      "Type: Book\nCover: A-assets/cover.jpg\ntags:\n  - Book",
     );
   });
 
-  test("adds Book to an existing list, once", () => {
-    expect(withBookTag("tags:\n  - reading")).toBe("tags:\n  - reading\n  - Book");
-    expect(withBookTag("tags: [reading, book]")).toBe("tags: [reading, book]");
-    expect(withBookTag("tags: reading")).toBe("tags:\n  - reading\n  - Book");
+  test("adds missing keys as lines without touching the rest", () => {
+    expect(withBookProperties("title: X  # keep\nauthor: Y", { cover: "c.jpg" })).toBe(
+      "Type: Book\nCover: c.jpg\ntitle: X  # keep\nauthor: Y\ntags:\n  - Book",
+    );
+  });
+
+  test("keeps the writer's own type and cover, matching keys in any case", () => {
+    const fm = "Type: Novel\nCover: https://example.com/a.jpg\ntags:\n  - Book";
+    expect(withBookProperties(fm, { cover: "c.jpg" })).toBe(fm);
+    expect(withBookProperties("type: Book\ntags: [book]")).toBe("type: Book\ntags: [book]");
+  });
+
+  test("fills a blank type and cover", () => {
+    expect(withBookProperties("Cover:\nType:\ntags: [Book]", { cover: "c.jpg" })).toBe(
+      "Cover: c.jpg\nType: Book\ntags: [ Book ]",
+    );
+  });
+
+  test("adds Book to an existing tag list, once", () => {
+    expect(withBookProperties("Type: Book\ntags:\n  - reading")).toBe(
+      "Type: Book\ntags:\n  - reading\n  - Book",
+    );
+    expect(withBookProperties("Type: Book\ntags: reading")).toBe(
+      "Type: Book\ntags:\n  - reading\n  - Book",
+    );
   });
 
   test("leaves unreadable frontmatter alone", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(withBookTag("tags: [unclosed")).toBe("tags: [unclosed");
+    expect(withBookProperties("tags: [unclosed")).toBe("tags: [unclosed");
+  });
+
+  test("hasCover reads a non-blank cover in any case", () => {
+    expect(hasCover("Cover: x.jpg")).toBe(true);
+    expect(hasCover("cover: ")).toBe(false);
+    expect(hasCover(null)).toBe(false);
   });
 });
 
@@ -80,7 +105,7 @@ describe("mergeBook", () => {
   test("appends a Highlights section to an existing page", () => {
     const merged = mergeBook({ frontmatter: null, body: "# Atomic Habits\n\nMy review.\n" }, book);
     expect(merged.added).toBe(2);
-    expect(merged.frontmatter).toBe("tags:\n  - Book");
+    expect(merged.frontmatter).toBe("Type: Book\ntags:\n  - Book");
     expect(merged.body).toBe(
       "# Atomic Habits\n\nMy review.\n\n## Highlights\n\n" +
         "- Small habits add up. ^bk-aaaa11112222\n" +
@@ -91,9 +116,9 @@ describe("mergeBook", () => {
   test("adds only new highlights, at the end of the Highlights section", () => {
     const body =
       "# A\n\n## Highlights\n\n- edited by me ^bk-aaaa11112222\n\n## Thoughts\n\nMine.\n";
-    const merged = mergeBook({ frontmatter: "tags:\n  - Book", body }, book);
+    const merged = mergeBook({ frontmatter: "Type: Book\ntags:\n  - Book", body }, book, "c.jpg");
     expect(merged.added).toBe(1);
-    expect(merged.frontmatter).toBe("tags:\n  - Book");
+    expect(merged.frontmatter).toBe("Cover: c.jpg\nType: Book\ntags:\n  - Book");
     expect(merged.body).toBe(
       "# A\n\n## Highlights\n\n- edited by me ^bk-aaaa11112222\n" +
         "- Identity first. ^bk-bbbb11112222\n    - Ties to my notes\n\n## Thoughts\n\nMine.\n",
@@ -108,9 +133,10 @@ describe("mergeBook", () => {
 });
 
 describe("newBookPage", () => {
-  test("is tagged, credited and titled", () => {
-    expect(newBookPage(book, "Atomic Habits")).toBe(
-      '---\ntags:\n  - Book\nauthor: "James Clear"\n---\n# Atomic Habits\n\n## Highlights\n\n' +
+  test("is typed, covered, credited, tagged and titled", () => {
+    expect(newBookPage(book, "Atomic Habits", "Atomic Habits-assets/cover.jpg")).toBe(
+      "---\nType: Book\nCover: Atomic Habits-assets/cover.jpg\nAuthor: James Clear\ntags:\n  - Book\n---\n" +
+        "# Atomic Habits\n\n## Highlights\n\n" +
         "- Small habits add up. ^bk-aaaa11112222\n" +
         "- Identity first. ^bk-bbbb11112222\n    - Ties to my notes\n",
     );
@@ -118,15 +144,23 @@ describe("newBookPage", () => {
 });
 
 describe("syncAppleBooks", () => {
-  function deps(pages: Record<string, string>): AppleBooksSyncDeps & { created: string[] } {
+  function deps(
+    pages: Record<string, string>,
+    frontmatter: string | null = null,
+  ): AppleBooksSyncDeps & { created: string[]; contents: string[] } {
     const created: string[] = [];
+    const contents: string[] = [];
     return {
       created,
+      contents,
+      readPage: async () => ({ frontmatter, body: "" }),
+      saveCover: vi.fn(async (_book, pagePath: string) => `${pagePath}.jpg`),
       readHighlights: async () => [book, { ...book, assetId: "2", title: "Dune", highlights: [] }],
       findPage: async (name) => pages[name] ?? null,
       newPagePath: (name) => `/vault/Books/${name}.md`,
-      createPage: async (path) => {
+      createPage: async (path, content) => {
         created.push(path);
+        contents.push(content);
       },
       editPage: vi.fn(async (_path, edit) => {
         edit({ frontmatter: null, body: "" });
@@ -139,6 +173,7 @@ describe("syncAppleBooks", () => {
     const d = deps({});
     const result = await syncAppleBooks(d);
     expect(d.created).toEqual(["/vault/Books/Atomic Habits.md"]);
+    expect(d.contents[0]).toContain("Cover: /vault/Books/Atomic Habits.md.jpg");
     expect(result).toEqual({ pagesCreated: 1, highlightsAdded: 2, failures: [] });
   });
 
@@ -148,6 +183,27 @@ describe("syncAppleBooks", () => {
     expect(d.created).toEqual([]);
     expect(d.editPage).toHaveBeenCalledWith("/vault/Atomic Habits.md", expect.any(Function));
     expect(result).toEqual({ pagesCreated: 0, highlightsAdded: 2, failures: [] });
+  });
+
+  test("saves a cover only for a page that has none", async () => {
+    const covered = deps({ "Atomic Habits": "/vault/A.md" }, "Cover: https://x/a.jpg");
+    await syncAppleBooks(covered);
+    expect(covered.saveCover).not.toHaveBeenCalled();
+
+    const bare = deps({ "Atomic Habits": "/vault/A.md" }, "Type: Book");
+    await syncAppleBooks(bare);
+    expect(bare.saveCover).toHaveBeenCalledWith(book, "/vault/A.md");
+  });
+
+  test("a cover that fails to save does not stop the highlights", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const d = deps({});
+    d.saveCover = async () => {
+      throw new Error("sips failed");
+    };
+    const result = await syncAppleBooks(d);
+    expect(result).toEqual({ pagesCreated: 1, highlightsAdded: 2, failures: [] });
+    expect(d.contents[0]).not.toContain("Cover:");
   });
 
   test("reports a failing book and carries on", async () => {

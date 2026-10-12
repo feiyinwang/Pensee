@@ -36,11 +36,27 @@ pub async fn read_apple_books_highlights() -> Result<Vec<AppleBook>, AppError> {
         .map_err(|e| AppError::Io(e.to_string()))?
 }
 
+/// Save the cover Apple Books shows for `asset_id` to `dest` as a JPEG.
+/// Returns false when Books has no cover cached for the book. A file already
+/// at `dest` is kept (the writer may have replaced it) and counts as saved.
+#[tauri::command]
+pub async fn save_apple_books_cover(asset_id: String, dest: String) -> Result<bool, AppError> {
+    tauri::async_runtime::spawn_blocking(move || imp::save_cover(&asset_id, &dest))
+        .await
+        .map_err(|e| AppError::Io(e.to_string()))?
+}
+
 #[cfg(not(target_os = "macos"))]
 mod imp {
     use super::*;
 
     pub fn read_highlights() -> Result<Vec<AppleBook>, AppError> {
+        Err(AppError::Io(
+            "Apple Books is only available on macOS".into(),
+        ))
+    }
+
+    pub fn save_cover(_asset_id: &str, _dest: &str) -> Result<bool, AppError> {
         Err(AppError::Io(
             "Apple Books is only available on macOS".into(),
         ))
@@ -62,6 +78,67 @@ mod imp {
         let home =
             std::env::var_os("HOME").ok_or_else(|| AppError::Io("HOME is not set".into()))?;
         Ok(PathBuf::from(home).join("Library/Containers/com.apple.iBooksX/Data/Documents"))
+    }
+
+    /// Books caches covers as `BICDiskDataStore/<asset id>/<asset id>|1|<w>|<h>|0.<ext>`,
+    /// one file per size; the largest one, if any.
+    fn largest_cover(asset_id: &str) -> Result<Option<PathBuf>, AppError> {
+        let home =
+            std::env::var_os("HOME").ok_or_else(|| AppError::Io("HOME is not set".into()))?;
+        let dir = PathBuf::from(home)
+            .join("Library/Containers/com.apple.iBooksX/Data/Library/Caches/BCCoverCache-1/BICDiskDataStore")
+            .join(asset_id);
+        let Ok(entries) = fs::read_dir(&dir) else {
+            return Ok(None);
+        };
+        Ok(entries
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .filter_map(|path| {
+                let name = path.file_name()?.to_str()?.to_string();
+                let parts: Vec<&str> = name.split('|').collect();
+                let width: u64 = parts.get(2)?.parse().ok()?;
+                let height: u64 = parts.get(3)?.parse().ok()?;
+                Some((width * height, path))
+            })
+            .max_by_key(|(area, _)| *area)
+            .map(|(_, path)| path))
+    }
+
+    pub fn save_cover(asset_id: &str, dest: &str) -> Result<bool, AppError> {
+        // The id names a directory in Books' cache: nothing that could climb out.
+        if asset_id.is_empty() || !asset_id.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Err(AppError::InvalidPath(asset_id.to_string()));
+        }
+        let dest = PathBuf::from(dest);
+        if dest.exists() {
+            return Ok(true);
+        }
+        let Some(source) = largest_cover(asset_id)? else {
+            return Ok(false);
+        };
+        let dir = dest
+            .parent()
+            .ok_or_else(|| AppError::InvalidPath(dest.display().to_string()))?;
+        fs::create_dir_all(dir)?;
+        // Written beside the target, then renamed, so a half-written cover is
+        // never at `dest`. Covers are HEIC as often as JPEG; `sips` (part of
+        // macOS) turns either into a JPEG every viewer can show.
+        let temp = dir.join(format!(".~{}.jpg", uuid::Uuid::new_v4()));
+        let output = std::process::Command::new("/usr/bin/sips")
+            .args(["-s", "format", "jpeg"])
+            .arg(&source)
+            .arg("--out")
+            .arg(&temp)
+            .output()?;
+        if !output.status.success() || !temp.exists() {
+            let _ = fs::remove_file(&temp);
+            return Err(AppError::Io(format!(
+                "Couldn't convert the cover of {asset_id}: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            )));
+        }
+        fs::rename(&temp, &dest)?;
+        Ok(true)
     }
 
     /// The one `.sqlite` file in `dir` whose name starts with `prefix` (the

@@ -280,6 +280,14 @@ export interface PageParts {
   body: string;
 }
 
+/** Page `path` as it is now: from the store when open (it may hold unsaved
+ *  edits), else read from disk. */
+export async function readPageParts(path: string): Promise<PageParts> {
+  const file = editorApi.getOpenFile(path);
+  if (file && !file.isLoading) return { frontmatter: file.frontmatter, body: file.content };
+  return parseFrontmatter((await tauri.readFile(path)).content);
+}
+
 /**
  * Rewrite page `path` as a whole with `edit`, wherever the page lives: its
  * live editors (one undoable change each), else the store, else the file on

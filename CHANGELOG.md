@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12
+
+- Book pages from Apple Books now look like the rest of your book pages: each gets **Type: Book** and a **Cover**, the book's cover picture saved from Apple Books into the page's assets folder. Pages that already have a type or a cover keep theirs. A cover Apple Books hasn't shown yet (open your library in Apple Books once) is added on a later check. New pages also list the **Author**.
+
 ## 2026-10-11
 
 - Bring your Apple Books highlights into Writer. Turn on **Settings → Apple Books → Import Highlights** and every book you've highlighted gets a page tagged **Book**, with each highlight as a bullet and your note under it. If you already have a page with the book's name (or its name without the subtitle), the highlights go there, under **Highlights**; otherwise a new page is made, at the workspace root or in the folder you choose. Writer checks for new highlights every 10 minutes, or right away with **Import Apple Books Highlights** in the command palette. Only new highlights are added, so anything you edit, move or delete on the page stays that way. The first time, macOS may ask whether Writer can access data from other apps; allow it.

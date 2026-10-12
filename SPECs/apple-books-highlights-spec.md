@@ -23,14 +23,26 @@ markdown.
     → `Atomic Habits`), each looked up the way a `[[name]]` click finds a page
     (`findWikiPage`: a unique case-insensitive stem match anywhere in the
     workspace, then the would-be path in the folder).
-  - **Existing page.** `Book` is added to its frontmatter `tags` (a missing key is
-    appended as a line so the rest stays byte-for-byte; an existing list or
-    Obsidian space/comma string gets `Book` added once; unreadable YAML is left
-    untagged and logged). New highlights go at the end of its `## Highlights`
-    section, or in a new one at the end of the page.
+  - **Existing page.** It is marked as a book the way the writer's own book
+    pages are (`Type: Book`, `Cover: …`, as in their Book template): `Type: Book`
+    when it has no type, `Cover` when it has none (a cover link the writer chose
+    is never replaced), and `Book` in its frontmatter `tags` (an existing list or
+    Obsidian space/comma string gets it once). Keys match ignoring case. Missing
+    keys are added as lines (`Type`/`Cover` at the top, `tags` at the end) so the
+    rest stays byte-for-byte; unreadable YAML is left alone and logged. New
+    highlights go at the end of its `## Highlights` section, or in a new one at
+    the end of the page.
   - **No page.** A new page named after the short title, in the folder:
-    frontmatter `tags: [Book]` and `author`, an H1 with the name, and
-    `## Highlights`.
+    frontmatter `Type: Book`, `Cover`, `Author` and `tags: [Book]`, an H1 with
+    the name, and `## Highlights`.
+- **Covers.** Apple Books caches each cover it has shown at
+  `Library/Caches/BCCoverCache-1/BICDiskDataStore/<asset id>/` in several sizes
+  (HEIC or JPEG). The largest is converted to JPEG with `sips` and saved beside
+  the page in its `<stem>-assets/cover.jpg` (the pasted-picture folder), and
+  `Cover` holds that relative path. A cover already at that path is kept. A book
+  Books has not shown a cover for yet gets none, and the next sync tries again,
+  since the page still has no `Cover`. A cover that fails to save is logged and
+  never blocks the highlights.
 - A highlight is a bullet, its note a child bullet:
   `- highlight text ^bk-<12 hex of the Apple Books UUID>` /
   `    - note`. Paragraphs in a highlight are joined into one line; a leading
@@ -53,12 +65,15 @@ markdown.
   `~/Library/Containers/com.apple.iBooksX/Data/Documents`, copies each with its
   `-wal` to a temp dir (Books keeps them open in WAL mode; nothing touches its
   files), and returns non-deleted, text-bearing annotations grouped by book in
-  location order. Books no longer in the library are skipped. macOS only
+  location order. Books no longer in the library are skipped.
+  `save_apple_books_cover` writes a book's cached cover to a path as JPEG
+  (temp file + rename; asset ids are checked to be alphanumeric). macOS only
   (`rusqlite` linked against the system SQLite); elsewhere it errors.
 - `lib/apple-books.ts` — pure naming, markdown, tagging, merge and the injected
   `syncAppleBooks` loop.
-- `linked-block-sync.ts` `editPage` — the whole-page write path for open
-  (live view / store, frontmatter kept separate) and closed pages.
+- `linked-block-sync.ts` `readPageParts` / `editPage` — whole-page read and
+  write for open (live view / store, frontmatter kept separate) and closed
+  pages.
 - `hooks/use-apple-books-sync.ts` — the schedule, the index wait (an unbuilt
   index would miss the existing page and make a duplicate), single-flight, and
   notices.
