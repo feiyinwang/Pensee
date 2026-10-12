@@ -22,10 +22,13 @@ import {
 import { getFileStem } from "@/lib/paths";
 import { parseFrontmatter, serializeFile } from "@/lib/frontmatter";
 import {
+  CORE_TEMPLATES_SETTINGS,
   TEMPLATER_SETTINGS,
   fillTemplate,
   folderTemplates,
+  inFolders,
   isProjectTemplate,
+  templateFolder,
 } from "@/lib/project-template";
 import * as tauri from "@/lib/tauri";
 import { editPage, readPageParts } from "@/components/editor-area/linked-block-sync";
@@ -34,6 +37,7 @@ import { isSameSpace } from "@/components/editor-area/page-kinds/space";
 import { createSpaceTab, useEditorStore } from "@/stores/editor-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import type { SearchResult } from "@/types/fs";
 
 export type { SpaceDef } from "@/lib/spaces";
 export type { TypedNote } from "@/lib/tauri";
@@ -47,8 +51,9 @@ const SPACE_TYPES = [SPACE_NOTE_TYPE];
  *  paints its notes on the first frame while the reread runs behind it. */
 const lastReads = new Map<string, tauri.TypedNote[]>();
 
-/** Notes whose `Type` is one of `types`, newest edit first; `null` until the
- *  first read lands. Reads at once on mount; rereads when files change. */
+/** Notes whose `Type` is one of `types`, newest edit first, leaving out the
+ *  vault's templates (see `readTemplateFolders`); `null` until the first read
+ *  lands. Reads at once on mount; rereads when files change. */
 export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | null {
   const root = useWorkspaceRoot();
   const metadataVersion = useSidebarMetadataVersion();
@@ -66,8 +71,13 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
   const readKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!key) return;
+    if (!root || !key) return;
     const types = typesKey.split("\n");
+    const folders = readTemplateFolders(root);
+    const list = async (cachedOnly: boolean) => {
+      const [notes, skip] = await Promise.all([tauri.listTypedNotes(types, cachedOnly), folders]);
+      return notes.filter((note) => !inFolders(note.relative_path, skip));
+    };
     const delay = readKey.current === key ? REFETCH_DELAY_MS : 0;
     let cancelled = false;
     let landed = false;
@@ -75,8 +85,7 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
     // of an iCloud vault can take many minutes. Never after it, nor over a
     // read this hook already has.
     const preview = () => {
-      tauri
-        .listTypedNotes(types, true)
+      list(true)
         .then((notes) => {
           if (cancelled || landed) return;
           setRead((current) =>
@@ -89,8 +98,7 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
     const unlisten = listen(tauri.NOTES_READ_EVENT, preview);
     const timer = window.setTimeout(() => {
       readKey.current = key;
-      tauri
-        .listTypedNotes(types)
+      list(false)
         .then((notes) => {
           landed = true;
           lastReads.set(key, notes);
@@ -107,7 +115,7 @@ export function useTypedNotes(types: readonly string[]): tauri.TypedNote[] | nul
       window.clearTimeout(timer);
       void unlisten.then((stop) => stop());
     };
-  }, [key, typesKey, metadataVersion]);
+  }, [root, key, typesKey, metadataVersion]);
 
   if (!key) return null;
   return read?.key === key ? read.notes : (lastReads.get(key) ?? null);
@@ -191,9 +199,45 @@ async function createNoteIn(
   return { path, stem };
 }
 
-/** The markdown note named `name` anywhere in the vault (the file name,
- *  ignoring case), so adding "Trip" to a board takes the "Trip" note you
- *  already have; null when there is none. When several share the name, one
+/** The vault-relative folders whose notes are templates: Templater's
+ *  `templates_folder`, and the core Templates plugin's `folder`. Read fresh, so
+ *  a change in Obsidian applies to the next read; a settings file that is
+ *  missing or unreadable names none. */
+async function readTemplateFolders(root: string): Promise<string[]> {
+  const read = async (file: string, key: "templates_folder" | "folder") => {
+    const path = `${root}/${file}`;
+    try {
+      if (!(await tauri.fileExists(path))) return null;
+      return templateFolder((await tauri.readFile(path)).content, key);
+    } catch (error: unknown) {
+      console.error(`[spaces] reading ${file} failed`, error);
+      return null;
+    }
+  };
+  const folders = await Promise.all([
+    read(TEMPLATER_SETTINGS, "templates_folder"),
+    read(CORE_TEMPLATES_SETTINGS, "folder"),
+  ]);
+  return folders.filter((folder) => folder !== null);
+}
+
+/** Markdown notes matching `query` (fuzzy, best first), leaving out the
+ *  vault's templates: what Add project offers and takes. */
+export async function searchNotes(query: string, limit: number): Promise<SearchResult[]> {
+  const root = useWorkspaceStore.getState().root;
+  if (!root) return [];
+  const [found, skip] = await Promise.all([
+    tauri.fuzzySearch(query, limit),
+    readTemplateFolders(root),
+  ]);
+  return found.filter(
+    (r) => /\.(md|markdown)$/i.test(r.filename) && !inFolders(r.relative_path, skip),
+  );
+}
+
+/** The markdown note named `name` anywhere in the vault but its templates
+ *  (the file name, ignoring case), so adding "Trip" to a board takes the
+ *  "Trip" note you already have; null when there is none. When several share the name, one
  *  `preferred` says first, then the shortest path, as embeds pick. Throws when
  *  the name is unusable. */
 export async function findNoteNamed(
@@ -205,8 +249,7 @@ export async function findNoteNamed(
   const stem = spaceFileStem(name);
   if (!stem) throw new Error("Enter a name first");
   const wanted = stem.toLowerCase();
-  const matches = (await tauri.fuzzySearch(stem, 50))
-    .filter((r) => /\.(md|markdown)$/i.test(r.filename))
+  const matches = (await searchNotes(stem, 50))
     .filter((r) => getFileStem(r.filename).toLowerCase() === wanted)
     .map((r) => r.path)
     .sort((a, b) => Number(preferred(b)) - Number(preferred(a)) || a.length - b.length);

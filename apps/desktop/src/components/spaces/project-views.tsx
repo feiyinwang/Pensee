@@ -22,10 +22,10 @@ import {
   adoptProjectNote,
   createProjectNote,
   findNoteNamed,
+  searchNotes,
   type TypedNote,
 } from "@/hooks/use-spaces";
 import { getFileStem } from "@/lib/paths";
-import * as tauri from "@/lib/tauri";
 import type { SearchResult } from "@/types/fs";
 import {
   NO_STATUS,
@@ -339,10 +339,9 @@ function AddField({ projects, columns, onAdd, onClose }: AddFieldProps) {
   useEffect(() => {
     if (!query) return;
     let live = true;
-    tauri.fuzzySearch(query, 30).then(
+    searchNotes(query, 30).then(
       (found) => {
-        if (live)
-          setResults({ query, notes: found.filter((r) => /\.(md|markdown)$/i.test(r.filename)) });
+        if (live) setResults({ query, notes: found });
       },
       (reason: unknown) => console.error("[projects] note search failed", reason),
     );

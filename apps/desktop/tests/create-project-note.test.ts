@@ -29,7 +29,7 @@ vi.mock("@/lib/tauri", () => ({
   ),
 }));
 
-const { adoptProjectNote, createProjectNote, findNoteNamed } =
+const { adoptProjectNote, createProjectNote, findNoteNamed, searchNotes } =
   await import("../src/hooks/use-spaces");
 const { useWorkspaceStore } = await import("../src/stores/workspace-store");
 const { parseDay } = await import("../src/lib/projects");
@@ -151,6 +151,39 @@ describe("findNoteNamed", () => {
     expect(await findNoteNamed("Trip", (path) => path.startsWith("/vault/x/"))).toBe(
       "/vault/x/nested/deeper/Trip.md",
     );
+  });
+});
+
+describe("template folders", () => {
+  beforeEach(() => {
+    files.clear();
+    useWorkspaceStore.setState({ root: "/vault" });
+  });
+
+  test("Templater's templates folder is never found or suggested", async () => {
+    files.set(
+      "/vault/.obsidian/plugins/templater-obsidian/data.json",
+      JSON.stringify({ templates_folder: "Practical/🖨 Template" }),
+    );
+    files.set("/vault/Practical/🖨 Template/Project template.md", "");
+    expect(await findNoteNamed("Project template")).toBeNull();
+    files.set("/vault/1. Project/Project template.md", "");
+    expect(await findNoteNamed("Project template")).toBe("/vault/1. Project/Project template.md");
+    expect((await searchNotes("template", 30)).map((r) => r.path)).toEqual([
+      "/vault/1. Project/Project template.md",
+    ]);
+  });
+
+  test("the core Templates plugin's folder too", async () => {
+    files.set("/vault/.obsidian/templates.json", JSON.stringify({ folder: "Templates" }));
+    files.set("/vault/Templates/Trip.md", "");
+    files.set("/vault/Templates and more/Trip.md", "");
+    expect(await findNoteNamed("Trip")).toBe("/vault/Templates and more/Trip.md");
+  });
+
+  test("without template settings, every note counts", async () => {
+    files.set("/vault/Templates/Trip.md", "");
+    expect(await findNoteNamed("Trip")).toBe("/vault/Templates/Trip.md");
   });
 });
 

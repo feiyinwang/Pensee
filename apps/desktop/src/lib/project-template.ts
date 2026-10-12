@@ -9,6 +9,41 @@ import { parseFrontmatter } from "./frontmatter";
 /** Where Templater keeps its settings, from the vault root. */
 export const TEMPLATER_SETTINGS = ".obsidian/plugins/templater-obsidian/data.json";
 
+// Notes in the vault's template folder are templates, not entries: no space
+// lists them and Add project never offers them (SPECs/spaces-spec.md).
+
+/** Where Obsidian's core Templates plugin keeps its settings, from the vault root. */
+export const CORE_TEMPLATES_SETTINGS = ".obsidian/templates.json";
+
+/** The vault-relative template folder a settings file names under `key`
+ *  (Templater: `templates_folder`; core Templates: `folder`); null when it
+ *  names none, names the vault root, or can't be read as JSON. */
+export function templateFolder(
+  settings: string,
+  key: "templates_folder" | "folder",
+): string | null {
+  let data: unknown;
+  try {
+    data = JSON.parse(settings);
+  } catch {
+    return null;
+  }
+  const folder = (data as Record<string, unknown> | null)?.[key];
+  if (typeof folder !== "string") return null;
+  const clean = folder
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .normalize("NFC");
+  return clean === "" ? null : clean;
+}
+
+/** Whether the vault-relative `path` is one of `folders` or inside one. */
+export function inFolders(path: string, folders: readonly string[]): boolean {
+  if (folders.length === 0) return false;
+  const clean = path.normalize("NFC");
+  return folders.some((folder) => clean === folder || clean.startsWith(`${folder}/`));
+}
+
 export interface FolderTemplate {
   /** Vault-relative folder a note made there gets the template in. */
   folder: string;
