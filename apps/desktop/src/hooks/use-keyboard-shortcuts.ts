@@ -37,15 +37,18 @@ export function useKeyboardShortcuts() {
       } = useEditorStore.getState();
       const isCompactFileMode = getWorkspaceChromeMode(root, chromeMode) === "compact-file";
 
-      // Alt+Arrow: history navigation when no editable target is focused;
+      // Alt+Arrow: history navigation when no editable target is focused and
+      // the focused control didn't take the key (a kanban card moves with it);
       // inside the editor, let CodeMirror handle word-wise cursor motion.
-      if (e.altKey && !e.shiftKey && e.key === "ArrowLeft" && !isEditableTargetFocused()) {
+      const historyKey =
+        e.altKey && !e.shiftKey && !e.defaultPrevented && !isEditableTargetFocused();
+      if (historyKey && e.key === "ArrowLeft") {
         e.preventDefault();
         void navigateBack();
         return;
       }
 
-      if (e.altKey && !e.shiftKey && e.key === "ArrowRight" && !isEditableTargetFocused()) {
+      if (historyKey && e.key === "ArrowRight") {
         e.preventDefault();
         void navigateForward();
         return;

@@ -4,7 +4,7 @@ import type { TypedNote } from "./tauri";
 // folders. The built-ins live here; a space you add is a markdown note with
 // `Type: Space`, read back through `spaceFromNote`.
 
-export type SpaceView = "gallery" | "list" | "cards" | "files";
+export type SpaceView = "gallery" | "list" | "cards" | "files" | "kanban" | "timeline";
 export type CoverKind = "book" | "video" | "course" | "podcast" | "paper" | "note";
 export type SpaceIcon = "projects" | "library" | "inspirations" | "files" | "space";
 
@@ -24,6 +24,9 @@ export interface SpaceDef {
   name: string;
   icon: SpaceIcon;
   view: SpaceView;
+  /** Views the page header switches between, `view` first
+   *  (SPECs/project-views-spec.md). */
+  views?: readonly SpaceView[];
   tabs: SpaceTab[];
   /** The space note, for a space you added. */
   path?: string;
@@ -31,6 +34,15 @@ export interface SpaceDef {
 
 export const SPACE_NOTE_TYPE = "Space";
 export const SPACE_VIEWS = ["gallery", "list", "cards"] as const;
+
+export const SPACE_VIEW_LABELS: Record<SpaceView, string> = {
+  gallery: "Gallery",
+  list: "List",
+  cards: "Cards",
+  files: "Files",
+  kanban: "Kanban",
+  timeline: "Timeline",
+};
 
 const tab = (id: string, label: string, noun: string, types: string[], cover: CoverKind) => ({
   id,
@@ -46,6 +58,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     name: "Projects",
     icon: "projects",
     view: "list",
+    views: ["list", "kanban", "timeline"],
     tabs: [tab("projects", "Projects", "project", ["Project"], "note")],
   },
   {

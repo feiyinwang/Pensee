@@ -18,7 +18,7 @@ import {
   useActiveSpaceKey,
   useSpaces,
 } from "@/hooks/use-spaces";
-import { SPACE_VIEWS, type SpaceIcon, type SpaceView } from "@/lib/spaces";
+import { SPACE_VIEWS, SPACE_VIEW_LABELS, type SpaceIcon, type SpaceView } from "@/lib/spaces";
 import { SIDEBAR_SECTION_LABEL_CLASS } from "./sidebar-section";
 
 const ICONS: Record<SpaceIcon, IconSvgElement> = {
@@ -27,13 +27,6 @@ const ICONS: Record<SpaceIcon, IconSvgElement> = {
   inspirations: Idea01Icon,
   files: Folder01Icon,
   space: Layers01Icon,
-};
-
-const VIEW_LABELS: Record<SpaceView, string> = {
-  gallery: "Gallery",
-  list: "List",
-  cards: "Cards",
-  files: "Files",
 };
 
 function rowClass(active: boolean) {
@@ -198,7 +191,7 @@ function AddSpaceForm({ onDone }: { onDone: () => void }) {
         label="View"
         value={view}
         onValueChange={(value) => setView(value as SpaceView)}
-        options={SPACE_VIEWS.map((v) => ({ value: v, label: VIEW_LABELS[v] }))}
+        options={SPACE_VIEWS.map((v) => ({ value: v, label: SPACE_VIEW_LABELS[v] }))}
       />
       {error && (
         <div role="alert" className="text-[12px] text-[var(--text-error)]">

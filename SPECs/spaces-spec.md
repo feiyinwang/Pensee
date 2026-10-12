@@ -26,7 +26,7 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 
 | Space | Shows | View |
 |---|---|---|
-| Projects | `Type: Project` | list: name, status, last edited |
+| Projects | `Type: Project` | list, kanban or timeline ([project-views-spec.md](project-views-spec.md)) |
 | Library | tabs: Books (`Book`), Videos (`YouTube`, `Video`), Courses (`Course`), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab |
 | Inspirations | `Type: Inspiration` | cards: title and first line |
 | Files | every file | the folder tree (moved here from the sidebar's Everything section) |
@@ -77,5 +77,4 @@ Covers come from the note's own link (`url`, `link` or `source`, first non-blank
 
 - Covers for other video hosts (Vimeo, Bilibili) and for books, courses and papers.
 - A `+ New` button inside a space.
-- Project status tabs (Active / Someday / Done): status values in the vault are mostly empty, so the list shows the raw `Status` or "No status".
 - Writing the matching notes into the space note as `[[links]]`.

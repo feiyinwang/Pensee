@@ -6,9 +6,11 @@ import type { SpaceLocation } from "@/components/editor-area/page-kinds";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
 import { useSpaceDef, useTypedNotes, type SpaceDef, type TypedNote } from "@/hooks/use-spaces";
 import { formatRelativeTime } from "@/lib/relative-time";
-import { allTypes, notesInTab } from "@/lib/spaces";
+import { SPACE_VIEW_LABELS, allTypes, notesInTab, type SpaceView } from "@/lib/spaces";
+import { useSpaceViewStore } from "@/stores/space-view-store";
 import { FilesSpace } from "./files-space";
 import { NoteGallery } from "./note-gallery";
+import { ProjectViews } from "./project-views";
 import { noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
 
@@ -63,6 +65,9 @@ function TypedSpace({ space }: { space: SpaceDef }) {
   const notes = useTypedNotes(allTypes(space));
   const [tabId, setTabId] = useState(space.tabs[0]?.id ?? "");
   const tab = space.tabs.find((t) => t.id === tabId) ?? space.tabs[0];
+  const picked = useSpaceViewStore((s) => s.views[space.key]);
+  const setView = useSpaceViewStore((s) => s.setView);
+  const view = picked && space.views?.includes(picked) ? picked : space.view;
   if (!tab) return null;
   const shown = notes ? notesInTab(notes, tab) : null;
 
@@ -86,6 +91,14 @@ function TypedSpace({ space }: { space: SpaceDef }) {
               }))}
             />
           )}
+          {space.views && (
+            <SegmentedControl
+              label={`${space.name} views`}
+              value={view}
+              onValueChange={(next) => setView(space.key, next as SpaceView)}
+              options={space.views.map((v) => ({ value: v, label: SPACE_VIEW_LABELS[v] }))}
+            />
+          )}
           {space.path && (
             <button
               type="button"
@@ -104,6 +117,8 @@ function TypedSpace({ space }: { space: SpaceDef }) {
           title={`Add your first ${tab.noun}`}
           text={`Any note with Type: ${tab.types[0]} shows up here.`}
         />
+      ) : space.views ? (
+        <ProjectViews notes={shown} view={view} />
       ) : space.view === "list" ? (
         <NoteList notes={shown} />
       ) : space.view === "cards" ? (

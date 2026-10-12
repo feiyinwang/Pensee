@@ -1,0 +1,416 @@
+/* Project views (SPECs/project-views-spec.md). */
+
+/* Kanban -------------------------------------------------------------- */
+
+.kanban {
+  display: grid;
+  grid-auto-columns: minmax(220px, 1fr);
+  grid-auto-flow: column;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.kanban[data-dragging] {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 240px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--surface-subtle);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color var(--motion-fast) var(--ease-out);
+}
+
+.column[data-target] {
+  outline-color: var(--accent);
+}
+
+.columnHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px;
+  margin-bottom: 6px;
+}
+
+.columnName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-base);
+}
+
+.columnCount {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.columnCards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-subtler);
+  background: var(--surface-primary);
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+}
+
+/* The lift on hover is a shadow layer fading in, as on Library covers. */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 6px 16px -6px rgb(0 0 0 / 0.3);
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kanban:not([data-dragging]) .card:hover::after {
+    opacity: 1;
+  }
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.card[data-lifted] {
+  opacity: 0.4;
+}
+
+.cardTitle {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--fg-base);
+}
+
+.cardMeta {
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Follows the pointer every frame through `transform`, set from script. */
+.ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.ghost .card {
+  cursor: grabbing;
+  rotate: 1.5deg;
+}
+
+.ghost .card::after {
+  opacity: 1;
+  box-shadow: 0 14px 28px -10px rgb(0 0 0 / 0.35);
+}
+
+/* Timeline ------------------------------------------------------------ */
+
+.timeline {
+  --name-width: 220px;
+  --row-height: 36px;
+  position: relative;
+  overflow: auto;
+  max-height: calc(100vh - 200px);
+  border: 1px solid var(--line-subtler);
+  border-radius: 12px;
+  background: var(--surface-primary);
+}
+
+.timelineInner {
+  position: relative;
+  min-width: 100%;
+}
+
+.timelineHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  height: var(--row-height);
+  border-bottom: 1px solid var(--line-subtler);
+  background: var(--surface-primary);
+}
+
+.corner {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: var(--name-width);
+  padding: 0 8px;
+  border-right: 1px solid var(--line-subtler);
+  background: var(--surface-primary);
+}
+
+.todayButton {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line-subtle);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-base);
+}
+
+.todayButton:hover {
+  background: var(--surface-subtle);
+}
+
+.months {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.month {
+  position: absolute;
+  top: 0;
+  height: var(--row-height);
+  padding-left: 6px;
+  line-height: var(--row-height);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.rows {
+  position: relative;
+}
+
+.grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--name-width);
+  pointer-events: none;
+}
+
+.gridLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-subtler);
+}
+
+.todayLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+}
+
+.row {
+  display: flex;
+  height: var(--row-height);
+  border-bottom: 1px solid var(--line-subtler);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.nameCell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: var(--name-width);
+  padding: 0 12px;
+  border-right: 1px solid var(--line-subtler);
+  background: var(--surface-primary);
+  text-align: left;
+}
+
+.nameCell:hover .name {
+  color: var(--fg-base);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.nameCell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.track {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.track[data-empty] {
+  cursor: copy;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .track[data-empty]:hover {
+    background: var(--surface-subtle);
+  }
+}
+
+.bar {
+  position: absolute;
+  top: 8px;
+  height: calc(var(--row-height) - 16px);
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  cursor: grab;
+  touch-action: none;
+}
+
+.bar[data-done] {
+  border-color: var(--line-subtle);
+  background: var(--surface-selected);
+}
+
+.bar[data-dragging] {
+  cursor: grabbing;
+}
+
+.bar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.handle[data-side="start"] {
+  left: 0;
+}
+
+.handle[data-side="end"] {
+  right: 0;
+}
+
+.barDates {
+  position: absolute;
+  top: 0;
+  line-height: var(--row-height);
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Points at a bar outside the visible days; click scrolls to it. */
+.offscreen {
+  position: absolute;
+  top: 8px;
+  z-index: 1;
+  height: calc(var(--row-height) - 16px);
+  padding: 0 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+}
+
+.offscreen[data-side="end"] {
+  translate: -100% 0;
+}
+
+.offscreen:hover {
+  color: var(--fg-base);
+  background: var(--surface-selected);
+}
+
+.groupRow {
+  display: flex;
+  height: var(--row-height);
+  border-bottom: 1px solid var(--line-subtler);
+}
+
+.groupLabel {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: var(--name-width);
+  padding: 0 12px;
+  border-right: 1px solid var(--line-subtler);
+  background: var(--surface-primary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.groupCount {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .column,
+  .card::after {
+    transition: none;
+  }
+  .ghost .card {
+    rotate: none;
+  }
+}

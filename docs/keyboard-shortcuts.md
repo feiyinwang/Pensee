@@ -43,6 +43,13 @@ On a focused board, Alt+ArrowLeft / Alt+ArrowRight are claimed for card travel
 (out to the card leading into the selected one / into its next steps) and do not
 navigate history; Tab / Shift+Tab step between cards on the same level.
 
+In the Projects space ([project views](../SPECs/project-views-spec.md)), a
+focused kanban card takes Alt+ArrowLeft / Alt+ArrowRight to move to the
+neighbouring status column, and a focused timeline bar takes ArrowLeft /
+ArrowRight (move a day) and Shift+ArrowLeft / Shift+ArrowRight (move its
+deadline). History navigation skips any Alt+Arrow a focused control has already
+handled (`defaultPrevented`).
+
 ## Menu Accelerators
 
 These shortcuts are bound to the native app menu (Tauri menu accelerators) rather than the global JS handler.
