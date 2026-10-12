@@ -144,6 +144,9 @@ const SCREEN = {
 
 /** A shape placed by a click or a shortcut instead of a drag, in scene units. */
 const SHAPE_DEFAULT = { w: 160, h: 110 } as const;
+/** The shape tool's kind before one is picked; a card added from outside
+ *  (a book highlight) uses it too, so it matches a drawn shape. */
+const SHAPE_DEFAULT_KIND: ShapeKind = "roundRect";
 
 const CULL_THRESHOLD = 300;
 /** Screen pixels the svg extends beyond each edge of the stage. A pan moves
@@ -280,7 +283,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   const tools: ToolState = {
     tool: "select",
-    shape: "roundRect",
+    shape: SHAPE_DEFAULT_KIND,
     sticky: "yellow",
     linker: { kind: "arrow", shape: "straight" },
     frame: "custom",
@@ -1611,7 +1614,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     };
     const el: ShapeEl = {
       id: newId(),
-      t: "rect",
+      t: SHAPE_DEFAULT_KIND,
       x: 0,
       y: 0,
       w: SHAPE_DEFAULT.w,
