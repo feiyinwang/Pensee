@@ -106,20 +106,67 @@ export function cleanBookTitle(stem: string): string {
   return stem.replace(SITE_GROUP_RE, "").replace(SITE_DOMAIN_RE, "").replace(/\s+/g, " ").trim();
 }
 
-/** The `Book` frontmatter value: the book file, relative to the page. */
-export function bookFileOf(frontmatter: string | null): string | null {
+/** A text property of the page (key matched ignoring case), or null. */
+function pageProperty(frontmatter: string | null, name: string): string | null {
   if (!frontmatter?.trim()) return null;
   const doc = parseDocument(frontmatter);
   if (doc.errors.length || !isMap(doc.contents)) return null;
   const pair = doc.contents.items.find(
-    (p) => isScalar(p.key) && String(p.key.value).toLowerCase() === "book",
+    (p) => isScalar(p.key) && String(p.key.value).toLowerCase() === name,
   );
   const value = pair && isScalar(pair.value) ? pair.value.value : null;
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+/** The `Book` frontmatter value: the book file, relative to the page. */
+export function bookFileOf(frontmatter: string | null): string | null {
+  return pageProperty(frontmatter, "book");
+}
+
+/** The page's `Author`. */
+export function authorOf(frontmatter: string | null): string | null {
+  return pageProperty(frontmatter, "author");
+}
+
+/** The author in a download's file name, the first bracketed group after the
+ *  title once site tags are gone (`Skip the Line (James Altucher James
+ *  Altucher )` → `James Altucher`). A name the site wrote twice is kept once.
+ *  Null when there is no group or it is a year or edition. */
+export function authorFromFileName(stem: string): string | null {
+  const group = /\(([^()]+)\)/.exec(cleanBookTitle(stem))?.[1]?.trim();
+  if (!group || /^\d|\bed(ition)?\b/i.test(group)) return null;
+  const words = group.split(/\s+/);
+  const half = words.length / 2;
+  if (Number.isInteger(half) && words.slice(0, half).join(" ") === words.slice(half).join(" ")) {
+    return words.slice(0, half).join(" ");
+  }
+  return group;
+}
+
+function nameTokens(author: string): Set<string> {
+  return new Set(
+    author
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((token) => token.length > 1),
+  );
+}
+
+/** Whether two author values name the same people, whatever the order or
+ *  punctuation (`Altucher, James` = `James Altucher`); one listing a subset of
+ *  the other's names (a co-author left off) still counts. */
+export function sameAuthor(a: string, b: string): boolean {
+  const x = nameTokens(a);
+  const y = nameTokens(b);
+  if (!x.size || !y.size) return false;
+  const [small, large] = x.size <= y.size ? [x, y] : [y, x];
+  return [...small].every((token) => large.has(token));
+}
+
 /** The whole text of a new book page for the book file `bookFile`: only its
  *  properties. Headings are the writer's to add. */
-export function newBookNote(bookFile: string): string {
-  return `---\n${withBookProperties(null, { book: bookFile })}\n---\n`;
+export function newBookNote(bookFile: string, author: string | null = null): string {
+  return `---\n${withBookProperties(null, { book: bookFile, author })}\n---\n`;
 }

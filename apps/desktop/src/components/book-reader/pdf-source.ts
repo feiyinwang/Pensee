@@ -1,10 +1,7 @@
-import * as pdfjs from "pdfjs-dist";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 import { MAX_PASSAGE_CHARS, type BookSource, type BookSourceHooks } from "./book-source";
-
-pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+import { pdfjs } from "./pdfjs";
 
 // PDF pages as fixed-size placeholders; only pages within a screen or so of
 // the viewport hold a canvas and a text layer, and pages that scroll away give

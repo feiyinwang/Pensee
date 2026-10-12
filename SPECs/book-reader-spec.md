@@ -21,10 +21,23 @@ to explain or define something.
   without bracketed asides such as the author (`Skip the Line (James
   Altucher)` matches `Skip the line.md`), then the title before a subtitle.
   Opening a book whose page isn't known (a link) does the same before making
-  one. If none
+  one.
+- **Author decides between same-named pages.** The book's author comes from
+  the file: an EPUB's `dc:creator`s or a PDF's Author field (`book-meta.ts`,
+  reading only those parts). When the file doesn't say, it comes from the
+  download's file name (`Skip the Line (James Altucher James Altucher )` →
+  `James Altucher`). A page with the book's name is used when its `Author`
+  matches (`sameAuthor`: the same names in any order or punctuation, or a
+  subset of them) or when either side has no author. A page by a different
+  author is someone else's book, so the book gets its own page,
+  `<Title> (<Author>)`.
+- **Author property.** New pages get `Author`, and a matched page gets it
+  when it has none. A different author already on a page is never
+  overwritten. If none
   exists, a new page goes in the Book pages folder (`apple-books.folder`):
   ```
   Type: Book
+  Author: <author, when known>
   Book: <file name>
   tags: [Book]
   ```

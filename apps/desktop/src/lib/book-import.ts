@@ -1,6 +1,14 @@
 import { bookPageNames, withBookProperties } from "./apple-books";
 import { forgetBook, type LibraryBook } from "./book-library";
-import { bookFileOf, cleanBookTitle, newBookNote } from "./book-highlights";
+import {
+  authorFromFileName,
+  authorOf,
+  bookFileOf,
+  cleanBookTitle,
+  newBookNote,
+  sameAuthor,
+} from "./book-highlights";
+import { readBookAuthor } from "@/components/book-reader/book-meta";
 import { resolveDailyNoteFile } from "./daily-note";
 import { getFileName, getFileStem, getParentDir } from "./paths";
 import * as tauri from "./tauri";
@@ -83,13 +91,28 @@ export async function importBook(sourcePath: string): Promise<void> {
     showEditorNotice("That book's file name has no usable title.");
     return;
   }
+  const author = (await readBookAuthor(sourcePath)) ?? authorFromFileName(getFileStem(sourcePath));
+  const shortName = names[names.length - 1]!;
+  // A page by another author's name is someone else's book: that book gets
+  // its own page, named with its author.
+  const authoredName = author ? safePageName(`${shortName} (${author})`) : null;
+
+  // An existing page with the book's name is its page, unless both name an
+  // author and they differ.
   let notePath: string | null = null;
-  for (const name of names) {
-    notePath = await findWikiPage(name, root, anchor.path, tauriWikiPageDeps);
-    if (notePath) break;
+  let nameTaken = false;
+  for (const name of [...names, ...(authoredName ? [authoredName] : [])]) {
+    const found = await findWikiPage(name, root, anchor.path, tauriWikiPageDeps);
+    if (!found) continue;
+    const pageAuthor = authorOf((await readPageParts(found)).frontmatter);
+    if (!author || !pageAuthor || sameAuthor(author, pageAuthor)) {
+      notePath = found;
+      break;
+    }
+    nameTaken = true;
   }
   const isNew = !notePath;
-  const name = names[names.length - 1]!;
+  const name = nameTaken && authoredName ? authoredName : shortName;
   notePath ??= newPagePath(name, root, anchor.path);
 
   // The page already has this book beside it (dropped again): open that copy.
@@ -97,6 +120,10 @@ export async function importBook(sourcePath: string): Promise<void> {
     const existing = bookFileOf((await readPageParts(notePath)).frontmatter);
     const existingPath = existing ? `${getParentDir(notePath)}/${existing}` : null;
     if (existingPath && (await tauri.fileExists(existingPath))) {
+      await editPage(notePath, (page) => ({
+        frontmatter: withBookProperties(page.frontmatter, { author }),
+        body: page.body,
+      }));
       await openBook(existingPath, notePath);
       return;
     }
@@ -110,10 +137,10 @@ export async function importBook(sourcePath: string): Promise<void> {
   const bookFile = getFileName(bookPath);
   if (isNew) {
     await tauri.createFile(notePath);
-    await tauri.writeFile(notePath, newBookNote(bookFile));
+    await tauri.writeFile(notePath, newBookNote(bookFile, author));
   } else {
     await editPage(notePath, (page) => ({
-      frontmatter: withBookProperties(page.frontmatter, { book: bookFile }),
+      frontmatter: withBookProperties(page.frontmatter, { book: bookFile, author }),
       body: page.body,
     }));
   }

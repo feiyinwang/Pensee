@@ -88,7 +88,8 @@ export function hasCover(frontmatter: string | null): boolean {
  * `frontmatter` marked as a book, the way the writer's own book pages are:
  * `Type: Book` (only when it has no type yet), `Cover: <cover>` (only when
  * `cover` is given and it has no cover yet — a link the writer chose is never
- * replaced), `Book: <book>` (the same, for the book file the reader opens) and `Book` in its `tags` (an existing list, or Obsidian's
+ * replaced), `Author: <author>` and `Book: <book>` (the same, for the book the
+ * reader opens) and `Book` in its `tags` (an existing list, or Obsidian's
  * space/comma-separated string, gets it appended once). Keys are matched
  * ignoring case. Missing keys are added as lines — `Type`/`Cover` at the top,
  * `tags` at the end — so the rest stays byte-for-byte; filling a blank key or
@@ -97,15 +98,20 @@ export function hasCover(frontmatter: string | null): boolean {
  */
 export function withBookProperties(
   frontmatter: string | null,
-  { cover = null, book = null }: { cover?: string | null; book?: string | null } = {},
+  {
+    cover = null,
+    book = null,
+    author = null,
+  }: { cover?: string | null; book?: string | null; author?: string | null } = {},
 ): string | null {
   const top: string[] = [];
   const typeLine = yamlLine("Type", BOOK_TYPE);
   const coverLine = cover ? yamlLine("Cover", cover) : null;
   const bookLine = book ? yamlLine("Book", book) : null;
+  const authorLine = author ? yamlLine("Author", author) : null;
   const tagLines = `tags:\n  - ${BOOK_TAG}`;
   if (frontmatter === null || !frontmatter.trim()) {
-    return [typeLine, coverLine, bookLine, tagLines].filter(Boolean).join("\n");
+    return [typeLine, coverLine, authorLine, bookLine, tagLines].filter(Boolean).join("\n");
   }
 
   const doc = parseDocument(frontmatter);
@@ -132,7 +138,15 @@ export function withBookProperties(
     }
   }
 
-  // The book file this page reads from (SPECs/book-reader-spec.md).
+  // The book's author and file, for the reader (SPECs/book-reader-spec.md).
+  if (authorLine) {
+    const existing = findPair(map, "author");
+    if (!existing) top.push(authorLine);
+    else if (isBlank(existing.value)) {
+      existing.value = doc.createNode(author);
+      reserialize = true;
+    }
+  }
   if (bookLine) {
     const existing = findPair(map, "book");
     if (!existing) top.push(bookLine);

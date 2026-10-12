@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, test } from "vite-plus/test";
 
 import {
   bookFileOf,
   bookHighlightId,
+  authorFromFileName,
+  authorOf,
   bookHighlightsIn,
   cleanBookTitle,
+  sameAuthor,
   newBookNote,
   parseBookHighlightId,
   withBookHighlight,
@@ -74,8 +77,9 @@ describe("pages", () => {
   });
 
   it("writes and reads the Book file", () => {
-    const { frontmatter, body } = parseFrontmatter(newBookNote("Atomic Habits.pdf"));
+    const { frontmatter, body } = parseFrontmatter(newBookNote("Atomic Habits.pdf", "James Clear"));
     expect(bookFileOf(frontmatter)).toBe("Atomic Habits.pdf");
+    expect(authorOf(frontmatter)).toBe("James Clear");
     expect(frontmatter).toContain("Type: Book");
     expect(body.trim()).toBe("");
   });
@@ -89,5 +93,27 @@ describe("cleanBookTitle", () => {
     expect(cleanBookTitle("Thinking, Fast and Slow (Kahneman)")).toBe(
       "Thinking, Fast and Slow (Kahneman)",
     );
+  });
+});
+
+describe("authors", () => {
+  test("reads the author from a download's file name", () => {
+    expect(
+      authorFromFileName(
+        "Skip the Line (James Altucher James Altucher ) (z-library.sk, 1lib.sk, z-lib.sk)",
+      ),
+    ).toBe("James Altucher");
+    expect(
+      authorFromFileName("Dads Guide (Matthew M. Miller, Sharon Perkins RN) (Z-Library)"),
+    ).toBe("Matthew M. Miller, Sharon Perkins RN");
+    expect(authorFromFileName("Deep Work (2016)")).toBeNull();
+    expect(authorFromFileName("Deep Work")).toBeNull();
+  });
+
+  test("matches the same people whatever the order or punctuation", () => {
+    expect(sameAuthor("James Altucher", "Altucher, James")).toBe(true);
+    expect(sameAuthor("James Clear", "james clear")).toBe(true);
+    expect(sameAuthor("Matthew M. Miller", "Matthew M. Miller, Sharon Perkins")).toBe(true);
+    expect(sameAuthor("James Clear", "James Altucher")).toBe(false);
   });
 });
