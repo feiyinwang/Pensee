@@ -18,7 +18,13 @@ import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { Add01Icon } from "@hugeicons/core-free-icons";
 import { editPage } from "@/components/editor-area/linked-block-sync";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
-import { createProjectNote, type TypedNote } from "@/hooks/use-spaces";
+import {
+  adoptProjectNote,
+  createProjectNote,
+  findNoteNamed,
+  type TypedNote,
+} from "@/hooks/use-spaces";
+import { getFileStem } from "@/lib/paths";
 import {
   NO_STATUS,
   PROJECT_TYPE,
@@ -198,27 +204,51 @@ function useProjects(notes: TypedNote[]) {
     [toEdit],
   );
 
+  /** Shows a project added here at once, until the re-read notes include it. */
+  const show = useCallback((path: string, change: Change) => {
+    const stem = getFileStem(path);
+    const project: Project = {
+      note: {
+        path,
+        relative_path: `${stem}.md`,
+        name: stem,
+        title: null,
+        note_type: PROJECT_TYPE,
+        modified_at: 0,
+        properties: {},
+        excerpt: null,
+      },
+      status: change.status ?? NO_STATUS,
+      start: change.start ?? null,
+      deadline: change.deadline ?? null,
+    };
+    setCreated((current) => [project, ...current]);
+  }, []);
+
+  // A name a note already has takes that note: a project already here moves
+  // to where it was added, any other note becomes a project (asking first
+  // when it has another type). Only a new name writes a new note.
   const create = useCallback<CreateProject>(
     async (name, change) => {
-      const { path, stem } = await createProjectNote(name, toEdit(change));
-      const project: Project = {
-        note: {
-          path,
-          relative_path: `${stem}.md`,
-          name: stem,
-          title: null,
-          note_type: PROJECT_TYPE,
-          modified_at: 0,
-          properties: {},
-          excerpt: null,
-        },
-        status: change.status ?? NO_STATUS,
-        start: change.start ?? null,
-        deadline: change.deadline ?? null,
-      };
-      setCreated((current) => [project, ...current]);
+      const projectPaths = new Set(base.map((project) => project.note.path));
+      const found = await findNoteNamed(name, (path) => projectPaths.has(path));
+      if (found === null) {
+        const { path } = await createProjectNote(name, toEdit(change));
+        show(path, change);
+        return;
+      }
+      const known = base.find((project) => project.note.path === found);
+      if (known) {
+        edit(known, change);
+        return;
+      }
+      const stem = getFileStem(found);
+      const adopted = await adoptProjectNote(found, toEdit(change), (type) =>
+        window.confirm(`"${stem}" is a ${type} note. Make it a project instead?`),
+      );
+      if (adopted) show(found, change);
     },
-    [toEdit],
+    [toEdit, base, edit, show],
   );
 
   return { projects, columns, edit, create };

@@ -13,8 +13,16 @@ import {
   type SpaceDef,
   type SpaceView,
 } from "@/lib/spaces";
-import { projectNoteContent, type ProjectEdit } from "@/lib/projects";
+import {
+  asProjectFrontmatter,
+  isProjectType,
+  noteType,
+  projectNoteContent,
+  type ProjectEdit,
+} from "@/lib/projects";
+import { getFileStem } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
+import { editPage, readPageParts } from "@/components/editor-area/linked-block-sync";
 import type { SpaceLocation } from "@/components/editor-area/page-kinds";
 import { isSameSpace } from "@/components/editor-area/page-kinds/space";
 import { createSpaceTab, useEditorStore } from "@/stores/editor-store";
@@ -145,8 +153,47 @@ export async function createSpaceNote(name: string, type: string, view: SpaceVie
   openSpace({ kind: "space", space: "note", path });
 }
 
+/** The markdown note named `name` anywhere in the vault (the file name,
+ *  ignoring case), so adding "Trip" to a board takes the "Trip" note you
+ *  already have; null when there is none. When several share the name, one
+ *  `preferred` says first, then the shortest path, as embeds pick. Throws when
+ *  the name is unusable. */
+export async function findNoteNamed(
+  name: string,
+  preferred: (path: string) => boolean = () => false,
+): Promise<string | null> {
+  const root = useWorkspaceStore.getState().root;
+  if (!root) throw new Error("Open a folder first");
+  const stem = spaceFileStem(name);
+  if (!stem) throw new Error("Enter a name first");
+  const wanted = stem.toLowerCase();
+  const matches = (await tauri.fuzzySearch(stem, 50))
+    .filter((r) => /\.(md|markdown)$/i.test(r.filename))
+    .filter((r) => getFileStem(r.filename).toLowerCase() === wanted)
+    .map((r) => r.path)
+    .sort((a, b) => Number(preferred(b)) - Number(preferred(a)) || a.length - b.length);
+  return matches[0] ?? null;
+}
+
+/** Make the note at `path` a project with `edit`'s fields. A note of another
+ *  type keeps it unless `confirmRetype` agrees (it would leave that type's
+ *  space); returns whether the note is now a project. */
+export async function adoptProjectNote(
+  path: string,
+  edit: ProjectEdit,
+  confirmRetype: (type: string) => boolean,
+): Promise<boolean> {
+  const type = noteType((await readPageParts(path)).frontmatter);
+  if (type !== null && !isProjectType(type) && !confirmRetype(type)) return false;
+  await editPage(path, (page) => ({
+    ...page,
+    frontmatter: asProjectFrontmatter(page.frontmatter, edit),
+  }));
+  return true;
+}
+
 /** Write `<Name>.md` at the vault root as a project note with `edit`'s fields
- *  set; opens nothing. */
+ *  set; opens nothing. For a name no note has yet (see `findNoteNamed`). */
 export function createProjectNote(
   name: string,
   edit: ProjectEdit,

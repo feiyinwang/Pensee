@@ -211,10 +211,40 @@ export function withProjectEdit(frontmatter: string | null, edit: ProjectEdit): 
   return next;
 }
 
-/** A new project note: `Type: Project`, then the fields `edit` sets, written
- *  the way `withProjectEdit` writes them so the views read them back. */
+export const TYPE_KEYS = ["Type"] as const;
+
+/** `frontmatter` made a project's: `Type: Project` (replacing any other type),
+ *  then the fields `edit` sets. A new note and a note taken over by name both
+ *  get their properties here, so the views read the same keys back. */
+export function asProjectFrontmatter(frontmatter: string | null, edit: ProjectEdit): string {
+  return withProjectEdit(withProperty(frontmatter, TYPE_KEYS, PROJECT_TYPE), edit) ?? "";
+}
+
+/** A new project note: `Type: Project`, then the fields `edit` sets. */
 export function projectNoteContent(edit: ProjectEdit): string {
-  return `---\n${withProjectEdit(`Type: ${PROJECT_TYPE}`, edit)}\n---\n`;
+  return `---\n${asProjectFrontmatter(null, edit)}\n---\n`;
+}
+
+/** The note's `Type` as written (the first one when it lists several), or
+ *  null when it has none. Read line by line, as `list_typed_notes` does. */
+export function noteType(frontmatter: string | null): string | null {
+  const lines = (frontmatter ?? "").split("\n");
+  const at = lines.findIndex(
+    (line) => line.match(KEY_LINE_RE)?.[1]?.trim().toLowerCase() === "type",
+  );
+  if (at === -1) return null;
+  const inline = lines[at].match(KEY_LINE_RE)![2].trim();
+  const value = inline !== "" ? inline : (lines[at + 1]?.match(/^\s*-\s+(.*)$/)?.[1] ?? "");
+  const first = value
+    .replace(/^\[|\]$/g, "")
+    .split(",")[0]
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
+  return first ? first : null;
+}
+
+export function isProjectType(type: string | null): boolean {
+  return type?.toLowerCase() === PROJECT_TYPE.toLowerCase();
 }
 
 const KEY_LINE_RE = /^([^\s#:-][^:]*):(.*)$/;

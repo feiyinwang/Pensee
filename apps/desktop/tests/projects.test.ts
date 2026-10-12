@@ -2,7 +2,9 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   NO_STATUS,
   dayToIso,
+  asProjectFrontmatter,
   deadlineTag,
+  noteType,
   parseDay,
   projectNoteContent,
   projectOf,
@@ -176,5 +178,25 @@ describe("tags", () => {
 
   test("a done project's deadline is never an alarm", () => {
     expect(due("2023-12-20", "done")).toEqual({ tone: "gray", label: "Due Dec 20, 2023" });
+  });
+});
+
+describe("noteType", () => {
+  test("reads the type as written, the first of a list", () => {
+    expect(noteType("Type: Book\nStatus: x")).toBe("Book");
+    expect(noteType("type: [Project, Idea]")).toBe("Project");
+    expect(noteType("Type:\n  - YouTube\n  - Video")).toBe("YouTube");
+    expect(noteType('Type: "Paper"')).toBe("Paper");
+    expect(noteType("Status: x")).toBeNull();
+    expect(noteType("Type: ")).toBeNull();
+    expect(noteType(null)).toBeNull();
+  });
+});
+
+describe("asProjectFrontmatter", () => {
+  test("replaces another type and adds the fields", () => {
+    expect(asProjectFrontmatter("Type: Book\nAuthor: X", { status: "To-do" })).toBe(
+      "Type: Project\nAuthor: X\nStatus: To-do",
+    );
   });
 });
