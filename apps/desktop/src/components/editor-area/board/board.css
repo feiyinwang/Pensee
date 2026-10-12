@@ -254,32 +254,34 @@
   font-size: 12px;
 }
 
-/* Edit here: the board editor mounted in the frame in place of the picture.
-   Taller than the preview so the dock and toolbars have room; the frame
-   clips (not hides) for the reason given on `.wr-board-stage`. */
+/* Edit here: the board editor over the note's page (its pane), in place of
+   the note. Columns and a book pair already keep the pane clear of the tab
+   row and the footer stats; a lone tab's pane runs under both, so the board
+   leaves the same room there. The note underneath is hidden, not unmounted:
+   it comes back as it was. */
 .wr-board-inline {
-  display: block;
-  height: clamp(420px, 70vh, 760px);
-  cursor: default;
-  /* Inside the note's content, which sets text up for prose (pre-wrap,
-     its own line height); the board chrome was built against the body's. */
-  white-space: normal;
-  line-height: normal;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
 }
 
-.wr-board-image:has(> .wr-board-inline) {
-  overflow: clip;
-  border-color: var(--focus-border);
+.tab-columns:not([data-columns], [data-pair]) .wr-board-inline {
+  top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
+  bottom: 44px;
 }
 
-.wr-board-image:has(> .wr-board-inline) > img,
-.wr-board-image:has(> .wr-board-inline) > .wr-board-image-actions {
-  display: none;
+[data-pane]:has(> .wr-board-inline) > :not(.wr-board-inline) {
+  visibility: hidden;
 }
 
 .wr-board-inline.is-open .wr-board-stage {
   transform: scale(1);
   opacity: 1;
+}
+
+/* No window buttons over a page: the top bar starts at its edge. */
+.wr-board-inline .wr-board-topbar {
+  left: 10px;
 }
 
 /* ------------------------------------------------------------ code modal */
@@ -492,8 +494,7 @@
    round the whole board. Only the container opts out — buttons inside keep
    their keyboard ring, which `[data-no-focus-ring]` would also have removed. */
 .wr-board-host:focus-visible,
-.wr-board-fullscreen:focus-visible,
-.wr-board-inline:focus-visible {
+.wr-board-fullscreen:focus-visible {
   outline: none;
 }
 
@@ -1000,6 +1001,36 @@
 
 .wr-board-host.has-dock .wr-board-rail {
   display: none;
+}
+
+/* Bars never overlap, whatever the board's width (a page is far narrower
+   than the window). The dock is 516px wide and centred; the zoom cluster
+   (about 185px with its inset) shares the bottom edge only while both fit
+   either side of it, then moves up to the top bar's row, and when that row
+   is full too, sits above the dock. Under the dock's own width it shrinks. */
+.wr-board-host {
+  container: wr-board / size;
+}
+
+@container wr-board (max-width: 920px) {
+  .wr-board-viewport-cluster {
+    top: 10px;
+    bottom: auto;
+  }
+}
+
+@container wr-board (max-width: 600px) {
+  .wr-board-viewport-cluster {
+    top: auto;
+    bottom: 86px;
+  }
+}
+
+@container wr-board (max-width: 548px) {
+  .wr-board-dock {
+    transform: translateX(-50%) scale(0.86);
+    transform-origin: bottom center;
+  }
 }
 
 /* --------------------------------------------------------- present mode */

@@ -213,6 +213,48 @@ export function placeNear(
   return { box: nextStepBox(best.el, side, scene, { w, h }, ignore), from: best.el, side };
 }
 
+/**
+ * Where a card brought in from beside the board (a book highlight) lands:
+ * inside `view` — the scene rect on screen, chrome already taken off — as near
+ * the `side` edge as free space allows, and as near the vertical middle.
+ * Columns step in from that edge; in each, rows alternate below and above the
+ * middle. The first slot clear of every card by `gap` wins (frames and
+ * connectors don't count: a card may sit in a frame or over an arrow). With
+ * nothing free it goes in the first slot, on top.
+ */
+export function placeFromSide(
+  scene: BoardScene,
+  view: Box,
+  side: "w" | "e",
+  w: number,
+  h: number,
+  gap = 24,
+): Box {
+  const blockers = scene.els
+    .filter((el) => el.t !== "frame" && !isLinker(el))
+    .map((el) => {
+      const b = elementBounds(el);
+      return { x: b.x - gap, y: b.y - gap, w: b.w + gap * 2, h: b.h + gap * 2 };
+    });
+  const midY = view.y + view.h / 2 - h / 2;
+  const cols = Math.max(1, Math.floor((view.w + gap) / (w + gap)));
+  const rows = Math.max(1, Math.floor((view.h + gap) / (h + gap)));
+  let first: Box | null = null;
+  for (let c = 0; c < cols; c++) {
+    const x = side === "w" ? view.x + c * (w + gap) : view.x + view.w - w - c * (w + gap);
+    // 0, +1, -1, +2, -2 … rows from the middle; the middle always counts.
+    for (let i = 0; i < rows * 2 + 1; i++) {
+      const k = i === 0 ? 0 : i % 2 ? (i + 1) / 2 : -i / 2;
+      const y = midY + k * (h + gap);
+      if (i > 0 && (y < view.y || y + h > view.y + view.h)) continue;
+      const box = { x, y, w, h };
+      first ??= box;
+      if (!blockers.some((o) => boxesOverlap(box, o))) return box;
+    }
+  }
+  return first ?? { x: side === "w" ? view.x : view.x + view.w - w, y: midY, w, h };
+}
+
 /** How close (scene units, edge to edge) a dragged card must come to another
  *  for dropping it there to dock it after that card. */
 export const DOCK_REACH = 120;

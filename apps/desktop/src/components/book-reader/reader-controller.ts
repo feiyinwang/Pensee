@@ -22,6 +22,7 @@ import {
 import { rangeAt, textOffset, type BookSource } from "./book-source";
 import { readingPlace, saveReadingPlace, type ReadingPlace } from "@/lib/book-positions";
 import { HighlightPainter } from "./highlight-painter";
+import { addCardToBoardOn } from "@/components/editor-area/board/board-fullscreen";
 
 // Everything a book tab does outside React (SPECs/book-reader-spec.md): load
 // the book, find its page, draw the page's highlights onto the book, turn a
@@ -259,6 +260,8 @@ export class ReaderController {
       frontmatter: page.frontmatter,
       body: withBookHighlight(page.body, text, location),
     }));
+    // A board open over the page gets it as a card too, on the book's side.
+    addCardToBoardOn(path, text, this.scroller.getBoundingClientRect());
     window.getSelection()?.removeAllRanges();
   }
 

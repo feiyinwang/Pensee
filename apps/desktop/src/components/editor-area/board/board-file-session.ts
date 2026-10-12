@@ -8,7 +8,7 @@
  */
 
 import { convertFileSrc } from "@tauri-apps/api/core";
-import type { EditorView } from "@codemirror/view";
+import { type EditorView, ViewPlugin } from "@codemirror/view";
 import { imageWidgetEnhancerFacet } from "@/lib/prosemark-core/main";
 import { decodeLinkPath, getParentDir, normalizeMarkdownDestination } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
@@ -204,7 +204,7 @@ export async function createBoardFromMermaid(
 export interface OpenBoardMode {
   /** Straight into present mode; leaving it closes the board. */
   present?: boolean;
-  /** Edit inside this element (the note's preview) instead of full screen. */
+  /** Open over this element (the note's page) instead of full screen. */
   inline?: HTMLElement;
   onClosed?: () => void;
 }
@@ -252,61 +252,64 @@ function cardButton(label: string, onOpen: () => void): HTMLButtonElement {
   return btn;
 }
 
+/** The board open over each note's page. It lives as long as the note's
+ *  editor, not the preview widget: the widget is redrawn whenever the page is
+ *  edited (a highlight added from a book beside it, say), the page is not. */
+const pageBoards = new WeakMap<EditorView, { close: () => void }>();
+
+const pageBoardLifetime = ViewPlugin.define((view) => ({
+  destroy: () => pageBoards.get(view)?.close(),
+}));
+
 /** Turns a `.board.svg` image preview into an openable board. The picture
  *  itself is still the plain `<img>` — that is what makes it instant. */
 export function boardImageEnhancer(getFilePath: () => string | null) {
-  return imageWidgetEnhancerFacet.of((dom, image, url, view: EditorView) => {
-    if (!isBoardFile(url)) return;
-    const notePath = getFilePath();
-    if (!notePath) return;
-    const absolute = absoluteFrom(getParentDir(notePath), url);
-    image.dataset.boardPath = absolute;
-    if (versions.has(absolute)) image.src = previewSrc(absolute);
-    dom.classList.add("wr-board-image");
-    prefetchBoardChrome();
-    image.title = "Open board";
+  return [
+    pageBoardLifetime,
+    imageWidgetEnhancerFacet.of((dom, image, url, view: EditorView) => {
+      if (!isBoardFile(url)) return;
+      const notePath = getFilePath();
+      if (!notePath) return;
+      const absolute = absoluteFrom(getParentDir(notePath), url);
+      image.dataset.boardPath = absolute;
+      if (versions.has(absolute)) image.src = previewSrc(absolute);
+      dom.classList.add("wr-board-image");
+      prefetchBoardChrome();
+      image.title = "Open board";
 
-    /** The board being edited in this frame; closed with the widget so a
-     *  board scrolled out of the note is saved and torn down, not orphaned. */
-    let inPlace: { close: () => void } | null = null;
-    const open = (mode: OpenBoardMode = {}): void => {
-      dom.querySelector(".wr-board-image-error")?.remove();
-      openBoardFile(absolute, getFilePath(), mode)
-        .then((board) => {
-          if (!mode.inline) return;
-          // The widget went while the file was being read: nothing to edit in.
-          if (!dom.isConnected) return board.close();
-          inPlace = board;
-          view.requestMeasure();
-        })
-        .catch((error: unknown) => {
-          const note = document.createElement("span");
-          note.className = "wr-board-image-error";
-          note.textContent = `Couldn't open board: ${error instanceof Error ? error.message : String(error)}`;
-          dom.append(note);
-        });
-    };
-    const actions = document.createElement("span");
-    actions.className = "wr-board-image-actions";
-    // Present straight from the note: the board opens full-screen as slides.
-    actions.append(
-      cardButton("Present", () => open({ present: true })),
-      cardButton("Edit here", () =>
-        open({
-          inline: dom,
-          onClosed: () => {
-            inPlace = null;
-            view.requestMeasure();
-          },
+      const open = (mode: OpenBoardMode = {}): void => {
+        dom.querySelector(".wr-board-image-error")?.remove();
+        openBoardFile(absolute, getFilePath(), mode)
+          .then((board) => {
+            if (!mode.inline) return;
+            // The note closed while the file was being read.
+            if (!mode.inline.isConnected) return board.close();
+            pageBoards.set(view, board);
+          })
+          .catch((error: unknown) => {
+            const note = document.createElement("span");
+            note.className = "wr-board-image-error";
+            note.textContent = `Couldn't open board: ${error instanceof Error ? error.message : String(error)}`;
+            dom.append(note);
+          });
+      };
+      const actions = document.createElement("span");
+      actions.className = "wr-board-image-actions";
+      // Present straight from the note: the board opens full-screen as slides.
+      actions.append(
+        cardButton("Present", () => open({ present: true })),
+        cardButton("Edit here", () => {
+          const page = view.dom.closest<HTMLElement>("[data-pane]");
+          if (!page) return open();
+          open({ inline: page, onClosed: () => pageBoards.delete(view) });
         }),
-      ),
-      cardButton("Open board", () => open()),
-    );
-    dom.append(actions);
-    image.addEventListener("click", (e) => {
-      e.preventDefault();
-      open();
-    });
-    return () => inPlace?.close();
-  });
+        cardButton("Open board", () => open()),
+      );
+      dom.append(actions);
+      image.addEventListener("click", (e) => {
+        e.preventDefault();
+        open();
+      });
+    }),
+  ];
 }

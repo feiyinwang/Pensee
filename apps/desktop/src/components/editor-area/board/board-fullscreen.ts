@@ -9,9 +9,10 @@
  * Living outside the editor's `contentDOM` is also what makes the board's
  * keyboard handling simple — there is no CodeMirror keymap above us to fight.
  *
- * `inline` mounts the same board inside the note's preview frame instead. It
- * then sits inside `contentDOM`, so its root carries `data-owns-events` (see
- * the image widget) to keep CodeMirror's handlers out of it.
+ * `inline` mounts the same board over one note's page instead (its pane, not
+ * the window): the note's tab row, the other columns and a book beside it
+ * stay usable. While one is open, highlights made in a book beside that note
+ * land on it as cards (`addCardToBoardOn`).
  */
 
 import * as editorApi from "@/hooks/editor-api";
@@ -34,8 +35,7 @@ export interface BoardFullscreenOptions {
   notePath?: string | null;
   /** Lets the host tell us the document changed underneath us. */
   onOpened?: (api: { warn: (message: string) => void; close: () => void }) => void;
-  /** Edit in place: mount inside this element (the note's board preview)
-   *  instead of over the whole window. */
+  /** Open over this element (the note's page) instead of the whole window. */
   inline?: HTMLElement;
   /** After the board is gone (and written back). */
   onClosed?: () => void;
@@ -43,7 +43,13 @@ export interface BoardFullscreenOptions {
 
 const COMMIT_DEBOUNCE_MS = 600;
 
-let openInstance: { close: () => void; inline: boolean } | null = null;
+let openInstance: {
+  close: () => void;
+  inline: boolean;
+  notePath: string | null;
+  canvas: () => BoardCanvasHandle | null;
+  overlay: HTMLElement;
+} | null = null;
 
 export function isBoardOpen(): boolean {
   return openInstance !== null;
@@ -51,6 +57,21 @@ export function isBoardOpen(): boolean {
 
 export function closeOpenBoard(): void {
   openInstance?.close();
+}
+
+/**
+ * Adds `text` as a card to the board open over `notePath`'s page, if there is
+ * one, on the side facing `from` (the book it was highlighted in). Returns
+ * whether a board took it.
+ */
+export function addCardToBoardOn(notePath: string, text: string, from: DOMRect): boolean {
+  const open = openInstance;
+  const canvas = open?.canvas();
+  if (!open?.inline || open.notePath !== notePath || !canvas) return false;
+  const board = open.overlay.getBoundingClientRect();
+  const side = from.left + from.width / 2 < board.left + board.width / 2 ? "w" : "e";
+  canvas.addCard(text, side);
+  return true;
 }
 
 export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () => void } {
@@ -66,7 +87,6 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
   overlay.setAttribute("aria-label", "Board");
   if (inline) {
     overlay.className = "wr-board-inline";
-    overlay.dataset.ownsEvents = "";
   } else {
     overlay.className = "wr-board-fullscreen";
     overlay.setAttribute("role", "dialog");
@@ -116,8 +136,7 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     previouslyFocused?.focus({ preventScroll: true });
 
     if (inline) {
-      // In place, the picture shows again the moment the board goes: no fade
-      // over an empty frame.
+      // The page shows again the moment the board goes: no fade over a blank.
       overlay.remove();
       opts.onClosed?.();
       return;
@@ -209,7 +228,13 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
   requestAnimationFrame(() => overlay.classList.add("is-open"));
   canvas.focus();
 
-  openInstance = { close, inline: inline !== null };
+  openInstance = {
+    close,
+    inline: inline !== null,
+    notePath: opts.notePath ?? null,
+    canvas: () => canvas,
+    overlay,
+  };
   opts.onOpened?.({
     warn: (message) => {
       const el = stage.querySelector(".wr-board-banner");

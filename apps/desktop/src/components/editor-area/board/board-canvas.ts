@@ -26,6 +26,7 @@ import {
   type ShapeEl,
   type ShapeKind,
   type StickyColor,
+  type StickyEl,
   type TextEl,
   type Viewport,
   FRAME_PRESETS,
@@ -121,6 +122,7 @@ import {
   dockTarget,
   isCard,
   nextStepBox,
+  placeFromSide,
   placeNear,
   quickDots,
 } from "./board-flow";
@@ -192,6 +194,9 @@ export interface BoardCanvasHandle {
   find: () => void;
   /** Undo or redo on the board (⌘Z routed here when focus is outside it). */
   history: (dir: "undo" | "redo") => void;
+  /** Adds a note with `text` in view, as near the `side` edge as there is
+   *  room (a book highlight made beside the board). One undo step. */
+  addCard: (text: string, side: "w" | "e") => void;
 }
 
 type Interaction =
@@ -1586,6 +1591,36 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function pickImage(): void {
     fileInput.click();
+  }
+
+  /** Screen room the chrome takes at each edge (top bar; dock and zoom), so a
+   *  card added from outside never lands under a toolbar. */
+  const CHROME_INSET = { top: 64, bottom: 96, side: 16 };
+
+  function addCard(text: string, side: "w" | "e"): void {
+    const v = vp();
+    const { width, height } = stageRect();
+    const view = {
+      x: v.x + CHROME_INSET.side / v.zoom,
+      y: v.y + CHROME_INSET.top / v.zoom,
+      w: Math.max(0, width - CHROME_INSET.side * 2) / v.zoom,
+      h: Math.max(0, height - CHROME_INSET.top - CHROME_INSET.bottom) / v.zoom,
+    };
+    const box = placeFromSide(scene, view, side, STICKY_SIZE, STICKY_SIZE);
+    const el: StickyEl = {
+      id: newId(),
+      t: "sticky",
+      ...box,
+      a: 0,
+      op: 1,
+      c: tools.sticky,
+      tx: text,
+    };
+    pushHistory();
+    assignFrame(el);
+    scene.els.push(el);
+    draw();
+    markDirty();
   }
 
   function assignFrame(el: BoardEl): void {
@@ -3565,6 +3600,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     focus() {
       host.focus();
     },
+    addCard,
   };
 }
 

@@ -12,6 +12,7 @@ import {
   connectorBetween,
   dockTarget,
   nextStepBox,
+  placeFromSide,
   placeNear,
 } from "../src/components/editor-area/board/board-flow";
 import {
@@ -219,5 +220,40 @@ describe("dockTarget re-centres the card it joins", () => {
     const dock = dockTarget({ ...emptyScene(), els: [a, blocker, h1, h2] }, [h1, h2]);
     expect(dock?.from.id).toBe("a");
     expect(dock?.fromY).toBeNull();
+  });
+});
+
+describe("placeFromSide", () => {
+  const view = { x: 0, y: 0, w: 1000, h: 600 };
+
+  test("lands at the book's edge, in the vertical middle", () => {
+    const scene = emptyScene();
+    expect(placeFromSide(scene, view, "w", 200, 200)).toEqual({ x: 0, y: 200, w: 200, h: 200 });
+    expect(placeFromSide(scene, view, "e", 200, 200)).toEqual({ x: 800, y: 200, w: 200, h: 200 });
+  });
+
+  test("takes the next free row from the middle, then steps inward", () => {
+    const tall = { x: 0, y: 0, w: 1000, h: 1000 };
+    const card = (id: string, y: number) => ({ ...rect(id, 0, y), w: 200, h: 200 });
+    // Middle slot is y 400; rows alternate below (624) then above (176).
+    const one = { ...emptyScene(), els: [card("m", 400)] };
+    expect(placeFromSide(one, tall, "w", 200, 200, 24).y).toBe(624);
+    const two = { ...emptyScene(), els: [card("m", 400), card("b", 624)] };
+    expect(placeFromSide(two, tall, "w", 200, 200, 24).y).toBe(176);
+    // The whole edge column taken: the next column in, back at the middle.
+    const col = { ...emptyScene(), els: [card("m", 400), card("b", 624), card("a", 176)] };
+    expect(placeFromSide(col, tall, "w", 200, 200, 24)).toEqual({ x: 224, y: 400, w: 200, h: 200 });
+  });
+
+  test("frames and connectors don't block a spot", () => {
+    const frame = { ...rect("f", 0, 0), t: "frame" as const, w: 1000, h: 600 };
+    const scene = { ...emptyScene(), els: [frame as never] };
+    expect(placeFromSide(scene, view, "w", 200, 200)).toEqual({ x: 0, y: 200, w: 200, h: 200 });
+  });
+
+  test("with no room anywhere, still the middle at the edge", () => {
+    const wall = { ...rect("w", -50, -50), w: 1100, h: 700 };
+    const scene = { ...emptyScene(), els: [wall] };
+    expect(placeFromSide(scene, view, "e", 200, 200)).toEqual({ x: 800, y: 200, w: 200, h: 200 });
   });
 });
