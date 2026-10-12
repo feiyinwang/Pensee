@@ -4,7 +4,7 @@ import { isDailyNoteName } from "@/lib/daily-note";
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?\n)?---(?:\n|$)/;
 
-export type TitleSource = "frontmatter" | "h1" | "none";
+export type TitleSource = "frontmatter" | "none";
 
 export interface ParsedFile {
   frontmatter: string | null;
@@ -31,7 +31,7 @@ export function serializeFile(frontmatter: string | null, body: string): string 
 
 export function parseDocument(raw: string, path?: string): ParsedDocument {
   const parsed = parseFrontmatter(raw);
-  const { title, titleSource } = inferTitle(parsed.body, parsed.frontmatter, path);
+  const { title, titleSource } = inferTitle(parsed.frontmatter, path);
 
   return {
     frontmatter: parsed.frontmatter,
@@ -42,12 +42,12 @@ export function parseDocument(raw: string, path?: string): ParsedDocument {
 }
 
 /**
- * The document's display title. `path`, when given, lets a daily note keep its
- * date as the title (an empty title falls back to the file stem everywhere it
- * is shown) instead of taking the first heading the writer adds to the day.
+ * The document's display title: its frontmatter `title:`, or empty, which every
+ * place that shows a title fills with the file name. A leading `# ` heading is
+ * body text, never the title — the page's title row above the body is the file
+ * name. `path`, when given, lets a daily note keep its date as the title.
  */
 export function inferTitle(
-  body: string,
   frontmatter: string | null,
   path?: string,
 ): { title: string; titleSource: TitleSource } {
@@ -58,11 +58,6 @@ export function inferTitle(
   const frontmatterTitle = getFrontmatterTitle(frontmatter);
   if (frontmatterTitle !== null) {
     return { title: frontmatterTitle, titleSource: "frontmatter" };
-  }
-
-  const leadingHeading = getLeadingHeadingTitle(body);
-  if (leadingHeading !== null) {
-    return { title: leadingHeading, titleSource: "h1" };
   }
 
   return { title: "", titleSource: "none" };
@@ -121,18 +116,6 @@ function getFrontmatterTitle(frontmatter: string | null): string | null {
 
   const normalized = title.trim();
   return normalized === "" ? null : normalized;
-}
-
-function getLeadingHeadingTitle(body: string): string | null {
-  const afterBlankLines = body.replace(/^(?:[ \t]*\n)*/, "");
-  const newlineIndex = afterBlankLines.indexOf("\n");
-  const firstLine = newlineIndex === -1 ? afterBlankLines : afterBlankLines.slice(0, newlineIndex);
-
-  const match = firstLine.match(/^#\s+(.*)$/);
-  if (!match) return null;
-
-  const title = (match[1] ?? "").replace(/\s+#+\s*$/, "").trim();
-  return title === "" ? null : title;
 }
 
 function formatFrontmatterDateValue(value: unknown): string | null {

@@ -32,7 +32,7 @@ function fakeFs(existing: string[] = []) {
     fileExists: async (path) => files.has(path),
     createFile: vi.fn(async (path: string) => {
       if (files.has(path)) throw new Error("exists");
-      files.set(path, "# ");
+      files.set(path, "");
     }),
     writeFile: vi.fn(async (path: string, content: string) => {
       files.set(path, content);
@@ -99,11 +99,11 @@ describe("newPagePath for daily notes", () => {
 });
 
 describe("ensureWikiPage", () => {
-  test("creates a missing page with its name as the title", async () => {
+  test("creates a missing page, empty: its file name is its title", async () => {
     const { files, deps } = fakeFs();
     const path = await ensureWikiPage("Budget", ROOT, "/vault/plan.md", deps);
     expect(path).toBe("/vault/Budget.md");
-    expect(files.get("/vault/Budget.md")).toBe("# Budget\n");
+    expect(files.get("/vault/Budget.md")).toBe("");
   });
 
   test("an existing page anywhere in the workspace is reused, not recreated", async () => {
@@ -150,9 +150,9 @@ describe("pageFromSelection", () => {
   });
 });
 
-test("newPageContent puts the title first and drops leading blank lines", () => {
-  expect(newPageContent("Plan", "\n\nstep one\n")).toBe("# Plan\n\nstep one\n");
-  expect(newPageContent("Plan")).toBe("# Plan\n");
+test("newPageContent holds only the moved text, without leading blank lines", () => {
+  expect(newPageContent("\n\nstep one\n")).toBe("step one\n");
+  expect(newPageContent("  \n")).toBe("");
 });
 
 describe("findWikiPage", () => {

@@ -27,6 +27,7 @@ import { imageSrcResolver } from "./image-src-resolver";
 import { linkNavigationExtension } from "./link-navigation";
 import { linkChips, linkPreviews } from "./link-preview";
 import { emptyHeadingKeymap, markdownFormatting } from "./markdown-formatting";
+import { pageTitleArrowUp } from "./page-title";
 import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
 import { bookJump } from "./book-jump";
@@ -161,6 +162,7 @@ export function createEditorExtensions(
     wikiLinkPreview(getFilePath),
     markdownFormatting,
     emptyHeadingKeymap,
+    pageTitleArrowUp,
     storeSyncExtension(getFilePath),
     editorClipboardExtension(getFilePath, isDisposed),
     focusOnRevealExtension(isDisposed),

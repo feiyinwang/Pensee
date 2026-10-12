@@ -105,11 +105,11 @@ describe("parseDocument", () => {
     expect(result.body).toBe("\n# Hello #\n\nBody");
   });
 
-  test("leading H1 becomes the title when frontmatter title is absent", () => {
+  test("a leading H1 is body text, never the title", () => {
     const result = parseDocument("\n# Project Plan\n\nBody text.");
 
-    expect(result.title).toBe("Project Plan");
-    expect(result.titleSource).toBe("h1");
+    expect(result.title).toBe("");
+    expect(result.titleSource).toBe("none");
     expect(result.body).toBe("\n# Project Plan\n\nBody text.");
   });
 
@@ -135,14 +135,10 @@ describe("parseDocument daily notes", () => {
     expect(result.titleSource).toBe("none");
   });
 
-  test("still infers the heading for a dated name that is not a daily note", () => {
-    const result = parseDocument("# Retro", "/vault/2026-09-02 retro.md");
+  test("still reads a frontmatter title for a dated name that is not a daily note", () => {
+    const result = parseDocument("---\ntitle: Retro\n---\n", "/vault/2026-09-02 retro.md");
     expect(result.title).toBe("Retro");
-    expect(result.titleSource).toBe("h1");
-  });
-
-  test("still infers the heading when no path is given", () => {
-    expect(parseDocument("# Hello").title).toBe("Hello");
+    expect(result.titleSource).toBe("frontmatter");
   });
 });
 

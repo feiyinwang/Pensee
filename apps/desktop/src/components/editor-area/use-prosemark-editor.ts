@@ -29,9 +29,6 @@ function restoreCursorPosition(view: EditorView, cursorPos: number) {
   let pos: number;
   if (cursorPos > 0) {
     pos = Math.min(cursorPos, view.state.doc.length);
-  } else if (view.state.doc.toString() === "# ") {
-    // New-file template from create_file_impl is "# "; land caret after it so the user can type the title immediately.
-    pos = 2;
   } else {
     pos = 0;
   }

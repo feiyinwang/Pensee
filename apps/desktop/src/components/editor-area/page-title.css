@@ -1,0 +1,44 @@
+/* The page title: a one-line-at-a-time textarea that grows with its text. The
+   textarea and an invisible copy of its text (`::after`, from `data-value`)
+   share one grid cell, so the copy's wrapped height sizes the row at any
+   width — no measuring in script. Both must keep identical type and padding.
+   Sized above the body's H1 (1.6em) so the title outranks any heading. */
+.page-title {
+  display: grid;
+  padding-bottom: 8px;
+  font-family: var(--writer-editor-font-family);
+  font-size: calc(var(--writer-editor-font-size) * 2);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: var(--writer-editor-letter-spacing, 0em);
+  color: var(--editor-text-strong);
+}
+
+.page-title::after,
+.page-title-input {
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.page-title::after {
+  content: attr(data-value) " ";
+  visibility: hidden;
+}
+
+.page-title-input {
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+  outline: none;
+}
+
+.page-title-input::placeholder {
+  color: var(--text-muted);
+}

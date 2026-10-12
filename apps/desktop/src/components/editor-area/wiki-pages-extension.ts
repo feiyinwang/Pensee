@@ -263,7 +263,7 @@ export function completeMoveToPage(target: MoveTarget) {
           await appendToPage(path, moved);
         } else {
           await tauri.createFile(path);
-          await tauri.writeFile(path, newPageContent(name, moved));
+          await tauri.writeFile(path, newPageContent(moved));
         }
       }
       if (isDisposed()) return;

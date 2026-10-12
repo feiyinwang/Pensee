@@ -1,4 +1,4 @@
-import { getFileStem, getParentDir, normalizePath } from "./paths";
+import { getParentDir, normalizePath } from "./paths";
 import { parseWikiLink, resolveWikiLink } from "./wiki-links";
 import { isDailyNoteName, resolveDailyNoteFile } from "./daily-note";
 import type { SearchResult } from "@/types/fs";
@@ -64,10 +64,11 @@ export function newPagePath(
   return normalizePath(`${dir}/${name}.md`);
 }
 
-/** Starter content for a page created from a link: its name as the title. */
-export function newPageContent(title: string, body = ""): string {
+/** Content for a page made from moved text. The page's name is its title (the
+ *  file name), so the body holds only the text, without leading blank lines. */
+export function newPageContent(body: string): string {
   const trimmed = body.replace(/^\s*\n/, "").trimEnd();
-  return trimmed ? `# ${title}\n\n${trimmed}\n` : `# ${title}\n`;
+  return trimmed ? `${trimmed}\n` : "";
 }
 
 const inFlight = new Map<string, Promise<string>>();
@@ -119,7 +120,6 @@ export async function ensureWikiPage(
   const creation = (async () => {
     if (await deps.fileExists(path)) return path;
     await deps.createFile(path);
-    await deps.writeFile(path, newPageContent(getFileStem(path)));
     return path;
   })();
   inFlight.set(path, creation);

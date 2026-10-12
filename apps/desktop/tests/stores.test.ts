@@ -306,9 +306,9 @@ describe("editor-store", () => {
     const file = useEditorStore.getState().openFiles.get("/test/file.md");
     expect(file?.frontmatter).toBeNull();
     expect(file?.isDirty).toBe(true);
-    // Title now falls back to the first H1 in the body since the frontmatter title is gone.
-    expect(file?.title).toBe("From Body");
-    expect(file?.titleSource).toBe("h1");
+    // With the frontmatter title gone the file name is the title; the body's H1 is not.
+    expect(file?.title).toBe("");
+    expect(file?.titleSource).toBe("none");
   });
 
   test("openNewTab appends and activates a launcher tab", () => {

@@ -3,6 +3,7 @@ import { ProseMarkEditor } from "./prosemark-editor";
 import { BookCard } from "./book-card";
 import { VideoPlayer } from "./video-player";
 import { FrontmatterPanel } from "./frontmatter-panel";
+import { PageTitle } from "./page-title";
 import { EditorScrollContainer } from "./editor-scroll-container";
 import { EditorSearchOverview } from "./editor-search-overview";
 import { SectionRail } from "./section-rail";
@@ -68,6 +69,7 @@ export const EditorPane = memo(function EditorPane({
             paddingRight: "var(--writer-editor-side-padding)",
           }}
         >
+          <PageTitle key={path} path={path} view={editorView} />
           <FrontmatterPanel filePath={path} />
           <BookCard filePath={path} />
         </div>

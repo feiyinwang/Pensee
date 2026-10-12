@@ -1,10 +1,9 @@
 import { ok, strictEqual } from "node:assert/strict";
 import { rmSync } from "node:fs";
 
-// Every new note is born as the `# ` template (`create_file_impl`), so the very
-// first Enter a note sees lands on an empty heading. It used to leave the
-// hashes stranded on line 1 and put the words on line 2 — which renders as the
-// `#` clamped onto the next line's content.
+// Enter on a note whose only line is an empty `# ` heading. It used to leave
+// the hashes stranded on line 1 and put the words on line 2 — which renders as
+// the `#` clamped onto the next line's content.
 //
 // Requires a restorable workspace; self-skips without one.
 describe("Enter on the empty new-note heading", function () {
@@ -31,7 +30,8 @@ describe("Enter on the empty new-note heading", function () {
     rmSync(path, { force: true });
     const made = await invoke("create_file", { path });
     ok(made.ok, `create_file failed: ${made.error}`);
-    strictEqual(made.value.content, "# ", "the new-note template is no longer `# `");
+    const written = await invoke("write_file", { path, content: "# " });
+    ok(written.ok, `write_file failed: ${written.error}`);
     await browser.refresh();
     await $('button[aria-label="Hide sidebar"]').waitForExist({ timeout: 15_000 });
     const item = await $(`span*=${stem}`);
@@ -102,8 +102,7 @@ describe("Enter on the empty new-note heading", function () {
   });
 
   it("still writes a real heading when you type the title first", async function () {
-    // The path that always worked has to keep working: the template is a title
-    // placeholder, and typing straight into it must still produce an H1.
+    // Typing straight into an empty heading must still produce an H1.
     const path = await openFresh("empty-heading-e2e-b");
     await type("now i have it done");
     const read = await invoke("read_file", { path });

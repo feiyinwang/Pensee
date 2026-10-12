@@ -1166,15 +1166,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (!existing) return state;
       if (existing.content === content && existing.isDirty) return state;
 
-      const { title, titleSource } = inferTitle(content, existing.frontmatter, path);
+      // The title never comes from the body, so typing leaves it alone.
       const files = new Map(state.openFiles);
-      files.set(path, {
-        ...existing,
-        content,
-        title,
-        titleSource,
-        isDirty: true,
-      });
+      files.set(path, { ...existing, content, isDirty: true });
       return { openFiles: files };
     });
 
@@ -1187,7 +1181,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const file = state.openFiles.get(path);
       if (!file || file.frontmatter === frontmatter) return state;
 
-      const { title, titleSource } = inferTitle(file.content, frontmatter, path);
+      const { title, titleSource } = inferTitle(frontmatter, path);
       const files = new Map(state.openFiles);
       files.set(
         path,

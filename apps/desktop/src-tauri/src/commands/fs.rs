@@ -61,10 +61,10 @@ fn is_daily_note_name(path: &Path) -> bool {
         })
 }
 
-/// Extract a document title from a markdown file by reading its first few KB.
-/// Priority: YAML frontmatter `title:` field, then leading `# ` heading.
-/// A daily note has no extracted title: its date is its title, so a heading
-/// typed at the top of the day stays a section of the day.
+/// Extract a document title from a markdown file by reading its first few KB:
+/// its YAML frontmatter `title:` field. A leading `# ` heading is body text,
+/// never the title; without `title:` the file name is the title. A daily note
+/// has no extracted title: its date is its title.
 fn extract_title(path: &Path) -> Option<String> {
     use std::io::Read;
 
@@ -101,33 +101,9 @@ fn extract_title(path: &Path) -> Option<String> {
                     }
                 }
             }
-            // No frontmatter title — check for H1 in the body after frontmatter
-            let body_start = end_pos + "\n---\n".len();
-            return extract_leading_h1(&rest[body_start..]);
         }
     }
 
-    // No frontmatter — check for H1 heading
-    extract_leading_h1(text)
-}
-
-/// Extract a title from the first `# ` heading, which must be the first
-/// non-blank line in the text.
-fn extract_leading_h1(text: &str) -> Option<String> {
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if let Some(heading) = trimmed.strip_prefix("# ") {
-            let title = heading.trim();
-            if !title.is_empty() {
-                return Some(title.to_string());
-            }
-        }
-        // First non-blank line is not an H1
-        return None;
-    }
     None
 }
 
@@ -478,7 +454,9 @@ pub fn create_file_impl(path: &str) -> Result<FileContent, AppError> {
     if let Some(parent) = file_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let default_content = "# ";
+    // A new note starts empty: its file name is its title (the title row above
+    // the body), so there is no `# ` heading to type the title into.
+    let default_content = "";
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -808,10 +786,11 @@ mod tests {
         // Remaining should be files, sorted alphabetically
         assert!(!result[1].is_dir);
         assert_eq!(result[1].name, "hello.md");
-        assert_eq!(result[1].title.as_deref(), Some("Hello"));
+        // A leading `# Hello` is body text: the file name is the title.
+        assert!(result[1].title.is_none());
         assert!(!result[2].is_dir);
         assert_eq!(result[2].name, "world.md");
-        assert_eq!(result[2].title.as_deref(), Some("World"));
+        assert!(result[2].title.is_none());
     }
 
     #[test]
@@ -1005,9 +984,9 @@ mod tests {
         let path = dir.path().join("Journal").join("2022-04-19.md");
         let path_str = path.to_string_lossy().to_string();
 
-        // First press of the day: the parent folder and the templated note appear.
+        // First press of the day: the parent folder and the empty note appear.
         let created = create_file_if_missing_impl(&path_str).unwrap();
-        assert_eq!(created.content, "# ");
+        assert_eq!(created.content, "");
 
         fs::write(&path, "# Monday\n\nnotes").unwrap();
 
@@ -1039,7 +1018,7 @@ mod tests {
 
         assert_eq!(created.name, "Untitled 2.md");
         assert_eq!(fs::read_to_string(existing).unwrap(), "existing content");
-        assert_eq!(fs::read_to_string(created.path).unwrap(), "# ");
+        assert_eq!(fs::read_to_string(created.path).unwrap(), "");
     }
 
     #[test]
@@ -1212,11 +1191,11 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_title_from_h1() {
+    fn test_extract_title_ignores_leading_h1() {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("doc.md");
         fs::write(&path, "# My Document\n\nSome content").unwrap();
-        assert_eq!(extract_title(&path).as_deref(), Some("My Document"));
+        assert_eq!(extract_title(&path), None);
     }
 
     #[test]
@@ -1244,11 +1223,11 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_title_h1_after_empty_frontmatter() {
+    fn test_extract_title_ignores_h1_after_frontmatter_without_title() {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("doc.md");
         fs::write(&path, "---\ndate: 2025-01-01\n---\n\n# Fallback Heading").unwrap();
-        assert_eq!(extract_title(&path).as_deref(), Some("Fallback Heading"));
+        assert_eq!(extract_title(&path), None);
     }
 
     #[test]
@@ -1260,14 +1239,14 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_title_none_for_daily_note_with_heading() {
+    fn test_extract_title_none_for_daily_note_with_frontmatter_title() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("2026-09-02.md");
-        fs::write(&path, "# Standup notes").unwrap();
+        fs::write(&path, "---\ntitle: Standup notes\n---\n").unwrap();
         assert!(extract_title(&path).is_none());
 
         let dated_but_not_daily = dir.path().join("2026-09-02 retro.md");
-        fs::write(&dated_but_not_daily, "# Retro").unwrap();
+        fs::write(&dated_but_not_daily, "---\ntitle: Retro\n---\n").unwrap();
         assert_eq!(
             extract_title(&dated_but_not_daily).as_deref(),
             Some("Retro")

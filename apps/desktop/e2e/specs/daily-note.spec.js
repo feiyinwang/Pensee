@@ -81,7 +81,7 @@ describe("Daily note", function () {
     );
     const created = await invoke("read_file", { path: expected });
     ok(created.ok, `read failed: ${created.error}`);
-    strictEqual(created.value.content, "# ");
+    strictEqual(created.value.content, "");
   });
 
   it("reopens the same note without clobbering it", async function () {

@@ -473,11 +473,10 @@ const EMPTY_HEADING_RE = /^#{1,6}[ \t]*$/;
  * Enter on a heading with no text clears the heading instead of leaving it
  * stranded above whatever you write next.
  *
- * Every new note is born as the `# ` template (`create_file_impl`), so this is
- * the very first Enter most notes ever see. Without it the hashes stay behind
- * on their own line and the words land on the next one — which renders as the
- * `#` clamped onto the following line's content, and reads as the editor
- * having put the hash on the wrong line entirely.
+ * Without it the hashes stay behind on their own line and the words land on
+ * the next one — which renders as the `#` clamped onto the following line's
+ * content, and reads as the editor having put the hash on the wrong line
+ * entirely.
  *
  * Deliberately the same rule `listEnter` already applies to an empty list
  * item: wipe the line, keep the caret on it, let the next keystroke be plain
