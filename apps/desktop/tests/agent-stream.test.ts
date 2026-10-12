@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
 import { describeToolCall, parseAgentLine } from "../src/lib/agent-stream";
-import { buildAgentSystemPrompt, MAX_FILE_CHARS, MAX_TOTAL_CHARS } from "../src/lib/agent-context";
+import {
+  buildAgentSystemPrompt,
+  MAX_TOTAL_CHARS,
+  SHORT_FILE_CHARS,
+} from "../src/lib/agent-context";
 import { embeddedBoardPaths, isBoardPath } from "../src/lib/agent-open-files";
 
 const line = (value: unknown) => JSON.stringify(value);
@@ -106,12 +110,37 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("short, concise and simple");
   });
 
-  test("truncates long files and lists what didn't fit", () => {
-    const big = "x".repeat(MAX_FILE_CHARS + 10);
-    const files = Array.from({ length: 8 }, (_, i) => ({ path: `/w/${i}.md`, text: big }));
+  test("sends a long file only as its lines on screen, and lists one off screen", () => {
+    const long = Array.from({ length: 2_000 }, (_, i) => `line ${i + 1}`).join("\n");
+    expect(long.length).toBeGreaterThan(SHORT_FILE_CHARS);
+    const prompt = buildAgentSystemPrompt({
+      root: "/w",
+      openFiles: [
+        {
+          path: "/w/Book.md",
+          text: long,
+          visible: { fromLine: 99, toLine: 102, text: "line 100\nline 101\nline 102" },
+        },
+        { path: "/w/Other.md", text: long },
+      ],
+      focusedPath: "/w/Book.md",
+    });
+    expect(prompt).toContain(
+      '<open_file path="/w/Book.md" on_screen="lines 100-102 of 2000">\nline 100\nline 101\nline 102\n[only the part on screen',
+    );
+    expect(prompt).not.toContain("line 99\n");
+    expect(prompt).not.toContain('<open_file path="/w/Other.md"');
+    expect(prompt).toContain(
+      "Also open (not included for length; read when relevant):\n- /w/Other.md",
+    );
+  });
+
+  test("stops adding files at the total cap and lists what didn't fit", () => {
+    const page = "x".repeat(SHORT_FILE_CHARS);
+    const files = Array.from({ length: 12 }, (_, i) => ({ path: `/w/${i}.md`, text: page }));
     const prompt = buildAgentSystemPrompt({ root: "/w", openFiles: files, focusedPath: null });
-    expect(prompt).toContain("[…truncated; read the file for the rest]");
     expect(prompt).toContain("Also open (not included for length");
+    expect(prompt).toContain("- /w/11.md");
     expect(prompt.length).toBeLessThan(MAX_TOTAL_CHARS + 10_000);
   });
 
@@ -150,6 +179,19 @@ describe("buildAgentSystemPrompt period notes", () => {
       '<period_note period="week" path="/vault/2026-W42.md" open_tab="true" />',
     );
     expect(prompt.indexOf('period="year"')).toBeLessThan(prompt.indexOf('period="day"'));
+  });
+
+  test("points at a long period note instead of including it", () => {
+    const prompt = buildAgentSystemPrompt({
+      root: "/vault",
+      openFiles: [],
+      focusedPath: null,
+      periodNotes: [
+        { kind: "month", path: "/vault/2026-10.md", text: "y".repeat(SHORT_FILE_CHARS + 1) },
+      ],
+    });
+    expect(prompt).toContain('<period_note period="month" path="/vault/2026-10.md" long="true" />');
+    expect(prompt).not.toContain("yyyy");
   });
 
   test("says nothing about period notes when there are none", () => {

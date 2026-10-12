@@ -14,6 +14,7 @@ import { getFileName } from "@/lib/paths";
 import { consumePendingAnchor } from "@/lib/pending-anchor";
 import { logTimeline, mark } from "@/lib/startup-metrics";
 import { showEditorNotice } from "./editor-notice-store";
+import { registerEditorView } from "@/lib/editor-views";
 
 function resolveScrollContainer(root: HTMLElement, getScrollContainer?: () => HTMLElement | null) {
   return getScrollContainer?.() ?? findOuterScroller(root);
@@ -56,6 +57,7 @@ export function useProsemarkEditor(
 ) {
   const viewRef = useRef<EditorView | null>(null);
   const scrollCleanupRef = useRef<(() => void) | null>(null);
+  const unregisterViewRef = useRef<(() => void) | null>(null);
   const disposedRef = useRef(false);
   const filePathRef = useRef(filePath);
   // getScrollContainer is captured into a ref only to resolve a DOM scroll container, not invoked as a callback from an effect.
@@ -82,6 +84,8 @@ export function useProsemarkEditor(
       disposedRef.current = true;
       scrollCleanupRef.current?.();
       scrollCleanupRef.current = null;
+      unregisterViewRef.current?.();
+      unregisterViewRef.current = null;
       const view = viewRef.current;
       if (view) {
         closeEditorSearch({ view });
@@ -113,6 +117,11 @@ export function useProsemarkEditor(
     });
 
     viewRef.current = view;
+    unregisterViewRef.current = registerEditorView(
+      view,
+      () => filePathRef.current,
+      () => resolveScrollContainer(el, getScrollContainerRef.current),
+    );
     prevPathRef.current = currentPath;
     prevReloadVersionRef.current = file?.reloadVersion ?? 0;
     onViewChangeRef.current?.(view);

@@ -19,6 +19,8 @@ use tauri::{Emitter, Manager};
 const PATH_MARKER: &str = "__WRITER_AGENT_PATH__=";
 const SHELL_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 const STDERR_TAIL_LINES: usize = 8;
+/** The built-in tools the chat needs to read, find and edit pages. */
+const AGENT_TOOLS: &str = "Read,Edit,Write,Glob,Grep";
 
 /// Running agent processes, keyed by the frontend's request id so Stop can
 /// find the child after its stdout has been handed to the reader thread.
@@ -134,6 +136,16 @@ fn build_args(
         "--include-partial-messages".to_owned(),
         "--model".to_owned(),
         model.to_owned(),
+        // A lean Claude: the terminal's MCP servers, plugins (and their hooks),
+        // skills and user settings cost 15-30 s before the first word and
+        // ~25k tokens of tool definitions per message. The chat reads and
+        // edits workspace files, nothing more. Auth is unaffected.
+        "--strict-mcp-config".to_owned(),
+        "--disable-slash-commands".to_owned(),
+        "--setting-sources".to_owned(),
+        "project,local".to_owned(),
+        "--tools".to_owned(),
+        AGENT_TOOLS.to_owned(),
         // Execution mode: reads and edits run without prompts; nothing is planned first.
         "--permission-mode".to_owned(),
         "acceptEdits".to_owned(),
@@ -288,6 +300,12 @@ mod tests {
                 "--include-partial-messages",
                 "--model",
                 "haiku",
+                "--strict-mcp-config",
+                "--disable-slash-commands",
+                "--setting-sources",
+                "project,local",
+                "--tools",
+                "Read,Edit,Write,Glob,Grep",
                 "--permission-mode",
                 "acceptEdits",
                 "--append-system-prompt",

@@ -174,8 +174,10 @@ to explain or define something.
   book, holding:
   - the book and its page;
   - where the reader is (`page 42`, or the chapter for an EPUB);
-  - the visible page's text (PDF) or the part of the chapter around the
-    viewport (EPUB), capped at 12k characters.
+  - the visible page's text (PDF), or for an EPUB only the text on screen,
+    from the top of the viewport to the bottom (across a chapter break if one
+    is on screen); about 3k characters from the middle when an edge holds no
+    text (a picture). Capped at 12k characters.
 
   The book page is already an open tab, so the agent sees the user's notes
   too. When the book tab is in front, "this" means the passage.

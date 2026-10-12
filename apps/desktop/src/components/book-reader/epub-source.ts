@@ -15,6 +15,11 @@ import {
 // out of the zip as blob URLs. SPECs/book-reader-spec.md.
 
 const decoder = new TextDecoder();
+/** How far inside the viewport's top and bottom edges the passage is read,
+ *  so a line cut in half by an edge still counts. */
+const EDGE_INSET = 4;
+/** About a screenful, for when the edges hold no text. */
+const FALLBACK_PASSAGE_CHARS = 3_000;
 
 function unzipAsync(data: Uint8Array): Promise<Unzipped> {
   return new Promise((resolve, reject) =>
@@ -188,20 +193,36 @@ export async function openEpub(
     layOutInView,
     passage: async () => {
       const index = currentSection();
-      const section = sections[index]!;
-      const text = section.textContent ?? "";
-      // The part of the chapter around the middle of the viewport.
+      const where = titles[index]!;
+      // The text on screen: from the caret at the top of the viewport to the
+      // one at the bottom, which may run across a chapter break.
       const rect = scroller.getBoundingClientRect();
-      const caret = document.caretRangeFromPoint?.(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2,
-      );
+      const x = rect.left + rect.width / 2;
+      const top = document.caretRangeFromPoint?.(x, rect.top + EDGE_INSET);
+      const bottom = document.caretRangeFromPoint?.(x, rect.bottom - EDGE_INSET);
+      if (
+        top &&
+        bottom &&
+        host.contains(top.startContainer) &&
+        host.contains(bottom.startContainer)
+      ) {
+        const range = document.createRange();
+        range.setStart(top.startContainer, top.startOffset);
+        range.setEnd(bottom.startContainer, bottom.startOffset);
+        const text = range.toString().trim();
+        if (text) return { where, text: text.slice(0, MAX_PASSAGE_CHARS) };
+      }
+      // No caret at an edge (a picture fills it): a screenful from the
+      // middle of the viewport.
+      const section = sections[index]!;
+      const middle = document.caretRangeFromPoint?.(x, rect.top + rect.height / 2);
       const at =
-        caret && section.contains(caret.startContainer)
-          ? textOffset(section, caret.startContainer, caret.startOffset)
+        middle && section.contains(middle.startContainer)
+          ? textOffset(section, middle.startContainer, middle.startOffset)
           : 0;
-      const from = Math.max(0, at - MAX_PASSAGE_CHARS / 2);
-      return { where: titles[index]!, text: text.slice(from, from + MAX_PASSAGE_CHARS) };
+      const from = Math.max(0, at - FALLBACK_PASSAGE_CHARS / 2);
+      const text = (section.textContent ?? "").slice(from, from + FALLBACK_PASSAGE_CHARS);
+      return { where, text };
     },
     destroy: () => {
       host.removeEventListener("click", onClick);

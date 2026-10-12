@@ -35,9 +35,14 @@ A Linear-style chat panel in the bottom-right corner of a workspace window that 
 Every message is sent with an appended system prompt, rebuilt per message so it follows the current focus:
 
 - The workspace root.
-- Every open tab's **text**, not just its path: what's on screen for loaded tabs, the file on disk otherwise. A question can be about any open tab; Claude is told to work out which from the question and to search all of them before saying something isn't there.
+- What the user is looking at, not whole files, since every token is read before the first word of a reply:
+  - A page up to 6,000 characters goes in whole (what's in the editor for loaded tabs, the file on disk otherwise).
+  - A longer page goes in only as the lines on screen in an editor showing it (`on_screen="lines 120-164 of 2000"`, in file lines, frontmatter included), marked so Claude reads the file for the rest. Editors register in `lib/editor-views.ts`; the visible lines are the editor clipped by its scroll container and the window.
+  - A longer page not on screen (a background tab) is listed by path only.
+  - A question can be about any open tab; Claude is told to work out which from the question and to read the files before saying something isn't there.
 - Boards: a `.board.svg` open as a tab, or embedded in an open page as an image link, is sent as its scene (one JSON line per node, with its text). The SVG itself can carry inlined pictures, so it is never sent raw.
-- Caps: 20,000 characters per file, 120,000 in total, focused tab first; anything cut is marked truncated and anything left out is listed by path.
+- Caps: 12,000 characters for one page's on-screen part, 40,000 in total, focused tab first; anything cut is marked truncated and anything left out is listed by path.
+- Period notes (year … day) follow the same rule: up to 6,000 characters whole, a longer one by path (`long="true"`).
 - The focused file's path, with the rule that "this", "here", "this page" and "it" mean that file and it breaks ties. It is not the only page that matters.
 - Replies are short, concise and simple: 1-3 sentences unless asked for more, no headings, no preamble, no recap of edits beyond one line.
 - Execution mode: act directly, never plan or ask before editing.
@@ -47,10 +52,10 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 
 ### Process
 
-- Each message spawns `claude -p <message> --output-format stream-json --verbose --include-partial-messages --model <model> --permission-mode acceptEdits --append-system-prompt <context>` in the workspace root, with `--resume <session>` after the first reply. stdin is closed.
+- Each message spawns `claude -p <message> --output-format stream-json --verbose --include-partial-messages --model <model> <lean flags, below> --permission-mode acceptEdits --append-system-prompt <context>` in the workspace root, with `--resume <session>` after the first reply. stdin is closed.
 - `acceptEdits` is execution mode: file reads and edits run without prompts. Shell commands are not pre-approved, so headless Claude reports them as denied instead of running them. Trade-off: safer for a writing app; widen with `--allowedTools` later if wanted.
 - `--model <haiku|sonnet|opus>` comes from `agent.model`. These are Claude Code's aliases, so each tier follows the newest release without an app update. A different model on a later message resumes the same session.
-- The user's own Claude Code config (hooks, skills, CLAUDE.md) applies, as in their terminal; the model is Writer's choice, not their terminal default.
+- A lean Claude Code, not the terminal's: `--strict-mcp-config` (no MCP servers), `--disable-slash-commands` (no skills), `--setting-sources project,local` (no user settings, so no plugins or their hooks, and no `~/.claude` rules) and `--tools Read,Edit,Write,Glob,Grep`. Measured with Haiku on a one-line question: 17-36 s to the first word with the terminal's setup, about 1.5 s lean. Sign-in is unaffected. The workspace's own `.claude/` settings and CLAUDE.md still apply. Trade-off: no web search and no MCP tools in the chat.
 - The binary and `PATH` are resolved once from the user's login shell (`$SHELL -lc`), since an app launched from Finder doesn't inherit the terminal's `PATH`. Fallbacks: `~/.local/bin/claude`, `/opt/homebrew/bin/claude`, `/usr/local/bin/claude`.
 - stdout lines are forwarded unparsed to the invoking window as `agent:line` events; parsing lives in TypeScript (`lib/agent-stream.ts`) so it is unit-testable. Exit is `agent:exit` with the code and last stderr line.
 - **Stop** kills the child. **New chat** stops any run and forgets the session id.

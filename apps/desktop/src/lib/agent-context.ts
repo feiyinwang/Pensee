@@ -6,8 +6,11 @@
 
 export interface AgentOpenFile {
   path: string;
-  /** The text on screen (frontmatter + body), already flushed to disk. */
+  /** The whole file (frontmatter + body), already flushed to disk. */
   text: string;
+  /** The lines on screen in an editor, when one shows this file. 0-based
+   *  file lines, end exclusive. Only these are sent when the file is long. */
+  visible?: { fromLine: number; toLine: number; text: string } | null;
 }
 
 /** The note for the period holding today (see lib/periodic-notes.ts). */
@@ -39,26 +42,48 @@ export interface AgentContext {
   periodNotes?: AgentPeriodNote[];
 }
 
-/** Caps keep the prompt well under the OS argument limit (~1 MB) and the
- *  model's attention on the pages, not on one huge file. */
-export const MAX_FILE_CHARS = 20_000;
-export const MAX_TOTAL_CHARS = 120_000;
+/** Every token in the prompt is read before the first word of a reply, so
+ *  the prompt carries what the user is looking at, not whole files. A file up
+ *  to SHORT_FILE_CHARS goes in whole; a longer one only as the lines on
+ *  screen, or else by path for Claude to read when the question needs it. */
+export const SHORT_FILE_CHARS = 6_000;
+/** Cap on the on-screen part of one file (a tall window of small text). */
+export const MAX_FILE_CHARS = 12_000;
+export const MAX_TOTAL_CHARS = 40_000;
 
-function fileBlock(file: AgentOpenFile, budget: number): string {
+/** What of `file` goes in the prompt, or null to list it by path only. */
+function fileBlock(file: AgentOpenFile, budget: number): { block: string; size: number } | null {
   const limit = Math.min(MAX_FILE_CHARS, budget);
-  const truncated = file.text.length > limit;
-  const text = truncated ? file.text.slice(0, limit) : file.text;
-  const note = truncated ? "\n[…truncated; read the file for the rest]" : "";
-  return `<open_file path="${file.path}">\n${text}${note}\n</open_file>`;
+  let body: string;
+  let attrs = "";
+  let note = "";
+  if (file.text.length <= SHORT_FILE_CHARS) {
+    body = file.text;
+  } else if (file.visible) {
+    const { fromLine, toLine } = file.visible;
+    const total = file.text.split("\n").length;
+    body = file.visible.text;
+    attrs = ` on_screen="lines ${fromLine + 1}-${toLine} of ${total}"`;
+    note = "\n[only the part on screen; read the file for the rest]";
+  } else {
+    return null;
+  }
+  if (body.length > limit) {
+    body = body.slice(0, limit);
+    note = "\n[…truncated; read the file for the rest]";
+  }
+  return {
+    block: `<open_file path="${file.path}"${attrs}>\n${body}${note}\n</open_file>`,
+    size: body.length,
+  };
 }
 
 function periodNoteBlock(note: AgentPeriodNote): string {
   if (note.text === null)
     return `<period_note period="${note.kind}" path="${note.path}" open_tab="true" />`;
-  const truncated = note.text.length > MAX_FILE_CHARS;
-  const text = truncated ? note.text.slice(0, MAX_FILE_CHARS) : note.text;
-  const tail = truncated ? "\n[…truncated; read the file for the rest]" : "";
-  return `<period_note period="${note.kind}" path="${note.path}">\n${text}${tail}\n</period_note>`;
+  if (note.text.length > SHORT_FILE_CHARS)
+    return `<period_note period="${note.kind}" path="${note.path}" long="true" />`;
+  return `<period_note period="${note.kind}" path="${note.path}">\n${note.text}\n</period_note>`;
 }
 
 export function buildAgentSystemPrompt({
@@ -73,7 +98,7 @@ export function buildAgentSystemPrompt({
     "You are the assistant inside Writer, a desktop markdown editor. The user is chatting with you from a small side panel.",
     `Workspace: ${root}`,
     "",
-    "Every tab the user has open is included below with its current text. Questions can be about any of them: work out from the question which page it means, and search all open pages before saying something isn't there.",
+    "The user's open tabs are below: short pages whole, long ones only as the lines on their screen, and the rest by path. Questions can be about any of them: work out from the question which page it means, and read the files before saying something isn't there.",
   ];
 
   if (focusedPath) {
@@ -101,12 +126,13 @@ export function buildAgentSystemPrompt({
   const blocks: string[] = [];
   const omitted: string[] = [];
   for (const file of ordered) {
-    if (budget <= 0) {
+    const included = budget > 0 ? fileBlock(file, budget) : null;
+    if (!included) {
       omitted.push(file.path);
       continue;
     }
-    blocks.push(fileBlock(file, budget));
-    budget -= Math.min(file.text.length, MAX_FILE_CHARS);
+    blocks.push(included.block);
+    budget -= included.size;
   }
   if (blocks.length > 0) lines.push("", ...blocks);
   if (omitted.length > 0) {
@@ -131,7 +157,7 @@ export function buildAgentSystemPrompt({
   if (periodNotes.length > 0) {
     lines.push(
       "",
-      "The user keeps a note per year, quarter, month, ISO week and day. These are the current ones, broadest first: their goals, plans and what they are working on now. Use them as background for every answer; one marked open_tab is included above as an open tab.",
+      "The user keeps a note per year, quarter, month, ISO week and day. These are the current ones, broadest first: their goals, plans and what they are working on now. Use them as background; one marked open_tab is with the open tabs above, and one marked long is not included, so read it when a question needs it.",
       ...periodNotes.map(periodNoteBlock),
     );
   }

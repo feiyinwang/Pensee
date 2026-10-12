@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- The **Agent** chat starts answering in a second or two instead of 15 to 35. It used to start your whole terminal Claude each time, with every plugin, MCP server and skill you have installed; now it starts one that only reads and edits your pages. It also reads much less with each message: a long note or a book is sent as the part on your screen, not the whole thing, and a long note you aren't looking at is named so Claude can open it when your question needs it.
 - Books now reopen where you stopped reading after you quit and reopen Writer, not just when you close and reopen the book. Writer saved your place, but deleted it each time the app started. The same deletion reset the book text size, the list of books in **Library**, and your **Library** view settings. These now stay too.
 - **⌘⇧J** plays or pauses the video of the YouTube note you're looking at, even right after picking it in the sidebar or the tab bar, before you click into its text. Before, with another YouTube note open in a tab behind it, ⌘⇧J played or paused that hidden video instead, or did nothing.
 - The **Agent** chat answers faster. It now uses Claude **Haiku** unless you pick another model, instead of whatever model your terminal Claude uses (often the slowest, Opus). The model's name shows at the bottom right of the chat, next to the page; click it, or type `/model` in the chat as you would in the terminal, to switch to **Sonnet** or **Opus** for harder questions. The choice sticks for every chat and window, and is also in Settings under **Agent**.

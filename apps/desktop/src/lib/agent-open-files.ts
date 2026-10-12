@@ -10,6 +10,7 @@ import { PERIOD_KINDS, periodNoteStem } from "@/lib/periodic-notes";
 import { serializeDocument } from "@/lib/frontmatter";
 import { getParentDir, resolveImagePath } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
+import { visibleEditorLines } from "@/lib/editor-views";
 
 const BOARD_SUFFIX = ".board.svg";
 /** `![alt](dest)` image links whose destination is a board file. */
@@ -50,6 +51,16 @@ async function readText(path: string, loaded: LoadedFile | undefined): Promise<s
   return isBoardPath(path) ? boardSceneText(raw) : raw;
 }
 
+/** The lines of `path` on screen, in file lines: the editor shows the body,
+ *  so they shift by the frontmatter's lines above it. */
+function visibleFileLines(path: string, text: string, body: string): AgentOpenFile["visible"] {
+  if (isBoardPath(path) || !text.endsWith(body)) return null;
+  const shown = visibleEditorLines(path);
+  if (!shown) return null;
+  const offset = text.slice(0, text.length - body.length).split("\n").length - 1;
+  return { ...shown, fromLine: shown.fromLine + offset, toLine: shown.toLine + offset };
+}
+
 /**
  * Open tabs first, in tab order, then the boards they embed. A file that
  * can't be read is listed with the reason instead of failing the send.
@@ -60,7 +71,9 @@ export async function collectAgentOpenFiles(
 ): Promise<AgentOpenFile[]> {
   const read = async (path: string): Promise<AgentOpenFile> => {
     try {
-      return { path, text: await readText(path, loaded.get(path)) };
+      const file = loaded.get(path);
+      const text = await readText(path, file);
+      return { path, text, visible: file ? visibleFileLines(path, text, file.content) : null };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       return { path, text: `[could not read: ${reason}]` };
