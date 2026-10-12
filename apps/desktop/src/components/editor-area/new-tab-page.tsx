@@ -47,6 +47,7 @@ export function NewTabPage() {
           className="flex items-center gap-1.5 text-[13px] text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
         >
           Add to Library
+          <Shortcut>⌘⇧L</Shortcut>
         </button>
       </div>
     </div>

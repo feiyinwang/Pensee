@@ -7,7 +7,7 @@ import {
   indentMore,
   indentWithTab,
 } from "@codemirror/commands";
-import { selectNextOccurrence, selectSelectionMatches } from "@codemirror/search";
+import { selectNextOccurrence } from "@codemirror/search";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { defaultHideExtensions } from "./hide";
 import { defaultFoldableSyntaxExtensions } from "./fold";
@@ -52,10 +52,10 @@ export const prosemarkBasicSetup = (): Extension => [
     ...closeBracketsKeymap,
     ...editorDefaultKeymap,
     ...historyKeymap,
-    // Multi-cursor selection helpers from @codemirror/search, without the
+    // Multi-cursor selection helper from @codemirror/search, without the
     // rest of `searchKeymap` (whose Escape/Mod-f bindings assume its panel).
+    // Mod-Shift-l is left out: it is Add to Library app-wide.
     { key: "Mod-d", run: selectNextOccurrence, preventDefault: true },
-    { key: "Mod-Shift-l", run: selectSelectionMatches },
     indentWithTab,
   ]),
   EditorView.lineWrapping,

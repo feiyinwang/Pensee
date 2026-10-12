@@ -6,6 +6,7 @@ import { useAgentStore } from "@/stores/agent-store";
 import { toggleSidebar } from "@/hooks/use-sidebar";
 import { toggleCalendarPanel } from "@/hooks/use-calendar-panel";
 import { openTodaysNote } from "@/hooks/use-daily-note";
+import { openLibraryAdd } from "@/hooks/use-library-add";
 import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 
@@ -112,6 +113,14 @@ export function useKeyboardShortcuts() {
       if (mod && e.shiftKey && (e.key === "n" || e.key === "N")) {
         e.preventDefault();
         void openTodaysNote();
+        return;
+      }
+
+      // Cmd+Shift+L — Add to Library (the palette's add mode). Needs a
+      // workspace's Library to file into, like the palette command.
+      if (mod && e.shiftKey && (e.key === "l" || e.key === "L")) {
+        e.preventDefault();
+        if (root && !isCompactFileMode) openLibraryAdd();
         return;
       }
 

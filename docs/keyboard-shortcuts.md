@@ -12,6 +12,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+O           | Go to file                    |
 | Cmd+N           | Create new note               |
 | Cmd+Shift+N     | Create or open today's note   |
+| Cmd+Shift+L     | Add to Library                |
 | Cmd+T           | New tab                       |
 | Cmd+W           | Close current tab             |
 | Cmd+\\          | Toggle sidebar                |
@@ -33,7 +34,8 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N, and history navigation still work.
-Cmd+Shift+N and Cmd+] need a workspace to file notes in, so they are inert there too.
+Cmd+Shift+N, Cmd+Shift+L and Cmd+] need a workspace to file notes in, so they are inert there too.
+Cmd+Shift+L replaces CodeMirror's select-all-matches binding in the editor.
 
 ¹ Only while a YouTube note's player is open; handled in `video-pin.ts`, not
 the global hook ([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md)).

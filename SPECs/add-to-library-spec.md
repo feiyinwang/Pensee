@@ -9,14 +9,14 @@ tab (SPECs/spaces-spec.md).
 
 ## Ways in
 
-| Way in | What it does |
-|---|---|
-| Paste a link in ⌘O | An **Add to Library** group goes on top of the results, the guess selected |
-| **Add to Library** on the New tab page | Opens the palette in add mode (no shortcut: ⌘⇧L is the editor's select-all-matches) |
-| **Add to Library…** in ⌘O | The same add mode |
-| **Add <noun>** in an empty Library tab, and **+** in the Library header | Add mode with that tab's kind first; not on Bookmarks, which X sync fills |
-| Drop a PDF or EPUB on the window | As before (SPECs/book-reader-spec.md), plus the paper check below |
-| Import Book…, Import Apple Books Highlights | Unchanged, and also listed in add mode |
+| Way in                                                                  | What it does                                                                        |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Paste a link in ⌘O                                                      | An **Add to Library** group goes on top of the results, the guess selected          |
+| **⌘⇧L** anywhere, or **Add to Library** on the New tab page            | Opens the palette in add mode (⌘⇧L no longer selects all matches in the editor)    |
+| **Add to Library…** in ⌘O                                               | The same add mode                                                                   |
+| **Add <noun>** in an empty Library tab, and **+** in the Library header | Add mode with that tab's kind first; not on Bookmarks, which X sync fills           |
+| Drop a PDF or EPUB on the window                                        | As before (SPECs/book-reader-spec.md), plus the paper check below                   |
+| Import Book…, Import Apple Books Highlights                             | Unchanged, and also listed in add mode                                              |
 
 ## The palette rows
 
