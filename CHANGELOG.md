@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- A book you had open is still open after Writer restarts, at the page you left it on. Before, its tab closed when Writer started again, so you had to reopen it from **Library**.
 - The **+** beside **Spaces** in the sidebar is gone, along with the form it opened for making a new space. Spaces you already made still show.
 - **Library** shows your books right after Writer opens, even while your vault is syncing with iCloud. When iCloud was slow to open files, Library stayed empty until Writer had read the top of every note in the vault again, which could take over twenty minutes. Writer now keeps what it read between launches and only rereads notes that changed. The first time you open the new version it still reads everything once. Meanwhile **Library** and **Projects** fill in as notes are read instead of staying empty, and if you quit partway, Writer keeps what it has read.
 - Writer no longer quits on its own or stops loading covers while your vault is syncing with iCloud. When files were slow to read, Writer kept starting new reads before the last ones finished: of the whole vault for **Library**, and of a folder for the file list every time iCloud changed something in it. Those reads used up the threads every other file action needs, so covers never loaded, and in the worst case macOS stopped Writer. Now each of those reads runs one at a time.

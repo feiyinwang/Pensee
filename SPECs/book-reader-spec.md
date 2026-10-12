@@ -87,6 +87,9 @@ to explain or define something.
 - Restoring places it again until it holds, because EPUB chapters only lay out
   as they come into view.
 - A highlight jump asked for on open (Cmd+click) wins over the saved place.
+- An open book tab is part of the session: after a restart it opens again at
+  its saved place. Restoring the session reads only the tabs' documents, never
+  the book file itself.
 
 ### Selecting
 

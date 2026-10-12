@@ -252,6 +252,32 @@ describe("editor-store", () => {
     expect(state.openFiles.get("/test/file.md")?.content).toBe("Hello");
   });
 
+  test("restoreSession keeps a book tab and reads only its page as text", async () => {
+    mockedInvoke.mockImplementation(async (command, args) => {
+      const path = (args as { path: string }).path;
+      if (command !== "read_file" || !path.endsWith(".md")) throw new Error(`not text: ${path}`);
+      return { path, content: "# Book", modified_at: 1000 };
+    });
+
+    await useEditorStore.getState().restoreSession(
+      [
+        { location: { kind: "file", path: "/v/Book.md" }, back: [], forward: [] },
+        {
+          location: { kind: "book", path: "/v/Book.epub", note: "/v/Book.md" },
+          back: [],
+          forward: [],
+        },
+      ],
+      1,
+    );
+
+    const state = useEditorStore.getState();
+    expect(state.tabs.map((tab) => tab.location.kind)).toEqual(["file", "book"]);
+    expect(state.activeTabId).toBe(state.tabs[1]!.id);
+    expect([...state.openFiles.keys()]).toEqual(["/v/Book.md"]);
+    expect(mockedInvoke).not.toHaveBeenCalledWith("read_file", { path: "/v/Book.epub" });
+  });
+
   test("openFile derives title from frontmatter and preserves the body verbatim", async () => {
     mockedInvoke.mockResolvedValue({
       path: "/test/file.md",

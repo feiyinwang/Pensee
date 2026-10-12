@@ -1061,13 +1061,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
 
+    // Only documents load as text: a book tab references its PDF/EPUB, which
+    // its reader opens itself, and reading it as text fails and drops the tab.
     const uniquePaths = [
       ...new Set(
-        restoredTabs.flatMap((tab) => [
-          ...locationPaths(tab.location),
-          ...tab.back.flatMap((l) => locationPaths(l)),
-          ...tab.forward.flatMap((l) => locationPaths(l)),
-        ]),
+        restoredTabs
+          .flatMap((tab) => [tab.location, ...tab.back, ...tab.forward])
+          .map(locationPrimaryPath)
+          .filter((path): path is string => path !== null),
       ),
     ];
     const activeTabIndex = activeIndex ?? 0;
