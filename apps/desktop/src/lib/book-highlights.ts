@@ -96,6 +96,16 @@ export function withoutBookHighlight(body: string, id: string): string {
   return body.slice(0, range.from) + body.slice(to);
 }
 
+/** Download-site tags in a book's file name ("(z-library.sk, 1lib.sk,
+ *  z-lib.sk)"), whole bracketed groups or bare domains. */
+const SITE_GROUP_RE = /\s*[([][^()[\]]*\b(?:z-?library|z-?lib|1lib)\b[^()[\]]*[)\]]/gi;
+const SITE_DOMAIN_RE = /\s*\b(?:z-?library|z-?lib|1lib)\.[a-z]{2,}\b[,;]?/gi;
+
+/** A book's title from its file name, without download-site tags. */
+export function cleanBookTitle(stem: string): string {
+  return stem.replace(SITE_GROUP_RE, "").replace(SITE_DOMAIN_RE, "").replace(/\s+/g, " ").trim();
+}
+
 /** The `Book` frontmatter value: the book file, relative to the page. */
 export function bookFileOf(frontmatter: string | null): string | null {
   if (!frontmatter?.trim()) return null;

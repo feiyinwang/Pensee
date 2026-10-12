@@ -1,5 +1,5 @@
 import { bookPageNames, withBookProperties } from "./apple-books";
-import { bookFileOf, newBookNote } from "./book-highlights";
+import { bookFileOf, cleanBookTitle, newBookNote } from "./book-highlights";
 import { resolveDailyNoteFile } from "./daily-note";
 import { getFileName, getFileStem, getParentDir } from "./paths";
 import * as tauri from "./tauri";
@@ -75,7 +75,7 @@ export async function importBook(sourcePath: string): Promise<void> {
     return;
   }
 
-  const names = bookPageNames(safePageName(getFileStem(sourcePath)));
+  const names = bookPageNames(safePageName(cleanBookTitle(getFileStem(sourcePath))));
   if (!names.length) {
     showEditorNotice("That book's file name has no usable title.");
     return;

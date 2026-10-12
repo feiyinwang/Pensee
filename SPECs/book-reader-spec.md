@@ -14,7 +14,8 @@ to explain or define something.
 - Drop a `.pdf` or `.epub` on the window, or run **Import Book…** from the
   command palette.
 - **Book page.** The book page is found the way an Apple Books import finds
-  one (`bookPageNames` + `findWikiPage`), using the file's name. If none
+  one (`bookPageNames` + `findWikiPage`), using the file's name without download-site tags (`(z-library.sk, 1lib.sk,
+  z-lib.sk)`, `[Z-Library]`, a bare `z-lib.sk`; `cleanBookTitle`). If none
   exists, a new page goes in the Book pages folder (`apple-books.folder`):
   ```
   Type: Book

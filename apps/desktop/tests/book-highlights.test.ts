@@ -4,6 +4,7 @@ import {
   bookFileOf,
   bookHighlightId,
   bookHighlightsIn,
+  cleanBookTitle,
   newBookNote,
   parseBookHighlightId,
   withBookHighlight,
@@ -77,5 +78,16 @@ describe("pages", () => {
     expect(bookFileOf(frontmatter)).toBe("Atomic Habits.pdf");
     expect(frontmatter).toContain("Type: Book");
     expect(body.trim()).toBe("");
+  });
+});
+
+describe("cleanBookTitle", () => {
+  it("drops download-site tags", () => {
+    expect(cleanBookTitle("Atomic Habits (z-library.sk, 1lib.sk, z-lib.sk)")).toBe("Atomic Habits");
+    expect(cleanBookTitle("Deep Work [Z-Library] (2016)")).toBe("Deep Work (2016)");
+    expect(cleanBookTitle("Range z-lib.sk")).toBe("Range");
+    expect(cleanBookTitle("Thinking, Fast and Slow (Kahneman)")).toBe(
+      "Thinking, Fast and Slow (Kahneman)",
+    );
   });
 });
