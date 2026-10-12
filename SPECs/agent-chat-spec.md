@@ -62,6 +62,7 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 - The binary and `PATH` are resolved once from the user's login shell (`$SHELL -lc`), since an app launched from Finder doesn't inherit the terminal's `PATH`. Fallbacks: `~/.local/bin/claude`, `/opt/homebrew/bin/claude`, `/usr/local/bin/claude`.
 - stdout lines are forwarded unparsed to the invoking window as `agent:line` events; parsing lives in TypeScript (`lib/agent-stream.ts`) so it is unit-testable. Exit is `agent:exit` with the code and last stderr line.
 - **Stop** kills the process; the next one resumes the conversation. **New chat** ends the process (`agent_reset`) and any reply in progress, forgets the session id and warms a fresh one.
+- A reply ends at its `result` line, not at the process's exit (the process stays up): the composer goes back to Send and the next question, or **Define**, goes through. An exit while a reply is still coming is an error.
 - Lines are tagged with the request being answered; output before any request is dropped, and a process that exits while idle reports nothing.
 - One run per window at a time.
 

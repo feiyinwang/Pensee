@@ -23,8 +23,6 @@ interface AgentRun {
   requestId: string;
   /** Set by Stop so the exit reads as "Stopped", not as a failure. */
   cancelled: boolean;
-  /** A `result` line arrived, so the exit code carries no news. */
-  settled: boolean;
 }
 
 interface AgentState {
@@ -69,12 +67,13 @@ function applyEvent(state: AgentState, event: AgentStreamEvent): Partial<AgentSt
     }
     case "tool":
       return { items: appendItem(state.items, { role: "tool", text: event.label }) };
+    // The reply is done. The process stays up for the next message, so this,
+    // not its exit, ends the run.
     case "result": {
-      const run = state.run ? { ...state.run, settled: true } : null;
       const sessionId = event.sessionId ?? state.sessionId;
-      if (!event.isError) return { run, sessionId };
+      if (!event.isError) return { run: null, sessionId };
       return {
-        run,
+        run: null,
         sessionId,
         items: appendItem(state.items, {
           role: "error",
@@ -123,9 +122,12 @@ function ensureListeners() {
           queueMicrotask(() => useAgentStore.getState().warm());
           return { run: null, items: appendItem(state.items, { role: "status", text: "Stopped" }) };
         }
-        if (state.run.settled || payload.code === 0) return { run: null };
+        // Still running means no `result` came: the process died mid-reply.
         const reason =
-          lastLine(payload.stderr) || `Claude exited with code ${payload.code ?? "?"}.`;
+          lastLine(payload.stderr) ||
+          (payload.code === 0
+            ? "Claude stopped before finishing its reply."
+            : `Claude exited with code ${payload.code ?? "?"}.`);
         return { run: null, items: appendItem(state.items, { role: "error", text: reason }) };
       });
     },
@@ -185,7 +187,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const requestId = crypto.randomUUID();
     set((state) => ({
       items: appendItem(state.items, { role: "user", text }),
-      run: { requestId, cancelled: false, settled: false },
+      run: { requestId, cancelled: false },
     }));
 
     try {
