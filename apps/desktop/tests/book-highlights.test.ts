@@ -132,3 +132,13 @@ describe("toWordEdges", () => {
     expect(text.slice(...toWordEdges(text, 0, 6))).toBe("Habits");
   });
 });
+
+describe("speechLanguage", () => {
+  test("voices a word in its script's language", async () => {
+    const { speechLanguage } = await import("../src/lib/speak");
+    expect(speechLanguage("ephemeral")).toBe("en-US");
+    expect(speechLanguage("鬼谷子")).toBe("zh-CN");
+    expect(speechLanguage("ありがとう")).toBe("ja-JP");
+    expect(speechLanguage("안녕")).toBe("ko-KR");
+  });
+});

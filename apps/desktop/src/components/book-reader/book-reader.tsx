@@ -8,6 +8,7 @@ import { motionTokens } from "@/components/arc/lib/motion-tokens";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import type { BookLocation as BookTabLocation } from "@/components/editor-area/page-kinds/book";
 import { askAgent } from "@/lib/agent-ask";
+import { speak } from "@/lib/speak";
 import { getFileStem } from "@/lib/paths";
 import { ReaderController, type ReaderStatus, type SelectionInfo } from "./reader-controller";
 import styles from "./book-reader.module.css";
@@ -24,10 +25,22 @@ type Pill =
  *  to explain. */
 const MAX_DEFINE_WORDS = 3;
 
+function isOneWord(text: string): boolean {
+  return !/\s/.test(text.trim());
+}
+
 function definePrompt(book: string, text: string): string {
+  if (isOneWord(text))
+    return `Define the word "${text}" as it's used in the book ${book}, in the passage I'm reading. Start with its pronunciation in IPA. Keep it short.`;
   return text.split(/\s+/).length <= MAX_DEFINE_WORDS
     ? `Define "${text}" as it's used in the book ${book}, in the passage I'm reading. Keep it short.`
     : `Explain what "${text}" means in the book ${book}, in the context of the passage I'm reading. Keep it short.`;
+}
+
+/** Define: ask the agent, and say a single word aloud. */
+function define(book: string, text: string) {
+  if (isOneWord(text)) speak(text);
+  askAgent(definePrompt(book, text));
 }
 
 export default function BookReader({
@@ -187,7 +200,7 @@ export default function BookReader({
               <button
                 type="button"
                 className={styles.button}
-                onClick={() => run(() => askAgent(definePrompt(bookName, pill.selection.text)))}
+                onClick={() => run(() => define(bookName, pill.selection.text))}
               >
                 <HugeiconsIcon icon={Cursor02Icon} size={14} color="currentColor" strokeWidth={2} />
                 Define

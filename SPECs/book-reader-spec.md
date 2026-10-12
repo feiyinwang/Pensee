@@ -148,6 +148,10 @@ to explain or define something.
   - **Define** opens the agent panel and asks it to define a word or phrase
     of up to three words as used in this passage, or to explain what a
     longer selection means here.
+  - **A single word** also gets its pronunciation: the agent is asked to
+    start with the IPA, and the word is said aloud with the system voice
+    (`lib/speak.ts`, Web Speech API). The voice's language comes from the
+    word's script: English, Chinese, Japanese, Korean or Russian.
   - While an answer is still running, a notice says so and nothing is sent.
 
 ### Speed
