@@ -1,0 +1,246 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Highlighter, Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cursor02Icon } from "@hugeicons/core-free-icons";
+
+import { motionTokens } from "@/components/arc/lib/motion-tokens";
+import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
+import {
+  showNativeContextMenu,
+  type MenuItemSpec,
+} from "@/components/editor-area/editor-context-menu";
+import type { BookLocation as BookTabLocation } from "@/components/editor-area/page-kinds/book";
+import { askAgent } from "@/lib/agent-ask";
+import { getFileStem } from "@/lib/paths";
+import { ReaderController, type ReaderStatus, type SelectionInfo } from "./reader-controller";
+import styles from "./book-reader.module.css";
+import "./book-reader.css";
+
+// A PDF/EPUB tab (SPECs/book-reader-spec.md). React renders only the frame
+// and the selection pill; ReaderController owns the book.
+
+type Pill =
+  | { kind: "selection"; selection: SelectionInfo; x: number; y: number }
+  | { kind: "highlight"; id: string; x: number; y: number };
+
+const MAX_DEFINE_WORDS = 3;
+
+function explainPrompt(book: string, text: string): string {
+  return `Explain "${text}" from the book ${book}, in the context of the passage I'm reading.`;
+}
+
+function definePrompt(book: string, text: string): string {
+  return `Define "${text}" as it's used in the book ${book}, in the passage I'm reading. Keep it short.`;
+}
+
+export default function BookReader({
+  location,
+}: {
+  location: BookTabLocation;
+  isActive: boolean;
+  inColumn: boolean;
+}) {
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const controllerRef = useRef<ReaderController | null>(null);
+  const [status, setStatus] = useState<ReaderStatus>({ kind: "loading" });
+  const [pill, setPill] = useState<Pill | null>(null);
+  const reduceMotion = useReducedMotion();
+  const bookName = getFileStem(location.path);
+
+  useEffect(() => {
+    ensureArcTokens();
+    const scroller = scrollerRef.current;
+    const host = hostRef.current;
+    if (!scroller || !host) return;
+    setStatus({ kind: "loading" });
+    const controller = new ReaderController(
+      location.path,
+      location.note ?? null,
+      scroller,
+      host,
+      setStatus,
+    );
+    controllerRef.current = controller;
+    void controller.start();
+    return () => {
+      controller.destroy();
+      controllerRef.current = null;
+    };
+  }, [location.path, location.note]);
+
+  /** Viewport point → position inside the frame, above the given rect. */
+  const pillAt = useCallback((rect: DOMRect) => {
+    const frame = frameRef.current!.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2 - frame.left, y: rect.top - frame.top };
+  }, []);
+
+  const onMouseUp = useCallback(
+    (event: React.MouseEvent) => {
+      if (event.button !== 0) return;
+      const controller = controllerRef.current;
+      if (!controller) return;
+      // Let the selection settle (a double-click selects a word after mouseup).
+      requestAnimationFrame(() => {
+        const selection = controller.selection();
+        if (selection) {
+          setPill({ kind: "selection", selection, ...pillAt(selection.rect) });
+          return;
+        }
+        const hit = controller.highlightAt(event.clientX, event.clientY);
+        setPill(hit ? { kind: "highlight", id: hit.highlight.id, ...pillAt(hit.rect) } : null);
+      });
+    },
+    [pillAt],
+  );
+
+  const onContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      const controller = controllerRef.current;
+      if (!controller) return;
+      const selection = controller.selection();
+      const hit = selection ? null : controller.highlightAt(event.clientX, event.clientY);
+      if (!selection && !hit) return;
+      event.preventDefault();
+      setPill(null);
+      const spec: MenuItemSpec[] = [];
+      if (selection) {
+        const words = selection.text.split(/\s+/).length;
+        spec.push(
+          {
+            kind: "item",
+            id: "book-highlight",
+            text: "Highlight",
+            action: () => void controller.addHighlight(selection),
+          },
+          { kind: "separator" },
+          {
+            kind: "item",
+            id: "book-explain",
+            text: "Explain",
+            action: () => askAgent(explainPrompt(bookName, selection.text)),
+          },
+          ...(words <= MAX_DEFINE_WORDS
+            ? [
+                {
+                  kind: "item" as const,
+                  id: "book-define",
+                  text: `Define “${selection.text}”`,
+                  action: () => askAgent(definePrompt(bookName, selection.text)),
+                },
+              ]
+            : []),
+          { kind: "separator" },
+          {
+            kind: "item",
+            id: "book-copy",
+            text: "Copy",
+            action: () => void navigator.clipboard.writeText(selection.text),
+          },
+        );
+      } else if (hit) {
+        const { id } = hit.highlight;
+        spec.push({
+          kind: "item",
+          id: "book-remove-highlight",
+          text: "Remove Highlight",
+          action: () => void controller.removeHighlight(id),
+        });
+      }
+      void showNativeContextMenu(spec, { x: event.clientX, y: event.clientY });
+    },
+    [bookName],
+  );
+
+  // The pill belongs to one spot in the text: scrolling or Escape drops it.
+  useEffect(() => {
+    if (!pill) return;
+    const scroller = scrollerRef.current;
+    const close = () => setPill(null);
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && close();
+    scroller?.addEventListener("scroll", close, { passive: true });
+    window.addEventListener("keydown", onKey);
+    return () => {
+      scroller?.removeEventListener("scroll", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [pill]);
+
+  const run = (action: (controller: ReaderController) => void) => {
+    const controller = controllerRef.current;
+    if (controller) action(controller);
+    setPill(null);
+  };
+
+  return (
+    <div ref={frameRef} className="book-reader">
+      <div
+        ref={scrollerRef}
+        className="book-reader-scroller"
+        onMouseUp={onMouseUp}
+        onMouseDown={() => setPill(null)}
+        onContextMenu={onContextMenu}
+      >
+        <div ref={hostRef} className="book-reader-pages" />
+      </div>
+      {status.kind === "loading" ? (
+        <div className="book-reader-status">Opening {bookName}…</div>
+      ) : null}
+      {status.kind === "error" ? (
+        <div className="book-reader-status" role="alert">
+          Couldn't open {bookName}: {status.message}
+        </div>
+      ) : null}
+      <AnimatePresence>
+        {pill ? (
+          <motion.div
+            key={`${pill.kind}-${pill.x}-${pill.y}`}
+            className={styles.tray}
+            style={{ left: pill.x, top: pill.y }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, transition: { duration: motionTokens.duration.instant } }}
+            transition={
+              reduceMotion
+                ? { duration: motionTokens.duration.instant }
+                : motionTokens.spring.snappy
+            }
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            {pill.kind === "selection" ? (
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => run((c) => void c.addHighlight(pill.selection))}
+              >
+                <Highlighter size={14} aria-hidden />
+                Highlight
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => run((c) => void c.removeHighlight(pill.id))}
+              >
+                <Trash2 size={14} aria-hidden />
+                Remove highlight
+              </button>
+            )}
+            {pill.kind === "selection" ? (
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => run(() => askAgent(explainPrompt(bookName, pill.selection.text)))}
+              >
+                <HugeiconsIcon icon={Cursor02Icon} size={14} color="currentColor" strokeWidth={2} />
+                Explain
+              </button>
+            ) : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}

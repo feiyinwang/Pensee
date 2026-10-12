@@ -40,7 +40,7 @@ export function bookPageNames(title: string): string[] {
 /** One line of running text: highlights span paragraphs, a bullet does not.
  *  A leading marker that would turn the bullet into something else (heading,
  *  quote, nested list) is escaped. */
-function inlineText(text: string): string {
+export function inlineText(text: string): string {
   return text
     .replace(/\s*\n\s*/g, " ")
     .trim()
@@ -84,7 +84,7 @@ export function hasCover(frontmatter: string | null): boolean {
  * `frontmatter` marked as a book, the way the writer's own book pages are:
  * `Type: Book` (only when it has no type yet), `Cover: <cover>` (only when
  * `cover` is given and it has no cover yet — a link the writer chose is never
- * replaced) and `Book` in its `tags` (an existing list, or Obsidian's
+ * replaced), `Book: <book>` (the same, for the book file the reader opens) and `Book` in its `tags` (an existing list, or Obsidian's
  * space/comma-separated string, gets it appended once). Keys are matched
  * ignoring case. Missing keys are added as lines — `Type`/`Cover` at the top,
  * `tags` at the end — so the rest stays byte-for-byte; filling a blank key or
@@ -93,14 +93,15 @@ export function hasCover(frontmatter: string | null): boolean {
  */
 export function withBookProperties(
   frontmatter: string | null,
-  { cover = null }: { cover?: string | null } = {},
+  { cover = null, book = null }: { cover?: string | null; book?: string | null } = {},
 ): string | null {
   const top: string[] = [];
   const typeLine = yamlLine("Type", BOOK_TYPE);
   const coverLine = cover ? yamlLine("Cover", cover) : null;
+  const bookLine = book ? yamlLine("Book", book) : null;
   const tagLines = `tags:\n  - ${BOOK_TAG}`;
   if (frontmatter === null || !frontmatter.trim()) {
-    return [typeLine, coverLine, tagLines].filter(Boolean).join("\n");
+    return [typeLine, coverLine, bookLine, tagLines].filter(Boolean).join("\n");
   }
 
   const doc = parseDocument(frontmatter);
@@ -123,6 +124,16 @@ export function withBookProperties(
     if (!existing) top.push(coverLine);
     else if (isBlank(existing.value)) {
       existing.value = doc.createNode(cover);
+      reserialize = true;
+    }
+  }
+
+  // The book file this page reads from (SPECs/book-reader-spec.md).
+  if (bookLine) {
+    const existing = findPair(map, "book");
+    if (!existing) top.push(bookLine);
+    else if (isBlank(existing.value)) {
+      existing.value = doc.createNode(book);
       reserialize = true;
     }
   }
@@ -160,7 +171,7 @@ export function withBookProperties(
 
 /** `body` with `items` added at the end of its `## Highlights` section, or in
  *  a new such section at the end of the page when it has none. */
-function appendToHighlights(body: string, items: string): string {
+export function appendToHighlights(body: string, items: string): string {
   const lines = body.split("\n");
   const heading = lines.findIndex((line) => HIGHLIGHTS_HEADING_RE.test(line));
   if (heading === -1) {

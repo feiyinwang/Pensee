@@ -1,8 +1,10 @@
+import { lazy, Suspense } from "react";
 import { EditorPane } from "../editor-pane";
 import { DocumentFooter } from "../document-footer";
 import { NewTabPage } from "../new-tab-page";
 import { SettingsPanel } from "@/components/settings-panel";
 import type { Location } from "./index";
+import type { BookLocation } from "./book";
 import type { FileLocation } from "./file";
 import type { LauncherLocation } from "./launcher";
 import type { SettingsLocation } from "./settings";
@@ -33,6 +35,15 @@ const FileTabBody = ({
   inColumn: boolean;
 }) => <EditorPane path={location.path} isActive={isActive} inColumn={inColumn} />;
 
+// The reader (and pdf.js / fflate with it) loads only when a book tab mounts.
+const BookReader = lazy(() => import("@/components/book-reader/book-reader"));
+// eslint-disable-next-line react-doctor/only-export-components
+const BookTabBody = (props: { location: BookLocation; isActive: boolean; inColumn: boolean }) => (
+  <Suspense fallback={null}>
+    <BookReader {...props} />
+  </Suspense>
+);
+
 const views = {
   file: {
     Component: FileTabBody,
@@ -44,6 +55,9 @@ const views = {
   settings: {
     Component: SettingsPanel,
   } satisfies PageKindView<SettingsLocation>,
+  book: {
+    Component: BookTabBody,
+  } satisfies PageKindView<BookLocation>,
 } as const;
 
 /** Resolve a location to its registered view. Throws on an unknown kind —

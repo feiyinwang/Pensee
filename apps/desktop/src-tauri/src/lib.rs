@@ -654,6 +654,7 @@ pub fn run() {
             commands::agent::agent_cancel,
             commands::apple_books::read_apple_books_highlights,
             commands::apple_books::save_apple_books_cover,
+            commands::books::import_book,
             commands::settings::get_settings,
             commands::settings::get_setting,
             commands::settings::set_setting,

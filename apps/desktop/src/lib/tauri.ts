@@ -61,6 +61,12 @@ export function deleteEntry(path: string): Promise<void> {
   return invoke("delete_entry", { path });
 }
 
+/** Copy a PDF/EPUB into `dir` as `<stem>.<ext>` (or `<stem> 2.<ext>`, …;
+ *  never overwrites). Returns the new path. SPECs/book-reader-spec.md. */
+export function importBook(sourcePath: string, dir: string, stem: string): Promise<string> {
+  return invoke("import_book", { sourcePath, dir, stem });
+}
+
 export function fileExists(path: string): Promise<boolean> {
   return invoke("file_exists", { path });
 }

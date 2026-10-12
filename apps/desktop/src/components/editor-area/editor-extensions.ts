@@ -29,6 +29,7 @@ import { linkChips, linkPreviews } from "./link-preview";
 import { emptyHeadingKeymap, markdownFormatting } from "./markdown-formatting";
 import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
+import { bookJump } from "./book-jump";
 import { tableDecorations } from "./table-decorations";
 import { viewportParsePlugin } from "./viewport-parse";
 import { wikiLinkExtension } from "./wiki-link-extension";
@@ -148,6 +149,7 @@ export function createEditorExtensions(
     // Before wikiLinkExtension: its facet tells the wiki-link decorations to
     // leave `![[Page#^id]]` to the linked-block widget.
     blockEmbeds(getFilePath),
+    bookJump(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     wikiPagesExtension(getFilePath, isDisposed),
     wikiLinkPreview(getFilePath),

@@ -181,6 +181,27 @@ export function CommandPalette() {
       },
     },
     root && {
+      id: "import-book",
+      label: "Import Book…",
+      description: "Command",
+      run: () => {
+        close();
+        void import("@/lib/book-import").then(({ pickAndImportBook }) => pickAndImportBook());
+      },
+    },
+    root &&
+      activeFilePath && {
+        id: "open-book",
+        label: "Open Book",
+        description: "Command",
+        run: () => {
+          close();
+          void import("@/lib/book-import").then(({ openBookOfPage }) =>
+            openBookOfPage(activeFilePath),
+          );
+        },
+      },
+    root && {
       id: "sync-apple-books",
       label: "Import Apple Books Highlights",
       description: "Command",

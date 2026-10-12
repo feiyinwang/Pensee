@@ -7,6 +7,7 @@ import { parseAgentLine, type AgentStreamEvent } from "@/lib/agent-stream";
 import { buildAgentSystemPrompt } from "@/lib/agent-context";
 import { useSettingsStore } from "@/stores/settings-store";
 import { collectAgentOpenFiles, collectAgentPeriodNotes } from "@/lib/agent-open-files";
+import { openBookPassages } from "@/lib/book-readers";
 import { flushSave } from "@/lib/save";
 
 /** One row in the chat. `tool` and `status` rows are muted one-liners. */
@@ -132,20 +133,24 @@ async function flushOpenFiles() {
 }
 
 async function currentContext(root: string) {
-  const { tabs, activeFilePath, openFiles } = useEditorStore.getState();
+  const { tabs, activeTabId, activeFilePath, openFiles } = useEditorStore.getState();
   const paths = [
     ...new Set(tabs.flatMap((tab) => (tab.location.kind === "file" ? [tab.location.path] : []))),
   ];
   const folder = useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "";
-  const [files, periodNotes] = await Promise.all([
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  const [files, periodNotes, books] = await Promise.all([
     collectAgentOpenFiles(paths, openFiles),
     collectAgentPeriodNotes(root, folder, new Date(), new Set(paths), openFiles),
+    openBookPassages(),
   ]);
   return buildAgentSystemPrompt({
     root,
     openFiles: files,
     focusedPath: activeFilePath,
     periodNotes,
+    books,
+    focusedBook: activeTab?.location.kind === "book" ? activeTab.location.path : null,
   });
 }
 

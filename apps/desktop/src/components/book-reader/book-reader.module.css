@@ -1,0 +1,55 @@
+/* The selection pill. Same tray and button as the board's selection toolbar
+   (board-selection-toolbar.module.css), Arc tokens only, so floating actions
+   over a selection read as one family across the app. */
+
+.tray {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-control) - 4px);
+  background: var(--surface-raised);
+  color: var(--foreground);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 6%),
+    0 6px 16px -6px rgb(0 0 0 / 18%);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  user-select: none;
+  /* Centred over the selection, 8px above it. */
+  translate: -50% calc(-100% - 8px);
+  transform-origin: bottom center;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 8px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover {
+    background: var(--surface-muted);
+    color: var(--foreground);
+  }
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

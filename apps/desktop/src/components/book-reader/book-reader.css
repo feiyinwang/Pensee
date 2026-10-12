@@ -1,0 +1,165 @@
+/* Book reader (SPECs/book-reader-spec.md). Loaded with the reader's lazy
+   chunk. */
+
+.book-reader {
+  /* Fills the tab body (position: relative) whatever its own sizing. */
+  position: absolute;
+  inset: 0;
+}
+
+.book-reader-scroller {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.book-reader-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Highlights and the jump flash (highlight-painter.ts). */
+::highlight(book-highlight) {
+  background-color: color-mix(in oklch, var(--accent) 30%, transparent);
+}
+
+::highlight(book-flash) {
+  background-color: color-mix(in oklch, var(--accent) 60%, transparent);
+}
+
+/* ------------------------------------------------------------------ PDF */
+
+.book-reader-pages:has(.book-pdf-page) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--book-page-gap, 16px);
+  padding: var(--book-page-gap, 16px) 24px;
+}
+
+.book-pdf-page {
+  position: relative;
+  flex: none;
+  border-radius: 4px;
+  background: white;
+  box-shadow:
+    0 0 0 1px var(--line-subtle),
+    0 2px 8px -4px rgb(0 0 0 / 20%);
+  overflow: hidden;
+}
+
+.book-pdf-layer {
+  position: absolute;
+  inset: 0;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+}
+
+.book-pdf-layer canvas {
+  display: block;
+}
+
+/* pdf.js's text layer (pdfjs-dist/web/pdf_viewer.css), trimmed to what a
+   transparent, selectable layer over the canvas needs. */
+.book-pdf-layer .textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.book-pdf-layer .textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+
+.book-pdf-layer .textLayer > :not(.markedContent),
+.book-pdf-layer .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.book-pdf-layer .textLayer .markedContent {
+  display: contents;
+}
+
+.book-pdf-layer .textLayer span[role="img"] {
+  user-select: none;
+  cursor: default;
+}
+
+.book-pdf-layer .textLayer ::selection {
+  background: color-mix(in srgb, AccentColor, transparent 60%);
+  color: transparent;
+}
+
+/* ----------------------------------------------------------------- EPUB */
+
+.book-reader-pages:has(.book-epub-section) {
+  max-width: var(--writer-editor-max-width, 720px);
+  margin: 0 auto;
+  padding: 32px 32px 40vh;
+  color: var(--color-text-primary);
+  font-family: var(--editor-font);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.book-epub-section {
+  /* Chapters off screen skip layout and paint. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1200px;
+  overflow-wrap: break-word;
+}
+
+.book-epub-section + .book-epub-section {
+  margin-top: 48px;
+  padding-top: 48px;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.book-epub-section :is(h1, h2, h3, h4) {
+  line-height: 1.3;
+  margin: 1.4em 0 0.6em;
+}
+
+.book-epub-section p {
+  margin: 0 0 0.9em;
+}
+
+.book-epub-section img,
+.book-epub-section svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.book-epub-section a {
+  color: var(--link-color);
+}

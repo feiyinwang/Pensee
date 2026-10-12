@@ -64,6 +64,14 @@ export async function followLink(href: string | null, view: EditorView, filePath
     return;
   }
 
+  // A book opens in the reader, not the system viewer. No page hint: the
+  // linking page is not necessarily the book's page (SPECs/book-reader-spec.md).
+  if (/\.(pdf|epub)$/i.test(target.path)) {
+    const { openBook } = await import("@/lib/book-import");
+    await openBook(target.path, null);
+    return;
+  }
+
   await openPath(target.path);
 }
 

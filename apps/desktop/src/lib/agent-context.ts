@@ -18,10 +18,23 @@ export interface AgentPeriodNote {
   text: string | null;
 }
 
+/** The passage on screen in an open book (SPECs/book-reader-spec.md). */
+export interface AgentBookPassage {
+  bookPath: string;
+  /** The book's page: the user's notes and highlights, an open tab. */
+  notePath: string | null;
+  where: string;
+  text: string;
+}
+
 export interface AgentContext {
   root: string;
   openFiles: AgentOpenFile[];
   focusedPath: string | null;
+  /** Every open book's passage on screen. */
+  books?: AgentBookPassage[];
+  /** The book tab in front of the user, when it is a book. */
+  focusedBook?: string | null;
   /** Broadest first. Only notes that exist. */
   periodNotes?: AgentPeriodNote[];
 }
@@ -53,6 +66,8 @@ export function buildAgentSystemPrompt({
   openFiles,
   focusedPath,
   periodNotes = [],
+  books = [],
+  focusedBook = null,
 }: AgentContext): string {
   const lines = [
     "You are the assistant inside Writer, a desktop markdown editor. The user is chatting with you from a small side panel.",
@@ -65,6 +80,12 @@ export function buildAgentSystemPrompt({
     lines.push(
       `The tab in front of the user is: ${focusedPath}`,
       '"This", "here", "this page", "this doc" and "it" mean that tab, and it breaks ties when a question could fit several pages. It is not the only page that matters.',
+    );
+  }
+
+  if (focusedBook) {
+    lines.push(
+      `The tab in front of the user is the book ${focusedBook}. "This", "here" and "it" mean the passage from it below.`,
     );
   }
 
@@ -93,6 +114,17 @@ export function buildAgentSystemPrompt({
       "",
       "Also open (not included for length; read when relevant):",
       ...omitted.map((p) => `- ${p}`),
+    );
+  }
+
+  if (books.length > 0) {
+    lines.push(
+      "",
+      "The user is reading these books in Writer. Each block is the text on their screen right now; its note is the open page holding their highlights (bullets) and notes about the book. Explain and define things in the context of that passage, and for a word or phrase say what it means there.",
+      ...books.map(
+        (book) =>
+          `<book_passage book="${book.bookPath}" where="${book.where}"${book.notePath ? ` note="${book.notePath}"` : ""}>\n${book.text}\n</book_passage>`,
+      ),
     );
   }
 
