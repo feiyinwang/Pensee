@@ -41,8 +41,14 @@ const EXCERPT_MAX_CHARS: usize = 400;
 type MetaCache = HashMap<PathBuf, (u128, u64, Arc<NoteMeta>)>;
 static META_CACHE: LazyLock<Mutex<MetaCache>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// One `list_typed_notes` scan at a time. A scan reads every note on up to 8
+/// threads; when reads stall (an iCloud vault mid-sync), the rereads asked for
+/// after each file change overlapped until the app hit macOS's 4096 threads
+/// per process and aborted. Waiting on an async lock holds no thread.
+static SCAN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 /// Every indexed note whose `Type` is one of `types` (case-insensitive), newest
-/// edit first. Reads in parallel off the UI thread.
+/// edit first. Reads in parallel off the UI thread, one scan at a time.
 #[tauri::command]
 pub async fn list_typed_notes(
     types: Vec<String>,
@@ -52,6 +58,7 @@ pub async fn list_typed_notes(
     if types.is_empty() {
         return Ok(Vec::new());
     }
+    let _scan = SCAN.lock().await;
     let state = app.state::<AppState>().get_or_create(webview.label());
     let files: Vec<IndexedFile> = state.file_index.read().clone();
     tauri::async_runtime::spawn_blocking(move || Ok(list_typed_notes_impl(&files, &types)))

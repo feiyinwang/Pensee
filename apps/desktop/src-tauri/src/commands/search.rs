@@ -310,7 +310,9 @@ const REFERENCE_TEXT_MAX: usize = 200;
 /// Every reference to any of `ids` across the workspace's markdown files. The
 /// back half of linked blocks (SPECs/block-embed-spec.md): a referenced block
 /// shows how many places use it. Reads files in parallel off the UI thread; a
-/// file with no `#^` in it costs one substring scan.
+/// file with no `#^` in it costs one substring scan. One scan at a time: see
+/// `spaces::list_typed_notes`, whose overlapping scans ran the app out of
+/// threads on a stalled iCloud vault.
 #[tauri::command]
 pub async fn find_block_references(
     ids: Vec<String>,
@@ -320,6 +322,8 @@ pub async fn find_block_references(
     if ids.is_empty() {
         return Ok(Vec::new());
     }
+    static SCAN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _scan = SCAN.lock().await;
     let state = app.state::<AppState>().get_or_create(webview.label());
     let paths: Vec<PathBuf> = state
         .file_index
