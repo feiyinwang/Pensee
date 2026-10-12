@@ -327,7 +327,16 @@ pub async fn read_directory(
     app: tauri::AppHandle,
 ) -> Result<Vec<DirEntry>, AppError> {
     let state = app.state::<AppState>().get_or_create(webview.label());
-    blocking(move || read_directory_impl(&path, Some(&state))).await
+    blocking(move || {
+        let started = std::time::Instant::now();
+        let result = read_directory_impl(&path, Some(&state));
+        let took = started.elapsed();
+        if took > std::time::Duration::from_secs(2) {
+            eprintln!("read_directory: {path} took {:.1}s", took.as_secs_f64());
+        }
+        result
+    })
+    .await
 }
 
 pub fn read_file_impl(path: &str) -> Result<FileContent, AppError> {

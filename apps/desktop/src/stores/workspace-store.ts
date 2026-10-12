@@ -8,6 +8,14 @@ import { getEditorSessionSnapshot, useEditorStore } from "@/stores/editor-store"
 
 export type WorkspaceChromeMode = "workspace" | "compact-file";
 
+/** Directory refreshes in flight, by path. A folder's listing reads the title
+ *  of every note in it, and on an iCloud vault mid-sync each read can stall
+ *  for minutes while change events keep arriving: one refresh per event filled
+ *  the Rust blocking pool, which starved every other file command (Library's
+ *  covers among them). Now a folder has at most one refresh running; events
+ *  during it set `again`, and it lists the folder once more when it ends. */
+const directoryRefreshes = new Map<string, { again: boolean; done: Promise<void> }>();
+
 interface WorkspaceState {
   root: string | null;
   workspaceEpoch: number | null;
@@ -241,15 +249,33 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setStartupResolved: () => set({ isStartupResolved: true }),
 
-  refreshDirectory: async (path: string) => {
-    const { root, workspaceGeneration } = get();
-    const entries = await tauri.readDirectory(path);
-    set((state) => {
-      if (state.root !== root || state.workspaceGeneration !== workspaceGeneration) return state;
-      const cache = new Map(state.directoryCache);
-      cache.set(path, entries);
-      return { directoryCache: cache };
-    });
+  refreshDirectory: (path: string) => {
+    const running = directoryRefreshes.get(path);
+    if (running) {
+      running.again = true;
+      return running.done;
+    }
+    const refresh = { again: false, done: Promise.resolve() };
+    refresh.done = (async () => {
+      try {
+        do {
+          refresh.again = false;
+          const { root, workspaceGeneration } = get();
+          const entries = await tauri.readDirectory(path);
+          set((state) => {
+            if (state.root !== root || state.workspaceGeneration !== workspaceGeneration)
+              return state;
+            const cache = new Map(state.directoryCache);
+            cache.set(path, entries);
+            return { directoryCache: cache };
+          });
+        } while (refresh.again);
+      } finally {
+        directoryRefreshes.delete(path);
+      }
+    })();
+    directoryRefreshes.set(path, refresh);
+    return refresh.done;
   },
 
   toggleDirectory: async (path: string) => {

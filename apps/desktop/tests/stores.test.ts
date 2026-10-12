@@ -150,6 +150,33 @@ describe("workspace-store", () => {
     expect(useWorkspaceStore.getState().directoryCache.get("/workspace")).toEqual([]);
   });
 
+  test("refreshDirectory runs one listing per folder and one more for events during it", async () => {
+    const reads = [createDeferred<unknown>(), createDeferred<unknown>(), createDeferred<unknown>()];
+    let calls = 0;
+    mockedInvoke.mockImplementation((command: string) =>
+      command === "read_directory" ? reads[calls++]!.promise : Promise.resolve(null),
+    );
+    useWorkspaceStore.setState({ root: "/w", workspaceGeneration: 1, directoryCache: new Map() });
+
+    // A burst of change events while the first listing is stuck on a slow read.
+    const { refreshDirectory } = useWorkspaceStore.getState();
+    const burst = Array.from({ length: 50 }, () => refreshDirectory("/w/Archive"));
+    expect(calls).toBe(1);
+
+    reads[0]!.resolve([{ name: "old.md" }]);
+    await vi.waitFor(() => expect(calls).toBe(2));
+    reads[1]!.resolve([{ name: "new.md" }]);
+    await Promise.all(burst);
+
+    expect(calls).toBe(2);
+    expect(useWorkspaceStore.getState().directoryCache.get("/w/Archive")).toEqual([
+      { name: "new.md" },
+    ]);
+    // Done: the next event lists the folder again.
+    void refreshDirectory("/w/Archive");
+    expect(calls).toBe(3);
+  });
+
   test("invalidatePath removes from cache", () => {
     useWorkspaceStore.setState({
       directoryCache: new Map([

@@ -230,3 +230,7 @@ One new integration-style test in `commands/workspace.rs` (or wherever `prepare_
 - `cargo test` (the existing `test_ignores_*` tests in `watcher.rs:344-360` need their signatures updated to pass a workspace root).
 - `vp test` (no frontend logic changed; should pass unchanged).
 - Open Writer with each existing workspace in `recent_workspaces.json` and confirm none of them are now treated as new workspaces (canonicalization migration is correct).
+
+## One refresh per folder at a time
+
+`refreshDirectory(path)` (`stores/workspace-store.ts`) keeps at most one `read_directory` per folder in flight. A call while one runs marks it to run once more when it ends and returns that same promise, so a caller that awaits it still sees a listing that started after its call. Why: a listing reads the title of every note in the folder, and on an iCloud vault mid-sync those reads can stall for minutes while `fs:directory-changed` keeps arriving. One listing per event filled Rust's blocking pool (512 threads), which starved every other file command, including the Library's `thumb://` covers. `read_directory` logs any listing slower than 2 s to stderr.
