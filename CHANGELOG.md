@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Clicking a book in **Library** now opens its book next to its note, when the book file is there. A book note without a PDF or EPUB opens on its own, as before.
 - Adding a project in **Projects** now uses the note you already have when its name matches one anywhere in your vault, instead of making a second file. A project already on the board moves to the column you added it to; any other note becomes a project there. If that note is something else, like a book, Writer asks before making it a project, because it would leave Library. Only a new name makes a new note.
 - **Projects** is now built from Arc components. **List** is a sortable table: click any header to sort by it. **Kanban** cards lift, tilt and spring into place as you drag them; with the keyboard, press **Space** to pick a card up, the arrow keys to move it and **Space** to drop it. Status and deadlines are coloured tags, as in Notion, and each colour means one thing: **To-do** is gray, **Ongoing** blue and **Done** green. A deadline that has passed is a red **Overdue** tag, one due within a week is orange, and the rest are gray, as is any deadline on a done project. Timeline bars take their status colour, with a red or orange tag beside them when the deadline needs attention.
 - A passage highlighted onto a board is now the same size as a rectangle you draw, instead of half again as wide. A long passage still makes it taller.

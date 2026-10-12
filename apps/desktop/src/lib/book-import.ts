@@ -203,6 +203,16 @@ export async function openBookOfPage(notePath: string): Promise<void> {
   await openBook(bookPath, notePath);
 }
 
+/** A Library card's book page, already open: its book (`file`, the page's
+ *  `Book` value) joins it when it is beside the page; a page without one just
+ *  stays open on its own, with no notice. */
+export async function openBookBesideOpenPage(notePath: string, file: string): Promise<void> {
+  const bookPath = `${getParentDir(notePath)}/${file}`;
+  if (isBookFile(bookPath) && (await tauri.fileExists(bookPath))) {
+    await openBook(bookPath, notePath);
+  }
+}
+
 /** A book picked from search: open it beside its page, or, when its file is
  *  gone, say so and drop it from the library. */
 export async function openLibraryBook(entry: LibraryBook): Promise<void> {

@@ -56,9 +56,16 @@ export function SpacePage({
   );
 }
 
-function openNote(event: MouseEvent | KeyboardEvent, path: string) {
+/** Opens the note; a note with a `Book` file (a Library book) opens with its
+ *  book beside it. */
+function openNote(event: MouseEvent | KeyboardEvent, path: string, book?: string) {
   const open = event.metaKey || event.ctrlKey ? openLinkedPage : navigateToFile;
-  void open(path).catch((error: unknown) => {
+  void (async () => {
+    await open(path);
+    if (!book) return;
+    const { openBookBesideOpenPage } = await import("@/lib/book-import");
+    await openBookBesideOpenPage(path, book);
+  })().catch((error: unknown) => {
     window.alert(`Failed to open: ${error instanceof Error ? error.message : String(error)}`);
   });
 }

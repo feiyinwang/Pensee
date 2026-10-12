@@ -9,7 +9,7 @@ import type { TypedNote } from "@/lib/tauri";
 import { SpaceCover, noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
 
-type OpenNote = (event: MouseEvent | KeyboardEvent, path: string) => void;
+type OpenNote = (event: MouseEvent | KeyboardEvent, path: string, book?: string) => void;
 
 /** Download a note's cover into its assets folder and write `Cover:`. */
 async function getCover(note: TypedNote, kind: CoverKind): Promise<void> {
@@ -122,7 +122,7 @@ export function NoteGallery({
               <button
                 type="button"
                 className={styles.item}
-                onClick={(event) => openNote(event, note.path)}
+                onClick={(event) => openNote(event, note.path, note.properties.book)}
               >
                 <SpaceCover note={note} kind={tab.cover} />
                 <span className={styles.itemTitle}>{noteTitle(note)}</span>

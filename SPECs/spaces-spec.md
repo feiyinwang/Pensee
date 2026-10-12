@@ -33,6 +33,8 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 
 Library opens on Books. Its tabs are an Arc segmented control with the count of each tab.
 
+Clicking a card opens its note in place. When the note's `Book` file (a PDF or EPUB, relative to the note) exists, the book opens in the column right after the note, as **Open beside** does (`openBookBesideOpenPage` in `lib/book-import.ts`). A note without one, or whose file is gone, just opens, with no notice.
+
 ## Covers
 
 `Cover:` (relative to the note's folder, or an `https` URL) is shown when present. Otherwise each category draws its own default cover from the note's title and author, coloured by a hash of the title so a note keeps its colour:
