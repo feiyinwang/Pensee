@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- The video at the top of a YouTube note has rounded corners and a soft shadow under it.
 - Press **⌘⇧L** anywhere to add something to **Library**. The New tab page shows the shortcut next to **Add to Library**. In a note, ⌘⇧L no longer selects every match of the selected text; ⌘D still adds the next one.
 - A YouTube video you bring into a note now comes with its transcript. It sits in a closed **Transcript** toggle at the top of the note, under the video; click it to read. This happens when you add a video to **Library** from its link, or put a YouTube link in an open note's properties. Older video notes stay as they are: click **Transcript** next to **Pin** under the video to get one. The transcript uses the creator's captions when there are any, else YouTube's automatic ones, in paragraphs of about a minute, each starting with its time.
 - Adding a YouTube video to **Library** names the note after the video's title, like `Rick Astley - Never Gonna Give You Up (Official Video)`, instead of `youtube.com dQw4w9WgXcQ`. A YouTube link's preview card in a note now shows its title and thumbnail too.

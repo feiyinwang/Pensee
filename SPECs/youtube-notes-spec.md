@@ -17,7 +17,9 @@ selected.
   covers read (`noteLink`, `youtubeVideoId` in `lib/covers.ts`).
 - The player sits under the properties, the full width of the pane, edge
   to edge: 16:9, but no taller than 60% of the window (past that, the frame
-  keeps the width and YouTube letterboxes the picture). It is sticky: once the
+  keeps the width and YouTube letterboxes the picture). Its corners are
+  rounded (10px) and it casts a soft shadow, the same as the mini player
+  over a board. It is sticky: once the
   properties scroll away, it stays at the top of the note and the notes
   scroll beneath it. The band behind it has the page's background, so no
   text shows through around the video.
