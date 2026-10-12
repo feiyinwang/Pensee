@@ -935,15 +935,15 @@
 
 .wr-board-viewport-cluster {
   position: absolute;
+  top: 10px;
   right: 14px;
-  bottom: 14px;
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-/* Upright, so beside the centred dock it takes one button's width, not a
-   row's. */
+/* Upright in the top-right corner, clear of the top bar on the left and the
+   dock at the bottom. */
 .wr-board-viewport-cluster .wr-board-group {
   flex-direction: column;
 }
@@ -1017,17 +1017,17 @@
 }
 
 /* Bars never overlap, whatever the board's width (a page is far narrower
-   than the window). The dock is about 516px wide and centred; the upright
-   zoom column (about 60px with its inset) shares the bottom edge while it
-   fits beside it, then sits above the dock. Under the dock's own width the
-   dock shrinks. */
+   than the window). The top bar starts 88px in from the left; once the zoom
+   column would meet it, the column drops below it (the bar is 44px tall at
+   10px). The dock is about 516px wide and centred; under its own width it
+   shrinks. */
 .wr-board-host {
   container: wr-board / size;
 }
 
-@container wr-board (max-width: 680px) {
+@container wr-board (max-width: 640px) {
   .wr-board-viewport-cluster {
-    bottom: 86px;
+    top: 62px;
   }
 }
 

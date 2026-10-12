@@ -398,7 +398,7 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   zoomLabel.textContent = "100%";
   zoomLabel.addEventListener("click", () => cb.onZoomReset());
   const fitBtn = button("Zoom to fit (⌘1)", ICON.fit, () => cb.onZoomFit());
-  // A column in the corner (zoom in on top), so it never meets the dock.
+  // A column in the top-right corner (zoom in on top), clear of the dock.
   const zoomGroup = group([zoomIn, zoomLabel, zoomOut, fitBtn]);
 
   viewportCluster.append(zoomGroup);
