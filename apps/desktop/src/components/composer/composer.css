@@ -1,5 +1,5 @@
 /* The ⌘T composer (SPECs/composer-spec.md): Linear's new-issue layout on
-   Writer's card surface. Arc pieces (chip menus, the switch) draw on Writer's
+   Writer's card surface. Arc pieces (the chip menus) draw on Writer's
    translucent surfaces through the token remap below, as in the agent panel. */
 
 .composer {
@@ -14,9 +14,6 @@
   /* Chips are pills, 28px tall, like Linear's property row. */
   --radius-control: 999px;
   --control-height-sm: 28px;
-  --control-track: var(--surface-subtle-strong);
-  --control-track-hover: var(--surface-selected);
-  --control-on: var(--accent-solid);
 
   display: flex;
   flex: 1;
@@ -178,9 +175,8 @@ button.composer-chip:not(:disabled) {
   text-underline-offset: 2px;
 }
 
-/* One row under the text: properties on the left, Keep open and the button
-   on the right. Every control is 28px tall (the switch's 24px track centred),
-   so they share top and bottom edges. A narrow window wraps the right group
+/* One row under the text: properties on the left, the button on the right. Every control is 28px tall, so they share top and bottom
+   edges. A narrow window wraps the right group
    onto its own line, still right-aligned. */
 .composer-bar {
   display: flex;
@@ -239,20 +235,13 @@ button.composer-chip:not(:disabled) {
   color: var(--text-secondary);
 }
 
-.composer-switch {
-  flex-shrink: 0;
-  min-height: 0;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
 .composer-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   height: 28px;
   flex-shrink: 0;
-  padding: 0 14px;
+  padding: 0 10px 0 14px;
   border-radius: 999px;
   background: var(--text-primary);
   color: var(--surface-primary);
@@ -266,6 +255,14 @@ button.composer-chip:not(:disabled) {
 
 .composer-submit:active:not(:disabled) {
   scale: 0.97;
+}
+
+/* The shortcut inside the button: smaller and lighter than its label, in
+   the label's own colour (no opacity on a token). */
+.composer-kbd {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .composer-submit:disabled {
@@ -294,13 +291,6 @@ button.composer-chip:not(:disabled) {
 
 /* ⌘T: over the page, where ⌘O's palette sits. No entrance motion: it opens
    from the keyboard, often, so it is simply there (docs/motion.md). */
-.composer-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: transparent;
-}
-
 .composer-dialog {
   position: fixed;
   top: 16%;

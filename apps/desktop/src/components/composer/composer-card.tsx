@@ -20,7 +20,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/arc/popover/popover";
-import { Switch } from "@/components/arc/switch/switch";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { submitComposer, attachToComposer } from "@/hooks/use-composer";
 import { useTypedNotes } from "@/hooks/use-spaces";
@@ -101,8 +100,6 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
   ensureArcTokens();
   const draft = useComposerStore((s) => s.draft);
   const setDraft = useComposerStore((s) => s.setDraft);
-  const keepOpen = useComposerStore((s) => s.keepOpen);
-  const setKeepOpen = useComposerStore((s) => s.setKeepOpen);
   const busy = useComposerStore((s) => s.busy);
   const error = useComposerStore((s) => s.error);
   const focusTick = useComposerStore((s) => s.focusTick);
@@ -123,10 +120,8 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
 
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const titleLocked = Boolean(draft.day || draft.file);
-
   useEffect(() => {
-    (titleLocked ? bodyRef.current : titleRef.current)?.focus();
+    (draft.file ? bodyRef.current : titleRef.current)?.focus();
     // Only a new focus request moves the caret, not a draft change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTick]);
@@ -139,14 +134,15 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
     body.style.height = `${body.scrollHeight}px`;
   }, [draft.body]);
 
-  function submit() {
-    if (canSubmit) void submitComposer(target);
+  /** ⌘↵ (and the button) makes it and stays on the page; ⌘⇧↵ goes to it. */
+  function submit(open: boolean) {
+    if (canSubmit) void submitComposer(target, open);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
-      submit();
+      submit(event.shiftKey);
     }
   }
 
@@ -158,7 +154,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
   // Header: where it goes. Only a plain note picks its folder.
   const workspaceName = root ? getFileName(root) : "";
   const destination =
-    draft.day !== null
+    target.kind === "day"
       ? dailyFolder.replace(/^[/\\]+|[/\\]+$/g, "") || workspaceName
       : kind === "note"
         ? (draft.folder ?? workspaceName)
@@ -219,7 +215,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
   return (
     <div className={`composer composer--${variant}`} onKeyDown={onKeyDown}>
       <header className="composer-header">
-        {kind === "note" && !draft.day ? (
+        {kind === "note" && target.kind !== "day" ? (
           <DropdownMenu
             label={destination}
             icon={<Folder size={14} />}
@@ -231,7 +227,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
             className="composer-chip"
             aria-disabled="true"
             title={
-              draft.day
+              target.kind === "day"
                 ? "Daily notes go in the daily-note folder"
                 : "Library notes go in the vault"
             }
@@ -269,14 +265,18 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
               <X size={14} />
             </button>
           </div>
-        ) : draft.day ? (
-          <p className="composer-title">{draft.day}</p>
         ) : (
           <input
             ref={titleRef}
             className="composer-title"
             value={draft.title}
-            placeholder={kind === "note" ? "Title" : "Paste a link, or type a title"}
+            placeholder={
+              kind !== "note"
+                ? "Paste a link, or type a title"
+                : draft.day
+                  ? `Title, or leave it empty to write in ${dayNoteName(draft.day, now)}`
+                  : "Title"
+            }
             aria-label="Title"
             spellCheck={false}
             onChange={(event) => setDraft({ ...draft, title: event.target.value })}
@@ -309,7 +309,6 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
           />
           <DateChip
             day={draft.day}
-            disabled={draft.file !== null}
             onChange={(day) => setDraft(day ? withDay(draft, day) : { ...draft, day: null })}
           />
           <button
@@ -323,14 +322,15 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
           </button>
         </div>
         <div className="composer-bar-group composer-bar-group--end">
-          <Switch
-            className="composer-switch"
-            label="Keep open"
-            checked={keepOpen}
-            onCheckedChange={setKeepOpen}
-          />
-          <button type="button" className="composer-submit" disabled={!canSubmit} onClick={submit}>
+          <button
+            type="button"
+            className="composer-submit"
+            disabled={!canSubmit}
+            title="⌘⇧↵ also opens it"
+            onClick={() => submit(false)}
+          >
             {label}
+            <kbd className="composer-kbd">⌘↵</kbd>
           </button>
         </div>
       </div>
@@ -338,24 +338,26 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
   );
 }
 
+/** "today's note", else "the 12 Oct note". */
+function dayNoteName(day: string, now: Date): string {
+  const label = dayLabel(day, now);
+  return /^(Today|Tomorrow|Yesterday)$/.test(label)
+    ? `${label.toLowerCase()}'s note`
+    : `the ${label} note`;
+}
+
 function DateChip({
   day,
-  disabled,
   onChange,
 }: {
   day: string | null;
-  disabled: boolean;
   onChange: (day: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const label = day ? dayLabel(day, new Date()) : "No date";
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        className="composer-chip"
-        disabled={disabled}
-        title={disabled ? "A book or paper isn't a day's note" : undefined}
-      >
+      <PopoverTrigger className="composer-chip" title="The note is linked from that day's note">
         <CalendarDays size={14} className="composer-chip-icon" aria-hidden />
         <span className={day ? undefined : "text-[var(--text-muted)]"}>{label}</span>
       </PopoverTrigger>

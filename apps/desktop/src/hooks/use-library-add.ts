@@ -35,7 +35,7 @@ export function openLibraryAdd(kind: LibraryKind | null = null): void {
 export interface LibraryAddOptions {
   /** Text under the note's properties. */
   body?: string;
-  /** Open the note once it is written (the composer's Keep open turns it off). */
+  /** Open the note once it is written (the composer only does on ⌘⇧↵). */
   open?: boolean;
 }
 

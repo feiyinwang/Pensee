@@ -2,8 +2,10 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   EMPTY_DRAFT,
   appendBlock,
+  appendListItem,
   composerTarget,
   dayLabel,
+  dayLinkLine,
   effectiveKind,
   isDraftEmpty,
   submitLabel,
@@ -46,8 +48,10 @@ describe("effectiveKind", () => {
     ).toBe("course");
   });
 
-  test("a date makes a note", () => {
-    expect(effectiveKind(draft({ kind: "video", day: "2026-10-12" }))).toBe("note");
+  test("a date leaves the kind alone", () => {
+    expect(effectiveKind(draft({ kind: "video", kindPicked: true, day: "2026-10-12" }))).toBe(
+      "video",
+    );
   });
 
   test("an attached file is a book unless paper was picked", () => {
@@ -124,22 +128,39 @@ describe("labels", () => {
   });
 });
 
-describe("chip changes", () => {
-  test("setting a date moves a typed title to the top of the text", () => {
-    const next = withDay(
-      draft({ title: "Standup", body: "went fine", kind: "video" }),
-      "2026-10-12",
-    );
-    expect(next).toMatchObject({ day: "2026-10-12", title: "", body: "Standup\nwent fine" });
-    expect(next.kind).toBe("note");
+describe("dates", () => {
+  test("a dated note with a title is its own note", () => {
+    expect(composerTarget(draft({ title: "Standup", day: "2026-10-12" }), null)).toEqual({
+      kind: "note",
+      name: "Standup",
+      folder: null,
+    });
   });
 
-  test("picking a Library kind clears the date", () => {
+  test("a date without a title writes in the day's note", () => {
+    expect(composerTarget(draft({ body: "went fine", day: "2026-10-12" }), null)).toEqual({
+      kind: "day",
+      day: "2026-10-12",
+    });
+  });
+
+  test("the chips no longer clear each other", () => {
     expect(withKind(draft({ day: "2026-10-12" }), "podcast")).toMatchObject({
       kind: "podcast",
-      kindPicked: true,
-      day: null,
+      day: "2026-10-12",
     });
+    expect(withDay(draft({ title: "Standup", kind: "video" }), "2026-10-12")).toMatchObject({
+      title: "Standup",
+      kind: "video",
+      day: "2026-10-12",
+    });
+  });
+
+  test("the day's note links the note as a list line, joining its list", () => {
+    const link = dayLinkLine("Standup");
+    expect(appendListItem("- 09:00 gym\n", link)).toBe("- 09:00 gym\n- [[Standup]]\n");
+    expect(appendListItem("Slept well.\n", link)).toBe("Slept well.\n\n- [[Standup]]\n");
+    expect(appendListItem("", link)).toBe("- [[Standup]]\n");
   });
 });
 

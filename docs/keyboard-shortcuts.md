@@ -13,7 +13,8 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+T / Cmd+N   | New note (the composer)       |
 | Cmd+Shift+N     | Composer, dated today         |
 | Cmd+Shift+L     | Composer, ready for Library   |
-| Cmd+Enter       | Create, in the composer       |
+| Cmd+Enter       | Composer: create, stay here   |
+| Cmd+Shift+Enter | Composer: create and open it  |
 | Cmd+W           | Close current tab             |
 | Cmd+\\          | Toggle sidebar                |
 | Cmd+[           | Toggle sidebar                |

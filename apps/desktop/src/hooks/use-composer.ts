@@ -5,6 +5,8 @@ import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 import {
   EMPTY_DRAFT,
   appendBlock,
+  appendListItem,
+  dayLinkLine,
   isDraftEmpty,
   withDay,
   withKind,
@@ -55,7 +57,6 @@ export function openComposer(preset: ComposerPreset = {}): void {
   if (preset.library === true) {
     draft = {
       ...draft,
-      day: null,
       kind: draft.kind === "note" ? "book" : draft.kind,
       kindPicked: false,
     };
@@ -79,7 +80,6 @@ export function attachToComposer(path: string): boolean {
   store.setDraft({
     ...draft,
     file: path,
-    day: null,
     kind: /\.epub$/i.test(path) ? "book" : draft.kind === "paper" ? "paper" : "book",
     // An EPUB is a book; a PDF is read once it is in the vault, unless picked.
     kindPicked: /\.epub$/i.test(path),
@@ -93,25 +93,48 @@ function bodyText(body: string): string {
   return text ? `${text}\n` : "";
 }
 
-/** After a write: Keep open clears the text and stays; otherwise the box
- *  closes, starts over, and the note opens. */
-async function finish(path: string | null, name: string): Promise<void> {
+/** After a write the box closes and starts over. The page stays where it
+ *  is, with an "Added …" notice to open the note, unless `open` (⌘⇧↵). */
+async function finish(path: string | null, name: string, open: boolean): Promise<void> {
   const store = useComposerStore.getState();
-  const { draft, keepOpen } = store;
-  if (keepOpen) {
-    store.setDraft({ ...draft, title: "", body: "", file: null });
-    store.requestFocus();
-    if (path) {
-      showEditorNotice(`Added ${name}`, {
-        label: "Open",
-        run: () => void useEditorStore.getState().openFile(path),
-      });
-    }
+  store.setDraft({ ...EMPTY_DRAFT, folder: store.draft.folder });
+  store.setOpen(false);
+  if (!path) return;
+  if (open) {
+    await useEditorStore.getState().openFile(path);
     return;
   }
-  store.setDraft({ ...EMPTY_DRAFT, folder: draft.folder });
-  store.setOpen(false);
-  if (path) await useEditorStore.getState().openFile(path);
+  showEditorNotice(`Added ${name}`, {
+    label: "Open",
+    run: () => void useEditorStore.getState().openFile(path),
+  });
+}
+
+/** The day's note for `day` (`YYYY-MM-DD`), made if missing. */
+async function dayNotePath(day: string): Promise<string> {
+  const root = useWorkspaceStore.getState().root;
+  if (!root) throw new Error("Open a folder first");
+  const folder = useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "";
+  const resolved = resolveDailyNoteFile(root, folder, `${day}.md`);
+  if (!resolved.ok) throw new Error(resolved.error);
+  await tauri.createFileIfMissing(resolved.path);
+  return resolved.path;
+}
+
+/** Link the note at `path` from `day`'s note, at its end. */
+async function linkIntoDay(day: string, path: string): Promise<void> {
+  try {
+    const dayPath = await dayNotePath(day);
+    await editPage(dayPath, (page) => ({
+      frontmatter: page.frontmatter,
+      body: appendListItem(page.body, dayLinkLine(getFileStem(path))),
+    }));
+  } catch (error) {
+    console.error(`[composer] Couldn't link ${path} from ${day}:`, error);
+    showEditorNotice(
+      `Couldn't add the link to ${day}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 /** A free `Untitled`, `Untitled 2`… in `folder`. */
@@ -128,7 +151,11 @@ function notePath(root: string, folder: string | null, name: string): string {
   return folder ? `${root}/${folder}/${stem}.md` : `${root}/${stem}.md`;
 }
 
-async function writeNote(target: Extract<ComposerTarget, { kind: "note" }>, draft: ComposerDraft) {
+async function writeNote(
+  target: Extract<ComposerTarget, { kind: "note" }>,
+  draft: ComposerDraft,
+  open: boolean,
+) {
   const root = useWorkspaceStore.getState().root;
   if (!root) throw new Error("Open a folder first");
   const untitled = !draft.title.trim();
@@ -142,39 +169,37 @@ async function writeNote(target: Extract<ComposerTarget, { kind: "note" }>, draf
     return;
   }
   const created = await createNoteIn(target.folder, name, () => bodyText(draft.body));
-  await finish(created.path, created.stem);
+  if (draft.day) await linkIntoDay(draft.day, created.path);
+  await finish(created.path, created.stem, open);
 }
 
-async function writeDay(day: string, draft: ComposerDraft) {
-  const root = useWorkspaceStore.getState().root;
-  if (!root) throw new Error("Open a folder first");
-  const folder = useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "";
-  const resolved = resolveDailyNoteFile(root, folder, `${day}.md`);
-  if (!resolved.ok) throw new Error(resolved.error);
-  await tauri.createFileIfMissing(resolved.path);
+/** A date and no title: the text goes to the end of the day's note. */
+async function writeDay(day: string, draft: ComposerDraft, open: boolean) {
+  const path = await dayNotePath(day);
   if (draft.body.trim()) {
-    await editPage(resolved.path, (page) => ({
+    await editPage(path, (page) => ({
       frontmatter: page.frontmatter,
       body: appendBlock(page.body, draft.body),
     }));
   }
-  await finish(resolved.path, day);
+  // Nothing written: the button said "Open today", so it opens.
+  await finish(path, day, open || !draft.body.trim());
 }
 
-/** Do what `target` says with the box's draft. Notes and days are written
- *  before the box lets go, so a name clash shows in it; Library adds read
- *  the web or copy a file, so the box lets go first and a notice follows. */
-export async function submitComposer(target: ComposerTarget): Promise<void> {
+/** Do what `target` says with the box's draft; `open` (⌘⇧↵) goes to the
+ *  note. Notes and days are written before the box lets go, so a name clash
+ *  shows in it; Library adds read the web or copy a file, so the box lets go
+ *  first and a notice follows. A date links the new note from that day. */
+export async function submitComposer(target: ComposerTarget, open = false): Promise<void> {
   const store = useComposerStore.getState();
   if (store.busy || target.kind === "empty") return;
-  const { draft, keepOpen } = store;
-  const open = !keepOpen;
+  const { draft } = store;
 
   if (target.kind === "note" || target.kind === "day") {
     store.setBusy(true);
     try {
-      if (target.kind === "note") await writeNote(target, draft);
-      else await writeDay(target.day, draft);
+      if (target.kind === "note") await writeNote(target, draft, open);
+      else await writeDay(target.day, draft, open);
     } catch (error) {
       console.error("[composer] Couldn't write the note:", error);
       store.setError({ message: error instanceof Error ? error.message : String(error) });
@@ -185,14 +210,13 @@ export async function submitComposer(target: ComposerTarget): Promise<void> {
   }
 
   if (target.kind === "link" && target.existing) {
-    store.setDraft({ ...EMPTY_DRAFT, folder: draft.folder });
-    store.setOpen(false);
-    await useEditorStore.getState().openFile(target.existing.path);
+    if (draft.day) await linkIntoDay(draft.day, target.existing.path);
+    await finish(target.existing.path, "", true);
     return;
   }
 
   // The box lets go now; the add reports its own progress and failures.
-  await finish(null, "");
+  await finish(null, "", false);
   const { addLinkToLibrary, addTitleToLibrary } = await import("@/hooks/use-library-add");
   let path: string | null = null;
   if (target.kind === "link") {
@@ -202,7 +226,9 @@ export async function submitComposer(target: ComposerTarget): Promise<void> {
   } else {
     path = await importAttached(target.path, target.library ?? undefined, draft.body, open);
   }
-  if (path && keepOpen) {
+  if (!path) return;
+  if (draft.day) await linkIntoDay(draft.day, path);
+  if (!open) {
     showEditorNotice(`Added ${getFileStem(path)}`, {
       label: "Open",
       run: () => void useEditorStore.getState().openFile(path),

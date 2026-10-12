@@ -26,7 +26,8 @@ export interface ComposerDraft {
   kind: ComposerKind;
   /** The user (or a Library tab) chose `kind`, so a pasted link doesn't change it. */
   kindPicked: boolean;
-  /** `YYYY-MM-DD`: the text goes into that day's note. */
+  /** `YYYY-MM-DD`: the note is linked from that day's note; with no title,
+   *  the text itself goes into the day's note. */
   day: string | null;
   /** Vault-relative folder for a plain note; null is the vault root. */
   folder: string | null;
@@ -48,14 +49,13 @@ export function isDraftEmpty(draft: ComposerDraft): boolean {
   return !draft.title.trim() && !draft.body.trim() && !draft.file;
 }
 
-/** The kind the draft makes: a date makes a note of that day; an attached
- *  file is a book or paper; a link the user didn't type a kind for takes the
- *  site's kind (or Book, as Library does for a site it doesn't know). */
+/** The kind the draft makes: an attached file is a book or paper; a link the
+ *  user didn't type a kind for takes the site's kind (or Book, as Library
+ *  does for a site it doesn't know). */
 export function effectiveKind(draft: ComposerDraft): ComposerKind {
   if (draft.file) {
     return draft.kind === "paper" || draft.kind === "book" ? draft.kind : "book";
   }
-  if (draft.day) return "note";
   if (!draft.kindPicked) {
     const link = parseLibraryLink(draft.title);
     if (link) return link.guess ?? (draft.kind === "note" ? "book" : draft.kind);
@@ -85,10 +85,14 @@ export function composerTarget(
       library: draft.kindPicked ? (kind as FileKind) : null,
     };
   }
-  if (draft.day) return { kind: "day", day: draft.day };
   if (kind === "note") {
-    const name = safePageName(draft.title) || (draft.body.trim() ? "Untitled" : "");
-    return name ? { kind: "note", name, folder: draft.folder } : { kind: "empty" };
+    const name = safePageName(draft.title);
+    if (name) return { kind: "note", name, folder: draft.folder };
+    // A date and no title: the text is a line for that day.
+    if (draft.day) return { kind: "day", day: draft.day };
+    return draft.body.trim()
+      ? { kind: "note", name: "Untitled", folder: draft.folder }
+      : { kind: "empty" };
   }
   const link = parseLibraryLink(draft.title);
   if (link) {
@@ -148,19 +152,27 @@ export function submitLabel(
   }
 }
 
-/** Set a date: the title can't name a day's note, so a typed one moves to the
- *  top of the body rather than being hidden. A date makes a note, so a
- *  Library kind falls back to Note. */
+/** Set or clear the date chip. */
 export function withDay(draft: ComposerDraft, day: string | null): ComposerDraft {
-  if (!day) return { ...draft, day: null };
-  const title = draft.title.trim();
-  const body = title ? (draft.body.trim() ? `${title}\n${draft.body}` : title) : draft.body;
-  return { ...draft, day, title: "", body, kind: "note", kindPicked: false, file: null };
+  return { ...draft, day };
 }
 
-/** Pick a kind from the chip. A Library kind clears the date. */
+/** Pick a kind from the chip. */
 export function withKind(draft: ComposerDraft, kind: ComposerKind): ComposerDraft {
-  return { ...draft, kind, kindPicked: true, day: kind === "note" ? draft.day : null };
+  return { ...draft, kind, kindPicked: true };
+}
+
+/** The line a day's note gets for a note made with that date. */
+export function dayLinkLine(stem: string): string {
+  return `- [[${stem}]]`;
+}
+
+/** `item` (a `- ` line) at the end of `text`: under a list the page already
+ *  ends with, else a blank line apart, so a day's links stay one list. */
+export function appendListItem(text: string, item: string): string {
+  const head = text.replace(/\s+$/, "");
+  const last = head.slice(head.lastIndexOf("\n") + 1);
+  return /^\s*[-*+] /.test(last) ? `${head}\n${item}\n` : appendBlock(text, item);
 }
 
 /** `body` added to the end of a page's `text`, a blank line apart. */

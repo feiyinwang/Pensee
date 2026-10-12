@@ -13,8 +13,6 @@ export interface ComposerError {
 interface ComposerState {
   open: boolean;
   draft: ComposerDraft;
-  /** Save without leaving the page, and clear the box for the next one. */
-  keepOpen: boolean;
   /** A note or day write is running: the button waits for it. */
   busy: boolean;
   error: ComposerError | null;
@@ -23,7 +21,6 @@ interface ComposerState {
 
   setOpen: (open: boolean) => void;
   setDraft: (draft: ComposerDraft) => void;
-  setKeepOpen: (keepOpen: boolean) => void;
   setBusy: (busy: boolean) => void;
   setError: (error: ComposerError | null) => void;
   requestFocus: () => void;
@@ -32,14 +29,12 @@ interface ComposerState {
 export const useComposerStore = create<ComposerState>((set) => ({
   open: false,
   draft: EMPTY_DRAFT,
-  keepOpen: false,
   busy: false,
   error: null,
   focusTick: 0,
 
   setOpen: (open) => set({ open }),
   setDraft: (draft) => set({ draft, error: null }),
-  setKeepOpen: (keepOpen) => set({ keepOpen }),
   setBusy: (busy) => set({ busy }),
   setError: (error) => set({ error }),
   requestFocus: () => set((state) => ({ focusTick: state.focusTick + 1 })),

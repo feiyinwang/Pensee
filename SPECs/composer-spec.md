@@ -4,7 +4,7 @@
 
 One box to start anything: a note, a line for a day's note, or a Library
 item. Linear's new-issue layout (destination, large title, text, and one row of
-property chips, attach, a toggle and the primary button) on Writer's card
+property chips, attach and the primary button) on Writer's card
 surface with Arc controls. Its content is Writer's own.
 
 It replaces the New tab page's four links (Create new note, Today's note,
@@ -34,31 +34,33 @@ inert there and ⌘N keeps the palette's create field.
   daily-note folder and for Library the vault, disabled, since those places
   are fixed.
 - **Title**, then **text** that grows to 40% of the window and then scrolls.
-  Enter in the title moves to the text. With a date or a file, the title shows
-  the day's note name or the file's name (with ✕ to remove the file) and
-  can't be edited.
+  Enter in the title moves to the text. With a file, the title shows the
+  file's name (with ✕ to remove the file) and can't be edited.
 - **Type chip:** Note, then Library's kinds with Library's icons. A pasted
   link sets it from the site (YouTube → Video, arXiv → Paper…, an unknown site
   → Book) unless the user picked a kind. A file allows only Book and Paper; an
   unpicked PDF reads **Book or paper** and is typed by its first pages once
   imported (SPECs/add-to-library-spec.md).
 - **Date chip:** No date, or Today / Tomorrow / Yesterday / `12 Oct`, from
-  Arc's calendar (weeks start Monday, as in the calendar panel). A date makes
-  the text go to the end of that day's note (made if missing), a blank line
-  apart. Setting a date moves a typed title to the top of the text and turns
-  the type back to Note; picking a Library kind clears the date.
+  Arc's calendar (weeks start Monday, as in the calendar panel). It works with
+  every type. The note is made as usual and that day's note (made if missing)
+  gets `- [[Note]]` at its end, joining a list the day already ends with.
+  With a date and no title (a plain note), the text itself goes to the end of
+  the day's note, a blank line apart; the title's placeholder says so.
 - **Status** in the header's right side, before close: a link already in
   Library ("Already in your Library: …"), or an error such as a name that's
   taken, with **Open it**. It never adds a line, so the box doesn't jump.
 - **One row** under the text: Type, Date and the paperclip (attach a PDF or
-  EPUB) on the left; **Keep open** and the button on the right. Every control
-  is 28px tall on one centre line; a narrow window wraps the right pair onto
-  its own line. **Keep open** saves without leaving the page, clears the
-  text, keeps the chips, and shows an "Added …" notice with **Open**.
+  EPUB) on the left, the button on the right. Every control is 28px tall on
+  one centre line; a narrow window wraps the button onto its own line.
 - **Button** names what happens: Create note · Add to today / Add to 12 Oct
   (Open today with no text) · Add video / Add book… · Open note (a link
   already in Library) · Add to Library (an unpicked PDF). Disabled when
-  there is nothing to make, and still named for the type chip ("Add book"). ⌘↵ presses it from anywhere in the box.
+  there is nothing to make, and still named for the type chip ("Add book").
+  It shows **⌘↵** inside it.
+- **⌘↵** (or the button) makes it and stays on the page: the box closes and
+  an "Added …" notice offers **Open**. **⌘⇧↵** makes it and opens it. Open
+  today (nothing typed) and Open note (a link already in Library) open.
 - Esc closes the box and keeps the draft for the next ⌘T.
 
 A plain note with text but no title is `Untitled` (`Untitled 2`…). A title
@@ -69,18 +71,28 @@ go first and the existing notices report progress and failures.
 ## Motion
 
 None on the box: it opens from the keyboard, often, so it is simply there,
-like ⌘O (docs/motion.md). Arc's chips and switch keep their own motion.
+like ⌘O (docs/motion.md). Arc's chips keep their own motion.
+
+## Not modal
+
+The dialog is Radix's non-modal one. A modal Radix dialog sets
+`pointer-events: none` on `<body>` and restores what it saw on close; Arc's
+popover and menu bring other copies of Radix's layer code that do the same.
+The calendar took no clicks, and closing in the wrong order left the window
+unclickable. Non-modal, the dialog never touches `<body>`; Esc and a click
+outside still close it, and clicks in the chips' menus and calendar count as
+inside.
 
 ## Files
 
 - `lib/composer.ts`: the draft, what it makes, labels (pure,
   `tests/composer.test.ts`).
-- `stores/composer-store.ts`: open, draft, Keep open, errors.
+- `stores/composer-store.ts`: open, draft, busy, errors.
 - `hooks/use-composer.ts`: `openComposer` (every way in), `submitComposer`
   (every write), `attachToComposer` (drops and the paperclip).
 - `components/composer/`: the lazy card (`composer-card.tsx`), the dialog,
   and the inline card for the New tab page.
-- Arc `switch` (installed), `dropdown-menu`, `popover`, `calendar`.
+- Arc `dropdown-menu`, `popover`, `calendar`.
 
 ## Follow-ups
 
