@@ -10,9 +10,7 @@ import {
   noteSpaceKey,
   spaceFileStem,
   spaceFromNote,
-  spaceNoteContent,
   type SpaceDef,
-  type SpaceView,
 } from "@/lib/spaces";
 import {
   asProjectFrontmatter,
@@ -170,14 +168,6 @@ export async function createRootNote(
   if (created.content !== "") throw new Error(`A note named "${stem}" already exists`);
   await tauri.writeFile(path, content(stem));
   return { path, stem };
-}
-
-/** Write `<Name>.md` at the vault root as a space note and open it. */
-export async function createSpaceNote(name: string, type: string, view: SpaceView): Promise<void> {
-  const { path } = await createRootNote(name, (stem) =>
-    spaceNoteContent(type.trim() || stem, view),
-  );
-  openSpace({ kind: "space", space: "note", path });
 }
 
 /** The markdown note named `name` anywhere in the vault (the file name,

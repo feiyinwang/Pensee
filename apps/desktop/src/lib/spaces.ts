@@ -144,11 +144,6 @@ export function spaceFromNote(note: TypedNote): SpaceDef {
   };
 }
 
-/** The markdown a new space note starts with. */
-export function spaceNoteContent(type: string, view: SpaceView): string {
-  return `---\nType: ${SPACE_NOTE_TYPE}\nShows: ${type}\nView: ${view}\n---\n`;
-}
-
 /** A file name made from what was typed into "Name"; null when nothing usable is left. */
 export function spaceFileStem(name: string): string | null {
   const stem = name

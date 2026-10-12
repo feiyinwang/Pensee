@@ -8,7 +8,6 @@ import {
   notesInTab,
   spaceFileStem,
   spaceFromNote,
-  spaceNoteContent,
   splitTypes,
   titleHash,
 } from "../src/lib/spaces";
@@ -94,12 +93,6 @@ describe("space notes", () => {
       note({ name: "Fiction", note_type: "Space", properties: { shows: "Book" } }),
     );
     expect(space.tabs[0].cover).toBe("book");
-  });
-
-  test("new note content round-trips through the frontmatter keys", () => {
-    expect(spaceNoteContent("Recipe", "cards")).toBe(
-      "---\nType: Space\nShows: Recipe\nView: cards\n---\n",
-    );
   });
 
   test("file stem drops characters a file name can't hold", () => {

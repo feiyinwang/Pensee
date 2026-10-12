@@ -2,14 +2,14 @@
 
 ## Summary
 
-The sidebar stops being a folder tree. It shows **Search**, **Today**, a **Spaces** section (Projects, Library, Inspirations, Files, and any space you add), then Pinned and Recents. Clicking a space opens it as a page in the editor area. A space is a saved question about frontmatter, `Type:`, never a folder: a note belongs to Library because it says `Type: Book`, wherever it lives on disk.
+The sidebar stops being a folder tree. It shows **Search**, **Today**, a **Spaces** section (Projects, Library, Inspirations, Files, and any space note in the vault), then Pinned and Recents. Clicking a space opens it as a page in the editor area. A space is a saved question about frontmatter, `Type:`, never a folder: a note belongs to Library because it says `Type: Book`, wherever it lives on disk.
 
 Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new note since August lands at the root, and 600+ notes already carry `Type:` (Book 162, YouTube 83, Project 66, Paper 58, Course 15). The folders were not being used; the types were.
 
 ## Everything stays markdown
 
 - A note joins a space by its own frontmatter (`Type: Book`). No database, no index file in the vault.
-- A space you add is a markdown note at the vault root:
+- A custom space is a markdown note (written by hand; Writer has no button to create one):
 
   ```yaml
   ---
@@ -65,7 +65,7 @@ Covers come from the note's own link (`url`, `link` or `source`, first non-blank
 ## Sidebar
 
 - Today opens today's daily note (`openTodaysNote`).
-- Spaces: one row per space, highlighted when its page is the active tab. A `+` beside the label (always visible) opens an inline form: name, the type it shows, view. Create writes `<Name>.md` and opens it; an empty name or an existing file shows an inline error.
+- Spaces: one row per space, highlighted when its page is the active tab. The label has no `+`: the four built-ins cover the vault, and the add-space form was removed (2026-10-12). A space note you write by hand still shows.
 - Pinned and Recents are unchanged.
 - The Everything tree is gone from the sidebar; it lives in the Files space. Right-click → New file / New folder opens Files and renames the new entry there. Reveal in Files (tab menu) opens Files and scrolls to the row.
 
