@@ -149,6 +149,10 @@ export interface ShapeEl extends Base {
   /** Height before the label's caret grew the shape to fit its text; present
    *  only while expanded, and what the caret shrinks it back to. */
   ex?: number;
+  /** The whole label links here: a wiki target, `Page#^bk-…` for a book
+   *  highlight (board-book-links.ts). Kept apart from the text, so editing
+   *  the text never breaks the link. */
+  ln?: string;
 }
 
 export interface TextEl extends Base {
@@ -444,6 +448,7 @@ function parseElement(raw: unknown): BoardEl | null {
       lb: parseLabel(o.lb),
     };
     if (typeof o.ex === "number" && Number.isFinite(o.ex) && o.ex > 0) shape.ex = o.ex;
+    if (typeof o.ln === "string" && o.ln) shape.ln = o.ln;
     return shape;
   }
   if (t === "draw") {
@@ -591,6 +596,7 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
         o.lb = lb;
       }
       if (el.ex) o.ex = R(el.ex);
+      if (el.ln) o.ln = el.ln;
     }
   }
   return o;

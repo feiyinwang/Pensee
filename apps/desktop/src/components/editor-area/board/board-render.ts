@@ -480,6 +480,17 @@ export interface ShapeLabelLayout {
  *  size overflows, cut to the lines that fit with an ellipsis and a caret.
  *  The renderer draws this and the canvas hit-tests the same caret. */
 export function shapeLabel(el: ShapeEl): ShapeLabelLayout | null {
+  const layout = shapeLabelLayout(el);
+  // A linked shape (`ln`) is a link all over: every run carries it, so it
+  // draws and clicks like a `[[link]]` in the text.
+  if (layout && el.ln) {
+    const ln = el.ln;
+    layout.lines = layout.lines.map((line) => line.map((run) => ({ ...run, ln })));
+  }
+  return layout;
+}
+
+function shapeLabelLayout(el: ShapeEl): ShapeLabelLayout | null {
   if (!el.lb?.tx) return null;
   const boxW = Math.max(el.w - SHAPE_PAD * 2, 20);
   const room = el.ex ? CARET_ROOM : 0;

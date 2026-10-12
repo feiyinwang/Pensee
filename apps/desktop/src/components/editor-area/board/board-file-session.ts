@@ -17,6 +17,7 @@ import { mermaidToElements } from "./board-mermaid";
 import { measureText } from "./board-render";
 import { isBoardFile, readBoardSvg, relativePath, renderBoardSvg } from "./board-file";
 import { openBoardFullscreen } from "./board-fullscreen";
+import { bookLinkSync } from "./board-book-links";
 import { prefetchBoardChrome } from "./board-canvas";
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -219,12 +220,19 @@ export async function openBoardFile(
   if (!parsed) throw new Error("This SVG has no Writer board inside it.");
   lastText.set(absolute, file.content);
   const dir = getParentDir(absolute);
+  const highlights = bookLinkSync(parsed.scene, notePath);
   return openBoardFullscreen({
     scene: parsed.scene,
     resolveSrc: editorResolver(dir),
     importImage: importerFor(notePath, dir),
-    onCommit: (scene) => void saveBoardFile(absolute, scene, false),
-    onFinalCommit: (scene) => void saveBoardFile(absolute, scene),
+    onCommit: (scene) => {
+      highlights.sync(scene);
+      void saveBoardFile(absolute, scene, false);
+    },
+    onFinalCommit: (scene) => {
+      highlights.sync(scene);
+      void saveBoardFile(absolute, scene);
+    },
     present,
     inline,
     onClosed,

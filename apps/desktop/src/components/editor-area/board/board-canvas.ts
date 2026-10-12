@@ -193,9 +193,10 @@ export interface BoardCanvasHandle {
   find: () => void;
   /** Undo or redo on the board (⌘Z routed here when focus is outside it). */
   history: (dir: "undo" | "redo") => void;
-  /** Adds a rectangle labelled `text` in view, as near the `side` edge as
-   *  there is room (a book highlight made beside the board). One undo step. */
-  addCard: (text: string, side: "w" | "e") => void;
+  /** Adds a rectangle labelled `text`, linking to `link`, in view and as near
+   *  the `side` edge as there is room (a book highlight made beside the
+   *  board). One undo step. */
+  addCard: (text: string, side: "w" | "e", link?: string) => void;
 }
 
 type Interaction =
@@ -1599,7 +1600,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  a cap; past that the label's own caret expands it. */
   const HIGHLIGHT_CARD = { w: 240, maxH: 320 };
 
-  function addCard(text: string, side: "w" | "e"): void {
+  function addCard(text: string, side: "w" | "e", link?: string): void {
     const v = vp();
     const { width, height } = stageRect();
     const view = {
@@ -1619,6 +1620,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       op: 1,
       st: newShapeStyle(),
     };
+    if (link) el.ln = link;
     setTextOf(el, text);
     el.h = Math.min(Math.max(shapeFitHeight(el), SHAPE_DEFAULT.h), HIGHLIGHT_CARD.maxH);
     Object.assign(el, placeFromSide(scene, view, side, el.w, el.h));

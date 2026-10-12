@@ -368,7 +368,10 @@ export function blankCopy(src: ShapeEl | StickyEl, box: Box): ShapeEl | StickyEl
   copy.y = box.y;
   delete copy.g;
   if (copy.t === "sticky") copy.tx = "";
-  else delete copy.lb;
+  else {
+    delete copy.lb;
+    delete copy.ln;
+  }
   return copy;
 }
 

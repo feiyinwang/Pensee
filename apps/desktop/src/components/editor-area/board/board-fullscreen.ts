@@ -11,12 +11,13 @@
  *
  * `inline` mounts the same board over one note's page instead (its pane, not
  * the window): the note's tab row, the other columns and a book beside it
- * stay usable. While one is open, highlights made in a book beside that note
- * land on it as cards (`addCardToBoardOn`).
+ * stay usable. While one is open and on screen, highlights made in a book
+ * land on it as linked rectangles (`addHighlightToOpenBoard`).
  */
 
 import * as editorApi from "@/hooks/editor-api";
 import { followWikiLink } from "../wiki-pages-extension";
+import { openBookLink, parseBookLink } from "./board-book-links";
 import { type BoardScene, cloneScene } from "./board-model";
 import { type BoardCanvasHandle, mountBoardCanvas } from "./board-canvas";
 
@@ -60,17 +61,20 @@ export function closeOpenBoard(): void {
 }
 
 /**
- * Adds `text` as a card to the board open over `notePath`'s page, if there is
- * one, on the side facing `from` (the book it was highlighted in). Returns
- * whether a board took it.
+ * Adds a book highlight to the board open over a page, when there is one on
+ * screen: a rectangle labelled `text`, linking to `link`, on the side facing
+ * `from` (the book). Any book counts — the board need not be on the book's
+ * own page. Returns whether a board took it.
  */
-export function addCardToBoardOn(notePath: string, text: string, from: DOMRect): boolean {
+export function addHighlightToOpenBoard(text: string, link: string, from: DOMRect): boolean {
   const open = openInstance;
   const canvas = open?.canvas();
-  if (!open?.inline || open.notePath !== notePath || !canvas) return false;
+  if (!open?.inline || !canvas) return false;
+  // Open in a tab that is not showing: not where the reader is working.
   const board = open.overlay.getBoundingClientRect();
+  if (!board.width || getComputedStyle(open.overlay).visibility !== "visible") return false;
   const side = from.left + from.width / 2 < board.left + board.width / 2 ? "w" : "e";
-  canvas.addCard(text, side);
+  canvas.addCard(text, side, link);
   return true;
 }
 
@@ -214,6 +218,13 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     present: opts.present,
     exportSvg: opts.exportSvg,
     onOpenLink: (inner) => {
+      if (parseBookLink(inner)) {
+        // Over a page the book is beside it, so the board stays; full screen
+        // it would hide the book, so it closes (and writes back) first.
+        if (!inline) close();
+        void openBookLink(inner, opts.notePath ?? null);
+        return;
+      }
       // Close first: it writes the board back, and the page opens behind it.
       close();
       followWikiLink(inner, opts.notePath ?? null)
