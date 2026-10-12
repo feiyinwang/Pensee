@@ -84,6 +84,30 @@ selected.
   is left alone. It waits for an IME composition to end. Paste doesn't
   count; only typing does.
 
+### Transcript
+
+- A video brought into a note gets its transcript, in one closed toggle
+  (**Transcript**) at the top of the note's text, right under the
+  properties and the player. Open it to read; it is ordinary text for
+  search.
+- "Brought in" means: added to Library from a YouTube link, or a YouTube
+  link typed, pasted or changed in an open note's properties. Opening a
+  note that already had its link never changes it.
+- For any other video note (an older one, or one whose transcript failed),
+  **Transcript** sits next to **Pin** under the video while the note has
+  none; it reads as **Getting transcript…** while it works.
+- The transcript is the creator's captions in the language spoken, else
+  YouTube's automatic ones. Paragraphs are about a minute long (closed at a
+  sentence end from 45s, at 90s regardless), each starting with its time
+  (`12:34`).
+- A video with no captions says so in a notice; a failed read says it
+  couldn't get the transcript. A note keeps one transcript: with one there,
+  nothing is added, even for a new link.
+- Stored as plain HTML, so other Markdown apps show the same toggle:
+  `<details>`, `<summary>Transcript</summary>`, then one
+  `<p><small>m:ss</small> text</p>` per paragraph, with no blank line
+  inside and the text escaped.
+
 ### Pins on a board
 
 - **Where a pin goes:**
@@ -148,6 +172,15 @@ selected.
 - **Pin glyph.** Its tip sits on the text's baseline on any line
   (`vertical-align` on `.cm-video-pin`, measured in
   `e2e/specs/youtube-pin-click.spec.js`'s probe).
+- **Transcript.** `youtube_transcript` (Rust, `video_player.rs`) asks
+  YouTube's player API as the Android app (`youtubei/v1/player`, client
+  `ANDROID`): the watch page's caption links need a proof-of-origin token
+  since 2025 and come back empty without one; the Android ones don't. It
+  reads the chosen track's `srv3` file into cues (`start`, `text`).
+  `lib/video-transcript.ts` builds the block; `video-transcript.ts` in the
+  editor area inserts it at the top of the live editor (one read per note
+  at a time) after checking the link is still the same. The player's
+  `useTranscriptForNewLinks` and Library add (`use-library-add.ts`) call it.
 - **Pure text (`lib/video-pins.ts`).** Pin ids, parsing, time formatting,
   the insert plan for a pin at a caret, and the note's video id from
   frontmatter.

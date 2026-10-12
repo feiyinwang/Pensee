@@ -73,6 +73,7 @@
 /* The Pin row stays on the text column. */
 .video-band-row {
   display: flex;
+  gap: 4px;
   max-width: var(--writer-editor-outer-width);
   justify-content: flex-end;
   padding-top: 4px;
@@ -94,6 +95,10 @@
   transition:
     color var(--motion-hover) var(--ease-hover),
     background-color var(--motion-hover) var(--ease-hover);
+}
+
+.video-pin-button:disabled {
+  opacity: 0.6;
 }
 
 .video-pin-button kbd {

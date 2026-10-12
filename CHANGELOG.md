@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- A YouTube video you bring into a note now comes with its transcript. It sits in a closed **Transcript** toggle at the top of the note, under the video; click it to read. This happens when you add a video to **Library** from its link, or put a YouTube link in an open note's properties. Older video notes stay as they are: click **Transcript** next to **Pin** under the video to get one. The transcript uses the creator's captions when there are any, else YouTube's automatic ones, in paragraphs of about a minute, each starting with its time.
 - Adding a YouTube video to **Library** names the note after the video's title, like `Rick Astley - Never Gonna Give You Up (Official Video)`, instead of `youtube.com dQw4w9WgXcQ`. A YouTube link's preview card in a note now shows its title and thumbnail too.
 - The tabs at the top of **Library** (Books, Videos, Courses…) look the same as the view switcher in **Projects**: the selected tab sits in a rounded pill instead of a square box.
 - In a YouTube note, **<** and **>** slow the video down and speed it up, one step at a time from 0.25× to 2×, and the new speed shows on the video for a moment. In a note with a video they no longer type < or >. A video's chapters now show every time: YouTube sometimes sent Writer a page without them, so they were often missing. The pin at the end of a line now sits on the line's baseline instead of dipping below the text.

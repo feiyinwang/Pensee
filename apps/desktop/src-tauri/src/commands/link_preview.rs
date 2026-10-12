@@ -296,7 +296,7 @@ fn clean_text(raw: &str) -> String {
         .join(" ")
 }
 
-fn decode_entities(raw: &str) -> String {
+pub(crate) fn decode_entities(raw: &str) -> String {
     if !raw.contains('&') {
         return raw.to_string();
     }

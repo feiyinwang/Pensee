@@ -78,6 +78,11 @@ export function youtubeChapters(videoId: string): Promise<{ start: number; title
   return invoke("youtube_chapters", { videoId });
 }
 
+/** A video's transcript from its captions; empty when it has none. */
+export function youtubeTranscript(videoId: string): Promise<{ start: number; text: string }[]> {
+  return invoke("youtube_transcript", { videoId });
+}
+
 export function fileExists(path: string): Promise<boolean> {
   return invoke("file_exists", { path });
 }

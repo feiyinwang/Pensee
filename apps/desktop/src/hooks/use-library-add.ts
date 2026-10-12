@@ -1,4 +1,5 @@
 import { createRootNote } from "@/hooks/use-spaces";
+import { youtubeVideoId } from "@/lib/covers";
 import {
   cleanPageTitle,
   fallbackLinkTitle,
@@ -14,6 +15,7 @@ import {
   dismissEditorNotice,
   showEditorNotice,
 } from "@/components/editor-area/editor-notice-store";
+import { bringInTranscript } from "@/components/editor-area/video-transcript";
 import { useEditorStore } from "@/stores/editor-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -47,8 +49,9 @@ async function linkTitle(link: LibraryLink): Promise<string | null> {
   }
 }
 
-/** Write a root note named `name` (or `name 2`, `name 3`… when taken) and open it. */
-async function createAndOpen(name: string, content: string): Promise<void> {
+/** Write a root note named `name` (or `name 2`, `name 3`… when taken), open
+ *  it, and return its path. */
+async function createAndOpen(name: string, content: string): Promise<string> {
   const root = useWorkspaceStore.getState().root;
   if (!root) throw new Error("Open a folder first");
   const base = safePageName(name);
@@ -59,7 +62,7 @@ async function createAndOpen(name: string, content: string): Promise<void> {
     if (await tauri.fileExists(`${root}/${stem}.md`)) continue;
     const { path } = await createRootNote(candidate, () => content);
     await useEditorStore.getState().openFile(path);
-    return;
+    return path;
   }
   throw new Error(`Too many notes are named "${base}"`);
 }
@@ -76,8 +79,14 @@ export async function addLinkToLibrary(link: LibraryLink, kind: LibraryKind): Pr
   try {
     showEditorNotice(`Adding ${link.host}…`);
     const title = (await linkTitle(link)) || fallbackLinkTitle(link);
-    await createAndOpen(title, libraryNoteContent(libraryNoteType(kind, link.host), link.url));
+    const path = await createAndOpen(
+      title,
+      libraryNoteContent(libraryNoteType(kind, link.host), link.url),
+    );
     dismissEditorNotice();
+    // The note opens at once; its transcript follows (it notifies on failure).
+    const videoId = youtubeVideoId(link.url);
+    if (videoId) void bringInTranscript(path, videoId);
   } catch (error) {
     reportFailure(error);
   }

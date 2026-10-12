@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { MapPin } from "lucide-react";
+import { MapPin, ScrollText } from "lucide-react";
 
 import { videoIdOf } from "@/lib/video-pins";
+import { hasTranscript } from "@/lib/video-transcript";
 import {
   type VideoPlayer as VideoPlayerHandle,
   armAutoPin,
@@ -20,6 +21,7 @@ import {
   pinMoment,
   returnFocusFrom,
 } from "./video-pin";
+import { bringInTranscript } from "./video-transcript";
 import "./video-player.css";
 
 /**
@@ -37,6 +39,7 @@ export function VideoPlayer({ filePath }: { filePath: string }) {
       frontmatter && /^(url|link|source)\s*:/im.test(frontmatter) ? videoIdOf(frontmatter) : null,
     [frontmatter],
   );
+  useTranscriptForNewLinks(filePath, videoId);
   const [origin, setOrigin] = useState<string | null>(null);
   useEffect(() => {
     if (!videoId) return;
@@ -57,6 +60,26 @@ export function VideoPlayer({ filePath }: { filePath: string }) {
 
   if (!videoId || !origin) return null;
   return <VideoBand key={videoId} filePath={filePath} videoId={videoId} origin={origin} />;
+}
+
+/**
+ * A link that turns up while the note is open (typed or pasted into its
+ * properties, or changed to another video) brings that video's transcript
+ * in. The link a note opens with is not new: opening an older video note
+ * never rewrites it.
+ */
+function useTranscriptForNewLinks(filePath: string, videoId: string | null): void {
+  const loading = useEditorStore((s) => s.openFiles.get(filePath)?.isLoading ?? true);
+  const seen = useRef<{ filePath: string; videoId: string | null } | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    if (seen.current?.filePath !== filePath) {
+      seen.current = { filePath, videoId };
+      return;
+    }
+    if (videoId && videoId !== seen.current.videoId) void bringInTranscript(filePath, videoId);
+    seen.current.videoId = videoId;
+  }, [filePath, loading, videoId]);
 }
 
 /** YouTube's `PlayerState.PAUSED`. */
@@ -124,6 +147,10 @@ function VideoBand({
   const playerRef = useRef<VideoPlayerHandle | null>(null);
   const [error, setError] = useState<number | null>(null);
   const [stuck, setStuck] = useState(false);
+  const transcribed = useEditorStore((s) =>
+    hasTranscript(s.openFiles.get(filePath)?.content ?? ""),
+  );
+  const [reading, setReading] = useState(false);
   // Read once per video: the page takes them in its address, so a change
   // must not reload the frame.
   const [src] = useState(() => {
@@ -310,6 +337,21 @@ function VideoBand({
         </div>
         {error === null && (
           <div className="video-band-row">
+            {!transcribed && (
+              <button
+                type="button"
+                className="video-pin-button"
+                disabled={reading}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setReading(true);
+                  void bringInTranscript(filePath, videoId).finally(() => setReading(false));
+                }}
+              >
+                <ScrollText size={13} aria-hidden />
+                {reading ? "Getting transcript…" : "Transcript"}
+              </button>
+            )}
             <button
               type="button"
               className="video-pin-button"

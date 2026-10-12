@@ -10,6 +10,8 @@
 
 ## Done
 
+- Video transcripts: [`SPECs/youtube-notes-spec.md`](SPECs/youtube-notes-spec.md#transcript) — a video added to Library, or a YouTube link set in an open note's properties, puts its transcript in a closed `<details>` toggle at the top of the note; **Transcript** under the player does it for older notes. `youtube_transcript` reads captions through the Android player API (the web caption links need a PO token).
+
 - YouTube titles for Library adds: [`SPECs/add-to-library-spec.md`](SPECs/add-to-library-spec.md#the-note) — `fetch_link_preview` asks YouTube's oEmbed for YouTube links (title, thumbnail, `YouTube`), since the watch page's `<title>` sits past the 512 KB read and every added video was named `youtube.com <id>`. A link oEmbed doesn't know (a channel) still reads the page.
 - Page title: [`SPECs/page-title-spec.md`](SPECs/page-title-spec.md) — a title row above every note shows the file name and renames it in place (Enter/↓ into the body, ↑ back, Escape cancels); the leading `# ` heading is no longer the title (`inferTitle`, Rust `extract_title`), new files and new wiki pages start empty instead of with `# `.
 - Template notes stay out of spaces: [`SPECs/spaces-spec.md`](SPECs/spaces-spec.md#everything-stays-markdown) — `useTypedNotes` drops notes in the vault's template folder (Templater's `templates_folder`, the core Templates plugin's `folder`), so Projects, Library and Inspirations no longer list templates that carry a `Type`; Add project's search (`searchNotes`, also behind `findNoteNamed`) skips them too.
