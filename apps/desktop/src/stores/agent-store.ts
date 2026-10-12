@@ -5,6 +5,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { parseAgentLine, type AgentStreamEvent } from "@/lib/agent-stream";
 import { buildAgentSystemPrompt } from "@/lib/agent-context";
+import { collectAgentOpenFiles } from "@/lib/agent-open-files";
 import { flushSave } from "@/lib/save";
 
 /** One row in the chat. `tool` and `status` rows are muted one-liners. */
@@ -129,12 +130,13 @@ async function flushOpenFiles() {
   await Promise.all(dirty.map((path) => flushSave(path)));
 }
 
-function currentContext(root: string) {
-  const { tabs, activeFilePath } = useEditorStore.getState();
-  const openPaths = [
+async function currentContext(root: string) {
+  const { tabs, activeFilePath, openFiles } = useEditorStore.getState();
+  const paths = [
     ...new Set(tabs.flatMap((tab) => (tab.location.kind === "file" ? [tab.location.path] : []))),
   ];
-  return buildAgentSystemPrompt({ root, openPaths, focusedPath: activeFilePath });
+  const files = await collectAgentOpenFiles(paths, openFiles);
+  return buildAgentSystemPrompt({ root, openFiles: files, focusedPath: activeFilePath });
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -160,7 +162,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
     try {
       await flushOpenFiles();
-      // Stopped (or reset) while saves were flushing: don't start the process.
+      const systemPrompt = await currentContext(root);
+      // Stopped (or reset) while saving or reading tabs: don't start the process.
       const run = get().run;
       if (run?.requestId !== requestId) return;
       if (run.cancelled) {
@@ -174,7 +177,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         requestId,
         prompt: text,
         sessionId: get().sessionId,
-        systemPrompt: currentContext(root),
+        systemPrompt,
       });
     } catch (error) {
       set((state) =>

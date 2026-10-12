@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { describeToolCall, parseAgentLine } from "../src/lib/agent-stream";
-import { buildAgentSystemPrompt } from "../src/lib/agent-context";
+import { buildAgentSystemPrompt, MAX_FILE_CHARS, MAX_TOTAL_CHARS } from "../src/lib/agent-context";
+import { embeddedBoardPaths, isBoardPath } from "../src/lib/agent-open-files";
 
 const line = (value: unknown) => JSON.stringify(value);
 
@@ -88,22 +89,46 @@ describe("describeToolCall", () => {
 });
 
 describe("buildAgentSystemPrompt", () => {
-  test("names the focused file as 'this' and lists the other tabs", () => {
+  test("includes every open tab's text and names the focused one", () => {
     const prompt = buildAgentSystemPrompt({
       root: "/w",
-      openPaths: ["/w/A.md", "/w/B.md"],
+      openFiles: [
+        { path: "/w/A.md", text: "users roll left to right" },
+        { path: "/w/B.md", text: "dopamine" },
+      ],
       focusedPath: "/w/B.md",
     });
-    expect(prompt).toContain("The user is focused on: /w/B.md");
-    expect(prompt).toContain('"This"');
-    expect(prompt).toContain("- /w/A.md");
-    expect(prompt).not.toContain("- /w/B.md");
+    expect(prompt).toContain("The tab in front of the user is: /w/B.md");
+    expect(prompt).toContain('<open_file path="/w/A.md">\nusers roll left to right');
+    expect(prompt).toContain('<open_file path="/w/B.md">\ndopamine');
+    // Focused tab comes first so a length cut never drops it.
+    expect(prompt.indexOf('/w/B.md">')).toBeLessThan(prompt.indexOf('/w/A.md">'));
     expect(prompt).toContain("short, concise and simple");
   });
 
+  test("truncates long files and lists what didn't fit", () => {
+    const big = "x".repeat(MAX_FILE_CHARS + 10);
+    const files = Array.from({ length: 8 }, (_, i) => ({ path: `/w/${i}.md`, text: big }));
+    const prompt = buildAgentSystemPrompt({ root: "/w", openFiles: files, focusedPath: null });
+    expect(prompt).toContain("[…truncated; read the file for the rest]");
+    expect(prompt).toContain("Also open (not included for length");
+    expect(prompt.length).toBeLessThan(MAX_TOTAL_CHARS + 10_000);
+  });
+
   test("has no focus line on a non-file tab", () => {
-    const prompt = buildAgentSystemPrompt({ root: "/w", openPaths: [], focusedPath: null });
-    expect(prompt).not.toContain("focused on");
-    expect(prompt).not.toContain("Other open tabs");
+    const prompt = buildAgentSystemPrompt({ root: "/w", openFiles: [], focusedPath: null });
+    expect(prompt).not.toContain("in front of the user is");
+  });
+});
+
+describe("embeddedBoardPaths", () => {
+  test("finds board image links relative to the page", () => {
+    const text = "Intro\n![Board](assets/flow.board.svg)\n![pic](a.png)\n![](<my board.board.svg>)";
+    expect(embeddedBoardPaths("/w/notes/Page.md", text)).toEqual([
+      "/w/notes/assets/flow.board.svg",
+      "/w/notes/my board.board.svg",
+    ]);
+    expect(isBoardPath("/w/x.board.svg")).toBe(true);
+    expect(isBoardPath("/w/x.svg")).toBe(false);
   });
 });
