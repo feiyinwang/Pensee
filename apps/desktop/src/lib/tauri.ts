@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import sidebarEntryKinds from "@shared/sidebar-entry-kinds.json";
 import type { AppleBook } from "@/types/apple-books";
+import type { XAccount, XBookmark } from "./x-bookmarks";
 import type {
   DirEntry,
   FileContent,
@@ -414,4 +415,40 @@ export function readAppleBooksHighlights(): Promise<AppleBook[]> {
  *  Books has no cover cached for it; a file already at `dest` is kept. */
 export function saveAppleBooksCover(assetId: string, dest: string): Promise<boolean> {
   return invoke("save_apple_books_cover", { assetId, dest });
+}
+
+// X bookmarks (SPECs/x-bookmarks-spec.md) ------------------------------------
+
+/** The signed-in X account, or null when X isn't connected. */
+export function xAccount(): Promise<XAccount | null> {
+  return invoke("x_account");
+}
+
+/** Sign in with the user's X app in the browser; resolves once X redirects back. */
+export function xConnect(clientId: string): Promise<XAccount> {
+  return invoke("x_connect", { clientId });
+}
+
+export function xDisconnect(): Promise<void> {
+  return invoke("x_disconnect");
+}
+
+/** Bookmarks newer than any in `knownIds` or already saved for `root`, newest first. */
+export function xListNewBookmarks(root: string, knownIds: string[]): Promise<XBookmark[]> {
+  return invoke("x_list_new_bookmarks", { root, knownIds });
+}
+
+/** The bookmark with the rest of its author's thread. */
+export function xExpandThread(bookmark: XBookmark): Promise<XBookmark> {
+  return invoke("x_expand_thread", { bookmark });
+}
+
+export function xMarkSaved(root: string, ids: string[]): Promise<void> {
+  return invoke("x_mark_saved", { root, ids });
+}
+
+/** Download a photo or video into the note's `<stem>-assets` folder as
+ *  `<name>.<ext>`; returns its path relative to the note's folder. */
+export function xSaveMedia(url: string, markdownFilePath: string, name: string): Promise<string> {
+  return invoke("x_save_media", { url, markdownFilePath, name });
 }

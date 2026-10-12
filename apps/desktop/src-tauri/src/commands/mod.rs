@@ -14,3 +14,4 @@ pub mod shell_install;
 pub mod spaces;
 pub mod startup;
 pub mod workspace;
+pub mod x_bookmarks;

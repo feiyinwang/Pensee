@@ -2,6 +2,8 @@
 
 ## In Progress
 
+- X bookmarks in Library: [`SPECs/x-bookmarks-spec.md`](SPECs/x-bookmarks-spec.md) — bookmarks from X become notes (`Type: Tweet`) with the author's whole thread and its media, through the user's own X developer app. Done: sign-in (OAuth + PKCE, Keychain), bookmarks and thread fetch, media download, note writing, the 15-minute sync, Settings → X Bookmarks. Next: the Library **Bookmarks** tab and card (waits for the Library scroll-performance work in the gallery files), then `![[*.mp4]]` embeds and the thread view in the editor. Not yet run against the live X API.
+
 - Block handle menu: [`SPECs/block-handle-menu-spec.md`](SPECs/block-handle-menu-spec.md) — hover the gutter grip to open block type / move / duplicate / clipboard / delete actions for plain blocks, pictures, caption bands and columns. First pass landed; submenus (Align and Indent, Color Options) are rendered inert pending a way to store non-markdown attributes, and there is still no keyboard path to the panel.
 
 - Reveal-in-sidebar + residual external-watcher misses: [`SPECs/reveal-in-sidebar-and-external-watcher-spec.md`](SPECs/reveal-in-sidebar-and-external-watcher-spec.md) — keep the explicit tab-context-menu "Show in Files" action working (it now opens the Files space, SPECs/spaces-spec.md), leave ordinary file opens from expanding the Files tree, and characterize the remaining external-file-watcher miss cases through a logging + manual-repro pass before patching further.

@@ -367,6 +367,26 @@
       "default": ""
     },
     {
+      "key": "x-bookmarks.client-id",
+      "label": "Client ID",
+      "description": "From your app in the X Developer Console (Keys and tokens → OAuth 2.0 Client ID). Set the app's callback URL to http://127.0.0.1:47863/x/callback.",
+      "category": "X Bookmarks",
+      "type": "string",
+      "placeholder": "Paste Client ID",
+      "normalize": "trim",
+      "default": ""
+    },
+    {
+      "key": "x-bookmarks.folder",
+      "label": "Bookmarks Folder",
+      "description": "Folder inside the workspace where bookmark notes are saved.",
+      "category": "X Bookmarks",
+      "type": "string",
+      "placeholder": "Bookmarks",
+      "normalize": "trim",
+      "default": "Bookmarks"
+    },
+    {
       "key": "window.restore-workspace",
       "label": "Restore Workspace",
       "description": "Automatically reopen the last workspace when the app starts",
