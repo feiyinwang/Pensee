@@ -62,6 +62,20 @@ export function VideoPlayer({ filePath }: { filePath: string }) {
 /** YouTube's `PlayerState.PAUSED`. */
 const YT_PAUSED = 2;
 
+/** Each video's chapters, read once per launch (a watch page is ~1.5 MB;
+ *  switching tabs remounts the player). A failed read is forgotten. */
+const chapterReads = new Map<string, Promise<{ start: number; title: string }[]>>();
+
+function chaptersOf(videoId: string): Promise<{ start: number; title: string }[]> {
+  let read = chapterReads.get(videoId);
+  if (!read) {
+    read = youtubeChapters(videoId);
+    read.catch(() => chapterReads.delete(videoId));
+    chapterReads.set(videoId, read);
+  }
+  return read;
+}
+
 // Speed and subtitles carry over between videos and launches. Kept here,
 // not in the player page, whose loopback origin changes every launch.
 const PREFS_KEY = "writer.video-player";
@@ -139,7 +153,7 @@ function VideoBand({
     // both it and they are there.
     let chapters: { start: number; title: string }[] | null = null;
     let disposed = false;
-    youtubeChapters(videoId).then(
+    chaptersOf(videoId).then(
       (list) => {
         if (disposed) return;
         chapters = list;
@@ -158,6 +172,10 @@ function VideoBand({
       toggle: () => {
         markVideoUsed(filePath);
         send({ cmd: "toggle" });
+      },
+      speed: (step) => {
+        markVideoUsed(filePath);
+        send({ cmd: "speed", step });
       },
       rect: () => frameRef.current?.getBoundingClientRect() ?? new DOMRect(),
     };

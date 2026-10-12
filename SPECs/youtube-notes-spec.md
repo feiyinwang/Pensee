@@ -38,6 +38,11 @@ selected.
 - Scrolling over the video scrolls the note; pinching over it reaches the
   tab columns' pinch like a pinch anywhere else.
 - Under the video is one row with a **Pin** button and its shortcut (⌘⇧M).
+- **`<` / `>`** (Shift+, / Shift+. on US keyboards) step the speed down or
+  up YouTube's list in the video's note, and the new speed shows on the
+  video for a moment. They never type there (`<` and `>` can't be typed in
+  a video's note); with nothing editable focused they act on the last video
+  used; anywhere else they type.
 - **⌘⇧J** plays or pauses the video anywhere in the window: the focused
   note's, else the last one used. Plain Space is never taken, so it always
   types. (Not ⌘⇧Space: it clashes with system shortcuts.)
@@ -135,8 +140,14 @@ selected.
     them on, since any value turns the default track on.
 - **Chapters.** The IFrame API doesn't expose chapters. `youtube_chapters`
   (Rust, `video_player.rs`) fetches the watch page and reads every
-  `chapterRenderer` (the creator's chapters or YouTube's own). Empty when
-  the video has none; a failure only loses the chapters.
+  `chapterRenderer` (the creator's chapters or YouTube's own). About one
+  request in six gets a page without them (YouTube loads them separately
+  there), so a page with none is fetched up to three times before the
+  video counts as having none. The app keeps each video's chapters for the
+  session; a failure only loses the chapters.
+- **Pin glyph.** Its tip sits on the text's baseline on any line
+  (`vertical-align` on `.cm-video-pin`, measured in
+  `e2e/specs/youtube-pin-click.spec.js`'s probe).
 - **Pure text (`lib/video-pins.ts`).** Pin ids, parsing, time formatting,
   the insert plan for a pin at a caret, and the note's video id from
   frontmatter.

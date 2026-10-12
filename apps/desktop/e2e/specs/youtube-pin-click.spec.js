@@ -49,12 +49,25 @@ describe("YouTube pin click", function () {
       window.__ytReports = [];
       const pin = [...document.querySelectorAll(".cm-video-pin")].find((p) => p.title === label);
       if (!pin) return { found: false };
+      // Clear of the word-count footer, below the (tall, sticky) video.
+      pin.scrollIntoView({ block: "end" });
+      let scroller = pin.parentElement;
+      while (scroller && scroller.scrollHeight <= scroller.clientHeight)
+        scroller = scroller.parentElement;
+      scroller?.scrollBy(0, 80);
       const seen = [];
       for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
-        document.addEventListener(type, (e) => seen.push(`${type}:${e.target.className}`), {
-          capture: true,
-          once: true,
-        });
+        document.addEventListener(
+          type,
+          (e) =>
+            seen.push(
+              `${type}:${e.target.closest?.(".cm-video-pin") ? "cm-video-pin" : e.target.tagName}`,
+            ),
+          {
+            capture: true,
+            once: true,
+          },
+        );
       }
       const r = pin.getBoundingClientRect();
       const at = {
@@ -172,5 +185,52 @@ describe("YouTube pin click", function () {
       await shot(`pin-02-${seconds}`);
       ok(reached, `${title}: never playing at ${seconds}s`);
     }
+  });
+
+  it("steps the speed with > and < in the video's note, and remembers it", async function () {
+    // Typing in the note: the caret is in its text.
+    await browser.execute(() => {
+      const view = document.querySelector(".cm-video-pin").closest(".cm-content").cmTile.root.view;
+      view.dispatch({ selection: { anchor: view.state.doc.length } });
+      view.focus();
+    });
+    const before = await browser.execute(
+      () => document.querySelector(".cm-video-pin").closest(".cm-content").textContent,
+    );
+    const press = (code, key) =>
+      browser.execute(
+        (c, k) =>
+          document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key: k,
+              code: c,
+              shiftKey: true,
+              bubbles: true,
+              cancelable: true,
+            }),
+          ),
+        code,
+        key,
+      );
+    const saved = () =>
+      browser.execute(() => JSON.parse(localStorage.getItem("writer.video-player") ?? "{}").rate);
+    await press("Period", ">");
+    await press("Period", ">");
+    await browser.waitUntil(async () => (await saved()) === 1.5, {
+      timeout: 5_000,
+      timeoutMsg: "> twice didn't reach 1.5×",
+    });
+    await shot("pin-03-speed");
+    await press("Comma", "<");
+    await browser.waitUntil(async () => (await saved()) === 1.25, {
+      timeout: 5_000,
+      timeoutMsg: "< didn't step back to 1.25×",
+    });
+    const after = await browser.execute(
+      () => document.querySelector(".cm-video-pin").closest(".cm-content").textContent,
+    );
+    ok(after === before, "< or > was typed into the note");
+    // Back to normal for the next run.
+    await press("Comma", "<");
   });
 });

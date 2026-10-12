@@ -28,6 +28,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+J           | Toggle the agent chat         |
 | Cmd+Shift+M     | Pin the video's moment¹       |
 | Cmd+Shift+J     | Play / pause the video¹       |
+| Shift+< / >     | Video slower / faster²        |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
@@ -36,6 +37,9 @@ Cmd+Shift+N and Cmd+] need a workspace to file notes in, so they are inert there
 
 ¹ Only while a YouTube note's player is open; handled in `video-pin.ts`, not
 the global hook ([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md)).
+
+² In a note that plays a video (or with nothing editable focused while one
+is open), `<` and `>` change its speed instead of typing; elsewhere they type.
 
 Zoom scales the whole window (WebKit page zoom, persisted in the global
 `appearance.zoom` setting) and steps along the browser ladder 50 · 67 · 75 · 80 ·

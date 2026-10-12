@@ -246,17 +246,46 @@ let installed = false;
  *  it can hand focus straight back (typing goes to the note, not YouTube). */
 let lastFocus: HTMLElement | null = null;
 
-/** ⌘⇧M (pin) and ⌘⇧J (play/pause) anywhere in the window while a
- *  player is mounted, and the focus tracking `returnFocus` needs. Installed
- *  once, by the first player. */
+/** The player `<` / `>` change the speed of: the focused note's, or with
+ *  nothing editable focused, the last one used. Null while typing anywhere
+ *  else (another note, a field, a board), where they type. */
+function speedKeyTarget(): VideoPlayer | null {
+  const focused = focusedNote();
+  if (focused) return videoPlayerFor(focused.path);
+  const active = document.activeElement;
+  const editing =
+    active instanceof HTMLInputElement ||
+    active instanceof HTMLTextAreaElement ||
+    (active instanceof HTMLElement && active.isContentEditable);
+  return editing || boardHasFocus() ? null : lastUsedVideoPlayer();
+}
+
+/** ⌘⇧M (pin) and ⌘⇧J (play/pause) anywhere in the window while a player is
+ *  mounted, `<` / `>` (speed) in a video's note, and the focus tracking
+ *  `returnFocus` needs. Installed once, by the first player. */
 export function installVideoPinShortcut(): void {
   if (installed) return;
   installed = true;
   document.addEventListener(
     "keydown",
     (event) => {
+      if (!hasVideoPlayers() || event.isComposing) return;
+      // `<` / `>`, by character: Shift+, / Shift+. on US keyboards, their own
+      // key elsewhere. In a video's note they never type.
+      if (
+        (event.key === "<" || event.key === ">") &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey
+      ) {
+        const player = speedKeyTarget();
+        if (!player) return;
+        event.preventDefault();
+        event.stopPropagation();
+        player.speed(event.key === "<" ? -1 : 1);
+        return;
+      }
       if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey) return;
-      if (!hasVideoPlayers()) return;
       if (event.key.toLowerCase() === "m") {
         event.preventDefault();
         event.stopPropagation();

@@ -31,6 +31,11 @@ pub struct Chapter {
     pub title: String,
 }
 
+/// How many times to read the watch page before deciding a video has no
+/// chapters. YouTube serves some requests (about one in six, at random) a
+/// page without the chapter data, which it then loads separately.
+const CHAPTER_ATTEMPTS: usize = 3;
+
 /// The chapters YouTube shows on the video's progress bar (the creator's,
 /// or the ones YouTube made), read from its watch page: the IFrame API has
 /// no way to ask. Empty when the video has none.
@@ -45,6 +50,16 @@ pub async fn youtube_chapters(video_id: String) -> Result<Vec<Chapter>, AppError
             "not a YouTube id: {video_id}"
         )));
     }
+    for _ in 0..CHAPTER_ATTEMPTS {
+        let chapters = chapters_in(&watch_page(&video_id).await?);
+        if !chapters.is_empty() {
+            return Ok(chapters);
+        }
+    }
+    Ok(Vec::new())
+}
+
+async fn watch_page(video_id: &str) -> Result<String, AppError> {
     let mut response = crate::commands::link_preview::client()?
         .get(format!("https://www.youtube.com/watch?v={video_id}"))
         .header(reqwest::header::ACCEPT, "text/html")
@@ -67,7 +82,7 @@ pub async fn youtube_chapters(video_id: String) -> Result<Vec<Chapter>, AppError
             break;
         }
     }
-    Ok(chapters_in(&String::from_utf8_lossy(&body)))
+    Ok(String::from_utf8_lossy(&body).into_owned())
 }
 
 /// Every `chapterRenderer` in a watch page, in order, once each.

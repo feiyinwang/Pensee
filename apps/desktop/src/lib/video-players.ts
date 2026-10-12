@@ -14,6 +14,8 @@ export interface VideoPlayer {
   seek: (seconds: number) => void;
   /** Pause if playing, else play. */
   toggle: () => void;
+  /** One step slower (-1) or faster (1) on YouTube's speed list. */
+  speed: (step: -1 | 1) => void;
   /** The player on screen, for placing a pin's card beside it on a board. */
   rect: () => DOMRect;
 }

@@ -162,6 +162,24 @@
         white-space: nowrap;
         pointer-events: none;
       }
+      /* The speed, for a moment, after < / >: keys get no motion. */
+      #badge {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        z-index: 4;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: rgb(0 0 0 / 62%);
+        color: #fff;
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
+      #badge[hidden] {
+        display: none;
+      }
       #tip[hidden] {
         display: none;
       }
@@ -231,6 +249,7 @@
     </div>
     <div id="chapters" class="menu" role="menu" hidden></div>
     <div id="speeds" class="menu" role="menu" hidden></div>
+    <div id="badge" hidden></div>
     <div id="bar">
       <div id="track"><div id="tip" hidden></div></div>
       <div id="row">
@@ -382,6 +401,27 @@
 
       const savePrefs = () => post({ type: "prefs", rate, cc: captions });
 
+      let badgeTimer = 0;
+      /** One step along YouTube's speed list, shown for a moment. */
+      function stepSpeed(step) {
+        const rates = (ready && player.getAvailablePlaybackRates()) || [
+          0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2,
+        ];
+        const at = rates.indexOf(rate);
+        const next =
+          rates[Math.min(rates.length - 1, Math.max(0, (at < 0 ? rates.indexOf(1) : at) + step))];
+        if (next !== undefined && next !== rate) {
+          rate = next;
+          applyRate();
+          savePrefs();
+        }
+        const badge = document.getElementById("badge");
+        badge.textContent = rate === 1 ? "Normal" : `${rate}×`;
+        badge.hidden = false;
+        clearTimeout(badgeTimer);
+        badgeTimer = setTimeout(() => (badge.hidden = true), 700);
+      }
+
       function run(message) {
         if (message.cmd === "seek") {
           const t = Math.max(0, Number(message.t) || 0);
@@ -398,6 +438,8 @@
           player.playVideo();
         } else if (message.cmd === "pause") {
           player.pauseVideo();
+        } else if (message.cmd === "speed") {
+          stepSpeed(message.step < 0 ? -1 : 1);
         } else if (message.cmd === "toggle") {
           toggle();
         }

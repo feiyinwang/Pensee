@@ -222,7 +222,9 @@
   margin-inline-start: 4px;
   border-radius: 5px;
   color: var(--text-muted);
-  vertical-align: -3px;
+  /* The pin's tip sits on the text's baseline (measured in
+     e2e/specs/youtube-pin-click.spec.js). */
+  vertical-align: -0.5px;
   cursor: pointer;
   transition:
     color var(--motion-hover) var(--ease-hover),
