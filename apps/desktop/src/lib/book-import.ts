@@ -57,7 +57,7 @@ export async function resolveBookNote(bookPath: string, hint: string | null): Pr
     }
   }
   await tauri.createFile(sibling);
-  await tauri.writeFile(sibling, newBookNote(getFileStem(bookPath), getFileName(bookPath)));
+  await tauri.writeFile(sibling, newBookNote(getFileName(bookPath)));
   return sibling;
 }
 
@@ -97,7 +97,7 @@ export async function importBook(sourcePath: string): Promise<void> {
   const bookFile = getFileName(bookPath);
   if (isNew) {
     await tauri.createFile(notePath);
-    await tauri.writeFile(notePath, newBookNote(name, bookFile));
+    await tauri.writeFile(notePath, newBookNote(bookFile));
   } else {
     await editPage(notePath, (page) => ({
       frontmatter: withBookProperties(page.frontmatter, { book: bookFile }),

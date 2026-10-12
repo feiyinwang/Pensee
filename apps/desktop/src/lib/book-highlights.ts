@@ -1,11 +1,6 @@
 import { isMap, isScalar, parseDocument } from "yaml";
 
-import {
-  HIGHLIGHTS_HEADING,
-  appendToHighlights,
-  inlineText,
-  withBookProperties,
-} from "./apple-books";
+import { appendToHighlights, inlineText, withBookProperties } from "./apple-books";
 import { blockIdsInText, findBlock } from "./block-refs";
 
 // Book reader highlights, per SPECs/book-reader-spec.md. The book page is the
@@ -29,7 +24,7 @@ export interface BookHighlight {
 
 const BOOK_ID_RE = /^bk-([ps])(\d+)-(\d+)-(\d+)$/;
 const HIGHLIGHTS_HEADING_RE = /^##[ \t]+Highlights[ \t]*$/;
-const TOP_ITEM_ID_RE = /^[-*+][ \t].*[ \t]\^([A-Za-z0-9-]+)[ \t]*$/;
+const TOP_ITEM_ID_RE = /^[-*+][ \t].*[ \t]\^([A-Za-z0-9-]+)[ \t]*$/gm;
 
 export function bookHighlightId({ unit, section, start, end }: BookLocation): string {
   return `bk-${unit}${section}-${start}-${end}`;
@@ -65,30 +60,32 @@ export function bookHighlightsIn(body: string): BookHighlight[] {
   return highlights.sort((a, b) => compareLocations(a.location, b.location));
 }
 
-/** `body` with a bullet for the passage `text` at `location`, placed in
- *  reading order among the reader highlights of its `## Highlights` section
- *  (at the section's end when none comes after it). Unchanged when the
- *  highlight is already there. */
+/** `body` with a bullet for the passage `text` at `location`, in reading
+ *  order among the page's reader highlights: before the first one after it,
+ *  else after the last one (and what is nested under it). With none yet, it
+ *  goes at the end of a `## Highlights` section the writer made, or at the
+ *  end of the page; no heading is ever added. Unchanged when the highlight is
+ *  already there. */
 export function withBookHighlight(body: string, text: string, location: BookLocation): string {
   const id = bookHighlightId(location);
   if (blockIdsInText(body).includes(id)) return body;
   const item = `- ${inlineText(text)} ^${id}`;
 
-  const lines = body.split("\n");
-  const heading = lines.findIndex((line) => HIGHLIGHTS_HEADING_RE.test(line));
-  if (heading !== -1) {
-    for (let i = heading + 1; i < lines.length; i++) {
-      const line = lines[i]!;
-      if (/^#{1,2}[ \t]/.test(line)) break;
-      const other = TOP_ITEM_ID_RE.exec(line)?.[1];
-      const otherLocation = other ? parseBookHighlightId(other) : null;
-      if (otherLocation && compareLocations(location, otherLocation) < 0) {
-        lines.splice(i, 0, item);
-        return lines.join("\n");
-      }
+  let after: number | null = null;
+  for (const match of body.matchAll(TOP_ITEM_ID_RE)) {
+    const other = parseBookHighlightId(match[1]!);
+    if (!other) continue;
+    if (compareLocations(location, other) < 0) {
+      return `${body.slice(0, match.index)}${item}\n${body.slice(match.index)}`;
     }
+    after = findBlock(body, match[1]!)?.to ?? after;
   }
-  return appendToHighlights(body, item);
+  if (after !== null) return `${body.slice(0, after)}\n${item}${body.slice(after)}`;
+  if (body.split("\n").some((line) => HIGHLIGHTS_HEADING_RE.test(line))) {
+    return appendToHighlights(body, item);
+  }
+  const base = body.trimEnd();
+  return `${base ? `${base}\n\n` : ""}${item}\n`;
 }
 
 /** `body` without highlight `id`'s bullet and everything nested under it. */
@@ -111,8 +108,8 @@ export function bookFileOf(frontmatter: string | null): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-/** The whole text of a new book page for the book file `bookFile`. */
-export function newBookNote(name: string, bookFile: string): string {
-  const frontmatter = withBookProperties(null, { book: bookFile });
-  return `---\n${frontmatter}\n---\n# ${name}\n\n${HIGHLIGHTS_HEADING}\n\n`;
+/** The whole text of a new book page for the book file `bookFile`: only its
+ *  properties. Headings are the writer's to add. */
+export function newBookNote(bookFile: string): string {
+  return `---\n${withBookProperties(null, { book: bookFile })}\n---\n`;
 }

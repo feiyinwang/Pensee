@@ -21,7 +21,8 @@ to explain or define something.
   Book: <file name>
   tags: [Book]
   ```
-  followed by an H1 with the name and `## Highlights`. An existing page gets
+  and nothing else: no H1 and no `## Highlights` heading, since headings are
+  the writer's to add. An existing page gets
   `Type`, the `Book` tag and `Book` only where they are missing.
 - **The book file** is copied beside its page (`import_book`, which never
   overwrites; a taken name gets ` 2`, ` 3`, …). `Book` holds its file name,
