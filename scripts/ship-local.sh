@@ -3,7 +3,7 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.vite-plus/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="${WRITER_APP_NAME:-Writer Mine}"
+APP_NAME="${WRITER_APP_NAME:-Pensée}"
 SIGN_IDENTITY="${WRITER_SIGN_IDENTITY:--}"
 DEST="/Applications/${APP_NAME}.app"
 LOCAL_CONF="$ROOT_DIR/apps/desktop/src-tauri/tauri.local.conf.json"

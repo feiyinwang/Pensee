@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# 提交成功后，后台重新编译并替换 /Applications 里的 Writer Mine。
+# 提交成功后，后台重新编译并替换 /Applications 里的本地版 Pensée。
 [ -n "${WRITER_SKIP_AUTOBUILD:-}" ] && exit 0
 
 ROOT="$(git rev-parse --show-toplevel)"

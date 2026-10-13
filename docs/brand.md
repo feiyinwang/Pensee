@@ -21,6 +21,21 @@ nearly disappear, sharp serifs, restraint, black and cream. The mark is one
 part of a system: the symbol, a widely tracked wordmark in capitals, and,
 later, a monogram surface.
 
+## The name
+
+**Pensée**: French for "a thought". It's set in capitals as `PENSÉE`, and the
+accent is always kept.
+
+- **Story:** Pascal's _Pensées_ are the loose notes he wrote to work out what
+  he believed. That is thinking made by writing, which is what a notes vault
+  is for.
+- **Pattern:** _pensée_ is also the pansy flower, which can be the monogram
+  canvas's secondary motif (see Later).
+
+So far the name is only on the local build: `tauri.local.conf.json` and
+`scripts/ship-local.sh` install it as `/Applications/Pensée.app`. The released
+app, the website and the wordmark still say Writer until the product is renamed.
+
 ## The mark
 
 The "Thick–Thin ¶", maison cut. It has four parts:
