@@ -32,6 +32,15 @@ function SidebarSurface() {
             height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
           }}
         />
+        {/* The wordmark (docs/brand.md): its own row under the window buttons,
+            on the Search field's left edge. Part of the drag region, so the
+            text ignores the pointer. The -0.34em margin keeps the last
+            letter's tracking from pushing the right edge out. */}
+        <div data-sidebar-wordmark data-tauri-drag-region className="shrink-0 px-3 pt-1 pb-4">
+          <span className="pointer-events-none block w-fit select-none font-[family-name:var(--display-font)] text-[16px] font-normal uppercase leading-none tracking-[0.34em] -mr-[0.34em] text-[var(--fg-base)]">
+            Pensée
+          </span>
+        </div>
         <div data-sidebar-surface-content className="min-h-0 flex-1 overflow-hidden">
           <FileBrowser />
         </div>

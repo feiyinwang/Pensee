@@ -5,7 +5,8 @@ import { join } from "node:path";
 
 // Didone display type (SPECs/didone-display-type-spec.md): the page title,
 // H1–H2 and space titles are Bodoni Moda at regular weight, loaded from the
-// app bundle; chrome labels are tracked capitals, never monospace.
+// app bundle; chrome labels are tracked capitals, never monospace; the
+// sidebar carries the PENSÉE wordmark.
 // Screenshots go to DIDONE_SHOTS (default: the OS temp dir).
 //
 // Requires a restorable workspace; self-skips without one.
@@ -137,6 +138,58 @@ describe("Didone display type", function () {
       ok(!/mono|menlo|courier/i.test(label.family), `${label.text}: ${label.family}`);
       strictEqual(label.transform, "uppercase", label.text);
     }
+  });
+
+  it("puts the PENSÉE wordmark at the top of the sidebar, in light and dark", async function () {
+    const mark = await browser.execute(() => {
+      const el = document.querySelector("[data-sidebar-wordmark] span");
+      const search = document.querySelector("[data-sidebar-search-button]");
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return {
+        text: el.textContent,
+        family: cs.fontFamily,
+        weight: cs.fontWeight,
+        transform: cs.textTransform,
+        tracking: parseFloat(cs.letterSpacing) / parseFloat(cs.fontSize),
+        left: el.getBoundingClientRect().left,
+        searchLeft: search?.getBoundingClientRect().left ?? null,
+        aboveSearch: search
+          ? el.getBoundingClientRect().bottom < search.getBoundingClientRect().top
+          : null,
+      };
+    });
+    ok(mark, "wordmark is rendered");
+    strictEqual(mark.text, "Pensée");
+    strictEqual(mark.transform, "uppercase");
+    ok(mark.family.includes("Bodoni Moda"), `wordmark: ${mark.family}`);
+    strictEqual(mark.weight, "400");
+    ok(Math.abs(mark.tracking - 0.34) < 0.01, `tracking ${mark.tracking}em`);
+    if (mark.searchLeft !== null) {
+      strictEqual(mark.left, mark.searchLeft, "wordmark sits on the Search field's left edge");
+      ok(mark.aboveSearch, "wordmark sits above Search");
+    }
+
+    const setTheme = (value) =>
+      browser.executeAsync((v, done) => {
+        window.__TAURI_INTERNALS__
+          .invoke("set_setting", { key: "appearance.theme", value: v, scope: "global" })
+          .then(() => done(null))
+          .catch((error) => done(String(error)));
+      }, value);
+    for (const theme of ["light", "dark"]) {
+      await setTheme(theme);
+      await browser.refresh();
+      await $("[data-sidebar-wordmark]").waitForExist({ timeout: 15_000 });
+      await browser.executeAsync((done) => {
+        void document.fonts.ready.then(() => done(null));
+      });
+      await browser.pause(800);
+      await browser.saveScreenshot(join(SHOTS, `didone-wordmark-${theme}.png`));
+    }
+    await setTheme("system");
+    await browser.refresh();
+    await $("[data-sidebar-wordmark]").waitForExist({ timeout: 15_000 });
   });
 
   it("sets a space title in Bodoni Moda", async function () {
