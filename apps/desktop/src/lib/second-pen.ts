@@ -335,7 +335,8 @@ export type PenAsk =
   | { task: "factQuery" }
   | { task: "factRetry" }
   | { task: "factWrite"; papers: Paper[]; already: string[] }
-  | { task: "shorten" };
+  | { task: "shorten" }
+  | { task: "organize"; block: string };
 
 export interface PenPromptInput {
   title: string;
@@ -452,6 +453,14 @@ function taskText(input: PenPromptInput): string {
         ask.already.length
           ? `Facts already given here (say something else):\n${list(ask.already)}`
           : "",
+      ].join("\n");
+    case "organize":
+      return [
+        "Reorganize the writer's lines below into a clearer structure: group related lines, put them in order, and nest each detail under the point it belongs to.",
+        "Use their own words. Keep their phrases exactly as they wrote them; you may only reorder, regroup, indent, merge exact repeats, and add a few short group labels where a group needs a name. Never add an idea or drop one.",
+        "A line may end with an id like ^yt-540 or ^ai-q-ab12: keep it at the end of the line whose words it ends.",
+        "Reply with the Markdown lines only (bullets, nested bullets), no code fence, nothing else.",
+        `<lines>\n${ask.block}\n</lines>`,
       ].join("\n");
     case "shorten":
       return [
@@ -615,6 +624,16 @@ export function cutsFromReply(reply: string, texts: readonly string[]): Cut[][] 
     }
     return cuts.sort((a, b) => a.from - b.from);
   });
+}
+
+/** The outline an `organize` reply proposes: its Markdown, without a fence
+ *  or blank lines at its ends. Null when there's nothing. */
+export function organizedReply(reply: string): string | null {
+  const text = reply
+    .replace(/^\s*```[a-z]*\n/i, "")
+    .replace(/\n```\s*$/, "")
+    .replace(/^\n+|\s+$/g, "");
+  return text.trim() ? text : null;
 }
 
 /** `text` without `cuts`, its spacing tidied where words left. */

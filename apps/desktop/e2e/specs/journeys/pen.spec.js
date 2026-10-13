@@ -71,6 +71,49 @@ async function caretAfter(text) {
   await browser.pause(150);
 }
 
+/** Shift-click just after `text`: the selection now runs from the caret to there. */
+async function selectTo(text) {
+  await browser.execute((needle) => {
+    const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+    const line = [...editor.querySelectorAll(".cm-line")].find((l) =>
+      l.textContent.includes(needle),
+    );
+    // On screen first, clear of the sticky video and the bottom bar.
+    let scroller = line.parentElement;
+    while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+      scroller = scroller.parentElement;
+    }
+    if (scroller) {
+      const lineTop = line.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      scroller.scrollTop += lineTop - scroller.clientHeight * 0.75;
+    }
+    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const at = node.data.indexOf(needle);
+      if (at < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, at + needle.length - 1);
+      range.setEnd(node, at + needle.length);
+      const box = range.getBoundingClientRect();
+      const point = {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        detail: 1,
+        shiftKey: true,
+        clientX: box.right - 1,
+        clientY: box.top + box.height / 2,
+      };
+      const target = document.elementFromPoint(point.clientX, point.clientY) ?? line;
+      target.dispatchEvent(new MouseEvent("mousedown", point));
+      target.dispatchEvent(new MouseEvent("mouseup", point));
+      return;
+    }
+  }, text);
+  await browser.pause(150);
+}
+
 /** A key pressed where the keyboard is: the pen's box when it's open, else
  *  the editor in front. */
 async function key(name, { meta = false, shift = false } = {}) {
@@ -98,13 +141,29 @@ async function key(name, { meta = false, shift = false } = {}) {
 
 /** Type into the pen's box, as the keyboard would. */
 async function typeInBox(text) {
+  await waitForBox();
   await browser.execute((value) => {
-    const input = document.querySelector(".cm-pen-pop .cm-pen-input");
-    if (!input) throw new Error("the pen's box isn't open");
+    const input = document.querySelector(".cm-pen-pop .pen-box-input");
     input.focus();
-    input.value = value;
+    // React reads a controlled input's value through the native setter.
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   }, text);
+}
+
+/** The pen's box is loaded on first use: wait for its field. */
+async function waitForBox() {
+  await browser.waitUntil(
+    () => browser.execute(() => !!document.querySelector(".cm-pen-pop .pen-box-input")),
+    { timeout: 5_000, timeoutMsg: "the pen's box didn't open" },
+  );
+}
+
+/** In the open box: a function's key turns it on, Enter runs it. */
+async function pick(name, options) {
+  await waitForBox();
+  await key(name, options);
+  await key("Enter");
 }
 
 const pop = () =>
@@ -112,9 +171,13 @@ const pop = () =>
     const box = document.querySelector(".cm-pen-pop");
     if (!box) return null;
     return {
-      pills: [...box.querySelectorAll(".cm-pen-pill")].map((b) => b.textContent),
+      pills: [...box.querySelectorAll('[role="toolbar"] button')].map((b) => b.textContent),
+      selected: [...box.querySelectorAll('[role="toolbar"] button[aria-pressed="true"]')].map(
+        (b) => b.textContent,
+      ),
+      typed: box.querySelector(".pen-box-input")?.value ?? null,
       bottom: box.getBoundingClientRect().bottom,
-      focused: document.activeElement?.classList.contains("cm-pen-input") ?? false,
+      focused: document.activeElement?.classList.contains("pen-box-input") ?? false,
     };
   });
 
@@ -174,10 +237,9 @@ describe("Journeys: second pen", function () {
       return line.getBoundingClientRect().top;
     });
     await key(".", { meta: true });
-    await browser.waitUntil(async () => (await pop()) !== null, {
-      timeout: 3_000,
-      timeoutMsg: "the pen's box didn't open",
-    });
+    await waitForBox();
+    // After its 150ms entrance, which starts it a few pixels low.
+    await browser.pause(300);
     const box = await pop();
     for (const label of ["Ask me", "Answer", "Facts", "Mix", "Shorten"]) {
       ok(
@@ -231,7 +293,7 @@ describe("Journeys: second pen", function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("I think we basically");
     await key(".", { meta: true });
-    await key("?", { shift: true });
+    await pick("?", { shift: true });
     const text = await waitForDisk(
       path,
       (t) => /sleep on it\n {2}- .+ \^ai-a-[a-z0-9]{4}/.test(t),
@@ -250,7 +312,7 @@ describe("Journeys: second pen", function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("Writing is thinking on paper.");
     await key(".", { meta: true });
-    await key("?", { shift: true });
+    await pick("?", { shift: true });
     const text = await waitForDisk(
       path,
       (t) =>
@@ -267,7 +329,7 @@ describe("Journeys: second pen", function () {
     await key(".", { meta: true });
     await typeInBox("ask about first drafts");
     await browser.execute(() => {
-      [...document.querySelectorAll(".cm-pen-pill")]
+      [...document.querySelectorAll('.cm-pen-pop [role="toolbar"] button')]
         .find((b) => b.textContent.includes("Ask me"))
         .click();
     });
@@ -293,11 +355,34 @@ describe("Journeys: second pen", function () {
     );
   });
 
+  it("PEN-18 a pill's key in the box selects that pill and types nothing; Backspace unselects it", async function () {
+    await caretAfter("rereading feels like learning");
+    await key(".", { meta: true });
+    await waitForBox();
+    const keys = (await pop()).pills;
+    ok(
+      keys.some((p) => p.includes("?") && p.includes("Ask me")),
+      `pills should show their keys: ${JSON.stringify(keys)}`,
+    );
+    await key("@", { shift: true });
+    await browser.waitUntil(async () => (await pop())?.selected.some((p) => p.includes("Facts")), {
+      timeout: 3_000,
+      timeoutMsg: "@ didn't select the Facts pill",
+    });
+    ok((await pop()).typed === "", "the key shouldn't be typed into the box");
+    await key("Backspace");
+    await browser.waitUntil(async () => (await pop())?.selected.length === 0, {
+      timeout: 3_000,
+      timeoutMsg: "Backspace didn't unselect Facts",
+    });
+    await key("Escape");
+  });
+
   it("PEN-08 ⌘. − proposes cuts; Enter applies them", async function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("I think we basically");
     await key(".", { meta: true });
-    await key("-");
+    await pick("-");
     await browser.waitUntil(
       () => browser.execute(() => document.querySelectorAll(".cm-pen-cut").length > 0),
       { timeout: AI_TIMEOUT, timeoutMsg: `no cuts shown: ${await barText()}` },
@@ -316,7 +401,7 @@ describe("Journeys: second pen", function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("rereading feels like learning");
     await key(".", { meta: true });
-    await key("@", { shift: true });
+    await pick("@", { shift: true });
     const text = await waitForDisk(
       path,
       (t) => /\[[^\]]+\]\(https?:\/\/[^\s)]+ "[^"]+"\) \^ai-f-[a-z0-9]{4}/.test(t),
@@ -334,7 +419,7 @@ describe("Journeys: second pen", function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("why does sleep help memory?");
     await key(".", { meta: true });
-    await key("!", { shift: true });
+    await pick("!", { shift: true });
     await waitForDisk(
       path,
       (t) => /why does sleep help memory\?\n {2}- .+ \^ai-r-[a-z0-9]{4}/.test(t),
@@ -343,12 +428,48 @@ describe("Journeys: second pen", function () {
     );
   });
 
+  it("PEN-16 Organize on several lines, then Esc puts your lines back exactly", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    const before = await readFile(path);
+    await caretAfter("rereading feels like learning");
+    await selectTo("why does sleep help memory?");
+    await key(".", { meta: true });
+    await waitForBox();
+    await pick("#", { shift: true });
+    await browser.waitUntil(
+      () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
+      { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
+    );
+    await key("Escape");
+    await waitForDisk(path, (t) => t === before, "Esc should put the lines back exactly");
+  });
+
+  it("PEN-17 Organize, then Enter keeps it, in your own words", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretAfter("rereading feels like learning");
+    await selectTo("why does sleep help memory?");
+    await key(".", { meta: true });
+    await pick("#", { shift: true });
+    await browser.waitUntil(
+      () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
+      { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
+    );
+    await key("Enter");
+    const text = await waitForDisk(
+      path,
+      (t) =>
+        t.includes("why does sleep help memory?") && t.includes("rereading feels like learning"),
+      "the outline should keep your own words",
+    );
+    ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
+  });
+
   it("PEN-13 in a video note, ⌘. ! answers from the transcript with its time", async function () {
     const path = `${root}/Library/How we remember.md`;
     await openViaPalette("How we remember");
     await caretAfter("what did the 2006 study compare?");
     await key(".", { meta: true });
-    await key("!", { shift: true });
+    await pick("!", { shift: true });
     await waitForDisk(
       path,
       (t) => /2006 study compare\?\n {2}- .+ — 1:10 \^ai-r-[a-z0-9]{4}/.test(t),
@@ -362,7 +483,7 @@ describe("Journeys: second pen", function () {
     await openViaPalette("How we remember");
     await caretAfter("recall beats rereading after a week");
     await key(".", { meta: true });
-    await key("?", { shift: true });
+    await pick("?", { shift: true });
     await waitForDisk(
       path,
       (t) => /after a week\n {2}- .+ \^ai-q-[a-z0-9]{4}\n {4}- $/m.test(t),

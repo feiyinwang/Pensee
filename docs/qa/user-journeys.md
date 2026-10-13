@@ -330,12 +330,12 @@ it in blue ink — a question for you (`?`), an answer to yours (`!`), a fact ci
 unexpected mix (`+`), or proposed cuts (`−`). In a video or book note `?`
 quizzes you, and Enter on your answer checks it against the source.
 **Spec:** SPECs/second-pen-spec.md
-**Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`
+**Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/pen-box.tsx`, `src/components/arc/floating-button-group/`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`
 
 | ID     | Journey                                                      | Expected                                                                                     | Check      |
 | ------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------- |
 | PEN-01 | ★ ⌘. then `?` on a bullet                                    | One blue question appears as its sub-bullet; the file has it with `^ai-a-…`                 | auto: pen  |
-| PEN-02 | ⌘., then Esc                                                 | A box opens above the line: pills (Ask me, Answer, Facts, Mix, Shorten) and a box to type in, with the keyboard in it; Esc closes it | auto: pen  |
+| PEN-02 | ⌘., then Esc                                                 | A box opens above the line: pills that show their keys (? Ask me, ! Answer, @ Facts, + Mix, − Shorten) and a box to type in, with the keyboard in it; Esc closes it | auto: pen  |
 | PEN-03 | Enter on a pen question                                      | An empty answer bullet opens under it, the caret in it                                       | auto: pen  |
 | PEN-04 | Enter on one of several mixes                                | That mix stays with an answer under it; the unanswered mixes beside it are gone             | auto: pen  |
 | PEN-05 | Esc on the empty answer under a question                     | The question is taken back                                                                   | auto: pen  |
@@ -349,6 +349,9 @@ quizzes you, and Enter on your answer checks it against the source.
 | PEN-13 | ⌘. then `!` on a question in a video note                    | The answer comes from the transcript and ends with its time (`— 1:10`)                      | auto: pen  |
 | PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the AI's answer (`^ai-r-…`) under it     | auto: pen  |
 | PEN-15 | ⌘., type a direction, click **Ask me**                       | The AI's question follows the direction, right under the line                                | auto: pen  |
+| PEN-16 | Select several lines, ⌘., `#` Enter, then Esc                | An outline replaces them, tinted; Esc puts your lines back exactly                           | auto: pen  |
+| PEN-17 | Select several lines, ⌘., `#` Enter, then Enter              | The outline stays, with your own words in it                                                 | auto: pen  |
+| PEN-18 | ⌘., type `@`, then Backspace                                 | `@` lights the Facts pill and types nothing; Backspace unselects it                          | auto: pen  |
 
 ---
 

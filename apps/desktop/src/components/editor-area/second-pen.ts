@@ -43,6 +43,7 @@ import {
   factReply,
   isItem,
   isPenParagraph,
+  organizedReply,
   itemText,
   newPenId,
   noteForPen,
@@ -66,6 +67,7 @@ import { videoPlayerFor } from "@/lib/video-players";
 import { hasTranscript, transcriptIn } from "@/lib/video-transcript";
 import { useEditorStore } from "@/stores/editor-store";
 import { hoverCard } from "./hover-card";
+import type { PenPill } from "./pen-box";
 import { type PenHint, type PenHintPart, setPenHint } from "./pen-hint-store";
 import "./second-pen.css";
 
@@ -117,6 +119,110 @@ const popField = StateField.define<{ pos: number } | null>({
         : null,
     ),
 });
+
+/** Where the pen's line will land, while it writes: "Writing a question…"
+ *  right there, so you see it working where you're looking; then, for a
+ *  moment, what it has to say when it writes nothing. */
+interface Pending {
+  /** End of the line the pen's line will follow. */
+  pos: number;
+  /** List depth of the line to come (0 = top level). */
+  depth: number;
+  bullet: boolean;
+  text: string;
+  busy: boolean;
+  /** Keys to show after a message, such as ↵ keep / Esc put back. */
+  keys?: Array<[string, string]>;
+}
+
+const setPending = StateEffect.define<Pending | null>();
+
+class PendingWidget extends WidgetType {
+  constructor(readonly pending: Pending) {
+    super();
+  }
+
+  eq(other: PendingWidget): boolean {
+    const a = this.pending;
+    const b = other.pending;
+    return (
+      a.text === b.text &&
+      a.busy === b.busy &&
+      a.depth === b.depth &&
+      a.bullet === b.bullet &&
+      JSON.stringify(a.keys) === JSON.stringify(b.keys)
+    );
+  }
+
+  toDOM(): HTMLElement {
+    const { depth, bullet, text, busy } = this.pending;
+    const row = document.createElement("div");
+    row.className = busy ? "cm-pen-pending" : "cm-pen-pending cm-pen-pending-said";
+    row.setAttribute("role", "status");
+    // The list's own geometry: 3ch per level, the marker in the last slot.
+    row.style.setProperty("--cm-pen-pending-indent", `${depth * 3}ch`);
+    if (bullet) {
+      const mark = document.createElement("span");
+      mark.className = "cm-pen-pending-mark";
+      mark.textContent = "◦";
+      mark.setAttribute("aria-hidden", "true");
+      row.append(mark);
+    }
+    const label = document.createElement("span");
+    label.className = "cm-pen-pending-text";
+    label.textContent = text;
+    row.append(label);
+    const keys = busy ? [["Esc", "stop"] as [string, string]] : (this.pending.keys ?? []);
+    if (keys.length) {
+      const hint = document.createElement("span");
+      hint.className = "cm-pen-pending-keys";
+      for (const [key, what] of keys) {
+        const kbd = document.createElement("kbd");
+        kbd.textContent = key;
+        hint.append(kbd, ` ${what} `);
+      }
+      row.append(hint);
+    }
+    return row;
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+}
+
+const pendingField = StateField.define<Pending | null>({
+  create: () => null,
+  update(value, tr) {
+    for (const effect of tr.effects) if (effect.is(setPending)) return effect.value;
+    return value && tr.docChanged ? { ...value, pos: tr.changes.mapPos(value.pos) } : value;
+  },
+  // Block widgets come from state, not a view plugin.
+  provide: (field) =>
+    EditorView.decorations.from(field, (pending) =>
+      pending
+        ? Decoration.set([
+            Decoration.widget({ widget: new PendingWidget(pending), block: true, side: 1 }).range(
+              pending.pos,
+            ),
+          ])
+        : Decoration.none,
+    ),
+});
+
+let boxPrefetched = false;
+/** Load the box's code while the editor is idle, so ⌘. opens it at once. */
+function prefetchPenBox(): void {
+  if (boxPrefetched) return;
+  boxPrefetched = true;
+  const load = () =>
+    import("./pen-box").catch((error: unknown) =>
+      console.error("[pen] box prefetch failed", error),
+    );
+  if (typeof window.requestIdleCallback === "function")
+    window.requestIdleCallback(load, { timeout: 3000 });
+  else window.setTimeout(load, 500);
+}
 
 const MESSAGE_MS = 4_000;
 const AFTER_MS = 5_000;
@@ -335,6 +441,11 @@ class PenPlugin {
   private slotQuestions = new Set<string>();
   /** Where the running request writes, kept current as the text changes. */
   private placement: Placement | null = null;
+  /** Organize's outline, in place of your lines until Enter keeps it or Esc
+   *  puts them back. */
+  private organizing: { from: number; to: number; original: string } | null = null;
+  /** Where the last request showed its progress: its message goes there too. */
+  private spot: Omit<Pending, "text" | "busy"> | null = null;
   private timers = new Set<number>();
   private destroyed = false;
 
@@ -343,6 +454,7 @@ class PenPlugin {
     readonly getFilePath: () => string,
   ) {
     pens.set(view, this);
+    prefetchPenBox();
     this.decorations = this.build();
     this.publish();
   }
@@ -400,6 +512,19 @@ class PenPlugin {
   private say(text: string): void {
     this.message = { parts: [{ text }], until: Date.now() + MESSAGE_MS };
     this.later(MESSAGE_MS + 20, () => this.redraw());
+    // After a request: said where its line would have gone, then gone.
+    const spot = this.spot;
+    this.spot = null;
+    if (spot && !this.destroyed) {
+      const pending: Pending = { ...spot, text, busy: false };
+      this.view.dispatch({ effects: setPending.of(pending) });
+      this.later(MESSAGE_MS, () => {
+        // Only this message: a request started since owns the spot now.
+        if (!this.destroyed && this.view.state.field(pendingField) === pending) {
+          this.view.dispatch({ effects: setPending.of(null) });
+        }
+      });
+    }
     this.redraw();
   }
 
@@ -438,6 +563,14 @@ class PenPlugin {
         );
       }),
     );
+    if (this.organizing && this.organizing.to > this.organizing.from) {
+      ranges.push(
+        Decoration.mark({ class: "cm-pen-organized" }).range(
+          this.organizing.from,
+          this.organizing.to,
+        ),
+      );
+    }
     const cursor = this.fresh.iter();
     for (; cursor.value; cursor.next()) ranges.push(cursor.value.range(cursor.from, cursor.to));
     return Decoration.set(ranges, true);
@@ -561,7 +694,7 @@ class PenPlugin {
   /* ------------------------------------------------------------ keys */
 
   arm(): void {
-    if (this.shortening) return;
+    if (this.shortening || this.organizing) return;
     if (this.conversation) {
       this.say("The pen is still writing. Esc stops it.");
       return;
@@ -596,11 +729,11 @@ class PenPlugin {
   }
 
   /** What the box offers for the lines it opened on. */
-  private pills(): Array<{ key: string; label: string; title: string }> {
+  private pills(): PenPill[] {
     const { state } = this.view;
     const lines = docLines(state);
     const quiz = sourceKind(this.getFilePath(), state.doc.toString()) !== null;
-    const hasText = (this.armed ?? []).some((i) => itemText(lines[i]!));
+    const withText = (this.armed ?? []).filter((i) => itemText(lines[i]!));
     const inQuiz =
       quiz && penKindOf(lines[questionAbove(lines, caretIndex(state)) ?? -1] ?? "") === "q";
     const askMe = {
@@ -613,7 +746,7 @@ class PenPlugin {
       label: "Answer",
       title: "The AI answers what you type, or the line itself.",
     };
-    if (!hasText) {
+    if (!withText.length) {
       return quiz
         ? [{ ...askMe, label: `Quiz me on everything so far${this.soFar()}` }, answer]
         : [answer];
@@ -624,73 +757,37 @@ class PenPlugin {
       { key: "@", label: "Facts", title: "One fact from a recent paper, cited." },
       { key: "+", label: "Mix", title: "An unexpected link to another field." },
       { key: "−", label: "Shorten", title: "Proposes cuts. Nothing is added." },
-      ...(inQuiz ? [{ key: "→", label: "New topic", title: "A question on another idea." }] : []),
+      ...(withText.length > 1
+        ? [{ key: "#", label: "Organize", title: "Regroups the lines, in your own words." }]
+        : []),
+      ...(inQuiz ? [{ key: ">", label: "New topic", title: "A question on another idea." }] : []),
     ];
   }
 
-  /** The box: pills on top, the box to type in under them. */
+  /** The box: Arc's pills on top, the box to type in under them (pen-box.tsx,
+   *  loaded on first use). */
   popView(): TooltipView {
     const dom = document.createElement("div");
     dom.className = "cm-pen-pop";
     dom.setAttribute("role", "dialog");
     dom.setAttribute("aria-label", "Second pen");
-    const pills = document.createElement("div");
-    pills.className = "cm-pen-pills";
-    pills.setAttribute("role", "toolbar");
-    const input = document.createElement("input");
-    const choices = this.pills();
-    for (const pill of choices) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "cm-pen-pill";
-      button.dataset.penKey = pill.key;
-      button.title = pill.title;
-      const key = document.createElement("kbd");
-      key.textContent = pill.key;
-      button.append(key, document.createTextNode(pill.label));
-      button.addEventListener("click", () => this.choose(pill.key, input.value));
-      pills.append(button);
-    }
-    const field = document.createElement("div");
-    field.className = "cm-pen-field";
-    input.className = "cm-pen-input";
-    input.type = "text";
-    input.spellcheck = false;
-    input.autocomplete = "off";
-    input.placeholder = "Ask a question, or give a direction";
-    input.setAttribute("aria-label", "Ask the AI a question, or give it a direction");
-    const keys = document.createElement("span");
-    keys.className = "cm-pen-field-keys";
-    keys.innerHTML = "<kbd>↵</kbd> ask AI <kbd>⌘↵</kbd> ask me";
-    keys.hidden = true;
-    input.addEventListener("input", () => {
-      keys.hidden = !input.value.trim();
-    });
-    input.addEventListener("keydown", (event) => {
-      if (event.isComposing) return;
-      const text = input.value.trim();
-      const mod = event.metaKey || event.ctrlKey;
-      let key: string | null = null;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
+    let unmount: (() => void) | null = null;
+    let gone = false;
+    const pills = this.pills();
+    void import("./pen-box")
+      .then(({ mountPenBox }) => {
+        if (gone) return;
+        unmount = mountPenBox(dom, {
+          pills,
+          onChoose: (key, text) => this.choose(key, text),
+          onClose: () => this.closePop(true),
+        });
+      })
+      .catch((error: unknown) => {
+        console.error("[pen] Couldn't load the pen's box:", error);
         this.closePop(true);
-        return;
-      }
-      if (event.key === "Enter" && text) key = mod ? "?" : "!";
-      else if (!text && !mod && !event.altKey) {
-        // An empty box: the pills' own keys pick them, as they say.
-        const pressed = keyAfterArm(event) === "-" ? "−" : keyAfterArm(event);
-        const asKey = pressed === "ArrowRight" ? "→" : pressed;
-        if (choices.some((c) => c.key === asKey)) key = asKey;
-      }
-      if (!key) return;
-      event.preventDefault();
-      event.stopPropagation();
-      this.choose(key, input.value);
-    });
-    field.append(input, keys);
-    dom.append(pills, field);
+        this.say("Couldn't open the pen's box.");
+      });
     // Clicking away closes it; moving between its own pills doesn't.
     dom.addEventListener("focusout", () => {
       setTimeout(() => {
@@ -699,7 +796,15 @@ class PenPlugin {
         }
       }, 0);
     });
-    return { dom, mount: () => input.focus() };
+    return {
+      dom,
+      destroy: () => {
+        gone = true;
+        // React can't unmount during CodeMirror's own DOM update.
+        const done = unmount;
+        if (done) queueMicrotask(done);
+      },
+    };
   }
 
   /** A pill, with what was typed: a direction, or for Answer the question. */
@@ -710,8 +815,11 @@ class PenPlugin {
       case "?":
         void this.ask(false, text);
         break;
-      case "→":
+      case ">":
         void this.ask(true, text);
+        break;
+      case "#":
+        void this.organize(text);
         break;
       case "!":
         void this.reply(text);
@@ -742,6 +850,7 @@ class PenPlugin {
       this.conversation.cancel();
       this.conversation = null;
       this.placement = null;
+      this.view.dispatch({ effects: setPending.of(null) });
       this.say("Stopped.");
       return true;
     }
@@ -782,6 +891,23 @@ class PenPlugin {
     return this.shortening !== null;
   }
 
+  isOrganizing(): boolean {
+    return this.organizing !== null;
+  }
+
+  /** Enter keeps the outline; Esc puts your lines back as they were. */
+  endOrganize(keep: boolean): void {
+    const organized = this.organizing;
+    if (!organized) return;
+    this.organizing = null;
+    this.view.dispatch({
+      changes: keep ? [] : [{ from: organized.from, to: organized.to, insert: organized.original }],
+      effects: [setLock.of(false), setPending.of(null), refresh.of(null)],
+      annotations: penEdit.of(true),
+      userEvent: "input.pen",
+    });
+  }
+
   endShorten(apply: boolean): void {
     const lines = this.shortening;
     if (!lines) return;
@@ -806,18 +932,59 @@ class PenPlugin {
 
   /* -------------------------------------------------------- requests */
 
-  private start(label: string): PenConversation {
+  /** A request starts: its conversation, and its progress shown where its
+   *  line will land (`at`), or under the line it reads. */
+  private start(label: string, at: Placement): PenConversation {
     this.conversation = penConversation();
     this.busyLabel = label;
     this.message = null;
-    this.redraw();
+    this.placement = at;
+    this.spot = this.spotFor(at);
+    this.view.dispatch({
+      effects: [setPending.of({ ...this.spot, text: label, busy: true }), refresh.of(null)],
+    });
     return this.conversation;
+  }
+
+  private relabel(label: string): void {
+    this.busyLabel = label;
+    if (this.spot && !this.destroyed) {
+      this.view.dispatch({
+        effects: [setPending.of({ ...this.spot, text: label, busy: true }), refresh.of(null)],
+      });
+    }
   }
 
   private finish(conversation: PenConversation): void {
     conversation.end();
     if (this.conversation === conversation) this.conversation = null;
-    this.redraw();
+    if (!this.destroyed) this.view.dispatch({ effects: [setPending.of(null), refresh.of(null)] });
+  }
+
+  /** Where a line written at `placement` would go: after which line, how deep. */
+  private spotFor(placement: Placement): Omit<Pending, "text" | "busy"> {
+    const { state } = this.view;
+    const lines = docLines(state);
+    const anchor = state.doc.lineAt(Math.min(placement.pos, state.doc.length)).number - 1;
+    const depthOf = (i: number) => {
+      let depth = 0;
+      for (let j = i; j >= 0 && isItem(lines[j]!); j = parentOf(lines, j)) depth++;
+      return depth;
+    };
+    if (placement.mode === "slot" && isBlankLine(lines[anchor]!)) {
+      const item = isItem(lines[anchor]!);
+      return {
+        pos: state.doc.line(anchor + 1).to,
+        depth: Math.max(0, depthOf(anchor) - 1),
+        bullet: item,
+      };
+    }
+    const slot = penLineSlot(lines, anchor);
+    return {
+      pos: state.doc.line(slot.after + 1).to,
+      depth: slot.kind === "bullet" ? depthOf(anchor) : 0,
+      bullet: slot.kind === "bullet",
+    };
   }
 
   private fail(conversation: PenConversation, error: unknown): void {
@@ -907,8 +1074,7 @@ class PenPlugin {
       return;
     }
 
-    const conversation = this.start("Writing a question…");
-    this.placement = placement;
+    const conversation = this.start("Writing a question…", placement);
     try {
       const { source, focus } = quiz
         ? await readSource(path, body, lines, anchor)
@@ -968,8 +1134,10 @@ class PenPlugin {
       return;
     }
     const anchor = targets[targets.length - 1]!;
-    const conversation = this.start("Finding a paper…");
-    this.placement = { mode: "under", pos: state.doc.line(anchor + 1).from };
+    const conversation = this.start("Finding a paper…", {
+      mode: "under",
+      pos: state.doc.line(anchor + 1).from,
+    });
     try {
       const base = { ...this.promptBase(lines, targets, direction), source: null };
       // One more never cites the same paper or says the same thing again.
@@ -986,8 +1154,7 @@ class PenPlugin {
           : [];
         if (!papers.length) continue;
         searched = true;
-        this.busyLabel = "Reading the paper…";
-        this.redraw();
+        this.relabel("Reading the paper…");
         found = factReply(
           await conversation.send(
             penPrompt({ ...base, ask: { task: "factWrite", papers, already } }),
@@ -1046,8 +1213,7 @@ class PenPlugin {
         .filter((j) => penKindOf(lines[j]!) === "r")
         .map((j) => itemText(lines[j]!));
     }
-    const conversation = this.start("Answering…");
-    this.placement = { mode: "under", pos: anchorPos };
+    const conversation = this.start("Answering…", { mode: "under", pos: anchorPos });
     try {
       const now = docLines(this.view.state);
       const anchor = this.view.state.doc.lineAt(anchorPos).number - 1;
@@ -1102,8 +1268,10 @@ class PenPlugin {
     const already = childrenOf(lines, anchor)
       .filter((j) => penKindOf(lines[j]!) === "m")
       .map((j) => itemText(lines[j]!));
-    const conversation = this.start("Writing a mix…");
-    this.placement = { mode: "under", pos: state.doc.line(anchor + 1).from };
+    const conversation = this.start("Writing a mix…", {
+      mode: "under",
+      pos: state.doc.line(anchor + 1).from,
+    });
     try {
       const reply = await conversation.send(
         penPrompt({
@@ -1138,6 +1306,73 @@ class PenPlugin {
     }
   }
 
+  /** `#`: the selected lines regrouped into an outline in your own words, in
+   *  their place, until Enter keeps it or Esc puts your lines back. */
+  private async organize(direction = ""): Promise<void> {
+    const { state } = this.view;
+    const lines = docLines(state);
+    const targets = targetIndexes(state);
+    const withText = targets.filter((i) => itemText(lines[i]!));
+    if (withText.length < 2) {
+      this.say("Select the lines to organize first.");
+      return;
+    }
+    const first = targets[0]!;
+    const last = targets[targets.length - 1]!;
+    const block = lines.slice(first, last + 1).join("\n");
+    const from = state.doc.line(first + 1).from;
+    const to = state.doc.line(last + 1).to;
+    const conversation = this.start("Organizing your lines…", {
+      mode: "under",
+      pos: state.doc.line(last + 1).from,
+    });
+    this.placement = null;
+    try {
+      const reply = await conversation.send(
+        penPrompt({
+          ...this.promptBase(lines, withText, direction),
+          source: null,
+          ask: { task: "organize", block },
+        }),
+      );
+      this.finish(conversation);
+      const organized = organizedReply(reply);
+      if (!organized) {
+        this.say("Couldn't organize these lines. Try again.");
+        return;
+      }
+      if (this.view.state.doc.sliceString(from, to) !== block) {
+        this.say("The lines changed while the pen read them. Try again.");
+        return;
+      }
+      this.spot = null;
+      this.organizing = { from, to: from + organized.length, original: block };
+      this.view.dispatch({
+        changes: { from, to, insert: organized },
+        annotations: penEdit.of(true),
+        userEvent: "input.pen",
+        effects: [
+          setLock.of(true),
+          setPending.of({
+            pos: from + organized.length,
+            depth: 0,
+            bullet: false,
+            text: "Organized, in your words.",
+            busy: false,
+            keys: [
+              ["↵", "keep"],
+              ["Esc", "put mine back"],
+            ],
+          }),
+          refresh.of(null),
+        ],
+        scrollIntoView: true,
+      });
+    } catch (error) {
+      this.fail(conversation, error);
+    }
+  }
+
   /** `−`: cuts on the lines, struck through until Enter or Esc. */
   private async shorten(direction = ""): Promise<void> {
     const { state } = this.view;
@@ -1148,7 +1383,12 @@ class PenPlugin {
       return;
     }
     const texts = targets.map((i) => lines[i]!.slice(bodyStart(lines[i]!), bodyEnd(lines[i]!)));
-    const conversation = this.start("Finding words to cut…");
+    // No line to write: the progress shows under the last line it reads.
+    const conversation = this.start("Finding words to cut…", {
+      mode: "under",
+      pos: state.doc.line(targets[targets.length - 1]! + 1).from,
+    });
+    this.placement = null;
     try {
       const reply = await conversation.send(
         penPrompt({
@@ -1217,9 +1457,11 @@ class PenPlugin {
       .filter((c) => !penKindOf(lines[c]!))
       .map((c) => itemText(lines[c]!))
       .filter(Boolean);
-    const conversation = this.start(step === "hint" ? "Writing a hint…" : "Checking your answer…");
     // The hint or check goes under your answer.
-    this.placement = { mode: "under", pos: answerPos };
+    const conversation = this.start(step === "hint" ? "Writing a hint…" : "Checking your answer…", {
+      mode: "under",
+      pos: answerPos,
+    });
     try {
       const { source } = await readSource(path, this.view.state.doc.toString(), lines, question);
       const ask: PenAsk =
@@ -1276,6 +1518,8 @@ class PenPlugin {
   ): string | null {
     const placement = this.placement;
     this.placement = null;
+    // Written: nothing more to say where it landed.
+    this.spot = null;
     if (!placement || this.destroyed) return null;
     const id = newPenId(kind, new Set(blockIdsInText(this.view.state.doc.toString())));
     const { textFrom } = this.writeLine(id, text, placement, answer);
@@ -1471,14 +1715,6 @@ class PenPlugin {
   }
 }
 
-function keyAfterArm(event: KeyboardEvent): string {
-  if (event.key === "/" && event.shiftKey) return "?";
-  if (event.key === "2" && event.shiftKey) return "@";
-  if (event.key === "=" && event.shiftKey) return "+";
-  if (event.key === "1" && event.shiftKey) return "!";
-  return event.key;
-}
-
 /** The second pen for the main editor. */
 export function secondPen(getFilePath: () => string): Extension {
   const plugin: ViewPlugin<PenPlugin> = ViewPlugin.define(
@@ -1491,6 +1727,14 @@ export function secondPen(getFilePath: () => string): Extension {
           const pen = view.plugin(plugin);
           if (!pen) return false;
           const mod = event.metaKey || event.ctrlKey;
+          if (pen.isOrganizing()) {
+            if (event.key === "Enter") pen.endOrganize(true);
+            else if (event.key === "Escape") pen.endOrganize(false);
+            else return false;
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+          }
           if (pen.isShortening()) {
             if (event.key === "Enter") pen.endShorten(true);
             else if (event.key === "Escape") pen.endShorten(false);
@@ -1534,5 +1778,5 @@ export function secondPen(getFilePath: () => string): Extension {
       },
     },
   );
-  return [lockField, lockFilter, popField, Prec.highest(plugin), citationCard];
+  return [lockField, lockFilter, popField, pendingField, Prec.highest(plugin), citationCard];
 }

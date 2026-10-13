@@ -20,35 +20,40 @@ note's edge are not part of it.
 - **⌘.** opens a small box right above the selection (every line it touches)
   or, with no selection, the line the caret is on. Those lines turn AI-blue
   while it's open. **⌘.** again or **Esc** closes it; so does clicking away.
-- On top, **pills** for what the pen can do there. Under them, always, a
-  **box to type in**, with the keyboard already in it:
+- Its look is Arc's: Arc's **floating button group** (soft pills in a quiet
+  tray, one highlight gliding between them) and, under it, a field in Arc's
+  input style (a hairline; no focus ring while you type).
+- Each **pill shows its key**:
 
-  | Pill (key) | In any note | In a source note (video, book) |
+  | Pill | In any note | In a source note (video, book) |
   | --- | --- | --- |
   | `?` **Ask me** | one question about the line. Never answers it. | **Quiz me**: one recall or follow-up question about the source |
   | `!` **Answer** | it answers your question in one or two sentences | same, from the source when it covers it, ending with where (`— 1:10`) |
   | `@` **Facts** | one fact cited to a recent paper, or says it has none | same |
   | `+` **Mix** | one unexpected link to another field | same |
   | `−` **Shorten** | proposes cuts on the lines, nothing else | same |
-  | `→` **New topic** | — | in a quiz: a question on an idea not asked about yet |
+  | `#` **Organize** | with two or more lines: regroups them into an outline in your own words | same |
+  | `>` **New topic** | — | in a quiz: a question on an idea not asked about yet |
 
   On an empty line: **Answer** (to what you type), and in a source note
   **Quiz me on everything so far**.
-- What you type steers the pill you pick: a direction for its question, its
-  fact, its mix or its cuts ("ask about the 2006 study"). Click a pill with
-  nothing typed for the pen's own pick.
-- **Enter** with something typed asks the AI: what you typed is your
-  question. It goes into the note under the line (or on the empty line) in
-  your ink, and the answer under it. **⌘ Enter** uses it as a direction for
-  **Ask me** instead.
-- While the box is empty, a pill's key picks it (`?` `!` `@` `+` `−` `→`), so
-  ⌘. then a key still works without the mouse.
-- One request is one line. Opening the box again on the same line and picking
-  the same pill gives one more, after the ones already there.
-- With nothing to stand behind, or nothing left to say, it writes nothing and
-  says so in the bottom bar ("That's all I have on this line. The rest is
-  yours.").
-- While the pen writes, the bottom bar says **Writing…**. Esc stops it.
+- **A pill's key, typed in the empty box, selects that pill** (it lights up)
+  and types nothing; the same key again, or Backspace, unselects it. What you
+  type next steers it ("ask about the 2006 study"), and **Enter** runs it.
+- Clicking a pill runs it at once, steered by whatever is typed.
+- With no pill selected, **Enter** asks the AI what you typed: your question
+  goes into the note under the line (or on the empty line) in your ink, and
+  the answer under it. **⌘ Enter** uses it to steer **Ask me** instead.
+- One request is one line. Picking the same pill again on the same line gives
+  one more, after the ones already there.
+
+### While it writes
+
+- A line in AI ink appears right where the pen's line will land, with what
+  it's doing (*Writing a question…*, *Finding a paper…*, *Reading the
+  paper…*, *Answering…*, *Organizing your lines…*) and **Esc stop**.
+- When it writes nothing, it says why on that same line for a few seconds
+  ("That's all I have on this line. The rest is yours.").
 
 ### What it writes
 
@@ -89,6 +94,15 @@ note's edge are not part of it.
 - **Esc** on an empty answer takes back the question (or the hint) it answers.
   Right after the pen writes facts or mixes, Esc takes back the ones you
   haven't answered.
+
+### Organize
+
+- With two or more lines selected, the pen regroups them into an outline:
+  related lines together, details nested under their point, in order. It
+  keeps your own words: it only reorders, regroups, indents, merges exact
+  repeats and adds a few short group labels. Block ids stay on their lines.
+- The outline replaces your lines, tinted, and the text waits: **Enter**
+  keeps it, **Esc** puts your lines back exactly as they were.
 
 ### Shorten
 
@@ -139,8 +153,11 @@ never shows through. It shows, in order of what applies:
   answers and checks found from the document (no hidden session state),
   prompts, reply clean-up, cuts.
 - `lib/second-pen-agent.ts`: one request → one reply, over the pen channel.
-- `components/editor-area/second-pen.ts`: the editor extension (arming, keys,
-  decorations, the answer flow, shorten) and the bottom bar's hint.
+- `components/editor-area/second-pen.ts`: the editor extension (the box as
+  a CodeMirror tooltip, the progress line as a block widget, decorations, the
+  answer flow, shorten, organize) and the bottom bar's hint.
+- `components/editor-area/pen-box.tsx`: the box's React (Arc's floating button
+  group and the field), loaded on first use and prefetched when idle.
 - `components/editor-area/document-footer.tsx` shows the hint.
 
 ## Follow-ups

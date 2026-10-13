@@ -105,14 +105,10 @@ box to type in.
 | Shortcut                      | Action                                                     |
 | ----------------------------- | ---------------------------------------------------------- |
 | Cmd+.                         | Open / close the pen's box                                 |
-| Enter (text typed in the box) | Ask the AI that question; its answer goes under it        |
+| ? ! @ + − # > (box empty)     | Select that pill (Ask me, Answer, Facts, Mix, Shorten, Organize, New topic); again or Backspace unselects |
+| Enter                         | Run the selected pill, steered by what you typed; none selected: ask the AI what you typed |
 | Cmd+Enter (text typed)        | Ask me, steered by what you typed                         |
-| ? (box empty)                 | Ask me (a quiz question in a video or book note)          |
-| ! (box empty)                 | Answer the line itself                                     |
-| @ (box empty)                 | One fact, cited to a recent paper                          |
-| + (box empty)                 | One unexpected mix                                         |
-| − (box empty)                 | Shorten: propose cuts (Enter applies, Esc cancels)         |
-| → (box empty)                 | Quiz: a question on a new topic                            |
+| Enter / Esc after Organize    | Keep the outline / put your lines back                     |
 | Enter on a pen line           | Answer under it (on a mix: keep it, drop the others)      |
 | Enter on a quiz answer        | Check it against the source (empty: a hint first)         |
 | Esc                           | Close the box, stop the pen, or take back an unanswered line |
