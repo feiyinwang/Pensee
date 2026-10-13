@@ -85,7 +85,10 @@ notes are gone. The look is unchanged from the first Second pen
   `e` an echo of an earlier note. Lines the earlier pen wrote (`q a h c f m`)
   keep their ink and stay hidden-id. Other apps show an ordinary line or
   bullet.
-- Drawn in AI ink (`--color-ai-ink`); a bullet gets a hollow marker. Its id is
+- Drawn in AI ink (`--color-ai-ink`), every word of it: labels (*For:*,
+  *Supports:*), a source's time, *no paper*, the seal's words and `[[links]]`
+  inside it keep that one colour (a link keeps its underline); a bullet gets a
+  hollow marker. Its id is
   never shown, even with the caret on the line. A paper is always a pill,
   never its link Markdown; hovering it shows the paper's title, authors,
   journal and year, citations and link, with **Open paper**. The words fade
@@ -139,8 +142,8 @@ notes are gone. The look is unchanged from the first Second pen
   `Supports: You remembered more after eight hours of sleep before an exam. — [[Sleep log]]`.
   The labels: *Supports*, *Contradicts*, *Example* (your own experience
   included), *Definition*, *Summary* (the same idea, said before), *Answer*
-  (to the line's question), *Another angle*. The label is drawn quieter than
-  the sentence, like Check's *For:* and *Against:*.
+  (to the line's question), *Another angle*. The label is in the same ink as
+  the rest of the line.
 - A note already echoed under the line isn't offered again.
 - **Enter** on an echo opens an empty bullet under it, for anything you want
   to add; every echo stays. A click on its link opens that note. Echoes go

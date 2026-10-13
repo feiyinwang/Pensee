@@ -12,9 +12,15 @@
 }
 
 /* A check's or fact's ` — source`. */
+/* Everything the pen writes keeps its ink: its words, a source's time and a
+   [[link]] alike. Smaller, never another colour. */
 .cm-editor .cm-pen-src {
-  color: var(--color-ai-ink-faint);
   font-size: 0.86em;
+}
+.cm-editor .cm-pen-line .cm-wiki-link,
+.cm-editor .cm-pen-line .cm-wiki-link-editing {
+  color: var(--color-ai-ink);
+  text-decoration-color: color-mix(in oklch, var(--color-ai-ink) 45%, transparent);
 }
 
 /* ⌘. armed: the lines the next key acts on. */
@@ -418,20 +424,16 @@
   margin-left: 0.6em;
   font-family: var(--font-ui);
   font-size: var(--font-size-caption);
-  color: var(--color-ai-ink-faint);
+  color: var(--color-ai-ink);
   user-select: none;
   white-space: nowrap;
 }
 
-/* Check: For / Against, quieter than the evidence after them. */
-.cm-editor .cm-pen-side {
-  color: var(--color-ai-ink-faint);
-}
 .cm-editor .cm-pen-nopaper {
   margin-left: 0.5em;
   font-family: var(--font-ui);
   font-size: var(--font-size-caption);
-  color: var(--color-ai-ink-faint);
+  color: var(--color-ai-ink);
   user-select: none;
   white-space: nowrap;
 }

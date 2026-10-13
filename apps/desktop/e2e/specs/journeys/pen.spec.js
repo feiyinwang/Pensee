@@ -588,6 +588,18 @@ describe("Journeys: second pen", function () {
       const point = line.replace(/^\s*- [A-Z][a-z]+( angle)?: /, "").split(" — [[")[0];
       ok(point.split(/\s+/).length <= 33, `an echo should be short: ${line}`);
     }
+    // One ink: the link inside an echo is the colour of the echo's words.
+    const colours = await browser.execute(() => {
+      const line = [...document.querySelectorAll(".cm-line.cm-pen-e")].find((l) =>
+        l.textContent.includes("Sleep log"),
+      );
+      const link = line?.querySelector(".cm-wiki-link, .cm-wiki-link-editing");
+      return line && link
+        ? { line: getComputedStyle(line).color, link: getComputedStyle(link).color }
+        : null;
+    });
+    ok(colours, "the echo's link should be drawn");
+    ok(colours.link === colours.line, `link ${colours.link} vs line ${colours.line}`);
   });
 
   it("PEN-05 Esc right after the echoes land takes them back", async function () {

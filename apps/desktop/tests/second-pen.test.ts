@@ -21,7 +21,6 @@ import {
   childrenOf,
   penIdKind,
   penKindOf,
-  penLabelEnd,
   penLineSlot,
   penPrompt,
   replyLine,
@@ -270,9 +269,6 @@ describe("prompts and replies", () => {
         "Why I quit Twitter",
       ),
     ).toBe("Supports: You felt flat after an hour of scrolling. — [[Why I quit Twitter]]");
-    expect(penLabelEnd("Supports: You felt flat. — [[A]]")).toBe(9);
-    expect(penLabelEnd("Another angle: x")).toBe(14);
-    expect(penLabelEnd("Notes: x")).toBeNull();
     // Without a point, a short quote stands in.
     expect(
       echoLine({ index: 0, label: "Summary", point: null }, "x ".repeat(80), "N").length,

@@ -632,16 +632,6 @@ export function echoLine(echo: Echo, line: string, note: string): string {
   return `${echo.label}: ${point} — [[${note}]]`;
 }
 
-/** Where a Check side's or an echo's label ends (`For:`, `Supports:`), as an
- *  offset into the line's words; null when it has none. */
-export function penLabelEnd(words: string): number | null {
-  const match =
-    /^(For|Against|Supports|Contradicts|Example|Definition|Summary|Answer|Another angle):\s/.exec(
-      words,
-    );
-  return match ? match[0].length - 1 : null;
-}
-
 /** The notes the echoes under a line already link to. */
 export function echoedNotes(echoLines: readonly string[]): Set<string> {
   return new Set(

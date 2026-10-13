@@ -352,7 +352,7 @@ in your own words.
 | PEN-12 | ⌥↵ on an empty take                                          | The answer opens (`^ai-r-…`) with no comparison; the empty take goes                        | auto: pen  |
 | PEN-13 | ⌘. then `!` on a question in a video note                    | The sealed answer comes from the transcript and ends with its time (`— 1:10`)               | auto: pen  |
 | PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the sealed answer (`^ai-s-…`) under it   | auto: pen  |
-| PEN-15 | ⌘. then `[` on a line another note speaks to                 | Short echoes `Label: one sentence — [[Note]]` (`^ai-e-…`, label like Supports or Example, about 20 words) appear under it; the link opens that note | auto: pen  |
+| PEN-15 | ⌘. then `[` on a line another note speaks to                 | Short echoes `Label: one sentence — [[Note]]` (`^ai-e-…`, label like Supports or Example, about 20 words) appear under it, label and link in the same blue as the words; the link opens that note | auto: pen  |
 | PEN-16 | Select several lines, ⌘., `#` Enter, then Esc                | An outline replaces them, tinted; Esc puts your lines back exactly                           | auto: pen  |
 | PEN-17 | Select several lines, ⌘., `#` Enter, then Enter              | The outline stays, with your own words in it                                                 | auto: pen  |
 | PEN-18 | ⌘., type `@` (or a full-width `［`), then Backspace           | The key lights its pill and types nothing; Backspace unselects it                            | auto: pen  |

@@ -52,7 +52,6 @@ import {
   noteForPen,
   parentOf,
   penKindOf,
-  penLabelEnd,
   penLineSlot,
   penPrompt,
   pinnedSecond,
@@ -688,15 +687,6 @@ class PenPlugin {
       ranges.push(Decoration.mark({ class: "cm-pen-sealed" }).range(from + start, from + end));
       ranges.push(Decoration.widget({ widget: new SealWidget(), side: 1 }).range(from + end));
       return;
-    }
-    if (kind === "p" || kind === "n" || kind === "e") {
-      // What the line is (For, Against, Supports…): quieter than what it says.
-      const label = penLabelEnd(text.slice(start));
-      if (label !== null) {
-        ranges.push(
-          Decoration.mark({ class: "cm-pen-side" }).range(from + start, from + start + label),
-        );
-      }
     }
     if (kind === "p" || kind === "n") {
       if (citationsIn(text).length === 0 && end > start) {
