@@ -44,6 +44,7 @@ describe("ids", () => {
     expect(id).not.toBe("ai-q-0000");
     expect(penIdKind(id)).toBe("q");
     expect(penIdKind("yt-540")).toBeNull();
+    expect(penIdKind("ai-r-ab12")).toBe("r");
     expect(penKindOf("  - Why? ^ai-m-ab12")).toBe("m");
     expect(penKindOf("- my note ^yt-540")).toBeNull();
   });
@@ -211,9 +212,28 @@ describe("prompts and replies", () => {
     expect(prompt).toContain("at 9:00");
   });
 
+  test("an answer to your question comes from the source, with where", () => {
+    const prompt = penPrompt({
+      title: "How we remember",
+      note: "- what did the study compare?",
+      lines: ["what did the study compare?"],
+      source: {
+        kind: "video",
+        label: "the video",
+        passages: [{ where: "1:10", text: "Reread vs recall." }],
+      },
+      ask: { task: "answer", already: [] },
+    });
+    expect(prompt).toContain("[1:10] Reread vs recall.");
+    expect(prompt).toContain("When the video covers it");
+  });
+
   test("a reply is one clean line, or nothing", () => {
     expect(replyLine("- “Why does it?”\n")).toBe("Why does it?");
     expect(replyLine("NONE")).toBeNull();
+    expect(replyLine("It compared rereading and recall — 1:10.")).toBe(
+      "It compared rereading and recall — 1:10",
+    );
     expect(replyLine("“Recall wins.” — 9:00", true)).toBe("“Recall wins.” — 9:00");
   });
 

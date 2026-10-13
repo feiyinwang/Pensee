@@ -326,7 +326,7 @@ background.
 ## Second pen — PEN
 
 **Feature:** Press ⌘. and then one key on a line: the AI writes one line under
-it in blue ink — a question (`?`), a fact cited to a recent paper (`@`), an
+it in blue ink — a question for you (`?`), an answer to yours (`!`), a fact cited to a recent paper (`@`), an
 unexpected mix (`+`), or proposed cuts (`−`). In a video or book note `?`
 quizzes you, and Enter on your answer checks it against the source.
 **Spec:** SPECs/second-pen-spec.md
@@ -345,6 +345,8 @@ quizzes you, and Enter on your answer checks it against the source.
 | PEN-09 | Hover a fact's paper pill, click **Open paper**              | A card shows the paper's title, authors, venue, year and citations; the paper opens         | you        |
 | PEN-10 | ⌘. `?` from an empty line in a video note while it plays     | The question is on what was watched up to now                                                | you        |
 | PEN-11 | ⌘. then `?` on a plain (non-bullet) line                     | A plain blue line appears right below it, no bullet; the file has it a blank line apart     | auto: pen  |
+| PEN-12 | ⌘. then `!` on a line with your question                     | The pen's answer appears as its sub-bullet in blue (`^ai-r-…`)                              | auto: pen  |
+| PEN-13 | ⌘. then `!` on a question in a video note                    | The answer comes from the transcript and ends with its time (`— 1:10`)                      | auto: pen  |
 
 ---
 

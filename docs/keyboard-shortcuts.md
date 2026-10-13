@@ -105,6 +105,7 @@ types as usual. Its hints are in the note's bottom bar.
 | Shortcut         | Action                                                    |
 | ---------------- | --------------------------------------------------------- |
 | Cmd+. then ?     | Ask (a quiz question in a video or book note)             |
+| Cmd+. then !     | Answer your question on the line (from the source if it covers it) |
 | Cmd+. then @     | One fact, cited to a recent paper                         |
 | Cmd+. then +     | One unexpected mix                                        |
 | Cmd+. then −     | Shorten: propose cuts (Enter applies, Esc cancels)        |

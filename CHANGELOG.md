@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Ask the second pen your own question: write it on a line and press **⌘. !**. The answer appears right below, in blue. In a video or book note it answers from the transcript or the passage when they cover it, ending with the moment (`— 1:10`); otherwise from what it knows. Press **⌘. !** again for one more line that goes further. **⌘. ?** still has the pen ask you.
 - The second pen always writes right below the line you used the key on: under a bullet as its sub-bullet, under a plain line or heading as a plain line below it. In a quiz, the hint and the check sit under the answer that asked for them, and **⌘. ?** on one of your answers asks one more right under it. A fact asks again with a broader search when the first finds nothing, and one more never cites the same paper twice.
 - Fixed: the second pen's words piled on top of each other while fading in on a bullet, and a fact's citation pill overlapped the end of the sentence.
 - The bar at the bottom of a note (word counts, the pen's keys) has a solid background now, so the text you scroll under it no longer shows through.

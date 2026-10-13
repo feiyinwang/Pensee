@@ -28,6 +28,7 @@ const NOTES = {
     "  - × a familiar face — you know them, not their name ^ai-m-bbbb",
     "  - × an open-book exam — you know where, not what ^ai-m-cccc",
     "- I think we basically just need to really sleep on it",
+    "- why does sleep help memory?",
     "",
   ].join("\n"),
   "Library/How we remember.md": [
@@ -43,6 +44,7 @@ const NOTES = {
     "</details>",
     "",
     "- recall beats rereading after a week",
+    "- what did the 2006 study compare?",
     "",
   ].join("\n"),
 };

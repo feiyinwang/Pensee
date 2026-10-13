@@ -25,6 +25,7 @@ note's edge are not part of it.
   | Key | In any note | In a source note (video, book) |
   | --- | --- | --- |
   | `?` | **ask**: one question about the line. Never answers it. | **quiz me**: one recall or follow-up question about the source |
+  | `!` | **answer**: you ask, it answers your question (or explains the line) in one or two sentences | same, from the source when it covers it, ending with where (`— 1:10`) |
   | `@` | **facts**: one fact with its source, or says it has none | same |
   | `+` | **mix**: one unexpected link to another field | same |
   | `−` | **shorten**: proposes cuts on the lines, nothing else | same |
@@ -51,7 +52,8 @@ note's edge are not part of it.
   - on an **empty line** (a quiz on everything so far, or one more in a quiz
     from an empty answer), that line becomes the question.
 - Stored as plain Markdown: the line ends with a hidden block id `^ai-<kind>-<rand>`
-  (`q` quiz question, `a` question, `h` hint, `c` check, `f` fact, `m` mix).
+  (`q` quiz question, `a` question, `h` hint, `c` check, `f` fact, `m` mix,
+  `r` its answer to your question).
   Other apps show an ordinary line or bullet. The id is hidden like any block id.
 - Drawn in AI ink (`--color-ai-ink`); a bullet gets a hollow marker. A fact's
   or check's trailing ` — source` is fainter. The words fade in as they land.
@@ -62,6 +64,7 @@ note's edge are not part of it.
 - **Enter on a pen line** opens an answer bullet under it, after any answers
   already there, with the caret in it. Under a plain pen line, the answers are
   the bullets right after it.
+- `!` again on the same line adds one more line that goes further.
 - On a **mix**, Enter also keeps that mix and removes the pen's other mixes
   on the same line that have no answers yet.
 - A **quiz question** puts the caret straight into an empty answer under it.
@@ -105,7 +108,7 @@ The empty left side of the document footer, beside the word counts, is the
 pen's. The bar has the page's own solid background, so text scrolling under it
 never shows through. It shows, in order of what applies:
 
-1. the armed keys (`? quiz me @ facts + mix − shorten → new topic Esc never mind`);
+1. the armed keys (`? quiz me ! answer @ facts + mix − shorten → new topic Esc never mind`);
 2. **Writing…** while a request runs;
 3. the shorten keys and the words it would save;
 4. a short message, for 4 seconds (nothing left, nothing to cut, an error);

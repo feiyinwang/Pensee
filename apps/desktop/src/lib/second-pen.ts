@@ -12,11 +12,11 @@ import type { Paper } from "./tauri";
 /* ------------------------------------------------------------------ ids */
 
 /** What a pen line is: a quiz question (`q`), a question about your thinking
- *  (`a`), a hint (`h`), a check against the source (`c`), a fact (`f`) or a
- *  mix (`m`). */
-export type PenKind = "q" | "a" | "h" | "c" | "f" | "m";
+ *  (`a`), a hint (`h`), a check against the source (`c`), a fact (`f`), a
+ *  mix (`m`), or its answer to your question (`r`). */
+export type PenKind = "q" | "a" | "h" | "c" | "f" | "m" | "r";
 
-const PEN_ID_RE = /^ai-([qahcfm])-[a-z0-9]{4}$/;
+const PEN_ID_RE = /^ai-([qahcfmr])-[a-z0-9]{4}$/;
 
 export function penIdKind(id: string): PenKind | null {
   const match = PEN_ID_RE.exec(id);
@@ -330,7 +330,7 @@ export const PEN_INSTRUCTIONS = [
   "You are the second pen in Pensée, a writer's notes app. You write one line in their notes when they ask.",
   "Each message asks for one thing and carries everything you may use: the note, the lines asked about, and sometimes the source the note is on or research papers.",
   "Reply with exactly what the message asks for and nothing else: no preamble, no explanation, no markdown, no list marker, no quotation marks around the whole reply.",
-  "Write in the language the writer's note is written in. Plain words, short. Never praise, never moralise, never answer a question you ask.",
+  "Write in the language the writer's note is written in. Plain words, short. Never praise, never moralise, never answer a question you ask yourself; answer the writer's only when the message asks you to.",
 ].join("\n");
 
 export type PenAsk =
@@ -339,6 +339,7 @@ export type PenAsk =
   | { task: "hint"; question: string; answers: string[] }
   | { task: "check"; question: string; answers: string[] }
   | { task: "mix"; already: string[] }
+  | { task: "answer"; already: string[] }
   | { task: "factQuery" }
   | { task: "factRetry" }
   | { task: "factWrite"; papers: Paper[]; already: string[] }
@@ -420,6 +421,16 @@ function taskText(input: PenPromptInput): string {
         "For example: “Sleep is when the day’s memories set.” — 12:34",
         "If no passage answers it fully, quote the one closest to it. Reply NONE only when the source given is empty.",
       ].join("\n");
+    case "answer":
+      return [
+        "The writer asks you: the target lines are their question (or a line they want explained). Answer it in one or two short sentences, plainly.",
+        source
+          ? `When ${label} covers it, answer from it and end with " — " and the time or place the source gives, e.g. … — 12:34. When it doesn't, answer from what you know, without a time.`
+          : "Answer from what you know. Say so plainly when you aren't sure.",
+        ask.already.length
+          ? `Your answers already here (go further, don't repeat them):\n${list(ask.already)}`
+          : "",
+      ].join("\n");
     case "mix":
       return [
         "Offer one unexpected mix for the target lines: a thing from a different field that sheds light on them.",
@@ -480,6 +491,8 @@ export function replyLine(reply: string, keepQuotes = false): string | null {
     .trim();
   if (/^none\.?$/i.test(line)) return null;
   if (!keepQuotes && /^["“].*["”]$/.test(line)) line = line.slice(1, -1).trim();
+  // "… — 1:10." reads as the time with a stray full stop.
+  line = line.replace(/( — [^—.]{1,24})\.$/, "$1");
   return line || null;
 }
 

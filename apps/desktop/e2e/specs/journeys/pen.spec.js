@@ -104,7 +104,7 @@ const penLines = () =>
     const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
     return [...editor.querySelectorAll(".cm-line.cm-pen-line")].map((l) => ({
       text: l.textContent,
-      kind: [...l.classList].find((c) => /^cm-pen-[qahcfm]$/.test(c))?.slice(-1) ?? null,
+      kind: [...l.classList].find((c) => /^cm-pen-[qahcfmr]$/.test(c))?.slice(-1) ?? null,
     }));
   });
 
@@ -259,6 +259,33 @@ describe("Journeys: second pen", function () {
     await browser.waitUntil(
       () => browser.execute(() => document.querySelectorAll(".cm-pen-cite").length > 0),
       { timeout: 3_000, timeoutMsg: "the citation isn't drawn as a pill" },
+    );
+  });
+
+  it("PEN-12 ⌘. ! answers your question right under it", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretAfter("why does sleep help memory?");
+    await key(".", { meta: true });
+    await key("!", { shift: true });
+    await waitForDisk(
+      path,
+      (t) => /why does sleep help memory\?\n {2}- .+ \^ai-r-[a-z0-9]{4}/.test(t),
+      "expected the pen's answer (^ai-r-…) as a sub-bullet of the question",
+      AI_TIMEOUT,
+    );
+  });
+
+  it("PEN-13 in a video note, ⌘. ! answers from the transcript with its time", async function () {
+    const path = `${root}/Library/How we remember.md`;
+    await openViaPalette("How we remember");
+    await caretAfter("what did the 2006 study compare?");
+    await key(".", { meta: true });
+    await key("!", { shift: true });
+    await waitForDisk(
+      path,
+      (t) => /2006 study compare\?\n {2}- .+ — 1:10 \^ai-r-[a-z0-9]{4}/.test(t),
+      "expected an answer ending with the transcript's time (— 1:10)",
+      AI_TIMEOUT,
     );
   });
 

@@ -437,7 +437,7 @@ class PenPlugin {
         ranges.push(Decoration.replace({ widget: new CitationWidget(citation) }).range(a, b));
       }
     }
-    if (kind === "c" || kind === "f") {
+    if (kind === "c" || kind === "f" || kind === "r") {
       const body = text.slice(start, end);
       const at = sourcePartStart(body);
       if (at !== null && citationsIn(body).length === 0) {
@@ -504,7 +504,7 @@ class PenPlugin {
       }
       const kind = penKindOf(lines[i]!);
       if (kind === "m") return { parts: [{ key: "↵" }, { text: "keep this one" }] };
-      if (kind === "q" || kind === "a" || kind === "f") {
+      if (kind === "q" || kind === "a" || kind === "f" || kind === "r") {
         return { parts: [{ key: "↵" }, { text: "answer under it" }] };
       }
     }
@@ -547,7 +547,9 @@ class PenPlugin {
     }
     return [
       { key: "?" },
-      { text: quiz ? "quiz me" : "ask" },
+      { text: quiz ? "quiz me" : "ask me" },
+      { key: "!" },
+      { text: "answer" },
       { key: "@" },
       { text: "facts" },
       { key: "+" },
@@ -611,6 +613,9 @@ class PenPlugin {
       case "+":
         void this.mix();
         return true;
+      case "!":
+        void this.reply();
+        return true;
       case "-":
       case "−":
         void this.shorten();
@@ -653,7 +658,7 @@ class PenPlugin {
     const lines = docLines(state);
     const i = caretIndex(state);
     const kind = penKindOf(lines[i]!);
-    if (kind === "q" || kind === "a" || kind === "f" || kind === "m") {
+    if (kind === "q" || kind === "a" || kind === "f" || kind === "m" || kind === "r") {
       this.answerUnder(i, kind === "m");
       return true;
     }
@@ -905,6 +910,62 @@ class PenPlugin {
         { key: "⌘ ." },
         { key: "@" },
         { text: "one more" },
+        { gap: true },
+        { key: "Esc" },
+        { text: "take it back" },
+      ]);
+    } catch (error) {
+      this.fail(conversation, error);
+    }
+  }
+
+  /** `!`: you ask, the pen answers the question on your line, from the source
+   *  when it covers it. Again for one more line that goes further. */
+  private async reply(): Promise<void> {
+    const { state } = this.view;
+    const lines = docLines(state);
+    const path = this.getFilePath();
+    const targets = targetIndexes(state).filter((i) => itemText(lines[i]!));
+    if (!targets.length) {
+      this.say("Write your question on a line, then ⌘. ! there.");
+      return;
+    }
+    const anchor = targets[targets.length - 1]!;
+    const already = childrenOf(lines, anchor)
+      .filter((j) => penKindOf(lines[j]!) === "r")
+      .map((j) => itemText(lines[j]!));
+    const conversation = this.start("Answering…");
+    this.placement = { mode: "under", pos: state.doc.line(anchor + 1).from };
+    try {
+      const body = state.doc.toString();
+      const { source } =
+        sourceKind(path, body) !== null
+          ? await readSource(path, body, lines, anchor)
+          : { source: null };
+      const reply = await conversation.send(
+        penPrompt({
+          ...this.promptBase(lines, targets),
+          source: source?.passages.length ? source : null,
+          ask: { task: "answer", already },
+        }),
+      );
+      const text = replyLine(reply, true);
+      if (!text) {
+        this.placement = null;
+        this.finish(conversation);
+        this.say("That's all I have on this line. The rest is yours.");
+        return;
+      }
+      const id = this.write("r", text);
+      this.batch = id ? [...this.batch, id] : this.batch;
+      this.finish(conversation);
+      this.sayAfter([
+        { key: "⌘ ." },
+        { key: "!" },
+        { text: "say more" },
+        { gap: true },
+        { key: "↵" },
+        { text: "reply under it" },
         { gap: true },
         { key: "Esc" },
         { text: "take it back" },
@@ -1277,6 +1338,7 @@ function keyAfterArm(event: KeyboardEvent): string {
   if (event.key === "/" && event.shiftKey) return "?";
   if (event.key === "2" && event.shiftKey) return "@";
   if (event.key === "=" && event.shiftKey) return "+";
+  if (event.key === "1" && event.shiftKey) return "!";
   return event.key;
 }
 
