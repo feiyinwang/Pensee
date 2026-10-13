@@ -38,12 +38,13 @@
 
   /* Hues. Each mid hue reads at 3:1 or better (non-text) on every gray-50,
      gray-100, gray-800, gray-850 and gray-900 ground. The deep and pale reds
-     are for text (4.5:1 on light and dark grounds respectively). */
+     are for text (4.5:1 on light and dark grounds respectively). Blue is
+     Harvey's slate and orange its amber (SPECs/harvey-neutral-colour-spec.md). */
   --hue-red: #cc4b3c;
-  --hue-orange: #c46a22;
+  --hue-orange: #c4701c;
   --hue-yellow: #a8820a;
   --hue-green: #3f8f5a;
-  --hue-blue: #3c72c9;
+  --hue-blue: #5a7d95;
   --hue-purple: #8a5cc7;
   --hue-pink: #c4508a;
   --hue-gray: #85817b;
@@ -226,7 +227,7 @@
   --color-link-underline: color-mix(in srgb, var(--color-link) 50%, transparent);
 
   /* Status and choice colours. They sit in small marks (a dot, a stroke, a
-     tint), never in text. */
+     tint) and, mixed toward the text, in a tag's label. */
   --color-status-danger: var(--hue-red);
   --color-status-warning: var(--hue-orange);
   --color-status-success: var(--hue-green);
@@ -241,9 +242,12 @@
   --color-dot-gray: var(--hue-gray);
   /* How much of a dot a tinted ground takes (a sticky note's paper). */
   --color-dot-tint: 16%;
-  /* Tags: a neutral pill; the meaning is its dot. */
-  --color-tag-bg: var(--color-bg-raised);
-  --color-tag-text: var(--color-text-secondary);
+  /* Tags: a pill tinted with its colour (--tag, set per element), a dot and
+     a label in the colour pulled toward the text. The tint mixes into the
+     card ground and the label into the primary text, in OKLab; every tone's
+     label reads 4.5:1 or better on its pill in both themes. */
+  --color-tag-tint: 24%;
+  --color-tag-ink: 68%;
 
   /* Over pictures and video, which are the same in both themes. Shade and
      highlight are the light falling on drawn paper (a dragged card). */

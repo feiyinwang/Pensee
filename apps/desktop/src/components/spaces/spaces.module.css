@@ -683,9 +683,9 @@
   outline-offset: -2px;
 }
 
-/* A status is a neutral grey pill; its meaning is the dot before it, in the
-   tone the projects view gives the same word (lib/projects.ts, set as
-   --tag). SPECs/harvey-neutral-colour-spec.md. */
+/* A status is a pill tinted with the tone the projects view gives the same
+   word (lib/projects.ts, set as --tag), with a dot and a label in that tone
+   pulled toward the text. SPECs/harvey-neutral-colour-spec.md. */
 .status {
   display: inline-flex;
   align-items: center;
@@ -694,8 +694,8 @@
   border-radius: var(--radius-pill);
   font-size: var(--text-caption);
   white-space: nowrap;
-  background: var(--color-tag-bg);
-  color: var(--color-tag-text);
+  background: color-mix(in oklab, var(--tag) var(--color-tag-tint), var(--color-bg-canvas));
+  color: color-mix(in oklab, var(--tag) var(--color-tag-ink), var(--color-text-primary));
 }
 
 .status:not([data-empty])::before {

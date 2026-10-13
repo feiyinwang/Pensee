@@ -45,7 +45,7 @@ const LABELS: Record<string, string> = {
 
 const nameOf = (e: PaletteEntry) => LABELS[e] ?? e;
 
-// A new custom colour starts on the wheel at the blue dot (#3c72c9).
+// A new custom colour starts on the wheel at the blue dot (#5a7d95).
 const START: Hsv = { h: 217, s: 0.7, v: 0.79 };
 
 export function PaletteSwatches({

@@ -70,16 +70,18 @@ Contrast.
 
 The only colours besides the neutrals: `--hue-*` primitives, read as
 `--color-dot-*` and `--color-status-*` (`styles/tokens.css`), one set for both
-modes. Colour sits in a small mark, never in text. Each is 3:1 or better
-(non-text) on all five grounds.
+modes. Colour sits in a small mark, or in a tag's label pulled toward the text
+(see Tags). Each is 3:1 or better (non-text) on all five grounds. Blue is
+Harvey's slate (the cursor chip and header wash on its matter page) and orange
+its amber (the "In progress" pill), so warning and info read as theirs.
 
 | Dot    | Value     | on #FAFAF9 | on #F2F1F0 | on #0F0E0D | on #1C1B19 |
 | ------ | --------- | ---------- | ---------- | ---------- | ---------- |
 | red    | `#CC4B3C` | 4.3        | 4.0        | 4.3        | 3.8        |
-| orange | `#C46A22` | 3.7        | 3.4        | 5.0        | 4.5        |
+| orange | `#C4701C` | 3.5        | 3.3        | 5.2        | 4.7        |
 | yellow | `#A8820A` | 3.4        | 3.2        | 5.4        | 4.8        |
 | green  | `#3F8F5A` | 3.8        | 3.5        | 4.9        | 4.3        |
-| blue   | `#3C72C9` | 4.5        | 4.2        | 4.1        | 3.6        |
+| blue   | `#5A7D95` | 4.2        | 3.9        | 4.4        | 3.9        |
 | purple | `#8A5CC7` | 4.5        | 4.2        | 4.1        | 3.6        |
 | pink   | `#C4508A` | 4.1        | 3.8        | 4.5        | 4.0        |
 | gray   | `#85817B` | 3.7        | 3.4        | 5.0        | 4.4        |
@@ -90,8 +92,12 @@ The failed-save dot on a tab is red.
 ## Tags
 
 Project tags (`project-views.module.css`) and Library statuses
-(`spaces.module.css`) are neutral grey pills (`--color-tag-bg`, text
-`--color-tag-text`) with a 6px dot before the label. Tone → colour lives once,
+(`spaces.module.css`) are Harvey-style tinted pills: the pill is
+`--color-tag-tint` (24%) of the tag's colour in the card ground, a 6px dot of
+the colour sits before the label, and the label is `--color-tag-ink` (68%) of
+the colour in the primary text, both mixed in OKLab. Every tone's label reads
+4.5:1 or better on its pill in both themes (orange and brown, the lowest,
+5.0 in light). Tone → colour lives once,
 in `TONE_COLOR` (`lib/projects.ts`), set on the element as `--tag`: overdue red,
 due soon orange, done green, in progress blue, to-do and plain deadlines gray;
 custom statuses purple, brown (orange pulled halfway to gray), pink, yellow.

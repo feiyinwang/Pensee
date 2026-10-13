@@ -67,8 +67,8 @@ shadow and font tokens (`--surface`, `--background`, `--foreground`,
 
 ### Colours
 
-The warm neutral ramp and the hues
-([SPECs/harvey-neutral-colour-spec.md](../SPECs/harvey-neutral-colour-spec.md)).
+The warm neutral ramp and the hues; blue is Harvey's slate and orange its
+amber ([SPECs/harvey-neutral-colour-spec.md](../SPECs/harvey-neutral-colour-spec.md)).
 Each mid hue reads at 3:1 or better on every grey ground.
 
 | Token | Light | Dark |
@@ -85,10 +85,10 @@ Each mid hue reads at 3:1 or better on every grey ground.
 | `--white` | `#ffffff` | same |
 | `--black` | `#000000` | same |
 | `--hue-red` | `#cc4b3c` | same |
-| `--hue-orange` | `#c46a22` | same |
+| `--hue-orange` | `#c4701c` | same |
 | `--hue-yellow` | `#a8820a` | same |
 | `--hue-green` | `#3f8f5a` | same |
-| `--hue-blue` | `#3c72c9` | same |
+| `--hue-blue` | `#5a7d95` | same |
 | `--hue-purple` | `#8a5cc7` | same |
 | `--hue-pink` | `#c4508a` | same |
 | `--hue-gray` | `#85817b` | same |
@@ -260,25 +260,26 @@ Dark values on `:root`, light ones under `[data-theme="light"]`. Fills marked
 
 ### Status, dots, tags
 
-Colour sits in a small mark (a dot, a stroke, a tint), never in text.
+Colour sits in a small mark (a dot, a stroke, a tint) and, pulled toward the
+text, in a tag's label.
 
 | Token | Light | Dark | For |
 | --- | --- | --- | --- |
 | `--color-status-danger` | `#cc4b3c` (--hue-red) | same | Danger mark (Arc `--danger`) |
-| `--color-status-warning` | `#c46a22` (--hue-orange) | same | Warning mark (Arc `--warning`) |
+| `--color-status-warning` | `#c4701c` (--hue-orange) | same | Warning mark (Arc `--warning`) |
 | `--color-status-success` | `#3f8f5a` (--hue-green) | same | Success mark (Arc `--success`) |
-| `--color-status-info` | `#3c72c9` (--hue-blue) | same | Info mark |
+| `--color-status-info` | `#5a7d95` (--hue-blue) | same | Info mark |
 | `--color-dot-red` | `#cc4b3c` (--hue-red) | same |  |
-| `--color-dot-orange` | `#c46a22` (--hue-orange) | same |  |
+| `--color-dot-orange` | `#c4701c` (--hue-orange) | same |  |
 | `--color-dot-yellow` | `#a8820a` (--hue-yellow) | same |  |
 | `--color-dot-green` | `#3f8f5a` (--hue-green) | same |  |
-| `--color-dot-blue` | `#3c72c9` (--hue-blue) | same |  |
+| `--color-dot-blue` | `#5a7d95` (--hue-blue) | same |  |
 | `--color-dot-purple` | `#8a5cc7` (--hue-purple) | same |  |
 | `--color-dot-pink` | `#c4508a` (--hue-pink) | same |  |
 | `--color-dot-gray` | `#85817b` (--hue-gray) | same |  |
 | `--color-dot-tint` | `10%` | `16%` | Share of a dot in a tinted ground (sticky paper) |
-| `--color-tag-bg` | `#f2f1f0` (--color-bg-raised) | `#1c1b19` (--color-bg-raised) | Tag and status pill ground |
-| `--color-tag-text` | `#33312c` (--color-text-secondary) | `#cccac6` (--color-text-secondary) | Tag and status pill text |
+| `--color-tag-tint` | `24%` | same | Share of a tag's colour in its pill, mixed into `--color-bg-canvas` (OKLab) |
+| `--color-tag-ink` | `68%` | same | Share of a tag's colour in its label, mixed into `--color-text-primary` (OKLab) |
 
 ### Pictures and physical things
 
@@ -383,10 +384,10 @@ paper.
 | `--wr-board-muted` | `#706d66` (--color-text-muted) | `#8f8b85` (--color-text-muted) |
 | `--wr-board-accent` | `#0f0e0d` (--color-text-primary) | `#fafaf9` (--color-text-primary) |
 | `--wr-board-red` | `#cc4b3c` (--color-dot-red) | same |
-| `--wr-board-orange` | `#c46a22` (--color-dot-orange) | same |
+| `--wr-board-orange` | `#c4701c` (--color-dot-orange) | same |
 | `--wr-board-yellow` | `#a8820a` (--color-dot-yellow) | same |
 | `--wr-board-green` | `#3f8f5a` (--color-dot-green) | same |
-| `--wr-board-blue` | `#3c72c9` (--color-dot-blue) | same |
+| `--wr-board-blue` | `#5a7d95` (--color-dot-blue) | same |
 | `--wr-board-purple` | `#8a5cc7` (--color-dot-purple) | same |
 | `--wr-board-pink` | `#c4508a` (--color-dot-pink) | same |
 | `--wr-board-ink-soft` | `color-mix(in oklab, var(--wr-board-ink) 22%, var(--wr-board-surface))` | same |

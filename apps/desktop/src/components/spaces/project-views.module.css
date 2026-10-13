@@ -14,16 +14,20 @@
 
 /* Tags. A colour has one meaning: blue in progress, green done, red overdue,
    orange due soon, gray neither (lib/projects.ts, which also maps each tone to
-   its colour, TONE_COLOR, set here as --tag). A tag is a neutral grey pill
-   with its text in the ramp's secondary step; the meaning lives only in a
-   6px dot before the label (SPECs/harvey-neutral-colour-spec.md). Two
+   its colour, TONE_COLOR, set here as --tag). A tag is a pill tinted with
+   that colour, with a 6px dot before a label in the colour pulled toward the
+   text, like Harvey's status pills (SPECs/harvey-neutral-colour-spec.md). Two
    classes to outrank Arc's tone and size classes on the badge; tags are
    captions, so they take the caption size (the type-scale tokens), not Arc's
    11px. */
 .projectViews .tag {
-  --badge-color: var(--text-secondary);
-  --badge-background: var(--color-tag-bg);
-  --badge-foreground: var(--color-tag-text);
+  --badge-color: var(--tag);
+  --badge-background: color-mix(in oklab, var(--tag) var(--color-tag-tint), var(--color-bg-canvas));
+  --badge-foreground: color-mix(
+    in oklab,
+    var(--tag) var(--color-tag-ink),
+    var(--color-text-primary)
+  );
   --badge-border: transparent;
   flex-shrink: 0;
   border-radius: var(--radius-chip);
@@ -31,7 +35,7 @@
   white-space: nowrap;
 }
 
-/* The dot carries the tag's meaning; the pill and its text stay neutral. */
+/* The dot repeats the tag's colour at full strength. */
 .projectViews .tag::before {
   content: "";
   flex-shrink: 0;

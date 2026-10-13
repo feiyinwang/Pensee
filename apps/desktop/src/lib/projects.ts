@@ -171,8 +171,8 @@ export function statusTextTone(raw: string | undefined): TagTone | null {
   return statusTone(statusId(raw));
 }
 
-/** The colour each tone draws, as CSS: the dot tokens (styles/tokens.css). A tag is a
- *  neutral pill and the colour lives only in its dot (or a timeline bar);
+/** The colour each tone draws, as CSS: the dot tokens (styles/tokens.css). A tag
+ *  tints its pill, dot and label with it (a timeline bar its fill);
  *  brown, for a status the vault adds, is orange pulled toward gray.
  *  SPECs/harvey-neutral-colour-spec.md. */
 export const TONE_COLOR: Record<TagTone, string> = {
