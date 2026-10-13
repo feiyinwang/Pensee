@@ -52,6 +52,7 @@ import { WIKI_LINK_RE, findWikiLinkAt } from "@/lib/wiki-links";
 import { findWikiPage } from "@/lib/wiki-pages";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as editorApi from "@/hooks/editor-api";
+import { penIdKind } from "@/lib/second-pen";
 import { blockIdLine, canCarryBlockId, gripBlockAt, type ActionTarget } from "./block-actions";
 import { getEffectiveSelectionRanges } from "./drag-selection-gate";
 import { showEditorNotice } from "./editor-notice-store";
@@ -533,7 +534,11 @@ function build(
           embeds.push(pin);
         } else {
           decorations.push(
-            (touches(line.from, line.to) ? visibleId : hiddenId).range(idFrom, line.to),
+            // The second pen's ids name its own lines: never shown, like a pin's.
+            (touches(line.from, line.to) && !penIdKind(id[1]!) ? visibleId : hiddenId).range(
+              idFrom,
+              line.to,
+            ),
           );
         }
         // Shown elsewhere: say how many places, the way RemNote counts a

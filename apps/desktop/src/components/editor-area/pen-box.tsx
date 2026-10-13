@@ -5,11 +5,12 @@ import { ensureArcTokens } from "./board/arc-tokens";
 
 // The second pen's box (SPECs/second-pen-spec.md#asking-the-pens-box): Arc's
 // floating button group for what the pen can do, each pill showing its key,
-// and under it the box to type in. A function's key, typed into the empty box
-// (? ! @ + − # >), selects its pill and types nothing; what you type next
-// steers it, and Enter runs it. With no pill selected, Enter asks the AI what
-// you typed (⌘↵: has it ask you instead). Loaded on demand, so notes never
-// pay for Arc or motion at startup.
+// and under it the box to type in. Nothing runs until Enter: clicking a pill,
+// or typing its key (? ! @ + − # >, half- or full-width) at the start of the
+// box or after a space, selects it and types nothing. Enter runs the selected
+// pill, steered by whatever was typed; with none selected, Enter asks the AI
+// what you typed (⌘↵: has it ask you instead). Loaded on demand, so notes
+// never pay for Arc or motion at startup.
 
 export interface PenPill {
   key: string;
@@ -28,9 +29,27 @@ function Key({ char }: { char: string }): ReactNode {
   return <span className="pen-pill-key">{char}</span>;
 }
 
-/** A typed key as the pill it names: `-` is `−`. */
+/** The pill a typed character names: `-` is `−`, and a Chinese or Japanese
+ *  input method's full-width punctuation counts as its plain key. */
+const KEY_OF: Record<string, string> = {
+  "-": "−",
+  "－": "−",
+  "？": "?",
+  "！": "!",
+  "＠": "@",
+  "＋": "+",
+  "＃": "#",
+  "＞": ">",
+  "》": ">",
+};
 function asKey(char: string): string {
-  return char === "-" ? "−" : char;
+  return KEY_OF[char] ?? char;
+}
+
+/** A key picks a pill only where it can't be part of a word: at the start of
+ *  the box or after a space. So "off-shore" and "why?" still type. */
+function atWordStart(value: string, at: number): boolean {
+  return at === 0 || /\s/.test(value[at - 1] ?? "");
 }
 
 function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
@@ -40,6 +59,8 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
   const modePill = pills.find((pill) => pill.key === mode) ?? null;
 
   const run = (key: string) => onChoose(key, input.current?.value ?? text);
+  const pick = (key: string) => setMode((current) => (current === key ? null : key));
+  const isPill = (key: string) => pills.some((pill) => pill.key === key);
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) return;
@@ -62,14 +83,33 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
       else if (text.trim()) run(mod ? "?" : "!");
       return;
     }
-    // A function's key, in the empty box, selects its pill; it types nothing.
-    if (!text && !mod && !event.altKey) {
-      const key = asKey(event.key);
-      if (pills.some((pill) => pill.key === key)) {
-        event.preventDefault();
-        setMode(key === mode ? null : key);
+    // A pill's key selects that pill and types nothing.
+    const key = asKey(event.key);
+    const at = event.currentTarget.selectionStart ?? text.length;
+    if (!mod && !event.altKey && isPill(key) && atWordStart(text, at)) {
+      event.preventDefault();
+      pick(key);
+    }
+  };
+
+  // An input method can insert the key without a usable keydown: take it out
+  // of the text here instead, under the same rule.
+  const onChange = (value: string) => {
+    if (value.length === text.length + 1) {
+      let inserted = value.length - 1;
+      for (let i = 0; i < text.length; i++) {
+        if (value[i] !== text[i]) {
+          inserted = i;
+          break;
+        }
+      }
+      const key = asKey(value[inserted]!);
+      if (isPill(key) && atWordStart(value, inserted)) {
+        pick(key);
+        return;
       }
     }
+    setText(value);
   };
 
   return (
@@ -82,7 +122,11 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
           label: pill.label,
           icon: <Key char={pill.key} />,
           pressed: pill.key === mode,
-          onSelect: () => run(pill.key),
+          // Clicking only selects it; Enter runs it.
+          onSelect: () => {
+            pick(pill.key);
+            input.current?.focus();
+          },
         }))}
       />
       <div className="pen-box-field" data-mode={mode ?? undefined}>
@@ -96,11 +140,11 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
           value={text}
           placeholder={
             modePill
-              ? `${modePill.label}: steer it, or press Enter`
-              : "Ask anything, or press a pill's key"
+              ? `${modePill.label}: add a direction, or just press Enter`
+              : "Pick a pill, or ask anything"
           }
           aria-label="Ask the AI, or press a pill's key to pick it"
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => onChange(event.target.value)}
           onKeyDown={onKeyDown}
         />
         {(mode || text.trim()) && (

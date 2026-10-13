@@ -127,6 +127,13 @@
   line-height: 1.4;
 }
 
+.cm-pen-cite-card-url {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  overflow-wrap: anywhere;
+}
+
 .cm-pen-cite-card-open {
   align-self: flex-start;
   margin-top: 6px;

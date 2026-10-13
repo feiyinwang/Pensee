@@ -224,6 +224,10 @@ function prefetchPenBox(): void {
   else window.setTimeout(load, 500);
 }
 
+/** The pills that write a line of the pen's: with something typed, the typed
+ *  line goes in first and theirs under it. */
+const WRITES_TYPED = new Set(["?", ">", "!", "@", "+"]);
+
 const MESSAGE_MS = 4_000;
 const AFTER_MS = 5_000;
 const FRESH_MS = 1_200;
@@ -395,11 +399,13 @@ function openPaper(url: string): void {
   );
 }
 
+/** Hovering a paper's pill shows everything about it: the details the note
+ *  keeps in the link, and the link itself. */
 const citationCard = hoverCard({
   selector: ".cm-pen-cite",
   className: "cm-pen-cite-card",
-  width: 360,
-  maxHeight: 260,
+  width: 380,
+  maxHeight: 320,
   build: async (chip) => {
     const { url, title, authors, venue, citedBy } = chip.dataset;
     if (!url) return null;
@@ -414,7 +420,9 @@ const citationCard = hoverCard({
     add("cm-pen-cite-card-host", new URL(url).host.replace(/^www\./, ""));
     add("cm-pen-cite-card-title", title ?? url);
     add("cm-pen-cite-card-meta", authors);
-    add("cm-pen-cite-card-meta", [venue, citedBy].filter(Boolean).join(" · "));
+    add("cm-pen-cite-card-meta", venue);
+    add("cm-pen-cite-card-meta", citedBy ? citedBy.replace(/^cited by/, "Cited by") : undefined);
+    add("cm-pen-cite-card-url", url);
     const open = document.createElement("button");
     open.type = "button";
     open.className = "cm-pen-cite-card-open";
@@ -427,6 +435,9 @@ const citationCard = hoverCard({
 
 class PenPlugin {
   decorations: DecorationSet = Decoration.none;
+  /** The citation pills, for the editor's atomic ranges. */
+  cites: DecorationSet = Decoration.none;
+  private citeRanges: Range<Decoration>[] = [];
   private armed: number[] | null = null;
   private conversation: PenConversation | null = null;
   private busyLabel = "Writing…";
@@ -444,6 +455,9 @@ class PenPlugin {
   /** Organize's outline, in place of your lines until Enter keeps it or Esc
    *  puts them back. */
   private organizing: { from: number; to: number; original: string } | null = null;
+  /** The line you typed in the box, just written: the request about to run
+   *  writes under it. `context` is the lines it was typed on. */
+  private typed: { pos: number; context: number[] } | null = null;
   /** Where the last request showed its progress: its message goes there too. */
   private spot: Omit<Pending, "text" | "busy"> | null = null;
   private timers = new Set<number>();
@@ -536,12 +550,12 @@ class PenPlugin {
   private build(): DecorationSet {
     const { state } = this.view;
     const ranges: Range<Decoration>[] = [];
-    const sel = state.selection.main;
+    this.citeRanges = [];
     for (const { from, to } of this.view.visibleRanges) {
       for (let pos = from; pos <= to; ) {
         const line = state.doc.lineAt(pos);
         const kind = penKindOf(line.text);
-        if (kind) this.decorateLine(ranges, line.from, line.text, kind, sel);
+        if (kind) this.decorateLine(ranges, line.from, line.text, kind);
         pos = line.to + 1;
       }
     }
@@ -573,6 +587,7 @@ class PenPlugin {
     }
     const cursor = this.fresh.iter();
     for (; cursor.value; cursor.next()) ranges.push(cursor.value.range(cursor.from, cursor.to));
+    this.cites = Decoration.set(this.citeRanges, true);
     return Decoration.set(ranges, true);
   }
 
@@ -581,18 +596,20 @@ class PenPlugin {
     from: number,
     text: string,
     kind: PenKind,
-    sel: { from: number; to: number },
   ): void {
     ranges.push(Decoration.line({ class: `cm-pen-line cm-pen-${kind}` }).range(from));
     const start = bodyStart(text);
     const end = bodyEnd(text);
     if (kind === "f") {
+      // Always the pill, never its Markdown: the paper's details live in the
+      // hover card. Atomic (`cites`), so Backspace takes it whole.
       for (const citation of citationsIn(text)) {
-        const a = from + citation.from;
-        const b = from + citation.to;
-        // The caret on it shows its Markdown, to edit or delete.
-        if (sel.from <= b && sel.to >= a) continue;
-        ranges.push(Decoration.replace({ widget: new CitationWidget(citation) }).range(a, b));
+        const pill = Decoration.replace({ widget: new CitationWidget(citation) }).range(
+          from + citation.from,
+          from + citation.to,
+        );
+        ranges.push(pill);
+        this.citeRanges.push(pill);
       }
     }
     if (kind === "c" || kind === "f" || kind === "r") {
@@ -757,8 +774,15 @@ class PenPlugin {
       { key: "@", label: "Facts", title: "One fact from a recent paper, cited." },
       { key: "+", label: "Mix", title: "An unexpected link to another field." },
       { key: "−", label: "Shorten", title: "Proposes cuts. Nothing is added." },
+      // Only with several lines selected: there's something to regroup.
       ...(withText.length > 1
-        ? [{ key: "#", label: "Organize", title: "Regroups the lines, in your own words." }]
+        ? [
+            {
+              key: "#",
+              label: "Organize",
+              title: "Regroups the selected lines, in your own words.",
+            },
+          ]
         : []),
       ...(inQuiz ? [{ key: ">", label: "New topic", title: "A question on another idea." }] : []),
     ];
@@ -798,6 +822,8 @@ class PenPlugin {
     });
     return {
       dom,
+      // A little air between the box and the words it's about.
+      offset: { x: 0, y: 6 },
       destroy: () => {
         gone = true;
         // React can't unmount during CodeMirror's own DOM update.
@@ -807,10 +833,35 @@ class PenPlugin {
     };
   }
 
+  /** The typed line for the request starting now, once: its index, and the
+   *  lines it was typed on for context. */
+  private takeTyped(): { line: number; context: number[] } | null {
+    const typed = this.typed;
+    this.typed = null;
+    if (!typed) return null;
+    return {
+      line: this.view.state.doc.lineAt(Math.min(typed.pos, this.view.state.doc.length)).number - 1,
+      context: typed.context,
+    };
+  }
+
   /** A pill, with what was typed: a direction, or for Answer the question. */
   private choose(key: string, typed: string): void {
     const text = typed.trim();
     this.closePop(true);
+    // What you typed goes in the note first, as your own line under the line
+    // you're on (or on the empty line), and what the pen writes goes under it.
+    // Shorten and Organize change your lines: for them it only steers.
+    if (text && WRITES_TYPED.has(key) && !this.conversation) {
+      const { state } = this.view;
+      const lines = docLines(state);
+      const targets = targetIndexes(state).filter((i) => itemText(lines[i]!));
+      const placement: Placement = targets.length
+        ? { mode: "under", pos: state.doc.line(targets[targets.length - 1]! + 1).from }
+        : { mode: "slot", pos: state.doc.line(caretIndex(state) + 1).from };
+      const { lineFrom } = this.writeLine(null, text, placement);
+      this.typed = { pos: lineFrom, context: targets };
+    }
     switch (key) {
       case "?":
         void this.ask(false, text);
@@ -1010,6 +1061,8 @@ class PenPlugin {
   /** `?` (and `→`, a new topic): a quiz question in a source note, else a
    *  question about your thinking. */
   private async ask(newTopic: boolean, direction = ""): Promise<void> {
+    // The caret is on your typed line, if any: the question goes under it.
+    const typedContext = this.takeTyped()?.context ?? [];
     const { state } = this.view;
     const lines = docLines(state);
     const path = this.getFilePath();
@@ -1062,7 +1115,7 @@ class PenPlugin {
         : childrenOf(lines, anchor)
             .filter((j) => penKindOf(lines[j]!) === (quiz ? "q" : "a"))
             .map((j) => itemText(lines[j]!));
-      promptLines = [...(threadNote >= 0 ? [threadNote] : []), ...targets];
+      promptLines = [...(threadNote >= 0 ? [threadNote] : []), ...typedContext, ...targets];
     } else if ((quiz || continuing) && isBlankLine(lines[caret]!)) {
       // An empty line becomes the question.
       anchor = continuing ? caret : null;
@@ -1126,6 +1179,7 @@ class PenPlugin {
 
   /** `@`: one fact from the newest well-cited paper on the line, cited. */
   private async fact(direction = ""): Promise<void> {
+    const typedContext = this.takeTyped()?.context ?? [];
     const { state } = this.view;
     const lines = docLines(state);
     const targets = targetIndexes(state).filter((i) => itemText(lines[i]!));
@@ -1139,7 +1193,10 @@ class PenPlugin {
       pos: state.doc.line(anchor + 1).from,
     });
     try {
-      const base = { ...this.promptBase(lines, targets, direction), source: null };
+      const base = {
+        ...this.promptBase(lines, [...typedContext, ...targets], direction),
+        source: null,
+      };
       // One more never cites the same paper or says the same thing again.
       const given = childrenOf(lines, anchor).filter((j) => penKindOf(lines[j]!) === "f");
       const cited = new Set(given.flatMap((j) => citationsIn(lines[j]!).map((c) => c.url)));
@@ -1190,17 +1247,20 @@ class PenPlugin {
    *  empty line), and the answer under it. With nothing typed, the line itself
    *  is the question. Again on the same line for one more that goes further. */
   private async reply(question = ""): Promise<void> {
+    const typed = this.takeTyped();
     const { state } = this.view;
     const lines = docLines(state);
     const path = this.getFilePath();
-    const targets = targetIndexes(state).filter((i) => itemText(lines[i]!));
+    const targets = typed ? typed.context : targetIndexes(state).filter((i) => itemText(lines[i]!));
     if (!question && !targets.length) {
       this.say("Type your question in the box, or put the caret on it.");
       return;
     }
     let anchorPos: number;
     let already: string[] = [];
-    if (question) {
+    if (question && typed) {
+      anchorPos = state.doc.line(typed.line + 1).from;
+    } else if (question) {
       const caret = caretIndex(state);
       const placement: Placement = targets.length
         ? { mode: "under", pos: state.doc.line(targets[targets.length - 1]! + 1).from }
@@ -1257,6 +1317,7 @@ class PenPlugin {
 
   /** `+`: one unexpected mix. Enter on one keeps it and drops the others. */
   private async mix(direction = ""): Promise<void> {
+    const typedContext = this.takeTyped()?.context ?? [];
     const { state } = this.view;
     const lines = docLines(state);
     const targets = targetIndexes(state).filter((i) => itemText(lines[i]!));
@@ -1275,7 +1336,7 @@ class PenPlugin {
     try {
       const reply = await conversation.send(
         penPrompt({
-          ...this.promptBase(lines, targets, direction),
+          ...this.promptBase(lines, [...typedContext, ...targets], direction),
           source: null,
           ask: { task: "mix", already },
         }),
@@ -1778,5 +1839,13 @@ export function secondPen(getFilePath: () => string): Extension {
       },
     },
   );
-  return [lockField, lockFilter, popField, pendingField, Prec.highest(plugin), citationCard];
+  return [
+    lockField,
+    lockFilter,
+    popField,
+    pendingField,
+    Prec.highest(plugin),
+    EditorView.atomicRanges.of((view) => view.plugin(plugin)?.cites ?? Decoration.none),
+    citationCard,
+  ];
 }

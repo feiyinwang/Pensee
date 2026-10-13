@@ -32,18 +32,25 @@ note's edge are not part of it.
   | `@` **Facts** | one fact cited to a recent paper, or says it has none | same |
   | `+` **Mix** | one unexpected link to another field | same |
   | `−` **Shorten** | proposes cuts on the lines, nothing else | same |
-  | `#` **Organize** | with two or more lines: regroups them into an outline in your own words | same |
+  | `#` **Organize** | only with several lines selected: regroups them into an outline in your own words | same |
   | `>` **New topic** | — | in a quiz: a question on an idea not asked about yet |
 
   On an empty line: **Answer** (to what you type), and in a source note
   **Quiz me on everything so far**.
-- **A pill's key, typed in the empty box, selects that pill** (it lights up)
-  and types nothing; the same key again, or Backspace, unselects it. What you
-  type next steers it ("ask about the 2006 study"), and **Enter** runs it.
-- Clicking a pill runs it at once, steered by whatever is typed.
-- With no pill selected, **Enter** asks the AI what you typed: your question
-  goes into the note under the line (or on the empty line) in your ink, and
-  the answer under it. **⌘ Enter** uses it to steer **Ask me** instead.
+- **Nothing runs until Enter.** Clicking a pill selects it (it lights up);
+  so does typing its key, `? ! @ + − # >` or an input method's full-width
+  `？！＠＋－＃＞`, at the start of the box or after a space, and the key isn't
+  typed. Inside a word it types as usual, so "off-shore" and "why?" work. The
+  same key again, a click on the lit pill, or Backspace in the empty box
+  unselects it.
+- **Enter runs the selected pill**, with or without anything typed. With no
+  pill selected, Enter asks the AI what you typed (**⌘ Enter**: has it ask
+  you instead).
+- **What you typed goes into the note** as your own line, under the line you
+  were on (or on the empty line), and the pen's line goes under it, for Ask
+  me, Answer, Facts, Mix and New topic. With nothing selected, what you typed
+  is what the pen works on (type "naps and memory", pick Facts). For Shorten
+  and Organize, which change your lines, it only steers and adds no line.
 - One request is one line. Picking the same pill again on the same line gives
   one more, after the ones already there.
 
@@ -69,8 +76,12 @@ note's edge are not part of it.
   (`q` quiz question, `a` question, `h` hint, `c` check, `f` fact, `m` mix,
   `r` its answer to your question).
   Other apps show an ordinary line or bullet. The id is hidden like any block id.
-- Drawn in AI ink (`--color-ai-ink`); a bullet gets a hollow marker. A fact's
-  or check's trailing ` — source` is fainter. The words fade in as they land.
+- Drawn in AI ink (`--color-ai-ink`); a bullet gets a hollow marker. Its id
+  is never shown, even with the caret on the line. A check's trailing
+  ` — source` is fainter. A fact's paper is always a pill, never its link
+  Markdown (selecting or double-clicking the line keeps it a pill; Backspace
+  removes it whole); hovering the pill shows the paper's title, authors,
+  journal and year, citations and link, with **Open paper**. The words fade in as they land.
 - Its lines are your text: edit them, delete them, undo them like any line.
 
 ### Answering

@@ -47,9 +47,18 @@ async function caretAfter(text) {
       while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
         scroller = scroller.parentElement;
       }
-      if (scroller) {
+      // Somewhere the click lands on the line itself, not under a sticky
+      // video at the top or the bottom bar.
+      const hits = () => {
+        const r = range.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.right - 1, r.top + r.height / 2);
+        return !!hit && line.contains(hit);
+      };
+      for (const ratio of [0.75, 0.5, 0.6, 0.4]) {
+        if (!scroller) break;
         const lineTop = line.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-        scroller.scrollTop += lineTop - scroller.clientHeight * 0.75;
+        scroller.scrollTop += lineTop - scroller.clientHeight * ratio;
+        if (hits()) break;
       }
       const box = range.getBoundingClientRect();
       const point = {
@@ -83,9 +92,18 @@ async function selectTo(text) {
     while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
       scroller = scroller.parentElement;
     }
-    if (scroller) {
+    // Somewhere the click lands on the line itself: not under a sticky video
+    // at the top or the bottom bar.
+    const hits = () => {
+      const r = line.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + 40, r.top + r.height / 2);
+      return !!hit && line.contains(hit);
+    };
+    for (const ratio of [0.75, 0.5, 0.6, 0.4]) {
+      if (!scroller) break;
       const lineTop = line.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-      scroller.scrollTop += lineTop - scroller.clientHeight * 0.75;
+      scroller.scrollTop += lineTop - scroller.clientHeight * ratio;
+      if (hits()) break;
     }
     const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
     let node;
@@ -159,6 +177,17 @@ async function waitForBox() {
   );
 }
 
+/** Click a pill in the open box, as the mouse does (it only selects it). */
+async function clickPill(label) {
+  await waitForBox();
+  await browser.execute((name) => {
+    [...document.querySelectorAll('.cm-pen-pop [role="toolbar"] button')]
+      .find((b) => b.textContent.includes(name))
+      .click();
+  }, label);
+  await browser.pause(100);
+}
+
 /** In the open box: a function's key turns it on, Enter runs it. */
 async function pick(name, options) {
   await waitForBox();
@@ -226,15 +255,30 @@ describe("Journeys: second pen", function () {
     root = await workspaceRoot();
   });
 
+  // A journey that fails with the box open must not break the next one.
+  afterEach(async function () {
+    await browser.execute(() => {
+      const input = document.querySelector(".cm-pen-pop .pen-box-input");
+      input?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    });
+  });
+
   it("PEN-02 ⌘. opens the pen's box above the line: pills and a box to type in; Esc closes it", async function () {
     await openViaPalette("Pen");
     await caretAfter("I think we basically");
+    // The top of the words themselves (a line box is taller than its text).
     const lineTop = await browser.execute(() => {
       const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
       const line = [...editor.querySelectorAll(".cm-line")].find((l) =>
         l.textContent.includes("I think we basically"),
       );
-      return line.getBoundingClientRect().top;
+      const node = document.createTreeWalker(line, NodeFilter.SHOW_TEXT).nextNode();
+      const range = document.createRange();
+      range.setStart(node, 0);
+      range.setEnd(node, 1);
+      return range.getBoundingClientRect().top;
     });
     await key(".", { meta: true });
     await waitForBox();
@@ -323,20 +367,39 @@ describe("Journeys: second pen", function () {
     ok(text.startsWith("Writing is thinking on paper."), text);
   });
 
-  it("PEN-15 typed direction + Ask me: the question follows it, under the line", async function () {
+  it("PEN-15 typed direction + Ask me + Enter: your line goes in, the question under it", async function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("Writing is thinking on paper.");
     await key(".", { meta: true });
     await typeInBox("ask about first drafts");
-    await browser.execute(() => {
-      [...document.querySelectorAll('.cm-pen-pop [role="toolbar"] button')]
-        .find((b) => b.textContent.includes("Ask me"))
-        .click();
-    });
+    await clickPill("Ask me");
+    await key("Enter");
     await waitForDisk(
       path,
-      (t) => (t.split("\n\n- rereading")[0].match(/\^ai-a-/g) ?? []).length === 2,
-      "expected a second plain pen question below the paragraph",
+      (t) => /\n\nask about first drafts\n\n[^\s-].+ \^ai-a-[a-z0-9]{4}/.test(t),
+      "expected your typed line, then the pen's question below it",
+      AI_TIMEOUT,
+    );
+  });
+
+  it("PEN-19 clicking a pill only selects it; Enter runs it", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    const before = await readFile(path);
+    await caretAfter("rereading feels like learning");
+    await key(".", { meta: true });
+    await waitForBox();
+    await clickPill("Mix");
+    await browser.pause(1_500);
+    ok((await readFile(path)) === before, "a click alone shouldn't run the pen");
+    ok(
+      (await pop())?.selected.some((p) => p.includes("Mix")),
+      "the clicked pill should be selected",
+    );
+    await key("Enter");
+    await waitForDisk(
+      path,
+      (t) => (t.match(/\^ai-m-/g) ?? []).length > (before.match(/\^ai-m-/g) ?? []).length,
+      "Enter should run the selected pill",
       AI_TIMEOUT,
     );
   });
@@ -370,6 +433,13 @@ describe("Journeys: second pen", function () {
       timeoutMsg: "@ didn't select the Facts pill",
     });
     ok((await pop()).typed === "", "the key shouldn't be typed into the box");
+    // A Chinese input method's full-width ？ picks Ask me the same way.
+    await key("？");
+    await browser.waitUntil(async () => (await pop())?.selected.some((p) => p.includes("Ask me")), {
+      timeout: 3_000,
+      timeoutMsg: "？ didn't select Ask me",
+    });
+    ok((await pop()).typed === "", "？ shouldn't be typed into the box");
     await key("Backspace");
     await browser.waitUntil(async () => (await pop())?.selected.length === 0, {
       timeout: 3_000,
@@ -428,6 +498,26 @@ describe("Journeys: second pen", function () {
     );
   });
 
+  it("PEN-20 typed text, then @ after a space, then Enter: your line, a cited fact under it", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretAfter("why does sleep help memory?");
+    await key(".", { meta: true });
+    await typeInBox("naps and memory ");
+    await key("@", { shift: true });
+    ok(
+      (await pop())?.selected.some((p) => p.includes("Facts")),
+      "@ after a space should pick Facts",
+    );
+    ok((await pop()).typed === "naps and memory ", "@ shouldn't be typed into the box");
+    await key("Enter");
+    await waitForDisk(
+      path,
+      (t) => /\n {2}- naps and memory\n {4}- .+\) \^ai-f-[a-z0-9]{4}/.test(t),
+      "expected your typed line, then a cited fact under it",
+      AI_TIMEOUT,
+    );
+  });
+
   it("PEN-16 Organize on several lines, then Esc puts your lines back exactly", async function () {
     const path = `${root}/Notes/Pen.md`;
     const before = await readFile(path);
@@ -462,6 +552,23 @@ describe("Journeys: second pen", function () {
       "the outline should keep your own words",
     );
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
+  });
+
+  it("PEN-22 # Organize is offered only with several lines selected", async function () {
+    await caretAfter("why does sleep help memory?");
+    await key(".", { meta: true });
+    await waitForBox();
+    ok(!(await pop()).pills.some((p) => p.includes("Organize")), "one line: no Organize");
+    await key("Escape");
+    await caretAfter("rereading feels like learning");
+    await selectTo("why does sleep help memory?");
+    await key(".", { meta: true });
+    await waitForBox();
+    ok(
+      (await pop()).pills.some((p) => p.includes("Organize")),
+      "several lines: Organize",
+    );
+    await key("Escape");
   });
 
   it("PEN-13 in a video note, ⌘. ! answers from the transcript with its time", async function () {

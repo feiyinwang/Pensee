@@ -2,6 +2,10 @@
 
 ## 2026-10-13
 
+- In the second pen's box, nothing runs until you press Enter. Click a pill, or type its key, to pick it, then press Enter with or without a direction. The keys pick pills at the start of the box or after a space, also from a Chinese keyboard (`？！＠…`). They're never typed into the box there, but inside a word they type as usual.
+- Whatever you type in the box goes into your note as your own line, and the pen writes under it. Type "naps and memory", pick **@ Facts**, Enter: your line, then a cited fact under it.
+- **# Organize** shows only when you've selected several lines.
+- A fact's citation is always a pill, even when you select or double-click its line, so the long link never shows in your text. Hover the pill for the paper's title, authors, journal, year, citations and link. The pen's hidden `^ai-…` ids no longer show up when the caret is on its lines.
 - The second pen's box has a new look, Arc's: soft pills in a quiet tray with one highlight that glides between them, each showing its key (`? Ask me`, `! Answer`, `@ Facts`, `+ Mix`, `− Shorten`), and a plain box under them with no blue ring. Typing a pill's key in the empty box selects that pill and types nothing; type to steer it, then Enter. Backspace unselects it.
 - New pill: **# Organize**. Select a few lines and the pen regroups them into an outline using your own words. It shows in their place; Enter keeps it, Esc puts your lines back exactly.
 - While the pen works, you see it right where its line will appear (*Writing a question…*, *Finding a paper…*, *Answering…*), with Esc to stop. When it has nothing to add, it says so on that line.

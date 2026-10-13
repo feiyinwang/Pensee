@@ -348,10 +348,14 @@ quizzes you, and Enter on your answer checks it against the source.
 | PEN-12 | ⌘. then `!` on a line with your question                     | The pen's answer appears as its sub-bullet in blue (`^ai-r-…`)                              | auto: pen  |
 | PEN-13 | ⌘. then `!` on a question in a video note                    | The answer comes from the transcript and ends with its time (`— 1:10`)                      | auto: pen  |
 | PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the AI's answer (`^ai-r-…`) under it     | auto: pen  |
-| PEN-15 | ⌘., type a direction, click **Ask me**                       | The AI's question follows the direction, right under the line                                | auto: pen  |
+| PEN-15 | ⌘., type a direction, click **Ask me**, Enter                | Your typed line goes in under the line; the AI's question, following it, goes under that  | auto: pen  |
 | PEN-16 | Select several lines, ⌘., `#` Enter, then Esc                | An outline replaces them, tinted; Esc puts your lines back exactly                           | auto: pen  |
 | PEN-17 | Select several lines, ⌘., `#` Enter, then Enter              | The outline stays, with your own words in it                                                 | auto: pen  |
-| PEN-18 | ⌘., type `@`, then Backspace                                 | `@` lights the Facts pill and types nothing; Backspace unselects it                          | auto: pen  |
+| PEN-18 | ⌘., type `@` (or a full-width `？`), then Backspace           | The key lights its pill and types nothing; Backspace unselects it                            | auto: pen  |
+| PEN-19 | ⌘., click a pill, then Enter                                 | The click only selects the pill (nothing written); Enter runs it                            | auto: pen  |
+| PEN-20 | ⌘., type text, then `@` after a space, Enter                 | `@` picks Facts and isn't typed; your text goes in as a line, the cited fact under it       | auto: pen  |
+| PEN-21 | Select, or double-click, a fact's line                       | The citation stays a pill (no link or details in the text); hovering it shows title, authors, journal and year, citations and the link | you        |
+| PEN-22 | ⌘. on one line, then on several selected lines             | **# Organize** isn't offered for one line; it is with several lines selected                | auto: pen  |
 
 ---
 
