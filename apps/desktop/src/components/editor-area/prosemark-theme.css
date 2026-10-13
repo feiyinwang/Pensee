@@ -92,7 +92,7 @@
   --pensee-text-col-inset: max(
     var(--pensee-editor-side-padding, 4rem),
     calc(
-      (100% - var(--pensee-editor-outer-width, calc(680px + 4rem + 4rem))) / 2 +
+      (100% - var(--pensee-editor-outer-width, calc(660px + 4rem + 4rem))) / 2 +
         var(--pensee-editor-side-padding, 4rem)
     )
   );
@@ -125,7 +125,7 @@
 .cm-editor .cm-content {
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--pensee-editor-outer-width, calc(680px + 4rem + 4rem));
+  max-width: var(--pensee-editor-outer-width, calc(660px + 4rem + 4rem));
   margin: 0 auto;
   padding: 0 var(--pensee-editor-side-padding, 4rem) 40vh;
   font-family: var(
@@ -143,7 +143,7 @@
     "Segoe UI Symbol"
   );
   font-size: var(--pensee-editor-font-size, 18px);
-  line-height: var(--pensee-editor-line-height, 1.7);
+  line-height: var(--pensee-editor-line-height, 1.9);
   letter-spacing: var(--pensee-editor-letter-spacing, -0.03em);
   color: var(--editor-text);
 }
@@ -168,9 +168,13 @@
   padding-right: 12px;
 }
 
-/* Reduce height of blank lines used as block separators */
+/* A blank line between blocks is the paragraph spacing: 2em, so one block's
+   last baseline sits 3.9em (at the 1.9 default) above the next block's first,
+   the rhythm Ulysses sets prose in. A fixed em, not the line height: spacing
+   between paragraphs stays put when the line-height setting changes.
+   See SPECs/writing-rhythm-spec.md. */
 .cm-editor .cm-line:has(> br:only-child) {
-  line-height: 1;
+  line-height: 2;
 }
 
 /* Indent blockquote text so it doesn't hug the vertical bar */

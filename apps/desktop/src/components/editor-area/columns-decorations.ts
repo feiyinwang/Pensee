@@ -1946,7 +1946,7 @@ export function firstLineBox(el: HTMLElement): { top: number; height: number } {
   const padTop = parseFloat(style.paddingTop) || 0;
   const padBottom = parseFloat(style.paddingBottom) || 0;
   const lh = parseFloat(style.lineHeight);
-  const line = Number.isFinite(lh) && lh > 0 ? lh : (parseFloat(style.fontSize) || 18) * 1.7;
+  const line = Number.isFinite(lh) && lh > 0 ? lh : (parseFloat(style.fontSize) || 18) * 1.9;
   // A soft-wrapped paragraph's rect covers every wrapped line, but the grip
   // belongs beside the first one. A single-line element is shorter than one
   // line-height only when it has none of its own, and then it wins.

@@ -238,7 +238,7 @@
   --chrome-control-height: 32px;
   --chrome-control-padding: 12px;
   --chrome-drag-height: 72px;
-  --pensee-editor-max-width: 680px;
+  --pensee-editor-max-width: 660px;
   --pensee-editor-side-padding: clamp(1.5rem, 4vw, 4rem);
   --pensee-editor-outer-width: calc(
     var(--pensee-editor-max-width) + var(--pensee-editor-side-padding) +
@@ -246,7 +246,7 @@
   );
   --pensee-editor-font-family: var(--editor-font);
   --pensee-editor-font-size: 18px;
-  --pensee-editor-line-height: 1.7;
+  --pensee-editor-line-height: 1.9;
   --pensee-editor-letter-spacing: 0em;
 
   font-family: var(--ui-font);

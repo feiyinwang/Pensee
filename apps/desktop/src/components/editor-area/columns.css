@@ -126,7 +126,7 @@
      the nested CodeMirror is `font-size x` the editor line height, and the
      rendered heading has to land on the same box or the band changes height
      when you click into it. Sizes come from `prosemark-core/syntaxHighlighting.ts`. */
-  line-height: var(--pensee-editor-line-height, 1.7);
+  line-height: var(--pensee-editor-line-height, 1.9);
   color: var(--text-primary);
   font-weight: 640;
 }

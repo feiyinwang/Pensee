@@ -159,10 +159,12 @@ three tokens, defined once in `App.css` (`@theme static`); CSS reads
   on one line: `white-space: nowrap`, and `flex-shrink: 0` in a flex row.
 - Not covered: glyphs drawn as text, display type, and user content (board
   text, the book reader's text size, Library cover art).
-- **Editor:** body 18px, line height 1.7, a 680px column (about 68
-  characters). These are the defaults of `editor.font-size`,
-  `editor.line-height` and `editor.content-width`; headings are em-relative
-  and the page title is twice the body.
+- **Editor:** body 18px, line height 1.9, a 660px column (about 66
+  characters), and a 2em blank line between blocks, so paragraphs sit a full
+  line apart (Ulysses' rhythm, `SPECs/writing-rhythm-spec.md`). These are the
+  defaults of `editor.font-size`, `editor.line-height` and
+  `editor.content-width`; headings are em-relative and the page title is
+  twice the body.
 
 See [`SPECs/type-scale-spec.md`](../SPECs/type-scale-spec.md).
 
