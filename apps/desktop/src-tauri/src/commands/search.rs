@@ -1,12 +1,14 @@
 use crate::error::AppError;
+use crate::file_cache::FileCache;
 use crate::state::{self, AppState, IndexedFile};
 use ignore::WalkBuilder;
 use parking_lot::Mutex;
+use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tauri::Manager;
 
 #[derive(Debug, Clone, Serialize)]
@@ -425,9 +427,30 @@ pub struct MentioningLine {
 const MENTION_TEXT_MAX: usize = 280;
 const MENTION_LIMIT_MAX: usize = 100;
 
+/// Every note's own lines (`writer_lines`), kept by `crate::file_cache` so a
+/// search only `stat`s each note: on an iCloud vault most notes are evicted,
+/// and reading them all again made every Connect take minutes.
+static LINE_INDEX: LazyLock<FileCache<Vec<WriterLine>>> =
+    LazyLock::new(|| FileCache::new("note-lines.json", 1));
+
+/// One line the writer wrote: not frontmatter, code, HTML or a pen line.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WriterLine {
+    /// 1-based.
+    pub line: u32,
+    /// Trimmed.
+    pub text: String,
+}
+
 /// Lines in the workspace's markdown files that contain any of `terms`
 /// (case-insensitive), `exclude` left out: most words matched first, then
-/// newest file. Same scan as `find_block_references`, one at a time.
+/// newest file.
+///
+/// Never waits on iCloud: it reads only notes changed since they were
+/// indexed and on disk now. A note offloaded to iCloud and not indexed yet is
+/// skipped (the background pass, `warm_line_index`, downloads it), so the
+/// first Connect after opening a vault answers in moments, not minutes. It
+/// doesn't wait for that pass either: the cache takes reads from both.
 #[tauri::command]
 pub async fn find_lines_mentioning(
     terms: Vec<String>,
@@ -436,27 +459,119 @@ pub async fn find_lines_mentioning(
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<Vec<MentioningLine>, AppError> {
-    static SCAN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
-    let _scan = SCAN.lock().await;
-    let state = app.state::<AppState>().get_or_create(webview.label());
-    let files: Vec<(PathBuf, u64)> = state
-        .file_index
-        .read()
-        .iter()
-        .filter(|f| exclude.as_deref() != Some(&*f.path.to_string_lossy()))
-        .map(|f| (f.path.clone(), f.modified_at))
-        .collect();
+    let files = line_index_files(&webview, &app, exclude.as_deref());
+    let cache_dir = app.path().app_cache_dir().ok();
     tauri::async_runtime::spawn_blocking(move || {
-        Ok(find_lines_mentioning_impl(&files, &terms, limit))
+        LINE_INDEX.open(cache_dir.as_deref());
+        let started = std::time::Instant::now();
+        let found = find_lines_mentioning_impl(&files, &terms, limit, &|path| {
+            LINE_INDEX.get(path, |path| {
+                if is_offloaded(path) {
+                    None
+                } else {
+                    read_writer_lines(path)
+                }
+            })
+        });
+        eprintln!(
+            "line index: searched {} notes in {} ms",
+            files.len(),
+            started.elapsed().as_millis()
+        );
+        Ok(found)
     })
     .await
     .map_err(|e| AppError::Io(e.to_string()))?
 }
 
+/// The note's text is in iCloud only ("Optimize Mac Storage"): opening it
+/// downloads it first, which can take seconds.
+fn is_offloaded(path: &Path) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::macos::fs::MetadataExt;
+        const SF_DATALESS: u32 = 0x4000_0000;
+        std::fs::metadata(path).is_ok_and(|m| m.st_flags() & SF_DATALESS != 0)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = path;
+        false
+    }
+}
+
+/// Bring the line index up to date in the background, so the first Connect
+/// after opening a workspace finds every note. Run once the workspace is
+/// indexed; downloads notes offloaded to iCloud, which a search skips.
+pub fn warm_line_index(app: &tauri::AppHandle, files: Vec<IndexedFile>) {
+    let cache_dir = app.path().app_cache_dir().ok();
+    tauri::async_runtime::spawn(async move {
+        let _scan = LINE_SCAN.lock().await;
+        let warmed = tauri::async_runtime::spawn_blocking(move || {
+            LINE_INDEX.open(cache_dir.as_deref());
+            let started = std::time::Instant::now();
+            in_parallel(&files, |file| {
+                LINE_INDEX.get(&file.path, read_writer_lines);
+            });
+            LINE_INDEX.prune(&files);
+            LINE_INDEX.save();
+            eprintln!(
+                "line index: {} notes ready in {} ms",
+                files.len(),
+                started.elapsed().as_millis()
+            );
+        })
+        .await;
+        if let Err(error) = warmed {
+            eprintln!("line index: warming failed: {error}");
+        }
+    });
+}
+
+/// One background pass at a time: a pass reads on up to 8 threads, and on a
+/// stalled iCloud vault overlapping passes pile up threads. An async lock
+/// holds no thread while waiting.
+static LINE_SCAN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+fn line_index_files(
+    webview: &tauri::Webview,
+    app: &tauri::AppHandle,
+    exclude: Option<&str>,
+) -> Vec<(PathBuf, u64)> {
+    let state = app.state::<AppState>().get_or_create(webview.label());
+    let files = state.file_index.read();
+    files
+        .iter()
+        .filter(|f| exclude != Some(&*f.path.to_string_lossy()))
+        .map(|f| (f.path.clone(), f.modified_at))
+        .collect()
+}
+
+/// Run `work` on every item, on up to 8 threads.
+fn in_parallel<T: Sync, R: Send>(items: &[T], work: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get().min(8))
+        .unwrap_or(4);
+    let chunk = items.len().div_ceil(threads).max(1);
+    let work = &work;
+    std::thread::scope(|scope| {
+        let workers: Vec<_> = items
+            .chunks(chunk)
+            .map(|part| scope.spawn(move || part.iter().map(work).collect::<Vec<_>>()))
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap_or_default())
+            .collect()
+    })
+}
+
+/// `lines_of` gives a note's own lines (from the index, or read in tests).
 pub fn find_lines_mentioning_impl(
     files: &[(PathBuf, u64)],
     terms: &[String],
     limit: usize,
+    lines_of: &(dyn Fn(&Path) -> Option<Arc<Vec<WriterLine>>> + Sync),
 ) -> Vec<MentioningLine> {
     let needles: Vec<String> = terms
         .iter()
@@ -468,49 +583,44 @@ pub fn find_lines_mentioning_impl(
     if needles.is_empty() || limit == 0 {
         return Vec::new();
     }
-    let threads = std::thread::available_parallelism()
-        .map(|n| n.get().min(8))
-        .unwrap_or(4);
-    let chunk = files.len().div_ceil(threads).max(1);
-    let mut found: Vec<(MentioningLine, u64)> = std::thread::scope(|scope| {
-        let workers: Vec<_> = files
-            .chunks(chunk)
-            .map(|part| {
-                let needles = &needles;
-                scope.spawn(move || {
-                    let mut found = Vec::new();
-                    for (path, modified) in part {
-                        let Ok(text) = std::fs::read_to_string(path) else {
-                            continue;
-                        };
-                        let lower = text.to_lowercase();
-                        if !needles.iter().any(|n| lower.contains(n.as_str())) {
-                            continue;
-                        }
-                        let stem = path
-                            .file_stem()
-                            .map(|s| s.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        for line in mentioning_lines(&text, needles) {
-                            found.push((
-                                MentioningLine {
-                                    path: path.to_string_lossy().to_string(),
-                                    stem: stem.clone(),
-                                    ..line
-                                },
-                                *modified,
-                            ));
-                        }
-                    }
-                    found
-                })
-            })
-            .collect();
-        workers
-            .into_iter()
-            .flat_map(|w| w.join().unwrap_or_default())
-            .collect()
-    });
+    let mut found: Vec<(MentioningLine, u64)> = in_parallel(files, |(path, modified)| {
+        let Some(lines) = lines_of(path) else {
+            return Vec::new();
+        };
+        let mut found = Vec::new();
+        for line in lines.iter() {
+            let lower = line.text.to_lowercase();
+            let hits = needles
+                .iter()
+                .filter(|n| lower.contains(n.as_str()))
+                .count() as u32;
+            if hits == 0 {
+                continue;
+            }
+            let text = match line.text.char_indices().nth(MENTION_TEXT_MAX) {
+                Some((cut, _)) => format!("{}…", &line.text[..cut]),
+                None => line.text.clone(),
+            };
+            let stem = path
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_default();
+            found.push((
+                MentioningLine {
+                    path: path.to_string_lossy().to_string(),
+                    stem,
+                    line: line.line,
+                    text,
+                    hits,
+                },
+                *modified,
+            ));
+        }
+        found
+    })
+    .into_iter()
+    .flatten()
+    .collect();
     found.sort_by(|(a, am), (b, bm)| {
         b.hits
             .cmp(&a.hits)
@@ -520,6 +630,13 @@ pub fn find_lines_mentioning_impl(
     });
     found.truncate(limit.min(MENTION_LIMIT_MAX));
     found.into_iter().map(|(line, _)| line).collect()
+}
+
+/// A note's own lines, read from the file. None when it can't be read.
+pub fn read_writer_lines(path: &Path) -> Option<Vec<WriterLine>> {
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|text| writer_lines(&text))
 }
 
 /// A word without its common English ending, so it matches its other forms
@@ -538,10 +655,10 @@ fn word_stem(word: &str) -> String {
     word.to_string()
 }
 
-/// The lines of one file that contain a needle, outside frontmatter, code
+/// The lines of one file the writer wrote, outside frontmatter, code
 /// fences and HTML (a video note's `<details>` transcript is the source's
 /// words, not the writer's), never the pen's own lines (`^ai-…`).
-fn mentioning_lines(text: &str, needles: &[String]) -> Vec<MentioningLine> {
+fn writer_lines(text: &str) -> Vec<WriterLine> {
     let mut out = Vec::new();
     let mut in_front = text.starts_with("---\n") || text.starts_with("---\r\n");
     let mut in_fence = false;
@@ -569,24 +686,9 @@ fn mentioning_lines(text: &str, needles: &[String]) -> Vec<MentioningLine> {
         if in_fence || trimmed.is_empty() || trimmed.starts_with('<') || is_pen_line(trimmed) {
             continue;
         }
-        let lower = trimmed.to_lowercase();
-        let hits = needles
-            .iter()
-            .filter(|n| lower.contains(n.as_str()))
-            .count() as u32;
-        if hits == 0 {
-            continue;
-        }
-        let text = match trimmed.char_indices().nth(MENTION_TEXT_MAX) {
-            Some((cut, _)) => format!("{}…", &trimmed[..cut]),
-            None => trimmed.to_string(),
-        };
-        out.push(MentioningLine {
-            path: String::new(),
-            stem: String::new(),
+        out.push(WriterLine {
             line: index as u32 + 1,
-            text,
-            hits,
+            text: trimmed.to_string(),
         });
     }
     out
@@ -783,22 +885,26 @@ mod tests {
         )
         .unwrap();
         let files = vec![(old.clone(), 1), (new.clone(), 2)];
+        let read = |path: &Path| read_writer_lines(path).map(Arc::new);
         let terms = vec![
             "Reward".to_string(),
             "dopamine".to_string(),
             "ok".to_string(),
         ];
-        let found = find_lines_mentioning_impl(&files, &terms, 10);
+        let found = find_lines_mentioning_impl(&files, &terms, 10, &read);
         let got: Vec<(&str, u32, u32)> = found
             .iter()
             .map(|l| (l.stem.as_str(), l.line, l.hits))
             .collect();
         assert_eq!(got, vec![("New", 2, 2), ("Old", 4, 1)]);
-        assert_eq!(find_lines_mentioning_impl(&files, &terms, 1).len(), 1);
-        assert!(find_lines_mentioning_impl(&files, &["ok".to_string()], 10).is_empty());
+        assert_eq!(
+            find_lines_mentioning_impl(&files, &terms, 1, &read).len(),
+            1
+        );
+        assert!(find_lines_mentioning_impl(&files, &["ok".to_string()], 10, &read).is_empty());
         // Other forms of a word match: "rewards" finds "reward".
         assert_eq!(
-            find_lines_mentioning_impl(&files, &["rewards".to_string()], 10).len(),
+            find_lines_mentioning_impl(&files, &["rewards".to_string()], 10, &read).len(),
             2
         );
         assert_eq!(word_stem("remembering"), "remember");

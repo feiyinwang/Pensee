@@ -1,12 +1,12 @@
 use crate::error::AppError;
+use crate::file_cache::FileCache;
 use crate::state::{AppState, IndexedFile};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, LazyLock, Once};
+use std::path::Path;
+use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 
@@ -37,39 +37,13 @@ struct NoteMeta {
 const HEAD_BYTES: usize = 8192;
 const EXCERPT_MAX_CHARS: usize = 400;
 
-/// Parsed heads by path, keyed on (modified nanos, size) so a repeat call only
-/// re-reads files that changed. Paths are absolute, so windows on different
-/// workspaces never collide.
-type MetaCache = HashMap<PathBuf, (u128, u64, Arc<NoteMeta>)>;
-static META_CACHE: LazyLock<Mutex<MetaCache>> = LazyLock::new(|| Mutex::new(HashMap::new()));
-
-/// The meta cache is also kept on disk, so a launch only `stat`s each note
-/// instead of opening it. On an iCloud vault mid-sync an open can take
-/// seconds while a stat stays instant: without this, every launch reread all
-/// heads and Library stayed empty for the twenty-odd minutes that took.
-const META_CACHE_FILE: &str = "note-meta.json";
-const META_CACHE_VERSION: u32 = 1;
-/// How often a long scan saves what it has read so far, so quitting mid-scan
-/// keeps the progress.
-const META_CACHE_CHECKPOINT: Duration = Duration::from_secs(20);
-static META_CACHE_LOADED: Once = Once::new();
-/// Set when the in-memory cache has entries the file doesn't.
-static META_CACHE_DIRTY: AtomicBool = AtomicBool::new(false);
-static META_CACHE_SAVED_AT: LazyLock<Mutex<Instant>> = LazyLock::new(|| Mutex::new(Instant::now()));
-
-#[derive(Serialize, Deserialize)]
-struct MetaCacheFile {
-    version: u32,
-    entries: Vec<MetaCacheEntry>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct MetaCacheEntry {
-    path: PathBuf,
-    modified: u128,
-    size: u64,
-    meta: NoteMeta,
-}
+/// Parsed heads by path (`crate::file_cache`), so a repeat call or a new
+/// launch only re-reads files that changed. On an iCloud vault mid-sync an
+/// open can take seconds while a stat stays instant: without the copy on
+/// disk, every launch reread all heads and Library stayed empty for the
+/// twenty-odd minutes that took.
+static META_CACHE: LazyLock<FileCache<NoteMeta>> =
+    LazyLock::new(|| FileCache::new("note-meta.json", 1));
 
 /// One `list_typed_notes` scan at a time. A scan reads every note on up to 8
 /// threads; when reads stall (an iCloud vault mid-sync), the rereads asked for
@@ -99,23 +73,18 @@ pub async fn list_typed_notes(
     if types.is_empty() {
         return Ok(Vec::new());
     }
-    let cache_file = match app.path().app_cache_dir() {
-        Ok(dir) => Some(dir.join(META_CACHE_FILE)),
+    let cache_dir = match app.path().app_cache_dir() {
+        Ok(dir) => Some(dir),
         Err(error) => {
             eprintln!("list_typed_notes: no cache dir, heads are not kept on disk: {error}");
             None
-        }
-    };
-    let load = move |cache_file: &Option<PathBuf>| {
-        if let Some(file) = cache_file {
-            META_CACHE_LOADED.call_once(|| load_meta_cache(file));
         }
     };
     let state = app.state::<AppState>().get_or_create(webview.label());
     if cached_only == Some(true) {
         let files: Vec<IndexedFile> = state.file_index.read().clone();
         return tauri::async_runtime::spawn_blocking(move || {
-            load(&cache_file);
+            META_CACHE.open(cache_dir.as_deref());
             Ok(cached_typed_notes(&files, &types))
         })
         .await
@@ -125,27 +94,18 @@ pub async fn list_typed_notes(
     // Read after the wait, so a queued scan sees the latest index.
     let files: Vec<IndexedFile> = state.file_index.read().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        load(&cache_file);
+        META_CACHE.open(cache_dir.as_deref());
         let emitted_at = Mutex::new(Instant::now());
         let checkpoint = || {
-            {
-                let mut at = emitted_at.lock();
-                if at.elapsed() >= PROGRESS_EVERY {
-                    *at = Instant::now();
-                    let _ = app.emit(NOTES_READ_EVENT, ());
-                }
-            }
-            if let Some(file) = &cache_file {
-                if META_CACHE_SAVED_AT.lock().elapsed() >= META_CACHE_CHECKPOINT {
-                    save_meta_cache(file);
-                }
+            let mut at = emitted_at.lock();
+            if at.elapsed() >= PROGRESS_EVERY {
+                *at = Instant::now();
+                let _ = app.emit(NOTES_READ_EVENT, ());
             }
         };
         let notes = list_typed_notes_impl(&files, &types, &checkpoint);
-        prune_meta_cache(&files);
-        if let Some(file) = &cache_file {
-            save_meta_cache(file);
-        }
+        META_CACHE.prune(&files);
+        META_CACHE.save();
         Ok(notes)
     })
     .await
@@ -156,15 +116,10 @@ pub async fn list_typed_notes(
 /// nothing.
 fn cached_typed_notes(files: &[IndexedFile], types: &[String]) -> Vec<TypedNote> {
     let wanted = wanted_types(types);
-    let cache = META_CACHE.lock();
     let mut out: Vec<TypedNote> = files
         .iter()
-        .filter_map(|file| {
-            let (_, _, meta) = cache.get(&file.path)?;
-            note_from_meta(file, meta, &wanted)
-        })
+        .filter_map(|file| note_from_meta(file, &*META_CACHE.cached(&file.path)?, &wanted))
         .collect();
-    drop(cache);
     sort_notes(&mut out);
     out
 }
@@ -246,118 +201,11 @@ fn note_from_meta(file: &IndexedFile, meta: &NoteMeta, wanted: &[String]) -> Opt
 }
 
 fn cached_meta(path: &Path, checkpoint: &(dyn Fn() + Sync)) -> Option<Arc<NoteMeta>> {
-    let metadata = std::fs::metadata(path).ok()?;
-    let modified = metadata
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let size = metadata.len();
-    if let Some((m, s, meta)) = META_CACHE.lock().get(path) {
-        if *m == modified && *s == size {
-            return Some(Arc::clone(meta));
-        }
-    }
-    let meta = Arc::new(parse_note_head(&read_head(path)?));
-    META_CACHE
-        .lock()
-        .insert(path.to_path_buf(), (modified, size, Arc::clone(&meta)));
-    META_CACHE_DIRTY.store(true, Ordering::Relaxed);
-    checkpoint();
-    Some(meta)
-}
-
-/// Fill the meta cache from disk. Entries already in memory win: they were
-/// read this run. A missing file is a first launch; an unreadable one is
-/// logged and ignored, since every entry can be read again.
-fn load_meta_cache(file: &Path) {
-    let bytes = match std::fs::read(file) {
-        Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return,
-        Err(error) => {
-            eprintln!("note meta cache: can't read {}: {error}", file.display());
-            return;
-        }
-    };
-    let saved: MetaCacheFile = match serde_json::from_slice(&bytes) {
-        Ok(saved) => saved,
-        Err(error) => {
-            eprintln!("note meta cache: ignoring {}: {error}", file.display());
-            return;
-        }
-    };
-    if saved.version != META_CACHE_VERSION {
-        return;
-    }
-    let mut cache = META_CACHE.lock();
-    for entry in saved.entries {
-        cache
-            .entry(entry.path)
-            .or_insert((entry.modified, entry.size, Arc::new(entry.meta)));
-    }
-}
-
-/// Write the meta cache to disk when it has changed. One writer at a time:
-/// a checkpoint that finds another save running skips.
-fn save_meta_cache(file: &Path) {
-    static SAVING: Mutex<()> = Mutex::new(());
-    let Some(_saving) = SAVING.try_lock() else {
-        return;
-    };
-    *META_CACHE_SAVED_AT.lock() = Instant::now();
-    if !META_CACHE_DIRTY.swap(false, Ordering::Relaxed) {
-        return;
-    }
-    let entries: Vec<MetaCacheEntry> = META_CACHE
-        .lock()
-        .iter()
-        .map(|(path, (modified, size, meta))| MetaCacheEntry {
-            path: path.clone(),
-            modified: *modified,
-            size: *size,
-            meta: NoteMeta::clone(meta),
-        })
-        .collect();
-    let saved = MetaCacheFile {
-        version: META_CACHE_VERSION,
-        entries,
-    };
-    if let Err(error) = write_atomically(file, &saved) {
-        META_CACHE_DIRTY.store(true, Ordering::Relaxed);
-        eprintln!("note meta cache: can't write {}: {error}", file.display());
-    }
-}
-
-fn write_atomically(file: &Path, saved: &MetaCacheFile) -> std::io::Result<()> {
-    if let Some(dir) = file.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    let tmp = file.with_extension("json.tmp");
-    std::fs::write(&tmp, serde_json::to_vec(saved)?)?;
-    std::fs::rename(&tmp, file)
-}
-
-/// Drop cached heads of notes that are gone, so the file on disk doesn't
-/// grow forever. Entries this scan didn't list may belong to another
-/// window's workspace, so only a missing file removes one.
-fn prune_meta_cache(files: &[IndexedFile]) {
-    let listed: HashSet<&Path> = files.iter().map(|f| f.path.as_path()).collect();
-    let unlisted: Vec<PathBuf> = META_CACHE
-        .lock()
-        .keys()
-        .filter(|path| !listed.contains(path.as_path()))
-        .cloned()
-        .collect();
-    let gone: Vec<PathBuf> = unlisted.into_iter().filter(|p| !p.exists()).collect();
-    if gone.is_empty() {
-        return;
-    }
-    let mut cache = META_CACHE.lock();
-    for path in gone {
-        cache.remove(&path);
-    }
-    META_CACHE_DIRTY.store(true, Ordering::Relaxed);
+    META_CACHE.get(path, |path| {
+        let meta = parse_note_head(&read_head(path)?);
+        checkpoint();
+        Some(meta)
+    })
 }
 
 fn read_head(path: &Path) -> Option<String> {
@@ -627,7 +475,7 @@ mod tests {
     }
 
     #[test]
-    fn meta_cache_survives_a_restart() {
+    fn cached_heads_list_without_opening_and_leave_when_deleted() {
         let dir = std::env::temp_dir().join(format!("pensee-meta-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("kept.md");
@@ -638,15 +486,6 @@ mod tests {
             name: "kept.md".into(),
             modified_at: 1,
         };
-        let cache_file = dir.join(META_CACHE_FILE);
-        list_typed_notes_impl(std::slice::from_ref(&file), &["Book".into()], &|| {});
-        META_CACHE_DIRTY.store(true, Ordering::Relaxed);
-        save_meta_cache(&cache_file);
-
-        // A new launch: nothing in memory until the file is loaded.
-        let cached = META_CACHE.lock().remove(&path).unwrap();
-        load_meta_cache(&cache_file);
-        assert_eq!(META_CACHE.lock().get(&path).unwrap().0, cached.0);
         let notes = list_typed_notes_impl(std::slice::from_ref(&file), &["Book".into()], &|| {});
         assert_eq!(notes[0].properties.get("cover").unwrap(), "c.jpg");
 
@@ -657,8 +496,8 @@ mod tests {
 
         // A deleted note leaves the cache.
         std::fs::remove_file(&path).unwrap();
-        prune_meta_cache(&[]);
-        assert!(!META_CACHE.lock().contains_key(&path));
+        META_CACHE.prune(&[]);
+        assert!(META_CACHE.cached(&path).is_none());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

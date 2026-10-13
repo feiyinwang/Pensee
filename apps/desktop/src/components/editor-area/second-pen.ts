@@ -26,6 +26,7 @@ import { bookFileOf } from "@/lib/book-highlights";
 import { openBookPassages } from "@/lib/book-readers";
 import { getFileStem } from "@/lib/paths";
 import {
+  ECHO_LABELS,
   type Citation,
   type Cut,
   type PenKind,
@@ -86,6 +87,14 @@ import "./second-pen.css";
 // Everything a flow knows is read back from the document (`lib/second-pen.ts`),
 // so undo, edits and reloads never leave it confused. The bottom bar says what
 // applies.
+
+/** The label a pen line starts with (`Another angle:`, `For:`), drawn bold
+ *  so what the line is reads before what it says. */
+const PEN_LABEL_RE = new RegExp(`^(?:${[...ECHO_LABELS, "For", "Against"].join("|")}):`);
+
+/** Lines from the line's own words that make Connect skip asking the pen
+ *  for more words: enough for it to pick up to three from. */
+const CONNECT_ENOUGH = 6;
 
 /** The pen's own edits: allowed while shorten locks the lines. */
 const penEdit = Annotation.define<true>();
@@ -687,6 +696,17 @@ class PenPlugin {
       ranges.push(Decoration.mark({ class: "cm-pen-sealed" }).range(from + start, from + end));
       ranges.push(Decoration.widget({ widget: new SealWidget(), side: 1 }).range(from + end));
       return;
+    }
+    if (kind === "e" || kind === "p" || kind === "n") {
+      const label = PEN_LABEL_RE.exec(text.slice(start, end));
+      if (label) {
+        ranges.push(
+          Decoration.mark({ class: "cm-pen-label" }).range(
+            from + start,
+            from + start + label[0].length,
+          ),
+        );
+      }
     }
     if (kind === "p" || kind === "n") {
       if (citationsIn(text).length === 0 && end > start) {
@@ -1541,26 +1561,32 @@ class PenPlugin {
         ...this.promptBase(lines, [...typedContext, ...targets], direction),
         source: null,
       };
-      // The pen's words for the idea, and the line's own: a search that never
-      // rests on the pen's choice alone.
-      const terms = [
-        ...new Set([
-          ...connectTerms(
-            await conversation.send(penPrompt({ ...base, ask: { task: "connectQuery" } })),
-          ),
-          ...contentWords(base.lines),
-        ]),
-      ].slice(0, 16);
       // A note already echoed under the line isn't offered again.
       const shown = echoedNotes(
         childrenOf(lines, anchor)
           .filter((j) => penKindOf(lines[j]!) === "e")
           .map((j) => lines[j]!),
       );
-      const found = terms.length ? await findLinesMentioning(terms, this.getFilePath(), 40) : [];
-      const candidates = found
-        .map((line) => ({ note: line.stem, text: echoQuote(line.text) }))
-        .filter((c) => c.text.length >= 12 && !shown.has(c.note));
+      const search = async (terms: string[]) =>
+        (terms.length ? await findLinesMentioning(terms, this.getFilePath(), 40) : [])
+          .map((line) => ({ note: line.stem, text: echoQuote(line.text) }))
+          .filter((c) => c.text.length >= 12 && !shown.has(c.note));
+      // The line's own words first: the index answers at once. Only when few
+      // lines share them does the pen name the words those notes would use,
+      // a search that never rests on the pen's choice alone.
+      const own = contentWords(base.lines).slice(0, 16);
+      let candidates = await search(own);
+      if (candidates.length < CONNECT_ENOUGH) {
+        const terms = [
+          ...new Set([
+            ...connectTerms(
+              await conversation.send(penPrompt({ ...base, ask: { task: "connectQuery" } })),
+            ),
+            ...own,
+          ]),
+        ].slice(0, 16);
+        candidates = await search(terms);
+      }
       const picked = candidates.length
         ? echoesReply(
             await conversation.send(

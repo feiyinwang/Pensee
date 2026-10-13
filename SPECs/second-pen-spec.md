@@ -145,6 +145,19 @@ notes are gone. The look is unchanged from the first Second pen
   (to the line's question), *Another angle*. The label is in the same ink as
   the rest of the line.
 - A note already echoed under the line isn't offered again.
+- **Fast.** The search runs on an index of every note's own lines
+  (`LINE_INDEX` in `commands/search.rs`, on `file_cache.rs`): kept on disk in
+  the app cache folder, keyed by each note's modified time and size, and
+  brought up to date in the background when a vault opens. A search only
+  `stat`s each note (about 15ms for 5,500 notes); it never reopens a note
+  that hasn't changed, which on an iCloud vault with offloaded notes meant
+  downloading them and took minutes. A search never waits on iCloud: a note
+  offloaded to iCloud and not yet indexed is skipped until the background
+  pass has downloaded it, and the search doesn't wait for that pass. The
+  pen's pick takes about 2.5s on Haiku, so a Connect lands in a few seconds,
+  the first one after opening a vault included. It searches the line's own words first;
+  only when that finds fewer than six lines does the pen name more words
+  (`connectQuery`), so most Connects make one call to the pen, the pick.
 - **Enter** on an echo opens an empty bullet under it, for anything you want
   to add; every echo stays. A click on its link opens that note. Echoes go
   only when you remove them: delete them like any line, or press **Esc**

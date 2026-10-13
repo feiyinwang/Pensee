@@ -600,6 +600,19 @@ describe("Journeys: second pen", function () {
     });
     ok(colours, "the echo's link should be drawn");
     ok(colours.link === colours.line, `link ${colours.link} vs line ${colours.line}`);
+    // The label reads first: bold, the point after it not.
+    const label = await browser.execute(() => {
+      const line = [...document.querySelectorAll(".cm-line.cm-pen-e")].find((l) =>
+        l.textContent.includes("Sleep log"),
+      );
+      const mark = line?.querySelector(".cm-pen-label");
+      return mark
+        ? { text: mark.textContent, weight: Number(getComputedStyle(mark).fontWeight) }
+        : null;
+    });
+    ok(label, "the echo's label should be marked");
+    ok(/^[A-Z][a-z]+( angle)?:$/.test(label.text), `label text: ${label.text}`);
+    ok(label.weight >= 600, `label weight ${label.weight}`);
   });
 
   it("PEN-05 Esc right after the echoes land takes them back", async function () {

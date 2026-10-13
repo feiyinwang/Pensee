@@ -11,6 +11,11 @@
   color: var(--color-ai-ink);
 }
 
+/* What a line is (`Another angle:`, `For:`), before what it says. */
+.cm-editor .cm-pen-label {
+  font-weight: 600;
+}
+
 /* A check's or fact's ` — source`. */
 /* Everything the pen writes keeps its ink: its words, a source's time and a
    [[link]] alike. Smaller, never another colour. */

@@ -230,7 +230,7 @@ Opened full screen or **Edit here** over a note.
 **Feature:** The Projects space is a kanban of `Type: Project` notes by
 **Status**. Moving a card writes the note's frontmatter. Done folds its older cards.
 **Spec:** SPECs/project-views-spec.md
-**Code:** `src/components/spaces/project-views.tsx`, `src/components/arc/blocks/kanban-board/`, `src/lib/projects.ts`, `src/lib/project-template.ts`, `src-tauri/src/commands/spaces.rs`
+**Code:** `src/components/spaces/project-views.tsx`, `src/components/arc/blocks/kanban-board/`, `src/lib/projects.ts`, `src/lib/project-template.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`
 
 | ID     | Journey                                   | Expected                                             | Check               |
 | ------ | ----------------------------------------- | ---------------------------------------------------- | ------------------- |
@@ -246,7 +246,7 @@ Opened full screen or **Edit here** over a note.
 **Feature:** Books, videos, courses, podcasts, papers and X bookmarks as a
 cover gallery with type tabs; items are added from a link, a file or a title.
 **Spec:** SPECs/add-to-library-spec.md, SPECs/spaces-spec.md
-**Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/commands/covers.rs`
+**Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`, `src-tauri/src/commands/covers.rs`
 
 | ID     | Journey                                | Expected                                                   | Check                     |
 | ------ | -------------------------------------- | ---------------------------------------------------------- | ------------------------- |
@@ -352,7 +352,7 @@ in your own words.
 | PEN-12 | ⌥↵ on an empty take                                          | The answer opens (`^ai-r-…`) with no comparison; the empty take goes                        | auto: pen  |
 | PEN-13 | ⌘. then `!` on a question in a video note                    | The sealed answer comes from the transcript and ends with its time (`— 1:10`)               | auto: pen  |
 | PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the sealed answer (`^ai-s-…`) under it   | auto: pen  |
-| PEN-15 | ⌘. then `[` on a line another note speaks to                 | Short echoes `Label: one sentence — [[Note]]` (`^ai-e-…`, label like Supports or Example, about 20 words) appear under it, label and link in the same blue as the words; the link opens that note | auto: pen  |
+| PEN-15 | ⌘. then `[` on a line another note speaks to                 | Short echoes `Label: one sentence — [[Note]]` (`^ai-e-…`, label like Supports or Example, about 20 words) appear under it, label (bold) and link in the same blue as the words; the link opens that note | auto: pen  |
 | PEN-16 | Select several lines, ⌘., `#` Enter, then Esc                | An outline replaces them, tinted; Esc puts your lines back exactly                           | auto: pen  |
 | PEN-17 | Select several lines, ⌘., `#` Enter, then Enter              | The outline stays, with your own words in it                                                 | auto: pen  |
 | PEN-18 | ⌘., type `@` (or a full-width `［`), then Backspace           | The key lights its pill and types nothing; Backspace unselects it                            | auto: pen  |
@@ -362,6 +362,7 @@ in your own words.
 | PEN-22 | ⌘. on one line, then on several selected lines               | **# Organize** isn't offered for one line; it is with several lines selected                | auto: pen  |
 | PEN-23 | ⌘. then `@` on a line ending in `?`                          | Nothing is written; the bar says it's a question, not a claim                               | auto: pen  |
 | PEN-24 | Esc on the empty line under *Against*                        | For and Against are taken back                                                              | auto: pen  |
+| PEN-28 | In a big iCloud vault, open it, then ⌘. `[` Enter on a line   | Echoes land in a few seconds (well under 30s), the first Connect after opening included     | you        |
 
 ---
 

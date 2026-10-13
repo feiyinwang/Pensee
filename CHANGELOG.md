@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- **[[ Connect** is much faster. Pensée keeps an index of the lines in your notes, saved between launches and brought up to date when a vault opens, so Connect no longer reads every note each time (on an iCloud vault with notes offloaded to the cloud, that took minutes). It also searches with your line's own words first and only asks the pen for other words when few lines match, so most Connects wait on one answer from the pen instead of two.
 - The second pen now helps you think instead of thinking for you. Its box has five pills: **! Answer**, **@ Check**, **[[ Connect**, **− Shorten** and **# Organize** (Organize with several lines selected).
   - **! Answer** writes its answer *sealed*: blurred, with an empty line under it for your take. Write what you think and press Enter: the answer opens, and the pen writes one line comparing the two, ending with a question back to you. A take that isn't one, like random letters or something unrelated to the question, keeps it sealed. A wrong guess is fine. **⌥↵** opens it without writing, and Esc on the empty take takes it back.
   - **@ Check** no longer adds a fact. It lays out the evidence on both sides of your line, **For:** and **Against:**, each with its paper (or *no paper* when it's a limit of the evidence), then waits on an empty line for your call. It never gives a verdict. On a question it says there's no claim to check.

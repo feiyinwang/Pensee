@@ -3,6 +3,7 @@ mod config;
 #[cfg(target_os = "macos")]
 mod dock_menu;
 mod error;
+mod file_cache;
 mod ignore;
 #[cfg(target_os = "macos")]
 mod macos;

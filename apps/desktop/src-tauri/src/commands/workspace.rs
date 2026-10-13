@@ -540,6 +540,7 @@ fn run_workspace_bootstrap(
         return;
     }
     let file_count = indexed.len();
+    let for_lines = indexed.clone();
 
     let displaced = state.with_workspace_snapshot(&root, epoch, || {
         let old_index = std::mem::replace(&mut *state.file_index.write(), indexed);
@@ -553,6 +554,7 @@ fn run_workspace_bootstrap(
         return;
     };
     drop(displaced);
+    crate::commands::search::warm_line_index(&handle, for_lines);
     let _ = handle.emit_to(
         label,
         "index:complete",
