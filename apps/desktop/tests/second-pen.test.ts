@@ -1,12 +1,18 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
-  answerStep,
   applyCuts,
   childIndent,
   citationMarkdown,
   citationsIn,
+  compareReply,
+  connectTerms,
+  contentWords,
   cutsFromReply,
-  factReply,
+  echoLine,
+  echoQuote,
+  echoesReply,
+  isNonsenseTake,
+  isQuestion,
   itemText,
   newPenId,
   noteForPen,
@@ -16,10 +22,13 @@ import {
   penKindOf,
   penLineSlot,
   penPrompt,
-  questionAbove,
   replyLine,
+  sealedAbove,
+  sideLine,
+  sidesReply,
   subtreeEnd,
-  unansweredSiblingMixes,
+  unansweredSiblings,
+  unsealedLine,
   videoPassages,
 } from "../src/lib/second-pen";
 import type { Paper } from "../src/lib/tauri";
@@ -102,65 +111,57 @@ describe("outline", () => {
     expect(subtreeEnd(para, 0)).toBe(3);
     expect(parentOf(["Just text", "- a bullet"], 1)).toBe(-1);
   });
-
-  test("an answer belongs to the question above it", () => {
-    expect(questionAbove(lines, 2)).toBe(1);
-    expect(questionAbove(lines, 4)).toBeNull();
-  });
 });
 
 describe("answer flow", () => {
-  test("an empty first answer asks for a hint, then the check", () => {
-    const lines = ["- note", "  - Q? ^ai-q-aaaa", "    - "];
-    expect(answerStep(lines, 2)).toEqual({ question: 1, step: "hint" });
-    // The hint hangs under the answer that asked for it.
-    const hinted = [
-      "- note",
-      "  - Q? ^ai-q-aaaa",
-      "    - I don't know",
-      "      - Hint: … ^ai-h-bbbb",
-      "    - ",
+  test("your take is the bullet under a sealed answer, and it opens to r", () => {
+    const lines = ["- Why?", "  - The answer. ^ai-s-ab12", "    - my take", "  - other"];
+    expect(sealedAbove(lines, 2)).toBe(1);
+    expect(sealedAbove(lines, 1)).toBe(-1);
+    expect(sealedAbove(lines, 3)).toBe(-1);
+    expect(unsealedLine(lines[1]!)).toBe("  - The answer. ^ai-r-ab12");
+    // Once open, the take is an ordinary line.
+    expect(sealedAbove(["- Why?", "  - The answer. ^ai-r-ab12", "    - my take"], 2)).toBe(-1);
+  });
+
+  test("keeping an echo drops the unanswered ones beside it", () => {
+    const lines = [
+      "- idea",
+      "  - “one” — [[A]] · same idea ^ai-e-aaaa",
+      "  - “two” — [[B]] · another angle ^ai-e-bbbb",
+      "    - they connect because",
+      "  - “three” — [[C]] · you tried it ^ai-e-cccc",
+      "  - For: x ^ai-p-dddd",
     ];
-    expect(answerStep(hinted, 4)).toEqual({ question: 1, step: "check" });
+    expect(unansweredSiblings(lines, 1, "e")).toEqual([4]);
   });
 
-  test("a written answer is checked, once", () => {
-    const lines = ["- Q? ^ai-q-aaaa", "  - rereaders first"];
-    expect(answerStep(lines, 1)).toEqual({ question: 0, step: "check" });
-    const checked = [...lines, "    - “…” — 9:00 ^ai-c-cccc", "  - more"];
-    expect(answerStep(checked, 3)).toBeNull();
-  });
-
-  test("a question about your thinking is never checked", () => {
-    expect(answerStep(["- Why? ^ai-a-aaaa", "  - because"], 1)).toBeNull();
-  });
-
-  test("keeping a plain mix drops the unanswered plain ones around it", () => {
+  test("keeping a plain echo drops the unanswered plain ones around it", () => {
     const lines = [
       "An idea.",
       "",
-      "× one ^ai-m-aaaa",
+      "“one” — [[A]] · same idea ^ai-e-aaaa",
       "",
-      "× two ^ai-m-bbbb",
+      "“two” — [[B]] · same idea ^ai-e-bbbb",
       "- liked",
       "",
-      "× three ^ai-m-cccc",
+      "“three” — [[C]] · same idea ^ai-e-cccc",
       "",
       "Other.",
     ];
-    expect(unansweredSiblingMixes(lines, 2)).toEqual([7]);
+    expect(unansweredSiblings(lines, 2, "e")).toEqual([7]);
   });
 
-  test("keeping a mix drops the unanswered ones beside it", () => {
-    const lines = [
-      "- idea",
-      "  - × one ^ai-m-aaaa",
-      "  - × two ^ai-m-bbbb",
-      "    - I like this",
-      "  - × three ^ai-m-cccc",
-      "  - mine",
-    ];
-    expect(unansweredSiblingMixes(lines, 1)).toEqual([4]);
+  test("a line ending in a question mark is a question, not a claim", () => {
+    expect(isQuestion("Why do I never finish side projects?")).toBe(true);
+    expect(isQuestion("为什么？")).toBe(true);
+    expect(isQuestion("Caffeine helps (I think?) a lot")).toBe(false);
+  });
+
+  test("a take with no word in it is nobody's guess", () => {
+    expect(isNonsenseTake(".,;; 123")).toBe(true);
+    expect(isNonsenseTake("boredom")).toBe(false);
+    expect(isNonsenseTake("无聊")).toBe(false);
   });
 });
 
@@ -195,21 +196,15 @@ describe("source", () => {
 });
 
 describe("prompts and replies", () => {
-  test("a quiz prompt carries the source and what was asked", () => {
-    const prompt = penPrompt({
-      title: "How we remember",
-      note: "- note",
-      lines: ["note"],
-      source: {
-        kind: "video",
-        label: "the video",
-        passages: [{ where: "9:00", text: "Recall wins." }],
-      },
-      ask: { task: "quiz", already: ["Who won?"], newTopic: false, focus: "9:00" },
-    });
-    expect(prompt).toContain("[9:00] Recall wins.");
-    expect(prompt).toContain("- Who won?");
-    expect(prompt).toContain("at 9:00");
+  test("only an answer reads the source", () => {
+    const source = {
+      kind: "video" as const,
+      label: "the video",
+      passages: [{ where: "9:00", text: "Recall wins." }],
+    };
+    const base = { title: "T", note: "- note", lines: ["note"], source };
+    expect(penPrompt({ ...base, ask: { task: "answer", already: [] } })).toContain("[9:00]");
+    expect(penPrompt({ ...base, ask: { task: "factQuery" } })).not.toContain("[9:00]");
   });
 
   test("an answer to your question comes from the source, with where", () => {
@@ -237,13 +232,60 @@ describe("prompts and replies", () => {
     expect(replyLine("“Recall wins.” — 9:00", true)).toBe("“Recall wins.” — 9:00");
   });
 
-  test("a fact names its paper", () => {
-    expect(factReply('{"paper": 1, "fact": "The curve replicates."}', [paper])).toEqual({
-      fact: "The curve replicates.",
-      paper,
+  test("a comparison only comes for a real take", () => {
+    expect(compareReply('{"real": false}')).toEqual({ real: false });
+    expect(compareReply('{"real": true, "compare": "Yours has the boredom part."}')).toEqual({
+      real: true,
+      text: "Yours has the boredom part.",
     });
-    expect(factReply('{"paper": 0}', [paper])).toBeNull();
-    expect(factReply("no json", [paper])).toBeNull();
+    expect(compareReply("no json")).toBeNull();
+  });
+
+  test("both sides name their papers, or no paper; never two opinions", () => {
+    const reply =
+      '{"for": {"paper": 1, "text": "The curve replicates."}, "against": {"paper": 0, "text": "One lab, one person."}}';
+    expect(sidesReply(reply, [paper])).toEqual({
+      pro: { text: "The curve replicates.", paper },
+      con: { text: "One lab, one person.", paper: null },
+    });
+    expect(
+      sidesReply('{"for": {"paper": 0, "text": "a"}, "against": {"paper": 0, "text": "b"}}', [
+        paper,
+      ]),
+    ).toBeNull();
+    expect(sidesReply("{}", [paper])).toBeNull();
+    expect(
+      sidesReply('{"for": {"paper": 3, "text": "a"}, "against": {"paper": 1, "text": "b"}}', [
+        paper,
+      ]),
+    ).toBeNull();
+    expect(sideLine("Against", { text: "One lab.", paper: null })).toBe("Against: One lab.");
+    expect(sideLine("For", { text: "Yes.", paper })).toMatch(/^For: Yes\. \[Murre & Dros 2015\]\(/);
+  });
+
+  test("connect: search words, picked echoes, and the echo line", () => {
+    expect(connectTerms('["dopamine", "reward", "ok", "reward"]')).toEqual(["dopamine", "reward"]);
+    expect(connectTerms("nope")).toEqual([]);
+    expect(contentWords(["naps help you remember what you studied", "Naps!"])).toEqual([
+      "naps",
+      "help",
+      "remember",
+      "studied",
+    ]);
+    expect(
+      echoesReply(
+        '[{"n": 2, "rel": "same idea"}, {"n": 2, "rel": "another angle"}, {"n": 9, "rel": "same idea"}, {"n": 1, "rel": "made up"}]',
+        3,
+      ),
+    ).toEqual([{ index: 1, rel: "same idea" }]);
+    expect(echoQuote("  - [ ] A reward after every chapter. ^abc123")).toBe(
+      "A reward after every chapter.",
+    );
+    expect(echoQuote(`## ${"word ".repeat(60)}`).endsWith("…")).toBe(true);
+    expect(echoQuote("<p><small>1:10</small> Recall won.</p>")).toBe("1:10 Recall won.");
+    expect(echoLine("Flat after scrolling.", "Why I quit Twitter", "same idea")).toBe(
+      "“Flat after scrolling.” — [[Why I quit Twitter]] · same idea",
+    );
   });
 
   test("a citation is a link that keeps the paper's details", () => {

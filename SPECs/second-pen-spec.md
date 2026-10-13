@@ -2,16 +2,28 @@
 
 ## Goal
 
-An AI that writes in your notes the way a second pen would: one line at a
-time, only when asked, in its own ink, right under the line you're on. It asks
-questions, quizzes you on what you watched or read, adds facts with their
-source, offers unexpected mixes, and cuts words. You answer under its lines.
-You decide when to stop: nothing happens unless you ask.
+An AI that helps you think, not one that thinks for you. It writes in your
+notes the way a second pen would: one line at a time, only when asked, in its
+own ink, right under the line you're on. It never writes your conclusion:
 
-Decided from the prototype `apps/desktop/proto/ai-writing` (Second pen) and
-`apps/desktop/proto/recall` (Second pen in a source note). This spec is the
-keyboard and text logic only. The prototypes' quiz button and the **?** at a
-note's edge are not part of it.
+- it **answers** only after you've written your own take, then compares;
+- it **checks** a claim by laying out the evidence on both sides, and you
+  make the call;
+- it **connects** a line to what you wrote before in other notes, and you
+  write how they connect;
+- it **shortens** and **organizes** your own words, nothing added.
+
+Decided from the prototype `apps/desktop/proto/thinking-pen` (2026-10-13):
+Answer → *Sealed*, Check → *Both sides*, Connect → *Inline*. Rejected there:
+*Guess first* (the pen asks for a guess, then answers it; it said the same
+thing three times), *Hints* (three rungs, never the answer: slow when you just
+need the fact), *Verdict* (one Supported / Mixed / Contradicted line: the pen
+still makes the call), *Marks* (wavy underlines over the whole note: easy to
+glance at the colours and not read), *Margin* echoes (pulls you out of the
+text while you write) and *Review* (connections only after writing). The
+earlier pills Ask me, Facts, Mix, New topic and the quiz in video and book
+notes are gone. The look is unchanged from the first Second pen
+(`proto/ai-writing`): Arc's box, AI ink, hollow bullets.
 
 ## Behavior
 
@@ -25,86 +37,115 @@ note's edge are not part of it.
   input style (a hairline; no focus ring while you type).
 - Each **pill shows its key**:
 
-  | Pill | In any note | In a source note (video, book) |
-  | --- | --- | --- |
-  | `?` **Ask me** | one question about the line. Never answers it. | **Quiz me**: one recall or follow-up question about the source |
-  | `!` **Answer** | it answers your question in one or two sentences | same, from the source when it covers it, ending with where (`— 1:10`) |
-  | `@` **Facts** | one fact cited to a recent paper, or says it has none | same |
-  | `+` **Mix** | one unexpected link to another field | same |
-  | `−` **Shorten** | proposes cuts on the lines, nothing else | same |
-  | `#` **Organize** | only with several lines selected: regroups them into an outline in your own words | same |
-  | `>` **New topic** | — | in a quiz: a question on an idea not asked about yet |
+  | Pill | What it does |
+  | --- | --- |
+  | `!` **Answer** | writes an answer, sealed, with a line under it for your take. It opens once you've written yours |
+  | `@` **Check** | the evidence for and against the line, each with a paper (or *no paper*), then a line for your call. No verdict |
+  | `[[` **Connect** | up to three lines you wrote in other notes that meet this one, each linked to its note and saying how they relate |
+  | `−` **Shorten** | proposes cuts on the lines, nothing else |
+  | `#` **Organize** | only with several lines selected: regroups them into an outline in your own words |
 
-  On an empty line: **Answer** (to what you type), and in a source note
-  **Quiz me on everything so far**.
+  On an empty line: **Answer** only (to what you type).
 - **Nothing runs until Enter.** Clicking a pill selects it (it lights up);
-  so does typing its key, `? ! @ + − # >` or an input method's full-width
-  `？！＠＋－＃＞`, at the start of the box or after a space, and the key isn't
-  typed. Inside a word it types as usual, so "off-shore" and "why?" work. The
+  so does typing its key, `! @ [ − #` or an input method's full-width
+  `！＠［【－＃`, at the start of the box or after a space, and the key isn't
+  typed. Inside a word it types as usual, so "off-shore" and "why!" work. The
   same key again, a click on the lit pill, or Backspace in the empty box
   unselects it.
 - **Enter runs the selected pill**, with or without anything typed. With no
-  pill selected, Enter asks the AI what you typed (**⌘ Enter**: has it ask
-  you instead).
+  pill selected, Enter is **Answer** on what you typed.
 - **What you typed goes into the note** as your own line, under the line you
-  were on (or on the empty line), and the pen's line goes under it, for Ask
-  me, Answer, Facts, Mix and New topic. With nothing selected, what you typed
-  is what the pen works on (type "naps and memory", pick Facts). For Shorten
-  and Organize, which change your lines, it only steers and adds no line.
-- One request is one line. Picking the same pill again on the same line gives
-  one more, after the ones already there.
+  were on (or on the empty line), and the pen works under it, for Answer,
+  Check and Connect. For Shorten and Organize, which change your lines, it
+  only steers and adds no line.
+- Picking the same pill again on the same line gives one more, after the
+  ones already there, never repeating them.
 
 ### While it writes
 
 - A line in AI ink appears right where the pen's line will land, with what
-  it's doing (*Writing a question…*, *Finding a paper…*, *Reading the
-  paper…*, *Answering…*, *Organizing your lines…*) and **Esc stop**.
+  it's doing (*Writing an answer…*, *Finding papers…*, *Reading the
+  papers…*, *Reading your notes…*, *Comparing with yours…*, *Organizing your
+  lines…*) and **Esc stop**.
 - When it writes nothing, it says why on that same line for a few seconds
-  ("That's all I have on this line. The rest is yours.").
+  ("No paper found for this line.").
 
-### What it writes
+### Where its lines go
 
-- One line, right below the line you used the key on:
-  - under a **bullet**, a **sub-bullet**, after the pen's sub-bullets already
-    there (so one more lands after the last);
-  - under a **paragraph or heading**, a **plain line** right below it (a blank
-    line apart, so it stays its own line in any Markdown app), after the
-    pen's plain lines already there;
-  - on an **empty line** (a quiz on everything so far, or one more in a quiz
-    from an empty answer), that line becomes the question.
-- Stored as plain Markdown: the line ends with a hidden block id `^ai-<kind>-<rand>`
-  (`q` quiz question, `a` question, `h` hint, `c` check, `f` fact, `m` mix,
-  `r` its answer to your question).
-  Other apps show an ordinary line or bullet. The id is hidden like any block id.
-- Drawn in AI ink (`--color-ai-ink`); a bullet gets a hollow marker. Its id
-  is never shown, even with the caret on the line. A check's trailing
-  ` — source` is fainter. A fact's paper is always a pill, never its link
-  Markdown (selecting or double-clicking the line keeps it a pill; Backspace
-  removes it whole); hovering the pill shows the paper's title, authors,
-  journal and year, citations and link, with **Open paper**. The words fade in as they land.
+- Right below the line you used the key on:
+  - under a **bullet**, as **sub-bullets**, after the pen's sub-bullets
+    already there;
+  - under a **paragraph or heading**, as **plain lines** right below it (a
+    blank line apart, so each stays its own line in any Markdown app), after
+    the pen's plain lines already there. Your lines under a plain pen line are
+    the bullets right after it.
+- Stored as plain Markdown: the line ends with a hidden block id
+  `^ai-<kind>-<rand>`: `s` a sealed answer, `r` an answer (opened), `v` its
+  comparison with your take, `p` the evidence for, `n` the evidence against,
+  `e` an echo of an earlier note. Lines the earlier pen wrote (`q a h c f m`)
+  keep their ink and stay hidden-id. Other apps show an ordinary line or
+  bullet.
+- Drawn in AI ink (`--color-ai-ink`); a bullet gets a hollow marker. Its id is
+  never shown, even with the caret on the line. A paper is always a pill,
+  never its link Markdown; hovering it shows the paper's title, authors,
+  journal and year, citations and link, with **Open paper**. The words fade
+  in as they land.
+- An empty line of yours that the pen is waiting on shows what goes there, in
+  faint italics: *Your take first…*, *Your call: does your line hold? Rewrite
+  it or keep it.*, *How are these connected? In your words.*
 - Its lines are your text: edit them, delete them, undo them like any line.
 
-### Answering
+### Answer: sealed until you've written your take
 
-- **Enter on a pen line** opens an answer bullet under it, after any answers
-  already there, with the caret in it. Under a plain pen line, the answers are
-  the bullets right after it.
-- `!` again on the same line adds one more line that goes further.
-- On a **mix**, Enter also keeps that mix and removes the pen's other mixes
-  on the same line that have no answers yet.
-- A **quiz question** puts the caret straight into an empty answer under it.
-  - **Enter** on your answer: the pen checks it, writing the source's own
-    words that answer the question (`“…” — 9:00`) as a sub-bullet of your
-    answer. Then it waits.
-  - **Enter on an empty answer**: it is written as *I don't know*, the pen
-    puts a hint under it, and a new empty answer opens beside it. A second
-    empty answer gets the source under it.
-  - **⌘. ?** with the caret on one of your answers asks one more on that idea,
-    as a sub-bullet of that answer.
-  - Once a question has its check, Enter in its answers is a plain Enter.
-- **Esc** on an empty answer takes back the question (or the hint) it answers.
-  Right after the pen writes facts or mixes, Esc takes back the ones you
-  haven't answered.
+- **⌘. !** on a line (a question, or anything to explain): the pen writes its
+  answer under it **sealed**, blurred and unreadable, with *Sealed until you
+  write your take · ⌥↵ open it now* above the words, and an empty bullet
+  under it with the caret in it: *Your take first…*
+- **Enter** on your take opens the answer (`^ai-s-…` becomes `^ai-r-…`, so it
+  stays open after a reload) and the pen writes one line under your take
+  comparing the two: what yours already has, what it leaves out, ending with a
+  question back to you. An empty bullet waits under that for your answer.
+- **Enter on an empty take**: nothing opens; the bar says *A wrong guess
+  counts. Write anything first, or ⌥↵ to open it now.*
+- **⌥↵** on your take opens the answer without a comparison; an empty take
+  line goes away.
+- **Esc** on the empty take takes the sealed answer back.
+- In a **video note** (transcript) or a **book note**, the answer comes from
+  the source when it covers it, ending with where (`— 1:10`).
+- Once open, it's an answer like any pen line: Enter on it opens a bullet
+  under it for your reply.
+
+### Check: both sides, you make the call
+
+- **⌘. @** on a claim: the pen searches recent, well-cited papers (OpenAlex)
+  and writes two lines under it: **For:** the strongest support it found,
+  then **Against:** the strongest challenge or limit. Each ends with its
+  paper's pill, or *no paper* when it is a limit of the evidence rather than a
+  finding (one small study, never measured). It never writes a verdict.
+- An empty bullet under *Against* waits, caret in it: *Your call: does your
+  line hold? Rewrite it or keep it.*
+- A line that ends with `?` is a question: *That's a question, not a claim.
+  Nothing to check.* No paper found: *No paper found for this line.*
+- **Esc** on the empty *your call* bullet takes both lines back.
+- One more never cites a paper already there.
+
+### Connect: what you wrote before
+
+- **⌘. [** on a line: the pen looks through your other notes for lines on the
+  same idea and writes up to three **echoes** under it, each one of your own
+  earlier lines quoted, then its note as a link, then how it relates:
+  `“After an hour of scrolling I feel flat…” — [[Why I quit Twitter]] · same idea`.
+  The relations: *same idea*, *you wrote the opposite*, *you answered this
+  before*, *another angle*, *you tried it*.
+- **Enter** on an echo keeps it (a click on its link opens that note): the other echoes
+  on that line that have nothing under them go, and an empty bullet opens
+  under the kept one: *How are these connected? In your words.* The link is a
+  normal `[[link]]`, so it's a backlink in Pensée and in Obsidian.
+- **Esc** right after the echoes land takes back the ones you haven't kept;
+  Esc on the empty *how are these connected* bullet takes that echo back.
+- Nothing found: *None of your other notes mention this yet.* Found, but
+  nothing on the same subject: *Your notes mention this, but nothing that
+  meets this line yet.*
 
 ### Organize
 
@@ -127,14 +168,14 @@ note's edge are not part of it.
 ### What it knows
 
 - The note: its title and text, and which lines you asked about.
-- A **video note** (a YouTube link in its properties): its transcript (the
-  note's Transcript toggle), up to where the video is now. A video not played
-  yet counts as seen whole (watched elsewhere, or notes from the transcript).
-  A line with a pin is about that moment. With nothing to quiz on, the bar
-  says so and nothing is asked.
-- A **book note** (a book file in its properties): the passage on screen in
-  the open book, and the note's highlights.
-- Nothing else: no web search, no other files, no tools.
+- **Answer** in a video note (a YouTube link in its properties): its
+  transcript up to where the video is now (a video not played yet counts as
+  seen whole). In a book note: the passage on screen in the open book.
+- **Check**: the titles and abstracts of the papers its search returns.
+- **Connect**: lines from your other notes that contain the words it searched
+  for (at most 40, this note's own lines left out), with their note's name.
+  Nothing else from those notes.
+- No web search beyond the paper search, no tools.
 
 ### The bottom bar
 
@@ -143,13 +184,13 @@ pen's. The bar has the page's own solid background, so text scrolling under it
 never shows through. It shows, in order of what applies:
 
 1. **Writing…** while a request runs (nothing while the pen's box is open);
-2. *(the box above the text has the pills now)*;
-3. the shorten keys and the words it would save;
-4. a short message, for 4 seconds (nothing left, nothing to cut, an error);
-5. on an empty answer: `↵ answer  ↵ on an empty line: I don't know  Esc take it back`;
-6. on a pen line: `↵ answer under it` (a mix: `↵ keep this one`);
-7. right after the pen writes: `⌘. ? one more` and the like, for 5 seconds;
-8. otherwise, while the caret is in the note: `⌘. ask, or be asked, about the selection or the line you're on`.
+2. the shorten keys and the words it would save;
+3. a short message, for 4 seconds (nothing found, an error);
+4. on your take under a sealed answer: `↵ open it and compare  ⌥↵ open it without writing`;
+5. on an echo: `↵ keep it and say how they connect`;
+6. on a pen line: `↵ reply under it`;
+7. right after the pen writes: `⌘. ! one more`, `Esc take it back` and the like, for 5 seconds;
+8. otherwise, while the caret is in the note: `⌘. answer, check or connect the line you're on`.
 
 ## Implementation
 
@@ -160,20 +201,26 @@ never shows through. It shows, in order of what applies:
   (`--tools "" --no-session-persistence`). Every request gets a fresh process:
   after a reply the pen resets its process and warms the next, so a request
   never carries the last one's context. ⌘. warms it.
-- `lib/second-pen.ts`: pure text. Ids and kinds, where a line goes,
-  answers and checks found from the document (no hidden session state),
-  prompts, reply clean-up, cuts.
+- `lib/second-pen.ts`: pure text. Ids and kinds, where a line goes, the
+  sealed-answer and echo flows read from the document (no hidden session
+  state), prompts, reply clean-up (answers, both sides, echoes, cuts).
+- **Connect's search**: `find_lines_mentioning` (`commands/search.rs`) scans
+  the workspace's indexed markdown files in parallel for lines containing any
+  of the pen's search words (case-insensitive), the current note excluded,
+  best matches first, capped at 40; the pen's own lines and empty lines never
+  count. One scan at a time, like `find_block_references`.
 - `lib/second-pen-agent.ts`: one request → one reply, over the pen channel.
 - `components/editor-area/second-pen.ts`: the editor extension (the box as
-  a CodeMirror tooltip, the progress line as a block widget, decorations, the
-  answer flow, shorten, organize) and the bottom bar's hint.
+  a CodeMirror tooltip, the progress line as a block widget, decorations
+  (the seal, the For / Against labels, the waiting-line placeholders), the
+  sealed answer, both sides, echoes, shorten, organize) and the bottom bar's
+  hint.
 - `components/editor-area/pen-box.tsx`: the box's React (Arc's floating button
   group and the field), loaded on first use and prefetched when idle.
 - `components/editor-area/document-footer.tsx` shows the hint.
 
 ## Follow-ups
 
-- Podcast notes: an audio player in the note, and the pen quizzing on its
-  transcript.
-- Pause the video while a quiz question waits for an answer.
-- A check that seeks the video when its time is clicked.
+- Connect by meaning, not only shared words (embeddings), so an echo can find
+  a note that says the same thing in other words.
+- An answer's time (`— 1:10`) that seeks the video when clicked.

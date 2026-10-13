@@ -1,8 +1,8 @@
 // The second pen (PEN in docs/qa/user-journeys.md, SPECs/second-pen-spec.md):
-// ⌘. then one key in a note. The journeys that wait on Claude (PEN-01, -06,
-// -07, -08) run the real pen, so they need Claude Code signed in on this Mac.
+// ⌘. then one key in a note. The journeys that wait on Claude (AI_TIMEOUT)
+// run the real pen, so they need Claude Code signed in on this Mac.
 import { ok } from "node:assert/strict";
-import { invoke, pressCmd, waitForTitle, workspaceRoot } from "./_helpers.js";
+import { invoke, pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
 
 const AI_TIMEOUT = 60_000;
 
@@ -80,6 +80,50 @@ async function caretAfter(text) {
   await browser.pause(150);
 }
 
+/** Click into the empty line of yours that shows `words` (what the pen waits
+ *  for there), just left of those words: the caret goes on that line. */
+async function caretInWaiting(words) {
+  await browser.execute((needle) => {
+    const hint = [...document.querySelectorAll(".cm-pen-waiting")].find((w) =>
+      w.textContent.includes(needle),
+    );
+    if (!hint) throw new Error(`no waiting line with "${needle}"`);
+    hint.scrollIntoView({ block: "center" });
+    const box = hint.getBoundingClientRect();
+    const point = {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      detail: 1,
+      clientX: box.left - 2,
+      clientY: box.top + box.height / 2,
+    };
+    const target = document.elementFromPoint(point.clientX, point.clientY) ?? hint.parentElement;
+    target.dispatchEvent(new MouseEvent("mousedown", point));
+    target.dispatchEvent(new MouseEvent("mouseup", point));
+    target.dispatchEvent(new MouseEvent("click", point));
+  }, words);
+  await browser.pause(150);
+}
+
+/** Put the caret after `text` and open the pen's box there, checking the box
+ *  opened on that line (the tinted words): a click can land a line off while
+ *  the page settles, and the pen would then work on the wrong line. */
+async function armOn(text) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await caretAfter(text);
+    await key(".", { meta: true });
+    await waitForBox();
+    const armed = await browser.execute(() =>
+      [...document.querySelectorAll(".cm-pen-armed")].map((el) => el.textContent).join(" "),
+    );
+    if (armed.includes(text)) return;
+    await key("Escape");
+    await browser.pause(300);
+  }
+  throw new Error(`the pen's box never opened on "${text}"`);
+}
+
 /** Shift-click just after `text`: the selection now runs from the caret to there. */
 async function selectTo(text) {
   await browser.execute((needle) => {
@@ -134,9 +178,9 @@ async function selectTo(text) {
 
 /** A key pressed where the keyboard is: the pen's box when it's open, else
  *  the editor in front. */
-async function key(name, { meta = false, shift = false } = {}) {
+async function key(name, { meta = false, shift = false, alt = false } = {}) {
   await browser.execute(
-    (k, metaKey, shiftKey) => {
+    (k, metaKey, shiftKey, altKey) => {
       const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
       const active = document.activeElement;
       const target = active?.closest?.(".cm-pen-pop") ? active : editor;
@@ -145,6 +189,7 @@ async function key(name, { meta = false, shift = false } = {}) {
           key: k,
           metaKey,
           shiftKey,
+          altKey,
           bubbles: true,
           cancelable: true,
         }),
@@ -153,6 +198,7 @@ async function key(name, { meta = false, shift = false } = {}) {
     name,
     meta,
     shift,
+    alt,
   );
   await browser.pause(80);
 }
@@ -221,15 +267,20 @@ const penLines = () =>
     const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
     return [...editor.querySelectorAll(".cm-line.cm-pen-line")].map((l) => ({
       text: l.textContent,
-      kind: [...l.classList].find((c) => /^cm-pen-[qahcfmr]$/.test(c))?.slice(-1) ?? null,
+      kind: [...l.classList].find((c) => /^cm-pen-[srvpneqahcfm]$/.test(c))?.slice(-1) ?? null,
     }));
   });
 
 async function waitForDisk(path, test, message, timeout = 8_000) {
   let last = "";
+  // What the bar said along the way: the pen's messages last 4 seconds, so a
+  // failure would otherwise only show the resting hint.
+  const said = [];
   try {
     await browser.waitUntil(
       async () => {
+        const bar = await barText();
+        if (bar && said[said.length - 1] !== bar) said.push(bar);
         try {
           last = await readFile(path);
         } catch (error) {
@@ -241,7 +292,7 @@ async function waitForDisk(path, test, message, timeout = 8_000) {
       { timeout, interval: 300 },
     );
   } catch {
-    throw new Error(`${message}\n--- file ---\n${last}\n--- bar ---\n${await barText()}`);
+    throw new Error(`${message}\n--- file ---\n${last}\n--- bar said ---\n${said.join("\n")}`);
   }
   return last;
 }
@@ -285,11 +336,14 @@ describe("Journeys: second pen", function () {
     // After its 150ms entrance, which starts it a few pixels low.
     await browser.pause(300);
     const box = await pop();
-    for (const label of ["Ask me", "Answer", "Facts", "Mix", "Shorten"]) {
+    for (const label of ["Answer", "Check", "Connect", "Shorten"]) {
       ok(
         box.pills.some((p) => p.includes(label)),
         `no ${label} pill: ${JSON.stringify(box.pills)}`,
       );
+    }
+    for (const gone of ["Ask me", "Facts", "Mix"]) {
+      ok(!box.pills.some((p) => p.includes(gone)), `${gone} should be gone: ${box.pills}`);
     }
     ok(box.focused, "the box to type in should have the keyboard");
     ok(box.bottom <= lineTop + 2, `the box should sit above the line (${box.bottom} > ${lineTop})`);
@@ -300,158 +354,238 @@ describe("Journeys: second pen", function () {
     });
   });
 
-  it("PEN-03 Enter on a pen question opens an answer under it", async function () {
+  it("PEN-03 Enter on an empty take keeps the answer sealed", async function () {
     const path = `${root}/Notes/Pen.md`;
-    await caretAfter("What would you notice if it weren't?");
+    const before = await readFile(path);
+    await caretInWaiting("Your take");
     await key("Enter");
-    await waitForDisk(
-      path,
-      (text) => /\^ai-a-aaaa\n {4}- \n/.test(text),
-      "expected an empty answer bullet under the question",
+    await browser.waitUntil(async () => (await barText()).includes("wrong guess counts"), {
+      timeout: 3_000,
+      timeoutMsg: `the bar should ask for a take first: ${await barText()}`,
+    });
+    ok((await readFile(path)) === before, "nothing should open or be written");
+    ok(
+      await browser.execute(() => document.querySelectorAll(".cm-pen-sealed").length > 0),
+      "the answer should be drawn sealed",
     );
   });
 
-  it("PEN-05 Esc on that empty answer takes the question back", async function () {
+  it("PEN-12 ⌥↵ on the empty take opens the answer without a comparison", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await key("Enter", { alt: true });
+    const text = await waitForDisk(
+      path,
+      (t) => t.includes("older ones. ^ai-r-aaaa") && !t.includes("^ai-s-aaaa"),
+      "expected the answer opened (^ai-r-…)",
+    );
+    ok(!/\^ai-r-aaaa\n {4}- \n/.test(text), `the empty take should be gone:\n${text}`);
+  });
+
+  it("PEN-04 Enter on one of several echoes keeps it and drops the unanswered one beside it", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretAfter("Familiar faces, forgotten names.");
+    await key("Enter");
+    const text = await waitForDisk(
+      path,
+      (t) => !t.includes("^ai-e-bbbb") && t.includes("^ai-e-cccc"),
+      "expected the other echo to go and this one to stay",
+    );
+    ok(/\^ai-e-cccc\n {4}- /.test(text), `expected a line under the kept echo:\n${text}`);
+  });
+
+  it("PEN-05 Esc on the empty line under a kept echo takes the echo back", async function () {
     const path = `${root}/Notes/Pen.md`;
     await key("Escape");
+    await waitForDisk(path, (t) => !t.includes("^ai-e-cccc"), "expected the echo to be gone");
+  });
+
+  it("PEN-23 ⌘. @ on a question says it's not a claim and writes nothing", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    const before = await readFile(path);
+    await armOn("why does sleep help memory?");
+    await pick("@", { shift: true });
+    await browser.waitUntil(async () => (await barText()).includes("not a claim"), {
+      timeout: 3_000,
+      timeoutMsg: `expected "not a claim": ${await barText()}`,
+    });
+    ok((await readFile(path)) === before, "nothing should be written");
+  });
+
+  it("PEN-01 ★ ⌘. ! writes a sealed answer under the line, your take under it", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await armOn("why does sleep help memory?");
+    await pick("!", { shift: true });
     await waitForDisk(
       path,
-      (text) => !text.includes("^ai-a-aaaa"),
-      "expected the question to be gone",
-    );
-  });
-
-  it("PEN-04 Enter on a mix keeps it and drops the unanswered one beside it", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await caretAfter("an open-book exam");
-    await key("Enter");
-    const text = await waitForDisk(
-      path,
-      (t) => !t.includes("^ai-m-bbbb") && t.includes("^ai-m-cccc"),
-      "expected the other mix to go and this one to stay",
-    );
-    ok(/\^ai-m-cccc\n {4}- /.test(text), `expected an answer under the kept mix:\n${text}`);
-  });
-
-  it("PEN-01 ★ ⌘. ? on a line writes one pen question under it", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await caretAfter("I think we basically");
-    await key(".", { meta: true });
-    await pick("?", { shift: true });
-    const text = await waitForDisk(
-      path,
-      (t) => /sleep on it\n {2}- .+ \^ai-a-[a-z0-9]{4}/.test(t),
-      "expected a question bullet (^ai-a-…) under the line",
+      (t) => /help memory\?\n {2}- .+ \^ai-s-[a-z0-9]{4}\n {4}- \n/.test(t),
+      "expected a sealed answer (^ai-s-…) with an empty take under it",
       AI_TIMEOUT,
     );
-    ok(text.split("^ai-a-").length === 2, `expected exactly one new question:\n${text}`);
+    await browser.waitUntil(
+      () =>
+        browser.execute(() =>
+          [...document.querySelectorAll(".cm-pen-waiting")].some((w) =>
+            w.textContent.includes("Your take"),
+          ),
+        ),
+      { timeout: 3_000, timeoutMsg: "the empty take should say what goes there" },
+    );
     const lines = await penLines();
     ok(
-      lines.some((l) => l.kind === "a"),
-      `the question isn't drawn as a pen line: ${JSON.stringify(lines)}`,
+      lines.some((l) => l.kind === "s"),
+      `the answer isn't drawn as a sealed pen line: ${JSON.stringify(lines)}`,
     );
   });
 
-  it("PEN-11 ⌘. ? on a plain line writes a plain line right below it", async function () {
+  it("PEN-10 a take that isn't one keeps the answer sealed", async function () {
     const path = `${root}/Notes/Pen.md`;
-    await caretAfter("Writing is thinking on paper.");
-    await key(".", { meta: true });
-    await pick("?", { shift: true });
+    await caretInWaiting("Your take");
+    await typeInEditor("sad lion sits there", { atEnd: false });
+    await waitForDisk(path, (t) => t.includes("- sad lion sits there"), "the take should be typed");
+    await key("Enter");
+    await browser.waitUntil(async () => (await barText()).includes("doesn't read as a take"), {
+      timeout: AI_TIMEOUT,
+      timeoutMsg: `expected the take to be turned down: ${await barText()}`,
+    });
+    const text = await readFile(path);
+    ok(/help memory\?\n {2}- .+ \^ai-s-/.test(text), `the answer should stay sealed:\n${text}`);
+  });
+
+  it("PEN-06 a real take opens the answer and the pen compares the two", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    // Take the nonsense back, key by key, and write a real take.
+    await caretAfter("sad lion sits there");
+    for (let k = 0; k < "sad lion sits there".length; k++) await key("Backspace");
+    await typeInEditor("I guess the brain replays what you learned while you sleep", {
+      atEnd: false,
+    });
+    await waitForDisk(
+      path,
+      (t) => t.includes("replays what you learned"),
+      "the take should be typed",
+    );
+    await key("Enter");
     const text = await waitForDisk(
       path,
       (t) =>
-        /^Writing is thinking on paper\.\n\n[^\s-].+ \^ai-a-[a-z0-9]{4}\n\n- rereading/.test(t),
-      "expected a plain pen line (no bullet) right below the paragraph",
+        /help memory\?\n {2}- .+ \^ai-r-[a-z0-9]{4}\n {4}- I guess.+\n {6}- .+ \^ai-v-[a-z0-9]{4}/.test(
+          t,
+        ),
+      "expected the answer opened (^ai-r-…) and a comparison (^ai-v-…) under your take",
       AI_TIMEOUT,
     );
-    ok(text.startsWith("Writing is thinking on paper."), text);
+    ok(!/help memory\?\n {2}- .+ \^ai-s-/.test(text), text);
   });
 
-  it("PEN-15 typed direction + Ask me + Enter: your line goes in, the question under it", async function () {
+  it("PEN-11 ⌘. ! on a plain line writes a plain sealed line right below it", async function () {
     const path = `${root}/Notes/Pen.md`;
-    await caretAfter("Writing is thinking on paper.");
-    await key(".", { meta: true });
-    await typeInBox("ask about first drafts");
-    await clickPill("Ask me");
-    await key("Enter");
+    await armOn("Writing is thinking on paper.");
+    await pick("!", { shift: true });
     await waitForDisk(
       path,
-      (t) => /\n\nask about first drafts\n\n[^\s-].+ \^ai-a-[a-z0-9]{4}/.test(t),
-      "expected your typed line, then the pen's question below it",
+      (t) => /^Writing is thinking on paper\.\n\n[^\s-].+ \^ai-s-[a-z0-9]{4}\n- \n/.test(t),
+      "expected a plain sealed line (no bullet) below the paragraph, your take under it",
       AI_TIMEOUT,
     );
   });
 
-  it("PEN-19 clicking a pill only selects it; Enter runs it", async function () {
+  it("PEN-14 typing a question in the box and Enter: your question, the sealed answer under it", async function () {
     const path = `${root}/Notes/Pen.md`;
-    const before = await readFile(path);
-    await caretAfter("rereading feels like learning");
-    await key(".", { meta: true });
-    await waitForBox();
-    await clickPill("Mix");
-    await browser.pause(1_500);
-    ok((await readFile(path)) === before, "a click alone shouldn't run the pen");
-    ok(
-      (await pop())?.selected.some((p) => p.includes("Mix")),
-      "the clicked pill should be selected",
-    );
-    await key("Enter");
-    await waitForDisk(
-      path,
-      (t) => (t.match(/\^ai-m-/g) ?? []).length > (before.match(/\^ai-m-/g) ?? []).length,
-      "Enter should run the selected pill",
-      AI_TIMEOUT,
-    );
-  });
-
-  it("PEN-14 typing a question in the box and Enter: your question, the AI's answer under it", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await caretAfter("rereading feels like learning");
-    await key(".", { meta: true });
+    await armOn("rereading feels like learning");
     await typeInBox("what's the opposite of rereading?");
     await key("Enter");
     await waitForDisk(
       path,
-      (t) => /\n {2}- what's the opposite of rereading\?\n {4}- .+ \^ai-r-[a-z0-9]{4}/.test(t),
-      "expected your question as a sub-bullet and the answer under it",
+      (t) => /\n {2}- what's the opposite of rereading\?\n {4}- .+ \^ai-s-[a-z0-9]{4}/.test(t),
+      "expected your question as a sub-bullet and the sealed answer under it",
       AI_TIMEOUT,
     );
   });
 
   it("PEN-18 a pill's key in the box selects that pill and types nothing; Backspace unselects it", async function () {
-    await caretAfter("rereading feels like learning");
-    await key(".", { meta: true });
+    await armOn("I think we basically");
     await waitForBox();
     const keys = (await pop()).pills;
     ok(
-      keys.some((p) => p.includes("?") && p.includes("Ask me")),
+      keys.some((p) => p.includes("@") && p.includes("Check")),
       `pills should show their keys: ${JSON.stringify(keys)}`,
     );
     await key("@", { shift: true });
-    await browser.waitUntil(async () => (await pop())?.selected.some((p) => p.includes("Facts")), {
+    await browser.waitUntil(async () => (await pop())?.selected.some((p) => p.includes("Check")), {
       timeout: 3_000,
-      timeoutMsg: "@ didn't select the Facts pill",
+      timeoutMsg: "@ didn't select the Check pill",
     });
     ok((await pop()).typed === "", "the key shouldn't be typed into the box");
-    // A Chinese input method's full-width ？ picks Ask me the same way.
-    await key("？");
-    await browser.waitUntil(async () => (await pop())?.selected.some((p) => p.includes("Ask me")), {
-      timeout: 3_000,
-      timeoutMsg: "？ didn't select Ask me",
-    });
-    ok((await pop()).typed === "", "？ shouldn't be typed into the box");
+    // A Chinese input method's full-width ［ picks Connect the same way.
+    await key("［");
+    await browser.waitUntil(
+      async () => (await pop())?.selected.some((p) => p.includes("Connect")),
+      { timeout: 3_000, timeoutMsg: "［ didn't select Connect" },
+    );
+    ok((await pop()).typed === "", "［ shouldn't be typed into the box");
     await key("Backspace");
     await browser.waitUntil(async () => (await pop())?.selected.length === 0, {
       timeout: 3_000,
-      timeoutMsg: "Backspace didn't unselect Facts",
+      timeoutMsg: "Backspace didn't unselect Connect",
     });
     await key("Escape");
   });
 
+  it("PEN-19 clicking a pill only selects it; Enter runs it (Check: both sides)", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    const before = await readFile(path);
+    await armOn("naps help you remember");
+    await waitForBox();
+    await clickPill("Check");
+    await browser.pause(1_500);
+    ok((await readFile(path)) === before, "a click alone shouldn't run the pen");
+    ok(
+      (await pop())?.selected.some((p) => p.includes("Check")),
+      "the clicked pill should be selected",
+    );
+    await key("Enter");
+    // PEN-07: For, Against, and your call waiting under Against.
+    const text = await waitForDisk(
+      path,
+      (t) =>
+        /what you studied\n {2}- For: .+ \^ai-p-[a-z0-9]{4}\n {2}- Against: .+ \^ai-n-[a-z0-9]{4}\n {4}- \n/.test(
+          t,
+        ),
+      "expected For (^ai-p-…), Against (^ai-n-…) and an empty line under Against",
+      AI_TIMEOUT,
+    );
+    ok(/\]\(https?:\/\/[^\s)]+ "[^"]+"\) \^ai-[pn]-/.test(text), `expected a paper:\n${text}`);
+    await browser.waitUntil(
+      () => browser.execute(() => document.querySelectorAll(".cm-pen-cite").length > 0),
+      { timeout: 3_000, timeoutMsg: "the citation isn't drawn as a pill" },
+    );
+  });
+
+  it("PEN-24 Esc on your empty call takes both sides back", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await key("Escape");
+    await waitForDisk(
+      path,
+      (t) => !t.includes("^ai-p-") && !t.includes("^ai-n-"),
+      "expected For and Against to be gone",
+    );
+  });
+
+  it("PEN-15 ⌘. [ on a line brings back what you wrote in another note", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await armOn("naps help you remember");
+    await pick("［");
+    await waitForDisk(
+      path,
+      (t) => /\n {2}- “.+” — \[\[Sleep log\]\] · [a-z ]+ \^ai-e-[a-z0-9]{4}/.test(t),
+      "expected an echo of Sleep log (^ai-e-…)",
+      AI_TIMEOUT,
+    );
+  });
+
   it("PEN-08 ⌘. − proposes cuts; Enter applies them", async function () {
     const path = `${root}/Notes/Pen.md`;
-    await caretAfter("I think we basically");
-    await key(".", { meta: true });
+    await armOn("I think we basically");
     await pick("-");
     await browser.waitUntil(
       () => browser.execute(() => document.querySelectorAll(".cm-pen-cut").length > 0),
@@ -467,61 +601,10 @@ describe("Journeys: second pen", function () {
     ok(/sleep on it/.test(text), `the line lost its meaning:\n${text}`);
   });
 
-  it("PEN-07 ⌘. @ adds one fact with a paper citation", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await caretAfter("rereading feels like learning");
-    await key(".", { meta: true });
-    await pick("@", { shift: true });
-    const text = await waitForDisk(
-      path,
-      (t) => /\[[^\]]+\]\(https?:\/\/[^\s)]+ "[^"]+"\) \^ai-f-[a-z0-9]{4}/.test(t),
-      "expected a fact ending in a cited paper link (^ai-f-…)",
-      AI_TIMEOUT,
-    );
-    ok(text.includes("^ai-f-"), text);
-    await browser.waitUntil(
-      () => browser.execute(() => document.querySelectorAll(".cm-pen-cite").length > 0),
-      { timeout: 3_000, timeoutMsg: "the citation isn't drawn as a pill" },
-    );
-  });
-
-  it("PEN-12 ⌘. ! answers your question right under it", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await caretAfter("why does sleep help memory?");
-    await key(".", { meta: true });
-    await pick("!", { shift: true });
-    await waitForDisk(
-      path,
-      (t) => /why does sleep help memory\?\n {2}- .+ \^ai-r-[a-z0-9]{4}/.test(t),
-      "expected the pen's answer (^ai-r-…) as a sub-bullet of the question",
-      AI_TIMEOUT,
-    );
-  });
-
-  it("PEN-20 typed text, then @ after a space, then Enter: your line, a cited fact under it", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await caretAfter("why does sleep help memory?");
-    await key(".", { meta: true });
-    await typeInBox("naps and memory ");
-    await key("@", { shift: true });
-    ok(
-      (await pop())?.selected.some((p) => p.includes("Facts")),
-      "@ after a space should pick Facts",
-    );
-    ok((await pop()).typed === "naps and memory ", "@ shouldn't be typed into the box");
-    await key("Enter");
-    await waitForDisk(
-      path,
-      (t) => /\n {2}- naps and memory\n {4}- .+\) \^ai-f-[a-z0-9]{4}/.test(t),
-      "expected your typed line, then a cited fact under it",
-      AI_TIMEOUT,
-    );
-  });
-
   it("PEN-16 Organize on several lines, then Esc puts your lines back exactly", async function () {
     const path = `${root}/Notes/Pen.md`;
     const before = await readFile(path);
-    await caretAfter("rereading feels like learning");
+    await caretAfter("sleep on it");
     await selectTo("why does sleep help memory?");
     await key(".", { meta: true });
     await waitForBox();
@@ -536,7 +619,7 @@ describe("Journeys: second pen", function () {
 
   it("PEN-17 Organize, then Enter keeps it, in your own words", async function () {
     const path = `${root}/Notes/Pen.md`;
-    await caretAfter("rereading feels like learning");
+    await caretAfter("sleep on it");
     await selectTo("why does sleep help memory?");
     await key(".", { meta: true });
     await pick("#", { shift: true });
@@ -547,21 +630,19 @@ describe("Journeys: second pen", function () {
     await key("Enter");
     const text = await waitForDisk(
       path,
-      (t) =>
-        t.includes("why does sleep help memory?") && t.includes("rereading feels like learning"),
+      (t) => t.includes("why does sleep help memory?") && t.includes("sleep on it"),
       "the outline should keep your own words",
     );
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
   });
 
   it("PEN-22 # Organize is offered only with several lines selected", async function () {
-    await caretAfter("why does sleep help memory?");
-    await key(".", { meta: true });
+    await armOn("naps help you remember");
     await waitForBox();
     ok(!(await pop()).pills.some((p) => p.includes("Organize")), "one line: no Organize");
     await key("Escape");
-    await caretAfter("rereading feels like learning");
-    await selectTo("why does sleep help memory?");
+    await caretAfter("sleep on it");
+    await selectTo("naps help you remember");
     await key(".", { meta: true });
     await waitForBox();
     ok(
@@ -571,45 +652,15 @@ describe("Journeys: second pen", function () {
     await key("Escape");
   });
 
-  it("PEN-13 in a video note, ⌘. ! answers from the transcript with its time", async function () {
+  it("PEN-13 in a video note, ⌘. ! answers from the transcript with its time, sealed", async function () {
     const path = `${root}/Library/How we remember.md`;
     await openViaPalette("How we remember");
-    await caretAfter("what did the 2006 study compare?");
-    await key(".", { meta: true });
+    await armOn("what did the 2006 study compare?");
     await pick("!", { shift: true });
     await waitForDisk(
       path,
-      (t) => /2006 study compare\?\n {2}- .+ — 1:10 \^ai-r-[a-z0-9]{4}/.test(t),
-      "expected an answer ending with the transcript's time (— 1:10)",
-      AI_TIMEOUT,
-    );
-  });
-
-  it("PEN-06 a quiz in a video note: question, I don't know, hint, then the check", async function () {
-    const path = `${root}/Library/How we remember.md`;
-    await openViaPalette("How we remember");
-    await caretAfter("recall beats rereading after a week");
-    await key(".", { meta: true });
-    await pick("?", { shift: true });
-    await waitForDisk(
-      path,
-      (t) => /after a week\n {2}- .+ \^ai-q-[a-z0-9]{4}\n {4}- $/m.test(t),
-      "expected a quiz question with an empty answer under it",
-      AI_TIMEOUT,
-    );
-    // The caret is in the empty answer: Enter there is "I don't know".
-    await key("Enter");
-    await waitForDisk(
-      path,
-      (t) => / {4}- I don't know\n {6}- Hint: .+ \^ai-h-[a-z0-9]{4}\n {4}- $/m.test(t),
-      "expected I don't know and a hint",
-      AI_TIMEOUT,
-    );
-    await key("Enter");
-    await waitForDisk(
-      path,
-      (t) => / {4}- I don't know\n {6}- .+ \^ai-c-[a-z0-9]{4}/.test(t),
-      "expected the check, quoting the transcript",
+      (t) => /2006 study compare\?\n {2}- .+ — 1:10 \^ai-s-[a-z0-9]{4}/.test(t),
+      "expected a sealed answer ending with the transcript's time (— 1:10)",
       AI_TIMEOUT,
     );
   });

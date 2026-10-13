@@ -18,17 +18,26 @@ const NOTES = {
   "Projects/Old idea.md": "---\nType: Project\nStatus: Done\n---\n\nFinished.\n",
   "Library/A book.md": "---\nType: Book\nAuthor: Someone\n---\n\n## Highlights\n",
   "Inspirations/Quote.md": "---\nType: Inspiration\n---\n\nLess, but better.\n",
-  // The second pen (PEN journeys): its own lines already in a note, and a
-  // video note with a transcript to quiz on.
+  // The second pen (PEN journeys): its own lines already in a note (two
+  // echoes, a sealed answer with an empty take), a note for Connect to find,
+  // and a video note with a transcript to answer from.
   "Notes/Pen.md": [
     "Writing is thinking on paper.",
     "",
     "- rereading feels like learning because the page looks familiar",
-    "  - What would you notice if it weren't? ^ai-a-aaaa",
-    "  - × a familiar face — you know them, not their name ^ai-m-bbbb",
-    "  - × an open-book exam — you know where, not what ^ai-m-cccc",
+    "  - “Highlighting felt like studying, but I remembered nothing.” — [[Study habits]] · same idea ^ai-e-bbbb",
+    "  - “Familiar faces, forgotten names.” — [[People]] · another angle ^ai-e-cccc",
     "- I think we basically just need to really sleep on it",
     "- why does sleep help memory?",
+    "- why do drafts get better overnight?",
+    "  - Sleep replays the day's memories and links them to older ones. ^ai-s-aaaa",
+    "    - ",
+    "- naps help you remember what you studied",
+    "",
+  ].join("\n"),
+  "Notes/Sleep log.md": [
+    "- Slept eight hours before the exam and remembered far more of the reading.",
+    "- After a short nap the second half of the essay finally made sense.",
     "",
   ].join("\n"),
   "Library/How we remember.md": [

@@ -6,11 +6,11 @@ import { ensureArcTokens } from "./board/arc-tokens";
 // The second pen's box (SPECs/second-pen-spec.md#asking-the-pens-box): Arc's
 // floating button group for what the pen can do, each pill showing its key,
 // and under it the box to type in. Nothing runs until Enter: clicking a pill,
-// or typing its key (? ! @ + − # >, half- or full-width) at the start of the
-// box or after a space, selects it and types nothing. Enter runs the selected
-// pill, steered by whatever was typed; with none selected, Enter asks the AI
-// what you typed (⌘↵: has it ask you instead). Loaded on demand, so notes
-// never pay for Arc or motion at startup.
+// or typing its key (! @ [ − #, half- or full-width) at the start of the box
+// or after a space, selects it and types nothing. Enter runs the selected
+// pill, steered by whatever was typed; with none selected, Enter is Answer on
+// what you typed. Loaded on demand, so notes never pay for Arc or motion at
+// startup.
 
 export interface PenPill {
   key: string;
@@ -34,13 +34,12 @@ function Key({ char }: { char: string }): ReactNode {
 const KEY_OF: Record<string, string> = {
   "-": "−",
   "－": "−",
-  "？": "?",
   "！": "!",
   "＠": "@",
-  "＋": "+",
   "＃": "#",
-  "＞": ">",
-  "》": ">",
+  "[": "[[",
+  "［": "[[",
+  "【": "[[",
 };
 function asKey(char: string): string {
   return KEY_OF[char] ?? char;
@@ -80,7 +79,7 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
       event.preventDefault();
       event.stopPropagation();
       if (mode) run(mode);
-      else if (text.trim()) run(mod ? "?" : "!");
+      else if (text.trim()) run("!");
       return;
     }
     // A pill's key selects that pill and types nothing.
@@ -141,9 +140,9 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
           placeholder={
             modePill
               ? `${modePill.label}: add a direction, or just press Enter`
-              : "Pick a pill, or ask anything"
+              : "Pick a pill, or ask a question"
           }
-          aria-label="Ask the AI, or press a pill's key to pick it"
+          aria-label="Ask a question, or press a pill's key to pick it"
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={onKeyDown}
         />
@@ -155,7 +154,7 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
               </>
             ) : (
               <>
-                <kbd>↵</kbd> ask AI <kbd>⌘↵</kbd> ask me
+                <kbd>↵</kbd> answer, after your take
               </>
             )}
           </span>

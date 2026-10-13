@@ -11,12 +11,14 @@ import type { Paper } from "./tauri";
 
 /* ------------------------------------------------------------------ ids */
 
-/** What a pen line is: a quiz question (`q`), a question about your thinking
- *  (`a`), a hint (`h`), a check against the source (`c`), a fact (`f`), a
- *  mix (`m`), or its answer to your question (`r`). */
-export type PenKind = "q" | "a" | "h" | "c" | "f" | "m" | "r";
+/** What a pen line is: an answer still sealed (`s`) or open (`r`), its
+ *  comparison with your take (`v`), the evidence for (`p`) and against (`n`)
+ *  a claim, or an echo of an earlier note (`e`). The earlier pen's lines (a
+ *  quiz question `q`, a question `a`, a hint `h`, a check `c`, a fact `f`, a
+ *  mix `m`) keep their ink. */
+export type PenKind = "s" | "r" | "v" | "p" | "n" | "e" | "q" | "a" | "h" | "c" | "f" | "m";
 
-const PEN_ID_RE = /^ai-([qahcfmr])-[a-z0-9]{4}$/;
+const PEN_ID_RE = /^ai-([srvpneqahcfm])-[a-z0-9]{4}$/;
 
 export function penIdKind(id: string): PenKind | null {
   const match = PEN_ID_RE.exec(id);
@@ -203,37 +205,26 @@ export function penLineSlot(lines: readonly string[], anchor: number): PenSlot {
   };
 }
 
-/** The pen line a line belongs to: itself, or the nearest pen question it
- *  hangs under (your answer, a hint, a check). */
-export function questionAbove(lines: readonly string[], i: number): number | null {
-  for (let j = i; j >= 0; j = parentOf(lines, j)) {
-    const kind = penKindOf(lines[j]!);
-    if (kind === "q" || kind === "a") return j;
-  }
-  return null;
-}
-
 /* --------------------------------------------------------- answer flow */
 
-/** What Enter on your answer under a quiz question does, read from the
- *  document: `check` your answer, give a `hint` (an empty answer, no hint
- *  yet), or nothing once the question has its check. The hint and the check
- *  hang under the answer that asked for them. */
-export type AnswerStep = { question: number; step: "check" | "hint" } | null;
-
-export function answerStep(lines: readonly string[], i: number): AnswerStep {
+/** The sealed answer a line is your take on: its parent, when that is a
+ *  sealed answer (`s`) and the line is yours. -1 otherwise. */
+export function sealedAbove(lines: readonly string[], i: number): number {
   const line = lines[i]!;
-  if (penKindOf(line) || !isItem(line)) return null;
-  const q = parentOf(lines, i);
-  if (q < 0 || penKindOf(lines[q]!) !== "q") return null;
-  const kinds = lines.slice(q + 1, subtreeEnd(lines, q) + 1).map(penKindOf);
-  if (kinds.includes("c")) return null;
-  return { question: q, step: !itemText(line) && !kinds.includes("h") ? "hint" : "check" };
+  if (penKindOf(line) || !isItem(line)) return -1;
+  const parent = parentOf(lines, i);
+  return parent >= 0 && penKindOf(lines[parent]!) === "s" ? parent : -1;
 }
 
-/** Mixes beside `i` under the same line that nobody answered: the ones
- *  keeping `i` removes. Indexes, last first so removing them in order works. */
-export function unansweredSiblingMixes(lines: readonly string[], i: number): number[] {
+/** A sealed answer's line, opened: its id says `r` instead of `s`. */
+export function unsealedLine(line: string): string {
+  return line.replace(/\^ai-s-([a-z0-9]{4})(\s*)$/, "^ai-r-$1$2");
+}
+
+/** The pen's lines of `kind` beside `i` under the same line that nobody
+ *  answered: the echoes keeping `i` removes. Indexes, last first so removing
+ *  them in order works. */
+export function unansweredSiblings(lines: readonly string[], i: number, kind: PenKind): number[] {
   let siblings: number[];
   if (isPenParagraph(lines[i]!)) {
     // Plain pen lines under a paragraph: the run around `i`, a blank apart.
@@ -245,8 +236,13 @@ export function unansweredSiblingMixes(lines: readonly string[], i: number): num
     siblings = parent >= 0 ? childrenOf(lines, parent) : [];
   }
   return siblings
-    .filter((j) => j !== i && penKindOf(lines[j]!) === "m" && subtreeEnd(lines, j) === j)
+    .filter((j) => j !== i && penKindOf(lines[j]!) === kind && subtreeEnd(lines, j) === j)
     .reverse();
+}
+
+/** A question, not a claim: Check has nothing to weigh. */
+export function isQuestion(text: string): boolean {
+  return /[?？]\s*$/.test(text);
 }
 
 /* --------------------------------------------------------------- source */
@@ -322,19 +318,17 @@ export const PEN_INSTRUCTIONS = [
   "You are the second pen in Pensée, a writer's notes app. You write one line in their notes when they ask.",
   "Each message asks for one thing and carries everything you may use: the note, the lines asked about, and sometimes the source the note is on or research papers.",
   "Reply with exactly what the message asks for and nothing else: no preamble, no explanation, no markdown, no list marker, no quotation marks around the whole reply.",
-  "Write in the language the writer's note is written in. Plain words, short. Never praise, never moralise, never answer a question you ask yourself; answer the writer's only when the message asks you to.",
+  "Write in the language the writer's note is written in. Plain words, short. Never praise, never moralise. You help the writer think; you never write their conclusion for them.",
 ].join("\n");
 
 export type PenAsk =
-  | { task: "ask"; already: string[] }
-  | { task: "quiz"; already: string[]; newTopic: boolean; focus: string | null }
-  | { task: "hint"; question: string; answers: string[] }
-  | { task: "check"; question: string; answers: string[] }
-  | { task: "mix"; already: string[] }
   | { task: "answer"; already: string[]; question?: string }
+  | { task: "compare"; question: string; answer: string; take: string }
   | { task: "factQuery" }
   | { task: "factRetry" }
-  | { task: "factWrite"; papers: Paper[]; already: string[] }
+  | { task: "sides"; papers: Paper[] }
+  | { task: "connectQuery" }
+  | { task: "connectPick"; candidates: Array<{ note: string; text: string }> }
   | { task: "shorten" }
   | { task: "organize"; block: string };
 
@@ -375,68 +369,45 @@ function paperBlock(papers: readonly Paper[]): string {
     .join("\n");
 }
 
+/** How an echo relates to the line it was found for. */
+export const ECHO_RELATIONS = [
+  "same idea",
+  "you wrote the opposite",
+  "you answered this before",
+  "another angle",
+  "you tried it",
+] as const;
+export type EchoRelation = (typeof ECHO_RELATIONS)[number];
+
 function taskText(input: PenPromptInput): string {
   const { ask, source } = input;
   const label = source?.label ?? "the source";
   switch (ask.task) {
-    case "ask":
-      return [
-        "Ask the writer one question about the target lines that makes them think harder: what they mean by it, what someone who disagrees would say first, what is missing, or what follows from it.",
-        "Never answer it and never give your opinion. One sentence.",
-        ask.already.length
-          ? `Questions already asked here (don't repeat or rephrase them):\n${list(ask.already)}`
-          : "",
-      ].join("\n");
-    case "quiz":
-      return [
-        `Quiz the writer for active recall on ${label}. Only the part of the source given counts as seen.`,
-        ask.focus
-          ? `The target line is about the part at ${ask.focus}; ask about that part.`
-          : input.lines.length
-            ? "Ask about what the target lines are about."
-            : "Ask about anything in what the writer has seen so far.",
-        ask.newTopic
-          ? "Ask a recall question on an idea of the source that none of the questions already asked covers."
-          : "If the questions already asked cover an idea, ask a follow-up on that idea instead: why it holds, how it works, an example from the writer's own life, or how it links to another idea in their note. Otherwise ask a recall question on the next idea.",
-        "The first question on an idea is always a recall question: what the source said, answerable from the words of the source given, without giving the answer away. Why, how and example questions only follow a recall question already asked on that idea. You may quote the writer's own note back to them. One sentence.",
-        "If there is nothing left to ask, or the source given is empty, reply NONE. Never write anything but the question itself.",
-        ask.already.length ? `Questions already asked:\n${list(ask.already)}` : "",
-      ].join("\n");
-    case "hint":
-      return [
-        `The writer couldn't answer this question: ${ask.question}`,
-        "Give one hint that helps them find the answer themselves. It must not contain the answer or the source's words for it: point to where it is, what kind of answer it is, or a question that leads there. One short sentence.",
-        "Good, for “Which group remembered more after a week?”: Think about which group had to pull the material out of memory. Bad: The recall group remembered more.",
-      ].join("\n");
-    case "check":
-      return [
-        `Question: ${ask.question}`,
-        `The writer answered:\n${list(ask.answers.length ? ask.answers : ["(nothing)"])}`,
-        `Quote, word for word, the shortest passage of ${label} that answers the question, in curly quotes, then " — " and the time or place the source gives for it.`,
-        "For example: “Sleep is when the day’s memories set.” — 12:34",
-        "If no passage answers it fully, quote the one closest to it. Reply NONE only when the source given is empty.",
-      ].join("\n");
     case "answer":
       return [
         ask.question
           ? `The writer asks you: ${ask.question}\nThe target lines are what they were on when they asked. Answer in one or two short sentences, plainly.`
           : "The writer asks you: the target lines are their question (or a line they want explained). Answer it in one or two short sentences, plainly.",
-        source
-          ? `When ${label} covers it, answer from it and end with " — " and the time or place the source gives, e.g. … — 12:34. When it doesn't, answer from what you know, without a time.`
-          : "Answer from what you know. Say so plainly when you aren't sure.",
+        "Your answer stays hidden until the writer has written their own take, then the two are compared: give your real, best answer.",
         ask.already.length
           ? `Your answers already here (go further, don't repeat them):\n${list(ask.already)}`
           : "",
+        source
+          ? `When ${label} covers it, answer from it, and always end with " — " and the time or place the source gives for the passage you used, e.g. … — 12:34. Never leave the time out when the answer comes from ${label}. When it doesn't cover it, answer from what you know, without a time.`
+          : "Answer from what you know. Say so plainly when you aren't sure.",
       ].join("\n");
-    case "mix":
+    case "compare":
       return [
-        "Offer one unexpected mix for the target lines: a thing from a different field that sheds light on them.",
-        "Reply as: × THING — how it connects, in one short clause.",
-        ask.already.length ? `Mixes already given (don't repeat them):\n${list(ask.already)}` : "",
+        `The writer asked: ${ask.question}`,
+        `Your answer: ${ask.answer}`,
+        `The writer's own take, written before they saw yours: ${ask.take}`,
+        'First judge the take: is it a real attempt at the question? A wrong, short, unsure or half-formed guess is real. Random letters, a joke, or words unrelated to the question ("sad lion sits there", ".isoadjoj") are not: then your answer stays hidden.',
+        "If it is real, compare it with your answer in at most two short sentences, 40 words in all: what theirs already has, the one thing it leaves out or sees differently, ending with one question that makes them weigh the difference for themselves. Address them as you. Never praise, never grade.",
+        'Reply with JSON only: {"real": true, "compare": "…"} or {"real": false}.',
       ].join("\n");
     case "factQuery":
       return [
-        "Write a search query for research papers that would support, test or add to the target lines.",
+        "Write a search query for research papers that would support or challenge the target lines.",
         "3 to 8 English words, the terms researchers would use. Reply with the query only.",
       ].join("\n");
     case "factRetry":
@@ -444,21 +415,36 @@ function taskText(input: PenPromptInput): string {
         "That search found nothing usable. Write a different, broader search query: 2 to 5 English words, the field's common terms.",
         "Reply with the query only.",
       ].join("\n");
-    case "factWrite":
+    case "sides":
       return [
         "These research papers came back for the target lines, best first.",
         paperBlock(ask.papers),
-        "Pick the first paper whose abstract supports a fact that fills a gap in the target lines. Write that fact in one sentence, using only what the abstract says.",
-        'Reply with JSON only: {"paper": N, "fact": "…"}. If no abstract supports a useful fact, reply {"paper": 0}.',
-        ask.already.length
-          ? `Facts already given here (say something else):\n${list(ask.already)}`
-          : "",
+        "Lay out the evidence on both sides of the target lines, using only what the abstracts say. Never give a verdict.",
+        "for: the strongest support for the lines, one sentence, from one paper.",
+        "against: the strongest challenge to them, one sentence, from one paper; when no paper challenges them, the main limit of the evidence for them (a small study, a different population, never measured directly), with paper 0.",
+        'Reply with JSON only: {"for": {"paper": N, "text": "…"}, "against": {"paper": N, "text": "…"}}. Use paper 0 for a side no paper speaks to. If no abstract bears on the lines at all, reply {}.',
+      ].join("\n");
+    case "connectQuery":
+      return [
+        "The writer wants to find what they wrote before, in their other notes, about the idea in the target lines. Only the target lines: the rest of the note is context, not what to search for.",
+        "Give the words most likely to appear in those notes: 4 to 8 single words or two-word phrases, in the language of the note, with common variants (a plural, a synonym). No stop words.",
+        'Reply with JSON only: an array of strings, e.g. ["dopamine", "reward", "motivation"].',
+      ].join("\n");
+    case "connectPick":
+      return [
+        "Lines the writer wrote in their other notes, found by a word search:",
+        ask.candidates
+          .map((c, k) => `<line n="${k + 1}" note="${c.note.replace(/"/g, "'")}">${c.text}</line>`)
+          .join("\n"),
+        "Pick 1 to 3 that meet the idea of the target lines: the same idea, the opposite of it, an earlier answer to the target's question, another angle on it, or the writer's own experience of it. Prefer different notes. Skip a line that only shares a word and is about something else.",
+        `For each, say how it relates, with exactly one of: ${ECHO_RELATIONS.map((r) => `"${r}"`).join(", ")}.`,
+        'Reply with JSON only: [{"n": N, "rel": "…"}], best first. [] only when no line is about the same subject.',
       ].join("\n");
     case "organize":
       return [
         "Reorganize the writer's lines below into a clearer structure: group related lines, put them in order, and nest each detail under the point it belongs to.",
         "Use their own words. Keep their phrases exactly as they wrote them; you may only reorder, regroup, indent, merge exact repeats, and add a few short group labels where a group needs a name. Never add an idea or drop one.",
-        "A line may end with an id like ^yt-540 or ^ai-q-ab12: keep it at the end of the line whose words it ends.",
+        "A line may end with an id like ^yt-540 or ^ai-r-ab12: keep it at the end of the line whose words it ends.",
         "Reply with the Markdown lines only (bullets, nested bullets), no code fence, nothing else.",
         `<lines>\n${ask.block}\n</lines>`,
       ].join("\n");
@@ -474,7 +460,7 @@ export function penPrompt(input: PenPromptInput): string {
   const parts = [
     `<note title="${input.title.replace(/"/g, "'")}">\n${input.note}\n</note>`,
     input.lines.length ? `<target-lines>\n${input.lines.join("\n")}\n</target-lines>` : "",
-    input.source && !input.ask.task.startsWith("fact") ? sourceBlock(input.source) : "",
+    input.source && input.ask.task === "answer" ? sourceBlock(input.source) : "",
     input.direction && !(input.ask.task === "answer" && input.ask.question)
       ? `The writer's direction for this, follow it: ${input.direction}`
       : "",
@@ -515,16 +501,130 @@ function jsonIn(reply: string): unknown {
   }
 }
 
-/** The fact and its paper from a `factWrite` reply; null for none. */
-export function factReply(
+/** A `compare` reply: whether the take was a real attempt, and if so the
+ *  comparison. Null when the reply can't be read. */
+export function compareReply(
+  reply: string,
+): { real: false } | { real: true; text: string | null } | null {
+  const value = jsonIn(reply) as { real?: unknown; compare?: unknown } | null;
+  if (!value || typeof value.real !== "boolean") return null;
+  if (!value.real) return { real: false };
+  return {
+    real: true,
+    text: typeof value.compare === "string" ? replyLine(value.compare, true) : null,
+  };
+}
+
+/** A take with no word in it at all is nobody's guess: no need to ask. */
+export function isNonsenseTake(text: string): boolean {
+  return !/\p{L}{2,}/u.test(text);
+}
+
+export interface Side {
+  text: string;
+  paper: Paper | null;
+}
+
+/** The two sides from a `sides` reply; null when no abstract bore on the
+ *  lines, or the reply named a paper that isn't there. */
+export function sidesReply(
   reply: string,
   papers: readonly Paper[],
-): { fact: string; paper: Paper } | null {
-  const value = jsonIn(reply) as { paper?: unknown; fact?: unknown } | null;
-  if (!value || typeof value.paper !== "number" || typeof value.fact !== "string") return null;
-  const paper = papers[value.paper - 1];
-  const fact = replyLine(value.fact);
-  return paper && fact ? { fact, paper } : null;
+): { pro: Side; con: Side } | null {
+  const value = jsonIn(reply) as Record<string, unknown> | null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const side = (raw: unknown): Side | null => {
+    const v = raw as { paper?: unknown; text?: unknown } | null;
+    if (!v || typeof v.text !== "string") return null;
+    const text = replyLine(v.text);
+    if (!text) return null;
+    const n = typeof v.paper === "number" ? v.paper : 0;
+    if (n === 0) return { text, paper: null };
+    const paper = papers[n - 1];
+    return paper ? { text, paper } : null;
+  };
+  const pro = side(value.for);
+  const con = side(value.against);
+  // Two sides, and at least one of them a paper: otherwise it's an opinion.
+  return pro && con && (pro.paper || con.paper) ? { pro, con } : null;
+}
+
+/** A side as the pen writes it: its label, the sentence, its paper's pill. */
+export function sideLine(label: "For" | "Against", side: Side): string {
+  return `${label}: ${side.text}${side.paper ? ` ${citationMarkdown(side.paper)}` : ""}`;
+}
+
+/** The search words from a `connectQuery` reply, at most 8. */
+export function connectTerms(reply: string): string[] {
+  const value = jsonIn(reply);
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value
+        .filter((v): v is string => typeof v === "string")
+        .map((v) => v.trim())
+        .filter((v) => v.length >= 3),
+    ),
+  ].slice(0, 8);
+}
+
+const STOP_WORDS = new Set(
+  "about above after again also because been before being below between both could does doing down during each from further have having here into itself just more most much need only other over really same should some such than that their them then there these they this those through under until very what when where which while will with would your yours".split(
+    " ",
+  ),
+);
+
+/** The target lines' own content words, for Connect's search alongside the
+ *  pen's: words of four letters or more that aren't function words. */
+export function contentWords(lines: readonly string[]): string[] {
+  const words = lines
+    .join(" ")
+    .toLowerCase()
+    .match(/\p{L}{4,}/gu);
+  return [...new Set((words ?? []).filter((w) => !STOP_WORDS.has(w)))];
+}
+
+/** The echoes a `connectPick` reply chose: candidate indexes (0-based) with
+ *  how each relates, at most 3, one per candidate. */
+export function echoesReply(
+  reply: string,
+  count: number,
+): Array<{ index: number; rel: EchoRelation }> {
+  const value = jsonIn(reply);
+  if (!Array.isArray(value)) return [];
+  const out: Array<{ index: number; rel: EchoRelation }> = [];
+  for (const item of value as Array<{ n?: unknown; rel?: unknown }>) {
+    const index = typeof item?.n === "number" ? item.n - 1 : -1;
+    const rel = ECHO_RELATIONS.find((r) => r === item?.rel);
+    if (index < 0 || index >= count || !rel || out.some((o) => o.index === index)) continue;
+    out.push({ index, rel });
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
+const ECHO_QUOTE_MAX = 200;
+
+/** One of your earlier lines as an echo quotes it: no marker, task box,
+ *  heading hashes or block id, cut at a word near 200 characters. */
+export function echoQuote(line: string): string {
+  let text = line
+    .replace(/<[^>]+>/g, "")
+    .replace(/^\s*(#{1,6}\s+|>\s*)/, "")
+    .replace(ITEM_RE, "")
+    .replace(BLOCK_ID_AT_END_RE, "")
+    .replace(/^["“]|["”]$/g, "")
+    .trim();
+  if (text.length > ECHO_QUOTE_MAX) {
+    const cut = text.lastIndexOf(" ", ECHO_QUOTE_MAX);
+    text = `${text.slice(0, cut > 80 ? cut : ECHO_QUOTE_MAX).replace(/[\s,;:.]+$/, "")}…`;
+  }
+  return text;
+}
+
+/** An echo as the pen writes it: the quote, its note as a link, the relation. */
+export function echoLine(quote: string, note: string, rel: EchoRelation): string {
+  return `“${quote}” — [[${note}]] · ${rel}`;
 }
 
 /** `Smith et al. 2024`, `Murre & Dros 2015`, or the venue when no author. */

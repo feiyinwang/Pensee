@@ -407,3 +407,39 @@
     color: var(--color-ai-ink);
   }
 }
+
+/* Answer, sealed: unreadable until your take is written under it. */
+.cm-editor .cm-pen-sealed {
+  filter: blur(5px);
+  opacity: 0.7;
+  user-select: none;
+}
+.cm-editor .cm-pen-seal {
+  margin-left: 0.6em;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-caption);
+  color: var(--color-ai-ink-faint);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Check: For / Against, quieter than the evidence after them. */
+.cm-editor .cm-pen-side {
+  color: var(--color-ai-ink-faint);
+}
+.cm-editor .cm-pen-nopaper {
+  margin-left: 0.5em;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-caption);
+  color: var(--color-ai-ink-faint);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* What an empty line of yours waits for, where you'll type. */
+.cm-editor .cm-pen-waiting {
+  color: var(--color-text-faint);
+  font-style: italic;
+  pointer-events: none;
+  user-select: none;
+}

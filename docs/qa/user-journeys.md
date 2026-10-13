@@ -325,37 +325,42 @@ background.
 
 ## Second pen — PEN
 
-**Feature:** Press ⌘. and then one key on a line: the AI writes one line under
-it in blue ink — a question for you (`?`), an answer to yours (`!`), a fact cited to a recent paper (`@`), an
-unexpected mix (`+`), or proposed cuts (`−`). In a video or book note `?`
-quizzes you, and Enter on your answer checks it against the source.
+**Feature:** Press ⌘. on a line and pick what the pen does; it writes in blue
+ink right under the line and never writes your conclusion. `!` writes an
+answer **sealed** until you've written your own take (a take that isn't one
+keeps it sealed), then compares the two. `@` lays out the evidence **for and
+against** a claim, each with a paper, and leaves the call to you. `[` brings
+back lines you wrote in **other notes** on the same idea, linked. `−` proposes
+cuts, `#` regroups several lines in your own words.
 **Spec:** SPECs/second-pen-spec.md
-**Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/pen-box.tsx`, `src/components/arc/floating-button-group/`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`
+**Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/pen-box.tsx`, `src/components/arc/floating-button-group/`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src/lib/tauri.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`, `src-tauri/src/commands/search.rs`
 
 | ID     | Journey                                                      | Expected                                                                                     | Check      |
 | ------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------- |
-| PEN-01 | ★ ⌘. then `?` on a bullet                                    | One blue question appears as its sub-bullet; the file has it with `^ai-a-…`                 | auto: pen  |
-| PEN-02 | ⌘., then Esc                                                 | A box opens above the line: pills that show their keys (? Ask me, ! Answer, @ Facts, + Mix, − Shorten) and a box to type in, with the keyboard in it; Esc closes it | auto: pen  |
-| PEN-03 | Enter on a pen question                                      | An empty answer bullet opens under it, the caret in it                                       | auto: pen  |
-| PEN-04 | Enter on one of several mixes                                | That mix stays with an answer under it; the unanswered mixes beside it are gone             | auto: pen  |
-| PEN-05 | Esc on the empty answer under a question                     | The question is taken back                                                                   | auto: pen  |
-| PEN-06 | In a video note: ⌘. `?`, Enter on the empty answer, Enter    | A quiz question (`^ai-q-…`) with an answer bullet; *I don't know* with a hint under it (`^ai-h-…`) and a new answer; *I don't know* with the check under it, quoting the transcript (`^ai-c-…`) | auto: pen  |
-| PEN-07 | ⌘. then `@` on a line                                        | One fact with a paper pill after it; the file has `[Author Year](https://… "title \| …") ^ai-f-…` | auto: pen  |
+| PEN-01 | ★ ⌘. then `!` on a bullet                                    | A sealed answer (blurred, `^ai-s-…`) appears as its sub-bullet, an empty take under it with the caret and *Your take first…* | auto: pen  |
+| PEN-02 | ⌘., then Esc                                                 | A box opens above the line: pills that show their keys (! Answer, @ Check, [[ Connect, − Shorten) and a box to type in, with the keyboard in it; no Ask me, Facts or Mix; Esc closes it | auto: pen  |
+| PEN-03 | Enter on the empty take under a sealed answer                | Nothing opens; the bar says a wrong guess counts                                             | auto: pen  |
+| PEN-04 | Enter on one of several echoes                               | That echo stays with an empty line under it; the unanswered echo beside it is gone           | auto: pen  |
+| PEN-05 | Esc on the empty line under a kept echo                      | The echo is taken back                                                                       | auto: pen  |
+| PEN-06 | Write a real take, Enter                                     | The answer opens (`^ai-r-…`) and the pen's comparison (`^ai-v-…`) appears under your take   | auto: pen  |
+| PEN-07 | ⌘. then `@` on a claim                                       | *For:* (`^ai-p-…`) and *Against:* (`^ai-n-…`) lines, papers as pills, an empty line under Against | auto: pen  |
 | PEN-08 | ⌘. then `−`, then Enter                                      | Cuts show struck through in red with "−N words" in the bar; Enter removes only them          | auto: pen  |
-| PEN-09 | Hover a fact's paper pill, click **Open paper**              | A card shows the paper's title, authors, venue, year and citations; the paper opens         | you        |
-| PEN-10 | ⌘. `?` from an empty line in a video note while it plays     | The question is on what was watched up to now                                                | you        |
-| PEN-11 | ⌘. then `?` on a plain (non-bullet) line                     | A plain blue line appears right below it, no bullet; the file has it a blank line apart     | auto: pen  |
-| PEN-12 | ⌘. then `!` on a line with your question                     | The pen's answer appears as its sub-bullet in blue (`^ai-r-…`)                              | auto: pen  |
-| PEN-13 | ⌘. then `!` on a question in a video note                    | The answer comes from the transcript and ends with its time (`— 1:10`)                      | auto: pen  |
-| PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the AI's answer (`^ai-r-…`) under it     | auto: pen  |
-| PEN-15 | ⌘., type a direction, click **Ask me**, Enter                | Your typed line goes in under the line; the AI's question, following it, goes under that  | auto: pen  |
+| PEN-09 | Hover a paper pill, click **Open paper**                     | A card shows the paper's title, authors, venue, year and citations; the paper opens         | you        |
+| PEN-10 | Write nonsense as your take (`sad lion sits there`), Enter   | The answer stays sealed; the bar says it doesn't read as a take                              | auto: pen  |
+| PEN-11 | ⌘. then `!` on a plain (non-bullet) line                     | A plain sealed line appears right below it, a blank line apart, the take bullet under it     | auto: pen  |
+| PEN-12 | ⌥↵ on an empty take                                          | The answer opens (`^ai-r-…`) with no comparison; the empty take goes                        | auto: pen  |
+| PEN-13 | ⌘. then `!` on a question in a video note                    | The sealed answer comes from the transcript and ends with its time (`— 1:10`)               | auto: pen  |
+| PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the sealed answer (`^ai-s-…`) under it   | auto: pen  |
+| PEN-15 | ⌘. then `[` on a line another note speaks to                 | Echoes `“…” — [[Note]] · relation` (`^ai-e-…`) appear under it; the link opens that note     | auto: pen  |
 | PEN-16 | Select several lines, ⌘., `#` Enter, then Esc                | An outline replaces them, tinted; Esc puts your lines back exactly                           | auto: pen  |
 | PEN-17 | Select several lines, ⌘., `#` Enter, then Enter              | The outline stays, with your own words in it                                                 | auto: pen  |
-| PEN-18 | ⌘., type `@` (or a full-width `？`), then Backspace           | The key lights its pill and types nothing; Backspace unselects it                            | auto: pen  |
+| PEN-18 | ⌘., type `@` (or a full-width `［`), then Backspace           | The key lights its pill and types nothing; Backspace unselects it                            | auto: pen  |
 | PEN-19 | ⌘., click a pill, then Enter                                 | The click only selects the pill (nothing written); Enter runs it                            | auto: pen  |
-| PEN-20 | ⌘., type text, then `@` after a space, Enter                 | `@` picks Facts and isn't typed; your text goes in as a line, the cited fact under it       | auto: pen  |
-| PEN-21 | Select, or double-click, a fact's line                       | The citation stays a pill (no link or details in the text); hovering it shows title, authors, journal and year, citations and the link | you        |
-| PEN-22 | ⌘. on one line, then on several selected lines             | **# Organize** isn't offered for one line; it is with several lines selected                | auto: pen  |
+| PEN-20 | ⌘., type text, then `@` after a space, Enter                 | `@` picks Check and isn't typed; your text goes in as a line, For and Against under it      | you        |
+| PEN-21 | Select, or double-click, a line with a paper                 | The citation stays a pill (no link or details in the text)                                  | you        |
+| PEN-22 | ⌘. on one line, then on several selected lines               | **# Organize** isn't offered for one line; it is with several lines selected                | auto: pen  |
+| PEN-23 | ⌘. then `@` on a line ending in `?`                          | Nothing is written; the bar says it's a question, not a claim                               | auto: pen  |
+| PEN-24 | Esc on the empty line under *Against*                        | For and Against are taken back                                                              | auto: pen  |
 
 ---
 

@@ -2,6 +2,11 @@
 
 ## 2026-10-13
 
+- The second pen now helps you think instead of thinking for you. Its box has five pills: **! Answer**, **@ Check**, **[[ Connect**, **− Shorten** and **# Organize** (Organize with several lines selected).
+  - **! Answer** writes its answer *sealed*: blurred, with an empty line under it for your take. Write what you think and press Enter: the answer opens, and the pen writes one line comparing the two, ending with a question back to you. A take that isn't one, like random letters or something unrelated to the question, keeps it sealed. A wrong guess is fine. **⌥↵** opens it without writing, and Esc on the empty take takes it back.
+  - **@ Check** no longer adds a fact. It lays out the evidence on both sides of your line, **For:** and **Against:**, each with its paper (or *no paper* when it's a limit of the evidence), then waits on an empty line for your call. It never gives a verdict. On a question it says there's no claim to check.
+  - **[[ Connect** looks through your other notes for what you wrote before on the same idea and quotes up to three of your own lines under this one, each with a link to its note and how it relates (*same idea*, *you wrote the opposite*, *you answered this before*, *another angle*, *you tried it*). Enter on one keeps it, and the pen asks how they connect. The rest go. The link is a normal `[[link]]`, so it shows up as a backlink.
+  - **Ask me**, **Facts**, **Mix**, **New topic** and the quiz in video and book notes are gone. Lines they wrote in your notes keep their blue ink.
 - Fixed: while an organized outline waited for Enter or Esc, its bullets were knocked out of place by the highlight. The outline is now tinted line by line, so it looks exactly as it will once kept. The *Organized, in your words* line under it is a small status line, lined up with the outline's text.
 - In the second pen's box, nothing runs until you press Enter. Click a pill, or type its key, to pick it, then press Enter with or without a direction. The keys pick pills at the start of the box or after a space, also from a Chinese keyboard (`？！＠…`). They're never typed into the box there, but inside a word they type as usual.
 - Whatever you type in the box goes into your note as your own line, and the pen writes under it. Type "naps and memory", pick **@ Facts**, Enter: your line, then a cited fact under it.

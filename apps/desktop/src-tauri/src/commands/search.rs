@@ -407,6 +407,200 @@ fn references_in_text(
     }
 }
 
+/// One line of another note that mentions some of the pen's search words:
+/// what Connect quotes back (SPECs/second-pen-spec.md#connect-what-you-wrote-before).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct MentioningLine {
+    pub path: String,
+    /// The note's file name without `.md`: what a `[[link]]` to it says.
+    pub stem: String,
+    /// 1-based.
+    pub line: u32,
+    /// The line, trimmed and capped.
+    pub text: String,
+    /// How many different search words it contains.
+    pub hits: u32,
+}
+
+const MENTION_TEXT_MAX: usize = 280;
+const MENTION_LIMIT_MAX: usize = 100;
+
+/// Lines in the workspace's markdown files that contain any of `terms`
+/// (case-insensitive), `exclude` left out: most words matched first, then
+/// newest file. Same scan as `find_block_references`, one at a time.
+#[tauri::command]
+pub async fn find_lines_mentioning(
+    terms: Vec<String>,
+    exclude: Option<String>,
+    limit: usize,
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+) -> Result<Vec<MentioningLine>, AppError> {
+    static SCAN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _scan = SCAN.lock().await;
+    let state = app.state::<AppState>().get_or_create(webview.label());
+    let files: Vec<(PathBuf, u64)> = state
+        .file_index
+        .read()
+        .iter()
+        .filter(|f| exclude.as_deref() != Some(&*f.path.to_string_lossy()))
+        .map(|f| (f.path.clone(), f.modified_at))
+        .collect();
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(find_lines_mentioning_impl(&files, &terms, limit))
+    })
+    .await
+    .map_err(|e| AppError::Io(e.to_string()))?
+}
+
+pub fn find_lines_mentioning_impl(
+    files: &[(PathBuf, u64)],
+    terms: &[String],
+    limit: usize,
+) -> Vec<MentioningLine> {
+    let needles: Vec<String> = terms
+        .iter()
+        .map(|t| word_stem(&t.trim().to_lowercase()))
+        .filter(|t| t.chars().count() >= 3)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+    if needles.is_empty() || limit == 0 {
+        return Vec::new();
+    }
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get().min(8))
+        .unwrap_or(4);
+    let chunk = files.len().div_ceil(threads).max(1);
+    let mut found: Vec<(MentioningLine, u64)> = std::thread::scope(|scope| {
+        let workers: Vec<_> = files
+            .chunks(chunk)
+            .map(|part| {
+                let needles = &needles;
+                scope.spawn(move || {
+                    let mut found = Vec::new();
+                    for (path, modified) in part {
+                        let Ok(text) = std::fs::read_to_string(path) else {
+                            continue;
+                        };
+                        let lower = text.to_lowercase();
+                        if !needles.iter().any(|n| lower.contains(n.as_str())) {
+                            continue;
+                        }
+                        let stem = path
+                            .file_stem()
+                            .map(|s| s.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        for line in mentioning_lines(&text, needles) {
+                            found.push((
+                                MentioningLine {
+                                    path: path.to_string_lossy().to_string(),
+                                    stem: stem.clone(),
+                                    ..line
+                                },
+                                *modified,
+                            ));
+                        }
+                    }
+                    found
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap_or_default())
+            .collect()
+    });
+    found.sort_by(|(a, am), (b, bm)| {
+        b.hits
+            .cmp(&a.hits)
+            .then(bm.cmp(am))
+            .then(a.path.cmp(&b.path))
+            .then(a.line.cmp(&b.line))
+    });
+    found.truncate(limit.min(MENTION_LIMIT_MAX));
+    found.into_iter().map(|(line, _)| line).collect()
+}
+
+/// A word without its common English ending, so it matches its other forms
+/// as a substring: "naps" finds "nap", "remembering" finds "remembered".
+fn word_stem(word: &str) -> String {
+    if word.contains(' ') {
+        return word.to_string();
+    }
+    for suffix in ["ings", "ing", "ied", "ies", "ed", "es", "s", "y"] {
+        if let Some(stem) = word.strip_suffix(suffix) {
+            if stem.chars().count() >= 3 {
+                return stem.to_string();
+            }
+        }
+    }
+    word.to_string()
+}
+
+/// The lines of one file that contain a needle, outside frontmatter, code
+/// fences and HTML (a video note's `<details>` transcript is the source's
+/// words, not the writer's), never the pen's own lines (`^ai-…`).
+fn mentioning_lines(text: &str, needles: &[String]) -> Vec<MentioningLine> {
+    let mut out = Vec::new();
+    let mut in_front = text.starts_with("---\n") || text.starts_with("---\r\n");
+    let mut in_fence = false;
+    let mut in_details = false;
+    for (index, raw) in text.lines().enumerate() {
+        let trimmed = raw.trim();
+        if in_front {
+            if index > 0 && trimmed == "---" {
+                in_front = false;
+            }
+            continue;
+        }
+        if trimmed.starts_with("```") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if trimmed.starts_with("<details") {
+            in_details = !trimmed.contains("</details>");
+            continue;
+        }
+        if in_details {
+            in_details = !trimmed.contains("</details>");
+            continue;
+        }
+        if in_fence || trimmed.is_empty() || trimmed.starts_with('<') || is_pen_line(trimmed) {
+            continue;
+        }
+        let lower = trimmed.to_lowercase();
+        let hits = needles
+            .iter()
+            .filter(|n| lower.contains(n.as_str()))
+            .count() as u32;
+        if hits == 0 {
+            continue;
+        }
+        let text = match trimmed.char_indices().nth(MENTION_TEXT_MAX) {
+            Some((cut, _)) => format!("{}…", &trimmed[..cut]),
+            None => trimmed.to_string(),
+        };
+        out.push(MentioningLine {
+            path: String::new(),
+            stem: String::new(),
+            line: index as u32 + 1,
+            text,
+            hits,
+        });
+    }
+    out
+}
+
+/// A line the second pen wrote: it ends with `^ai-<kind>-<id>`.
+fn is_pen_line(line: &str) -> bool {
+    line.rsplit_once(" ^ai-").is_some_and(|(_, id)| {
+        id.len() == 6
+            && id.as_bytes()[1] == b'-'
+            && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -571,5 +765,44 @@ mod tests {
 
         assert!(find_file_by_name_impl(dir.path(), "nope.png").is_none());
         assert!(find_file_by_name_impl(dir.path(), "hidden.png").is_none());
+    }
+
+    #[test]
+    fn lines_mentioning_rank_by_words_then_newest_and_skip_pen_lines() {
+        let dir = TempDir::new().unwrap();
+        let old = dir.path().join("Old.md");
+        let new = dir.path().join("New.md");
+        fs::write(
+            &old,
+            "---\nTags: dopamine reward\n---\nA reward after every chapter works.\n",
+        )
+        .unwrap();
+        fs::write(
+            &new,
+            "# New\nDopamine and reward go together.\n- reward line by the pen ^ai-e-ab12\n```\nreward in code\n```\n<details>\n<summary>Transcript</summary>\n<p>reward in a transcript</p>\n</details>\n<p>reward in html</p>\nnothing here\n",
+        )
+        .unwrap();
+        let files = vec![(old.clone(), 1), (new.clone(), 2)];
+        let terms = vec![
+            "Reward".to_string(),
+            "dopamine".to_string(),
+            "ok".to_string(),
+        ];
+        let found = find_lines_mentioning_impl(&files, &terms, 10);
+        let got: Vec<(&str, u32, u32)> = found
+            .iter()
+            .map(|l| (l.stem.as_str(), l.line, l.hits))
+            .collect();
+        assert_eq!(got, vec![("New", 2, 2), ("Old", 4, 1)]);
+        assert_eq!(find_lines_mentioning_impl(&files, &terms, 1).len(), 1);
+        assert!(find_lines_mentioning_impl(&files, &["ok".to_string()], 10).is_empty());
+        // Other forms of a word match: "rewards" finds "reward".
+        assert_eq!(
+            find_lines_mentioning_impl(&files, &["rewards".to_string()], 10).len(),
+            2
+        );
+        assert_eq!(word_stem("remembering"), "remember");
+        assert_eq!(word_stem("naps"), "nap");
+        assert_eq!(word_stem("sleep"), "sleep");
     }
 }

@@ -136,3 +136,4 @@ Learned the hard way; each one cost a failed run.
 - The QA vault is small and local. Bugs that need a big or iCloud vault don't
   show here; make them `you` journeys, or time the Rust command directly
   against the user's vault, read-only.
+- The pen waits on empty lines of yours that show faint words (`.cm-pen-waiting`, a widget CodeMirror ignores events on): put the caret there by clicking just left of the words (`caretInWaiting` in `pen.spec.js`); to replace typed text, click after it and send Backspace keydowns (CodeMirror runs its keymap on them).

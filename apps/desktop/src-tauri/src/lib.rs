@@ -606,6 +606,7 @@ pub fn run() {
             commands::search::fuzzy_search,
             commands::search::find_file_by_name,
             commands::search::find_block_references,
+            commands::search::find_lines_mentioning,
             commands::spaces::list_typed_notes,
             commands::images::save_clipboard_image,
             commands::images::import_image_file,

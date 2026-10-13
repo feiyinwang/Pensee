@@ -277,6 +277,29 @@ export function findBlockReferences(ids: string[]): Promise<BlockReference[]> {
   return invoke("find_block_references", { ids });
 }
 
+/** A line of another note that mentions some of the second pen's search
+ *  words (SPECs/second-pen-spec.md#connect-what-you-wrote-before). */
+export interface MentioningLine {
+  path: string;
+  /** The file name without `.md`: what a `[[link]]` to it says. */
+  stem: string;
+  /** 1-based. */
+  line: number;
+  text: string;
+  /** How many different search words it contains. */
+  hits: number;
+}
+
+/** Lines in the workspace's notes containing any of `terms`, `exclude` left
+ *  out, most words matched first. */
+export function findLinesMentioning(
+  terms: string[],
+  exclude: string | null,
+  limit: number,
+): Promise<MentioningLine[]> {
+  return invoke("find_lines_mentioning", { terms, exclude, limit });
+}
+
 /** A note that declares `Type:` (SPECs/spaces-spec.md). `properties` holds the
  *  top-level scalar frontmatter keys, lower-cased; lists are joined with ", ". */
 export interface TypedNote {
