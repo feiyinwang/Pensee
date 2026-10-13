@@ -2,8 +2,7 @@ import type { EditorView } from "@codemirror/view";
 import { ProseMarkEditor } from "./prosemark-editor";
 import { BookCard } from "./book-card";
 import { VideoPlayer } from "./video-player";
-import { FrontmatterPanel } from "./frontmatter-panel";
-import { PageTitle } from "./page-title";
+import { PageHeader } from "./page-header";
 import { EditorScrollContainer } from "./editor-scroll-container";
 import { EditorSearchOverview } from "./editor-search-overview";
 import { SectionRail } from "./section-rail";
@@ -69,8 +68,7 @@ export const EditorPane = memo(function EditorPane({
             paddingRight: "var(--pensee-editor-side-padding)",
           }}
         >
-          <PageTitle key={path} path={path} view={editorView} />
-          <FrontmatterPanel filePath={path} />
+          <PageHeader path={path} view={editorView} />
           <BookCard filePath={path} />
         </div>
         <VideoPlayer filePath={path} />

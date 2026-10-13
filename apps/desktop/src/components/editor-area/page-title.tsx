@@ -45,7 +45,7 @@ export function PageTitle({ path, view }: { path: string; view: EditorView | nul
   };
 
   return (
-    <div className="page-title" data-value={draft || "Untitled"}>
+    <div className="page-title" data-value={draft || "Untitled"} data-no-focus-ring>
       <textarea
         data-page-title
         className="page-title-input"

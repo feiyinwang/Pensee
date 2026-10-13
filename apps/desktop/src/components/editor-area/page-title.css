@@ -44,3 +44,37 @@
 .page-title-input::placeholder {
   color: var(--text-muted);
 }
+
+/* The title's row: the title takes the width, and the properties toggle sits
+   at its right on the title's first baseline. The aside carries the title's
+   font, size and line height, so its line box and baseline match the title's
+   first line; the toggle inside is inline and rests on that baseline. A
+   textarea's own baseline is unreliable, so flex baseline alignment is not
+   used. */
+.page-header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.page-header-row > .page-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-header-aside {
+  flex-shrink: 0;
+  font-family: var(--display-font);
+  font-size: calc(var(--pensee-editor-font-size) * 2);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.page-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--ui-font);
+  line-height: 1.15;
+  vertical-align: baseline;
+}

@@ -33,6 +33,8 @@ function focusActiveEditor() {
   });
 }
 
+export type FrontmatterEntries = ReturnType<typeof useFrontmatterEntries>;
+
 export function useFrontmatterEntries(filePath: string) {
   const { frontmatter, hasFrontmatter, updateFrontmatter, removeFrontmatter } =
     useFrontmatter(filePath);

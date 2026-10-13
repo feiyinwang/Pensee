@@ -10,6 +10,7 @@
 
 ## Done
 
+- Properties toggle: `PageHeader` (`components/editor-area/page-header.tsx`) owns the title row and the frontmatter entries; the rows are closed behind a "N properties ›" toggle at the title's right, forced open while no row has a key (a fresh `---`). The title opts out of the focus ring (`data-no-focus-ring`).
 - Writing rhythm: [`SPECs/writing-rhythm-spec.md`](SPECs/writing-rhythm-spec.md) — the editor's spacing follows Ulysses, measured from its screenshots as ratios of the body size: line height 1.9 (was 1.7), a 2em blank line between blocks (was 1em, so paragraphs and headings sit a full line apart), and a 660px column (was 680). Font, sizes and colours unchanged.
 - Type scale: [`SPECs/type-scale-spec.md`](SPECs/type-scale-spec.md) — a 13px floor for all chrome text and three tokens in `App.css` (`--text-caption` 13, `--text-label` 14, `--text-ui` 15; Tailwind `text-caption`/`text-label`/`text-ui`, and `--text-xs` floored so Arc follows). Editor defaults 18px / 1.7 / 680px. Library cover art, user content and the sidebar Search row (owned by another change) are left as they were.
 - Design tokens: [`docs/design-tokens.md`](docs/design-tokens.md) — one token source (`src/styles/tokens.css`: primitives → semantic → legacy aliases) for every colour, font, type size, radius and shadow; `lib/design-tokens.ts` resolves them for the `.board.svg` export; Arc mapped through `ARC_MAP`; `tests/design-tokens.test.ts` fails on a raw value outside it.

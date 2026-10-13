@@ -1,9 +1,10 @@
 import { useCallback, useRef, type FocusEvent, type KeyboardEvent } from "react";
-import { useFrontmatterEntries } from "./use-frontmatter-entries";
+import type { FrontmatterEntries } from "./use-frontmatter-entries";
 import type { YamlEntry } from "@/lib/yaml-entries";
 
 interface FrontmatterPanelProps {
-  filePath: string;
+  id: string;
+  fm: FrontmatterEntries;
 }
 
 // Stable module-scope ref callback. A stable ref runs only on mount/unmount
@@ -102,10 +103,9 @@ function FrontmatterRow({
   );
 }
 
-export function FrontmatterPanel({ filePath }: FrontmatterPanelProps) {
-  const { entries, updateEntry, removeEntry, addEntry, blurEntry, hasFrontmatter } =
-    useFrontmatterEntries(filePath);
-  const containerRef = useRef<HTMLDivElement>(null);
+/** The property rows. `PageHeader` owns the entries and whether this shows. */
+export function FrontmatterPanel({ id, fm }: FrontmatterPanelProps) {
+  const { entries, updateEntry, removeEntry, addEntry, blurEntry } = fm;
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>, index: number, field: "key" | "value") => {
@@ -123,10 +123,8 @@ export function FrontmatterPanel({ filePath }: FrontmatterPanelProps) {
     [entries, addEntry, removeEntry],
   );
 
-  if (!hasFrontmatter) return null;
-
   return (
-    <div ref={containerRef} data-frontmatter className="space-y-2 pb-6">
+    <div id={id} data-frontmatter className="space-y-2 pb-6">
       <div className="flex flex-col gap-1.5">
         {entries.map((entry, index) => (
           <FrontmatterRow
