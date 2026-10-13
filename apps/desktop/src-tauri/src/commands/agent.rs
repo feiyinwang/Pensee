@@ -23,7 +23,35 @@ const STDERR_TAIL_LINES: usize = 8;
 /** The built-in tools the chat needs to read, find and edit pages. */
 const AGENT_TOOLS: &str = "Read,Edit,Write,Glob,Grep";
 
-/// Each window's Claude process, by window label.
+/// Which of a window's Claude processes a call means. The chat keeps one
+/// conversation; the second pen (SPECs/second-pen-spec.md) writes one line
+/// per request from what the request carries, with no tools and nothing
+/// saved, in a process of its own so it never waits on or enters the chat.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Channel {
+    Chat,
+    Pen,
+}
+
+impl Channel {
+    fn parse(name: Option<&str>) -> Result<Self, AppError> {
+        match name {
+            None | Some("chat") => Ok(Self::Chat),
+            Some("pen") => Ok(Self::Pen),
+            Some(other) => Err(AppError::Io(format!("unknown agent channel: {other}"))),
+        }
+    }
+
+    /// The sessions map key: a window's label, plus the channel's suffix.
+    fn key(self, label: &str) -> String {
+        match self {
+            Self::Chat => label.to_owned(),
+            Self::Pen => format!("{label}#pen"),
+        }
+    }
+}
+
+/// Each window's Claude processes, by `Channel::key`.
 #[derive(Default)]
 pub struct AgentState {
     sessions: Mutex<HashMap<String, Arc<Session>>>,
@@ -121,7 +149,12 @@ fn resolve_claude_binary(
     candidates.into_iter().find(|candidate| exists(candidate))
 }
 
-fn build_args(session_id: Option<&str>, instructions: &str, model: &str) -> Vec<String> {
+fn build_args(
+    session_id: Option<&str>,
+    instructions: &str,
+    model: &str,
+    channel: Channel,
+) -> Vec<String> {
     let mut args = vec![
         // One long-lived process per window: messages arrive as stream-json
         // lines on stdin, so a question skips Claude Code's ~0.7 s startup.
@@ -143,13 +176,21 @@ fn build_args(session_id: Option<&str>, instructions: &str, model: &str) -> Vec<
         "--setting-sources".to_owned(),
         "project,local".to_owned(),
         "--tools".to_owned(),
-        AGENT_TOOLS.to_owned(),
+        match channel {
+            Channel::Chat => AGENT_TOOLS,
+            // The pen gets everything it may use in the request itself.
+            Channel::Pen => "",
+        }
+        .to_owned(),
         // Execution mode: reads and edits run without prompts; nothing is planned first.
         "--permission-mode".to_owned(),
         "acceptEdits".to_owned(),
         "--append-system-prompt".to_owned(),
         instructions.to_owned(),
     ];
+    if channel == Channel::Pen {
+        args.push("--no-session-persistence".to_owned());
+    }
     if let Some(session_id) = session_id {
         args.push("--resume".to_owned());
         args.push(session_id.to_owned());
@@ -173,6 +214,7 @@ struct SpawnKey {
     root: PathBuf,
     model: String,
     instructions: String,
+    channel: Channel,
 }
 
 /// A window's Claude process. Idle between messages; `current` is the request
@@ -193,9 +235,10 @@ fn ensure_session(
     session_id: Option<&str>,
 ) -> Result<Arc<Session>, AppError> {
     let state = app.state::<AgentState>();
+    let session_key = key.channel.key(label);
     // Held across the spawn so a warm-up and a send can't both start one.
     let mut sessions = state.sessions.lock();
-    if let Some(existing) = sessions.get(label) {
+    if let Some(existing) = sessions.get(&session_key) {
         let alive = matches!(existing.child.lock().try_wait(), Ok(None));
         if alive && existing.key == key {
             return Ok(existing.clone());
@@ -212,7 +255,12 @@ fn ensure_session(
     })?;
     let mut command = Command::new(binary);
     command
-        .args(build_args(session_id, &key.instructions, &key.model))
+        .args(build_args(
+            session_id,
+            &key.instructions,
+            &key.model,
+            key.channel,
+        ))
         .current_dir(&key.root)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -233,10 +281,11 @@ fn ensure_session(
         stdin: Mutex::new(stdin),
         current: Mutex::new(None),
     });
-    sessions.insert(label.to_owned(), session.clone());
+    sessions.insert(session_key.clone(), session.clone());
     start_forwarding(
         app.clone(),
         label.to_owned(),
+        session_key,
         session.clone(),
         stdout,
         stderr,
@@ -249,6 +298,7 @@ fn spawn_key(
     label: &str,
     model: String,
     instructions: String,
+    channel: Channel,
 ) -> Result<SpawnKey, AppError> {
     let state = app.state::<AppState>().get_or_create(label);
     let (root, _) = state.workspace_snapshot().ok_or(AppError::NoWorkspace)?;
@@ -256,6 +306,7 @@ fn spawn_key(
         root,
         model,
         instructions,
+        channel,
     })
 }
 
@@ -266,11 +317,13 @@ pub async fn agent_warm(
     session_id: Option<String>,
     instructions: String,
     model: String,
+    channel: Option<String>,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
     let label = webview.label().to_owned();
-    let key = spawn_key(&app, &label, model, instructions)?;
+    let channel = Channel::parse(channel.as_deref())?;
+    let key = spawn_key(&app, &label, model, instructions, channel)?;
     tauri::async_runtime::spawn_blocking(move || {
         ensure_session(&app, &label, key, session_id.as_deref()).map(|_| ())
     })
@@ -279,17 +332,21 @@ pub async fn agent_warm(
 }
 
 #[tauri::command]
+// Each argument is a field of the frontend's invoke payload.
+#[allow(clippy::too_many_arguments)]
 pub async fn agent_send(
     request_id: String,
     prompt: String,
     session_id: Option<String>,
     instructions: String,
     model: String,
+    channel: Option<String>,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
     let label = webview.label().to_owned();
-    let key = spawn_key(&app, &label, model, instructions)?;
+    let channel = Channel::parse(channel.as_deref())?;
+    let key = spawn_key(&app, &label, model, instructions, channel)?;
     tauri::async_runtime::spawn_blocking(move || {
         let session = ensure_session(&app, &label, key, session_id.as_deref())?;
         *session.current.lock() = Some(request_id);
@@ -310,6 +367,7 @@ pub async fn agent_send(
 fn start_forwarding(
     app: tauri::AppHandle,
     label: String,
+    session_key: String,
     session: Arc<Session>,
     stdout: Option<ChildStdout>,
     stderr: Option<ChildStderr>,
@@ -354,10 +412,10 @@ fn start_forwarding(
             let state = app.state::<AgentState>();
             let mut sessions = state.sessions.lock();
             if sessions
-                .get(&label)
+                .get(&session_key)
                 .is_some_and(|s| Arc::ptr_eq(s, &session))
             {
-                sessions.remove(&label);
+                sessions.remove(&session_key);
             }
         }
         // The frontend ignores this unless that request is still running, so
@@ -386,32 +444,46 @@ fn start_forwarding(
 /// the next send starts a new process resuming the conversation. A request
 /// that already finished is a no-op.
 #[tauri::command]
-pub fn agent_cancel(request_id: String, webview: tauri::Webview, app: tauri::AppHandle) {
-    let session = app
-        .state::<AgentState>()
-        .sessions
-        .lock()
-        .get(webview.label())
-        .cloned();
+pub fn agent_cancel(
+    request_id: String,
+    channel: Option<String>,
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+) -> Result<(), AppError> {
+    let key = Channel::parse(channel.as_deref())?.key(webview.label());
+    let session = app.state::<AgentState>().sessions.lock().get(&key).cloned();
     if let Some(session) = session {
         if session.current.lock().as_deref() == Some(request_id.as_str()) {
             let _ = session.child.lock().kill();
         }
     }
+    Ok(())
 }
 
-/// New chat: end this window's process so the next one starts a fresh
-/// conversation.
+/// New chat (or the pen's next request): end that channel's process so the
+/// next one starts fresh.
 #[tauri::command]
-pub fn agent_reset(webview: tauri::Webview, app: tauri::AppHandle) {
-    close_window_session(&app, webview.label());
+pub fn agent_reset(
+    channel: Option<String>,
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+) -> Result<(), AppError> {
+    let key = Channel::parse(channel.as_deref())?.key(webview.label());
+    kill_session(&app, &key);
+    Ok(())
 }
 
-/// Kill a window's process, if any. Also called when the window closes.
-pub fn close_window_session(app: &tauri::AppHandle, label: &str) {
-    let session = app.state::<AgentState>().sessions.lock().remove(label);
+fn kill_session(app: &tauri::AppHandle, key: &str) {
+    let session = app.state::<AgentState>().sessions.lock().remove(key);
     if let Some(session) = session {
         let _ = session.child.lock().kill();
+    }
+}
+
+/// Kill all of a window's processes. Called when the window closes.
+pub fn close_window_session(app: &tauri::AppHandle, label: &str) {
+    for channel in [Channel::Chat, Channel::Pen] {
+        kill_session(app, &channel.key(label));
     }
 }
 
@@ -421,7 +493,7 @@ mod tests {
 
     #[test]
     fn first_process_has_no_resume() {
-        let args = build_args(None, "ctx", "haiku");
+        let args = build_args(None, "ctx", "haiku", Channel::Chat);
         assert_eq!(
             args,
             [
@@ -450,8 +522,25 @@ mod tests {
 
     #[test]
     fn replacement_process_resumes_session() {
-        let args = build_args(Some("abc"), "ctx", "opus");
+        let args = build_args(Some("abc"), "ctx", "opus", Channel::Chat);
         assert_eq!(&args[args.len() - 2..], ["--resume", "abc"]);
+    }
+
+    #[test]
+    fn pen_has_no_tools_and_saves_nothing() {
+        let args = build_args(None, "pen", "haiku", Channel::Pen);
+        let tools = args.iter().position(|a| a == "--tools").unwrap();
+        assert_eq!(args[tools + 1], "");
+        assert!(args.iter().any(|a| a == "--no-session-persistence"));
+        assert!(!args.iter().any(|a| a == "--resume"));
+    }
+
+    #[test]
+    fn channels_have_their_own_sessions() {
+        assert_eq!(Channel::parse(None).unwrap().key("main"), "main");
+        assert_eq!(Channel::parse(Some("chat")).unwrap().key("main"), "main");
+        assert_eq!(Channel::parse(Some("pen")).unwrap().key("main"), "main#pen");
+        assert!(Channel::parse(Some("other")).is_err());
     }
 
     #[test]

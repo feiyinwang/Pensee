@@ -249,6 +249,11 @@
   --color-status-warning: var(--hue-orange);
   --color-status-success: var(--hue-green);
   --color-status-info: var(--hue-blue);
+  /* The second pen's ink (SPECs/second-pen-spec.md): the AI's own lines,
+     a second colour beside the writer's. */
+  --color-ai-ink: var(--hue-blue);
+  --color-ai-ink-faint: color-mix(in oklch, var(--color-ai-ink) 55%, var(--color-text-faint));
+  --color-ai-tint: color-mix(in oklch, var(--color-ai-ink) 16%, transparent);
   --color-dot-red: var(--hue-red);
   --color-dot-orange: var(--hue-orange);
   --color-dot-yellow: var(--hue-yellow);

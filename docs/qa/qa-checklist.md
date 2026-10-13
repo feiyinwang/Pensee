@@ -120,6 +120,9 @@ Learned the hard way; each one cost a failed run.
     `switchView` in `calendar.spec.js`).
   - CodeMirror links resolve their target from the click's coordinates: use
     `mouseClick(element)` from `_helpers.js`. It also takes `{ metaKey: true }`.
+- The e2e window is never in front (`document.hasFocus()` is false), so
+  CodeMirror ignores a DOM selection set from a script: put the caret with a
+  mouse click at the text's coordinates (`caretAfter` in `pen.spec.js`).
 - React-controlled inputs: `fillField(selector, text)`. CodeMirror text:
   `typeInEditor(text)`. `browser.keys` does not reach either.
 - `waitForClickable` fails on visible elements; use `waitForExist`.

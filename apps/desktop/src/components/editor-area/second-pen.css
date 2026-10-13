@@ -1,0 +1,190 @@
+/* The second pen (second-pen.ts, SPECs/second-pen-spec.md). Its lines are in
+   AI ink with a hollow marker; your answers under them stay in your ink. */
+
+.cm-editor .cm-pen-line .cm-list-body,
+.cm-editor .cm-pen-line {
+  color: var(--color-ai-ink);
+}
+
+.cm-editor .cm-pen-line .cm-list-prefix-bullet::before {
+  content: "◦";
+  color: var(--color-ai-ink);
+}
+
+/* A check's or fact's ` — source`. */
+.cm-editor .cm-pen-src {
+  color: var(--color-ai-ink-faint);
+  font-size: 0.86em;
+}
+
+/* ⌘. armed: the lines the next key acts on. */
+.cm-editor .cm-pen-armed {
+  background: var(--color-ai-tint);
+  border-radius: var(--radius-hairline);
+}
+
+/* Words the pen just wrote settle in, one after another. */
+.cm-editor .cm-pen-word {
+  display: inline-block;
+  animation: cm-pen-word-in 220ms var(--ease-out) both;
+}
+
+@keyframes cm-pen-word-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(2px);
+  }
+}
+
+/* Shorten: red pencil, deletion only. A kept cut reads as text again. */
+.cm-editor .cm-pen-cut {
+  cursor: pointer;
+  color: var(--color-text-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-status-danger);
+  text-decoration-thickness: 1.5px;
+  border-radius: var(--radius-hairline);
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out);
+}
+
+.cm-editor .cm-pen-cut-kept {
+  color: inherit;
+  text-decoration-color: transparent;
+  background: var(--color-bg-subtle);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cm-editor .cm-pen-cut:hover {
+    background: var(--color-bg-hover);
+  }
+}
+
+/* A fact's paper: a pill after the claim. */
+.cm-pen-cite {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: 6px;
+  padding: 0 7px;
+  height: 1.45em;
+  vertical-align: 0.08em;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.74em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+
+.cm-pen-cite-icon {
+  width: 0.95em;
+  height: 0.95em;
+  flex-shrink: 0;
+  background: currentColor;
+  /* token-exception: an icon mask (Lucide's file-text), not a colour. */
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3Cpath d='M10 13H8'/%3E%3Cpath d='M16 17H8'/%3E%3Cpath d='M16 13h-2'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cm-pen-cite:hover {
+    background: var(--color-bg-subtle-strong);
+  }
+}
+
+.cm-pen-cite-card {
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.cm-pen-cite-card-host {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.cm-pen-cite-card-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-ui);
+  font-weight: 500;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.cm-pen-cite-card-meta {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+}
+
+.cm-pen-cite-card-open {
+  align-self: flex-start;
+  margin-top: 6px;
+  color: var(--color-link);
+  font-size: var(--font-size-caption);
+  text-decoration: underline;
+  text-decoration-color: var(--color-link-underline);
+  text-underline-offset: 3px;
+}
+
+/* The bottom bar's pen hint (document-footer.tsx). */
+.pen-hint {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  animation: cm-pen-hint-in var(--motion-settle) var(--ease-out) both;
+}
+
+.pen-hint[data-resting] {
+  color: var(--color-text-faint);
+}
+
+.pen-hint[data-busy] {
+  color: var(--color-ai-ink);
+}
+
+.pen-hint kbd {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-chip);
+  background: var(--color-bg-kbd);
+  color: var(--color-text-secondary);
+  font: inherit;
+  text-align: center;
+}
+
+.pen-hint b {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pen-hint .pen-hint-gap {
+  width: 8px;
+  flex-shrink: 0;
+}
+
+@keyframes cm-pen-hint-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-editor .cm-pen-word,
+  .pen-hint {
+    animation: none;
+  }
+}

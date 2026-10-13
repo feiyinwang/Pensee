@@ -399,6 +399,24 @@ export function fetchLinkPreview(url: string): Promise<LinkPreview> {
   return invoke("fetch_link_preview", { url });
 }
 
+/** A research paper from the second pen's search (commands/papers.rs). */
+export interface Paper {
+  title: string;
+  authors: string[];
+  year: number | null;
+  date: string | null;
+  venue: string | null;
+  citedBy: number;
+  url: string;
+  abstractText: string | null;
+}
+
+/** Papers on `query`, best first: the most cited of the last three years,
+ *  then the newest of the rest. */
+export function searchPapers(query: string): Promise<Paper[]> {
+  return invoke("search_papers", { query });
+}
+
 /** Download the cover at `url` (an image, or a page with an Open Graph image)
  *  into the note's `<stem>-assets` folder; returns its path relative to the
  *  note's folder, e.g. `My video-assets/cover.jpg`. */

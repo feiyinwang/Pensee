@@ -96,6 +96,23 @@ These shortcuts are handled by the `markdownFormatting` CodeMirror extension and
 | Cmd+Shift+C             | Copy block reference      |
 | Cmd+Shift+V             | Paste as linked block     |
 
+## Second pen
+
+The `secondPen` CodeMirror extension ([SPECs/second-pen-spec.md](../SPECs/second-pen-spec.md)).
+⌘. arms it for one key, on the selection or the caret's line; any other key
+types as usual. Its hints are in the note's bottom bar.
+
+| Shortcut         | Action                                                    |
+| ---------------- | --------------------------------------------------------- |
+| Cmd+. then ?     | Ask (a quiz question in a video or book note)             |
+| Cmd+. then @     | One fact, cited to a recent paper                         |
+| Cmd+. then +     | One unexpected mix                                        |
+| Cmd+. then −     | Shorten: propose cuts (Enter applies, Esc cancels)        |
+| Cmd+. then →     | Quiz: a question on a new topic                           |
+| Enter on a pen line | Answer under it (on a mix: keep it, drop the others)   |
+| Enter on a quiz answer | Check it against the source (empty: a hint first)   |
+| Esc              | Stop the pen, or take back what you haven't answered      |
+
 ## Editor (inherited from CodeMirror)
 
 Standard editing shortcuts provided by CodeMirror's basic setup. Indent is rebound from CodeMirror's Cmd+[ / Cmd+] to Cmd+Shift+[ / Cmd+Shift+] in `editorDefaultKeymap` (`basicSetup.ts`), which every editor uses, so Cmd+[ can toggle the sidebar app-wide.

@@ -32,6 +32,7 @@ import { paragraphSelection } from "./paragraph-selection";
 import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
 import { bookJump } from "./book-jump";
+import { secondPen } from "./second-pen";
 import { tableDecorations } from "./table-decorations";
 import { tweetThread } from "./tweet-thread";
 import { videoAutoPin } from "./video-pin";
@@ -123,6 +124,9 @@ export function createEditorExtensions(
     // Undo history lives in its own compartment so a tab swap can reset it
     // (reconfigure out and back in) without tearing down the rest of the setup.
     historyCompartment.of(history()),
+    // Before prosemark's keys: ⌘. and the key after it, and Enter / Esc in
+    // the answer flow, win ties at the highest precedence.
+    secondPen(getFilePath),
     prosemarkBasicSetup(),
     editorSearchExtensions,
     // Freeze unfurl/fold decisions while a pointer drag is in flight, so the

@@ -59,3 +59,23 @@ export function transcriptBlock(cues: readonly TranscriptCue[]): string {
   );
   return ["<details>", "<summary>Transcript</summary>", ...lines, "</details>"].join("\n");
 }
+
+const TRANSCRIPT_PARAGRAPH = /<p><small>(\d+(?::\d{2}){1,2})<\/small>\s?(.*?)<\/p>/g;
+
+function unescapeHtml(text: string): string {
+  return text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
+
+function secondsOf(time: string): number {
+  return time.split(":").reduce((total, part) => total * 60 + Number(part), 0);
+}
+
+/** The paragraphs of the transcript toggle in a note's body, in order: what
+ *  `transcriptBlock` wrote. Empty when the note has none. */
+export function transcriptIn(body: string): TranscriptCue[] {
+  if (!hasTranscript(body)) return [];
+  return [...body.matchAll(TRANSCRIPT_PARAGRAPH)].map((match) => ({
+    start: secondsOf(match[1]!),
+    text: unescapeHtml(match[2]!),
+  }));
+}

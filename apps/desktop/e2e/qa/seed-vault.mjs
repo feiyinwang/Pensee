@@ -18,6 +18,31 @@ const NOTES = {
   "Projects/Old idea.md": "---\nType: Project\nStatus: Done\n---\n\nFinished.\n",
   "Library/A book.md": "---\nType: Book\nAuthor: Someone\n---\n\n## Highlights\n",
   "Inspirations/Quote.md": "---\nType: Inspiration\n---\n\nLess, but better.\n",
+  // The second pen (PEN journeys): its own lines already in a note, and a
+  // video note with a transcript to quiz on.
+  "Notes/Pen.md": [
+    "- rereading feels like learning because the page looks familiar",
+    "  - What would you notice if it weren't? ^ai-a-aaaa",
+    "  - × a familiar face — you know them, not their name ^ai-m-bbbb",
+    "  - × an open-book exam — you know where, not what ^ai-m-cccc",
+    "- I think we basically just need to really sleep on it",
+    "",
+  ].join("\n"),
+  "Library/How we remember.md": [
+    "---",
+    "Type: Video",
+    "Link: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "---",
+    "",
+    "<details>",
+    "<summary>Transcript</summary>",
+    "<p><small>0:05</small> Rereading makes the page familiar, and familiarity feels like knowing.</p>",
+    "<p><small>1:10</small> In a 2006 study, students either reread a passage or recalled it. A week later, the recall group remembered far more.</p>",
+    "</details>",
+    "",
+    "- recall beats rereading after a week",
+    "",
+  ].join("\n"),
 };
 
 /** Rebuild the vault and reset the e2e app's state. Called before every
