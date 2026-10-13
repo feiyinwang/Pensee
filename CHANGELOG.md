@@ -4,6 +4,7 @@
 
 - Tags in **Projects** and statuses in **Library** are now soft coloured pills, as in Harvey: an **In progress** or **due soon** tag sits on a pale tint of its colour, with the dot and the words in a deeper shade of it, and readable in light and dark mode. Blue is now a calm slate blue and orange a warm amber, and boards, stickies and status marks use the new shades too.
 - Selecting a whole paragraph with the mouse now stops the grey at the paragraph's last word, with a small ¶ after it, instead of washing down over the empty line to the next heading. The same goes for a drag that runs past the end of a paragraph.
+- Selecting a bullet or a numbered item with the mouse selects just its text, from after the bullet to the end of the item, with the ¶ after it. The bullet, the number, a checkbox and the indent to their left stay out. Double-clicking the bullet itself does the same.
 - **PENSÉE** at the top of the sidebar now lines up with the Spaces label and the icons below it, and its letters sit a little closer together.
 - A note's properties are folded away under its title. A small **4 properties ›** at the right end of the title line opens and closes them, so the title sits right above your writing. A new properties block you start by typing `---` opens straight away.
 - Editing a note's title no longer draws a box around it; the text cursor shows you're in it, as in the body.
