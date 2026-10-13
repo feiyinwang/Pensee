@@ -4,7 +4,7 @@ Fast and lightweight app for your workspace's markdown files
 
 ![Writer](./assets/screenshot.png)
 
-It is built with Tauri v2, React, Zustand, CodeMirror, and Rust. The app keeps documents on disk, respects workspace `.gitignore` rules, supports multiple windows, renders extended markdown such as tables and Mermaid diagrams, and ships with a signed macOS release flow.
+It is built with Tauri v2, React, Zustand, CodeMirror, and Rust. The app keeps documents on disk, respects workspace `.gitignore` rules, supports multiple windows, renders extended markdown such as tables and Mermaid diagrams,.
 
 ## Repository
 
@@ -48,6 +48,6 @@ paths, and is not even compiled into builds made from a clone of this repo.
 [`docs/telemetry.md`](./docs/telemetry.md) lists every event and property, and
 the three independent ways to keep it off.
 
-## Releases
+## Building
 
-macOS releases are cut locally with `scripts/distribute.sh`. See `docs/releasing.md` for the signed, notarized release workflow and updater publishing details.
+Build and install the app locally with `scripts/ship-local.sh`. It makes a release build, signs it ad hoc and installs it in `/Applications`. The app doesn't check for updates.

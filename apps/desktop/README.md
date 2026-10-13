@@ -8,4 +8,4 @@ Run it from the repo root with:
 vp dev
 ```
 
-Builds and releases are driven from the root repo. See `../../README.md` and `../../docs/releasing.md`.
+Builds are driven from the root repo. See `../../README.md`.

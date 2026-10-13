@@ -6,8 +6,7 @@
   "scripts": {
     "ready": "vp fmt && vp lint && vp run test -r && vp run build -r",
     "dev": "vp run desktop#dev",
-    "prepare": "vp config",
-    "distribute": "./scripts/distribute.sh"
+    "prepare": "vp config"
   },
   "devDependencies": {
     "vite-plus": "catalog:"

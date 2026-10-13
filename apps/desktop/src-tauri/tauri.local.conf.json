@@ -1,9 +1,5 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Pensée",
-  "identifier": "com.f.writer-mine",
-  "bundle": { "createUpdaterArtifacts": false },
-  "plugins": {
-    "updater": { "endpoints": ["https://writer-mine.invalid/latest.json"] }
-  }
+  "identifier": "com.f.writer-mine"
 }
