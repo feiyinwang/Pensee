@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 
-import { Analytics } from "../analytics";
 import styles from "../styles.css?url";
 
 const TITLE = "Writer — Fast and lightweight markdown editor";
@@ -37,9 +36,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <Analytics>
-        <Outlet />
-      </Analytics>
+      <Outlet />
     </RootDocument>
   );
 }

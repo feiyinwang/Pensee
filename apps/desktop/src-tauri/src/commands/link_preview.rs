@@ -35,8 +35,9 @@ pub(crate) fn client() -> Result<&'static reqwest::Client, AppError> {
     if let Some(client) = CLIENT.get() {
         return Ok(client);
     }
-    // reqwest is built with `rustls-no-provider`; see `telemetry.rs`. Whoever
-    // installs the provider first wins and later calls are no-ops.
+    // reqwest is built with `rustls-no-provider`, so the process needs a crypto
+    // provider before the first TLS handshake. Whoever installs it first wins
+    // and later calls are no-ops.
     let _ = rustls::crypto::ring::default_provider().install_default();
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))

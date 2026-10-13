@@ -1,7 +1,6 @@
 import { AppLayout } from "./components/app-layout";
 import { CommandPalette } from "./components/command-palette";
 import { Composer } from "./components/composer";
-import { TelemetryConsentDialog } from "./components/telemetry-consent-dialog";
 import { WindowTitle } from "./components/window-title";
 import { useIsStartupResolved } from "./hooks/use-workspace";
 import { useAppleBooksSync } from "./hooks/use-apple-books-sync";
@@ -36,7 +35,6 @@ function App() {
       <AppLayout />
       <CommandPalette />
       <Composer />
-      <TelemetryConsentDialog />
     </>
   );
 }

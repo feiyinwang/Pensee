@@ -322,22 +322,6 @@ export function resetSetting(key: string, scope: "global" | "workspace" = "globa
   return invoke("reset_setting", { key, scope });
 }
 
-// Telemetry consent. Enabling/disabling and the email itself go through the
-// normal `setSetting` path above — these two only cover the one-time prompt.
-export function telemetryShouldPrompt(): Promise<boolean> {
-  return invoke("telemetry_should_prompt");
-}
-
-export function telemetryMarkPrompted(): Promise<void> {
-  return invoke("telemetry_mark_prompted");
-}
-
-/** Report a declined prompt. Disclosed in the dialog and in `docs/telemetry.md`
- *  — the one thing sent on behalf of someone who said no. */
-export function telemetryReportDeclined(): Promise<void> {
-  return invoke("telemetry_report_declined");
-}
-
 // Pending open queue (drag-drop / CLI arg / dock open). A folder open
 // carries `workspace`; a markdown-file open carries only `file` and opens
 // standalone (compact window, no workspace).

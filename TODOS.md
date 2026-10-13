@@ -2,7 +2,7 @@
 
 ## In Progress
 
-- Pensée rebrand: [`SPECs/pensee-rebrand-spec.md`](SPECs/pensee-rebrand-spec.md) — the app stops being Writer. Updates removed (no updater, no release script). Next: remove analytics, rename everything to Pensée, move the installed Writer.app to the Trash.
+- Pensée rebrand: [`SPECs/pensee-rebrand-spec.md`](SPECs/pensee-rebrand-spec.md) — the app stops being Writer. Updates and analytics removed (no updater, release script, PostHog or consent dialog). Next: rename everything to Pensée, move the installed Writer.app to the Trash.
 
 - X bookmarks in Library: [`SPECs/x-bookmarks-spec.md`](SPECs/x-bookmarks-spec.md) — bookmarks from X become notes (`Type: Tweet`) with the author's whole thread and its media, through the user's own X developer app. Done: sign-in (OAuth + PKCE, Keychain), bookmarks and thread fetch, media download, note writing, the 15-minute sync, Settings → X Bookmarks. The Library **Bookmarks** tab and card are done. `![[*.mp4]]` embeds play in every note (GIFs as `-gif.mp4` loop muted). The thread view in the editor is done (author header with **Open on X**, posts on one spine with numbers, quoted posts as cards). Next: the "new since last visit" dot. Not yet run against the live X API.
 

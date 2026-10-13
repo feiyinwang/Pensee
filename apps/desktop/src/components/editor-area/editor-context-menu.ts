@@ -46,7 +46,7 @@ export interface EditorBodyMenuHandlers {
   onPasteBlockReference?: () => void;
 }
 
-// Menu ids stay stable for tests and telemetry; text and accelerator come from
+// Menu ids stay stable for tests; text and accelerator come from
 // the command registry. `"---"` is a separator; the optional third element
 // overrides the registry label where the submenu context wants different
 // wording ("Insert link…" under Format, "Link…" under Insert).

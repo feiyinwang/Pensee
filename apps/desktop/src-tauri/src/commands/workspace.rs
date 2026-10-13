@@ -450,7 +450,6 @@ fn prepare_workspace_state(
 
     // Shared by the `open_workspace` IPC and the startup restore bundle, so a
     // session restore counts as an open. No path or name is sent.
-    crate::telemetry::track("workspace_opened");
 
     // Everything below this line runs on a background thread, guarded by
     // `new_epoch`. Staggering the work this way means `open_workspace`

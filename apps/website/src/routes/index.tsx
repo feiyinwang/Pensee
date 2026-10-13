@@ -1,6 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { useAnalytics } from "../analytics";
 import { AppleGlyph, WriterMark } from "../components/Mark";
 
 const FEATURES = [
@@ -28,8 +27,6 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const capture = useAnalytics();
-
   return (
     <div className="page">
       <main className="hero">
@@ -44,7 +41,6 @@ function HomePage() {
               href="https://x.com/joelbqz"
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => capture("updates_opened")}
             >
               Updates
             </a>
@@ -53,7 +49,6 @@ function HomePage() {
               href={__WRITER_REPO_URL__}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => capture("github_opened")}
             >
               GitHub
             </a>
@@ -63,11 +58,7 @@ function HomePage() {
         <h1 className="headline">Fast and lightweight app for your workspace's markdown files</h1>
 
         <div className="cta">
-          <a
-            className="download"
-            href={__WRITER_DMG_URL__}
-            onClick={() => capture("download_started", { app_version: __WRITER_VERSION__ })}
-          >
+          <a className="download" href={__WRITER_DMG_URL__}>
             <AppleGlyph size={20} />
             <span>Download for MacOS</span>
           </a>

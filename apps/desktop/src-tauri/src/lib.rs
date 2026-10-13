@@ -8,7 +8,6 @@ mod ignore;
 mod macos;
 pub mod open_target;
 mod state;
-mod telemetry;
 mod thumbs;
 #[cfg(desktop)]
 mod watcher;
@@ -543,20 +542,6 @@ pub fn run() {
             let main_state = app.state::<AppState>().get_or_create(MAIN_WINDOW_LABEL);
             init_window_settings(app.handle(), &main_state)?;
 
-            // Telemetry reads its enabled/email values out of the settings
-            // layer above, so it must come after `init_window_settings` and
-            // before anything that can emit an event.
-            {
-                let (enabled, email) = main_state
-                    .settings
-                    .read()
-                    .as_ref()
-                    .map(telemetry::settings_snapshot)
-                    .unwrap_or((false, None));
-                telemetry::init(app.handle(), enabled, email);
-                telemetry::report_app_opened();
-            }
-
             // On macOS, `open -a Writer /path` delivers the path via
             // RunEvent::Opened, not argv. On Linux/Windows the path
             // arrives through argv (or the single-instance plugin).
@@ -648,9 +633,6 @@ pub fn run() {
             commands::settings::get_setting,
             commands::settings::set_setting,
             commands::settings::reset_setting,
-            telemetry::telemetry_should_prompt,
-            telemetry::telemetry_mark_prompted,
-            telemetry::telemetry_report_declined,
             commands::startup::get_startup_state,
             #[cfg(target_os = "macos")]
             commands::shell_install::cli_status,
