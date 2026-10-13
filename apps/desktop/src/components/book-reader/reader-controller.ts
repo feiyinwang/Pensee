@@ -355,6 +355,11 @@ export class ReaderController {
     void saveBookTextSize(size);
   }
 
+  /** Whether the reader's tab is on screen (highlight-painter.ts). */
+  setShown(shown: boolean) {
+    this.#painter.setShown(shown);
+  }
+
   async passage() {
     return (await this.#source?.passage()) ?? null;
   }

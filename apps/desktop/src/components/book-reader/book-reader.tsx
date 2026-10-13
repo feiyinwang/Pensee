@@ -46,6 +46,8 @@ function define(book: string, text: string) {
 
 export default function BookReader({
   location,
+  isActive,
+  inColumn,
 }: {
   location: BookTabLocation;
   isActive: boolean;
@@ -85,6 +87,12 @@ export default function BookReader({
       controllerRef.current = null;
     };
   }, [location.path, location.note]);
+
+  // A hidden tab's highlights leave the page's registry (highlight-painter.ts).
+  const isShown = isActive || inColumn;
+  useEffect(() => {
+    controllerRef.current?.setShown(isShown);
+  }, [isShown, location.path, location.note]);
 
   /** Viewport point → position inside the frame, above the given rect. */
   const pillAt = useCallback((rect: DOMRect) => {

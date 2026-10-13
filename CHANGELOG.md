@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Writer no longer freezes for about half a second after each click or tab switch while a book with highlights is open in another tab. The book's highlights now leave the page while its tab is hidden and come back when you return to it.
 - Switching tabs in **Library** and views in **Projects** is instant. A tab is chosen the moment you press the mouse, not when you let go, and the highlight jumps to it instead of sliding over. In Projects the highlight no longer waits for the new view to draw.
 
 ## 2026-10-12
