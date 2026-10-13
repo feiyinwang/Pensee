@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Selecting a whole paragraph with the mouse now stops the grey at the paragraph's last word, with a small ¶ after it, instead of washing down over the empty line to the next heading. The same goes for a drag that runs past the end of a paragraph.
 - **PENSÉE** at the top of the sidebar now lines up with the Spaces label and the icons below it, and its letters sit a little closer together.
 - A note's properties are folded away under its title. A small **4 properties ›** at the right end of the title line opens and closes them, so the title sits right above your writing. A new properties block you start by typing `---` opens straight away.
 - Editing a note's title no longer draws a box around it; the text cursor shows you're in it, as in the body.

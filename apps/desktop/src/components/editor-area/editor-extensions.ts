@@ -28,6 +28,7 @@ import { linkNavigationExtension } from "./link-navigation";
 import { linkChips, linkPreviews } from "./link-preview";
 import { emptyHeadingKeymap, markdownFormatting } from "./markdown-formatting";
 import { pageTitleArrowUp } from "./page-title";
+import { paragraphSelection } from "./paragraph-selection";
 import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
 import { bookJump } from "./book-jump";
@@ -131,6 +132,8 @@ export function createEditorExtensions(
     // selection so a single rebuild runs against the final live ranges.
     dragFreezeExtensions,
     drawSelection(),
+    // Pointer selections stop at the paragraph's end, marked with a ¶.
+    paragraphSelection,
     prosemarkBaseThemeSetup(),
     headingWeightHighlight,
     viewportParsePlugin,

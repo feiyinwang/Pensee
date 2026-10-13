@@ -61,6 +61,27 @@
   background-color: var(--editor-selection-bg);
 }
 
+/* The ¶ at the end of a selected paragraph (paragraph-selection.ts) — the
+   brand mark the gutter chip wears, in the chip's ink. Zero-width in the
+   flow, so selecting never rewraps the last line. */
+.cm-editor .cm-paragraph-mark {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  vertical-align: -0.12em;
+  pointer-events: none;
+}
+.cm-editor .cm-paragraph-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0.15em;
+  width: 0.8em;
+  background: var(--wr-kind-text-tint);
+  -webkit-mask: var(--wr-kind-text) center / contain no-repeat;
+  mask: var(--wr-kind-text) center / contain no-repeat;
+}
+
 /* Editor layout — let parent handle scrolling */
 .cm-editor {
   height: auto;
