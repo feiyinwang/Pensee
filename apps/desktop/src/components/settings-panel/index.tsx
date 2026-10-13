@@ -49,7 +49,7 @@ export function SettingsPanel({
   function renderSection(category: string, defs: SettingDef[]) {
     return (
       <section key={category} className="mb-10">
-        <h2 className="mb-3 text-[13px] font-medium text-[var(--text-muted)]">{category}</h2>
+        <h2 className="mb-3 text-caption font-medium text-[var(--text-muted)]">{category}</h2>
         <div className="-mx-4 overflow-hidden rounded-2xl border border-[var(--line-subtler)] bg-[var(--surface-card)]">
           {defs.map((def, i) => (
             <Fragment key={def.key}>

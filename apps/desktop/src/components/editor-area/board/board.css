@@ -133,13 +133,13 @@
   align-items: center;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-ui);
 }
 
 .wr-board-card-message strong {
   color: var(--text-secondary);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--text-label);
 }
 
 .wr-board-card.is-error {
@@ -157,7 +157,7 @@
   background: var(--surface-subtle);
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 
 .wr-board-card-actions {
@@ -182,7 +182,7 @@
   background: var(--surface-primary);
   color: var(--text-secondary);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-label);
   cursor: pointer;
 }
 
@@ -235,7 +235,7 @@
   background: var(--surface-primary);
   color: var(--text-secondary);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-label);
   cursor: pointer;
   opacity: 0;
   transition: opacity var(--motion-fast) var(--ease-out);
@@ -251,7 +251,7 @@
   padding: 6px 10px;
   color: var(--wr-board-red);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-caption);
 }
 
 /* Edit here: the board editor over the note's page (its pane), in place of
@@ -315,7 +315,7 @@
   background: var(--code-bg);
   color: var(--text-primary);
   font-family: var(--mono-font);
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1.5;
   resize: none;
 }
@@ -725,13 +725,13 @@
   gap: 6px;
   width: auto;
   padding: 0 12px 0 8px;
-  font-size: 13px;
+  font-size: var(--text-label);
 }
 
 .wr-board-title {
   padding: 0 4px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-label);
 }
 
 .wr-board-banner {
@@ -739,7 +739,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--wr-board-orange) 18%, var(--surface-primary));
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 
 .wr-board-banner[data-tone="info"] {
@@ -826,7 +826,7 @@
   justify-content: space-between;
   margin-bottom: 8px;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 600;
 }
 
@@ -836,7 +836,7 @@
   background: var(--kbd-bg);
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 400;
 }
 
@@ -881,7 +881,7 @@
   width: 62px;
   height: 62px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--text-caption);
 }
 
 .wr-board-tile:hover,
@@ -974,7 +974,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
@@ -1078,7 +1078,7 @@
   background: var(--surface-primary);
   box-shadow: 0 8px 24px -8px rgb(0 0 0 / 25%);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-label);
   transform: translateX(-50%);
   opacity: 0.35;
   transition: opacity var(--motion-fast) var(--ease-out);
@@ -1132,7 +1132,7 @@
   background: var(--surface-primary);
   box-shadow: 0 12px 32px -8px rgb(0 0 0 / 22%);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-label);
   transform: translateX(-50%);
 }
 
@@ -1157,7 +1157,8 @@
 }
 
 .wr-board-find-count {
-  min-width: 64px;
+  min-width: 72px;
+  white-space: nowrap;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -1223,7 +1224,7 @@
   background: transparent;
   color: var(--text-primary);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-label);
   text-align: left;
   cursor: pointer;
 }
@@ -1243,7 +1244,7 @@
   max-width: 360px;
   padding: 6px;
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-label);
   pointer-events: auto;
 }
 
@@ -1268,6 +1269,7 @@
 .wr-board-link-detail {
   overflow: hidden;
   color: var(--text-muted);
+  font-size: var(--text-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

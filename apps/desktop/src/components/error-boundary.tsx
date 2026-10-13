@@ -30,10 +30,10 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="p-8 text-[#ff6b6b] bg-[#1e1e1e] font-mono text-[13px] h-screen overflow-auto">
+        <div className="p-8 text-[#ff6b6b] bg-[#1e1e1e] font-mono text-caption h-screen overflow-auto">
           <h2 className="mb-4">Something went wrong</h2>
           <pre className="whitespace-pre-wrap break-words">{this.state.error.message}</pre>
-          <pre className="whitespace-pre-wrap break-words mt-4 text-[#888] text-[13px]">
+          <pre className="whitespace-pre-wrap break-words mt-4 text-[#888] text-caption">
             {this.state.error.stack}
           </pre>
           <button

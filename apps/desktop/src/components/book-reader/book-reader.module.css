@@ -17,7 +17,7 @@
     0 1px 2px rgb(0 0 0 / 6%),
     0 6px 16px -6px rgb(0 0 0 / 18%);
   font-family: var(--font-body);
-  font-size: var(--text-sm);
+  font-size: var(--text-label);
   white-space: nowrap;
   user-select: none;
   /* Centred over the selection, 8px above it. */
@@ -82,7 +82,7 @@
   background: var(--surface-raised);
   color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: var(--text-sm);
+  font-size: var(--text-label);
   font-weight: 500;
   cursor: pointer;
   transition:

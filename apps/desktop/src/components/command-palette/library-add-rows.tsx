@@ -113,7 +113,7 @@ export function LibraryGroups({ groups }: { groups: LibraryGroup[] }) {
             <div className="flex min-w-0 flex-col">
               <span className="truncate">{row.label}</span>
               {row.description && (
-                <span className="truncate text-[13px] text-text-muted">{row.description}</span>
+                <span className="truncate text-caption text-text-muted">{row.description}</span>
               )}
             </div>
           </div>

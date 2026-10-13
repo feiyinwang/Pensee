@@ -74,7 +74,7 @@
   max-width: none;
   margin: 0;
   font-family: var(--pm-code-font, var(--mono-font, "SF Mono", Menlo, Monaco, Consolas, monospace));
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1.5;
 }
 .cm-mermaid-canvas .cm-mermaid-canvas-editor .cm-line {

@@ -82,7 +82,7 @@
   --pensee-text-col-inset: max(
     var(--pensee-editor-side-padding, 4rem),
     calc(
-      (100% - var(--pensee-editor-outer-width, calc(734px + 4rem + 4rem))) / 2 +
+      (100% - var(--pensee-editor-outer-width, calc(680px + 4rem + 4rem))) / 2 +
         var(--pensee-editor-side-padding, 4rem)
     )
   );
@@ -115,7 +115,7 @@
 .cm-editor .cm-content {
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--pensee-editor-outer-width, calc(734px + 4rem + 4rem));
+  max-width: var(--pensee-editor-outer-width, calc(680px + 4rem + 4rem));
   margin: 0 auto;
   padding: 0 var(--pensee-editor-side-padding, 4rem) 40vh;
   font-family: var(
@@ -132,8 +132,8 @@
     "Segoe UI Emoji",
     "Segoe UI Symbol"
   );
-  font-size: var(--pensee-editor-font-size, 16px);
-  line-height: var(--pensee-editor-line-height, 1.8);
+  font-size: var(--pensee-editor-font-size, 18px);
+  line-height: var(--pensee-editor-line-height, 1.7);
   letter-spacing: var(--pensee-editor-letter-spacing, -0.03em);
   color: var(--editor-text);
 }

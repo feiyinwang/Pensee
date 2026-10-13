@@ -27,7 +27,7 @@
   padding: 0 6px 0 10px;
   border-bottom: 1px solid var(--border-color);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1;
   color: var(--text-muted);
   user-select: none;

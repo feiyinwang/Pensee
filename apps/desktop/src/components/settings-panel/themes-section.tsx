@@ -25,7 +25,7 @@ function ThemeCard({ mode }: { mode: ThemeMode }) {
 
   return (
     <section className="mb-10">
-      <h2 className="mb-3 text-[13px] font-medium text-[var(--text-muted)]">
+      <h2 className="mb-3 text-caption font-medium text-[var(--text-muted)]">
         {mode === "light" ? "Light Theme" : "Dark Theme"}
       </h2>
       <div className="-mx-4 overflow-hidden rounded-2xl border border-[var(--line-subtler)] bg-[var(--surface-card)]">

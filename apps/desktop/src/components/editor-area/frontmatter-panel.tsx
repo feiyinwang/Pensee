@@ -66,7 +66,7 @@ function FrontmatterRow({
         ref={isPlaceholder ? focusOnMount : undefined}
         placeholder="key"
         spellCheck={false}
-        className="w-36 shrink-0 bg-transparent text-[13px] leading-[1.15] text-[var(--text-muted)] outline-none placeholder:text-[var(--text-muted)] placeholder:opacity-70"
+        className="w-36 shrink-0 bg-transparent text-label leading-[1.15] text-[var(--text-muted)] outline-none placeholder:text-[var(--text-muted)] placeholder:opacity-70"
       />
 
       <input
@@ -79,7 +79,7 @@ function FrontmatterRow({
         onBlur={handleBlur}
         placeholder="value"
         spellCheck={false}
-        className="min-w-0 flex-1 bg-transparent text-[13px] leading-[1.15] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] placeholder:opacity-70"
+        className="min-w-0 flex-1 bg-transparent text-ui leading-[1.15] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] placeholder:opacity-70"
       />
 
       <button
@@ -145,7 +145,7 @@ export function FrontmatterPanel({ filePath }: FrontmatterPanelProps) {
         <button
           type="button"
           onClick={addEntry}
-          className="flex items-center gap-1 text-[13px] leading-[1.15] text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
+          className="flex items-center gap-1 text-label leading-[1.15] text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

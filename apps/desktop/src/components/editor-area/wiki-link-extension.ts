@@ -401,7 +401,7 @@ const wikiLinkTheme = EditorView.baseTheme({
   },
   ".cm-tooltip.cm-tooltip-autocomplete > ul": {
     fontFamily: "var(--ui-font) !important",
-    fontSize: "13px",
+    fontSize: "var(--text-label)",
     maxHeight: "320px",
     // The app-wide 18px scrollbar gutter would leave the rows lopsided
     // (wide gap on the right only); the clipped last row signals scroll.

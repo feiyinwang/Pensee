@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Text is bigger and easier to read everywhere. Your writing now starts at 18px with a little less space between lines, in a column about 68 characters wide, the width of a well-set book page. Headings and the page title grow with it. Around the page, labels, counts and hints are at least 13px: the sidebar, tabs, buttons and menus are 14px, and search, the command palette, chat, Settings descriptions and empty pages are 15px. Word counts, dates, shortcuts and badges went from as small as 10px up to 13px. The small print drawn on Library's default covers stays as it is, since it is part of the cover picture. If you changed the editor's font size, line height or width in Settings, yours stay as you set them.
 - Titles now share the logo's typeface. A note's title, its first two levels of headings, and the names at the top of **Projects**, **Library** and **Inspirations** are set in Bodoni Moda, a high-contrast serif with heavy stems and hairline strokes, at regular weight instead of bold. Body text and controls stay in the system font. The font ships with the app, so it works offline.
 - The handle beside each paragraph, and the **Text** choice in its menu, now show the logo's ¶ instead of a **T**.
 - The top of the sidebar shows the name **PENSÉE** in the same typeface as the logo, above Search.

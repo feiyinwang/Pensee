@@ -40,7 +40,7 @@ function numericSettingDefault(key: string, fallback: number): number {
   return typeof def?.default === "number" ? def.default : fallback;
 }
 
-const defaultEditorFontSizePx = numericSettingDefault("editor.font-size", 16);
+const defaultEditorFontSizePx = numericSettingDefault("editor.font-size", 18);
 
 type Alignment = "left" | "center" | "right";
 

@@ -29,6 +29,32 @@
   --default-transition-timing-function: var(--ease-out);
 }
 
+/* Type scale for the app's chrome (docs/brand.md, "Type sizes";
+   SPECs/type-scale-spec.md). Three sizes, and nothing in the UI goes below
+   the caption size:
+   - caption (13px): counts, timestamps, badges, kbd hints, section labels,
+     chips, tooltips, secondary lines;
+   - label (14px): sidebar items, tabs, buttons, segmented controls, menu
+     items, settings row titles;
+   - ui (15px): running text in the chrome: search fields, palette items,
+     sentences in settings, chat messages, empty-state lines.
+   Plain CSS reads `var(--text-caption)` etc.; Tailwind gets `text-caption`,
+   `text-label` and `text-ui`. `static` so the variables exist even when no
+   utility uses them. `--text-xs` is floored at the caption size so Tailwind's
+   `text-xs` and Arc's `var(--text-xs)` (vendored, see docs/arc.md) can't
+   drop below it either. The editor's own sizes come from the editor
+   settings (--pensee-editor-*), not from here. */
+@theme static {
+  --text-caption: 13px;
+  --text-caption--line-height: 1.4;
+  --text-label: 14px;
+  --text-label--line-height: 1.4;
+  --text-ui: 15px;
+  --text-ui--line-height: 1.5;
+  --text-xs: var(--text-caption);
+  --text-xs--line-height: 1.4;
+}
+
 /* Tailwind's colour/opacity transitions don't cover `scale`, which the press
    feedback below animates. Append `scale` to their property lists (same
    layer, later source order) so a button carrying `transition-colors` still
@@ -201,15 +227,15 @@
   --chrome-control-height: 32px;
   --chrome-control-padding: 12px;
   --chrome-drag-height: 72px;
-  --pensee-editor-max-width: 734px;
+  --pensee-editor-max-width: 680px;
   --pensee-editor-side-padding: clamp(1.5rem, 4vw, 4rem);
   --pensee-editor-outer-width: calc(
     var(--pensee-editor-max-width) + var(--pensee-editor-side-padding) +
       var(--pensee-editor-side-padding)
   );
   --pensee-editor-font-family: var(--editor-font);
-  --pensee-editor-font-size: 16px;
-  --pensee-editor-line-height: 1.8;
+  --pensee-editor-font-size: 18px;
+  --pensee-editor-line-height: 1.7;
   --pensee-editor-letter-spacing: 0em;
 
   font-family: var(--ui-font);
@@ -685,7 +711,7 @@ body.tree-dragging [data-tree-path] {
   border-bottom: 1px solid var(--line-subtler);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-ui);
   font-family: inherit;
   letter-spacing: -0.02em;
   outline: none;
@@ -704,7 +730,7 @@ body.tree-dragging [data-tree-path] {
   font-family: var(--ui-font);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 11px;
+  font-size: var(--text-caption);
   color: var(--text-muted);
   user-select: none;
 }
@@ -713,7 +739,7 @@ body.tree-dragging [data-tree-path] {
   padding: 10px 12px;
   border-radius: 10px;
 
-  font-size: 13px;
+  font-size: var(--text-ui);
   color: var(--text-secondary);
   letter-spacing: -0.02em;
   user-select: none;
@@ -725,6 +751,6 @@ body.tree-dragging [data-tree-path] {
 
 [cmdk-empty] {
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--text-ui);
   color: var(--text-muted);
 }

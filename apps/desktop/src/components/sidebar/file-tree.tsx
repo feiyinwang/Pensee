@@ -260,7 +260,7 @@ export function FileTree({
   );
 
   if (flatItems.length === 0) {
-    return <div className="px-2 text-[13px] text-[var(--text-muted)]">No files</div>;
+    return <div className="px-2 text-ui text-[var(--text-muted)]">No files</div>;
   }
 
   return (

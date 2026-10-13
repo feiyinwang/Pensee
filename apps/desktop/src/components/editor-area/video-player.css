@@ -59,7 +59,7 @@
   background: var(--surface-card);
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-ui);
 }
 
 .video-error p {
@@ -95,7 +95,7 @@
   border-radius: 6px;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-label);
   transition:
     color var(--motion-hover) var(--ease-hover),
     background-color var(--motion-hover) var(--ease-hover);
@@ -108,7 +108,7 @@
 .video-pin-button kbd {
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 11px;
+  font-size: var(--text-caption);
   opacity: 0.8;
 }
 

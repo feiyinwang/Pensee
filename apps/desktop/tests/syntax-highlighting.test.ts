@@ -5,7 +5,7 @@ describe("baseTheme", () => {
   test("inline code follows the editor font size while keeping the code font", () => {
     const inlineCode = __testSyntaxHighlighting.baseThemeSpec[".cm-inline-code"];
 
-    expect(inlineCode.fontSize).toBe("var(--pensee-editor-font-size, 16px)");
+    expect(inlineCode.fontSize).toBe("var(--pensee-editor-font-size, 18px)");
     expect(inlineCode.fontFamily).toContain("--pm-code-font");
   });
 });

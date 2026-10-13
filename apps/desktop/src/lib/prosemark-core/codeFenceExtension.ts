@@ -10,7 +10,7 @@ import { treeChanged } from "./utils";
 const fallbackMonospaceCodeFont =
   "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 const codeFontFamily = `var(--pm-code-font, ${fallbackMonospaceCodeFont})`;
-const editorFontSize = "var(--pensee-editor-font-size, 16px)";
+const editorFontSize = "var(--pensee-editor-font-size, 18px)";
 
 const codeBlockDecorations = (view: EditorView) => {
   const builder = new RangeSetBuilder<Decoration>();
@@ -180,7 +180,7 @@ const codeFenceThemeSpec = {
     alignItems: "center",
   },
   ".cm-code-block-lang-container": {
-    fontSize: "0.8rem",
+    fontSize: "var(--text-caption)",
     color: "var(--pm-muted-color)",
   },
   ".cm-code-block-copy-button": {

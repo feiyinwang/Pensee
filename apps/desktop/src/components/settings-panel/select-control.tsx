@@ -22,7 +22,7 @@ export function SelectControl({
       disabled={disabled}
       aria-label={ariaLabel}
       onChange={(event) => onChange(event.target.value)}
-      className={`h-9 min-w-[140px] appearance-none rounded-lg border border-transparent bg-[var(--surface-input)] bg-[image:var(--select-chevron)] bg-[length:12px_12px] bg-[position:right_10px_center] bg-no-repeat pl-3 pr-8 text-[13px] text-[var(--text-secondary)] font-[inherit] outline-none focus:border-[var(--focus-border)] focus-visible:outline-none disabled:opacity-60 ${className}`}
+      className={`h-9 min-w-[140px] appearance-none rounded-lg border border-transparent bg-[var(--surface-input)] bg-[image:var(--select-chevron)] bg-[length:12px_12px] bg-[position:right_10px_center] bg-no-repeat pl-3 pr-8 text-label text-[var(--text-secondary)] font-[inherit] outline-none focus:border-[var(--focus-border)] focus-visible:outline-none disabled:opacity-60 ${className}`}
     >
       {options.map((option) => (
         <option key={option} value={option}>

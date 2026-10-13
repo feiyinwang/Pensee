@@ -50,7 +50,7 @@ export const EditorPane = memo(function EditorPane({
   if (isLoading) {
     return (
       <div className={visibilityClass}>
-        <div className="flex h-full items-center justify-center text-[13px] text-[var(--text-muted)]">
+        <div className="flex h-full items-center justify-center text-ui text-[var(--text-muted)]">
           <AsciiSpinner />
         </div>
       </div>

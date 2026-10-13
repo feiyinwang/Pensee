@@ -41,7 +41,7 @@ export function AgentChat() {
         onMouseDown={(event) => event.preventDefault()}
         onClick={toggle}
         title="Agent (⌘J)"
-        className="agent-launcher fixed z-40 flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] aria-expanded:bg-[var(--item-active-bg)] aria-expanded:text-[var(--text-primary)]"
+        className="agent-launcher fixed z-40 flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-label font-medium whitespace-nowrap text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] aria-expanded:bg-[var(--item-active-bg)] aria-expanded:text-[var(--text-primary)]"
       >
         <HugeiconsIcon icon={Cursor02Icon} size={16} color="currentColor" strokeWidth={2} />
         Agent

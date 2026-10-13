@@ -190,7 +190,7 @@ export function SidebarNavigator({
   );
 
   if (!root) {
-    return <div className="p-4 text-[13px] text-[var(--text-muted)]">No folder open</div>;
+    return <div className="p-4 text-ui text-[var(--text-muted)]">No folder open</div>;
   }
 
   return (

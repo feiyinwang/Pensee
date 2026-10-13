@@ -50,7 +50,7 @@ export default function AgentPanel() {
       className="agent-panel surface-card fixed z-40 flex flex-col"
     >
       <header className="flex h-12 shrink-0 items-center gap-2 pr-2 pl-4">
-        <h2 className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--text-primary)]">
+        <h2 className="min-w-0 flex-1 truncate text-label font-medium text-[var(--text-primary)]">
           {title}
         </h2>
         <PanelIconButton label="New chat" icon={PlusSignIcon} onClick={newChat} />
@@ -110,7 +110,7 @@ function AgentMessages({ items, isRunning }: { items: AgentItem[]; isRunning: bo
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-1 pb-4"
     >
       {items.length === 0 && (
-        <p className="m-auto text-[13px] font-medium text-[var(--text-muted)]">
+        <p className="m-auto text-ui font-medium text-[var(--text-muted)]">
           Ask about or edit your open pages.
         </p>
       )}
@@ -118,7 +118,7 @@ function AgentMessages({ items, isRunning }: { items: AgentItem[]; isRunning: bo
         <AgentRow key={item.id} item={item} />
       ))}
       {showWorking && (
-        <TextShimmer as="p" className="text-[13px] font-medium text-[var(--text-secondary)]">
+        <TextShimmer as="p" className="text-label font-medium text-[var(--text-secondary)]">
           Thinking
         </TextShimmer>
       )}
@@ -130,24 +130,24 @@ function AgentRow({ item }: { item: AgentItem }) {
   switch (item.role) {
     case "user":
       return (
-        <p className="max-w-[85%] self-end rounded-xl bg-[var(--surface-subtle)] px-3 py-2 text-[14px] leading-[1.5] font-medium break-words whitespace-pre-wrap text-[var(--text-primary)] select-text">
+        <p className="max-w-[85%] self-end rounded-xl bg-[var(--surface-subtle)] px-3 py-2 text-ui leading-[1.5] font-medium break-words whitespace-pre-wrap text-[var(--text-primary)] select-text">
           {item.text}
         </p>
       );
     case "assistant":
       return (
-        <div className="agent-reply flex flex-col gap-2 text-[14px] leading-[1.55] font-medium break-words text-[var(--text-primary)] select-text">
+        <div className="agent-reply flex flex-col gap-2 text-ui leading-[1.55] font-medium break-words text-[var(--text-primary)] select-text">
           <AgentMarkdown text={item.text} />
         </div>
       );
     case "tool":
     case "status":
       return (
-        <p className="truncate text-[12px] font-medium text-[var(--text-muted)]">{item.text}</p>
+        <p className="truncate text-caption font-medium text-[var(--text-muted)]">{item.text}</p>
       );
     case "error":
       return (
-        <p className="flex items-start gap-1.5 text-[13px] leading-[1.5] font-medium text-[var(--text-primary)] select-text">
+        <p className="flex items-start gap-1.5 text-ui leading-[1.5] font-medium text-[var(--text-primary)] select-text">
           <HugeiconsIcon
             icon={Alert02Icon}
             size={14}
@@ -161,7 +161,7 @@ function AgentRow({ item }: { item: AgentItem }) {
   }
 }
 
-const MAX_INPUT_HEIGHT = 6 * 21 + 16;
+const MAX_INPUT_HEIGHT = 6 * 22 + 16;
 
 function AgentComposer({
   inputRef,
@@ -253,7 +253,7 @@ function AgentComposer({
           type="button"
           onClick={openModelMenu}
           title="Switch model (/model)"
-          className="-mr-1 ml-auto flex h-6 shrink-0 items-center gap-0.5 rounded-md pr-1 pl-1.5 text-[12px] font-medium whitespace-nowrap text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+          className="-mr-1 ml-auto flex h-6 shrink-0 items-center gap-0.5 rounded-md pr-1 pl-1.5 text-label font-medium whitespace-nowrap text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
         >
           {model.name}
           <HugeiconsIcon
@@ -284,7 +284,7 @@ function AgentComposer({
           placeholder="Ask Claude…"
           aria-label="Message"
           data-no-focus-ring
-          className="scrollbar-none min-w-0 flex-1 resize-none overflow-x-hidden bg-transparent py-[3px] text-[14px] leading-[21px] font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+          className="scrollbar-none min-w-0 flex-1 resize-none overflow-x-hidden bg-transparent py-[3px] text-ui leading-[22px] font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
         />
         {isRunning ? (
           <button
@@ -320,7 +320,7 @@ function FocusChip() {
   if (!path) return null;
   return (
     <div
-      className="flex min-w-0 items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)]"
+      className="flex min-w-0 items-center gap-1.5 text-caption font-medium text-[var(--text-secondary)]"
       title={path}
     >
       <HugeiconsIcon
@@ -352,7 +352,7 @@ function ModelMenu({
 }) {
   if (matches.length === 0) {
     return (
-      <p className="mb-1 px-2 py-1.5 text-[13px] font-medium text-[var(--text-muted)]">
+      <p className="mb-1 px-2 py-1.5 text-caption font-medium text-[var(--text-muted)]">
         No model by that name. Try Haiku, Sonnet or Opus.
       </p>
     );
@@ -367,7 +367,7 @@ function ModelMenu({
           onMouseDown={(event) => event.preventDefault()}
           onMouseEnter={() => onHighlight(index)}
           onClick={() => onPick(model)}
-          className="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-[13px] font-medium aria-selected:bg-[var(--item-hover-bg)]"
+          className="flex h-8 cursor-default items-center gap-2 rounded-lg px-2 text-label font-medium aria-selected:bg-[var(--item-hover-bg)]"
         >
           <span className="shrink-0 text-[var(--text-primary)]">{model.name}</span>
           <span className="min-w-0 flex-1 truncate text-[var(--text-muted)]">{model.blurb}</span>

@@ -51,12 +51,12 @@ export function FontControl({ def, value, onChange }: FontControlProps) {
         className="w-64"
       />
       {loadError && (
-        <span role="alert" className="max-w-64 text-right text-[11px] text-[var(--text-error)]">
+        <span role="alert" className="max-w-64 text-right text-caption text-[var(--text-error)]">
           Couldn't load installed fonts.
         </span>
       )}
       {saveError && (
-        <span role="alert" className="max-w-64 text-right text-[11px] text-[var(--text-error)]">
+        <span role="alert" className="max-w-64 text-right text-caption text-[var(--text-error)]">
           Couldn't save the font: {saveError}
         </span>
       )}

@@ -88,7 +88,7 @@ export const FileTreeNode = memo(function FileTreeNode({
     return (
       <div
         onContextMenu={(event) => event.stopPropagation()}
-        className={`flex h-[32px] w-full items-center gap-1.5 overflow-hidden rounded-lg pr-2 text-[13px] leading-[1.15] ${
+        className={`flex h-[32px] w-full items-center gap-1.5 overflow-hidden rounded-lg pr-2 text-label leading-[1.15] ${
           isActive ? "bg-[var(--surface-subtle)]" : ""
         }`}
         style={{ paddingLeft: depth === 0 ? 10 : depth * 12 + 6 }}
@@ -104,7 +104,7 @@ export const FileTreeNode = memo(function FileTreeNode({
           type="text"
           defaultValue={initialValue}
           aria-label={`Rename ${entry.name}`}
-          className="min-w-0 flex-1 rounded border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-1 py-px text-[13px] leading-[1.15] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+          className="min-w-0 flex-1 rounded border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-1 py-px text-label leading-[1.15] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -138,7 +138,7 @@ export const FileTreeNode = memo(function FileTreeNode({
       onPointerDown={onPointerDown ? (event) => onPointerDown(event, entry) : undefined}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      className={`group ${entry.is_dir ? "group/folder " : ""}flex h-[32px] w-full items-center gap-1.5 overflow-hidden rounded-lg pr-2 text-left text-[13px] leading-[1.15] text-[var(--fg-base)] ${isDragging ? "opacity-40" : ""} ${bgClassName}`}
+      className={`group ${entry.is_dir ? "group/folder " : ""}flex h-[32px] w-full items-center gap-1.5 overflow-hidden rounded-lg pr-2 text-left text-label leading-[1.15] text-[var(--fg-base)] ${isDragging ? "opacity-40" : ""} ${bgClassName}`}
       style={{ paddingLeft: depth === 0 ? 10 : depth * 12 + 6 }}
     >
       <span className="relative flex w-5 shrink-0 items-center justify-center">

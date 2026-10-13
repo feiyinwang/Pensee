@@ -21,7 +21,7 @@
   box-sizing: border-box;
   padding: 0 6px 0 10px;
   border-bottom: 1px solid var(--border-color);
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1;
   color: var(--text-muted);
   cursor: text;
@@ -92,7 +92,7 @@
 
 .cm-link-preview-status {
   align-self: center;
-  font-size: 12px;
+  font-size: var(--text-caption);
   color: var(--text-muted);
 }
 
@@ -144,13 +144,13 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 13px;
+  font-size: var(--text-caption);
   line-height: 1.45;
   color: var(--text-muted);
 }
 
 .cm-link-preview-note {
-  font-size: 12px;
+  font-size: var(--text-caption);
   color: var(--text-muted);
 }
 
@@ -160,7 +160,7 @@
   border-radius: 6px;
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-label);
   color: var(--text-primary);
   cursor: pointer;
 }

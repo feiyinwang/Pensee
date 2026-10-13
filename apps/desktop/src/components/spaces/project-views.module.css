@@ -63,6 +63,13 @@
   --badge-border: transparent;
   flex-shrink: 0;
   border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Arc's small badge is 11px; tags are captions, so they take the caption
+   size (App.css type scale). Two classes to outrank Arc's `.sm`. */
+.projectViews .tag {
+  font-size: var(--text-caption);
 }
 
 /* Arc's table tints the sorted column twice, its band and the cells, which
@@ -124,7 +131,7 @@
 
 .noStatus {
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-caption);
   color: var(--text-muted);
 }
 
@@ -170,11 +177,13 @@
 }
 
 .todayButton {
-  height: 24px;
+  height: 28px;
   padding: 0 10px;
   border-radius: 6px;
   border: 1px solid var(--line-subtle);
-  font-size: 12px;
+  font-size: var(--text-label);
+  white-space: nowrap;
+  flex-shrink: 0;
   font-weight: 500;
   color: var(--fg-base);
 }
@@ -195,7 +204,7 @@
   padding-left: 6px;
   line-height: var(--row-height);
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 500;
   color: var(--text-muted);
 }
@@ -268,7 +277,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -332,7 +341,7 @@
   gap: 8px;
   height: var(--row-height);
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-caption);
   color: var(--text-muted);
   pointer-events: none;
 }
@@ -346,7 +355,7 @@
   padding: 0 8px;
   border-radius: 6px;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 500;
   color: var(--text-secondary);
   background: var(--surface-subtle);
@@ -378,7 +387,7 @@
   padding: 0 12px;
   border-right: 1px solid var(--line-subtler);
   background: var(--surface-primary);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -399,7 +408,7 @@
   margin-top: 8px;
   padding: 0 8px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--text-label);
   color: var(--text-muted);
   text-align: left;
   transition:
@@ -433,7 +442,7 @@
   border-radius: 8px;
   border: 1px solid var(--line-subtler);
   background: var(--surface-input);
-  font-size: 13px;
+  font-size: var(--text-ui);
   color: var(--fg-base);
   outline: none;
 }
@@ -466,7 +475,7 @@
   height: 30px;
   padding: 0 8px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--text-label);
   color: var(--fg-base);
   cursor: pointer;
 }
@@ -499,7 +508,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-caption);
   color: var(--text-muted);
 }
 
@@ -511,7 +520,7 @@
 
 .newError {
   padding: 0 2px;
-  font-size: 12px;
+  font-size: var(--text-caption);
   color: var(--text-error);
 }
 

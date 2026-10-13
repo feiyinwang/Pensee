@@ -412,7 +412,7 @@ export function CompactFileLayout() {
             onBlur={() => setIsTriggerFocused(false)}
             onPointerEnter={() => setIsTriggerHovered(true)}
             onPointerLeave={() => setIsTriggerHovered(false)}
-            className="pointer-events-auto relative z-30 inline-flex h-[var(--chrome-control-height)] max-w-[240px] items-center justify-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 font-[inherit] text-[13px] text-[var(--fg-base)]"
+            className="pointer-events-auto relative z-30 inline-flex h-[var(--chrome-control-height)] max-w-[240px] items-center justify-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 font-[inherit] text-label text-[var(--fg-base)]"
           >
             <span className="relative min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
               {title}

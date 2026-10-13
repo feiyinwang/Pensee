@@ -168,7 +168,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-label);
   line-height: 1.15;
   transition: color var(--motion-fast) var(--ease-out);
 }

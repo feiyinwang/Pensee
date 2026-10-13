@@ -8,7 +8,7 @@ import type { MarkdownConfig } from "@lezer/markdown";
 const fallbackMonospaceCodeFont =
   "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 const codeFontFamily = `var(--pm-code-font, ${fallbackMonospaceCodeFont})`;
-const editorFontSize = "var(--pensee-editor-font-size, 16px)";
+const editorFontSize = "var(--pensee-editor-font-size, 18px)";
 
 export const additionalMarkdownSyntaxTags: MarkdownConfig = {
   // Define new nodes with tags here

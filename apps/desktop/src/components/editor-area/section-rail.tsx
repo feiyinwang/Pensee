@@ -217,7 +217,7 @@ export function SectionRail({ filePath, view, scrollContainerRef }: SectionRailP
                       data-animate={animateIndent ? "true" : "false"}
                       title={heading.text}
                       style={{
-                        fontSize: 13,
+                        fontSize: "var(--text-label)",
                         letterSpacing: "-0.01em",
                         lineHeight: 1.5,
                         paddingLeft: indentForDepth(heading.depth, windowStart),

@@ -110,6 +110,33 @@ the way macOS icons do.
 
 See [`SPECs/didone-display-type-spec.md`](../SPECs/didone-display-type-spec.md).
 
+### Type sizes
+
+Nothing in the app's chrome is smaller than **13px**. Chrome text uses one of
+three tokens, defined once in `App.css` (`@theme static`); CSS reads
+`var(--text-…)`, Tailwind uses `text-caption`, `text-label`, `text-ui`:
+
+| Token            | Size | For                                                                                                     |
+| ---------------- | ---- | ------------------------------------------------------------------------------------------------------- |
+| `--text-caption` | 13px | Counts, timestamps, badges, kbd hints, section labels, chips, secondary lines, the status bar           |
+| `--text-label`   | 14px | Sidebar items, tabs, buttons, segmented controls, menu items, settings row titles, card titles          |
+| `--text-ui`      | 15px | Running text: search and text fields, palette items, settings descriptions, chat, empty states, banners |
+
+- Need a size? Pick a token. Don't add a pixel literal; a new size is a new
+  token here and in `App.css`.
+- `--text-xs` is floored at the caption size, so Tailwind's `text-xs` and
+  Arc's `var(--text-xs)` can't go below 13px.
+- Short text beside other things (counts, dates, buttons, tab labels) stays
+  on one line: `white-space: nowrap`, and `flex-shrink: 0` in a flex row.
+- Not covered: glyphs drawn as text, display type, and user content (board
+  text, the book reader's text size, Library cover art).
+- **Editor:** body 18px, line height 1.7, a 680px column (about 68
+  characters). These are the defaults of `editor.font-size`,
+  `editor.line-height` and `editor.content-width`; headings are em-relative
+  and the page title is twice the body.
+
+See [`SPECs/type-scale-spec.md`](../SPECs/type-scale-spec.md).
+
 ## App icon
 
 [`app-icon.svg`](../assets/brand/app-icon.svg) and

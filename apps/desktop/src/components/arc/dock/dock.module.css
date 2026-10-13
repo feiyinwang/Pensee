@@ -84,7 +84,7 @@
 }
 .tipRow { display: inline-flex; flex: none; align-items: center; gap: 8px; padding: 0 10px; white-space: nowrap; }
 .measure { position: absolute; top: 0; left: 0; visibility: hidden; }
-.kbd { display: inline-grid; min-width: 16px; height: 16px; place-items: center; padding: 0 4px; border-radius: 5px; background: color-mix(in oklab, var(--background) 18%, transparent); color: inherit; font: inherit; font-size: 10px; opacity: .8; }
+.kbd { display: inline-grid; min-width: 16px; height: 16px; place-items: center; padding: 0 4px; border-radius: 5px; background: color-mix(in oklab, var(--background) 18%, transparent); color: inherit; font: inherit; font-size: var(--text-xs); /* Pensée patch (docs/arc.md): upstream 10px */ opacity: .8; }
 
 @media (hover: hover) and (pointer: fine) {
   .item:not([data-selected]):hover { background: var(--surface-muted); color: var(--foreground); }

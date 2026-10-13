@@ -31,7 +31,7 @@
     0 1px 2px rgb(0 0 0 / 6%),
     0 12px 32px -8px rgb(0 0 0 / 22%);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--text-label);
   user-select: none;
   /* `position()` caps the height only when neither side of the block can hold
      the panel whole. Without this the capped rows would simply be clipped. */
@@ -169,7 +169,7 @@
 .wr-bmenu-accel {
   flex: 0 0 auto;
   color: var(--text-icon-muted);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
 }
 .wr-bmenu-trail {
@@ -202,14 +202,14 @@
   gap: 6px;
 }
 .wr-bmenu-btn {
-  height: 26px;
+  height: 28px;
   padding: 0 10px;
   border: 1px solid color-mix(in srgb, var(--fg-base) 14%, transparent);
   border-radius: 6px;
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-label);
   cursor: default;
 }
 .wr-bmenu-btn:hover {

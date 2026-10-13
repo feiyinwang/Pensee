@@ -53,9 +53,7 @@ export function CompactRecentsList({
           ))}
         </menu>
       ) : loaded ? (
-        <div className="px-2.5 py-3 text-[13px] text-[var(--text-muted)]">
-          No other recent files.
-        </div>
+        <div className="px-2.5 py-3 text-ui text-[var(--text-muted)]">No other recent files.</div>
       ) : null}
     </div>
   );
@@ -89,7 +87,7 @@ function RecentFileRow({ entry, isActive, onOpen, onRemove }: RecentFileRowProps
           <HugeiconsIcon icon={File02Icon} size={16} color="currentColor" strokeWidth={1.8} />
         </span>
         <span className="flex min-w-0 flex-col">
-          <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[13px] leading-[1.2] text-[var(--fg-base)]">
+          <span className="overflow-hidden text-ellipsis whitespace-nowrap text-label leading-[1.2] text-[var(--fg-base)]">
             {label}
           </span>
         </span>

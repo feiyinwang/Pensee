@@ -21,6 +21,8 @@ pnpm dlx shadcn@latest add @uiarc-pro/<name>    # Pro
   - `calendar/calendar.tsx` — the selected day's highlight glides on ease-out in 0.16s (`PENSEE_GLIDE`) instead of `spring.morph`'s 0.42s bounce (the composer and the calendar panel).
   - `dropdown-menu/dropdown-menu.tsx` — the trigger's width follows a new label on ease-out in 0.16s (`PENSEE_RESIZE`) instead of `spring.morph`.
   - `dock/dock.tsx` — faster tool labels, because the Dock exposes no timing props: first-label delay 60ms (upstream 380) — just enough to skip a pointer sweeping across the dock, label enter spring 0.1 (upstream 0.22), exit 100ms ease-in (upstream 180ms), glide between items 0.2 (upstream 0.3).
+  - `dock/dock.module.css` — the shortcut key in a tool's label is `var(--text-xs)` (upstream 10px), so it keeps to the app's 13px floor ([SPECs/type-scale-spec.md](../SPECs/type-scale-spec.md)).
+- **Type sizes:** Arc's `--text-xs` resolves to Pensée's caption size (13px, `App.css`), not Arc's 12px, because Pensée defines `--text-xs` itself and `ensureArcTokens()` hands host-owned tokens back. Vendored rules that use it follow without edits.
 - **Dependencies:** every item needs `motion` and `lucide-react`. Both are installed.
 
 ## Never import `foundation.css` globally

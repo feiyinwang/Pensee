@@ -31,7 +31,7 @@
   background: none;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -54,11 +54,11 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0 16px 14px;
-  font-size: 14px;
+  font-size: var(--text-ui);
 }
 
 .wr-link-preview-body .cm-editor .cm-content {
-  font-size: 14px;
+  font-size: var(--text-ui);
   line-height: 1.6;
 }
 
@@ -72,7 +72,7 @@
   margin: 4px 0 2px;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-caption);
 }
 
 @media (prefers-reduced-motion: reduce) {

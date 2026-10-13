@@ -157,7 +157,7 @@ describe("status bar and sidebar visibility settings", function () {
       const labels = Array.from(document.querySelectorAll("[data-settings-panel] section")).flatMap(
         (section) => {
           const heading = section.querySelector("h2")?.textContent ?? "";
-          return Array.from(section.querySelectorAll("div.text-\\[13px\\].font-medium")).map(
+          return Array.from(section.querySelectorAll("div.text-label.font-medium")).map(
             (label) => `${heading}: ${label.textContent}`,
           );
         },

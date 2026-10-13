@@ -105,7 +105,7 @@
      from the body font size, NOT from the block's own font size — `0.5em` on an
      `<h2>` is 11.2px, not 8px, which is how headings used to grow by 3.2px each
      the moment you clicked into the caption. See PRD 2.9. */
-  --wr-block-gap: calc(var(--pensee-editor-font-size, 16px) * 0.5);
+  --wr-block-gap: calc(var(--pensee-editor-font-size, 18px) * 0.5);
 }
 .wr-band > *:first-child {
   margin-top: 0;
@@ -127,10 +127,10 @@
      other block has 8px. That 3.2px per heading was a real mismatch. */
   margin: 0 0 var(--wr-block-gap);
   /* Sizes and line height are the editor's, not this file's: a heading line in
-     the nested CodeMirror is `font-size x 1.8`, and the rendered heading has to
-     land on the same box or the band changes height when you click into it.
-     Sizes come from `prosemark-core/syntaxHighlighting.ts`. */
-  line-height: 1.8;
+     the nested CodeMirror is `font-size x` the editor line height, and the
+     rendered heading has to land on the same box or the band changes height
+     when you click into it. Sizes come from `prosemark-core/syntaxHighlighting.ts`. */
+  line-height: var(--pensee-editor-line-height, 1.7);
   color: var(--text-primary);
   font-weight: 640;
 }

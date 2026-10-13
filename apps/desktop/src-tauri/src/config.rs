@@ -730,16 +730,16 @@ mod tests {
         // Default
         assert_eq!(
             settings.get("editor.font-size"),
-            Some(&ConfigValue::Number(16.0))
+            Some(&ConfigValue::Number(18.0))
         );
 
         // Global override
         settings
-            .set_global("editor.font-size", ConfigValue::Number(18.0))
+            .set_global("editor.font-size", ConfigValue::Number(20.0))
             .unwrap();
         assert_eq!(
             settings.get("editor.font-size"),
-            Some(&ConfigValue::Number(18.0))
+            Some(&ConfigValue::Number(20.0))
         );
     }
 
@@ -862,16 +862,16 @@ mod tests {
         let mut settings = Settings::new(dir.path().to_path_buf()).unwrap();
 
         settings
-            .set_global("editor.font-size", ConfigValue::Number(18.0))
+            .set_global("editor.font-size", ConfigValue::Number(20.0))
             .unwrap();
         settings.load_workspace(ws_dir.path());
         settings
-            .set_workspace("editor.font-size", ConfigValue::Number(20.0))
+            .set_workspace("editor.font-size", ConfigValue::Number(22.0))
             .unwrap();
 
         assert_eq!(
             settings.get("editor.font-size"),
-            Some(&ConfigValue::Number(20.0))
+            Some(&ConfigValue::Number(22.0))
         );
     }
 
@@ -881,18 +881,18 @@ mod tests {
         let mut settings = Settings::new(dir.path().to_path_buf()).unwrap();
 
         settings
-            .set_global("editor.font-size", ConfigValue::Number(18.0))
+            .set_global("editor.font-size", ConfigValue::Number(20.0))
             .unwrap();
         assert_eq!(
             settings.get("editor.font-size"),
-            Some(&ConfigValue::Number(18.0))
+            Some(&ConfigValue::Number(20.0))
         );
 
         settings.reset_global("editor.font-size").unwrap();
         // Falls back to default
         assert_eq!(
             settings.get("editor.font-size"),
-            Some(&ConfigValue::Number(16.0))
+            Some(&ConfigValue::Number(18.0))
         );
     }
 

@@ -44,7 +44,7 @@
   border-radius: 6px;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1;
   cursor: pointer;
 }
@@ -71,7 +71,7 @@
 .cm-block-embed.is-orphaned .cm-block-embed-body {
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--text-ui);
 }
 
 /* The page editor clips its scroller and selection layer to the text column
@@ -106,17 +106,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 16px;
+  min-width: 20px;
+  height: 18px;
   /* List lines hang their bullet with a negative indent; don't inherit it. */
   text-indent: 0;
   margin-left: 6px;
-  padding: 0 5px;
-  border-radius: 8px;
+  padding: 0 6px;
+  border-radius: 9px;
   background: color-mix(in oklab, var(--accent) 18%, transparent);
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 10.5px;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1;
   vertical-align: 2px;
@@ -135,7 +135,7 @@
   padding: 10px 12px 6px;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -167,7 +167,7 @@
   border-radius: 6px;
   color: var(--text-primary);
   font-family: var(--ui-font);
-  font-size: 12px;
+  font-size: var(--text-label);
   font-weight: 600;
   cursor: pointer;
 }
@@ -179,12 +179,12 @@
 
 /* A few lines of the citing page, smaller than the page itself. */
 .wr-backlinks-preview {
-  font-size: 13px;
+  font-size: var(--text-ui);
   opacity: 0.85;
 }
 
 .wr-backlinks-preview .cm-content {
-  font-size: 13px !important;
+  font-size: var(--text-ui) !important;
   line-height: 1.6 !important;
 }
 

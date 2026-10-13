@@ -50,7 +50,7 @@
   background: var(--surface);
   color: var(--foreground);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 500;
   white-space: nowrap;
   transition:
@@ -85,14 +85,14 @@ button.composer-chip:not(:disabled) {
   height: var(--control-height-sm);
   min-height: 0;
   padding: 0 12px;
-  font-size: 13px;
+  font-size: var(--text-label);
   flex-shrink: 0;
 }
 
 /* The type chip keeps the width of its longest kind (Podcast), so switching
    kinds never shifts the controls beside it. */
 .composer-bar-group > [aria-haspopup="menu"]:first-child {
-  min-width: 124px;
+  min-width: 132px;
 }
 
 .composer-bar-group > [aria-haspopup="menu"]:first-child > svg:last-child {
@@ -142,7 +142,7 @@ button.composer-chip:not(:disabled) {
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--text-ui);
   font-weight: 500;
   line-height: 24px;
 }
@@ -163,7 +163,7 @@ button.composer-chip:not(:disabled) {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -245,7 +245,7 @@ button.composer-chip:not(:disabled) {
   border-radius: 999px;
   background: var(--text-primary);
   color: var(--surface-primary);
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 600;
   white-space: nowrap;
   transition:
@@ -261,7 +261,7 @@ button.composer-chip:not(:disabled) {
    the label's own colour (no opacity on a token). */
 .composer-kbd {
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 500;
 }
 
@@ -295,7 +295,7 @@ button.composer-chip:not(:disabled) {
   margin-top: 12px;
   height: 32px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 500;
   color: var(--text-secondary);
 }

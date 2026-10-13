@@ -21,7 +21,7 @@ const ICONS: Record<SpaceIcon, IconSvgElement> = {
 };
 
 function rowClass(active: boolean) {
-  return `group flex h-[32px] w-full items-center gap-1.5 overflow-hidden rounded-lg pl-[10px] pr-2 text-left text-[13px] leading-[1.15] text-[var(--fg-base)] ${
+  return `group flex h-[32px] w-full items-center gap-1.5 overflow-hidden rounded-lg pl-[10px] pr-2 text-left text-label leading-[1.15] text-[var(--fg-base)] ${
     active ? "bg-[var(--surface-subtle)]" : "hover:bg-[var(--surface-subtle)]"
   }`;
 }

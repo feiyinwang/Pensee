@@ -20,7 +20,7 @@ export function EditorNoticeBanner() {
       <button
         type="button"
         onClick={dismissEditorNotice}
-        className="pointer-events-auto absolute left-1/2 top-6 z-30 max-w-[90%] -translate-x-1/2 cursor-pointer rounded-lg border-0 px-3 py-2 text-left text-[13px]"
+        className="pointer-events-auto absolute left-1/2 top-6 z-30 max-w-[90%] -translate-x-1/2 cursor-pointer rounded-lg border-0 px-3 py-2 text-left text-ui"
         style={SURFACE}
       >
         {message}
@@ -30,7 +30,7 @@ export function EditorNoticeBanner() {
   return (
     <div
       role="status"
-      className="pointer-events-auto absolute left-1/2 top-6 z-30 flex max-w-[90%] -translate-x-1/2 items-center gap-3 rounded-lg py-1.5 pl-3 pr-1.5 text-[13px]"
+      className="pointer-events-auto absolute left-1/2 top-6 z-30 flex max-w-[90%] -translate-x-1/2 items-center gap-3 rounded-lg py-1.5 pl-3 pr-1.5 text-ui"
       style={SURFACE}
     >
       <span>{message}</span>
@@ -40,7 +40,7 @@ export function EditorNoticeBanner() {
           dismissEditorNotice();
           action.run();
         }}
-        className="h-7 shrink-0 rounded-md px-2.5 text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]"
+        className="h-7 shrink-0 rounded-md px-2.5 text-label whitespace-nowrap font-medium text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]"
       >
         {action.label}
       </button>
