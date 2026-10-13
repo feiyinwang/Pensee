@@ -381,22 +381,20 @@ describe("Journeys: second pen", function () {
     ok(!/\^ai-r-aaaa\n {4}- \n/.test(text), `the empty take should be gone:\n${text}`);
   });
 
-  it("PEN-04 Enter on one of several echoes keeps it and drops the unanswered one beside it", async function () {
+  it("PEN-04 Enter on one of several echoes opens a line under it and keeps them all", async function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("forgot their names.");
     await key("Enter");
     const text = await waitForDisk(
       path,
-      (t) => !t.includes("^ai-e-bbbb") && t.includes("^ai-e-cccc"),
-      "expected the other echo to go and this one to stay",
+      (t) => /\^ai-e-cccc\n {4}- /.test(t),
+      "expected an empty line under the echo",
     );
-    ok(/\^ai-e-cccc\n {4}- /.test(text), `expected a line under the kept echo:\n${text}`);
-  });
-
-  it("PEN-05 Esc on the empty line under a kept echo takes the echo back", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await key("Escape");
-    await waitForDisk(path, (t) => !t.includes("^ai-e-cccc"), "expected the echo to be gone");
+    ok(text.includes("^ai-e-bbbb"), `the other echo should stay:\n${text}`);
+    ok(
+      !(await barText()).includes("keep it"),
+      `the bar shouldn't offer to keep it: ${await barText()}`,
+    );
   });
 
   it("PEN-23 ⌘. @ on a question says it's not a claim and writes nothing", async function () {
@@ -590,6 +588,18 @@ describe("Journeys: second pen", function () {
       const point = line.replace(/^\s*- [A-Z][a-z]+( angle)?: /, "").split(" — [[")[0];
       ok(point.split(/\s+/).length <= 33, `an echo should be short: ${line}`);
     }
+  });
+
+  it("PEN-05 Esc right after the echoes land takes them back", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await key("Escape");
+    await waitForDisk(
+      path,
+      (t) => !t.includes("[[Sleep log]]"),
+      "expected the new echoes to be gone",
+    );
+    const text = await readFile(path);
+    ok(text.includes("^ai-e-bbbb") && text.includes("^ai-e-cccc"), `earlier echoes stay:\n${text}`);
   });
 
   it("PEN-08 ⌘. − proposes cuts; Enter asks, Esc goes back, Enter again deletes them", async function () {

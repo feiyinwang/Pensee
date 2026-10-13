@@ -92,7 +92,7 @@ notes are gone. The look is unchanged from the first Second pen
   in as they land.
 - An empty line of yours that the pen is waiting on shows what goes there, in
   faint italics: *Your take first…*, *Your call: does your line hold? Rewrite
-  it or keep it.*, *How are these connected? In your words.*
+  it or keep it.*
 - Its lines are your text: edit them, delete them, undo them like any line.
 
 ### Answer: sealed until you've written your take
@@ -142,12 +142,10 @@ notes are gone. The look is unchanged from the first Second pen
   (to the line's question), *Another angle*. The label is drawn quieter than
   the sentence, like Check's *For:* and *Against:*.
 - A note already echoed under the line isn't offered again.
-- **Enter** on an echo keeps it (a click on its link opens that note): the other echoes
-  on that line that have nothing under them go, and an empty bullet opens
-  under the kept one: *How are these connected? In your words.* The link is a
-  normal `[[link]]`, so it's a backlink in Pensée and in Obsidian.
-- **Esc** right after the echoes land takes back the ones you haven't kept;
-  Esc on the empty *how are these connected* bullet takes that echo back.
+- **Enter** on an echo opens an empty bullet under it, for anything you want
+  to add; every echo stays. A click on its link opens that note. Echoes go
+  only when you remove them: delete them like any line, or press **Esc**
+  right after they land to take back the ones just written.
 - Nothing found: *None of your other notes mention this yet.* Found, but
   nothing on the same subject: *Your notes mention this, but nothing that
   meets this line yet.*
@@ -195,10 +193,9 @@ never shows through. It shows, in order of what applies:
 2. the shorten keys and the words it would save, then *Delete N words?*;
 3. a short message, for 4 seconds (nothing found, an error);
 4. on your take under a sealed answer: `↵ open it and compare  ⌥↵ open it without writing`;
-5. on an echo: `↵ keep it and say how they connect`;
-6. on a pen line: `↵ reply under it`;
-7. right after the pen writes: `⌘. ! one more`, `Esc take it back` and the like, for 5 seconds;
-8. otherwise, while the caret is in the note: `⌘. answer, check or connect the line you're on`.
+5. on a pen line (an echo too): `↵ reply under it`;
+6. right after the pen writes: `Esc take them back` and the like, for 5 seconds;
+7. otherwise, while the caret is in the note: `⌘. answer, check or connect the line you're on`.
 
 ## Implementation
 

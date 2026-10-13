@@ -29,7 +29,6 @@ import {
   sideLine,
   sidesReply,
   subtreeEnd,
-  unansweredSiblings,
   uncuttable,
   unsealedLine,
   videoPassages,
@@ -125,34 +124,6 @@ describe("answer flow", () => {
     expect(unsealedLine(lines[1]!)).toBe("  - The answer. ^ai-r-ab12");
     // Once open, the take is an ordinary line.
     expect(sealedAbove(["- Why?", "  - The answer. ^ai-r-ab12", "    - my take"], 2)).toBe(-1);
-  });
-
-  test("keeping an echo drops the unanswered ones beside it", () => {
-    const lines = [
-      "- idea",
-      "  - “one” — [[A]] · same idea ^ai-e-aaaa",
-      "  - “two” — [[B]] · another angle ^ai-e-bbbb",
-      "    - they connect because",
-      "  - “three” — [[C]] · you tried it ^ai-e-cccc",
-      "  - For: x ^ai-p-dddd",
-    ];
-    expect(unansweredSiblings(lines, 1, "e")).toEqual([4]);
-  });
-
-  test("keeping a plain echo drops the unanswered plain ones around it", () => {
-    const lines = [
-      "An idea.",
-      "",
-      "“one” — [[A]] · same idea ^ai-e-aaaa",
-      "",
-      "“two” — [[B]] · same idea ^ai-e-bbbb",
-      "- liked",
-      "",
-      "“three” — [[C]] · same idea ^ai-e-cccc",
-      "",
-      "Other.",
-    ];
-    expect(unansweredSiblings(lines, 2, "e")).toEqual([7]);
   });
 
   test("a line ending in a question mark is a question, not a claim", () => {

@@ -341,8 +341,8 @@ in your own words.
 | PEN-01 | ★ ⌘. then `!` on a bullet                                    | A sealed answer (blurred, `^ai-s-…`) appears as its sub-bullet, an empty take under it with the caret and *Your take first…* | auto: pen  |
 | PEN-02 | ⌘., then Esc                                                 | A box opens above the line: pills that show their keys (! Answer, @ Check, [[ Connect, − Shorten) and a box to type in, with the keyboard in it; no Ask me, Facts or Mix; Esc closes it | auto: pen  |
 | PEN-03 | Enter on the empty take under a sealed answer                | Nothing opens; the bar says a wrong guess counts                                             | auto: pen  |
-| PEN-04 | Enter on one of several echoes                               | That echo stays with an empty line under it; the unanswered echo beside it is gone           | auto: pen  |
-| PEN-05 | Esc on the empty line under a kept echo                      | The echo is taken back                                                                       | auto: pen  |
+| PEN-04 | Enter on one of several echoes                               | An empty line opens under it; every echo stays                                               | auto: pen  |
+| PEN-05 | Esc right after Connect writes its echoes                    | Those echoes are taken back; echoes written earlier stay                                    | auto: pen  |
 | PEN-06 | Write a real take, Enter                                     | The answer opens (`^ai-r-…`) and the pen's comparison (`^ai-v-…`) appears under your take   | auto: pen  |
 | PEN-07 | ⌘. then `@` on a claim                                       | *For:* (`^ai-p-…`) and *Against:* (`^ai-n-…`) lines, papers as pills, an empty line under Against | auto: pen  |
 | PEN-08 | ⌘. then `−`, Enter, Esc, Enter, Enter                        | Cuts show struck through in red with "−N words"; Enter asks *Delete N words?* and deletes nothing; Esc goes back to the cuts; Enter, Enter removes only them. Ids, links and citations are never cut | auto: pen  |

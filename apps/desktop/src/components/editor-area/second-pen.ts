@@ -65,7 +65,6 @@ import {
   sidesReply,
   sourcePartStart,
   subtreeEnd,
-  unansweredSiblings,
   unsealedLine,
   videoPassages,
   wordCount,
@@ -271,7 +270,6 @@ const TAKE_EMPTY: PenHintPart[] = [
 const WAITING: Partial<Record<PenKind, string>> = {
   s: "Your take first…",
   n: "Your call: does your line hold? Rewrite it or keep it.",
-  e: "How are these connected? In your words.",
 };
 const SEALED_LABEL = "Sealed · write your take under it · ⌥↵ open it now";
 
@@ -787,9 +785,6 @@ class PenPlugin {
       const i = caretIndex(state);
       if (sealedAbove(lines, i) >= 0) return { parts: itemText(lines[i]!) ? TAKE : TAKE_EMPTY };
       const kind = penKindOf(lines[i]!);
-      if (kind === "e") {
-        return { parts: [{ key: "↵" }, { text: "keep it and say how they connect" }] };
-      }
       if (kind && kind !== "s") return { parts: [{ key: "↵" }, { text: "reply under it" }] };
     }
     if (this.after && now < this.after.until) return { parts: this.after.parts };
@@ -1009,7 +1004,7 @@ class PenPlugin {
     if (alt) return false;
     const kind = penKindOf(lines[i]!);
     if (kind && kind !== "s") {
-      this.answerUnder(i, kind === "e");
+      this.answerUnder(i);
       return true;
     }
     return false;
@@ -1536,7 +1531,7 @@ class PenPlugin {
   }
 
   /** `[`: lines you wrote in other notes that meet this one, each linked to
-   *  its note and saying how it relates. Enter on one keeps it. */
+   *  its note and saying what it is. They stay until you remove them. */
   private async connect(direction = ""): Promise<void> {
     const typedContext = this.takeTyped()?.context ?? [];
     const { state } = this.view;
@@ -1604,13 +1599,7 @@ class PenPlugin {
       }
       this.batch = ids;
       this.finish(conversation);
-      this.sayAfter([
-        { key: "↵" },
-        { text: "on one keeps it" },
-        { gap: true },
-        { key: "Esc" },
-        { text: "take them back" },
-      ]);
+      this.sayAfter([{ key: "Esc" }, { text: "take them back" }]);
     } catch (error) {
       this.fail(conversation, error);
     }
@@ -1743,18 +1732,13 @@ class PenPlugin {
     });
   }
 
-  /** Enter on a pen line: an answer bullet under it, after its answers. On an
-   *  echo, the unanswered echoes beside it go. */
-  private answerUnder(i: number, keepEcho: boolean): void {
+  /** Enter on a pen line: an answer bullet under it, after its answers.
+   *  Nothing else changes: the lines beside it stay. */
+  private answerUnder(i: number): void {
     const { state } = this.view;
     const lines = docLines(state);
     const end = state.doc.line(subtreeEnd(lines, i) + 1).to;
-    const insert = `\n${childIndent(lines[i]!)}- `;
-    const changes: ChangeSpec[] = [{ from: end, insert }];
-    if (keepEcho) {
-      for (const j of unansweredSiblings(lines, i, "e")) changes.push(lineRange(state, j, j));
-    }
-    const set = state.changes(changes);
+    const set = state.changes({ from: end, insert: `\n${childIndent(lines[i]!)}- ` });
     this.batch = [];
     this.view.dispatch({
       changes: set,
@@ -1775,10 +1759,7 @@ class PenPlugin {
       const parentKind = parent >= 0 ? penKindOf(lines[parent]!) : null;
       // An empty line the pen is waiting on, its only child: take back what
       // it waits on (the sealed answer, the echo, or both sides of a check).
-      if (
-        (parentKind === "s" || parentKind === "e" || parentKind === "n") &&
-        childrenOf(lines, parent).length === 1
-      ) {
+      if ((parentKind === "s" || parentKind === "n") && childrenOf(lines, parent).length === 1) {
         let first = parent;
         if (parentKind === "n") {
           const siblings = isPenParagraph(lines[parent]!)

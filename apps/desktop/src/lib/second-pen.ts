@@ -221,25 +221,6 @@ export function unsealedLine(line: string): string {
   return line.replace(/\^ai-s-([a-z0-9]{4})(\s*)$/, "^ai-r-$1$2");
 }
 
-/** The pen's lines of `kind` beside `i` under the same line that nobody
- *  answered: the echoes keeping `i` removes. Indexes, last first so removing
- *  them in order works. */
-export function unansweredSiblings(lines: readonly string[], i: number, kind: PenKind): number[] {
-  let siblings: number[];
-  if (isPenParagraph(lines[i]!)) {
-    // Plain pen lines under a paragraph: the run around `i`, a blank apart.
-    let first = i;
-    while (first >= 2 && !lines[first - 1]!.trim() && isPenParagraph(lines[first - 2]!)) first -= 2;
-    siblings = [first, ...penParagraphsAfter(lines, subtreeEnd(lines, first))];
-  } else {
-    const parent = parentOf(lines, i);
-    siblings = parent >= 0 ? childrenOf(lines, parent) : [];
-  }
-  return siblings
-    .filter((j) => j !== i && penKindOf(lines[j]!) === kind && subtreeEnd(lines, j) === j)
-    .reverse();
-}
-
 /** A question, not a claim: Check has nothing to weigh. */
 export function isQuestion(text: string): boolean {
   return /[?？]\s*$/.test(text);
