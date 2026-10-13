@@ -29,8 +29,8 @@ export function XAccountRow() {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-3.5">
       <div className="min-w-0 flex-1">
-        <div className="text-label font-medium text-[var(--text-primary)]">Account</div>
-        <div className="mt-0.5 text-ui text-[var(--text-muted)]">{description}</div>
+        <div className="text-ui font-medium text-[var(--text-primary)]">Account</div>
+        <div className="mt-0.5 text-label text-[var(--text-muted)]">{description}</div>
       </div>
       {account ? (
         <div className="flex shrink-0 items-center gap-2">

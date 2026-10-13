@@ -275,9 +275,9 @@ export function SettingControl({ def, value, onChange, onReset, isModified }: Se
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-3.5">
       <div className="min-w-0 flex-1">
-        <div className="text-label font-medium text-[var(--text-primary)]">{def.label}</div>
+        <div className="text-ui font-medium text-[var(--text-primary)]">{def.label}</div>
         {def.description && (
-          <div className="mt-0.5 text-ui text-[var(--text-muted)]">{def.description}</div>
+          <div className="mt-0.5 text-label text-[var(--text-muted)]">{def.description}</div>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
