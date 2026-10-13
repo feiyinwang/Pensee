@@ -101,10 +101,6 @@
   color: var(--accent, #ff6a00);
 }
 
-.wr-bmenu-glyph-serif {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 17px;
-}
 .wr-bmenu-glyph-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;

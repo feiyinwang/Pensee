@@ -102,7 +102,14 @@ const LIST_ROWS = (marks: string) =>
   svg(`<path d="M8.5 5.5h8"/><path d="M8.5 10h8"/><path d="M8.5 14.5h8"/>${marks}`);
 
 const TILES: readonly Tile[] = [
-  { id: "text", label: "Text", glyph: "T", className: "wr-bmenu-glyph-serif" },
+  {
+    id: "text",
+    label: "Text",
+    // The brand ¶, small cut — `assets/brand/pensee-mark-small.svg`.
+    glyph:
+      `<svg class="wr-bmenu-icon" viewBox="-30 10 87 80" fill="currentColor" aria-hidden="true">` +
+      `<path d="M-28 12H35V68A20 20 0 0 0 55 88H29V17H21V88H0V40A28 28 0 0 0 -28 12Z"/></svg>`,
+  },
   { id: "h1", label: "Heading 1", glyph: "H1" },
   { id: "h2", label: "Heading 2", glyph: "H2" },
   { id: "h3", label: "Heading 3", glyph: "H3" },
