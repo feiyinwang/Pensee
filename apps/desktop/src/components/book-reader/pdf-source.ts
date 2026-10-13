@@ -194,6 +194,11 @@ export async function openPdf(
     return content.items.map((item) => ("str" in item ? item.str : "")).join("");
   };
 
+  const passageAt = async (index: number) => ({
+    where: `page ${index} of ${doc.numPages}`,
+    text: (await pageText(index)).slice(0, MAX_PASSAGE_CHARS),
+  });
+
   return {
     unit: "p",
     textRoot: (section) =>
@@ -217,14 +222,8 @@ export async function openPdf(
     currentSection,
     // Pages are placeholders at their size from the start.
     layOutInView: () => false,
-    passage: async () => {
-      const index = currentSection();
-      const text = await pageText(index);
-      return {
-        where: `page ${index} of ${doc.numPages}`,
-        text: text.slice(0, MAX_PASSAGE_CHARS),
-      };
-    },
+    passage: () => passageAt(currentSection()),
+    passageAt: (section) => passageAt(section),
     destroy: () => {
       observer.disconnect();
       resizeObserver.disconnect();

@@ -27,6 +27,9 @@ export interface BookSource {
   layOutInView: () => boolean;
   /** For the agent: the text on screen and where it is. */
   passage: () => Promise<{ where: string; text: string }>;
+  /** The same for a hidden reader, whose pages have no layout: about a
+   *  screenful from `fraction` of section `section`'s height on. */
+  passageAt: (section: number, fraction: number) => Promise<{ where: string; text: string }>;
   destroy: () => void;
 }
 

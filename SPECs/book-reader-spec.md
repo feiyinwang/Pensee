@@ -205,6 +205,13 @@ to explain or define something.
   - parsing runs in pdf.js's worker.
 - **EPUB:** chapters render once into `content-visibility: auto` sections,
   so the browser skips layout and paint off screen.
+- **Hidden tab:** a book whose tab is hidden saves its place and takes its
+  pages out of rendering (`hidden` on the pages), and its highlights leave
+  the page's registry; showing the tab puts them back at that place. WebKit
+  finds a caret position for every press (Look Up) and caret blink by
+  stepping through rendered text a character at a time, and hidden text
+  (`visibility: hidden`) is rendered but never a caret position, so a hidden
+  book cost ~200ms a press. Its agent passage is read at the saved place.
 - **Highlights** use the CSS Custom Highlight API: no DOM is changed and no
   spans are added to the text.
 - **Editor cost:** one regex on the caret's line, and only when the caret

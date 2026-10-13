@@ -70,6 +70,13 @@ export class ReaderController {
   #textSize = DEFAULT_BOOK_TEXT_SIZE;
   #repaintFrame = 0;
   #destroyed = false;
+  /** The tab is shown (BookReader's isShown). */
+  #shown = true;
+  /** The book is placed where it was left; until then it stays rendered. */
+  #placed = false;
+  /** While the tab is hidden the pages are out of rendering (see #hide):
+   *  where the reader was. */
+  #hidden: { place: ReadingPlace | null } | null = null;
 
   constructor(
     bookPath: string,
@@ -101,7 +108,7 @@ export class ReaderController {
           bookPath: this.bookPath,
           notePath,
           passage: async () => {
-            const passage = await this.#source?.passage();
+            const passage = await this.passage();
             return passage ? { bookPath: this.bookPath, notePath, ...passage } : null;
           },
           jump: (id) => this.jump(id),
@@ -131,6 +138,9 @@ export class ReaderController {
       if (this.#pendingJump) this.jump(this.#pendingJump);
       else await this.#restorePlace(source);
       this.#trackPlace(source);
+      if (this.#destroyed) return;
+      this.#placed = true;
+      if (!this.#shown) this.#hide(source);
     } catch (error) {
       console.error(`[book] Couldn't open ${this.bookPath}:`, error);
       if (!this.#destroyed)
@@ -198,6 +208,8 @@ export class ReaderController {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const save = () => {
       timer = null;
+      // Hidden, the pages have no layout; #hide saved the place.
+      if (this.#hidden) return;
       const place = this.#place(source);
       if (place) void saveReadingPlace(this.bookPath, place);
     };
@@ -319,7 +331,8 @@ export class ReaderController {
     const location = parseBookHighlightId(id);
     if (!location) return false;
     const source = this.#source;
-    if (!source) {
+    // Hidden pages have no layout to scroll: jump when the tab shows.
+    if (!source || this.#hidden) {
       this.#pendingJump = id;
       return true;
     }
@@ -355,13 +368,52 @@ export class ReaderController {
     void saveBookTextSize(size);
   }
 
-  /** Whether the reader's tab is on screen (highlight-painter.ts). */
+  /** Whether the reader's tab is on screen. Hidden, its highlights leave the
+   *  page's registry (highlight-painter.ts) and its pages leave rendering. */
   setShown(shown: boolean) {
-    this.#painter.setShown(shown);
+    if (shown === this.#shown) return;
+    this.#shown = shown;
+    const source = this.#source;
+    if (!shown) {
+      this.#painter.setShown(false);
+      if (source && this.#placed) this.#hide(source);
+      return;
+    }
+    if (source && this.#hidden) this.#show(source);
+    this.#painter.setShown(true);
   }
 
+  /** Take the pages out of rendering. WebKit finds a caret position for every
+   *  press (Look Up) and every caret blink by stepping through rendered text a
+   *  character at a time, and a hidden tab's text (visibility: hidden) is
+   *  rendered but never a caret position, so it stepped through the whole
+   *  book: ~200ms a press. Text with no renderer is skipped in one step. */
+  #hide(source: BookSource) {
+    const place = this.#place(source);
+    if (place) void saveReadingPlace(this.bookPath, place);
+    this.#hidden = { place };
+    this.#releasePlace?.();
+    this.host.hidden = true;
+  }
+
+  #show(source: BookSource) {
+    const place = this.#hidden?.place ?? null;
+    this.#hidden = null;
+    this.host.hidden = false;
+    // A jump asked for while hidden wins over where the book was left.
+    if (this.#pendingJump) this.jump(this.#pendingJump);
+    else if (place) this.#goToPlace(source, place);
+  }
+
+  /** For the agent. A hidden book's passage is read at its place, since its
+   *  pages have no layout (and finding the text on screen by caret, as
+   *  passage() does, would walk the whole book: see #hide). */
   async passage() {
-    return (await this.#source?.passage()) ?? null;
+    const source = this.#source;
+    if (!source) return null;
+    if (!this.#hidden) return source.passage();
+    const place = this.#hidden.place;
+    return place ? source.passageAt(place.section, place.fraction) : null;
   }
 
   destroy() {
@@ -372,5 +424,6 @@ export class ReaderController {
     this.#painter.destroy();
     this.#source?.destroy();
     this.host.replaceChildren();
+    this.host.hidden = false;
   }
 }

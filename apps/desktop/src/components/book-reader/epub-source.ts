@@ -224,6 +224,11 @@ export async function openEpub(
       const text = (section.textContent ?? "").slice(from, from + FALLBACK_PASSAGE_CHARS);
       return { where, text };
     },
+    passageAt: async (index, fraction) => {
+      const all = sections[index]?.textContent ?? "";
+      const from = Math.floor(Math.min(Math.max(fraction, 0), 1) * all.length);
+      return { where: titles[index]!, text: all.slice(from, from + FALLBACK_PASSAGE_CHARS) };
+    },
     destroy: () => {
       host.removeEventListener("click", onClick);
       for (const url of blobUrls.values()) URL.revokeObjectURL(url);
