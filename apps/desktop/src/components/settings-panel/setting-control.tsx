@@ -121,7 +121,7 @@ function ColorControl({ value, onChange }: { value: string; onChange: (v: string
     }
   }
 
-  const swatch = HEX_RE.test(value) ? value : "#0B0B0B";
+  const swatch = HEX_RE.test(value) ? value : "#0F0E0D";
 
   return (
     <div className="relative inline-flex h-9 w-44 items-center gap-2 rounded-lg bg-[var(--surface-input)] pr-3 pl-1">

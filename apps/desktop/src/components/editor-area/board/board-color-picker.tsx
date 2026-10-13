@@ -28,25 +28,25 @@ import {
 } from "./board-palette";
 import styles from "./board-selection-toolbar.module.css";
 
-// The writing inks the tokens draw (board.css). The keys are the stored hue
-// names; `accent` is the same ink as `ink`.
+// Plain names for the colours the tokens draw (board.css). The keys are the
+// stored hue names; `ink` is the text colour ("Default") and `accent` the same.
 const LABELS: Record<string, string> = {
-  ink: "Ink",
-  muted: "Graphite",
-  red: "Oxblood",
-  orange: "Sepia",
-  yellow: "Ochre",
-  green: "Verdigris",
-  accent: "Ink",
-  blue: "Indigo",
-  purple: "Aubergine",
-  pink: "Rose madder",
+  ink: "Default",
+  muted: "Gray",
+  red: "Red",
+  orange: "Orange",
+  yellow: "Yellow",
+  green: "Green",
+  accent: "Default",
+  blue: "Blue",
+  purple: "Purple",
+  pink: "Pink",
 };
 
 const nameOf = (e: PaletteEntry) => LABELS[e] ?? e;
 
-// A new custom colour starts on the wheel at the indigo ink (#2e3f6b).
-const START: Hsv = { h: 223, s: 0.57, v: 0.42 };
+// A new custom colour starts on the wheel at the blue dot (#3c72c9).
+const START: Hsv = { h: 217, s: 0.7, v: 0.79 };
 
 export function PaletteSwatches({
   kind,

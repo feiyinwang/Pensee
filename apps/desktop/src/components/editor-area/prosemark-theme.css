@@ -12,18 +12,20 @@
   --pm-cursor-color: var(--text-primary);
   /* Body prose sits a step under the UI's --text-secondary (80%) so bold
      runs, drawn at --text-primary, read as brighter and not only heavier. */
-  --editor-text: color-mix(in srgb, var(--fg-base) 72%, transparent);
+  /* Body copy is the ramp's secondary step (#33312C on #FAFAF9, 12.4:1;
+     #CCCAC6 on the dark card, 11:1); titles and bold the foreground. */
+  --editor-text: var(--text-secondary);
   --editor-text-strong: var(--text-primary);
 
-  /* Code is set in ink tiers, not hues (SPECs/ink-only-colour-spec.md):
-     names and keywords in the foreground; strings and literals a step back
-     (7.3:1 on Cream, 8.4:1 on Ink); comments further back and italic (5.8:1
-     and 7:1, still 5:1 on a code block's fill). The tiers are opaque mixes
-     toward the ground, not alpha, so text never reads through to what's
-     behind it. */
+  /* Code is set in neutral tiers, not hues
+     (SPECs/harvey-neutral-colour-spec.md): names and keywords in the
+     foreground; strings and literals the ramp's secondary step (11.5:1 on a
+     code block's #F2F1F0, 10.5:1 on dark #1C1B19); comments its muted step,
+     italic (4.6:1 and 5.1:1 on the same fills). The tiers are opaque, not
+     alpha, so text never reads through to what's behind it. */
   --pm-syntax-ink: var(--fg-base);
-  --pm-syntax-ink-secondary: color-mix(in srgb, var(--fg-base) 72%, var(--bg-base));
-  --pm-syntax-ink-muted: color-mix(in srgb, var(--fg-base) 65%, var(--bg-base));
+  --pm-syntax-ink-secondary: var(--text-secondary);
+  --pm-syntax-ink-muted: var(--text-muted);
   --pm-syntax-link: var(--link-color);
   --pm-syntax-keyword: var(--pm-syntax-ink);
   --pm-syntax-atom: var(--pm-syntax-ink-secondary);
@@ -37,8 +39,8 @@
   --pm-syntax-special-variable-macro: var(--pm-syntax-ink);
   --pm-syntax-definition-property: var(--pm-syntax-ink);
   --pm-syntax-comment: var(--pm-syntax-ink-muted);
-  /* Invalid code is an error, the one place code keeps a hue: the oxblood ink. */
-  --pm-syntax-invalid: var(--ink-oxblood);
+  /* Invalid code is an error, the one place code keeps a hue: error red. */
+  --pm-syntax-invalid: var(--text-error);
 }
 
 /* @codemirror/view's base theme sets `.cm-cursor { border-left: 1.2px solid black }`,

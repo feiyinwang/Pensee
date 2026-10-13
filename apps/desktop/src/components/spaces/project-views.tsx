@@ -6,6 +6,7 @@ import {
   useId,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -47,6 +48,7 @@ import {
   type ProjectEdit,
   type StatusColumn,
   type TagTone,
+  TONE_COLOR,
 } from "@/lib/projects";
 import { formatRelativeTime } from "@/lib/relative-time";
 import type { SpaceView } from "@/lib/spaces";
@@ -597,10 +599,10 @@ function ProjectList({
   );
 }
 
-/** A Notion-style tag: Arc's badge in one of the palette's colours. */
+/** A tag: Arc's badge as a neutral pill, its meaning in a coloured dot. */
 function Tag({ tone, children }: { tone: TagTone; children: string }) {
   return (
-    <Badge size="sm" className={styles.tag} data-tone={tone}>
+    <Badge size="sm" className={styles.tag} style={{ "--tag": TONE_COLOR[tone] } as CSSProperties}>
       {children}
     </Badge>
   );
@@ -1029,10 +1031,15 @@ function Timeline({
                     role="button"
                     tabIndex={0}
                     data-bar={project.note.path}
-                    data-tone={statusTone(project.status) ?? "gray"}
                     data-dragging={preview?.path === project.note.path ? "" : undefined}
                     className={styles.bar}
-                    style={{ left, width }}
+                    style={
+                      {
+                        left,
+                        width,
+                        "--tag": TONE_COLOR[statusTone(project.status) ?? "gray"],
+                      } as CSSProperties
+                    }
                     aria-label={`${noteTitle(project.note)}, ${datesLabel(project)}`}
                     onPointerDown={(event) => onBarPointerDown(event, project)}
                     onClick={(event) => {

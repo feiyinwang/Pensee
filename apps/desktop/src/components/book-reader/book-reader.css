@@ -35,7 +35,8 @@
 
 /* Highlights and the jump flash (highlight-painter.ts): a wash of the
    foreground under the text, 14% for a highlight and 30% for the flash. Text
-   on them reads at ~12:1 and ~8:1 (Cream) or ~7:1 (Ink). */
+   on them reads at ~12:1 and ~8:1 on the near-white ground, ~7:1 on the
+   dark one. */
 ::highlight(book-highlight) {
   background-color: color-mix(in srgb, var(--fg-base) 14%, transparent);
 }

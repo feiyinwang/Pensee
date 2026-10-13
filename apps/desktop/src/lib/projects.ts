@@ -165,6 +165,28 @@ export function statusTone(id: string): TagTone | null {
   return STATUS_TONES[id] ?? OTHER_TONES[hash(id) % OTHER_TONES.length];
 }
 
+/** The status of a note written as free text (a Library note's `status`), as
+ *  a tone; null when it is empty. */
+export function statusTextTone(raw: string | undefined): TagTone | null {
+  return statusTone(statusId(raw));
+}
+
+/** The colour each tone draws, as CSS: App.css's dot colours. A tag is a
+ *  neutral pill and the colour lives only in its dot (or a timeline bar);
+ *  brown, for a status the vault adds, is orange pulled toward gray.
+ *  SPECs/harvey-neutral-colour-spec.md. */
+export const TONE_COLOR: Record<TagTone, string> = {
+  gray: "var(--dot-gray)",
+  brown: "color-mix(in oklab, var(--dot-orange) 55%, var(--dot-gray))",
+  orange: "var(--dot-orange)",
+  yellow: "var(--dot-yellow)",
+  green: "var(--dot-green)",
+  blue: "var(--dot-blue)",
+  purple: "var(--dot-purple)",
+  pink: "var(--dot-pink)",
+  red: "var(--dot-red)",
+};
+
 function hash(text: string): number {
   let h = 0;
   for (let i = 0; i < text.length; i += 1) h = (Math.imul(h, 31) + text.charCodeAt(i)) >>> 0;

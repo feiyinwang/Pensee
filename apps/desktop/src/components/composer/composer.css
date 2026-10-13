@@ -242,7 +242,7 @@ button.composer-chip:not(:disabled) {
   height: 28px;
   flex-shrink: 0;
   padding: 0 10px 0 14px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--text-primary);
   color: var(--surface-primary);
   font-size: var(--text-label);

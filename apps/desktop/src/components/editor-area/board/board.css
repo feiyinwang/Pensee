@@ -6,27 +6,27 @@
    contrast slider follow automatically — no board-specific palette. */
 
 :root {
-  /* Strokes: the writing inks from App.css (docs/brand.md), so a board reads
-     like a page written in several inks. The keys keep their old hue names
-     (red, orange, …) because boards store them; only the values changed, so
-     every existing board re-tints on its own. `ink` is the foreground and
-     `accent` equals it (the app has no accent colour). */
+  /* Strokes: the dot colours from App.css
+     (SPECs/harvey-neutral-colour-spec.md). The keys keep their hue names
+     because boards store them, so every existing board re-tints on its own.
+     `ink` is the foreground and `accent` equals it (the app has no accent
+     colour); `muted` is the ramp's muted grey. */
   --wr-board-ink: var(--text-primary);
-  --wr-board-muted: var(--ink-graphite);
+  --wr-board-muted: var(--text-muted);
   --wr-board-accent: var(--fg-base);
-  --wr-board-red: var(--ink-oxblood);
-  --wr-board-orange: var(--ink-sepia);
-  --wr-board-yellow: var(--ink-ochre);
-  --wr-board-green: var(--ink-verdigris);
-  --wr-board-blue: var(--ink-indigo);
-  --wr-board-purple: var(--ink-aubergine);
-  --wr-board-pink: var(--ink-rose);
+  --wr-board-red: var(--dot-red);
+  --wr-board-orange: var(--dot-orange);
+  --wr-board-yellow: var(--dot-yellow);
+  --wr-board-green: var(--dot-green);
+  --wr-board-blue: var(--dot-blue);
+  --wr-board-purple: var(--dot-purple);
+  --wr-board-pink: var(--dot-pink);
 
-  /* Fills: each ink mixed toward the board surface (FigJam's soft/strong
+  /* Fills: each colour mixed toward the board surface (FigJam's soft/strong
      pairs), so they follow dark mode on their own. One per HUE_TOKENS entry
      in board-model.ts; board-palette.test.ts checks the two agree. Mixed in
-     OKLab, not OKLCH: Cream has a little chroma of its own, and an OKLCH mix
-     swings a cool ink's hue toward it (indigo came out pink). */
+     OKLab, not OKLCH: the warm ground has a little chroma of its own, and an
+     OKLCH mix swings a cool hue toward it. */
   --wr-board-ink-soft: color-mix(in oklab, var(--wr-board-ink) 22%, var(--wr-board-surface));
   --wr-board-muted-soft: color-mix(in oklab, var(--wr-board-muted) 22%, var(--wr-board-surface));
   --wr-board-red-soft: color-mix(in oklab, var(--wr-board-red) 22%, var(--wr-board-surface));
@@ -42,17 +42,18 @@
   --wr-board-flip: 0;
 
   --wr-board-dot: color-mix(in srgb, var(--fg-base) 16%, transparent);
-  --wr-board-surface: var(--bg-base);
+  --wr-board-surface: var(--card-ground);
   --wr-board-frame-bg: color-mix(in srgb, var(--fg-base) 3%, transparent);
   --wr-board-frame-edge: color-mix(in srgb, var(--fg-base) 14%, transparent);
 
-  /* Sticky notes are paper washes: each note's ink at --ink-wash (14%) on
-     Cream paper, or 22% on a dark paper in dark mode; text in the foreground. The keys are
+  /* Sticky notes are near-neutral paper: the raised grey (#F2F1F0, or
+     #1C1B19 in dark mode) with a light tint of the note's colour, --dot-tint
+     (10%, 16% on dark) mixed in OKLab; text in the foreground. The keys are
      the stored ones; the paler three (mint, sky, lavender) take 60% of the
-     wash so each pair of a hue stays two notes. Cream and the dark paper are
-     fixed, not the theme ground, so a note is paper on any custom ground. */
-  --wr-board-sticky-paper: #ece7dc;
-  --wr-board-sticky-wash: var(--ink-wash);
+     tint so each pair of a hue stays two notes. The paper is fixed, not the
+     theme ground, so a note is paper on any custom ground. */
+  --wr-board-sticky-paper: #f2f1f0;
+  --wr-board-sticky-wash: var(--dot-tint);
   --wr-board-sticky-pale: calc(var(--wr-board-sticky-wash) * 0.6);
   --wr-board-sticky-yellow: color-mix(
     in oklab,
@@ -106,11 +107,11 @@
   --wr-board-radius: 10px;
 }
 
-/* Dark mode follows the app's theme, not the OS: the inks themselves switch in
-   App.css; the notes move to a dark paper. */
+/* Dark mode follows the app's theme, not the OS: the ramp switches in App.css
+   (the dots are one set for both); the notes move to a dark paper. */
 :root[data-theme="dark"] {
   --wr-board-flip: 1;
-  --wr-board-sticky-paper: #1a1916;
+  --wr-board-sticky-paper: #1c1b19;
 }
 
 /* ------------------------------------------------------------------ card */

@@ -13,68 +13,33 @@
 }
 
 /* Tags. A colour has one meaning: blue in progress, green done, red overdue,
-   orange due soon, gray neither (lib/projects.ts). The colours are the
-   writing inks (App.css, docs/brand.md), named as the board names them:
-   red is oxblood, orange sepia, yellow ochre, green verdigris, blue indigo,
-   purple aubergine, pink rose madder, gray graphite, brown an umber between
-   sepia and graphite. The fill is a 14% wash of the ink (22% on a dark
-   ground); the text is the ink pulled a quarter of the way to the theme's
-   text colour, which is darker on Cream and lighter on Ink, so every tag
-   reads at 4.7:1 or better on its own wash. */
-.projectViews {
-  --tag-gray: var(--ink-graphite);
-  --tag-brown: color-mix(in oklab, var(--ink-sepia) 50%, var(--ink-graphite));
-  --tag-orange: var(--ink-sepia);
-  --tag-yellow: var(--ink-ochre);
-  --tag-green: var(--ink-verdigris);
-  --tag-blue: var(--ink-indigo);
-  --tag-purple: var(--ink-aubergine);
-  --tag-pink: var(--ink-rose);
-  --tag-red: var(--ink-oxblood);
-}
-
-.projectViews [data-tone="gray"] {
-  --tag: var(--tag-gray);
-}
-.projectViews [data-tone="brown"] {
-  --tag: var(--tag-brown);
-}
-.projectViews [data-tone="orange"] {
-  --tag: var(--tag-orange);
-}
-.projectViews [data-tone="yellow"] {
-  --tag: var(--tag-yellow);
-}
-.projectViews [data-tone="green"] {
-  --tag: var(--tag-green);
-}
-.projectViews [data-tone="blue"] {
-  --tag: var(--tag-blue);
-}
-.projectViews [data-tone="purple"] {
-  --tag: var(--tag-purple);
-}
-.projectViews [data-tone="pink"] {
-  --tag: var(--tag-pink);
-}
-.projectViews [data-tone="red"] {
-  --tag: var(--tag-red);
-}
-
-.tag {
-  --badge-color: var(--tag);
-  --badge-background: color-mix(in srgb, var(--tag) var(--ink-wash), transparent);
-  --badge-foreground: color-mix(in oklab, var(--tag) 75%, var(--fg-base));
+   orange due soon, gray neither (lib/projects.ts, which also maps each tone to
+   its colour, TONE_COLOR, set here as --tag). A tag is a neutral grey pill
+   with its text in the ramp's secondary step; the meaning lives only in a
+   6px dot before the label (SPECs/harvey-neutral-colour-spec.md). Two
+   classes to outrank Arc's tone and size classes on the badge; tags are
+   captions, so they take the caption size (App.css type scale), not Arc's
+   11px. */
+.projectViews .tag {
+  --badge-color: var(--text-secondary);
+  --badge-background: var(--neutral-surface);
+  --badge-foreground: var(--text-secondary);
   --badge-border: transparent;
   flex-shrink: 0;
   border-radius: 6px;
+  font-size: var(--text-caption);
   white-space: nowrap;
 }
 
-/* Arc's small badge is 11px; tags are captions, so they take the caption
-   size (App.css type scale). Two classes to outrank Arc's `.sm`. */
-.projectViews .tag {
-  font-size: var(--text-caption);
+/* The dot carries the tag's meaning; the pill and its text stay neutral. */
+.projectViews .tag::before {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--tag);
 }
 
 /* Arc's table tints the sorted column twice, its band and the cells, which

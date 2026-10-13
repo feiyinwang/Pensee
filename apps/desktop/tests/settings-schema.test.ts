@@ -122,7 +122,7 @@ describe("Ink, the only theme", () => {
     expect(SETTINGS_SCHEMA.some((def) => def.key.endsWith(".accent"))).toBe(false);
   });
 
-  test("its files equal the schema's theme defaults, so a fresh install opens in Ink", () => {
+  test("its files equal the schema's theme defaults, so a fresh install opens on them", () => {
     for (const [path, values] of Object.entries(themeFiles)) {
       const mode: ThemeMode = path.endsWith("/dark.json") ? "dark" : "light";
       const defaults = Object.fromEntries(
@@ -130,12 +130,13 @@ describe("Ink, the only theme", () => {
       );
       expect(values, path).toEqual(defaults);
     }
-    const ink = "#0B0B0B";
-    const cream = "#ECE7DC";
+    // The warm neutrals (SPECs/harvey-neutral-colour-spec.md).
+    const nearBlack = "#0F0E0D";
+    const nearWhite = "#FAFAF9";
     const defaultOf = (key: string) => SETTINGS_SCHEMA.find((def) => def.key === key)?.default;
-    expect(defaultOf("theme.light.background")).toBe(cream);
-    expect(defaultOf("theme.light.foreground")).toBe(ink);
-    expect(defaultOf("theme.dark.background")).toBe(ink);
-    expect(defaultOf("theme.dark.foreground")).toBe(cream);
+    expect(defaultOf("theme.light.background")).toBe(nearWhite);
+    expect(defaultOf("theme.light.foreground")).toBe(nearBlack);
+    expect(defaultOf("theme.dark.background")).toBe(nearBlack);
+    expect(defaultOf("theme.dark.foreground")).toBe(nearWhite);
   });
 });

@@ -103,8 +103,8 @@
 :root {
   /* Primary tokens — pushed by JS via applyThemeTokens(). Defaults below are
      last-resort fallbacks for the brief window before settings hydrate. */
-  --bg-base: #0b0b0b;
-  --fg-base: #ece7dc;
+  --bg-base: #0f0e0d;
+  --fg-base: #fafaf9;
   /* The app UI has no accent colour (docs/brand.md): what used to be drawn in
      an accent is drawn in the foreground. The accent tokens stay as aliases so
      every rule written against them keeps working. A fill in --accent-solid
@@ -148,34 +148,65 @@
      bleeds through globally when bg-opacity < 1. */
   --bg: color-mix(in srgb, var(--bg-base) calc(var(--bg-opacity) * 100%), transparent);
 
-  /* Text — fg-on-transparent so the alpha lets the real backdrop (including
-     translucency) show through, instead of fixing a gray mid-tone against the
-     opaque bg-base. */
-  --text-primary: var(--fg-base);
-  --text-secondary: color-mix(in srgb, var(--fg-base) 80%, transparent);
-  --text-muted: color-mix(in srgb, var(--fg-base) 54%, transparent);
-  --text-icon-muted: color-mix(in srgb, var(--fg-base) 40%, transparent);
+  /* The neutral ramp (SPECs/harvey-neutral-colour-spec.md): warm greys, named
+     rather than mixed, so each step lands on a measured value instead of
+     drifting with the ground under it. Dark values here (the pre-hydration
+     ground is the dark one); [data-theme="light"] below holds the light ones.
+     Ratios are WCAG, against the ground / the raised surface:
+     - secondary: body copy and labels that sit under a title (11:1 / 10:1)
+     - muted: supporting text, timestamps, unchecked boxes (5.7:1 / 5.1:1)
+     - faint: icons and placeholder text (3.7:1 / 3.3:1; non-text, ≥3:1)
+     - line: hairlines that divide, never the only edge of a control
+     - line-strong: the edge of a control, where 3:1 is required
+     The ramp is fixed per mode: a custom Background or Foreground moves the
+     ground and the title text, not these steps. */
+  --neutral-card: #161513;
+  --neutral-surface: #1c1b19;
+  --neutral-line: #33312c;
+  --neutral-line-strong: #706d66;
+  --neutral-faint: #706d66;
+  --neutral-muted: #8f8b85;
+  --neutral-secondary: #cccac6;
+  /* Where things sit: the window chrome (sidebar, tab strip) on one ground,
+     the editor and content cards on another. Light mode puts the chrome on
+     the raised surface and the cards on the near-white ground, like a page
+     with sections; dark mode puts the chrome on the ground and lifts the
+     cards. */
+  --chrome-ground: var(--bg-base);
+  --card-ground: var(--neutral-card);
 
-  /* Overlays — alpha scales with --contrast (slider 0..200 → 0..2). Base
-     factors are tuned so slider=100 lands at "comfortable, fully visible"
-     contrast and slider=200 saturates to opaque. */
-  --border-color: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 24%), transparent);
-  --line-subtle: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 24%), transparent);
-  --line-subtler: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 15%), transparent);
-  --focus-border: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 65%), transparent);
+  --text-primary: var(--fg-base);
+  --text-secondary: var(--neutral-secondary);
+  --text-muted: var(--neutral-muted);
+  --text-icon-muted: var(--neutral-faint);
+  --text-faint: var(--neutral-faint);
+
+  /* Hairlines are the named line step. Fills that have to read on both the
+     chrome and a card (hover, selection, inputs) stay foreground-on-
+     transparent below, and their alpha scales with --contrast. */
+  --border-color: var(--neutral-line);
+  --line-subtle: var(--neutral-line);
+  --line-subtler: color-mix(in srgb, var(--neutral-line) 60%, transparent);
+  --line-strong: var(--neutral-line-strong);
+  --focus-border: var(--fg-base);
   /* The editor sits on its own glass panel, so the sidebar edge needs no rule. */
   --sidebar-divider-right: transparent;
 
-  /* Window backdrop: the flat ground. Ink has no accent hue to carry into a
-     gradient, so the window is one colour. */
-  --backdrop: var(--bg-base);
+  /* Window backdrop: the chrome's flat ground. There is no accent hue to
+     carry into a gradient, so the window is one colour. */
+  --backdrop: var(--chrome-ground);
 
-  /* Glass panel (the editor card): one faint white wash. Start and end are
-     equal so the card is flat like the ground; the pair stays because the
-     card and the tab columns draw them as a gradient. */
-  --glass-fill-end: color-mix(in srgb, white 8%, transparent);
+  /* Glass panel (the editor card): the card ground, faded with the
+     translucency setting like the backdrop. Start and end are equal so the
+     card is flat; the pair stays because the card and the tab columns draw
+     them as a gradient. */
+  --glass-fill-end: color-mix(
+    in srgb,
+    var(--card-ground) calc(var(--bg-opacity) * 100%),
+    transparent
+  );
   --glass-fill-start: var(--glass-fill-end);
-  --glass-border: color-mix(in srgb, white 9%, transparent);
+  --glass-border: var(--line-subtler);
 
   --surface-primary: var(--bg-base);
   --surface-card: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
@@ -193,7 +224,8 @@
   --item-active-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 26%), transparent);
   --tab-active-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 24%), transparent);
 
-  --code-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
+  /* Code sits in a card, so it takes the raised surface itself. */
+  --code-bg: var(--neutral-surface);
   --kbd-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
   --scrollbar-bg: transparent;
   --scrollbar-thumb: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
@@ -205,29 +237,28 @@
   --link-color: var(--fg-base);
   --link-underline: color-mix(in srgb, var(--link-color) 50%, transparent);
   --link-underline-offset: 0.18em;
-  /* Selected text: the foreground at 15% under it (text reads at ~11:1). */
-  --editor-selection-bg: color-mix(in srgb, var(--fg-base) 15%, transparent);
+  /* Selected text: the foreground at 12% under it (text reads at ~12:1). */
+  --editor-selection-bg: color-mix(in srgb, var(--fg-base) 12%, transparent);
 
-  /* Writing inks (docs/brand.md): the only colours besides Ink and Cream, for
-     things that carry meaning or a user's choice, never for chrome: board
-     shapes and notes, project tags. Dark-mode values here (the pre-hydration
-     ground is Ink); [data-theme="light"] below holds the light ones. Each one
-     reads at 3:1 or better as a stroke on its ground; where one sets text (a
-     project tag) it is pulled toward the text colour to reach 4.5:1. */
-  --ink-graphite: #a39d92;
-  --ink-oxblood: #d98a80;
-  --ink-sepia: #cf9f6e;
-  --ink-ochre: #d9b65c;
-  --ink-verdigris: #8fbfa9;
-  --ink-indigo: #93a6d6;
-  --ink-aubergine: #b893b9;
-  --ink-rose: #d897a6;
-  /* How much ink a tinted ground takes: a sticky note's paper, a tag's fill.
-     More on a dark ground, where the same share reads fainter. */
-  --ink-wash: 22%;
-  /* Error text and error outlines: the oxblood ink (6.7:1 on Cream, 7.4:1 on
-     Ink). Was referenced before but never defined. */
-  --text-error: var(--ink-oxblood);
+  /* Dots: the only colours besides the neutrals, for things that carry a
+     meaning or a user's choice, never for chrome — a status dot on a grey
+     tag, a board stroke, a sticky note's tint. Colour sits in a small mark,
+     never in text. One set for both modes: each reads at 3:1 or better
+     (non-text) on #FAFAF9, #F2F1F0, #0F0E0D, #161513 and #1C1B19. */
+  --dot-red: #cc4b3c;
+  --dot-orange: #c46a22;
+  --dot-yellow: #a8820a;
+  --dot-green: #3f8f5a;
+  --dot-blue: #3c72c9;
+  --dot-purple: #8a5cc7;
+  --dot-pink: #c4508a;
+  --dot-gray: #85817b;
+  /* How much of its dot a tinted ground takes (a sticky note's paper). More
+     on a dark ground, where the same share reads fainter. */
+  --dot-tint: 16%;
+  /* Error text and error outlines: a red deep enough for text on each
+     ground (6.8:1 on #0F0E0D here, 5.7:1 on #FAFAF9 in light mode). */
+  --text-error: #e57b6c;
 
   /* Select chevron uses fg-base via color-mix in fill — but SVG `stroke` can't
      consume CSS vars, so we recreate via stroke= with currentColor and apply
@@ -310,22 +341,23 @@ body::before {
    since dark-on-light overlays read denser than light-on-dark at the same
    alpha. */
 [data-theme="light"] {
-  --glass-fill-end: color-mix(in srgb, white 65%, transparent);
-  --glass-border: color-mix(in srgb, var(--fg-base) 8%, transparent);
   --surface-card: transparent;
   --surface-input: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 20%), transparent);
 
-  /* Writing inks on Cream (see :root). Ochre is deepened from #a8801f, which
-     is 2.95:1 on Cream, to hold 3:1 as a stroke. */
-  --ink-graphite: #6b665e;
-  --ink-oxblood: #8c2f2a;
-  --ink-sepia: #8a5a2b;
-  --ink-ochre: #8f6c14;
-  --ink-verdigris: #3f6b5a;
-  --ink-indigo: #2e3f6b;
-  --ink-aubergine: #5b3a5e;
-  --ink-rose: #9a4b5c;
-  --ink-wash: 14%;
+  /* The neutral ramp on #FAFAF9 / #F2F1F0 (see :root): secondary 12.4:1 /
+     11.5:1, muted 4.9:1 / 4.6:1, faint 3.2:1 / 3.0:1, line-strong 3.2:1. */
+  --neutral-card: var(--bg-base);
+  --neutral-surface: #f2f1f0;
+  --neutral-line: #cccac6;
+  --neutral-line-strong: #8f8b85;
+  --neutral-faint: #8f8b85;
+  --neutral-muted: #706d66;
+  --neutral-secondary: #33312c;
+  --chrome-ground: var(--neutral-surface);
+  --card-ground: var(--bg-base);
+
+  --dot-tint: 10%;
+  --text-error: #b23a2e;
 }
 
 /* Dark mode: bump tab active bg so the focused tab stands out against the

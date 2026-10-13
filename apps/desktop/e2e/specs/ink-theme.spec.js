@@ -143,10 +143,10 @@ describe("Ink theme on a fresh install", function () {
       const state = await themeState();
       console.log(mode, JSON.stringify(state));
       strictEqual(state.backdrop, "none");
-      const ink = "#0b0b0b";
-      const cream = "#ece7dc";
-      strictEqual(state.bgBase.toLowerCase(), mode === "light" ? cream : ink);
-      strictEqual(state.fgBase.toLowerCase(), mode === "light" ? ink : cream);
+      const nearBlack = "#0f0e0d";
+      const nearWhite = "#fafaf9";
+      strictEqual(state.bgBase.toLowerCase(), mode === "light" ? nearWhite : nearBlack);
+      strictEqual(state.fgBase.toLowerCase(), mode === "light" ? nearBlack : nearWhite);
       strictEqual(state.accent.toLowerCase(), state.fgBase.toLowerCase());
       if (state.linkDecoration !== null) strictEqual(state.linkDecoration, "underline");
       await browser.saveScreenshot(resolve(SHOTS, `ink-${mode}-editor.png`));

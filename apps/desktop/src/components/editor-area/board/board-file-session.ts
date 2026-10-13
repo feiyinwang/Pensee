@@ -15,7 +15,13 @@ import * as tauri from "@/lib/tauri";
 import { type BoardScene, emptyScene } from "./board-model";
 import { mermaidToElements } from "./board-mermaid";
 import { measureText } from "./board-render";
-import { isBoardFile, readBoardSvg, relativePath, renderBoardSvg } from "./board-file";
+import {
+  isBoardFile,
+  readBoardSvg,
+  relativePath,
+  renderBoardSvg,
+  withCurrentStyle,
+} from "./board-file";
 import { openBoardFullscreen } from "./board-fullscreen";
 import { bookLinkSync } from "./board-book-links";
 import { prefetchBoardChrome } from "./board-canvas";
@@ -158,9 +164,64 @@ function previewSrc(absolute: string): string {
 }
 
 function refreshPreviews(absolute: string): void {
+  dropRestyled(absolute);
+  setPreviews(absolute, previewSrc(absolute));
+}
+
+function setPreviews(absolute: string, src: string): void {
   for (const img of document.querySelectorAll<HTMLImageElement>("img[data-board-path]")) {
-    if (img.dataset.boardPath === absolute) img.src = previewSrc(absolute);
+    if (img.dataset.boardPath === absolute) img.src = src;
   }
+}
+
+/**
+ * Previews of board files saved before the current colours: a Blob URL of
+ * the file with today's `<style>` swapped in (`withCurrentStyle`), or null
+ * when its style is already current. One read per file, shared by every
+ * `<img>` that shows it. The file on disk is not touched; its next save
+ * writes the current style, and `refreshPreviews` drops the entry.
+ */
+const restyled = new Map<string, Promise<string | null>>();
+
+function dropRestyled(absolute: string): void {
+  const pending = restyled.get(absolute);
+  if (!pending) return;
+  restyled.delete(absolute);
+  void pending.then((url) => {
+    if (url) URL.revokeObjectURL(url);
+  });
+}
+
+/** Shows `image`, and every other preview of the file, in the current colours
+ *  when the file was saved with older ones. Only for files not written this
+ *  session: those already carry the current style. */
+function showRestyled(absolute: string, image: HTMLImageElement): void {
+  let pending = restyled.get(absolute);
+  if (!pending) {
+    const version = versions.get(absolute);
+    pending = tauri
+      .readFile(absolute)
+      .then((file) => {
+        // Saved while it was being read: the new file is already current.
+        if (versions.get(absolute) !== version) return null;
+        const text = withCurrentStyle(file.content);
+        if (text === null) return null;
+        return URL.createObjectURL(new Blob([text], { type: "image/svg+xml" }));
+      })
+      .catch((error: unknown) => {
+        // The plain file preview stays; a later preview of it tries again.
+        console.error(`[board] could not read ${absolute} to restyle its preview`, error);
+        restyled.delete(absolute);
+        return null;
+      });
+    restyled.set(absolute, pending);
+  }
+  void pending.then((url) => {
+    if (!url || versions.has(absolute) || restyled.get(absolute) !== pending) return;
+    // The image may not be in the document yet, so set it as well as the rest.
+    image.src = url;
+    setPreviews(absolute, url);
+  });
 }
 
 /* -------------------------------------------------------------- create */
@@ -281,6 +342,7 @@ export function boardImageEnhancer(getFilePath: () => string | null) {
       const absolute = absoluteFrom(getParentDir(notePath), url);
       image.dataset.boardPath = absolute;
       if (versions.has(absolute)) image.src = previewSrc(absolute);
+      else showRestyled(absolute, image);
       dom.classList.add("wr-board-image");
       prefetchBoardChrome();
       image.title = "Open board";

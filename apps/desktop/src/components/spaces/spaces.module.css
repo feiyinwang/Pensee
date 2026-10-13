@@ -683,14 +683,28 @@
   outline-offset: -2px;
 }
 
+/* A status is a neutral grey pill; its meaning is the dot before it, in the
+   tone the projects view gives the same word (lib/projects.ts, set as
+   --tag). SPECs/harvey-neutral-colour-spec.md. */
 .status {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: var(--text-caption);
   white-space: nowrap;
-  background: var(--surface-subtle);
-  color: var(--fg-base);
+  background: var(--neutral-surface);
+  color: var(--text-secondary);
+}
+
+.status:not([data-empty])::before {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tag);
 }
 
 .status[data-empty] {
@@ -767,7 +781,7 @@
   margin-top: 16px;
   height: 32px;
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: var(--text-label);
   font-weight: 500;
   color: var(--bg-base);

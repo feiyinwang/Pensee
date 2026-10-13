@@ -284,8 +284,10 @@ pub fn settings_schema() -> Vec<SettingDef> {
 
 /// (background, foreground) of every colour theme preset Pensée has shipped
 /// and since removed, light mode. Recorded from git before the preset folders
-/// were deleted: the fourteen of `shared/themes/` (amber … warm-paper) plus the
-/// older `default`. Used only by `migrate_removed_theme_presets`.
+/// were deleted: the fourteen of `shared/themes/` (amber … warm-paper), the
+/// older `default`, and Ink's Cream/Ink pair, which the warm neutrals of
+/// SPECs/harvey-neutral-colour-spec.md replaced. Used only by
+/// `migrate_removed_theme_presets`.
 const REMOVED_PRESETS_LIGHT: &[(&str, &str)] = &[
     ("#F7F2E4", "#2E2208"), // amber
     ("#FAF0EB", "#36160D"), // ember
@@ -302,6 +304,7 @@ const REMOVED_PRESETS_LIGHT: &[(&str, &str)] = &[
     ("#F2EEF9", "#221538"), // violet
     ("#F6EFE3", "#2A211A"), // warm-paper
     ("#FFFFFF", "#1A1A1A"), // default (before the preset picker)
+    ("#ECE7DC", "#0B0B0B"), // ink (Cream ground, before the warm neutrals)
 ];
 
 /// Dark-mode counterpart of `REMOVED_PRESETS_LIGHT`, plus the older `writer`.
@@ -322,6 +325,7 @@ const REMOVED_PRESETS_DARK: &[(&str, &str)] = &[
     ("#1F1A14", "#F2E8D8"), // warm-paper
     ("#1E1E1E", "#FFFFFF"), // default (before the preset picker)
     ("#0A6470", "#FFFFFF"), // writer (Teal's earlier dark ground)
+    ("#0B0B0B", "#ECE7DC"), // ink (Cream text, before the warm neutrals)
 ];
 
 /// Manages the three-layer settings: defaults → global → workspace.
@@ -490,7 +494,9 @@ impl Settings {
     /// the accent setting are gone. Per mode, a config whose background and
     /// foreground (stored, or the default where unset) are exactly one of the
     /// removed presets' pairs was a preset pick, so that mode's primaries are
-    /// dropped and it reads as Ink. A background/foreground pair that matches
+    /// dropped and it reads as the current default (the warm neutrals of
+    /// SPECs/harvey-neutral-colour-spec.md; the Cream/Ink pair is one of the
+    /// removed ones). A background/foreground pair that matches
     /// no old preset was made by hand and is kept. Stored accent keys are
     /// dropped in both modes. Hex compares ignore case. Running it again finds
     /// nothing to do, so it needs no marker key.
@@ -970,6 +976,29 @@ mod tests {
         let before = std::fs::read_to_string(&config_path).unwrap();
         Settings::new(dir.path().to_path_buf()).unwrap();
         assert_eq!(std::fs::read_to_string(&config_path).unwrap(), before);
+
+        // The retired Cream/Ink pair, stored in both modes, moves to the warm
+        // neutral defaults.
+        std::fs::write(
+            &config_path,
+            "theme.light.background = #ECE7DC\n\
+             theme.light.foreground = #0b0b0b\n\
+             theme.light.contrast = 20\n\
+             theme.dark.background = #0B0B0B\n\
+             theme.dark.foreground = #ECE7DC\n",
+        )
+        .unwrap();
+        let settings = Settings::new(dir.path().to_path_buf()).unwrap();
+        assert_eq!(
+            settings.get("theme.light.background"),
+            Some(&ConfigValue::String("#FAFAF9".into()))
+        );
+        assert_eq!(
+            settings.get("theme.dark.foreground"),
+            Some(&ConfigValue::String("#FAFAF9".into()))
+        );
+        let raw = std::fs::read_to_string(&config_path).unwrap();
+        assert!(!raw.contains("theme."), "{raw}");
     }
 
     #[test]

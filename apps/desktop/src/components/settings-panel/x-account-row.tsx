@@ -10,7 +10,7 @@ import {
 // (SPECs/x-bookmarks-spec.md), so this row only borrows a setting's layout.
 
 const BUTTON =
-  "h-9 shrink-0 rounded-lg px-3 text-label whitespace-nowrap font-medium transition-colors disabled:opacity-50";
+  "h-9 shrink-0 px-3 text-label whitespace-nowrap font-medium transition-colors disabled:opacity-50";
 
 export function XAccountRow() {
   const account = useXBookmarksStore((state) => state.account);
@@ -38,14 +38,14 @@ export function XAccountRow() {
             type="button"
             disabled={syncing}
             onClick={() => void syncXBookmarksNow(true)}
-            className={`${BUTTON} text-[var(--text-secondary)] hover:bg-[var(--surface-subtle-strong)] hover:text-[var(--text-primary)]`}
+            className={`${BUTTON} rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-subtle-strong)] hover:text-[var(--text-primary)]`}
           >
             {syncing ? "Syncing…" : "Sync now"}
           </button>
           <button
             type="button"
             onClick={() => void disconnectX()}
-            className={`${BUTTON} text-[var(--text-secondary)] hover:bg-[var(--surface-subtle-strong)] hover:text-[var(--text-primary)]`}
+            className={`${BUTTON} rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-subtle-strong)] hover:text-[var(--text-primary)]`}
           >
             Disconnect
           </button>
@@ -55,7 +55,7 @@ export function XAccountRow() {
           type="button"
           disabled={!clientId || connecting || account === undefined}
           onClick={() => void connectX()}
-          className={`${BUTTON} bg-[var(--text-primary)] text-[var(--bg-base)] hover:opacity-90`}
+          className={`${BUTTON} rounded-[4px] bg-[var(--text-primary)] text-[var(--bg-base)] hover:opacity-90`}
         >
           {connecting ? "Waiting for X…" : "Connect X"}
         </button>

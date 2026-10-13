@@ -1,5 +1,5 @@
 {
-  "$comment": "Settings contract: keys, types, defaults, labels, descriptions, and CSS-var bindings. Read by Rust (apps/desktop/src-tauri/src/config.rs) via include_str! and by the frontend via a static import (lib/settings-schema.ts). The theme defaults are the brand's Ink (shared/themes/ink/*.json records the same values; a test keeps them equal). There is no accent setting: the app UI has no accent colour. Per docs/consolidation.md: do not declare defaults, labels, or types anywhere else.",
+  "$comment": "Settings contract: keys, types, defaults, labels, descriptions, and CSS-var bindings. Read by Rust (apps/desktop/src-tauri/src/config.rs) via include_str! and by the frontend via a static import (lib/settings-schema.ts). The theme defaults are the warm neutrals of SPECs/harvey-neutral-colour-spec.md, near-white #FAFAF9 and near-black #0F0E0D (shared/themes/ink/*.json records the same values; a test keeps them equal). There is no accent setting: the app UI has no accent colour. Per docs/consolidation.md: do not declare defaults, labels, or types anywhere else.",
   "settings": [
     {
       "key": "editor.font-size",
@@ -169,7 +169,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--bg-base",
-      "default": "#ECE7DC"
+      "default": "#FAFAF9"
     },
     {
       "key": "theme.light.foreground",
@@ -178,7 +178,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--fg-base",
-      "default": "#0B0B0B"
+      "default": "#0F0E0D"
     },
     {
       "key": "theme.light.translucent",
@@ -194,7 +194,7 @@
     {
       "key": "theme.light.contrast",
       "label": "Contrast",
-      "description": "alpha multiplier on borders, cards, hover bgs.",
+      "description": "alpha multiplier on hover, selection and input fills.",
       "category": "Theme",
       "type": "range",
       "min": 0,
@@ -209,7 +209,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--bg-base",
-      "default": "#0B0B0B"
+      "default": "#0F0E0D"
     },
     {
       "key": "theme.dark.foreground",
@@ -218,7 +218,7 @@
       "category": "Theme",
       "type": "color",
       "cssVar": "--fg-base",
-      "default": "#ECE7DC"
+      "default": "#FAFAF9"
     },
     {
       "key": "theme.dark.translucent",
@@ -234,7 +234,7 @@
     {
       "key": "theme.dark.contrast",
       "label": "Contrast",
-      "description": "alpha multiplier on borders, cards, hover bgs.",
+      "description": "alpha multiplier on hover, selection and input fills.",
       "category": "Theme",
       "type": "range",
       "min": 0,

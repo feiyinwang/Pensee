@@ -1,6 +1,9 @@
 # Ink only
 
-Status: implemented
+Status: implemented; the palette (Cream/Ink, the writing inks, tinted tags,
+sticky washes) is superseded by
+[harvey-neutral-colour-spec.md](harvey-neutral-colour-spec.md). The rest (no
+accent, flat ground, removed presets, migration) still holds.
 
 [Ink](ink-theme-spec.md) made the brand's black and cream the default theme,
 but kept fourteen other presets (Orange, Teal, High Contrast, …), an accent setting and a scatter of

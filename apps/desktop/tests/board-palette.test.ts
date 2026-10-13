@@ -63,7 +63,7 @@ describe("board palette", () => {
     expect(colorVar("#00ff00")).toMatch(/^oklch\(from #00ff00 /);
   });
 
-  it("offers every ink but `accent`, which is the same ink as `ink`", () => {
+  it("offers every colour but `accent`, which is the same colour as `ink`", () => {
     expect(DEFAULT_PALETTE).not.toContain("accent");
     expect(DEFAULT_PALETTE).toEqual(HUE_TOKENS.filter((t) => t !== "accent"));
     const schemaDefault = SETTINGS_SCHEMA.find((def) => def.key === "board.palette")?.default;
@@ -72,14 +72,14 @@ describe("board palette", () => {
     expect(normalizePalette(["ink", "accent"])).toEqual(["ink", "accent"]);
   });
 
-  it("draws every hue token in a writing ink, never a raw colour", () => {
+  it("draws every hue token in a dot colour or a neutral, never a raw colour", () => {
     const css = readFileSync(
       resolve(__dirname, "../src/components/editor-area/board/board.css"),
       "utf8",
     );
     for (const h of HUE_TOKENS) {
       const decl = new RegExp(`--wr-board-${h}:\\s*([^;]+);`).exec(css)?.[1];
-      expect(decl, h).toMatch(/^var\(--(ink-[a-z]+|fg-base|text-primary)\)$/);
+      expect(decl, h).toMatch(/^var\(--(dot-[a-z]+|fg-base|text-primary|text-muted)\)$/);
     }
   });
 

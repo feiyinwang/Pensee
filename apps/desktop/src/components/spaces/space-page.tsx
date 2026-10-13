@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
@@ -19,6 +20,7 @@ import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
 import { openLibraryAdd } from "@/hooks/use-library-add";
 import { useSpaceDef, useTypedNotes, type SpaceDef, type TypedNote } from "@/hooks/use-spaces";
 import { libraryKindOfTab } from "@/lib/library-add";
+import { TONE_COLOR, statusTextTone } from "@/lib/projects";
 import { formatRelativeTime } from "@/lib/relative-time";
 import {
   SPACE_VIEW_LABELS,
@@ -265,7 +267,14 @@ function NoteList({ notes }: { notes: TypedNote[] }) {
               <td>{noteTitle(note)}</td>
               <td>
                 {status ? (
-                  <span className={styles.status}>{status}</span>
+                  <span
+                    className={styles.status}
+                    style={
+                      { "--tag": TONE_COLOR[statusTextTone(status) ?? "gray"] } as CSSProperties
+                    }
+                  >
+                    {status}
+                  </span>
                 ) : (
                   <span className={styles.status} data-empty="">
                     No status

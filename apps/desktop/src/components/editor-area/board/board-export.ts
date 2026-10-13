@@ -36,7 +36,7 @@ export async function svgToPngBase64(svgText: string, scale = 2): Promise<string
   canvas.height = Math.ceil(img.naturalHeight * scale);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available to render the PNG.");
-  // The light board's own ground (Cream), so the picture is the board as drawn.
+  // The light board's own ground, so the picture is the board as drawn.
   ctx.fillStyle = FILE_LIGHT.surface;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);

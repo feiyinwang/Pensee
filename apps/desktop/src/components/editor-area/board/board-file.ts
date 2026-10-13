@@ -82,9 +82,9 @@ const SOFT_TOKENS = HUE_TOKENS.map(
     `--wr-board-${h}-soft:color-mix(in oklab,var(--wr-board-${h}) 22%,var(--wr-board-surface))`,
 ).join(";");
 
-/** One mode's colours for a file opened outside Pensée: Ink and Cream, and
- *  the writing inks of App.css's `--ink-*` tokens (docs/brand.md). `paper`
- *  and `wash` make the sticky notes, as in board.css. */
+/** One mode's colours for a file opened outside Pensée: the warm neutrals
+ *  and the dot colours of App.css (SPECs/harvey-neutral-colour-spec.md).
+ *  `paper` and `wash` make the sticky notes, as in board.css. */
 interface FileInks {
   surface: string;
   ink: string;
@@ -101,39 +101,38 @@ interface FileInks {
   flip: 0 | 1;
 }
 
+/** The dots are one set for both modes (App.css `--dot-*`). */
+const DOTS = {
+  red: "#cc4b3c",
+  orange: "#c46a22",
+  yellow: "#a8820a",
+  green: "#3f8f5a",
+  blue: "#3c72c9",
+  purple: "#8a5cc7",
+  pink: "#c4508a",
+} as const;
+
 export const FILE_LIGHT: FileInks = {
-  surface: "#ece7dc",
-  ink: "#0b0b0b",
-  muted: "#6b665e",
-  red: "#8c2f2a",
-  orange: "#8a5a2b",
-  yellow: "#8f6c14",
-  green: "#3f6b5a",
-  blue: "#2e3f6b",
-  purple: "#5b3a5e",
-  pink: "#9a4b5c",
-  paper: "#ece7dc",
-  wash: "14%",
+  surface: "#fafaf9",
+  ink: "#0f0e0d",
+  muted: "#706d66",
+  ...DOTS,
+  paper: "#f2f1f0",
+  wash: "10%",
   flip: 0,
 };
 
 const FILE_DARK: FileInks = {
-  surface: "#0b0b0b",
-  ink: "#ece7dc",
-  muted: "#a39d92",
-  red: "#d98a80",
-  orange: "#cf9f6e",
-  yellow: "#d9b65c",
-  green: "#8fbfa9",
-  blue: "#93a6d6",
-  purple: "#b893b9",
-  pink: "#d897a6",
-  paper: "#1a1916",
-  wash: "22%",
+  surface: "#0f0e0d",
+  ink: "#fafaf9",
+  muted: "#8f8b85",
+  ...DOTS,
+  paper: "#1c1b19",
+  wash: "16%",
   flip: 1,
 };
 
-/** Sticky colour → the ink it washes and whether it is a pale (60%) wash.
+/** Sticky colour → the hue that tints it and whether it is a pale (60%) tint.
  *  Mirrors the `--wr-board-sticky-*` block in board.css. */
 const STICKY_WASH: [sticky: string, hue: string, pale: boolean][] = [
   ["yellow", "yellow", false],
@@ -181,6 +180,24 @@ function fileTokens(c: FileInks): string {
 const FILE_STYLE = `.wr-board-expand{display:none}:root{${SOFT_TOKENS};${fileTokens(FILE_LIGHT)}}
 @media (prefers-color-scheme:dark){:root{${fileTokens(FILE_DARK)}}}`;
 
+const STYLE_RE = /<style>[\s\S]*?<\/style>/;
+const CURRENT_STYLE = `<style>${FILE_STYLE}</style>`;
+
+/**
+ * A board file's text with its colours brought up to date, or `null` when
+ * they already are (or it has no `<style>`). A `.board.svg` carries its
+ * colours in its own `<style>`, so one saved before a palette change keeps
+ * the old colours in the note's `<img>` preview until it is saved again; the
+ * preview shows this instead, and the file on disk is left as it is. Only the
+ * first `<style>` is the file's own; the rest is the drawing. A function
+ * replacer, so nothing in the style is ever read as a `$` pattern.
+ */
+export function withCurrentStyle(text: string): string | null {
+  const match = STYLE_RE.exec(text);
+  if (!match || match[0] === CURRENT_STYLE) return null;
+  return text.replace(STYLE_RE, () => CURRENT_STYLE);
+}
+
 const SVG_NS_ATTR = / xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g;
 
 /**
@@ -206,7 +223,7 @@ export function renderBoardSvg(scene: BoardScene, resolveSrc: (src: string) => s
     `<metadata id="${META_ID}">`,
     escapeXml(serializeBoard(scene)),
     `</metadata>`,
-    `<style>${FILE_STYLE}</style>`,
+    CURRENT_STYLE,
     ...body,
     `</svg>`,
     "",

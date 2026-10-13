@@ -81,39 +81,31 @@ Both SVGs use `currentColor`, so they take the text colour they're placed in.
 | Ink   | `#0b0b0b` | Mark on light grounds; dark grounds         |
 | Cream | `#ece7dc` | Mark and wordmark on Ink; the app-icon mark |
 
-Black and cream only. No accent colour, no gradients on the mark. The app's
-only theme, **Ink**, is these two colours on a flat ground
-([SPECs/ink-theme-spec.md](../SPECs/ink-theme-spec.md)). The app
-icon's body may carry a faint top-to-bottom fall-off (`#1e1e1e` → `#0b0b0b`),
-the way macOS icons do.
+Black and cream only for the mark: no accent colour, no gradients on it. The
+app icon's body may carry a faint top-to-bottom fall-off (`#1e1e1e` →
+`#0b0b0b`), the way macOS icons do.
+
+### The app UI
+
+The app itself does not use Ink and Cream. It uses warm neutrals in the
+manner of Harvey's product pages: a near-white page `#FAFAF9` with near-black
+text `#0F0E0D` (reversed in dark mode), a raised warm grey `#F2F1F0` for the
+window chrome, code and tags, and named grey steps for secondary text, muted
+text, icons and hairlines
+([SPECs/harvey-neutral-colour-spec.md](../SPECs/harvey-neutral-colour-spec.md)).
 
 **The app UI has no accent colour.** Anything that used to be drawn in an
 accent (selection, focus ring, checked tasks, switches, links, today, board
 selection) is drawn in the foreground, and there is no accent setting
 ([SPECs/ink-only-colour-spec.md](../SPECs/ink-only-colour-spec.md)).
 
-### Writing inks
-
-Where colour has to carry meaning or a user's choice (board shapes and sticky
-notes, project tags, error text), it comes from a small set of traditional
-writing inks, never from chrome. They are the `--ink-*` tokens in `App.css`.
-
-| Ink         | Light (on Cream) | Dark (on Ink) |
-| ----------- | ---------------- | ------------- |
-| Graphite    | `#6b665e`        | `#a39d92`     |
-| Oxblood     | `#8c2f2a`        | `#d98a80`     |
-| Sepia       | `#8a5a2b`        | `#cf9f6e`     |
-| Ochre       | `#8f6c14`        | `#d9b65c`     |
-| Verdigris   | `#3f6b5a`        | `#8fbfa9`     |
-| Indigo ink  | `#2e3f6b`        | `#93a6d6`     |
-| Aubergine   | `#5b3a5e`        | `#b893b9`     |
-| Rose madder | `#9a4b5c`        | `#d897a6`     |
-
-Each reads at 3:1 or better as a stroke on its ground. Tinted grounds (sticky
-notes, tag fills) are a wash of the ink: 14% on Cream, 22% on a dark ground.
-Where an ink sets text it is pulled toward the text colour until it reads at
-4.5:1. Code is not coloured: it is set in three tiers of ink (foreground,
-secondary, muted italic).
+Where colour has to carry a meaning or a user's choice (a status, a board
+shape, a sticky note), it is one of eight dot colours (`--dot-*`: red, orange,
+yellow, green, blue, purple, pink, gray), each 3:1 or better on both grounds,
+and it sits in a small mark: a 6px dot before a grey tag's label, a board
+stroke, a light tint on a sticky note. Text stays neutral. Code is not
+coloured: names in the foreground, strings in the secondary grey, comments in
+the muted grey and italic.
 
 ## Wordmark and lockups
 

@@ -31,7 +31,7 @@ export function WelcomeScreen() {
           <button
             type="button"
             onClick={() => void handleAddLocation()}
-            className="flex items-center gap-2 label-caps rounded-md bg-[var(--text-primary)] px-4 py-2 text-label whitespace-nowrap font-medium text-[var(--surface-primary)] transition-opacity hover:opacity-90"
+            className="flex items-center gap-2 label-caps rounded-[4px] bg-[var(--text-primary)] px-4 py-2 text-label whitespace-nowrap font-medium text-[var(--surface-primary)] transition-opacity hover:opacity-90"
           >
             Add Folder
           </button>
