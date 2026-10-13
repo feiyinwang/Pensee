@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13
+
+- Switching tabs in **Library** and views in **Projects** is instant. A tab is chosen the moment you press the mouse, not when you let go, and the highlight jumps to it instead of sliding over. In Projects the highlight no longer waits for the new view to draw.
+
 ## 2026-10-12
 
 - Press **⌘T** anywhere to start writing. A box opens over your page with a title and room for text; type and press **⌘↵** to make the note and stay where you are (a notice offers **Open**), or **⌘⇧↵** to make it and go to it. The button shows ⌘↵ so you don't have to remember it. The chips under the text decide what you're making. **Type** is Note, or a Library kind: Book, Video, Podcast, Course or Paper. Paste a link in the title and it picks the kind for you (a YouTube link is a Video). If the link is already in your Library, the button opens that note instead. **Date** sets the note's date in its properties, and adds a link to it at the end of that day's note; leave the title empty and your text goes into the day's note itself. The folder at the top left picks where a plain note goes. The paperclip, or dropping a PDF or EPUB on the box, adds a book or paper. Esc closes the box and keeps what you typed for the next ⌘T. **⌘N** and the **+** in the tab bar open the same box, **⌘⇧N** opens it on today, and **⌘⇧L** or **Add** in Library opens it ready for Library. A new tab shows the box in place of the old list of links; search stays on **⌘O**. Its menus and calendar open and settle quickly, in under a fifth of a second, and the calendar has room to breathe.

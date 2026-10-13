@@ -112,6 +112,8 @@ function TypedSpace({ space }: { space: SpaceDef }) {
   const picked = useSpaceViewStore((s) => s.views[space.key]);
   const setView = useSpaceViewStore((s) => s.setView);
   const view = picked && space.views?.includes(picked) ? picked : space.view;
+  // Like the tabs: the view picker moves at once, the view follows.
+  const shownView = useDeferredValue(view);
   const tab = space.tabs.find((t) => t.id === tabId) ?? space.tabs[0];
   if (!tab) return null;
   const shownTab = space.tabs.find((t) => t.id === shownId) ?? tab;
@@ -175,7 +177,7 @@ function TypedSpace({ space }: { space: SpaceDef }) {
         .filter((t) => warm || t.id === shownTab.id)
         .map((t) => (
           <div key={t.id} className={t.id === shownTab.id ? undefined : styles.offstage}>
-            <TabBody space={space} tab={t} shown={notesByTab?.get(t.id) ?? null} view={view} />
+            <TabBody space={space} tab={t} shown={notesByTab?.get(t.id) ?? null} view={shownView} />
           </div>
         ))}
     </>
