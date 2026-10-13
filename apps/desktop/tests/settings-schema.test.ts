@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
+import { tokenValue } from "../src/lib/design-tokens";
 import {
   getPrimaryDefs,
   SETTINGS_SCHEMA,
@@ -110,7 +111,7 @@ describe("Ink, the only theme", () => {
     ]);
   });
 
-  test("has no accent setting: the app UI has no accent colour", () => {
+  test("keeps the accent out of the theme primaries: one setting, a palette hue", () => {
     for (const mode of ["light", "dark"] as const) {
       expect(getPrimaryDefs(mode).map((def) => suffixOf(mode, def.key))).toEqual([
         "background",
@@ -119,7 +120,15 @@ describe("Ink, the only theme", () => {
         "contrast",
       ]);
     }
-    expect(SETTINGS_SCHEMA.some((def) => def.key.endsWith(".accent"))).toBe(false);
+    const accents = SETTINGS_SCHEMA.filter((def) => def.key.endsWith(".accent"));
+    expect(accents.map((def) => def.key)).toEqual(["appearance.accent"]);
+    const [accent] = accents;
+    expect(accent.default).toBe("blue");
+    expect(accent.cssFormat).toBe("hue");
+    // Every option names a hue token, so the setting can never point at nothing.
+    for (const option of accent.options ?? []) {
+      expect(tokenValue(`--hue-${option}`, "light")).toMatch(/^#[0-9a-f]{6}$/);
+    }
   });
 
   test("its files equal the schema's theme defaults, so a fresh install opens on them", () => {

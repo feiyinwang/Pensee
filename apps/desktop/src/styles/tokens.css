@@ -36,17 +36,20 @@
   --white: #ffffff;
   --black: #000000;
 
-  /* Hues. Each mid hue reads at 3:1 or better (non-text) on every gray-50,
-     gray-100, gray-800, gray-850 and gray-900 ground. The deep and pale reds
-     are for text (4.5:1 on light and dark grounds respectively). Blue is
-     Harvey's slate and orange its amber (SPECs/harvey-neutral-colour-spec.md). */
-  --hue-red: #cc4b3c;
-  --hue-orange: #c4701c;
-  --hue-yellow: #a8820a;
-  --hue-green: #3f8f5a;
-  --hue-blue: #5a7d95;
-  --hue-purple: #8a5cc7;
-  --hue-pink: #c4508a;
+  /* Hues: one level of lightness and saturation for all of them, oklch(0.60
+     0.12 h), at red 25, orange 58, yellow 92, green 155, blue 245, purple
+     300, pink 350, written out in sRGB. Each reads at 3:1 or better
+     (non-text) on every gray-50, gray-100, gray-800, gray-850 and gray-900
+     ground. Their pastel (Harvey's pill level) is --color-tint-*. The deep
+     and pale reds are for text (4.5:1 on light and dark grounds
+     respectively). SPECs/harvey-neutral-colour-spec.md. */
+  --hue-red: #bd615b;
+  --hue-orange: #b56c2d;
+  --hue-yellow: #9a7d0b;
+  --hue-green: #389560;
+  --hue-blue: #3786c3;
+  --hue-purple: #8c6ebd;
+  --hue-pink: #b4608a;
   --hue-gray: #85817b;
   --hue-red-deep: #b23a2e;
   --hue-red-pale: #e57b6c;
@@ -152,6 +155,8 @@
   --editor-font: var(--font-family-system);
   --mono-font: var(--font-family-mono);
   --pensee-editor-font-size: var(--font-size-18);
+  /* appearance.accent (cssFormat "hue" writes var(--hue-<name>)). */
+  --accent-hue: var(--hue-blue);
 }
 
 [data-theme="light"] {
@@ -217,17 +222,29 @@
     var(--fg-base) calc(var(--contrast) * 45%),
     transparent
   );
-  --color-focus: var(--fg-base);
-  --color-selection: color-mix(in srgb, var(--fg-base) 12%, transparent);
+  --color-focus: var(--color-accent);
+  /* Selected text sits on the accent's pastel; text keeps 10:1 or better. */
+  --color-selection: var(--color-accent-tint);
   --color-scrollbar: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
   --color-blockquote: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
+
+  /* The accent: the Accent setting's hue. It marks what you have selected or
+     focused and the controls that are on: selected text (on its pastel), the
+     focus ring, checked tasks, switches, the calendar's selected day and the
+     ¶ after a selected paragraph. Buttons, links and titles stay ink. */
+  --color-accent: var(--accent-hue);
+  --color-accent-tint: oklch(
+    from var(--color-accent) var(--color-tint-l) calc(c * var(--color-tint-chroma)) h
+  );
+  /* A tick or knob on an --color-accent fill (non-text, 3:1 or better). */
+  --color-on-accent: var(--white);
 
   /* Links are told apart by an underline, not by hue. */
   --color-link: var(--fg-base);
   --color-link-underline: color-mix(in srgb, var(--color-link) 50%, transparent);
 
-  /* Status and choice colours. They sit in small marks (a dot, a stroke, a
-     tint) and, mixed toward the text, in a tag's label. */
+  /* Status and choice colours. They sit in small marks (a dot, a stroke) or,
+     as their pastel, behind text. */
   --color-status-danger: var(--hue-red);
   --color-status-warning: var(--hue-orange);
   --color-status-success: var(--hue-green);
@@ -242,12 +259,13 @@
   --color-dot-gray: var(--hue-gray);
   /* How much of a dot a tinted ground takes (a sticky note's paper). */
   --color-dot-tint: 16%;
-  /* Tags: a pill tinted with its colour (--tag, set per element), a dot and
-     a label in the colour pulled toward the text. The tint mixes into the
-     card ground and the label into the primary text, in OKLab; every tone's
-     label reads 4.5:1 or better on its pill in both themes. */
-  --color-tag-tint: 24%;
-  --color-tag-ink: 68%;
+  /* The pastel of a hue: the same hue at this lightness, its chroma scaled
+     by this share (0.12 → 0.06 here). Harvey's pill level: a tag's ground,
+     selected text. Read as oklch(from <hue> var(--color-tint-l)
+     calc(c * var(--color-tint-chroma)) h); text on it is the primary text
+     (10:1 or better in both themes). */
+  --color-tint-l: 0.36;
+  --color-tint-chroma: 0.5;
 
   /* Over pictures and video, which are the same in both themes. Shade and
      highlight are the light falling on drawn paper (a dragged card). */
@@ -349,6 +367,9 @@
   --color-border-default: var(--gray-300);
   --color-border-strong: var(--gray-400);
   --color-dot-tint: 10%;
+  /* Pastel: L 0.86, chroma 0.07 (12:1 or better under ink). */
+  --color-tint-l: 0.86;
+  --color-tint-chroma: 0.58;
 }
 
 /* Boards (board.css and the exported .board.svg draw with these). The
@@ -358,8 +379,9 @@
   /* Strokes: the dot colours
      (SPECs/harvey-neutral-colour-spec.md). The keys keep their hue names
      because boards store them, so every existing board re-tints on its own.
-     `ink` is the foreground and `accent` equals it (the app has no accent
-     colour); `muted` is the ramp's muted grey. */
+     `ink` is the foreground and `accent` equals it (boards keep their
+     selection in ink; the app's accent is not a board colour); `muted` is
+     the ramp's muted grey. */
   --wr-board-ink: var(--color-text-primary);
   --wr-board-muted: var(--color-text-muted);
   --wr-board-accent: var(--color-text-primary);
@@ -466,8 +488,8 @@
 
 :root {
   --accent: var(--color-text-primary);
-  --accent-solid: var(--color-bg-inverse);
-  --on-accent: var(--color-text-inverse);
+  --accent-solid: var(--color-accent);
+  --on-accent: var(--color-on-accent);
   --display-font: var(--font-title);
 
   --text-primary: var(--color-text-primary);

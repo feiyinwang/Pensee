@@ -22,10 +22,10 @@ function BooleanControl({ value, onChange }: { value: boolean; onChange: (v: boo
       aria-label="Toggle setting"
       className="relative h-5 w-9 rounded-full transition-colors"
       style={{
-        // On: a foreground track with a ground-coloured knob. Off: the
-        // foreground at 20%, its knob a muted ink that holds 3:1 on the ground.
+        // On: an accent track with a white knob. Off: the foreground at
+        // 20%, its knob a muted ink that holds 3:1 on the ground.
         backgroundColor: value
-          ? "var(--fg-base)"
+          ? "var(--color-accent)"
           : "color-mix(in srgb, var(--fg-base) 20%, transparent)",
       }}
     >
@@ -33,7 +33,7 @@ function BooleanControl({ value, onChange }: { value: boolean; onChange: (v: boo
         className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full transition-transform"
         style={{
           backgroundColor: value
-            ? "var(--bg-base)"
+            ? "var(--color-on-accent)"
             : "color-mix(in srgb, var(--fg-base) 55%, var(--bg-base))",
           transform: value ? "translateX(16px)" : "translateX(0)",
         }}

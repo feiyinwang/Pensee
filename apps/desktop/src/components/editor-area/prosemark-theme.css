@@ -51,7 +51,7 @@
   border-left-color: var(--text-primary);
 }
 
-/* Selection — the foreground at 15% (--editor-selection-bg). CodeMirror's drawSelection extension paints
+/* Selection — the accent's pastel (--editor-selection-bg). CodeMirror's drawSelection extension paints
    `.cm-selectionBackground` rectangles; the native `::selection` is the
    fallback for text the drawn layer doesn't cover. Override both, and bump
    specificity past CM's base theme on the focused-state selector. */
@@ -62,7 +62,7 @@
 }
 
 /* The ¶ at the end of a selected paragraph (paragraph-selection.ts) — the
-   brand mark the gutter chip wears, in the chip's ink. Zero-width in the
+   brand mark the gutter chip wears, in the accent. Zero-width in the
    flow, so selecting never rewraps the last line. */
 .cm-editor .cm-paragraph-mark {
   position: relative;
@@ -77,7 +77,7 @@
   position: absolute;
   inset: 0 auto 0 0.15em;
   width: 0.8em;
-  background: var(--wr-kind-text-tint);
+  background: var(--color-accent);
   -webkit-mask: var(--wr-kind-text) center / contain no-repeat;
   mask: var(--wr-kind-text) center / contain no-repeat;
 }
@@ -236,14 +236,14 @@
     border-color var(--motion-fast) var(--ease-out);
 }
 
-/* A checked task is a foreground box with a ground-coloured tick. */
+/* A checked task is an accent box with a white tick. */
 .cm-editor .cm-list-prefix-task-checked::before {
   background-color: var(--accent-solid);
   border-color: var(--accent-solid);
 }
 
-/* The tick sits on its own layer, a mask filled with --on-accent (the ground
-   colour), because a data-URL image can't read a CSS variable. Same box and
+/* The tick sits on its own layer, a mask filled with --on-accent (white),
+   because a data-URL image can't read a CSS variable. Same box and
    position as the ::before it sits on. */
 .cm-editor .cm-list-prefix-task-checked::after {
   content: "";

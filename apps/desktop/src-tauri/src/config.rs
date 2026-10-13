@@ -243,7 +243,8 @@ pub struct SettingDef {
     #[serde(rename = "cssVar", default, skip_serializing_if = "Option::is_none")]
     pub css_var: Option<String>,
     /// Format applied to the value before pushing to `cssVar`. `"px"` appends
-    /// a px unit; `"raw"` (or omitted) uses the value as-is.
+    /// a px unit; `"hue"` writes `var(--hue-<value>)`; `"raw"` (or omitted)
+    /// uses the value as-is.
     #[serde(rename = "cssFormat", default, skip_serializing_if = "Option::is_none")]
     pub css_format: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

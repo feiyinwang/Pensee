@@ -9,7 +9,8 @@
  *   - `apps/desktop/shared/themes/ink/{light,dark}.json`
  *       The brand's Ink values. The schema's theme defaults are Ink and
  *       `tests/settings-schema.test.ts` keeps the two equal. There are no
- *       other presets and no accent colour (SPECs/ink-only-colour-spec.md).
+ *       other presets; the accent is a separate setting, appearance.accent
+ *       (SPECs/harvey-neutral-colour-spec.md).
  */
 
 import schemaFile from "@shared/settings.schema.json";

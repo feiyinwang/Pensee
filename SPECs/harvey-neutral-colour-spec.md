@@ -3,9 +3,9 @@
 Status: implemented
 
 Supersedes the palette parts of [ink-only-colour-spec.md](ink-only-colour-spec.md)
-(the Cream/Ink pair, the writing inks, the tinted tags). What that spec says
-about having no accent colour, the flat ground, links, the focus ring and the
-removed presets still holds. Colour work only: fonts, the type scale
+(the Cream/Ink pair, the writing inks, the tinted tags) and its "no accent"
+rule (see Accent below). What that spec says about the flat ground, links and
+the removed presets still holds. Colour work only: fonts, the type scale
 ([type-scale-spec.md](type-scale-spec.md)) and Bodoni Moda titles are
 unchanged.
 
@@ -59,10 +59,10 @@ Contrast.
 
 | Surface      | Now                                                    |
 | ------------ | ------------------------------------------------------ |
-| Selection    | foreground at 12%                                      |
-| Focus ring   | 2px foreground; `--focus-border` is the foreground     |
-| Checked task | foreground fill, ground-coloured tick (unchanged)      |
-| Toggles      | foreground track, ground knob (unchanged)              |
+| Selection    | the accent's pastel (see Accent)                       |
+| Focus ring   | 2px accent; `--focus-border` is the accent             |
+| Checked task | accent fill, white tick                                |
+| Toggles      | accent track, white knob                               |
 | Code         | names in the foreground, strings secondary, comments muted italic, on `#F2F1F0` / `#1C1B19` |
 | Error text   | `#B23A2E` light (5.7:1), `#E57B6C` dark (6.8:1)        |
 
@@ -70,21 +70,27 @@ Contrast.
 
 The only colours besides the neutrals: `--hue-*` primitives, read as
 `--color-dot-*` and `--color-status-*` (`styles/tokens.css`), one set for both
-modes. Colour sits in a small mark, or in a tag's label pulled toward the text
-(see Tags). Each is 3:1 or better (non-text) on all five grounds. Blue is
-Harvey's slate (the cursor chip and header wash on its matter page) and orange
-its amber (the "In progress" pill), so warning and info read as theirs.
+modes. Every hue sits at one level, `oklch(0.60 0.12 h)`, so none is louder or
+darker than another: red 25°, orange 58°, yellow 92°, green 155°, blue 245°,
+purple 300°, pink 350° (gray is the warm grey). Each is 3:1 or better
+(non-text) on all four grounds.
 
-| Dot    | Value     | on #FAFAF9 | on #F2F1F0 | on #0F0E0D | on #1C1B19 |
-| ------ | --------- | ---------- | ---------- | ---------- | ---------- |
-| red    | `#CC4B3C` | 4.3        | 4.0        | 4.3        | 3.8        |
-| orange | `#C4701C` | 3.5        | 3.3        | 5.2        | 4.7        |
-| yellow | `#A8820A` | 3.4        | 3.2        | 5.4        | 4.8        |
-| green  | `#3F8F5A` | 3.8        | 3.5        | 4.9        | 4.3        |
-| blue   | `#5A7D95` | 4.2        | 3.9        | 4.4        | 3.9        |
-| purple | `#8A5CC7` | 4.5        | 4.2        | 4.1        | 3.6        |
-| pink   | `#C4508A` | 4.1        | 3.8        | 4.5        | 4.0        |
-| gray   | `#85817B` | 3.7        | 3.4        | 5.0        | 4.4        |
+Each hue also has a pastel, Harvey's pill level: the same hue at lightness
+0.86 and half-ish its chroma (0.07) in light mode, lightness 0.36 and chroma
+0.06 in dark mode. It is written once as `oklch(from <hue>
+var(--color-tint-l) calc(c * var(--color-tint-chroma)) h)`, so it follows any
+hue, including a tag's or the accent. Text on a pastel is the primary text.
+
+| Hue    | Mid       | on #FAFAF9 | on #F2F1F0 | on #0F0E0D | on #1C1B19 | Light pastel | ink on it | Dark pastel | text on it |
+| ------ | --------- | ---------- | ---------- | ---------- | ---------- | ------------ | --------- | ----------- | ---------- |
+| red    | `#BD615B` | 4.0        | 3.7        | 4.6        | 4.1        | `#FCC0BA`    | 12.3      | `#59302D`   | 10.7       |
+| orange | `#B56C2D` | 3.9        | 3.6        | 4.7        | 4.2        | `#F5C6A4`    | 12.4      | `#55351B`   | 10.5       |
+| yellow | `#9A7D0B` | 3.8        | 3.5        | 4.9        | 4.4        | `#E1D09D`    | 12.6      | `#483C13`   | 10.4       |
+| green  | `#389560` | 3.6        | 3.3        | 5.2        | 4.6        | `#ADDFBD`    | 12.9      | `#20462F`   | 10.2       |
+| blue   | `#3786C3` | 3.8        | 3.5        | 4.9        | 4.4        | `#ABD7FD`    | 12.7      | `#1F405B`   | 10.4       |
+| purple | `#8C6EBD` | 4.0        | 3.7        | 4.7        | 4.2        | `#D8C7F9`    | 12.4      | `#423658`   | 10.6       |
+| pink   | `#B4608A` | 4.0        | 3.7        | 4.6        | 4.1        | `#F6BFD7`    | 12.3      | `#552F42`   | 10.7       |
+| gray   | `#85817B` | 3.7        | 3.4        | 5.0        | 4.4        | near-grey    |           | near-grey   |            |
 
 `--color-dot-tint` is how much of a dot a tinted ground takes: 10% light, 16% dark.
 The failed-save dot on a tab is red.
@@ -92,17 +98,33 @@ The failed-save dot on a tab is red.
 ## Tags
 
 Project tags (`project-views.module.css`) and Library statuses
-(`spaces.module.css`) are Harvey-style tinted pills: the pill is
-`--color-tag-tint` (24%) of the tag's colour in the card ground, a 6px dot of
-the colour sits before the label, and the label is `--color-tag-ink` (68%) of
-the colour in the primary text, both mixed in OKLab. Every tone's label reads
-4.5:1 or better on its pill in both themes (orange and brown, the lowest,
-5.0 in light). Tone → colour lives once,
+(`spaces.module.css`) are Harvey's pills: the pastel of the tag's colour, its
+label in the primary text, no dot. Tone → colour lives once,
 in `TONE_COLOR` (`lib/projects.ts`), set on the element as `--tag`: overdue red,
 due soon orange, done green, in progress blue, to-do and plain deadlines gray;
 custom statuses purple, brown (orange pulled halfway to gray), pink, yellow.
 A Library status takes the tone its word has in Projects
 (`statusTextTone`). Timeline bars keep their tinted fill in the same colour.
+
+## Accent
+
+One accent, `--color-accent`, set by **Accent** (`appearance.accent`, under
+Appearance): blue by default, or green, yellow, orange, red, purple, pink or
+gray. The setting stores the hue's name; `cssFormat: "hue"` writes
+`var(--hue-<name>)` into `--accent-hue` (`lib/theme.ts`). It is the same in
+both modes.
+
+| Where                              | How                                               |
+| ---------------------------------- | ------------------------------------------------- |
+| Selected text (editor)             | the accent's pastel (`--color-selection`)         |
+| Keyboard focus ring                | 2px accent (`--color-focus`, also Arc's ring)     |
+| Checked task                       | accent box, white tick                            |
+| Settings switches                  | accent track, white knob                          |
+| Calendar's selected day            | the accent's pastel, number in the text colour (white on the accent is under 4.5:1) |
+| ¶ after a selected paragraph       | the accent                                        |
+
+Links, filled buttons, titles, the drag count badge and board selection stay
+in the foreground. Boards keep their `accent` key as ink.
 
 ## Boards
 
@@ -150,7 +172,8 @@ it.
 
 ## Verification
 
-- `tests/settings-schema.test.ts`: the theme files equal the new defaults.
+- `tests/settings-schema.test.ts`: the theme files equal the new defaults;
+  the accent is one setting whose every option names a `--hue-*` token.
 - `tests/board-palette.test.ts`: every hue token is a dot colour or a neutral.
 - `tests/board-file.test.ts`: `withCurrentStyle`.
 - `e2e/specs/ink-theme.spec.js`: the primaries in both modes.

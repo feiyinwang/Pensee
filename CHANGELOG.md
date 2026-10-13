@@ -2,7 +2,9 @@
 
 ## 2026-10-13
 
-- Tags in **Projects** and statuses in **Library** are now soft coloured pills, as in Harvey: an **In progress** or **due soon** tag sits on a pale tint of its colour, with the dot and the words in a deeper shade of it, and readable in light and dark mode. Blue is now a calm slate blue and orange a warm amber, and boards, stickies and status marks use the new shades too.
+- Pensée has an accent colour again, blue by default. Selected text sits on a soft blue, and the keyboard focus ring, checked tasks, switches in Settings, the selected day in the calendar and the small ¶ after a selected paragraph are blue too. Pick another colour under **Accent** in Settings › Appearance. Links, buttons and titles stay in the text colour.
+- All colours are now at the same strength, so red, orange, yellow, green, blue, purple and pink feel equally bright and none shouts louder than another. Boards, stickies and status marks use the new shades.
+- Tags in **Projects** and statuses in **Library** are soft pastel pills, as in Harvey: a pale version of the tag's colour with the words in the text colour, readable in light and dark mode.
 - Selecting a whole paragraph with the mouse now stops the grey at the paragraph's last word, with a small ¶ after it, instead of washing down over the empty line to the next heading. The same goes for a drag that runs past the end of a paragraph.
 - Selecting a bullet or a numbered item with the mouse selects just its text, from after the bullet to the end of the item, with the ¶ after it. The bullet, the number, a checkbox and the indent to their left stay out. Double-clicking the bullet itself does the same.
 - **PENSÉE** at the top of the sidebar now lines up with the Spaces label and the icons below it, and its letters sit a little closer together.

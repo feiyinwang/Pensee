@@ -1,12 +1,13 @@
 /* Calendar panel (Cmd+]). Arc's Calendar and Segmented control draw on
    Pensée's translucent backdrop here, so their surfaces are remapped on the
    container instead of in the vendored files (docs/arc.md). The selected day
-   is a foreground fill (--accent-solid) with its number in the ground colour
-   (--on-accent); the app has no accent colour. */
+   is the accent's pastel with its number in the text colour (white on the
+   full accent would fall under 4.5:1); hovered, it takes a little more of
+   the accent. */
 .calendar-panel {
-  --accent: var(--accent-solid);
-  --accent-strong: color-mix(in srgb, var(--accent-solid) 85%, var(--color-shade));
-  --accent-foreground: var(--on-accent);
+  --accent: var(--color-accent-tint);
+  --accent-strong: color-mix(in oklab, var(--color-accent-tint) 80%, var(--color-accent));
+  --accent-foreground: var(--color-text-primary);
   --surface-muted: var(--item-hover-bg);
   /* The current period's text (today, this week, …): the foreground, marked
      by weight like the rest of the current periods. */

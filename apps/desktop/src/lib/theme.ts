@@ -53,7 +53,10 @@ function formatCssValue(value: unknown, format: SettingDef["cssFormat"]): string
   if (typeof value === "string") str = value;
   else if (typeof value === "number") str = value.toString();
   else return null;
-  return format === "px" ? `${str}px` : str;
+  if (format === "px") return `${str}px`;
+  // A palette hue by name (appearance.accent): the name picks a --hue-* token.
+  if (format === "hue") return /^[a-z]+$/.test(str) ? `var(--hue-${str})` : null;
+  return str;
 }
 
 /** Push the active mode's primaries onto :root. Direct 1:1 bindings come
@@ -94,10 +97,9 @@ export function applyCssVarBindings(settings: Record<string, unknown>) {
   }
 }
 
-/** Pushes the mode's background and foreground. There is no accent primary:
- *  the app UI has no accent colour, and `--accent`, `--accent-solid` and
- *  `--on-accent` are aliases of these two in App.css, so they follow every
- *  push without being written here. */
+/** Pushes the mode's background and foreground. The accent is not a theme
+ *  primary: `appearance.accent` is an ordinary cssVar binding (cssFormat
+ *  "hue"), the same in both modes. */
 function pushForMode(mode: ThemeMode, settings: Record<string, unknown>) {
   setThemeAttribute(mode === "dark");
   applyPrimaries(mode, settings);

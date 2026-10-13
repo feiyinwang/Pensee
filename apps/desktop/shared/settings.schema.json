@@ -1,5 +1,5 @@
 {
-  "$comment": "Settings contract: keys, types, defaults, labels, descriptions, and CSS-var bindings. Read by Rust (apps/desktop/src-tauri/src/config.rs) via include_str! and by the frontend via a static import (lib/settings-schema.ts). The theme defaults are the warm neutrals of SPECs/harvey-neutral-colour-spec.md, near-white #FAFAF9 and near-black #0F0E0D (shared/themes/ink/*.json records the same values; a test keeps them equal). There is no accent setting: the app UI has no accent colour. Per docs/consolidation.md: do not declare defaults, labels, or types anywhere else.",
+  "$comment": "Settings contract: keys, types, defaults, labels, descriptions, and CSS-var bindings. Read by Rust (apps/desktop/src-tauri/src/config.rs) via include_str! and by the frontend via a static import (lib/settings-schema.ts). The theme defaults are the warm neutrals of SPECs/harvey-neutral-colour-spec.md, near-white #FAFAF9 and near-black #0F0E0D (shared/themes/ink/*.json records the same values; a test keeps them equal). The accent is one setting, appearance.accent: a hue of the palette (blue by default) for selected text, focus, controls that are on and the ¶ after a selected paragraph. Per docs/consolidation.md: do not declare defaults, labels, or types anywhere else.",
   "settings": [
     {
       "key": "editor.font-size",
@@ -97,6 +97,17 @@
       "category": "Appearance",
       "type": "boolean",
       "default": false
+    },
+    {
+      "key": "appearance.accent",
+      "label": "Accent",
+      "description": "Colour of selected text, the focus ring, checked tasks, switches and the selected day",
+      "category": "Appearance",
+      "type": "enum",
+      "options": ["blue", "green", "yellow", "orange", "red", "purple", "pink", "gray"],
+      "default": "blue",
+      "cssVar": "--accent-hue",
+      "cssFormat": "hue"
     },
     {
       "key": "appearance.sidebar-file-label",

@@ -67,8 +67,9 @@ shadow and font tokens (`--surface`, `--background`, `--foreground`,
 
 ### Colours
 
-The warm neutral ramp and the hues; blue is Harvey's slate and orange its
-amber ([SPECs/harvey-neutral-colour-spec.md](../SPECs/harvey-neutral-colour-spec.md)).
+The warm neutral ramp and the hues. Every hue is `oklch(0.60 0.12 h)`, one
+level of lightness and saturation, written out in sRGB
+([SPECs/harvey-neutral-colour-spec.md](../SPECs/harvey-neutral-colour-spec.md)).
 Each mid hue reads at 3:1 or better on every grey ground.
 
 | Token | Light | Dark |
@@ -84,13 +85,13 @@ Each mid hue reads at 3:1 or better on every grey ground.
 | `--gray-900` | `#0f0e0d` | same |
 | `--white` | `#ffffff` | same |
 | `--black` | `#000000` | same |
-| `--hue-red` | `#cc4b3c` | same |
-| `--hue-orange` | `#c4701c` | same |
-| `--hue-yellow` | `#a8820a` | same |
-| `--hue-green` | `#3f8f5a` | same |
-| `--hue-blue` | `#5a7d95` | same |
-| `--hue-purple` | `#8a5cc7` | same |
-| `--hue-pink` | `#c4508a` | same |
+| `--hue-red` | `#bd615b` | same |
+| `--hue-orange` | `#b56c2d` | same |
+| `--hue-yellow` | `#9a7d0b` | same |
+| `--hue-green` | `#389560` | same |
+| `--hue-blue` | `#3786c3` | same |
+| `--hue-purple` | `#8c6ebd` | same |
+| `--hue-pink` | `#b4608a` | same |
 | `--hue-gray` | `#85817b` | same |
 | `--hue-red-deep` | `#b23a2e` | same |
 | `--hue-red-pale` | `#e57b6c` | same |
@@ -206,6 +207,7 @@ tokens give the value before settings load.
 | `--editor-font` | `var(--font-family-system)` | same | Editor font setting |
 | `--mono-font` | `var(--font-family-mono)` | same | Code font setting |
 | `--pensee-editor-font-size` | `18px` (--font-size-18) | same | Editor size setting |
+| `--accent-hue` | `#3786c3` (--hue-blue) | same | Accent setting (`cssFormat: "hue"` writes `var(--hue-<name>)`) |
 
 ## 3. Semantic tokens
 
@@ -230,7 +232,7 @@ Dark values on `:root`, light ones under `[data-theme="light"]`. Fills marked
 | `--color-bg-tab-active` | `color-mix( in srgb, var(--fg-base) calc(var(--contrast) * 24%), transparent )` | `color-mix( in srgb, var(--fg-base) calc(var(--contrast) * 34%), transparent )` | The focused tab |
 | `--color-bg-kbd` | `color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent)` | same | Keyboard hint chips |
 | `--color-bg-code` | `#f2f1f0` (--color-bg-raised) | `#1c1b19` (--color-bg-raised) | Code blocks and inline code |
-| `--color-bg-inverse` | `#0f0e0d` (--fg-base) | `#fafaf9` (--fg-base) | Filled (primary) buttons, checked boxes, switches on |
+| `--color-bg-inverse` | `#0f0e0d` (--fg-base) | `#fafaf9` (--fg-base) | Filled (primary) buttons, the drag count badge |
 
 ### Text
 
@@ -251,35 +253,38 @@ Dark values on `:root`, light ones under `[data-theme="light"]`. Fills marked
 | `--color-border-subtle` | `color-mix(in srgb, var(--color-border-default) 60%, transparent)` | same | Softer hairline: cards, glass panel edge |
 | `--color-border-strong` | `#8f8b85` (--gray-400) | `#706d66` (--gray-500) | The edge of a control (3:1) |
 | `--color-border-floating` | `color-mix( in srgb, var(--fg-base) calc(var(--contrast) * 45%), transparent )` | same | Half-pixel outline of a floating layer |
-| `--color-focus` | `#0f0e0d` (--fg-base) | `#fafaf9` (--fg-base) | Keyboard focus ring (2px) |
-| `--color-selection` | `color-mix(in srgb, var(--fg-base) 12%, transparent)` | same | Selected text |
+| `--color-focus` | `#3786c3` (--color-accent) | same | Keyboard focus ring (2px) |
+| `--color-selection` | `var(--color-accent-tint)` | same | Selected text |
 | `--color-scrollbar` | `color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent)` | same | Scrollbar thumb |
 | `--color-blockquote` | `color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent)` | same | Blockquote rule |
+| `--color-accent` | `#3786c3` (--accent-hue) | same | The accent: focus, checked tasks, switches on, the ¶ after a selected paragraph |
+| `--color-accent-tint` | `oklch(from var(--color-accent) var(--color-tint-l) calc(c * var(--color-tint-chroma)) h)` | same | The accent's pastel: selected text, the calendar's selected day |
+| `--color-on-accent` | `#ffffff` (--white) | same | A tick or knob on the accent |
 | `--color-link` | `#0f0e0d` (--fg-base) | `#fafaf9` (--fg-base) | Links (told apart by underline) |
 | `--color-link-underline` | `color-mix(in srgb, var(--color-link) 50%, transparent)` | same | Link underline |
 
 ### Status, dots, tags
 
-Colour sits in a small mark (a dot, a stroke, a tint) and, pulled toward the
-text, in a tag's label.
+Colour sits in a small mark (a dot, a stroke) or, as its pastel, behind text in
+the primary text colour.
 
 | Token | Light | Dark | For |
 | --- | --- | --- | --- |
-| `--color-status-danger` | `#cc4b3c` (--hue-red) | same | Danger mark (Arc `--danger`) |
-| `--color-status-warning` | `#c4701c` (--hue-orange) | same | Warning mark (Arc `--warning`) |
-| `--color-status-success` | `#3f8f5a` (--hue-green) | same | Success mark (Arc `--success`) |
-| `--color-status-info` | `#5a7d95` (--hue-blue) | same | Info mark |
-| `--color-dot-red` | `#cc4b3c` (--hue-red) | same |  |
-| `--color-dot-orange` | `#c4701c` (--hue-orange) | same |  |
-| `--color-dot-yellow` | `#a8820a` (--hue-yellow) | same |  |
-| `--color-dot-green` | `#3f8f5a` (--hue-green) | same |  |
-| `--color-dot-blue` | `#5a7d95` (--hue-blue) | same |  |
-| `--color-dot-purple` | `#8a5cc7` (--hue-purple) | same |  |
-| `--color-dot-pink` | `#c4508a` (--hue-pink) | same |  |
+| `--color-status-danger` | `#bd615b` (--hue-red) | same | Danger mark (Arc `--danger`) |
+| `--color-status-warning` | `#b56c2d` (--hue-orange) | same | Warning mark (Arc `--warning`) |
+| `--color-status-success` | `#389560` (--hue-green) | same | Success mark (Arc `--success`) |
+| `--color-status-info` | `#3786c3` (--hue-blue) | same | Info mark |
+| `--color-dot-red` | `#bd615b` (--hue-red) | same |  |
+| `--color-dot-orange` | `#b56c2d` (--hue-orange) | same |  |
+| `--color-dot-yellow` | `#9a7d0b` (--hue-yellow) | same |  |
+| `--color-dot-green` | `#389560` (--hue-green) | same |  |
+| `--color-dot-blue` | `#3786c3` (--hue-blue) | same |  |
+| `--color-dot-purple` | `#8c6ebd` (--hue-purple) | same |  |
+| `--color-dot-pink` | `#b4608a` (--hue-pink) | same |  |
 | `--color-dot-gray` | `#85817b` (--hue-gray) | same |  |
 | `--color-dot-tint` | `10%` | `16%` | Share of a dot in a tinted ground (sticky paper) |
-| `--color-tag-tint` | `24%` | same | Share of a tag's colour in its pill, mixed into `--color-bg-canvas` (OKLab) |
-| `--color-tag-ink` | `68%` | same | Share of a tag's colour in its label, mixed into `--color-text-primary` (OKLab) |
+| `--color-tint-l` | `0.86` | `0.36` | Lightness of a hue's pastel (Harvey's pill level): tags, selected text |
+| `--color-tint-chroma` | `0.58` | `0.5` | Share of a hue's chroma its pastel keeps |
 
 ### Pictures and physical things
 
@@ -383,13 +388,13 @@ paper.
 | `--wr-board-ink` | `#0f0e0d` (--color-text-primary) | `#fafaf9` (--color-text-primary) |
 | `--wr-board-muted` | `#706d66` (--color-text-muted) | `#8f8b85` (--color-text-muted) |
 | `--wr-board-accent` | `#0f0e0d` (--color-text-primary) | `#fafaf9` (--color-text-primary) |
-| `--wr-board-red` | `#cc4b3c` (--color-dot-red) | same |
-| `--wr-board-orange` | `#c4701c` (--color-dot-orange) | same |
-| `--wr-board-yellow` | `#a8820a` (--color-dot-yellow) | same |
-| `--wr-board-green` | `#3f8f5a` (--color-dot-green) | same |
-| `--wr-board-blue` | `#5a7d95` (--color-dot-blue) | same |
-| `--wr-board-purple` | `#8a5cc7` (--color-dot-purple) | same |
-| `--wr-board-pink` | `#c4508a` (--color-dot-pink) | same |
+| `--wr-board-red` | `#bd615b` (--color-dot-red) | same |
+| `--wr-board-orange` | `#b56c2d` (--color-dot-orange) | same |
+| `--wr-board-yellow` | `#9a7d0b` (--color-dot-yellow) | same |
+| `--wr-board-green` | `#389560` (--color-dot-green) | same |
+| `--wr-board-blue` | `#3786c3` (--color-dot-blue) | same |
+| `--wr-board-purple` | `#8c6ebd` (--color-dot-purple) | same |
+| `--wr-board-pink` | `#b4608a` (--color-dot-pink) | same |
 | `--wr-board-ink-soft` | `color-mix(in oklab, var(--wr-board-ink) 22%, var(--wr-board-surface))` | same |
 | `--wr-board-muted-soft` | `color-mix(in oklab, var(--wr-board-muted) 22%, var(--wr-board-surface))` | same |
 | `--wr-board-red-soft` | `color-mix(in oklab, var(--wr-board-red) 22%, var(--wr-board-surface))` | same |
@@ -425,8 +430,8 @@ paper.
 | Legacy name | Points at |
 | --- | --- |
 | `--accent` | `var(--color-text-primary)` |
-| `--accent-solid` | `var(--color-bg-inverse)` |
-| `--on-accent` | `var(--color-text-inverse)` |
+| `--accent-solid` | `var(--color-accent)` |
+| `--on-accent` | `var(--color-on-accent)` |
 | `--display-font` | `var(--font-title)` |
 | `--text-primary` | `var(--color-text-primary)` |
 | `--text-secondary` | `var(--color-text-secondary)` |

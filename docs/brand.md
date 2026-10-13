@@ -94,10 +94,12 @@ window chrome, code and tags, and named grey steps for secondary text, muted
 text, icons and hairlines
 ([SPECs/harvey-neutral-colour-spec.md](../SPECs/harvey-neutral-colour-spec.md)).
 
-**The app UI has no accent colour.** Anything that used to be drawn in an
-accent (selection, focus ring, checked tasks, switches, links, today, board
-selection) is drawn in the foreground, and there is no accent setting
-([SPECs/ink-only-colour-spec.md](../SPECs/ink-only-colour-spec.md)).
+**The app UI has one accent, blue by default** (the **Accent** setting picks
+another palette hue). It marks what is selected or on: selected text (on the
+accent's pastel), the focus ring, checked tasks, switches, the calendar's
+selected day and the ¶ after a selected paragraph. Links, buttons, titles and
+board selection stay in the foreground
+([SPECs/harvey-neutral-colour-spec.md](../SPECs/harvey-neutral-colour-spec.md)).
 
 Where colour has to carry a meaning or a user's choice (a status, a board
 shape, a sticky note), it is one of eight dot colours (red, orange,

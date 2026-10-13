@@ -37,7 +37,7 @@ function stripComments(text: string): string {
 }
 
 const RAW_COLOUR =
-  /(?<![\w&$-])#[0-9a-fA-F]{3,8}(?![\w-])|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\((?!from )|(?<![\w-])(?:white|black)(?![\w-])/g;
+  /(?<![\w&$-])#[0-9a-fA-F]{3,8}(?![\w-])|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\((?!\s*from )|(?<![\w-])(?:white|black)(?![\w-])/g;
 const GENERIC_FONT = /["']|\b(?:serif|sans-serif|monospace|system-ui|ui-monospace|ui-sans-serif)\b/;
 
 interface Finding {

@@ -41,7 +41,7 @@ export function DragGhost({
         <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
       </div>
       {count > 1 && (
-        <span className="absolute -right-2 -top-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--accent-solid)] px-1.5 text-caption font-semibold leading-none text-[var(--on-accent)] shadow-md ring-2 ring-[var(--bg-base)]">
+        <span className="absolute -right-2 -top-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--color-bg-inverse)] px-1.5 text-caption font-semibold leading-none text-[var(--color-text-inverse)] shadow-md ring-2 ring-[var(--bg-base)]">
           {count}
         </span>
       )}

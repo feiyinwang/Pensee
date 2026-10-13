@@ -683,9 +683,9 @@
   outline-offset: -2px;
 }
 
-/* A status is a pill tinted with the tone the projects view gives the same
-   word (lib/projects.ts, set as --tag), with a dot and a label in that tone
-   pulled toward the text. SPECs/harvey-neutral-colour-spec.md. */
+/* A status is the pastel of the tone the projects view gives the same word
+   (lib/projects.ts, set as --tag), its label in the text colour.
+   SPECs/harvey-neutral-colour-spec.md. */
 .status {
   display: inline-flex;
   align-items: center;
@@ -694,17 +694,8 @@
   border-radius: var(--radius-pill);
   font-size: var(--text-caption);
   white-space: nowrap;
-  background: color-mix(in oklab, var(--tag) var(--color-tag-tint), var(--color-bg-canvas));
-  color: color-mix(in oklab, var(--tag) var(--color-tag-ink), var(--color-text-primary));
-}
-
-.status:not([data-empty])::before {
-  content: "";
-  flex-shrink: 0;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--tag);
+  background: oklch(from var(--tag) var(--color-tint-l) calc(c * var(--color-tint-chroma)) h);
+  color: var(--color-text-primary);
 }
 
 .status[data-empty] {
