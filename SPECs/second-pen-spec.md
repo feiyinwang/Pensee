@@ -15,30 +15,39 @@ note's edge are not part of it.
 
 ## Behavior
 
-### Asking: ⌘. then one key
+### Asking: ⌘. opens the pen's box
 
-- **⌘.** arms the pen for one key, on the selection (every line it touches)
-  or, with no selection, the line the caret is on. The lines it will act on
-  turn AI-blue while it's armed. The bottom bar lists the keys.
-- The next key picks what it does:
+- **⌘.** opens a small box right above the selection (every line it touches)
+  or, with no selection, the line the caret is on. Those lines turn AI-blue
+  while it's open. **⌘.** again or **Esc** closes it; so does clicking away.
+- On top, **pills** for what the pen can do there. Under them, always, a
+  **box to type in**, with the keyboard already in it:
 
-  | Key | In any note | In a source note (video, book) |
+  | Pill (key) | In any note | In a source note (video, book) |
   | --- | --- | --- |
-  | `?` | **ask**: one question about the line. Never answers it. | **quiz me**: one recall or follow-up question about the source |
-  | `!` | **answer**: you ask, it answers your question (or explains the line) in one or two sentences | same, from the source when it covers it, ending with where (`— 1:10`) |
-  | `@` | **facts**: one fact with its source, or says it has none | same |
-  | `+` | **mix**: one unexpected link to another field | same |
-  | `−` | **shorten**: proposes cuts on the lines, nothing else | same |
-  | `→` | — | **new topic**: a question on an idea not asked about yet |
-  | `Esc` | never mind | never mind |
+  | `?` **Ask me** | one question about the line. Never answers it. | **Quiz me**: one recall or follow-up question about the source |
+  | `!` **Answer** | it answers your question in one or two sentences | same, from the source when it covers it, ending with where (`— 1:10`) |
+  | `@` **Facts** | one fact cited to a recent paper, or says it has none | same |
+  | `+` **Mix** | one unexpected link to another field | same |
+  | `−` **Shorten** | proposes cuts on the lines, nothing else | same |
+  | `→` **New topic** | — | in a quiz: a question on an idea not asked about yet |
 
-- Any other key disarms and types as usual. So does a click, and leaving the
-  editor.
-- One request is one line. Asking again on the same line (`⌘.` then the same
-  key) gives one more, after the ones already there.
-- `@` with nothing to stand behind, and any key with nothing left to say,
-  writes nothing and says so in the bottom bar ("That's all I have on this
-  line. The rest is yours.").
+  On an empty line: **Answer** (to what you type), and in a source note
+  **Quiz me on everything so far**.
+- What you type steers the pill you pick: a direction for its question, its
+  fact, its mix or its cuts ("ask about the 2006 study"). Click a pill with
+  nothing typed for the pen's own pick.
+- **Enter** with something typed asks the AI: what you typed is your
+  question. It goes into the note under the line (or on the empty line) in
+  your ink, and the answer under it. **⌘ Enter** uses it as a direction for
+  **Ask me** instead.
+- While the box is empty, a pill's key picks it (`?` `!` `@` `+` `−` `→`), so
+  ⌘. then a key still works without the mouse.
+- One request is one line. Opening the box again on the same line and picking
+  the same pill gives one more, after the ones already there.
+- With nothing to stand behind, or nothing left to say, it writes nothing and
+  says so in the bottom bar ("That's all I have on this line. The rest is
+  yours.").
 - While the pen writes, the bottom bar says **Writing…**. Esc stops it.
 
 ### What it writes
@@ -108,14 +117,14 @@ The empty left side of the document footer, beside the word counts, is the
 pen's. The bar has the page's own solid background, so text scrolling under it
 never shows through. It shows, in order of what applies:
 
-1. the armed keys (`? quiz me ! answer @ facts + mix − shorten → new topic Esc never mind`);
-2. **Writing…** while a request runs;
+1. **Writing…** while a request runs (nothing while the pen's box is open);
+2. *(the box above the text has the pills now)*;
 3. the shorten keys and the words it would save;
 4. a short message, for 4 seconds (nothing left, nothing to cut, an error);
 5. on an empty answer: `↵ answer  ↵ on an empty line: I don't know  Esc take it back`;
 6. on a pen line: `↵ answer under it` (a mix: `↵ keep this one`);
 7. right after the pen writes: `⌘. ? one more` and the like, for 5 seconds;
-8. otherwise, while the caret is in the note: `⌘. think about the selection, or the line you're on`.
+8. otherwise, while the caret is in the note: `⌘. ask, or be asked, about the selection or the line you're on`.
 
 ## Implementation
 

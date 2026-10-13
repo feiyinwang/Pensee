@@ -193,3 +193,145 @@
     animation: none;
   }
 }
+
+/* ⌘.: the pen's box, above the lines it will act on. Pills for what it can
+   do; under them, always, a box to ask it something or steer the pills. The
+   block handle menu's surface (block-handle-menu.css), so the two read as
+   one family. CodeMirror gives the element `.cm-tooltip`: out-rank its
+   default border and fill. */
+.cm-tooltip.cm-pen-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--fg-base) 12%, transparent);
+  border-radius: var(--radius-menu);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-popover);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-label);
+  transform-origin: bottom left;
+  animation: cm-pen-pop-in 150ms var(--ease-out) both;
+}
+
+@keyframes cm-pen-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+
+.cm-pen-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cm-pen-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.cm-pen-pill kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-kbd);
+  color: var(--color-ai-ink);
+  font: inherit;
+  font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cm-pen-pill:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+  }
+}
+
+.cm-pen-pill:active {
+  transform: scale(0.97);
+}
+
+.cm-pen-pill:focus-visible,
+.cm-pen-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.cm-pen-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cm-pen-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-ui);
+}
+
+.cm-pen-field:has(.cm-pen-field-keys:not([hidden])) .cm-pen-input {
+  padding-right: 150px;
+}
+
+.cm-pen-input::placeholder {
+  color: var(--color-text-faint);
+}
+
+.cm-pen-field-keys {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.cm-pen-field-keys[hidden] {
+  display: none;
+}
+
+.cm-pen-field-keys kbd {
+  padding: 0 4px;
+  border-radius: var(--radius-chip);
+  background: var(--color-bg-kbd);
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-tooltip.cm-pen-pop {
+    animation: none;
+  }
+}

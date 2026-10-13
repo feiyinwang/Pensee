@@ -71,12 +71,15 @@ async function caretAfter(text) {
   await browser.pause(150);
 }
 
-/** A key pressed in the editor in front, as the keyboard sends it. */
+/** A key pressed where the keyboard is: the pen's box when it's open, else
+ *  the editor in front. */
 async function key(name, { meta = false, shift = false } = {}) {
   await browser.execute(
     (k, metaKey, shiftKey) => {
       const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
-      editor.dispatchEvent(
+      const active = document.activeElement;
+      const target = active?.closest?.(".cm-pen-pop") ? active : editor;
+      target.dispatchEvent(
         new KeyboardEvent("keydown", {
           key: k,
           metaKey,
@@ -92,6 +95,28 @@ async function key(name, { meta = false, shift = false } = {}) {
   );
   await browser.pause(80);
 }
+
+/** Type into the pen's box, as the keyboard would. */
+async function typeInBox(text) {
+  await browser.execute((value) => {
+    const input = document.querySelector(".cm-pen-pop .cm-pen-input");
+    if (!input) throw new Error("the pen's box isn't open");
+    input.focus();
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }, text);
+}
+
+const pop = () =>
+  browser.execute(() => {
+    const box = document.querySelector(".cm-pen-pop");
+    if (!box) return null;
+    return {
+      pills: [...box.querySelectorAll(".cm-pen-pill")].map((b) => b.textContent),
+      bottom: box.getBoundingClientRect().bottom,
+      focused: document.activeElement?.classList.contains("cm-pen-input") ?? false,
+    };
+  });
 
 const barText = () =>
   browser.execute(() => {
@@ -138,23 +163,34 @@ describe("Journeys: second pen", function () {
     root = await workspaceRoot();
   });
 
-  it("PEN-02 ⌘. lists the keys in the bottom bar; Esc never minds", async function () {
+  it("PEN-02 ⌘. opens the pen's box above the line: pills and a box to type in; Esc closes it", async function () {
     await openViaPalette("Pen");
     await caretAfter("I think we basically");
+    const lineTop = await browser.execute(() => {
+      const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+      const line = [...editor.querySelectorAll(".cm-line")].find((l) =>
+        l.textContent.includes("I think we basically"),
+      );
+      return line.getBoundingClientRect().top;
+    });
     await key(".", { meta: true });
-    await browser.waitUntil(
-      async () => (await barText()).includes("quiz me") || (await barText()).includes("ask"),
-      {
-        timeout: 3_000,
-        timeoutMsg: `bar didn't show the keys: ${await barText()}`,
-      },
-    );
-    const armed = await barText();
-    ok(armed.includes("facts") && armed.includes("mix") && armed.includes("shorten"), armed);
-    await key("Escape");
-    await browser.waitUntil(async () => (await barText()).includes("think about the selection"), {
+    await browser.waitUntil(async () => (await pop()) !== null, {
       timeout: 3_000,
-      timeoutMsg: `bar didn't go back to rest: ${await barText()}`,
+      timeoutMsg: "the pen's box didn't open",
+    });
+    const box = await pop();
+    for (const label of ["Ask me", "Answer", "Facts", "Mix", "Shorten"]) {
+      ok(
+        box.pills.some((p) => p.includes(label)),
+        `no ${label} pill: ${JSON.stringify(box.pills)}`,
+      );
+    }
+    ok(box.focused, "the box to type in should have the keyboard");
+    ok(box.bottom <= lineTop + 2, `the box should sit above the line (${box.bottom} > ${lineTop})`);
+    await key("Escape");
+    await browser.waitUntil(async () => (await pop()) === null, {
+      timeout: 3_000,
+      timeoutMsg: "Esc didn't close the box",
     });
   });
 
@@ -223,6 +259,38 @@ describe("Journeys: second pen", function () {
       AI_TIMEOUT,
     );
     ok(text.startsWith("Writing is thinking on paper."), text);
+  });
+
+  it("PEN-15 typed direction + Ask me: the question follows it, under the line", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretAfter("Writing is thinking on paper.");
+    await key(".", { meta: true });
+    await typeInBox("ask about first drafts");
+    await browser.execute(() => {
+      [...document.querySelectorAll(".cm-pen-pill")]
+        .find((b) => b.textContent.includes("Ask me"))
+        .click();
+    });
+    await waitForDisk(
+      path,
+      (t) => (t.split("\n\n- rereading")[0].match(/\^ai-a-/g) ?? []).length === 2,
+      "expected a second plain pen question below the paragraph",
+      AI_TIMEOUT,
+    );
+  });
+
+  it("PEN-14 typing a question in the box and Enter: your question, the AI's answer under it", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretAfter("rereading feels like learning");
+    await key(".", { meta: true });
+    await typeInBox("what's the opposite of rereading?");
+    await key("Enter");
+    await waitForDisk(
+      path,
+      (t) => /\n {2}- what's the opposite of rereading\?\n {4}- .+ \^ai-r-[a-z0-9]{4}/.test(t),
+      "expected your question as a sub-bullet and the answer under it",
+      AI_TIMEOUT,
+    );
   });
 
   it("PEN-08 ⌘. − proposes cuts; Enter applies them", async function () {

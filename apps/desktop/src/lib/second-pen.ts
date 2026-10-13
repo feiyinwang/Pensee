@@ -213,14 +213,6 @@ export function questionAbove(lines: readonly string[], i: number): number | nul
   return null;
 }
 
-export function penLine(indent: string, text: string, id: string): string {
-  return `${indent}- ${text} ^${id}`;
-}
-
-export function penParagraph(text: string, id: string): string {
-  return `${text} ^${id}`;
-}
-
 /* --------------------------------------------------------- answer flow */
 
 /** What Enter on your answer under a quiz question does, read from the
@@ -339,7 +331,7 @@ export type PenAsk =
   | { task: "hint"; question: string; answers: string[] }
   | { task: "check"; question: string; answers: string[] }
   | { task: "mix"; already: string[] }
-  | { task: "answer"; already: string[] }
+  | { task: "answer"; already: string[]; question?: string }
   | { task: "factQuery" }
   | { task: "factRetry" }
   | { task: "factWrite"; papers: Paper[]; already: string[] }
@@ -352,6 +344,8 @@ export interface PenPromptInput {
   lines: string[];
   source: PenSource | null;
   ask: PenAsk;
+  /** What the writer typed in the pen's box to steer this, if anything. */
+  direction?: string;
 }
 
 function list(items: readonly string[]): string {
@@ -423,7 +417,9 @@ function taskText(input: PenPromptInput): string {
       ].join("\n");
     case "answer":
       return [
-        "The writer asks you: the target lines are their question (or a line they want explained). Answer it in one or two short sentences, plainly.",
+        ask.question
+          ? `The writer asks you: ${ask.question}\nThe target lines are what they were on when they asked. Answer in one or two short sentences, plainly.`
+          : "The writer asks you: the target lines are their question (or a line they want explained). Answer it in one or two short sentences, plainly.",
         source
           ? `When ${label} covers it, answer from it and end with " — " and the time or place the source gives, e.g. … — 12:34. When it doesn't, answer from what you know, without a time.`
           : "Answer from what you know. Say so plainly when you aren't sure.",
@@ -470,6 +466,9 @@ export function penPrompt(input: PenPromptInput): string {
     `<note title="${input.title.replace(/"/g, "'")}">\n${input.note}\n</note>`,
     input.lines.length ? `<target-lines>\n${input.lines.join("\n")}\n</target-lines>` : "",
     input.source && !input.ask.task.startsWith("fact") ? sourceBlock(input.source) : "",
+    input.direction && !(input.ask.task === "answer" && input.ask.question)
+      ? `The writer's direction for this, follow it: ${input.direction}`
+      : "",
     taskText(input),
   ];
   return parts.filter(Boolean).join("\n\n");

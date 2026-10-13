@@ -335,7 +335,7 @@ quizzes you, and Enter on your answer checks it against the source.
 | ID     | Journey                                                      | Expected                                                                                     | Check      |
 | ------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------- |
 | PEN-01 | ★ ⌘. then `?` on a bullet                                    | One blue question appears as its sub-bullet; the file has it with `^ai-a-…`                 | auto: pen  |
-| PEN-02 | ⌘., then Esc                                                 | The bottom bar lists `? @ + −` while armed, then goes back to "⌘ . think about…"           | auto: pen  |
+| PEN-02 | ⌘., then Esc                                                 | A box opens above the line: pills (Ask me, Answer, Facts, Mix, Shorten) and a box to type in, with the keyboard in it; Esc closes it | auto: pen  |
 | PEN-03 | Enter on a pen question                                      | An empty answer bullet opens under it, the caret in it                                       | auto: pen  |
 | PEN-04 | Enter on one of several mixes                                | That mix stays with an answer under it; the unanswered mixes beside it are gone             | auto: pen  |
 | PEN-05 | Esc on the empty answer under a question                     | The question is taken back                                                                   | auto: pen  |
@@ -347,6 +347,8 @@ quizzes you, and Enter on your answer checks it against the source.
 | PEN-11 | ⌘. then `?` on a plain (non-bullet) line                     | A plain blue line appears right below it, no bullet; the file has it a blank line apart     | auto: pen  |
 | PEN-12 | ⌘. then `!` on a line with your question                     | The pen's answer appears as its sub-bullet in blue (`^ai-r-…`)                              | auto: pen  |
 | PEN-13 | ⌘. then `!` on a question in a video note                    | The answer comes from the transcript and ends with its time (`— 1:10`)                      | auto: pen  |
+| PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the AI's answer (`^ai-r-…`) under it     | auto: pen  |
+| PEN-15 | ⌘., type a direction, click **Ask me**                       | The AI's question follows the direction, right under the line                                | auto: pen  |
 
 ---
 
