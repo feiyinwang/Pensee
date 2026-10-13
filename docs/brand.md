@@ -33,8 +33,20 @@ accent is always kept.
   canvas's secondary motif (see Later).
 
 The app, the website and the CLI (`pensee`) all use the name. The app's
-bundle identifier is `com.pensee.app`; the local build keeps `com.f.writer-mine`
-so its settings carry over.
+bundle identifier is `com.pensee.app`.
+
+A few old **Writer** names stay on purpose. Nobody sees them in the app, and
+renaming any of them would lose data. Moving one needs a migration that still
+reads the old name
+([SPECs/pensee-rebrand-spec.md](../SPECs/pensee-rebrand-spec.md)).
+
+| Kept name             | What it is                                    | Why it stays                                                     |
+| --------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
+| `com.f.writer-mine`   | The local build's bundle identifier           | Its folder holds the settings and the workspace list             |
+| `.writer/config`      | The workspace config folder inside each vault | Every existing vault already has one                             |
+| `writer-board`        | The metadata id inside `.board.svg` files     | Pensée reads an existing board's scene back from it              |
+| `writer.video-player` | The video player's storage key                | It holds your playback speed and subtitle choice                 |
+| `Writer X Bookmarks`  | The Keychain service for the X sign-in        | Renaming it signs you out of X. It is visible in Keychain Access |
 
 ## The mark
 
@@ -178,7 +190,8 @@ See [`SPECs/type-scale-spec.md`](../SPECs/type-scale-spec.md).
 - the small cut in Cream, centred, about 56% of the body's height.
 
 Every platform icon in `apps/desktop/src-tauri/icons/` and the website favicon
-are generated from the PNG. To change the icon:
+are generated from the PNG. The desktop app has no favicon: its webview never
+shows one, and the Dock and window take the platform icons. To change the icon:
 
 ```bash
 python3 -I assets/brand/render-icon.py

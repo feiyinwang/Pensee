@@ -4,6 +4,13 @@ Thinking, made by writing. A local-first markdown app for the notes you think wi
 
 ![Pensée](./assets/screenshot.png)
 
+Every note is a markdown file in your own folder, so it opens in Obsidian or any editor. Around the notes:
+
+- **Library** keeps books, videos, podcasts, papers and your X bookmarks as notes, and opens PDFs and EPUBs beside their page so highlights land in it.
+- **Projects** shows your project notes as a list, a kanban or a timeline, and writes changes back to each note's properties.
+- **YouTube notes** play the video inside its note, and each note you take can be pinned to the moment it was written.
+- The **Agent** chat is Claude with your pages in view: it reads and edits them, and explains or defines what you select in a book.
+
 It is built with Tauri v2, React, Zustand, CodeMirror, and Rust. The app keeps documents on disk, respects workspace `.gitignore` rules, supports multiple windows, and renders extended markdown such as tables and Mermaid diagrams. The logo and brand are described in [`docs/brand.md`](./docs/brand.md).
 
 ## Repository

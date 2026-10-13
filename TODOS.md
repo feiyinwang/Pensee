@@ -138,6 +138,8 @@
 
 ## Up Next
 
+- Retake the README hero screenshot (`assets/screenshot.png`). It dates from 2026-05 and shows the old orange accent and sans headings. Retake it once the Didone display type ([`SPECs/didone-display-type-spec.md`](SPECs/didone-display-type-spec.md)) and the Ink/Cream default theme ([`SPECs/ink-theme-spec.md`](SPECs/ink-theme-spec.md)) have landed on master, so it shows the Pensée look.
+
 ## Backlog
 
 Previously-triaged work organized by phase. Pull into `Up Next` as capacity opens.
