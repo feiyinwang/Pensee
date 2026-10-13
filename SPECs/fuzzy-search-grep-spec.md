@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add full-content fuzzy search and grep across the workspace. Today Writer only has fuzzy file-name search through the command palette; users cannot search the text inside their documents.
+Add full-content fuzzy search and grep across the workspace. Today Pensée only has fuzzy file-name search through the command palette; users cannot search the text inside their documents.
 
 ## Goals
 

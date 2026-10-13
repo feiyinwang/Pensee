@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:app": "cd ../src-tauri && cargo tauri build --features e2e --bundles app --config '{\"identifier\":\"com.writer-computer.e2e\",\"bundle\":{\"createUpdaterArtifacts\":false}}'",
+    "build:app": "cd ../src-tauri && cargo tauri build --features e2e --bundles app --config '{\"identifier\":\"com.pensee.app.e2e\"}'",
     "test:wdio": "wdio run ./wdio.conf.js",
     "test:e2e": "pnpm run build:app && pnpm run test:wdio"
   },

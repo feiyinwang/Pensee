@@ -6,7 +6,7 @@ Rendered markdown tables (the folded `TableWidget`) distribute column width badl
 in real documents. Some columns are starved so hard that ordinary words break
 mid-word — `protectio` / `n`, `<canonical` / `>` — while a long-prose column in
 the same table has width to spare. Phase A fixes this with CSS only, inside the
-editor's existing `--writer-editor-max-width` measure.
+editor's existing `--pensee-editor-max-width` measure.
 
 ## Root cause
 

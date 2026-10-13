@@ -1,4 +1,4 @@
-//! Small raw-AppKit helpers shared by Writer's native macOS integrations.
+//! Small raw-AppKit helpers shared by Pensée's native macOS integrations.
 
 use objc2::runtime::AnyObject;
 use objc2::{class, msg_send};

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for every Writer window. Secondary workspace windows use labels of the form `w-<uuid>` built by `open_new_workspace_window`.",
+  "description": "Capability for every Pensée window. Secondary workspace windows use labels of the form `w-<uuid>` built by `open_new_workspace_window`.",
   "windows": ["main", "w-*"],
   "permissions": [
     "core:default",

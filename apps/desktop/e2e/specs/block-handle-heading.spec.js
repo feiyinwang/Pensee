@@ -8,7 +8,7 @@ import { writeFileSync } from "node:fs";
 // gutter handle's panel over it, clicks the H1 tile, and reads the file back.
 //
 // Requires a restorable workspace: seed
-// `~/Library/Application Support/com.writer-computer.e2e/recent_workspaces.json`
+// `~/Library/Application Support/com.pensee.app.e2e/recent_workspaces.json`
 // with a real directory before launching. Without one the app lands on the
 // welcome screen and this suite self-skips.
 describe("Block handle heading conversion", function () {

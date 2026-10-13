@@ -26,12 +26,12 @@ import {
  * `defaultKeymap` and below the `Prec.highest` list/markdown handlers, none of
  * which bind a modified Backspace.
  *
- * This must be shared, not copied into each editor. Writer already has three
+ * This must be shared, not copied into each editor. Pensée already has three
  * CodeMirror instances (the page, a caption band, the mermaid source pane);
  * "each editor fills in its own missing keys" is the same shape as the global
  * focus-ring whitelist that kept growing — see PRD lesson 15 and 19.
  *
- * Windows/Linux note: `Alt-Backspace` is conventionally undo there. Writer
+ * Windows/Linux note: `Alt-Backspace` is conventionally undo there. Pensée
  * ships macOS-only (Tauri dock menu, CLI installer), so the collision is
  * theoretical; if that changes, gate this list on the platform *here*, in one
  * place, rather than per editor.

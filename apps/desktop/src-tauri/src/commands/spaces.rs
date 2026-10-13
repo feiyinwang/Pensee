@@ -600,7 +600,7 @@ mod tests {
 
     #[test]
     fn lists_matching_types_newest_first() {
-        let dir = std::env::temp_dir().join(format!("writer-spaces-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("pensee-spaces-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let write = |name: &str, body: &str, modified_at: u64| {
             let path = dir.join(name);
@@ -628,7 +628,7 @@ mod tests {
 
     #[test]
     fn meta_cache_survives_a_restart() {
-        let dir = std::env::temp_dir().join(format!("writer-meta-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("pensee-meta-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("kept.md");
         std::fs::write(&path, "---\nType: Book\nCover: c.jpg\n---\nBlurb.\n").unwrap();

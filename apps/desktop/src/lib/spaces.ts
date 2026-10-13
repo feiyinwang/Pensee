@@ -18,7 +18,7 @@ export interface SpaceTab {
   noun: string;
   types: string[];
   cover: CoverKind;
-  /** Where the tab's notes come from when Writer brings them in itself, so
+  /** Where the tab's notes come from when Pensée brings them in itself, so
    *  the tab can show that sync's state (SPECs/x-bookmarks-spec.md). */
   source?: "x";
 }

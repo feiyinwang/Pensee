@@ -1,12 +1,12 @@
-# Writer — logo brief (draft)
+# Pensée — logo brief (draft)
 
 ## The product
 
-Writer is a local-first markdown editor for people who think in plain text: Obsidian vaults, docs repos, personal wikis. It has AI built in, but the writing stays yours.
+Pensée is a local-first markdown editor for people who think in plain text: Obsidian vaults, docs repos, personal wikis. It has AI built in, but the writing stays yours.
 
 ## What we believe
 
-AI has made answers cheap. Clear thinking hasn't got any cheaper: you still get it by writing down what you actually care about, then working it until it's true. Writer is where that work happens. It treats AI as something to think _with_, not something that thinks _for_ you.
+AI has made answers cheap. Clear thinking hasn't got any cheaper: you still get it by writing down what you actually care about, then working it until it's true. Pensée is where that work happens. It treats AI as something to think _with_, not something that thinks _for_ you.
 
 ## What the mark must say
 
@@ -16,7 +16,7 @@ AI has made answers cheap. Clear thinking hasn't got any cheaper: you still get 
 
 - **Message:** A, "thinking is made by writing" (chosen over "the second thought is yours" and "crafted, not generated").
 - **AI in the mark:** usually left out, for the sake of minimalism. It goes in only if the result is unusually beautiful. Otherwise AI lives in the story, not the mark.
-- **Letterform:** explore both: abstract marks, and marks built on a W for Writer.
+- **Letterform:** explore both: abstract marks, and marks built on a W for Pensée.
 
 ## Who it's for and how it should feel
 
@@ -69,7 +69,7 @@ Every concept answers "thinking is made by writing".
 11. **Untangle:** one loop, then a straight line. Writing is where the knot comes undone.
 12. **Settle:** a tilted bar above a level one. A thought tilts until you write it down; then it's level.
 
-**W for Writer**
+**W for Pensée**
 
 13. **Caret W:** a W whose middle peak is the insertion caret. Writing is putting your thought in.
 14. **Serif W:** a W drawn in strokes with concave serifs, in the Twist style. A calligrapher's W.

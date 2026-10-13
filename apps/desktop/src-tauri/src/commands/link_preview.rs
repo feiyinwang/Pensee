@@ -41,7 +41,7 @@ pub(crate) fn client() -> Result<&'static reqwest::Client, AppError> {
     let _ = rustls::crypto::ring::default_provider().install_default();
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
-        .user_agent("Mozilla/5.0 (compatible; Writer link preview)")
+        .user_agent("Mozilla/5.0 (compatible; Pensee link preview)")
         .build()
         .map_err(|e| AppError::Network(e.to_string()))?;
     Ok(CLIENT.get_or_init(|| client))
@@ -169,7 +169,7 @@ async fn youtube_preview(url: &Url) -> Result<LinkPreview, AppError> {
     })
 }
 
-/// Whether a page with these response headers may be shown in Writer's frame.
+/// Whether a page with these response headers may be shown in Pensée's frame.
 /// The editor's origin is never the site's own, so `SAMEORIGIN` and any
 /// `frame-ancestors` list short of `*` both rule it out.
 pub fn frame_allowed(headers: &reqwest::header::HeaderMap) -> bool {

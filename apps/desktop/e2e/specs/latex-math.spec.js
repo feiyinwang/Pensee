@@ -7,7 +7,7 @@ import { ok } from "node:assert/strict";
 // (see SPECs/latex-math-spec.md).
 //
 // Requires a restorable workspace: seed
-// `~/Library/Application Support/com.writer-computer.e2e/recent_workspaces.json`
+// `~/Library/Application Support/com.pensee.app.e2e/recent_workspaces.json`
 // with a real directory before launching. Without one the app lands on the
 // welcome screen and this suite self-skips, so it stays safe inside the
 // default `pnpm run test:e2e` sweep.

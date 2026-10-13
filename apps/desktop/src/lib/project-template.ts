@@ -3,7 +3,7 @@ import { parseFrontmatter } from "./frontmatter";
 
 // New projects from the Projects views (SPECs/project-views-spec.md) are made
 // from the vault's own project template: the Templater folder template whose
-// note is `Type: Project`, in that folder, with the Templater tags Writer can
+// note is `Type: Project`, in that folder, with the Templater tags Pensée can
 // fill filled in, so a project made here has what one made in Obsidian has.
 
 /** Where Templater keeps its settings, from the vault root. */

@@ -2,7 +2,7 @@
 //!
 //! Tauri exposes the normal application menu, but not AppKit's
 //! `applicationDockMenu:` hook. Registering that selector on Tauri's existing
-//! app delegate lets Writer add recent workspaces above macOS' built-in Dock
+//! app delegate lets Pensée add recent workspaces above macOS' built-in Dock
 //! menu items without taking over the rest of the native menu behavior.
 
 use crate::commands::workspace::load_recent_workspaces;
@@ -66,7 +66,7 @@ unsafe fn register_delegate_methods() -> bool {
     let action_method_added = unsafe {
         class_addMethod(
             delegate_class,
-            sel!(writerOpenRecentWorkspace:),
+            sel!(penseeOpenRecentWorkspace:),
             action_imp,
             MENU_ACTION_SIGNATURE.as_ptr().cast(),
         )
@@ -139,7 +139,7 @@ unsafe fn add_workspace_menu_item(
         return;
     }
     let menu_item: *mut AnyObject = unsafe {
-        msg_send![menu_item, initWithTitle: title, action: sel!(writerOpenRecentWorkspace:), keyEquivalent: key_equivalent]
+        msg_send![menu_item, initWithTitle: title, action: sel!(penseeOpenRecentWorkspace:), keyEquivalent: key_equivalent]
     };
     if menu_item.is_null() {
         return;

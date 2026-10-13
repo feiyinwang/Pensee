@@ -168,7 +168,7 @@ function VideoBand({
     let ready = false;
     let waiting: Record<string, unknown> | null = null;
     const post = (command: Record<string, unknown>) =>
-      frameRef.current?.contentWindow?.postMessage({ source: "writer", ...command }, origin);
+      frameRef.current?.contentWindow?.postMessage({ source: "pensee", ...command }, origin);
     const send = (command: Record<string, unknown>) => {
       if (!ready) {
         waiting = command;
@@ -224,7 +224,7 @@ function VideoBand({
         deltaY?: number;
         ctrlKey?: boolean;
       };
-      if (message?.source !== "writer-yt") return;
+      if (message?.source !== "pensee-yt") return;
       if (message.type === "error") {
         setError(Number(message.code) || 0);
         return;
@@ -328,7 +328,7 @@ function VideoBand({
               <p>
                 {error === 100
                   ? "This video is private or was removed."
-                  : "This video can't play inside Writer."}
+                  : "This video can't play inside Pensée."}
               </p>
               <button type="button" onClick={openOnYouTube}>
                 Open on YouTube

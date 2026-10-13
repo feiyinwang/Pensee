@@ -1,13 +1,13 @@
 # Website Deploy
 
-The marketing website lives in `apps/website/` and deploys to the existing Cloudflare Worker service `writer-website`.
+The marketing website lives in `apps/website/` and deploys to the Cloudflare Worker service `pensee-website`.
 
 ## Configuration
 
 - Worker config: `wrangler.jsonc`
-- Worker name: `writer-website`
+- Worker name: `pensee-website`
 - Static assets directory: `apps/website/dist/client`
-- Production URL: `https://writer.computer`
+- Production URL: none yet. The site needs our own Cloudflare account and domain before it can deploy.
 
 The Worker name in Cloudflare must match `name` in `wrangler.jsonc` so local deploys update the intended service.
 
@@ -23,17 +23,13 @@ vp dlx wrangler deploy --config wrangler.jsonc
 
 The site sends no analytics.
 
-Wrangler must be logged into the Cloudflare account that owns `writer-website`:
+Wrangler must be logged into the Cloudflare account that owns `pensee-website`:
 
 ```sh
 vp dlx wrangler login
 ```
 
-Verify the deployment:
-
-```sh
-curl -I https://writer.computer
-```
+Verify the deployment by opening the Worker's URL that `wrangler deploy` prints.
 
 ## Notes
 

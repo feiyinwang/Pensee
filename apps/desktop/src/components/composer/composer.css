@@ -1,5 +1,5 @@
 /* The ⌘T composer (SPECs/composer-spec.md): Linear's new-issue layout on
-   Writer's card surface. Arc pieces (the chip menus) draw on Writer's
+   Pensée's card surface. Arc pieces (the chip menus) draw on Pensée's
    translucent surfaces through the token remap below, as in the agent panel. */
 
 .composer {
@@ -279,10 +279,10 @@ button.composer-chip:not(:disabled) {
 }
 
 /* While the composer shows, Arc's pieces in and around it (the menus and the
-   calendar portal to <body>) move on Writer's motion: ease-out, at most
+   calendar portal to <body>) move on Pensée's motion: ease-out, at most
    180ms (docs/motion.md, emil-animations), not Arc's 580ms spring settle and
    240ms staggers. Outranks both Arc's `:root body` tokens and the
-   `:root:root:root body` rule that keeps Writer's own --ease-spring
+   `:root:root:root body` rule that keeps Pensée's own --ease-spring
    (arc-tokens.ts). */
 :root:root:root:root body.composer-motion {
   --duration-spring: 180ms;

@@ -132,7 +132,7 @@ notice if reused) and `console.error`.
   `wiki-link-extension.ts` both register; configs merge, so this is harmless
   but confusing.
 
-Fix: trim `basicSetup` to what Writer uses (history, dropCursor, defaultKeymap,
+Fix: trim `basicSetup` to what Pensée uses (history, dropCursor, defaultKeymap,
 historyKeymap, closeBrackets if kept, lineWrapping, and the prosemark
 extensions); bind Escape to `closeEditorSearch` in the app keymap alongside
 Mod-f/Mod-g. Decide explicitly whether `closeBrackets`, `bracketMatching`, and

@@ -21,7 +21,7 @@ is no way to build the site without them.
 - Take configuration from the environment: a public project key and an
   overridable host defaulting to `https://us.i.posthog.com`.
 - One key value with one home. The site shares the desktop app's PostHog
-  project, so `WRITER_POSTHOG_KEY` in the repo-root `.env` configures both and
+  project, so `PENSEE_POSTHOG_KEY` in the repo-root `.env` configures both and
   there is nothing to keep in sync.
 - With no key, be structurally inert — no client, no network calls, no console
   noise — the same rule `telemetry.rs` applies to a keyless build.
@@ -39,11 +39,11 @@ is no way to build the site without them.
 - `apps/website/src/analytics.tsx` owns the whole surface — the event union,
   the provider, and the capture hook. Nothing else in the site imports
   `posthog-js`.
-- Precedence is `VITE_POSTHOG_KEY`, then `WRITER_POSTHOG_KEY`, then inert; the
+- Precedence is `VITE_POSTHOG_KEY`, then `PENSEE_POSTHOG_KEY`, then inert; the
   host follows the same order before the default. A blank value counts as
   absent, so the `""` the bridge passes for an unset variable cannot shadow a
   key that is set.
-- `WRITER_*` has no `VITE_` prefix, so `vite.config.ts` bridges exactly those
+- `PENSEE_*` has no `VITE_` prefix, so `vite.config.ts` bridges exactly those
   two names through `define`. The repo-root `.env` also holds the Apple
   credentials and the Tauri signing key, and the client bundle is public:
   widening `envDir`, calling `loadEnv` with an empty prefix, or forwarding

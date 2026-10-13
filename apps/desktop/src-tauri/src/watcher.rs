@@ -11,14 +11,14 @@ use tauri::{AppHandle, Emitter, Manager};
 const SELF_WRITE_TTL: Duration = Duration::from_secs(2);
 const DEBOUNCE_MS: u64 = 300;
 
-/// Runtime-gated diagnostic logging. Set `WRITER_WATCHER_LOG=1` before
+/// Runtime-gated diagnostic logging. Set `PENSEE_WATCHER_LOG=1` before
 /// launching to dump every event, filter decision, and emit to stderr —
 /// the SPEC's investigation plan for residual "external change missed"
 /// reports. No-op (single atomic-bool read) when the env var is unset, so
 /// it's safe to leave the call sites in release builds.
 fn watcher_log_enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
-    *ENABLED.get_or_init(|| std::env::var_os("WRITER_WATCHER_LOG").is_some())
+    *ENABLED.get_or_init(|| std::env::var_os("PENSEE_WATCHER_LOG").is_some())
 }
 
 macro_rules! wlog {
@@ -96,7 +96,7 @@ fn is_config_file(path: &Path) -> bool {
     false
 }
 
-/// True if `path` was written by Writer itself within the TTL window.
+/// True if `path` was written by Pensée itself within the TTL window.
 ///
 /// A single save fans out into multiple FSEvent records on macOS (Create,
 /// Modify(Metadata), Modify(Data)); they all need to be suppressed so the
@@ -691,7 +691,7 @@ pub fn start_watcher(
 /// Start a lightweight watcher for a single standalone file (compact mode,
 /// no workspace). Watches the file's *parent directory* non-recursively:
 /// watching the file inode directly would break on atomic temp+rename saves
-/// — Writer's own `write_file_impl` and most editors replace the inode, and
+/// — Pensée's own `write_file_impl` and most editors replace the inode, and
 /// the watch would die with the old one. Only events whose path matches the
 /// watched file are forwarded; there is no index maintenance, no ignore
 /// matching, and no directory-change fan-out.

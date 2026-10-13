@@ -149,7 +149,7 @@ selected.
     the shipped app's origin is `tauri://localhost`. A page served from
     `127.0.0.1` sends one. Electron apps fix the same error the same way.
   - The page runs the YouTube IFrame API. It posts
-    `{source:"writer-yt", type:"state"|"error", t, playing}` to its parent:
+    `{source:"pensee-yt", type:"state"|"error", t, playing}` to its parent:
     on ready, on every state change, and every 500ms while playing (with
     YouTube's `state`, so a pause is told from buffering), and `release`
     after any press so the app hands focus back to the note. It takes

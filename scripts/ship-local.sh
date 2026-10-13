@@ -3,13 +3,13 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.vite-plus/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="${WRITER_APP_NAME:-Pensée}"
-SIGN_IDENTITY="${WRITER_SIGN_IDENTITY:--}"
+APP_NAME="${PENSEE_APP_NAME:-Pensée}"
+SIGN_IDENTITY="${PENSEE_SIGN_IDENTITY:--}"
 DEST="/Applications/${APP_NAME}.app"
 LOCAL_CONF="$ROOT_DIR/apps/desktop/src-tauri/tauri.local.conf.json"
 ENTITLEMENTS="$ROOT_DIR/apps/desktop/src-tauri/Entitlements.plist"
 BUNDLE_DIR="$ROOT_DIR/apps/desktop/src-tauri/target/release/bundle/macos"
-LOCK_DIR="/tmp/writer-ship-local.lock"
+LOCK_DIR="/tmp/pensee-ship-local.lock"
 
 STAGE_ONLY=0
 [ "${1:-}" = "--stage-only" ] && STAGE_ONLY=1

@@ -2,7 +2,7 @@
 
 ## Summary
 
-When Writer is opened directly on a markdown file, the resulting window uses a compact chrome: no sidebar, no sidebar toggle, no tab strip, and a top file dropdown for navigating the parent workspace. The dropdown reuses the actual sidebar navigation sections: `Pinned`, `Recents`, and `Everything`.
+When Pensée is opened directly on a markdown file, the resulting window uses a compact chrome: no sidebar, no sidebar toggle, no tab strip, and a top file dropdown for navigating the parent workspace. The dropdown reuses the actual sidebar navigation sections: `Pinned`, `Recents`, and `Everything`.
 
 ## Goals
 

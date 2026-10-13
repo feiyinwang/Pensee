@@ -34,7 +34,7 @@ describe("readBoardSvg", () => {
     expect(serializeBoard(parsed.scene).split("\n")).toHaveLength(2);
   });
 
-  test("returns null for an SVG with no Writer scene", () => {
+  test("returns null for an SVG with no Pensée scene", () => {
     expect(readBoardSvg('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>')).toBeNull();
   });
 });

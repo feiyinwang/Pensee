@@ -4,8 +4,8 @@
 
 One box to start anything: a note, a line for a day's note, or a Library
 item. Linear's new-issue layout (destination, large title, text, and one row of
-property chips, attach and the primary button) on Writer's card
-surface with Arc controls. Its content is Writer's own.
+property chips, attach and the primary button) on Pensée's card
+surface with Arc controls. Its content is Pensée's own.
 
 It replaces the New tab page's four links (Create new note, Today's note,
 Search, Add to Library) and the palette's create and add modes. Search stays
@@ -77,10 +77,10 @@ go first and the existing notices report progress and failures.
 
 None on the box: it opens from the keyboard, often, so it is simply there,
 like ⌘O (docs/motion.md). The Arc pieces inside it (chips, menus, the
-calendar) move on Writer's timing while the box shows:
+calendar) move on Pensée's timing while the box shows:
 ease-out, at most 180ms, instead of Arc's 580ms spring settle
 (`body.composer-motion`, docs/arc.md). The calendar's selected-day glide and
-the type chip's width change are 0.16s ease-out (Writer patches in Arc).
+the type chip's width change are 0.16s ease-out (Pensée patches in Arc).
 
 ## A floating card, not a dialog
 

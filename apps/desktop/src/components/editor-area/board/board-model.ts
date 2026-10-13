@@ -198,7 +198,7 @@ export interface ImageEl extends Base {
 /**
  * One mind-map topic. The tree is the `pa` (parent) links; the root has none.
  * Positions and sizes are laid out by `board-mind.ts` and stored like any
- * element's, so the file renders without Writer.
+ * element's, so the file renders without Pensée.
  */
 export interface MindEl extends Base {
   t: "mind";

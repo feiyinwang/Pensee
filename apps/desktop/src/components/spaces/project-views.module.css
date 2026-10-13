@@ -1,7 +1,7 @@
 /* Project views (SPECs/project-views-spec.md). */
 
-/* Arc pieces (docs/arc.md): Arc tokens Writer doesn't define keep Arc's
-   opaque neutrals, so map them onto Writer's own here, as the agent panel does. */
+/* Arc pieces (docs/arc.md): Arc tokens Pensée doesn't define keep Arc's
+   opaque neutrals, so map them onto Pensée's own here, as the agent panel does. */
 .projectViews {
   --surface: transparent;
   --surface-raised: var(--surface-primary);

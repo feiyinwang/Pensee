@@ -26,11 +26,11 @@ Pasting a link onto a line of its own shows the linked page itself, live, in a f
 - `link-preview.ts` registers `linkChips()`: a `foldableSyntaxFacet` spec on `URL` nodes (skipping `Link`/`Image` children and lines that already get the page preview) and a `hoverCard` showing `linkFrame(url)`.
 - `link-preview.ts` registers a `foldableSyntaxFacet` spec on `Document/Paragraph` that decides per line, and caches one request per URL for the life of the app (failures included).
 - The CSP's `frame-src` now allows `https:` and `http:`.
-- The iframe is sandboxed `allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox` with `referrerpolicy="no-referrer"`. The page keeps its own origin so logins and scripts work; that origin is never the editor's, so it cannot reach the editor document or Tauri IPC (remote origins have no capabilities). No `allow-top-navigation`, so it cannot navigate the Writer window.
+- The iframe is sandboxed `allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox` with `referrerpolicy="no-referrer"`. The page keeps its own origin so logins and scripts work; that origin is never the editor's, so it cannot reach the editor document or Tauri IPC (remote origins have no capabilities). No `allow-top-navigation`, so it cannot navigate the Pensée window.
 
 ## Privacy
 
-Showing a preview means Writer loads the linked page (and its image and favicon) from that site, as a browser would, including the site's own scripts and cookies inside the frame. Nothing else is sent.
+Showing a preview means Pensée loads the linked page (and its image and favicon) from that site, as a browser would, including the site's own scripts and cookies inside the frame. Nothing else is sent.
 
 ## Follow-ups
 

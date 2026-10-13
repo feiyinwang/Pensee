@@ -2,7 +2,7 @@
 
 ## Goal
 
-Read a PDF or EPUB inside Writer with its book page open beside it. Each
+Read a PDF or EPUB inside Pensée with its book page open beside it. Each
 highlight is a block on that page, in the same shape as the Apple Books import.
 The agent can see the passage being read, and the right-click menu can ask it
 to explain or define something.

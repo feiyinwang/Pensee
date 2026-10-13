@@ -7,7 +7,7 @@ import { join } from "node:path";
 // tauri-webdriver intermediary → embedded plugin → WKWebView → WebdriverIO)
 // works end-to-end. Assertions are intentionally minimal — the goal is
 // infrastructure validation, not feature coverage.
-describe("Writer app", function () {
+describe("Pensée app", function () {
   it("mounts the React app", async function () {
     // App.tsx renders a fragment in both the welcome and editor branches, so
     // wait for any React-owned child under the static index.html root.
@@ -22,7 +22,7 @@ describe("Writer app", function () {
 
     // Use a fresh temp directory so this test never touches the user's
     // recent workspaces or the dev install state.
-    const workspace = mkdtempSync(join(tmpdir(), "writer-e2e-"));
+    const workspace = mkdtempSync(join(tmpdir(), "pensee-e2e-"));
     const filePath = join(workspace, "hello.md");
     const expectedContent = "hello world";
 

@@ -82,8 +82,8 @@
   background: linear-gradient(160deg, var(--glass-fill-start), var(--glass-fill-end));
   /* The column is the island, not the window: the editor's measure
      fills it instead of centring a window-sized column inside. */
-  --writer-editor-side-padding: 2rem;
-  --writer-editor-outer-width: 100%;
+  --pensee-editor-side-padding: 2rem;
+  --pensee-editor-outer-width: 100%;
   transition:
     border-color var(--motion-fast) var(--ease-out),
     opacity var(--motion-base) var(--ease-out),

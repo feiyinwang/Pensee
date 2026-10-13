@@ -129,7 +129,7 @@ describe("Board selection toolbar", function () {
     ok(fill === "var(--wr-board-red)", `shape fill is ${fill}`);
   });
 
-  it("keeps Writer's own theme tokens and focus rings intact", async function () {
+  it("keeps Pensée's own theme tokens and focus rings intact", async function () {
     const [accentHtml, accentBody, focusRule] = await browser.execute(() => {
       const html = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
       const body = getComputedStyle(document.body).getPropertyValue("--accent").trim();

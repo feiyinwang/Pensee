@@ -4,11 +4,11 @@
 
 ## Summary
 
-Replace the current `Vec<IndexedFile>` + `HashSet<PathBuf>` pair with a richer, incrementally-maintained in-memory snapshot of the workspace, modeled on Zed's worktree. Today Writer stores only `{ path, relative_path, name }` per markdown file and recomputes titles (via `extract_title` in `apps/desktop/src-tauri/src/commands/fs.rs:43`) every time the sidebar expands a folder. This forces a full `read_directory` + N × 4 KB file reads on every expansion and leaves the watcher as a pure "notify the frontend" layer rather than a source of truth.
+Replace the current `Vec<IndexedFile>` + `HashSet<PathBuf>` pair with a richer, incrementally-maintained in-memory snapshot of the workspace, modeled on Zed's worktree. Today Pensée stores only `{ path, relative_path, name }` per markdown file and recomputes titles (via `extract_title` in `apps/desktop/src-tauri/src/commands/fs.rs:43`) every time the sidebar expands a folder. This forces a full `read_directory` + N × 4 KB file reads on every expansion and leaves the watcher as a pure "notify the frontend" layer rather than a source of truth.
 
 A single snapshot keyed by path **and** inode, maintained incrementally by the watcher, lets the sidebar, fuzzy search, tags, and future features read from the same consistent view without re-opening files.
 
-Reference: Zed's `crates/worktree/src/worktree.rs` (`Entry` struct at line 3547, `entries_by_path` / `entries_by_id` at 179-180). We adopt the _shape_ of their design, not their `SumTree` storage — Writer's workspaces are small enough that a BTreeMap is enough.
+Reference: Zed's `crates/worktree/src/worktree.rs` (`Entry` struct at line 3547, `entries_by_path` / `entries_by_id` at 179-180). We adopt the _shape_ of their design, not their `SumTree` storage — Pensée's workspaces are small enough that a BTreeMap is enough.
 
 ## Goals
 
@@ -22,9 +22,9 @@ Reference: Zed's `crates/worktree/src/worktree.rs` (`Entry` struct at line 3547,
 
 - **Full-text / grep search** — content never enters the snapshot. Text search lands as its own spec (`SPECs/fuzzy-search-grep-spec.md`).
 - **Workspace switch cancellation / epoch semantics** — shipped with the workspace-switch hang fix. This spec assumes those primitives already exist in `AppState` and just hooks into them.
-- Adopting Zed's `SumTree`. `BTreeMap<PathBuf, Entry>` + `HashMap<EntryId, PathBuf>` is sufficient at Writer's scale. Keep the door open: all lookups go through a `Snapshot` abstraction so the backing store can be swapped later if needed.
+- Adopting Zed's `SumTree`. `BTreeMap<PathBuf, Entry>` + `HashMap<EntryId, PathBuf>` is sufficient at Pensée's scale. Keep the door open: all lookups go through a `Snapshot` abstraction so the backing store can be swapped later if needed.
 - Multi-reader / collaboration-grade snapshot semantics. A single `parking_lot::RwLock<Arc<Snapshot>>` is enough.
-- Lazy subdirectory expansion (Zed's `UnloadedDir` / `PendingDir`). Writer already walks the whole tree upfront cheaply.
+- Lazy subdirectory expansion (Zed's `UnloadedDir` / `PendingDir`). Pensée already walks the whole tree upfront cheaply.
 - Per-entry `CharBag` pre-filtering for fuzzy search. Nucleo already performs well at current workspace sizes.
 - Persisting the snapshot to disk across restarts (Sublime-style warm start). Revisit if users with >20k-file vaults hit cold-start pain.
 
@@ -101,7 +101,7 @@ An interim render state is acceptable: once the `WorkspaceIgnore` is live but be
 4. Applies the mutation to a new `Arc<Snapshot>` and swaps it in under the epoch guard from the hang-fix spec.
 5. Emits one coalesced `snapshot:changed` event with the new `version`.
 
-Self-write suppression (the existing `recent_writes` map) still applies — the mutation is computed but the event emission can be skipped when the write originated from Writer itself.
+Self-write suppression (the existing `recent_writes` map) still applies — the mutation is computed but the event emission can be skipped when the write originated from Pensée itself.
 
 ### Frontend
 

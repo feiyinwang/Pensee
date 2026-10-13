@@ -4,7 +4,7 @@
 .track::-webkit-scrollbar { display: none; }
 .track[data-fade-start] { --fade-start: 20px; }
 .track[data-fade-end] { --fade-end: 20px; }
-/* Items never scale or change weight. Writer patch: the label color changes at once with the highlight (no color transition), and the global button press scale is off here. */
+/* Items never scale or change weight. Pensée patch: the label color changes at once with the highlight (no color transition), and the global button press scale is off here. */
 .button { position: relative; flex: 0 0 auto; min-height: var(--control-height-sm); border: 0; border-radius: calc(var(--radius-control) - 4px); padding: 0 12px; background: transparent; color: var(--text-muted); font: inherit; font-size: var(--text-sm); font-weight: 500; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) and (pointer: fine) { .button:hover { color: var(--foreground); } }
 .button:active, .button[aria-pressed="true"] { color: var(--foreground); }

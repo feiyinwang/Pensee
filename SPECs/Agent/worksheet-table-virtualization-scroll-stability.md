@@ -25,7 +25,7 @@
 - Folded tables are `Decoration.replace({ block: true })` widgets spanning the parsed Markdown table.
 - CodeMirror uses `WidgetType.estimatedHeight` for unmeasured block widgets in the heightmap. The default is `-1`, which falls back to one editor line height.
 - A rendered table is usually much taller than one line. When scrolling brings the widget into the measured viewport, CodeMirror replaces the low estimate with the real height, changing the document height and outer scrollbar position.
-- The actual scroll container is Writer's outer `EditorScrollContainer`; the table height estimate still belongs on the CodeMirror widget because that owns the heightmap.
+- The actual scroll container is Pensée's outer `EditorScrollContainer`; the table height estimate still belongs on the CodeMirror widget because that owns the heightmap.
 
 ## Plan
 

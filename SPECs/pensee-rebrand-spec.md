@@ -26,9 +26,16 @@ Writer goes, except what the GPL requires.
   - `LICENSE` (GPL-3.0), plus a README line saying Pensée is a modified version
     of Writer by Joel (github.com/joelbqz). GPLv3 §5(a) requires that notice.
   - Git history.
-  - Things nobody sees whose rename would lose data: the local bundle
-    identifier `com.f.writer-mine` (its folder holds settings and the
-    workspace list) and persisted storage keys.
+  - Names nobody sees whose rename would lose data:
+    - the local bundle identifier `com.f.writer-mine` (its folder holds
+      settings and the workspace list);
+    - the workspace config folder `.writer/config` inside each vault;
+    - the `writer-board` metadata id inside `.board.svg` files;
+    - the `writer.video-player` storage key;
+    - the Keychain service `Writer X Bookmarks` (renaming it would sign you
+      out of X).
+
+    Moving any of these needs a migration that reads the old name.
 
 ## Done when
 

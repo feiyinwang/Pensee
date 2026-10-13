@@ -1,8 +1,8 @@
-# Writer CLI Spec
+# Pensée CLI Spec
 
 ## Summary
 
-Add a standalone-first, markdown-only `writer` CLI focused on spec authoring and validation.
+Add a standalone-first, markdown-only `pensee` CLI focused on spec authoring and validation.
 
 The CLI should be useful even when the desktop app is not running. It should help users create structured spec documents, inspect markdown workspaces, edit frontmatter safely, and validate spec quality from the terminal and CI.
 
@@ -10,7 +10,7 @@ This feature is intentionally scoped so a single agent can implement it end to e
 
 ## Background
 
-Writer is currently a Tauri desktop application with a React frontend and a Rust backend. The Rust side already has useful primitives for:
+Pensée is currently a Tauri desktop application with a React frontend and a Rust backend. The Rust side already has useful primitives for:
 
 - reading and writing files
 - indexing markdown workspaces
@@ -19,7 +19,7 @@ Writer is currently a Tauri desktop application with a React frontend and a Rust
 
 Those primitives currently sit behind Tauri commands, but they are close to being reusable from a CLI.
 
-Because the underlying source of truth is plain markdown, a CLI does not add much value if it only mirrors generic shell operations. The CLI becomes worth building when it adds Writer-specific behavior:
+Because the underlying source of truth is plain markdown, a CLI does not add much value if it only mirrors generic shell operations. The CLI becomes worth building when it adds Pensée-specific behavior:
 
 - opinionated spec templates
 - frontmatter-aware edits
@@ -41,7 +41,7 @@ The first version should optimize for three jobs:
 
 - Build a headless CLI that works without a running GUI.
 - Keep all inputs and outputs markdown, YAML, or plain text.
-- Add Writer-specific value through templates and validation.
+- Add Pensée-specific value through templates and validation.
 - Reuse as much existing Rust logic as possible.
 - Keep the implementation small enough for one agent to complete end to end.
 - Keep the CLI script-friendly through stable stdout, stderr, and exit codes.
@@ -54,7 +54,7 @@ The first version should optimize for three jobs:
 - No interactive TUI.
 - No plugin, theme, sync, or developer-tool command surface.
 - No bundling the CLI into the desktop installer in v1.
-- No requirement to control or focus a running Writer instance in v1.
+- No requirement to control or focus a running Pensée instance in v1.
 - No full parity with the desktop command palette.
 - No non-markdown export formats such as PDF in v1.
 
@@ -84,7 +84,7 @@ Every v1 command should work without the desktop app running. The CLI should rea
 
 ### Spec-aware, not shell-clone
 
-The CLI should avoid duplicating broad filesystem tooling unless the behavior is meaningfully Writer-specific.
+The CLI should avoid duplicating broad filesystem tooling unless the behavior is meaningfully Pensée-specific.
 
 ### Narrow v1 surface
 
@@ -186,7 +186,7 @@ Expected result:
 | `writer frontmatter show <file>`              | Print full frontmatter block           | YAML only                 |
 | `writer frontmatter get <file> <key>`         | Print one frontmatter value            | scalar or YAML fragment   |
 | `writer frontmatter set <file> <key> <value>` | Update one frontmatter field           | rewrites YAML canonically |
-| `writer spec create <title>`                  | Create a new spec from a template      | Writer-specific           |
+| `writer spec create <title>`                  | Create a new spec from a template      | Pensée-specific           |
 | `writer spec validate [path]`                 | Validate one file or a whole directory | CI-friendly               |
 | `writer completion <shell>`                   | Generate shell completions             | bash, zsh, fish           |
 
@@ -384,7 +384,7 @@ Supported shells:
 
 ## Spec Template Model
 
-The CLI only becomes meaningfully different from generic shell tooling if Writer defines a concrete spec shape. V1 should ship with three templates.
+The CLI only becomes meaningfully different from generic shell tooling if Pensée defines a concrete spec shape. V1 should ship with three templates.
 
 ### Common frontmatter
 
@@ -642,7 +642,7 @@ Suggested responsibilities:
 - `core/spec.rs`: templates, validation rules, diagnostic types
 - `core/workspace.rs`: resolve workspace root, list markdown files, relative path helpers
 - `core/output.rs`: plain-text diagnostic formatting
-- `src/bin/writer.rs`: `clap`-based CLI entrypoint
+- `src/bin/pensee.rs`: `clap`-based CLI entrypoint
 
 ### Dependencies
 
@@ -705,7 +705,7 @@ No JSON serializer is needed.
 - `apps/desktop/src-tauri/src/core/spec.rs`
 - `apps/desktop/src-tauri/src/core/workspace.rs`
 - `apps/desktop/src-tauri/src/core/output.rs`
-- `apps/desktop/src-tauri/src/bin/writer.rs`
+- `apps/desktop/src-tauri/src/bin/pensee.rs`
 - new Rust tests under `apps/desktop/src-tauri/tests/` or adjacent unit test modules
 
 The Tauri UI code should not need meaningful changes for this feature.

@@ -8,7 +8,7 @@
       "category": "Editor",
       "type": "number",
       "default": 16,
-      "cssVar": "--writer-editor-font-size",
+      "cssVar": "--pensee-editor-font-size",
       "cssFormat": "px"
     },
     {
@@ -18,7 +18,7 @@
       "category": "Editor",
       "type": "number",
       "default": 1.8,
-      "cssVar": "--writer-editor-line-height"
+      "cssVar": "--pensee-editor-line-height"
     },
     {
       "key": "editor.content-width",
@@ -30,7 +30,7 @@
       "max": 1600,
       "step": 10,
       "default": 734,
-      "cssVar": "--writer-editor-max-width",
+      "cssVar": "--pensee-editor-max-width",
       "cssFormat": "px"
     },
     {
@@ -350,7 +350,7 @@
     {
       "key": "workspace.default-terminal",
       "label": "Default Terminal",
-      "description": "Terminal application name on macOS, or executable name/full path on Windows and Linux. Leave blank for Writer's platform default; arguments are not supported.",
+      "description": "Terminal application name on macOS, or executable name/full path on Windows and Linux. Leave blank for Pensée's platform default; arguments are not supported.",
       "category": "Workspace",
       "type": "string",
       "placeholder": "Platform default",
@@ -361,7 +361,7 @@
     {
       "key": "apple-books.sync",
       "label": "Import Highlights",
-      "description": "Bring Apple Books highlights and notes into this workspace, one page per book tagged Book. A page that already has the book's name gets the highlights; otherwise a new page is made. Checks again every 10 minutes. macOS may ask to let Writer access data from other apps.",
+      "description": "Bring Apple Books highlights and notes into this workspace, one page per book tagged Book. A page that already has the book's name gets the highlights; otherwise a new page is made. Checks again every 10 minutes. macOS may ask to let Pensée access data from other apps.",
       "category": "Apple Books",
       "type": "boolean",
       "default": false

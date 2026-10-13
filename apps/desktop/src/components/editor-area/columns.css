@@ -104,7 +104,7 @@
      from the body font size, NOT from the block's own font size — `0.5em` on an
      `<h2>` is 11.2px, not 8px, which is how headings used to grow by 3.2px each
      the moment you clicked into the caption. See PRD 2.9. */
-  --wr-block-gap: calc(var(--writer-editor-font-size, 16px) * 0.5);
+  --wr-block-gap: calc(var(--pensee-editor-font-size, 16px) * 0.5);
 }
 .wr-band > *:first-child {
   margin-top: 0;
@@ -244,7 +244,7 @@
 /* Writing in a band should feel like writing anywhere else in the document, so
    the box is invisible: same font, same size, same colour, no fill, no border,
    no focus ring. This used to be a `<textarea>`, which meant a band was the one
-   place in Writer where markdown stayed raw while you typed — `- ` never became
+   place in Pensée where markdown stayed raw while you typed — `- ` never became
    a bullet until you clicked away. It is now a nested CodeMirror running the
    same prosemark extensions as the document, so the rules below exist only to
    strip the editor chrome an inline editor must not have. */

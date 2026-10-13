@@ -39,7 +39,7 @@ describe("effectiveKind", () => {
     expect(effectiveKind(draft({ title: "https://arxiv.org/abs/2401.00001" }))).toBe("paper");
   });
 
-  test("a site Writer doesn't know is a book, as in Library", () => {
+  test("a site Pensée doesn't know is a book, as in Library", () => {
     expect(effectiveKind(draft({ title: "https://example.com/post" }))).toBe("book");
   });
 

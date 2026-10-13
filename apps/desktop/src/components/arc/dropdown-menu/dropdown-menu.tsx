@@ -10,11 +10,11 @@ import styles from "./dropdown-menu.module.css";
 
 export interface DropdownItem { label: string; onSelect?: () => void; disabled?: boolean; icon?: ReactNode; destructive?: boolean; separatorBefore?: boolean; }
 export interface DropdownMenuProps { label: string; items: DropdownItem[]; icon?: ReactNode;
-  /** Writer patch: which trigger edge the menu lines up with, and a shift along it (Radix align / alignOffset). */
+  /** Pensée patch: which trigger edge the menu lines up with, and a shift along it (Radix align / alignOffset). */
   align?: "start" | "center" | "end"; alignOffset?: number; }
 
-/** Writer patch: the trigger's width follows a new label on ease-out in 0.16s (docs/motion.md), not spring.morph's 0.42s bounce. */
-const WRITER_RESIZE = { duration: 0.16, ease: [0.16, 1, 0.3, 1] as const };
+/** Pensée patch: the trigger's width follows a new label on ease-out in 0.16s (docs/motion.md), not spring.morph's 0.42s bounce. */
+const PENSEE_RESIZE = { duration: 0.16, ease: [0.16, 1, 0.3, 1] as const };
 
 type Highlight = { top: number; height: number; danger: boolean; glide: boolean };
 
@@ -38,7 +38,7 @@ function TriggerLabel({ text }: { text: string }) {
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  return <motion.span className={styles.label} initial={false} animate={{ width: size.width }} transition={size.animate && !reduced ? WRITER_RESIZE : { duration: 0 }}>
+  return <motion.span className={styles.label} initial={false} animate={{ width: size.width }} transition={size.animate && !reduced ? PENSEE_RESIZE : { duration: 0 }}>
     <span ref={measure} className={styles.labelMeasure} aria-hidden="true">{text}</span>
     <AnimatePresence mode="popLayout" initial={false}>
       <motion.span key={text} className={styles.labelText} initial={reduced ? false : { opacity: 0, y: "0.3em", filter: `blur(${motionTokens.blur.soft}px)` }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={reduced ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: "-0.3em", filter: `blur(${motionTokens.blur.subtle}px)`, transition: { duration: motionTokens.duration.fast, ease: [...motionTokens.ease.standard] } }} transition={{ duration: motionTokens.duration.standard, ease: [...motionTokens.ease.enter] }}>{text}</motion.span>

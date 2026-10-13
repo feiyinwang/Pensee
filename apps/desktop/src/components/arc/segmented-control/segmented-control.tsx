@@ -15,7 +15,7 @@ export interface SegmentedControlProps {
   className?: string;
 }
 
-// Writer patch: an option is chosen on mouse press, not release, and the highlight jumps instead of gliding (upstream: click + a 0.42s spring). Switching tabs is a many-times-a-day action, so any wait reads as lag. Touch and pen keep click so a swipe across a scrolling track doesn't choose.
+// Pensée patch: an option is chosen on mouse press, not release, and the highlight jumps instead of gliding (upstream: click + a 0.42s spring). Switching tabs is a many-times-a-day action, so any wait reads as lag. Touch and pen keep click so a swipe across a scrolling track doesn't choose.
 
 export default function SegmentedControl({ options, value, onValueChange, label, onOptionIntent, className }: SegmentedControlProps) {
   const id = useId();

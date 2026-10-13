@@ -5,10 +5,8 @@ import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-r
 
 import styles from "../styles.css?url";
 
-const TITLE = "Writer — Fast and lightweight markdown editor";
-const DESCRIPTION =
-  "Fast and lightweight app for your workspace's markdown files. Local-first. macOS.";
-const OG_DESCRIPTION = "Fast and lightweight app for your workspace's markdown files.";
+const TITLE = "Pensée — Thinking, made by writing";
+const DESCRIPTION = "A local-first markdown app for the notes you think with. For macOS.";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -17,16 +15,19 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1.0" },
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
-      { property: "og:title", content: "Writer" },
-      { property: "og:description", content: OG_DESCRIPTION },
+      { property: "og:title", content: "Pensée" },
+      { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://writer.computer" },
-      { property: "og:image", content: "https://writer.computer/og.jpg" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: "https://writer.computer/og.jpg" },
+      { name: "twitter:card", content: "summary" },
     ],
     links: [
       { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400&display=swap",
+      },
       { rel: "stylesheet", href: styles },
     ],
   }),

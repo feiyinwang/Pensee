@@ -165,7 +165,7 @@ describe("YouTube notes", function () {
     await browser.execute(() => {
       window.__ytReports = [];
       addEventListener("message", (e) => {
-        if (e.data?.source === "writer-yt") window.__ytReports.push(e.data);
+        if (e.data?.source === "pensee-yt") window.__ytReports.push(e.data);
       });
     });
     await browser.waitUntil(

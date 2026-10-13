@@ -1,4 +1,4 @@
-# Writer Desktop
+# Pensée Desktop
 
 The desktop app is a Tauri v2 application with a React frontend and Rust backend.
 

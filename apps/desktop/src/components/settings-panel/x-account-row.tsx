@@ -19,11 +19,11 @@ export function XAccountRow() {
   const clientId = useSetting("x-bookmarks.client-id") ?? "";
 
   const description = account
-    ? `Connected as @${account.username}. Bookmarks are checked every 15 minutes while Writer is open.`
+    ? `Connected as @${account.username}. Bookmarks are checked every 15 minutes while Pensée is open.`
     : connecting
       ? "Finish signing in to X in your browser."
       : clientId
-        ? "Opens X in your browser to let Writer read your bookmarks."
+        ? "Opens X in your browser to let Pensée read your bookmarks."
         : "Paste your app's Client ID above first.";
 
   return (

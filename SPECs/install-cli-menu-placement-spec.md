@@ -2,40 +2,40 @@
 
 ## Summary
 
-The "Install 'writer' Command in PATH" action is the third item in the macOS **Writer** application menu, with a long jargon-heavy label that confuses users who do not need a CLI. We will keep the action in the app menu (where macOS users expect optional, app-wide setup items) and place a conventional **Preferences…** entry alongside it, so the menu reads like a standard macOS app menu rather than a one-off pile of items. Tightening the CLI item's label and grouping reduces the noise without hiding the feature from the power users who want it.
+The "Install 'pensee' Command in PATH" action is the third item in the macOS **Pensée** application menu, with a long jargon-heavy label that confuses users who do not need a CLI. We will keep the action in the app menu (where macOS users expect optional, app-wide setup items) and place a conventional **Preferences…** entry alongside it, so the menu reads like a standard macOS app menu rather than a one-off pile of items. Tightening the CLI item's label and grouping reduces the noise without hiding the feature from the power users who want it.
 
 ## Background
 
-The CLI install action is wired in `apps/desktop/src-tauri/src/lib.rs:160` and added to the `Writer` submenu at line 168. The label cycles between two strings defined at `lib.rs:28-30`:
+The CLI install action is wired in `apps/desktop/src-tauri/src/lib.rs:160` and added to the `Pensée` submenu at line 168. The label cycles between two strings defined at `lib.rs:28-30`:
 
-- `Shell Command: Install 'writer' Command in PATH`
-- `Shell Command: Uninstall 'writer' Command in PATH`
+- `Shell Command: Install 'pensee' Command in PATH`
+- `Shell Command: Uninstall 'pensee' Command in PATH`
 
 The underlying Rust install/uninstall logic lives in `apps/desktop/src-tauri/src/commands/shell_install.rs` and is exposed via three Tauri IPC commands already registered in `lib.rs`: `cli_status`, `install_cli`, `uninstall_cli`.
 
 Settings exists today as a tab opened by the `open-settings` command in the command palette (`apps/desktop/src/components/command-palette/index.tsx:152`) using the `useOpenSettingsTab` hook in `apps/desktop/src/hooks/use-tabs.ts:162`. There is no app-menu entry for it. The keyboard shortcut convention on macOS for Preferences is `⌘,`.
 
-For context on the CLI itself, see [`SPECs/writer-cli-spec.md`](./writer-cli-spec.md). The PATH-install menu item shipped alongside the `writer` open CLI (see `Done` in `TODOS.md`).
+For context on the CLI itself, see [`SPECs/pensee-cli-spec.md`](./pensee-cli-spec.md). The PATH-install menu item shipped alongside the `pensee` open CLI (see `Done` in `TODOS.md`).
 
 ## Problem Statement
 
-The Writer app menu currently looks like this on macOS:
+The Pensée app menu currently looks like this on macOS:
 
 ```
-Writer
-  About Writer
+Pensée
+  About Pensée
   ─────
   Check for Updates…
   ─────
-  Shell Command: Install 'writer' Command in PATH
+  Shell Command: Install 'pensee' Command in PATH
   ─────
   Services
   ─────
-  Hide Writer
+  Hide Pensée
   Hide Others
   Show All
   ─────
-  Quit Writer
+  Quit Pensée
 ```
 
 Two things go wrong here:
@@ -52,32 +52,32 @@ Two things go wrong here:
 
 ## Proposed Change
 
-Keep the CLI install action in the Writer app menu. Add a conventional macOS Preferences entry to the same menu. Tighten the CLI label and grouping so the menu reads cleanly.
+Keep the CLI install action in the Pensée app menu. Add a conventional macOS Preferences entry to the same menu. Tighten the CLI label and grouping so the menu reads cleanly.
 
 ### New menu structure
 
 ```
-Writer
-  About Writer
+Pensée
+  About Pensée
   ─────
   Check for Updates…
   ─────
   Preferences…                                   ⌘,
-  Install 'writer' Command Line Tool…
+  Install 'pensee' Command Line Tool…
   ─────
   Services
   ─────
-  Hide Writer
+  Hide Pensée
   Hide Others
   Show All
   ─────
-  Quit Writer
+  Quit Pensée
 ```
 
 Notes:
 
 - **`Preferences…`** with the standard `⌘,` accelerator. Opens the existing Settings tab.
-- **`Install 'writer' Command Line Tool…`** — drops the `Shell Command:` prefix and the `in PATH` postfix. Trailing ellipsis indicates the action prompts the user (admin authorization). When the symlink already exists the label flips to `Uninstall 'writer' Command Line Tool…`, matching the existing toggle behavior.
+- **`Install 'pensee' Command Line Tool…`** — drops the `Shell Command:` prefix and the `in PATH` postfix. Trailing ellipsis indicates the action prompts the user (admin authorization). When the symlink already exists the label flips to `Uninstall 'pensee' Command Line Tool…`, matching the existing toggle behavior.
 - Both items live in the same group between `Check for Updates…` and `Services`. This is the conventional macOS slot for app-level preferences and optional integrations, and it gives the CLI item company instead of leaving it as the only oddity.
 
 ### Wiring Preferences from Rust → React
@@ -106,7 +106,7 @@ Rejected. The current menu item works without making the user copy-paste a `ln -
 
 ### C. Keep the long original label
 
-Rejected. The label was the most-cited source of confusion ("Shell Command:", "PATH"). Tightening to `Install 'writer' Command Line Tool…` keeps the meaning intact while reading like a normal menu item.
+Rejected. The label was the most-cited source of confusion ("Shell Command:", "PATH"). Tightening to `Install 'pensee' Command Line Tool…` keeps the meaning intact while reading like a normal menu item.
 
 ### D. Put the CLI item under a dedicated "Tools" top-level menu
 
@@ -121,8 +121,8 @@ Rejected for v1. We do not have an Advanced-mode concept and inventing one for a
 Backend (Rust) — only `lib.rs`; install/uninstall primitives are unchanged:
 
 - `apps/desktop/src-tauri/src/lib.rs`:
-  - Update `CLI_MENU_INSTALL_LABEL` / `CLI_MENU_UNINSTALL_LABEL` to the new strings (`Install 'writer' Command Line Tool…` / `Uninstall 'writer' Command Line Tool…`).
-  - Add a new `Preferences…` menu item with `⌘,` accelerator and id `preferences.open`, inserted just before the CLI item in the `Writer` submenu builder (around `lib.rs:160-168`).
+  - Update `CLI_MENU_INSTALL_LABEL` / `CLI_MENU_UNINSTALL_LABEL` to the new strings (`Install 'pensee' Command Line Tool…` / `Uninstall 'pensee' Command Line Tool…`).
+  - Add a new `Preferences…` menu item with `⌘,` accelerator and id `preferences.open`, inserted just before the CLI item in the `Pensée` submenu builder (around `lib.rs:160-168`).
   - Add an event arm in `app.on_menu_event` (`lib.rs:213`) that emits `menu:open-preferences` to the focused window.
 - `apps/desktop/src-tauri/src/commands/shell_install.rs` — unchanged.
 
@@ -139,7 +139,7 @@ Tests:
 Docs:
 
 - `CHANGELOG.md` — note the relabel and the new Preferences menu entry under user-visible changes when shipped.
-- The Writer CLI spec ([`SPECs/writer-cli-spec.md`](./writer-cli-spec.md)) does not need an update; the menu item moves slot and gets a new label but its capability is unchanged.
+- The Pensée CLI spec ([`SPECs/pensee-cli-spec.md`](./pensee-cli-spec.md)) does not need an update; the menu item moves slot and gets a new label but its capability is unchanged.
 
 ## Open Questions
 
@@ -148,9 +148,9 @@ Docs:
 
 ## Acceptance Criteria
 
-- The Writer app menu on macOS contains, in order: `About Writer`, separator, `Check for Updates…`, separator, `Preferences…` (`⌘,`), `Install 'writer' Command Line Tool…`, separator, `Services`, …, `Quit Writer`.
+- The Pensée app menu on macOS contains, in order: `About Pensée`, separator, `Check for Updates…`, separator, `Preferences…` (`⌘,`), `Install 'pensee' Command Line Tool…`, separator, `Services`, …, `Quit Pensée`.
 - `Preferences…` opens the existing Settings tab in the focused window. The keyboard shortcut `⌘,` does the same.
-- The CLI item's label is `Install 'writer' Command Line Tool…` when the symlink is missing, and `Uninstall 'writer' Command Line Tool…` when it is installed. Toggling continues to refresh the label correctly.
+- The CLI item's label is `Install 'pensee' Command Line Tool…` when the symlink is missing, and `Uninstall 'pensee' Command Line Tool…` when it is installed. Toggling continues to refresh the label correctly.
 - Clicking the CLI item runs the same install/uninstall flow as today, including the elevation prompt and success/error dialogs.
 - Existing Rust unit tests in `shell_install.rs` continue to pass.
 - No regression: the command-palette `open-settings` entry continues to work.

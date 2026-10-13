@@ -2,7 +2,7 @@
 
 ## Problem
 
-Writer already parses TeX-style math delimiters — `$...$` (inline) and `$$...$$` (display) — into `Math` / `MathMark` / `MathFormula` syntax nodes (`apps/desktop/src/lib/prosemark-core/markdown/mathMarkdown.ts`), but nothing consumes them: formulas show as raw source with no highlighting and no rendering. Obsidian-vault users expect math to render.
+Pensée already parses TeX-style math delimiters — `$...$` (inline) and `$$...$$` (display) — into `Math` / `MathMark` / `MathFormula` syntax nodes (`apps/desktop/src/lib/prosemark-core/markdown/mathMarkdown.ts`), but nothing consumes them: formulas show as raw source with no highlighting and no rendering. Obsidian-vault users expect math to render.
 
 ## Goal
 

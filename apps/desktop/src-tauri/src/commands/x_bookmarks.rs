@@ -463,20 +463,20 @@ fn authorize_url(client_id: &str, state: &str, challenge: &str) -> String {
 fn parse_callback(request_line: &str, expected_state: &str) -> Result<String, String> {
     let target = request_line.split_whitespace().nth(1).unwrap_or("");
     let url = reqwest::Url::parse(&format!("http://127.0.0.1{target}"))
-        .map_err(|_| "X sent back an address Writer couldn't read.".to_string())?;
+        .map_err(|_| "X sent back an address Pensée couldn't read.".to_string())?;
     if url.path() != "/x/callback" {
         return Err("not the callback".into());
     }
     let params: HashMap<String, String> = url.query_pairs().into_owned().collect();
     if let Some(error) = params.get("error") {
         return Err(if error == "access_denied" {
-            "You didn't allow Writer to read your bookmarks.".into()
+            "You didn't allow Pensée to read your bookmarks.".into()
         } else {
             format!("X refused the sign-in ({error}).")
         });
     }
     if params.get("state").map(String::as_str) != Some(expected_state) {
-        return Err("The sign-in didn't come from this Writer window. Try Connect X again.".into());
+        return Err("The sign-in didn't come from this Pensée window. Try Connect X again.".into());
     }
     params
         .get("code")
@@ -578,7 +578,7 @@ fn api_client() -> Result<&'static reqwest::Client, AppError> {
     let client = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(15))
         .read_timeout(Duration::from_secs(60))
-        .user_agent("Writer (X bookmarks)")
+        .user_agent("Pensee (X bookmarks)")
         .build()
         .map_err(|e| AppError::Network(e.to_string()))?;
     Ok(CLIENT.get_or_init(|| client))
@@ -704,7 +704,7 @@ async fn get_json<T: serde::de::DeserializeOwned>(
         }
         429 => {
             return Err(AppError::User(
-                "X asked Writer to slow down. It will try again at the next sync.".into(),
+                "X asked Pensée to slow down. It will try again at the next sync.".into(),
             )
             .into())
         }
@@ -720,7 +720,7 @@ async fn get_json<T: serde::de::DeserializeOwned>(
     serde_json::from_str(&text).map_err(|e| {
         eprintln!("[x-bookmarks] x GET {path}: unexpected response: {e}: {text}");
         GetError::App(AppError::Network(format!(
-            "X sent something Writer couldn't read: {e}"
+            "X sent something Pensée couldn't read: {e}"
         )))
     })
 }
@@ -795,7 +795,7 @@ pub async fn x_connect(app: tauri::AppHandle, client_id: String) -> Result<XAcco
         return Err(AppError::User("Paste your X app's Client ID first.".into()));
     }
     let listener = TcpListener::bind(("127.0.0.1", CALLBACK_PORT)).map_err(|_| {
-        AppError::User("Another Writer window is connecting to X. Finish there first.".into())
+        AppError::User("Another Pensée window is connecting to X. Finish there first.".into())
     })?;
     listener.set_nonblocking(true)?;
     let (verifier, challenge) = pkce_pair();
@@ -870,11 +870,11 @@ fn wait_for_code(listener: TcpListener, state: &str) -> Result<String, AppError>
             continue;
         }
         let message = match &result {
-            Ok(_) => "Writer is connected to X. You can close this tab.".to_string(),
+            Ok(_) => "Pensée is connected to X. You can close this tab.".to_string(),
             Err(msg) => msg.clone(),
         };
         let body = format!(
-            "<!doctype html><meta charset=utf-8><title>Writer</title>\
+            "<!doctype html><meta charset=utf-8><title>Pensée</title>\
              <body style=\"font:16px -apple-system,sans-serif;display:grid;place-items:center;height:90vh\">\
              <p>{message}</p></body>"
         );
@@ -1299,7 +1299,7 @@ mod tests {
                 "GET /x/callback?error=access_denied&state=s1 HTTP/1.1",
                 "s1"
             ),
-            Err("You didn't allow Writer to read your bookmarks.".into())
+            Err("You didn't allow Pensée to read your bookmarks.".into())
         );
         assert_eq!(
             parse_callback("GET /favicon.ico HTTP/1.1", "s1"),

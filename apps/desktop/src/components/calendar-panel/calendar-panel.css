@@ -1,13 +1,13 @@
 /* Calendar panel (Cmd+]). Arc's Calendar and Segmented control draw on
-   Writer's translucent backdrop here, so their surfaces are remapped on the
+   Pensée's translucent backdrop here, so their surfaces are remapped on the
    container instead of in the vendored files (docs/arc.md). The accent fill
-   uses Writer's darker --accent-solid so a white day number stays readable. */
+   uses Pensée's darker --accent-solid so a white day number stays readable. */
 .calendar-panel {
   --accent: var(--accent-solid);
   --accent-strong: color-mix(in srgb, var(--accent-solid) 85%, black);
   --accent-foreground: white;
   --surface-muted: var(--item-hover-bg);
-  /* The current period's text: Writer's own light accent (inherited before the
+  /* The current period's text: Pensée's own light accent (inherited before the
      override above), which reads on the backdrop where --accent-solid is dim. */
   --period-current: var(--link-color);
   /* The week (and quarter) column keeps clear of the grid it labels. */
@@ -26,7 +26,7 @@
 }
 
 /* Today reads in the accent (like the current week, month, quarter, year);
-   the dot under a number means "has a note" (the Writer patch's markedDates),
+   the dot under a number means "has a note" (the Pensée patch's markedDates),
    so Arc's own today dot is turned off. */
 .calendar-panel-calendar [aria-current="date"]:not([aria-selected="true"]) {
   color: var(--period-current);

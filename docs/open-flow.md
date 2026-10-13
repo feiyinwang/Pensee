@@ -1,4 +1,4 @@
-# Writer Open Flows
+# Pensée Open Flows
 
 How files and folders reach the editor from every entry point.
 
@@ -30,12 +30,12 @@ Input path
   └─ otherwise  → None (lenient) / Error (strict CLI)
 ```
 
-## 1. Cold Start (`writer .`, Finder open, dock drop while not running)
+## 1. Cold Start (`pensee .`, Finder open, dock drop while not running)
 
-The `writer` symlink invokes the same binary as the GUI app. `main.rs`
-dispatches on argv\[0\]: basename `writer` → CLI launcher, `Writer` → Tauri app.
+The `pensee` symlink invokes the same binary as the GUI app. `main.rs`
+dispatches on argv\[0\]: basename `pensee` → CLI launcher, `Pensée` → Tauri app.
 
-On macOS the open target is **not** delivered through argv — `open -a Writer
+On macOS the open target is **not** delivered through argv — `open -a Pensée
 /path` (which the CLI launcher, Finder, and dock all use) delivers it via the
 `RunEvent::Opened` system event. That event can fire before `setup()` builds the
 main window or after Tauri has built the still-hidden webview but before React
@@ -159,7 +159,7 @@ main window while `startup_open` is still readable instead of spawning a new one
 
 ## 4. Second Launch (Single-Instance Plugin)
 
-When Writer is already running and the user runs `writer .` again, the OS hands
+When Pensée is already running and the user runs `pensee .` again, the OS hands
 the second process's argv to the existing process via
 `tauri-plugin-single-instance`.
 
@@ -172,7 +172,7 @@ sequenceDiagram
     participant NewWV as New Window
     participant WV as Existing Window
 
-    Shell->>OS: writer ~/docs → open -a Writer ~/docs
+    Shell->>OS: writer ~/docs → open -a Pensée ~/docs
     OS->>Plugin: 2nd process argv intercepted
     Plugin->>Rust: handle_single_instance(argv)
     Rust->>Rust: resolve_path(argv[1])

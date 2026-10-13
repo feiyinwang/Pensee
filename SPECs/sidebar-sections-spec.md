@@ -34,7 +34,7 @@ Redesign the sidebar into three ordered sections: `Pinned`, `Recents`, and `Ever
 - Keep a per-window sorted recent-file cache derived from the index.
 - Invalidate the cache when the index changes or a file's mtime changes.
 - `read_recent_files(limit, offset)` returns a cached slice and extracts titles only for that returned page.
-- Internal Writer saves must update the recent metadata path explicitly because watcher self-write events are suppressed.
+- Internal Pensée saves must update the recent metadata path explicitly because watcher self-write events are suppressed.
 
 ### Pinned
 

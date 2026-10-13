@@ -114,7 +114,7 @@ Before writing any fix:
    - `echo > foo.md` from terminal to a new file → does the sidebar show it?
    - Drop a folder of `.md` files in via Finder → do they all appear?
    - `mv old.md new.md` via terminal → does the rename appear in the sidebar?
-   - Cmd+S a Writer-open file, then within 100 ms type 5 characters → are all 5 retained?
+   - Cmd+S a Pensée-open file, then within 100 ms type 5 characters → are all 5 retained?
    - Cmd+S, wait 3 s, edit externally to the same file → does the external content replace the editor buffer? (regression check for the TTL widening if we widen it)
    - Cmd+S an iCloud-Drive workspace file, observe whether a delayed echo event arrives outside the 2 s window. (If you can't reach an iCloud workspace easily, simulate via a sleep-injected mock save.)
 
@@ -203,7 +203,7 @@ We deliberately do **not** add a `useRevealOnSidebarClick`, `useRevealOnWikiLink
 
 ### File-naming
 
-Per CLAUDE.md memory ([`feedback_kebab_case_filenames.md`](../../../../.claude/projects/-Users-joel-j-projects-writer-computer/memory/feedback_kebab_case_filenames.md)):
+Files use kebab-case names:
 
 - `apps/desktop/src/lib/reveal-in-sidebar.ts`
 

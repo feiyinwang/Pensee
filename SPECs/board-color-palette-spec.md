@@ -11,7 +11,7 @@ fill with its matching outline, never a black outline on nothing. The picker
 lists the same hues in the same order everywhere: neutrals first, then round
 the wheel (red, orange, yellow, green, teal, blue, purple, pink).
 
-We copy the method but use Writer's own colours, the `--wr-board-*` tokens:
+We copy the method but use Pensée's own colours, the `--wr-board-*` tokens:
 
 - **Strong** (outline, line, text): the token itself, e.g. `--wr-board-blue`.
 - **Soft** (fill): `--wr-board-<hue>-soft`, defined as
@@ -73,7 +73,7 @@ outline stays mid-tone, near-black ink becomes near-white, and chroma drops
 20% so saturated colours don't vibrate on a dark background.
 
 Trade-off: an app that can't read relative colours (old browsers, some SVG
-viewers) draws a custom colour as nothing. Writer's WebKit and current
+viewers) draws a custom colour as nothing. Pensée's WebKit and current
 browsers support it.
 
 ## Safety

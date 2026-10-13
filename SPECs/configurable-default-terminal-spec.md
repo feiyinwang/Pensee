@@ -2,20 +2,20 @@
 
 ## Goal
 
-Let users choose which terminal Writer opens from the sidebar's **Open in Terminal** action.
+Let users choose which terminal Pensée opens from the sidebar's **Open in Terminal** action.
 
 ## Behavior
 
 - Preferences includes a **Default Terminal** text setting in the Workspace section.
-- Its exact description is: **Terminal application name on macOS, or executable name/full path on Windows and Linux. Leave blank for Writer's platform default; arguments are not supported.**
+- Its exact description is: **Terminal application name on macOS, or executable name/full path on Windows and Linux. Leave blank for Pensée's platform default; arguments are not supported.**
 - The input placeholder is **Platform default**.
 - The setting persists at global scope through the existing settings pipeline. Like other global settings in the current multi-window architecture, each already-open window uses its independently hydrated value until that window reloads settings; new windows read the latest persisted value.
 - Global writes are serialized process-wide and merge against the latest on-disk config, so a stale already-open window cannot erase preferences written by another window.
 - A manually authored workspace override does not replace this app-level preference.
-- An empty value keeps Writer's current platform behavior:
+- An empty value keeps Pensée's current platform behavior:
   - macOS opens Terminal.app.
   - Windows opens Command Prompt.
-  - Linux tries `$TERMINAL`, then Writer's existing launcher fallback list.
+  - Linux tries `$TERMINAL`, then Pensée's existing launcher fallback list.
 - A non-empty value overrides those defaults:
   - macOS treats it as an application name and passes it as one argument to `open -a`.
   - Windows and Linux treat it as an executable name or executable path and launch it with the workspace as the current directory.

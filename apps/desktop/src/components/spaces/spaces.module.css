@@ -3,8 +3,8 @@
    printed cover would. */
 
 .page {
-  /* Arc tokens Writer doesn't define keep Arc's opaque neutrals (docs/arc.md);
-     on a space page the selected tab takes Writer's selected fill instead. */
+  /* Arc tokens Pensée doesn't define keep Arc's opaque neutrals (docs/arc.md);
+     on a space page the selected tab takes Pensée's selected fill instead. */
   --surface: var(--surface-selected);
   --surface-muted: var(--surface-subtle);
   --border: var(--line-subtler);

@@ -5,7 +5,7 @@
  *  - Any markdown app shows it as an image: the body is the rendered board,
  *    with its colours in its own `<style>` and its pictures inlined, because an
  *    SVG shown through `<img>` can load nothing from outside itself.
- *  - Writer reads the scene back from `<metadata id="writer-board">`, which
+ *  - Pensée reads the scene back from `<metadata id="writer-board">`, which
  *    holds the same JSON Lines `serializeBoard` writes — one element per line,
  *    so moving a shape is still a one-line diff.
  *
@@ -54,7 +54,7 @@ function unescapeXml(text: string): string {
   });
 }
 
-/** `null` when the file carries no Writer scene — a plain SVG someone renamed,
+/** `null` when the file carries no Pensée scene — a plain SVG someone renamed,
  *  or a board an outside editor flattened. The caller says so; it never opens
  *  an empty board over the top of someone's drawing. */
 export function readBoardSvg(text: string): ParseResult | null {
@@ -74,7 +74,7 @@ function escapeXml(text: string): string {
 
 /**
  * Concrete colours for the `--wr-board-*` tokens the renderer emits. Inside
- * Writer those resolve against the theme; in a file opened anywhere else
+ * Pensée those resolve against the theme; in a file opened anywhere else
  * nothing defines them, so the file brings its own, light and dark.
  */
 const SOFT_TOKENS = HUE_TOKENS.map(

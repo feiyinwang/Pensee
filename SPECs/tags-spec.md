@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add lightweight tag support: users can write `#tag` inside markdown documents and Writer will index, render, and let them browse documents by tag.
+Add lightweight tag support: users can write `#tag` inside markdown documents and Pensée will index, render, and let them browse documents by tag.
 
 ## Goals
 

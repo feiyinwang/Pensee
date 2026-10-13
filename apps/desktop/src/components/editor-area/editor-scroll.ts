@@ -1,7 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import { EDITOR_SAFE_SCROLL_MARGIN } from "./editor-scroll-container";
 
-/** The nearest ancestor of `root` that actually scrolls. Writer's `.cm-scroller`
+/** The nearest ancestor of `root` that actually scrolls. Pensée's `.cm-scroller`
  *  is `overflow: visible`; the real scroller is `EditorScrollContainer`. */
 export function findOuterScroller(root: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = root.parentElement;

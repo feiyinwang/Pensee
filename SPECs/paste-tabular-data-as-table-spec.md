@@ -4,7 +4,7 @@ Stage: **ready to build**. The editor already owns every piece this needs (a DOM
 
 ## Summary
 
-Pasting a table copied from a spreadsheet, a Google Doc, Notion, a web page, or a meeting-notes tool lands in Writer as tab-separated lines. Markdown has no idea that is a table, so the user gets one long run of prose per row with invisible tabs between the columns, and has to hand-type `|` and a `| --- |` delimiter row to get the rendered table. This spec makes the paste handler recognise tab-separated text and insert it as a GFM pipe table, which the existing `TableWidget` then renders through the same path a hand-written table takes. Nothing new is rendered. The only new code is a small, pure text-to-markdown converter and the wiring that decides when to run it.
+Pasting a table copied from a spreadsheet, a Google Doc, Notion, a web page, or a meeting-notes tool lands in Pensée as tab-separated lines. Markdown has no idea that is a table, so the user gets one long run of prose per row with invisible tabs between the columns, and has to hand-type `|` and a `| --- |` delimiter row to get the rendered table. This spec makes the paste handler recognise tab-separated text and insert it as a GFM pipe table, which the existing `TableWidget` then renders through the same path a hand-written table takes. Nothing new is rendered. The only new code is a small, pure text-to-markdown converter and the wiring that decides when to run it.
 
 Motivating example (copied from a design-system meeting summary):
 
@@ -18,7 +18,7 @@ Today this pastes as three paragraphs. After this spec it pastes as a four-colum
 
 ## Why
 
-- **Who**: anyone who writes in Writer and collects data elsewhere. The immediate case is the author pasting meeting summaries and comparison tables produced by another tool into a note.
+- **Who**: anyone who writes in Pensée and collects data elsewhere. The immediate case is the author pasting meeting summaries and comparison tables produced by another tool into a note.
 - **Scenario**: copy a table in Sheets, Excel, Numbers, Notion, Google Docs, Confluence, a browser page, or an AI chat, press `Cmd+V` in a note.
 - **Need**: the content should look like a table right away, without a manual reformat step that scales with the number of cells.
 - **Evidence**: the author hits this in daily use. Every listed source puts `text/plain` on the clipboard as tab-separated rows, so one rule covers all of them.

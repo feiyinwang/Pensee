@@ -57,7 +57,7 @@ export interface LibraryLink {
   url: string;
   /** Host without `www.`, as rows show it. */
   host: string;
-  /** The kind the host says, or null for a site Writer doesn't know. */
+  /** The kind the host says, or null for a site Pensée doesn't know. */
   guess: LibraryKind | null;
 }
 

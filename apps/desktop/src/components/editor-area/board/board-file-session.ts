@@ -217,7 +217,7 @@ export async function openBoardFile(
 ): Promise<{ close: () => void }> {
   const file = await tauri.readFile(absolute);
   const parsed = readBoardSvg(file.content);
-  if (!parsed) throw new Error("This SVG has no Writer board inside it.");
+  if (!parsed) throw new Error("This SVG has no Pensée board inside it.");
   lastText.set(absolute, file.content);
   const dir = getParentDir(absolute);
   const highlights = bookLinkSync(parsed.scene, notePath);

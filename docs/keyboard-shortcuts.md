@@ -1,6 +1,6 @@
 # Keyboard Shortcuts
 
-Canonical shortcut reference for Writer.
+Canonical shortcut reference for Pensée.
 
 ## Global
 

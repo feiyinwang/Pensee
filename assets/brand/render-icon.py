@@ -1,4 +1,4 @@
-"""Render Writer's brand mark: SVG sources and the 1024px app-icon PNG.
+"""Render Pensée's brand mark: SVG sources and the 1024px app-icon PNG.
 
 The mark is the Thick–Thin pilcrow (¶) in its "maison" cut: a heavy left stem,
 a light right stem, a top bar, one concave serif in at the top left and one out
@@ -139,10 +139,10 @@ def write_icon_svg():
 
 
 if __name__ == "__main__":
-    write_mark_svg("writer-mark.svg", DISPLAY)
-    write_mark_svg("writer-mark-small.svg", SMALL)
+    write_mark_svg("pensee-mark.svg", DISPLAY)
+    write_mark_svg("pensee-mark-small.svg", SMALL)
     write_icon_svg()
     icon = render_icon(1024)
     icon.save(os.path.join(HERE, "app-icon-1024.png"))
     icon.resize((512, 512), Image.LANCZOS).save(os.path.join(HERE, "favicon-512.png"))
-    print("wrote writer-mark.svg, writer-mark-small.svg, app-icon.svg, app-icon-1024.png, favicon-512.png")
+    print("wrote pensee-mark.svg, pensee-mark-small.svg, app-icon.svg, app-icon-1024.png, favicon-512.png")

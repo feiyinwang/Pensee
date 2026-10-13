@@ -6,11 +6,11 @@
 .page-title {
   display: grid;
   padding-bottom: 8px;
-  font-family: var(--writer-editor-font-family);
-  font-size: calc(var(--writer-editor-font-size) * 2);
+  font-family: var(--pensee-editor-font-family);
+  font-size: calc(var(--pensee-editor-font-size) * 2);
   font-weight: 700;
   line-height: 1.25;
-  letter-spacing: var(--writer-editor-letter-spacing, 0em);
+  letter-spacing: var(--pensee-editor-letter-spacing, 0em);
   color: var(--editor-text-strong);
 }
 

@@ -1,11 +1,11 @@
 # Brand
 
-Writer's logo is a pilcrow (¶), drawn in the high-contrast serif style
+Pensée's logo is a pilcrow (¶), drawn in the high-contrast serif style
 fashion houses use. This doc is the reference for the mark, its colours,
 the wordmark, and how to regenerate the app icon. The sources are in
 [`assets/brand/`](../assets/brand/).
 
-![The mark](../assets/brand/writer-mark.svg)
+![The mark](../assets/brand/pensee-mark.svg)
 
 ## The idea
 
@@ -32,9 +32,9 @@ accent is always kept.
 - **Pattern:** _pensée_ is also the pansy flower, which can be the monogram
   canvas's secondary motif (see Later).
 
-So far the name is only on the local build: `tauri.local.conf.json` and
-`scripts/ship-local.sh` install it as `/Applications/Pensée.app`. The released
-app, the website and the wordmark still say Writer until the product is renamed.
+The app, the website and the CLI (`pensee`) all use the name. The app's
+bundle identifier is `com.pensee.app`; the local build keeps `com.f.writer-mine`
+so its settings carry over.
 
 ## The mark
 
@@ -53,8 +53,8 @@ with identical structure:
 
 | Cut                                                                          | Heavy stem | Slit | Light stem | Bar | Top serif | Bottom serif | Height | Use                                                        |
 | ---------------------------------------------------------------------------- | ---------- | ---- | ---------- | --- | --------- | ------------ | ------ | ---------------------------------------------------------- |
-| **Display** ([`writer-mark.svg`](../assets/brand/writer-mark.svg))           | 21         | 8    | 3          | 3   | 30        | 22           | 76     | Large: website hero, print, packaging, lockups ≥ 48px tall |
-| **Small** ([`writer-mark-small.svg`](../assets/brand/writer-mark-small.svg)) | 21         | 8    | 6          | 5   | 28        | 20           | 76     | App icon, favicon, anything under about 48px               |
+| **Display** ([`pensee-mark.svg`](../assets/brand/pensee-mark.svg))           | 21         | 8    | 3          | 3   | 30        | 22           | 76     | Large: website hero, print, packaging, lockups ≥ 48px tall |
+| **Small** ([`pensee-mark-small.svg`](../assets/brand/pensee-mark-small.svg)) | 21         | 8    | 6          | 5   | 28        | 20           | 76     | App icon, favicon, anything under about 48px               |
 
 Units are relative (the left stem starts at x = 0). The display cut's
 hairlines disappear at small sizes, which is why the small cut exists. Fashion
@@ -75,7 +75,7 @@ the way macOS icons do.
 
 ## Wordmark and lockups
 
-- **Wordmark:** `WRITER` in capitals, high-contrast Didone serif, tracked at
+- **Wordmark:** `PENSÉE` in capitals, high-contrast Didone serif, tracked at
   0.34em. Bodoni Moda (Google Fonts, regular weight, optical size on) is the
   stand-in until a custom wordmark is drawn.
 - **Horizontal lockup:** the mark (display cut) then the wordmark. The mark is
@@ -133,7 +133,7 @@ the SVGs by hand.
   used in the exploration sits too close to Louis Vuitton's monogram flowers.
   Give the canvas its own secondary motif, for example one cut from the ¶'s
   concave serif.
-- **Custom wordmark:** draw `WRITER` to match the mark's contrast and serif
+- **Custom wordmark:** draw `PENSÉE` to match the mark's contrast and serif
   shape instead of using Bodoni Moda.
 - **Trademark search** on the final mark before it goes on anything sold.
 

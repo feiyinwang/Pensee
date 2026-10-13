@@ -12,7 +12,7 @@ People who keep a local-first vault (Obsidian, a docs repo, a personal wiki) and
 
 ### Scenario
 
-I write up an experiment in `notes/latency.md`. The plotting script drops `notes/assets/latency.html` (a Plotly page). Today I type `![[assets/latency.html]]` and Writer shows me a bare link with a stray `!` in front of it. If I paste `<iframe src="assets/latency.html">` the sanitizer deletes the tag and I get an empty gap. Either way I open the file in a browser next to the editor and alt-tab between them.
+I write up an experiment in `notes/latency.md`. The plotting script drops `notes/assets/latency.html` (a Plotly page). Today I type `![[assets/latency.html]]` and Pensée shows me a bare link with a stray `!` in front of it. If I paste `<iframe src="assets/latency.html">` the sanitizer deletes the tag and I get an empty gap. Either way I open the file in a browser next to the editor and alt-tab between them.
 
 ### Need
 

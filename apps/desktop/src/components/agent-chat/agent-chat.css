@@ -20,7 +20,7 @@
     scale var(--motion-base) var(--ease-out);
 }
 
-/* Arc pieces inside the panel (code block, copy button) draw on Writer's
+/* Arc pieces inside the panel (code block, copy button) draw on Pensée's
    translucent surfaces instead of Arc's opaque neutral greys, so they sit in
    the card like the rest of the chat. Scoped here; Arc elsewhere is untouched. */
 .agent-panel {

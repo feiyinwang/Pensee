@@ -13,9 +13,9 @@ A board is an SVG file in the note's `{stem}-assets/` folder. The markdown refer
 ```
 
 - **Other apps** see a normal image: the SVG is the rendered board.
-- **Writer** sees the same image. A **board enhancer** on the image widget adds Edit/Open, which loads the scene from the file and opens the full-screen editor.
+- **Pensée** sees the same image. A **board enhancer** on the image widget adds Edit/Open, which loads the scene from the file and opens the full-screen editor.
 - **The scene** is the existing JSON Lines format (header line plus one element per line), stored as the text of `<metadata id="writer-board">`. Moving one shape is still a one-line git diff.
-- **Colours** are baked into the file's own `<style>`, with light values plus a `prefers-color-scheme: dark` override, so the file renders correctly with no Writer CSS around it.
+- **Colours** are baked into the file's own `<style>`, with light values plus a `prefers-color-scheme: dark` override, so the file renders correctly with no Pensée CSS around it.
 - **Pictures** stay as files in the assets folder. The scene keeps their path relative to the SVG. The rendered layer embeds them as `data:` URLs, because an SVG shown through `<img>` cannot load outside resources. This makes the SVG bigger, but the markdown file stays small.
 - **Load speed:** the in-note preview is just `<img src=…board.svg>`. No JavaScript parses or renders anything until you open the editor.
 - **Migration:** a legacy ` ```board ` fence still previews and opens. Its first edit writes a `.board.svg` and swaps the fence for the image line, in one undoable transaction.
@@ -102,7 +102,7 @@ A selected topic shows blue quick dots (`mindDots`, `growMind` in `board-mind.ts
 
 Any card text (sticky, shape label, text, mind topic, connector label) can hold the editor's `[[Page]]`, `[[Page#Heading]]` or `[[Page|shown text]]` links. Stored as typed, so the `.board.svg` source stays plain markdown.
 
-- **Render**: `parseInline` (`board-render.ts`) turns a link into a run with `ln` (the raw inner text) and shows the alias or page name. It wins over emphasis that starts at or after it, so `[[my_page]]` keeps its underscore; emphasis around it still applies. The tspan carries `data-wiki` plus `fill`/`text-decoration` attributes (not CSS), so the saved file shows links outside Writer too.
+- **Render**: `parseInline` (`board-render.ts`) turns a link into a run with `ln` (the raw inner text) and shows the alias or page name. It wins over emphasis that starts at or after it, so `[[my_page]]` keeps its underscore; emphasis around it still applies. The tspan carries `data-wiki` plus `fill`/`text-decoration` attributes (not CSS), so the saved file shows links outside Pensée too.
 - **Open**: a click on link text (`linkAt` in `board-canvas.ts`) waits `LINK_CLICK_DELAY_MS` for a second click, so a double-click still edits the text; a drag still moves the card. Then `onOpenLink` → the overlay closes (writing the board back) and `followWikiLink` (`wiki-pages-extension.ts`, shared with the editor's click handler) opens the page, creating it when missing.
 - **Type**: `[[` in the card's text field lists matching pages (`board-link-complete.ts`, same `fuzzySearch` and `canonicalWikiTarget` as the editor). Arrows move, Enter/Tab insert `[[Target]]` (eating an auto-typed `]]`), Esc closes the list without leaving the field.
 

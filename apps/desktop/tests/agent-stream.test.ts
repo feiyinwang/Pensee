@@ -98,7 +98,7 @@ describe("buildAgentInstructions", () => {
   test("names the workspace and the per-message context, and asks for short replies", () => {
     const instructions = buildAgentInstructions("/w");
     expect(instructions).toContain("Workspace: /w");
-    expect(instructions).toContain("<writer_context>");
+    expect(instructions).toContain("<pensee_context>");
     expect(instructions).toContain("short, concise and simple");
   });
 });
@@ -109,8 +109,8 @@ describe("buildAgentMessage", () => {
       { openFiles: [{ path: "/w/A.md", text: "hi" }], focusedPath: "/w/A.md" },
       "Define junior",
     );
-    expect(message).toMatch(/^<writer_context>\nThe tab in front of the user is: \/w\/A\.md/);
-    expect(message.endsWith("</writer_context>\n\nDefine junior")).toBe(true);
+    expect(message).toMatch(/^<pensee_context>\nThe tab in front of the user is: \/w\/A\.md/);
+    expect(message.endsWith("</pensee_context>\n\nDefine junior")).toBe(true);
   });
 
   test("says so when nothing is open", () => {
@@ -193,12 +193,12 @@ describe("buildScreenContext period notes", () => {
       openFiles: [{ path: "/vault/2026-W42.md", text: "week plan" }],
       focusedPath: null,
       periodNotes: [
-        { kind: "year", path: "/vault/2026.md", text: "Ship Writer 1.0" },
+        { kind: "year", path: "/vault/2026.md", text: "Ship Pensée 1.0" },
         { kind: "week", path: "/vault/2026-W42.md", text: null },
         { kind: "day", path: "/vault/2026-10-12.md", text: "Calendar panel" },
       ],
     });
-    expect(prompt).toContain('<period_note period="year" path="/vault/2026.md">\nShip Writer 1.0');
+    expect(prompt).toContain('<period_note period="year" path="/vault/2026.md">\nShip Pensée 1.0');
     expect(prompt).toContain(
       '<period_note period="week" path="/vault/2026-W42.md" open_tab="true" />',
     );

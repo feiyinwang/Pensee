@@ -78,10 +78,10 @@
 .video-band-row {
   display: flex;
   gap: 4px;
-  max-width: var(--writer-editor-outer-width);
+  max-width: var(--pensee-editor-outer-width);
   justify-content: flex-end;
   padding-top: 4px;
-  padding-inline: var(--writer-editor-side-padding);
+  padding-inline: var(--pensee-editor-side-padding);
   margin-inline: auto;
   box-sizing: border-box;
 }

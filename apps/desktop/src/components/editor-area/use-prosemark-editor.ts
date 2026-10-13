@@ -185,7 +185,7 @@ export function useProsemarkEditor(
       changes: { from: 0, to: view.state.doc.length, insert: content },
       selection: EditorSelection.cursor(cursorPos),
       annotations: Transaction.addToHistory.of(false),
-      userEvent: pathChanged ? "writer.swap" : "writer.reload",
+      userEvent: pathChanged ? "pensee.swap" : "pensee.reload",
       scrollIntoView: false,
     });
 

@@ -1,6 +1,6 @@
 //! Shared path → open-payload resolution used by both the Tauri runtime
 //! (drag-drop, single-instance argv, RunEvent::Opened) and the standalone
-//! `writer` CLI launcher.
+//! `pensee` CLI launcher.
 //!
 //! The two callers want slightly different error behavior:
 //!

@@ -49,7 +49,7 @@ import { useWorkspaceStore } from "@/stores/workspace-store";
 import "./composer.css";
 
 // The composer card (SPECs/composer-spec.md): Linear's new-issue layout on
-// Writer's card, with Arc controls. Lazy, so Arc and motion load on first use.
+// Pensée's card, with Arc controls. Lazy, so Arc and motion load on first use.
 
 const NO_TYPES: readonly string[] = [];
 
@@ -92,7 +92,7 @@ function useFolders(): string[] {
 
 let motionHolders = 0;
 
-/** Writer's faster motion for Arc while a composer card is mounted; the
+/** Pensée's faster motion for Arc while a composer card is mounted; the
  *  menus and calendar portal to <body>, so the switch lives there. */
 function useComposerMotion(): void {
   useEffect(() => {

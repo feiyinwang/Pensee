@@ -10,7 +10,7 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 
 - A note joins a space by its own frontmatter (`Type: Book`). No database, no index file in the vault.
 - Templates are not entries: a note in the vault's template folder never shows in a space, whatever its `Type`. The folder is Templater's `templates_folder` (`.obsidian/plugins/templater-obsidian/data.json`) and, when that file exists, the core Templates plugin's `folder` (`.obsidian/templates.json`); a folder set to the vault root counts as none. Add project's suggestions and its exact-name match skip them too. Why: a project template says `Type: Project` so the notes made from it do, and it showed on the board, in Done, as a project.
-- A custom space is a markdown note (written by hand; Writer has no button to create one):
+- A custom space is a markdown note (written by hand; Pensée has no button to create one):
 
   ```yaml
   ---
@@ -21,7 +21,7 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
   ```
 
   `Shows` takes one type or a comma list; `View` is `gallery`, `list` or `cards` (default `gallery`). In Obsidian it is an ordinary note.
-- The four built-in spaces are defined in code (`lib/spaces.ts`), so a vault gets them without Writer writing files into it.
+- The four built-in spaces are defined in code (`lib/spaces.ts`), so a vault gets them without Pensée writing files into it.
 
 ## Built-in spaces
 

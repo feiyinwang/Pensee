@@ -183,7 +183,7 @@ const backlinksPlugin = ViewPlugin.fromClass(
     update(update: ViewUpdate) {
       // A swap is a different page: its ids now. A keystroke may add or
       // remove one: look once typing pauses.
-      if (update.transactions.some((tr) => tr.isUserEvent("writer.swap"))) {
+      if (update.transactions.some((tr) => tr.isUserEvent("pensee.swap"))) {
         this.sync();
       } else if (update.docChanged) {
         if (this.timer) clearTimeout(this.timer);

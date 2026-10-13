@@ -1050,7 +1050,7 @@ mod tests {
     #[test]
     fn macos_invalid_terminal_app_surfaces_the_open_helper_failure() {
         let dir = TempDir::new().unwrap();
-        let preference = "Writer Definitely Missing Terminal 8B112EE0";
+        let preference = "Pensée Definitely Missing Terminal 8B112EE0";
         let error = launch_terminal(dir.path(), preference, |command| {
             Ok(command.spawn().map_err(|error| error.to_string()))
         })

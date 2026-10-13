@@ -63,7 +63,7 @@ picker and presentation change, not a settings migration.
 - Associate each input and trigger with the visible setting label. Do not expose
   web-popover state such as `aria-expanded` for the separate native panel.
 - Configure the native panel for family selection only when AppKit's validation
-  hook permits it; Writer does not store point size, face, or effects in these
+  hook permits it; Pensée does not store point size, face, or effects in these
   settings.
 - Remove the custom portal/popover, its installed-font hook, `fontdb`, and the
   obsolete `list_system_fonts` command.

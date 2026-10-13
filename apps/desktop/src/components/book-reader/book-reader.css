@@ -130,7 +130,7 @@
 /* ----------------------------------------------------------------- EPUB */
 
 .book-reader-pages:has(.book-epub-section) {
-  max-width: var(--writer-editor-max-width, 720px);
+  max-width: var(--pensee-editor-max-width, 720px);
   margin: 0 auto;
   padding: 32px 32px 40vh;
   color: var(--color-text-primary);

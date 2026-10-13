@@ -4,7 +4,7 @@
 
 Render `#`/`##`/…/`######` hash markers for ATX headings in the left margin
 **outside** the inner text column, so heading text aligns flush with body
-content. This is the typographic treatment used by Typora, iA Writer, Bear,
+content. This is the typographic treatment used by Typora, iA Pensée, Bear,
 and Notion.
 
 The hash characters remain part of the markdown source — they are visually
@@ -118,7 +118,7 @@ get a split span.
 
 The selection-rect-bleed fix
 (`SPECs/selection-rect-bleeds-past-text-spec.md`) puts a `clip-path: inset
-(0 var(--writer-text-col-inset))` on `.cm-scroller`
+(0 var(--pensee-text-col-inset))` on `.cm-scroller`
 (`prosemark-theme.css:78`). This clips the painted output of the entire
 scroller subtree to the inner text column.
 
@@ -156,7 +156,7 @@ scroller's clip can be removed entirely, and both the original
 selection-bleed bug and the hanging-hash use case are solved.
 
 This is a substantial change — it overlaps with the work the
-`writer-selection-bug` sibling session is doing. Coordination required.
+`pensee-selection-bug` sibling session is doing. Coordination required.
 
 ### B. Render hashes via a sibling overlay outside `.cm-scroller`
 
@@ -180,11 +180,11 @@ text column; heading text starts 3em to the right. Heading text is then
 
 Trivial to implement and ships within the clip without touching selection.
 A reasonable fallback if A and B are deemed too costly, but doesn't match
-the iA Writer / Bear typography.
+the iA Pensée / Bear typography.
 
 ## Recommendation
 
-**Option A**, scoped together with the `writer-selection-bug` work.
+**Option A**, scoped together with the `pensee-selection-bug` work.
 Replacing the clip-path with a manual selection layer that's already
 clamped solves both problems in one structural change. Implementing
 hanging hashes today against the current clip would require Option B (a

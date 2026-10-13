@@ -63,10 +63,10 @@ export const EditorPane = memo(function EditorPane({
         <div
           className={`mx-auto w-full pb-6 ${inColumn ? "pt-10" : "pt-20 md:pt-24"}`}
           style={{
-            maxWidth: "var(--writer-editor-outer-width)",
+            maxWidth: "var(--pensee-editor-outer-width)",
             boxSizing: "border-box",
-            paddingLeft: "var(--writer-editor-side-padding)",
-            paddingRight: "var(--writer-editor-side-padding)",
+            paddingLeft: "var(--pensee-editor-side-padding)",
+            paddingRight: "var(--pensee-editor-side-padding)",
           }}
         >
           <PageTitle key={path} path={path} view={editorView} />

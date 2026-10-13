@@ -21,9 +21,9 @@ control instead of choosing between the two fixed `full` / `narrow` modes.
 ## Implementation
 
 - `shared/settings.schema.json`: replace the `appearance.editor-width` enum
-  with `editor.content-width` (`range`, `cssVar: --writer-editor-max-width`,
+  with `editor.content-width` (`range`, `cssVar: --pensee-editor-max-width`,
   `cssFormat: px`). The generic `applyCssVarBindings` pushes it to `:root`,
-  where `--writer-editor-outer-width` and `--writer-text-col-inset` already
+  where `--pensee-editor-outer-width` and `--pensee-text-col-inset` already
   derive from it.
 - Remove `use-editor-settings.ts` and the wrapper `<div>` in `editor-pane.tsx`
   that overrode the var on the editor subtree only.

@@ -73,7 +73,7 @@ pub fn save_clipboard_image_impl(
         "bmp" => "bmp",
         "svg" => "svg",
         // A board is an SVG whose scene rides along as metadata; the double
-        // extension is how Writer tells it apart from a plain picture.
+        // extension is how Pensée tells it apart from a plain picture.
         "board.svg" => "board.svg",
         "heic" => "heic",
         "heif" => "heif",

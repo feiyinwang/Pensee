@@ -23,16 +23,16 @@ export interface CalendarProps {
   className?: string;
   /** Adds a Today button that slides back to the current month and selects today when it is available. */
   showToday?: boolean;
-  /** Writer patch: 1 starts weeks on Monday. */
+  /** Pensée patch: 1 starts weeks on Monday. */
   weekStartsOn?: 0 | 1;
-  /** Writer patch: a leading column with one label per week row, given the row's first day. */
+  /** Pensée patch: a leading column with one label per week row, given the row's first day. */
   weekLabel?: (weekStart: Date) => ReactNode;
-  /** Writer patch: days that get a small dot under their number. */
+  /** Pensée patch: days that get a small dot under their number. */
   markedDates?: CalendarDateMatcher;
 }
 
-/** Writer patch: ease-out, 0.16s, for the selection glide (Writer's --ease-out and --motion-base). */
-const WRITER_GLIDE = { duration: 0.16, ease: [0.16, 1, 0.3, 1] as const };
+/** Pensée patch: ease-out, 0.16s, for the selection glide (Pensée's --ease-out and --motion-base). */
+const PENSEE_GLIDE = { duration: 0.16, ease: [0.16, 1, 0.3, 1] as const };
 const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const monthStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const sameDay = (a?: Date, b?: Date) => Boolean(a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate());
@@ -45,7 +45,7 @@ const isBefore = (a: Date, b?: Date) => Boolean(b && startOfDay(a).getTime() < s
 const isAfter = (a: Date, b?: Date) => Boolean(b && startOfDay(a).getTime() > startOfDay(b).getTime());
 const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 /** Every month shows six weeks, so the grid keeps one height and never jumps while months change. */
-// Writer patch: weekStartsOn shifts the first column.
+// Pensée patch: weekStartsOn shifts the first column.
 const weekColumn = (date: Date, weekStartsOn: number) => (date.getDay() - weekStartsOn + 7) % 7;
 const makeWeeks = (month: Date, weekStartsOn = 0) => {
   const start = addDays(month, -weekColumn(month, weekStartsOn));
@@ -97,8 +97,8 @@ function SelectionDisc({ cell, reduced }: { cell: number; reduced: boolean }) {
     const nextCol = cell % 7, nextRow = Math.floor(cell / 7);
     const controls: AnimationPlaybackControls[] = [];
     if (hidden.current || reduced) { col.jump(nextCol); row.jump(nextRow); }
-    // Writer patch: the selection glides on ease-out in 0.16s (docs/motion.md), not spring.morph's 0.42s bounce.
-    else controls.push(animate(col, nextCol, WRITER_GLIDE), animate(row, nextRow, WRITER_GLIDE));
+    // Pensée patch: the selection glides on ease-out in 0.16s (docs/motion.md), not spring.morph's 0.42s bounce.
+    else controls.push(animate(col, nextCol, PENSEE_GLIDE), animate(row, nextRow, PENSEE_GLIDE));
     hidden.current = false;
     controls.push(animate(opacity, 1, reduced ? { duration: 0 } : { duration: duration.fast, ease: ease.enter }), animate(scale, 1, reduced ? { duration: 0 } : spring.snappy));
     return () => controls.forEach((control) => control.stop());
@@ -270,7 +270,7 @@ export function Calendar({
     return index >= 0 && index < 42 ? index : -1;
   };
 
-  // Writer patch: with weekLabel, each pane carries its own label column, so the labels slide with their weeks.
+  // Pensée patch: with weekLabel, each pane carries its own label column, so the labels slide with their weeks.
   const renderMonth = (paneMonth: Date, present: boolean) => weekLabel ? <div className={styles.labelled}>
     <div className={styles.weekLabels}>{makeWeeks(paneMonth, weekStartsOn).map((week) => <div key={dateKey(week[0]!)} className={styles.weekLabel} inert={!present}>{weekLabel(week[0]!)}</div>)}</div>
     <div className={styles.labelledMonth}>{renderDays(paneMonth, present)}</div>
@@ -323,7 +323,7 @@ export function Calendar({
           <button type="button" className={styles.navButton} aria-label="Next month" aria-disabled={nextDisabled || undefined} onClick={() => { if (!nextDisabled && nextMonth) changeMonth(nextMonth); }}><ChevronRight size={16} strokeWidth={1.75} aria-hidden="true" /></button>
         </div>
       </div>
-      {/* Writer patch: with weekLabel, the weekday row and each month sit beside a label column whose six rows stretch to the grid's. */}
+      {/* Pensée patch: with weekLabel, the weekday row and each month sit beside a label column whose six rows stretch to the grid's. */}
       <div className={cx(weekLabel && styles.labelled)}>
       {weekLabel && <span aria-hidden="true" />}
       <div className={styles.weekdays} aria-hidden="true">{weekdays.map((day, index) => <span key={`${day}-${index}`}>{day.slice(0, 2)}</span>)}</div>

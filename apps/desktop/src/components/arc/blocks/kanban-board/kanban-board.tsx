@@ -34,15 +34,15 @@ export interface KanbanBoardProps {
   currentUser?: string;
   title?: string;
   className?: string;
-  /** Writer patch: when set, clicking a card (or Enter on it) calls this instead of opening the details drawer. */
+  /** Pensée patch: when set, clicking a card (or Enter on it) calls this instead of opening the details drawer. */
   onCardOpen?: (card: KanbanCard, event: { metaKey: boolean; ctrlKey: boolean }) => void;
-  /** Writer patch: false hides the title, count and Status/Swimlanes switch, for a page that has its own header. */
+  /** Pensée patch: false hides the title, count and Status/Swimlanes switch, for a page that has its own header. */
   toolbar?: boolean;
-  /** Writer patch: false hides the id on each card. */
+  /** Pensée patch: false hides the id on each card. */
   showIds?: boolean;
-  /** Writer patch: what one card is called, for "Add card", "Card title" and the add buttons' labels. */
+  /** Pensée patch: what one card is called, for "Add card", "Card title" and the add buttons' labels. */
   noun?: string;
-  /** Writer patch: renders the add field for a column in place of the block's own textarea; `close` hides it. */
+  /** Pensée patch: renders the add field for a column in place of the block's own textarea; `close` hides it. */
   composer?: (column: string, close: () => void) => ReactNode;
 }
 
@@ -73,7 +73,7 @@ function Face({ person, size = 22 }: { person?: KanbanPerson; size?: number }) {
   if (!person) return null;
   const initials = person.name.split(" ").map(part => part[0]).join("").slice(0, 2);
   return <span className={styles.face} style={{ width: size, height: size }} title={person.name}>
-    {/* Writer patch: a plain img, Writer is not a Next app. */}
+    {/* Pensée patch: a plain img, Pensée is not a Next app. */}
     {person.avatar ? <img src={person.avatar} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : <span aria-hidden="true">{initials}</span>}
   </span>;
 }
@@ -83,10 +83,10 @@ const CardView = memo(function CardView({ card, person, lifted, showIds = true }
   const done = card.checklist?.filter(item => item.done).length ?? 0;
   const total = card.checklist?.length ?? 0;
   return <div className={styles.cardInner} data-lifted={lifted || undefined}>
-    {/* Writer patch: showIds hides the id row when ids are not meaningful (they are note paths). */}
+    {/* Pensée patch: showIds hides the id row when ids are not meaningful (they are note paths). */}
     {showIds || card.label ? <div className={styles.cardTop}>{showIds ? <span className={styles.cardId}>{card.id}</span> : null}{card.label ? <span className={styles.label} data-label={card.label}>{card.label}</span> : null}</div> : null}
     <p className={styles.cardTitle}>{card.title}</p>
-    {/* Writer patch: no meta row when there is nothing to show in it. */}
+    {/* Pensée patch: no meta row when there is nothing to show in it. */}
     {card.meta || card.due || total || card.points || person ? <div className={styles.cardMeta}>
       {card.meta}
       {card.due ? <span className={styles.metaItem}><CalendarDays size={13} aria-hidden="true" />{card.due}</span> : null}
@@ -111,7 +111,7 @@ export function KanbanBoard({
   toolbar = true,
   showIds = true,
   noun = "card",
-  composer: renderComposer, // Writer patch: Projects renders its own add field
+  composer: renderComposer, // Pensée patch: Projects renders its own add field
 }: KanbanBoardProps) {
   const uid = useId();
   const reduced = useReducedMotion() ?? false;

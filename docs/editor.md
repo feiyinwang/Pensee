@@ -32,14 +32,14 @@ CodeMirror's built-in scroll APIs assume the editor owns its scroll container (`
 
 These are correct when `view.scrollDOM` is the actual scrolling element.
 
-In Writer's editor, `.cm-scroller` has `overflow: visible !important` (see `prosemark-theme.css`) and the surrounding `EditorScrollContainer` is the real scroller. CodeMirror's default scroll walks up to scroll ancestors generically, but `scrollMargins` only applies to `view.scrollDOM`'s computation — so the match can still land under the outer container's fade.
+In Pensée's editor, `.cm-scroller` has `overflow: visible !important` (see `prosemark-theme.css`) and the surrounding `EditorScrollContainer` is the real scroller. CodeMirror's default scroll walks up to scroll ancestors generically, but `scrollMargins` only applies to `view.scrollDOM`'s computation — so the match can still land under the outer container's fade.
 
 When the scrollable element is an ancestor:
 
 - Use `EditorView.scrollHandler.of(...)` to take over scrolling.
 - Find the ancestor scroller by walking `view.dom.parentElement` for the first element with `overflowY: auto | scroll`.
 - Scroll it yourself with `scroller.scrollTo({ top, behavior: "auto" })`. `behavior: "smooth"` is async and gets interrupted by rapid keystrokes (e.g. Cmd+G held down).
-- Account for `clientTop` if the ancestor has a border (Writer's container has a 12px transparent border-top to give the mask gradient room).
+- Account for `clientTop` if the ancestor has a border (Pensée's container has a 12px transparent border-top to give the mask gradient room).
 
 Reference: `EditorView.scrollHandler.of((view, range) => …)` in `apps/desktop/src/components/editor-area/use-prosemark-editor.ts`.
 
@@ -135,7 +135,7 @@ view.dispatch({
 
 `scrollSnapshot` captures the viewport-top doc anchor and its screen offset; CM applies the resulting `StateEffect` after the heightmap rebuild and re-scrolls so the same anchor lands at the same screen Y. Don't roll your own `coordsAtPos`-delta scroll math — it depends on layout being flushed and is brittle.
 
-**Caveat: `scrollSnapshot` only affects `view.scrollDOM`, not ancestor scrollers** (per CM's own doc comment; both capture and apply use `scrollDOM.scrollTop`). In Writer, `.cm-scroller` doesn't scroll — the outer `EditorScrollContainer` does — so the snapshot is close to a no-op here. What actually keeps the viewport stable across height changes is CM's measure-loop scroll anchoring, which does adjust the discovered ancestor scroller — but only while the editor has focus or a wheel/touch event happened in the last 100ms. Corollary: widgets whose DOM changes height after insertion (async image decode, deferred renders) must keep `estimatedHeight` truthful and call `view.requestMeasure()` when their height settles, so the anchoring runs while the user is still interacting. `fold/image.ts` does this with a module-level measured-height cache keyed by image URL, reserving the cached height on the `<img>` until it (re)loads.
+**Caveat: `scrollSnapshot` only affects `view.scrollDOM`, not ancestor scrollers** (per CM's own doc comment; both capture and apply use `scrollDOM.scrollTop`). In Pensée, `.cm-scroller` doesn't scroll — the outer `EditorScrollContainer` does — so the snapshot is close to a no-op here. What actually keeps the viewport stable across height changes is CM's measure-loop scroll anchoring, which does adjust the discovered ancestor scroller — but only while the editor has focus or a wheel/touch event happened in the last 100ms. Corollary: widgets whose DOM changes height after insertion (async image decode, deferred renders) must keep `estimatedHeight` truthful and call `view.requestMeasure()` when their height settles, so the anchoring runs while the user is still interacting. `fold/image.ts` does this with a module-level measured-height cache keyed by image URL, reserving the cached height on the `<img>` until it (re)loads.
 
 ## Tree-derived StateFields go stale in unparsed regions
 
@@ -183,7 +183,7 @@ Do not add `iframe` to the inline-HTML sanitizer allow list (`html-block-decorat
 `![[Page#^id]]` (`block-embed.ts`) holds a nested `EditorView` with just that block. Everything that reads or writes the page goes through `linked-block-sync.ts`, never straight to `write_file`:
 
 - **Writes** go to the page's live main editor when one shows it, as a minimal change carrying the `linkedBlockSync` annotation. That edit then saves, undoes and reaches the store exactly like typing there. Otherwise they go to the store (open but not shown), and only when the page isn't open at all to `write_file`, debounced.
-- **Live editors are registered on the `writer.swap` transaction**, not on the path getter. The getter flips before the doc is swapped, and a write landing in between would go into the wrong page.
+- **Live editors are registered on the `pensee.swap` transaction**, not on the path getter. The getter flips before the doc is swapped, and a write landing in between would go into the wrong page.
 - **Incoming changes are applied in a microtask.** The change may be this embed's own write echoing back, inside its own update, and a view can't be dispatched to mid-update.
 - **A transaction filter refuses edits that would split the block** (`findBlock` must still start at 0). Otherwise text silently leaves the embed while staying in the page.
 - **Backlink counts merge two sources** (`block-backlinks.ts`): the Rust scan for pages on disk, and an in-memory scan of open pages that replaces their disk copy. Re-ask disk whenever an open page closes: the app's own saves raise no watcher event, so the disk copy may be newer than the last scan.
@@ -195,7 +195,7 @@ Do not add `iframe` to the inline-HTML sanitizer allow list (`html-block-decorat
 - `fold/image.ts` — canonical conditional replace ↔ widget, plus the measured-height cache for async-loading content.
 - `table-decorations.ts` — canonical conditional replace ↔ source-line styling. Cells edit in place (`lib/table-cell-edit.ts`); the widget owns pointer events, and source mode is reached by the corner toggle's range selection or keyboard entry.
 - `prosemark-core/links.ts` — `linkUrlAt` / `rawUrlAt`, the one place that resolves a link destination from a document position.
-- `prosemark-core/imageSrc.ts` — `imageSrcResolverFacet` / `resolveImageSrc`; widgets resolve `<img src>` in `toDOM` (Writer provides the facet from `image-src-resolver.ts`), so no DOM observer rewrites images after insertion.
+- `prosemark-core/imageSrc.ts` — `imageSrcResolverFacet` / `resolveImageSrc`; widgets resolve `<img src>` in `toDOM` (Pensée provides the facet from `image-src-resolver.ts`), so no DOM observer rewrites images after insertion.
 - `editor-scroll.ts` — `findOuterScroller` / `scrollPosToSafeTop`, the one place that scrolls the ancestor container to a document position.
 - `editor-extensions.ts` — `createEditorExtensions`, the one place the extension list is assembled. Pieces: `editor-search-extensions.ts` (hidden search panel, `EditorView.scrollHandler` for the ancestor-scroller case, Mod-f / Mod-g / Escape), `link-navigation.ts` (click-to-follow, `followLink`), `editor-clipboard.ts` (image + frontmatter paste), `editor-body-menu.ts` (right-click menu), `viewport-parse.ts`. `use-prosemark-editor.ts` only mounts, swaps, and disposes the view.
 - `html-embed-widget.ts` — inline-replace widget from a ViewPlugin (no block decorations allowed there), sandboxed iframe, `updateDOM` keeping the frame across a height rewrite, `fs:file-changed` reload registry.

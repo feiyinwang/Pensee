@@ -7,8 +7,8 @@ Markdown links/images and existing wiki-style link resolution should work when s
 ## Goals
 
 - Parse standard Markdown links and images with local destinations that contain literal spaces.
-- Resolve angle-bracket destinations like `<Writer TODOs.md>` to the same local path as `Writer TODOs.md`.
-- Continue decoding percent-encoded local paths such as `Writer%20TODOs.md`.
+- Resolve angle-bracket destinations like `<Project TODOs.md>` to the same local path as `Project TODOs.md`.
+- Continue decoding percent-encoded local paths such as `Pensée%20TODOs.md`.
 - Preserve spaces in wiki-link targets and aliases.
 - Generate valid pasted-image Markdown when the destination path contains spaces.
 
@@ -27,8 +27,8 @@ Markdown links/images and existing wiki-style link resolution should work when s
 
 ## Acceptance Criteria
 
-- `[Todo](Writer TODOs.md)` opens `Writer TODOs.md`.
-- `![image.png](Writer TODOs-assets/20260525-041412-e520.png)` renders the image.
-- `[Todo](<Writer TODOs.md>)` and `[Todo](Writer%20TODOs.md)` resolve to the same file.
+- `[Todo](Project TODOs.md)` opens `Project TODOs.md`.
+- `![image.png](Project TODOs-assets/20260525-041412-e520.png)` renders the image.
+- `[Todo](<Project TODOs.md>)` and `[Todo](Pensée%20TODOs.md)` resolve to the same file.
 - `[[Folder With Spaces/My Note|Label With Spaces]]` resolves and displays correctly.
 - Pasting an image into a note whose generated asset directory has spaces inserts a valid Markdown image destination.

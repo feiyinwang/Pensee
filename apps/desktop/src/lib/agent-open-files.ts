@@ -37,7 +37,7 @@ async function boardSceneText(raw: string): Promise<string> {
     import("@/components/editor-area/board/board-model"),
   ]);
   const parsed = readBoardSvg(raw);
-  return parsed ? serializeBoard(parsed.scene) : "[board with no Writer scene]";
+  return parsed ? serializeBoard(parsed.scene) : "[board with no Pensée scene]";
 }
 
 interface LoadedFile {

@@ -188,16 +188,16 @@
   --chrome-control-height: 32px;
   --chrome-control-padding: 12px;
   --chrome-drag-height: 72px;
-  --writer-editor-max-width: 734px;
-  --writer-editor-side-padding: clamp(1.5rem, 4vw, 4rem);
-  --writer-editor-outer-width: calc(
-    var(--writer-editor-max-width) + var(--writer-editor-side-padding) +
-      var(--writer-editor-side-padding)
+  --pensee-editor-max-width: 734px;
+  --pensee-editor-side-padding: clamp(1.5rem, 4vw, 4rem);
+  --pensee-editor-outer-width: calc(
+    var(--pensee-editor-max-width) + var(--pensee-editor-side-padding) +
+      var(--pensee-editor-side-padding)
   );
-  --writer-editor-font-family: var(--editor-font);
-  --writer-editor-font-size: 16px;
-  --writer-editor-line-height: 1.8;
-  --writer-editor-letter-spacing: 0em;
+  --pensee-editor-font-family: var(--editor-font);
+  --pensee-editor-font-size: 16px;
+  --pensee-editor-line-height: 1.8;
+  --pensee-editor-letter-spacing: 0em;
 
   font-family: var(--ui-font);
   line-height: 1.5;

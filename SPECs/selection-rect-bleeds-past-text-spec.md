@@ -40,15 +40,15 @@ Two interacting facts produce the giant rectangle:
 ### 1. Page side-padding is on `.cm-content`, not `.cm-line`
 
 `apps/desktop/src/components/editor-area/prosemark-theme.css:60-66` puts the
-4rem (`--writer-editor-side-padding`) horizontal page padding on
+4rem (`--pensee-editor-side-padding`) horizontal page padding on
 `.cm-content`:
 
 ```css
 .cm-editor .cm-content {
   …
-  max-width: var(--writer-editor-outer-width, calc(734px + 4rem + 4rem));
+  max-width: var(--pensee-editor-outer-width, calc(734px + 4rem + 4rem));
   margin: 0 auto;
-  padding: 0 var(--writer-editor-side-padding, 4rem) 100px;
+  padding: 0 var(--pensee-editor-side-padding, 4rem) 100px;
   …
 }
 ```
@@ -153,17 +153,17 @@ the scroller**:
 
 - Restore the original `.cm-content { padding: 0 var(--side-padding) 100px }`
   so list-item bullets remain in the text column visually (the original
-  Writer aesthetic — softIndent's relative offsets compose with the
+  Pensée aesthetic — softIndent's relative offsets compose with the
   cm-content inset and bullets land at `cm-content content-left + 6px`).
 - Add `clip-path: inset(0 X)` on `.cm-scroller` where `X` is the
   computed text-column inset:
   ```
   X = max(
-    var(--writer-editor-side-padding),
-    (100% - var(--writer-editor-outer-width)) / 2 + var(--writer-editor-side-padding)
+    var(--pensee-editor-side-padding),
+    (100% - var(--pensee-editor-outer-width)) / 2 + var(--pensee-editor-side-padding)
   )
   ```
-  When the editor pane is wider than `--writer-editor-outer-width`,
+  When the editor pane is wider than `--pensee-editor-outer-width`,
   `cm-content` is centered inside the pane, so the text column starts at
   `(pane − outer)/2 + side-padding` from the scroller's left edge. When
   the pane is narrower, `cm-content` fills the pane and the text column
@@ -227,14 +227,14 @@ text-indent: -indentWidth;`, a bullet renders at
   pane-wider-than-outer and pane-narrower-than-outer cases are covered by
   the `max(…)`.
 - **Scroll position.** cm-scroller's height is the full document height
-  (Writer's `overflow: visible !important` shifts scroll to the parent
+  (Pensée's `overflow: visible !important` shifts scroll to the parent
   `EditorScrollContainer`). The clip-path's vertical extent is `0 0`
   (full height), so selection at any document position is fully visible
   vertically.
 - **Mermaid edit mode.** Source lines inside an edit-mode fence render as
   ordinary `.cm-line`s — selection clipping behaves exactly like for any
   other text line.
-- **RTL text.** Writer is LTR-only. The clip is symmetric (same inset on
+- **RTL text.** Pensée is LTR-only. The clip is symmetric (same inset on
   left and right), so it works for any text direction without
   modification.
 - **Browser support.** `clip-path: inset()` and the `max()` /

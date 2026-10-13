@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 //
 // Needs a restorable workspace (seed recent_workspaces.json); self-skips on
 // the welcome screen.
-const SHOTS = resolve(process.env.ZOOM_SHOT_DIR ?? "/tmp", "writer-zoom-shots");
+const SHOTS = resolve(process.env.ZOOM_SHOT_DIR ?? "/tmp", "pensee-zoom-shots");
 
 async function invoke(cmd, args) {
   const result = await browser.executeAsync(

@@ -74,7 +74,7 @@ describe("default terminal setting", () => {
     expect(definition).toMatchObject({
       label: "Default Terminal",
       description:
-        "Terminal application name on macOS, or executable name/full path on Windows and Linux. Leave blank for Writer's platform default; arguments are not supported.",
+        "Terminal application name on macOS, or executable name/full path on Windows and Linux. Leave blank for Pensée's platform default; arguments are not supported.",
       category: "Workspace",
       type: "string",
       placeholder: "Platform default",

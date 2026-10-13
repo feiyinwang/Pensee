@@ -27,7 +27,7 @@ export { prosemarkMarkdownSyntaxExtensions } from "./markdown";
 
 // What the host is expected to add on top: `history()` (in its own
 // compartment so it can be reset per document), link click handling, search
-// (Writer runs its own overlay; the panel-based `searchKeymap` is not used),
+// (Pensée runs its own overlay; the panel-based `searchKeymap` is not used),
 // autocompletion sources, and the markdown formatting keymap. Code-editor
 // defaults that make no sense for prose (fold gutter, bracket matching,
 // indent-on-input, lint) are deliberately absent.

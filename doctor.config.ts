@@ -1,6 +1,6 @@
 // React Doctor configuration — https://react.doctor/docs/configuration/config-files
 //
-// Writer is a local-first Tauri v2 desktop app (the whole frontend ships in one
+// Pensée is a local-first Tauri v2 desktop app (the whole frontend ships in one
 // bundle and talks to a Rust backend over local IPC). A few React Doctor rules
 // assume a web/SSR + network context and systematically misfire on that
 // architecture, so they are turned off here. Everything else stays on; genuine

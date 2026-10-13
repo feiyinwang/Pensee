@@ -12,7 +12,7 @@ Known limitations:
 
 ## Summary
 
-Allow Writer to open multiple workspace windows at once. Today the app is single-window; opening a second workspace replaces the current one.
+Allow Pensée to open multiple workspace windows at once. Today the app is single-window; opening a second workspace replaces the current one.
 
 ## Goals
 
@@ -41,7 +41,7 @@ Decisions for v1:
 ## UX Decisions
 
 - New windows default to the welcome screen unless they were restored from session.
-- The macOS `Window` menu lists open Writer windows.
+- The macOS `Window` menu lists open Pensée windows.
 - The Dock badge / app icon does not change.
 - Each window has its own command palette, sidebar, and tab strip.
 
@@ -63,7 +63,7 @@ Decisions for v1:
 
 ## Acceptance Criteria
 
-- The user can open multiple Writer windows simultaneously, each with its own workspace and tabs.
+- The user can open multiple Pensée windows simultaneously, each with its own workspace and tabs.
 - Closing one window does not impact others.
 - Quitting and relaunching restores all previously open windows.
 - Conflicting edits between windows are detected and surfaced rather than silently lost.

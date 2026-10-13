@@ -24,7 +24,7 @@ Tokens (access, refresh, expiry, user id, username) are kept in the macOS Keycha
 
 ## Sync
 
-While connected, Writer syncs on launch, every 15 minutes while it is open, and on **Sync now**. One sync runs at a time.
+While connected, Pensée syncs on launch, every 15 minutes while it is open, and on **Sync now**. One sync runs at a time.
 
 1. `GET /2/users/{me}/bookmarks`, newest first, 20 per page, with the author, media and referenced posts expanded. Paging stops at the first post already known, or after 800 (the most X returns).
 2. "Known" means a note in the vault has its `ID`, or it was saved before (a list of saved IDs in the app's own settings), so deleting a bookmark note does not bring it back on the next sync.
@@ -87,7 +87,7 @@ A **Bookmarks** tab after Papers shows `Type: Tweet`, cover kind `tweet` (4:5), 
 
 The tab's top line (the same bar as "Get covers") says "Synced with X <time>" with **Sync now**, "Saving bookmarks · 38 of 214" while syncing, the last error when a sync failed, or "Not connected to X" with **Connect X**. The empty tab says "Bring in your X bookmarks" with **Connect X**, which signs in straight away when a Client ID is set and opens Settings otherwise.
 
-Not built yet: the "new since your last visit" dot from the mock. It needs a record of which bookmarks were seen, and Writer keeps none.
+Not built yet: the "new since your last visit" dot from the mock. It needs a record of which bookmarks were seen, and Pensée keeps none.
 
 ## Reading
 
@@ -112,8 +112,8 @@ Verified in the running app by `e2e/specs/tweet-thread.spec.js`.
 | Syncing | "Saving bookmarks · 38 of 214"; cards appear as each finishes |
 | Sign-in expired or revoked | "Not synced since <date>" and **Reconnect X**; saved notes stay |
 | Post deleted on X | Nothing changes; the note keeps what was saved |
-| Removed from X bookmarks | Nothing changes; Writer never deletes a note |
-| Callback port busy | "Another Writer window is connecting to X. Finish there first." |
+| Removed from X bookmarks | Nothing changes; Pensée never deletes a note |
+| Callback port busy | "Another Pensée window is connecting to X. Finish there first." |
 
 ## Build order
 

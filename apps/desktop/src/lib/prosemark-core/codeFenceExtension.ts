@@ -10,7 +10,7 @@ import { treeChanged } from "./utils";
 const fallbackMonospaceCodeFont =
   "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 const codeFontFamily = `var(--pm-code-font, ${fallbackMonospaceCodeFont})`;
-const editorFontSize = "var(--writer-editor-font-size, 16px)";
+const editorFontSize = "var(--pensee-editor-font-size, 16px)";
 
 const codeBlockDecorations = (view: EditorView) => {
   const builder = new RangeSetBuilder<Decoration>();

@@ -80,7 +80,7 @@
 .wr-board-card-wrap,
 .wr-board-image {
   /* Computed here, not on :root: tab columns set their own side padding. */
-  --wr-board-rail-clearance: max(0px, calc(50px - var(--writer-editor-side-padding, 4rem)));
+  --wr-board-rail-clearance: max(0px, calc(50px - var(--pensee-editor-side-padding, 4rem)));
 }
 
 .wr-board-card-wrap {

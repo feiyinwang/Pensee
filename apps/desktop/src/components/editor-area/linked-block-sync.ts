@@ -37,7 +37,7 @@ export const blockEmbedHost = Facet.define<() => string, (() => string) | null>(
 
 /* ---------------------------------------------------------- live editors */
 
-// Main editors by the file they show. Registered from the `writer.swap` that
+// Main editors by the file they show. Registered from the `pensee.swap` that
 // loads a file, not from the path getter: the getter flips before the doc is
 // swapped, and a write landing in between would go into the wrong page.
 const liveViews = new Map<string, Set<EditorView>>();
@@ -69,7 +69,7 @@ export function liveEditorRegistry(getFilePath: () => string): Extension {
         if (this.path) register(this.path, view);
       }
       update(update: ViewUpdate) {
-        if (!update.transactions.some((tr) => tr.isUserEvent("writer.swap"))) return;
+        if (!update.transactions.some((tr) => tr.isUserEvent("pensee.swap"))) return;
         const next = getFilePath();
         if (next === this.path) return;
         if (this.path) unregister(this.path, this.view);

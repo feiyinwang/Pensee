@@ -2,7 +2,7 @@
 
 ## Goal
 
-A Linear-style chat panel in the bottom-right corner of a workspace window that runs the user's own Claude Code. It can read every open tab, edit files in the workspace, and answer questions. The user never types `claude`; opening the panel is the terminal, already running Claude, with only Claude's replies shown, in Writer's style.
+A Linear-style chat panel in the bottom-right corner of a workspace window that runs the user's own Claude Code. It can read every open tab, edit files in the workspace, and answer questions. The user never types `claude`; opening the panel is the terminal, already running Claude, with only Claude's replies shown, in Pensée's style.
 
 ## Behavior
 
@@ -32,7 +32,7 @@ A Linear-style chat panel in the bottom-right corner of a workspace window that 
 
 ### Context (hidden from the user)
 
-The fixed instructions (workspace root, how to work, reply style) are the process's `--append-system-prompt`. What's on screen changes per message, so each message starts with a `<writer_context>` block rebuilt at send time, followed by what the user typed; the instructions say the latest block replaces earlier ones. The block holds:
+The fixed instructions (workspace root, how to work, reply style) are the process's `--append-system-prompt`. What's on screen changes per message, so each message starts with a `<pensee_context>` block rebuilt at send time, followed by what the user typed; the instructions say the latest block replaces earlier ones. The block holds:
 
 - The workspace root.
 - What the user is looking at, not whole files, since every token is read before the first word of a reply:
@@ -70,9 +70,9 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 
 - `src-tauri/src/commands/agent.rs` — binary resolution, the per-window process (warm, send over stdin, cancel, reset), line forwarding. Processes are keyed by window label in managed state.
 - `src/lib/agent-stream.ts` — stream-json line → chat events (text delta, tool call, result, session id). Pure.
-- `src/lib/agent-context.ts` — the fixed instructions, and the per-message `<writer_context>` from open tabs' text + focused file, with the length caps. Pure.
+- `src/lib/agent-context.ts` — the fixed instructions, and the per-message `<pensee_context>` from open tabs' text + focused file, with the length caps. Pure.
 - `src/lib/agent-open-files.ts` — reads each open tab's text and the boards pages embed (board code is a dynamic import).
-- `src/components/agent-chat/agent-panel.tsx` — the panel, lazy-loaded on first open because it uses Arc (`text-shimmer`, `code-block`). `agent-chat.css` maps Arc's surface/border tokens to Writer's inside the panel.
+- `src/components/agent-chat/agent-panel.tsx` — the panel, lazy-loaded on first open because it uses Arc (`text-shimmer`, `code-block`). `agent-chat.css` maps Arc's surface/border tokens to Pensée's inside the panel.
 - `src/stores/agent-store.ts` — panel open state, messages, session id, active run; send/stop/new chat/set model.
 - `src/lib/agent-models.ts` — the model list and `/model` draft parsing. Pure.
 - `src/components/agent-chat/` — launcher, panel, message list, composer.

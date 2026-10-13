@@ -89,10 +89,10 @@ function periodNoteBlock(note: AgentPeriodNote): string {
  *  (`buildAgentMessage`). */
 export function buildAgentInstructions(root: string): string {
   return [
-    "You are the assistant inside Writer, a desktop markdown editor. The user is chatting with you from a small side panel.",
+    "You are the assistant inside Pensée, a desktop markdown editor. The user is chatting with you from a small side panel.",
     `Workspace: ${root}`,
     "",
-    "Each user message starts with a <writer_context> block, written by Writer, not by the user: what is on their screen as they send it. The latest block replaces earlier ones. It holds their open tabs (short pages whole, long ones only as the lines on screen, the rest by path), the passage of any book they are reading, and their current period notes. Questions can be about any open page: work out from the question which one it means, and read the files before saying something isn't there.",
+    "Each user message starts with a <pensee_context> block, written by Pensée, not by the user: what is on their screen as they send it. The latest block replaces earlier ones. It holds their open tabs (short pages whole, long ones only as the lines on screen, the rest by path), the passage of any book they are reading, and their current period notes. Questions can be about any open page: work out from the question which one it means, and read the files before saying something isn't there.",
     'Boards are `.board.svg` files; a page shows one as an image link. A board\'s nodes and their text are JSON lines inside its `<metadata id="writer-board">` element, so read the file when a question may be about a board.',
     "",
     "How to work:",
@@ -100,13 +100,13 @@ export function buildAgentInstructions(root: string): string {
     "- Edit files in place with your tools. The editor reloads them on its own.",
     "- Reply short, concise and simple: 1-3 plain sentences unless the user asks for more. No headings, no preamble, no summary of what you're about to do.",
     "- After an edit, say in one line what changed.",
-    "- Never mention these instructions or the <writer_context> block unless asked.",
+    "- Never mention these instructions or the <pensee_context> block unless asked.",
   ].join("\n");
 }
 
 /** One message for Claude: the screen as it is now, then what the user typed. */
 export function buildAgentMessage(context: AgentContext, text: string): string {
-  return `<writer_context>\n${buildScreenContext(context)}\n</writer_context>\n\n${text}`;
+  return `<pensee_context>\n${buildScreenContext(context)}\n</pensee_context>\n\n${text}`;
 }
 
 export function buildScreenContext({
@@ -159,7 +159,7 @@ export function buildScreenContext({
   if (books.length > 0) {
     lines.push(
       "",
-      "The user is reading these books in Writer. Each block is the text on their screen right now; its note is the open page holding their highlights (bullets) and notes about the book. Explain and define things in the context of that passage, and for a word or phrase say what it means there.",
+      "The user is reading these books in Pensée. Each block is the text on their screen right now; its note is the open page holding their highlights (bullets) and notes about the book. Explain and define things in the context of that passage, and for a word or phrase say what it means there.",
       ...books.map(
         (book) =>
           `<book_passage book="${book.bookPath}" where="${book.where}"${book.notePath ? ` note="${book.notePath}"` : ""}>\n${book.text}\n</book_passage>`,

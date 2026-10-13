@@ -10,7 +10,7 @@ content, monospace uppercase labels, and a white pill primary button.
 ## Colours
 
 Theme defaults in `shared/settings.schema.json` (mirrored in
-`shared/themes/writer/*.json` and the `:root` pre-hydration fallbacks):
+`shared/themes/pensee/*.json` and the `:root` pre-hydration fallbacks):
 
 | Mode  | Accent    | Background | Foreground | Translucent | Contrast |
 | ----- | --------- | ---------- | ---------- | ----------- | -------- |
@@ -109,7 +109,7 @@ the schema defaults stop matching a preset exactly.
 | Violet        | `#46297F` / `#DCC4FF` | `#F2EEF9` / `#6A41B5` |
 | Warm Paper    | `#1F1A14` / `#E0A269` | `#F6EFE3` / `#A45A2A` |
 
-Orange is the original Writer palette, values unchanged (including its
+Orange is the original Pensée palette, values unchanged (including its
 translucency). The gradient variants share the teal recipe: foreground white,
 translucent 0, contrast 30 dark / 22 light, and a deep tinted-dark foreground
 in light mode.

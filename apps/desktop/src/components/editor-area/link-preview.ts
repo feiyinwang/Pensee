@@ -60,7 +60,7 @@ function openExternally(url: string) {
 // The page keeps its own origin (`allow-same-origin`) so logins, storage and
 // scripts work as in a browser; that origin is never the editor's, so it still
 // cannot reach the editor document or Tauri's IPC. No `allow-top-navigation`,
-// so a link in the page cannot navigate the Writer window away.
+// so a link in the page cannot navigate the Pensée window away.
 const SANDBOX =
   "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox";
 

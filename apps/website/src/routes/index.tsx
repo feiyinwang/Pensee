@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { AppleGlyph, WriterMark } from "../components/Mark";
+import { PenseeMark } from "../components/Mark";
 
 const FEATURES = [
   { label: "Private", description: "all your documents live in your computer" },
@@ -31,42 +31,17 @@ function HomePage() {
     <div className="page">
       <main className="hero">
         <header className="site-header">
-          <Link className="brand" to="/" aria-label="Writer">
-            <WriterMark size={18} />
-            <span className="brand-rule" aria-hidden="true" />
+          <Link className="brand" to="/" aria-label="Pensée">
+            <PenseeMark size={28} />
+            <span className="wordmark">PENSÉE</span>
           </Link>
-          <nav className="site-nav">
-            <a
-              className="pill pill-ghost"
-              href="https://x.com/joelbqz"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Updates
-            </a>
-            <a
-              className="pill pill-outline"
-              href={__WRITER_REPO_URL__}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub
-            </a>
-          </nav>
         </header>
 
-        <h1 className="headline">Fast and lightweight app for your workspace's markdown files</h1>
+        <h1 className="headline">Thinking, made by writing.</h1>
 
-        <div className="cta">
-          <a className="download" href={__WRITER_DMG_URL__}>
-            <AppleGlyph size={20} />
-            <span>Download for MacOS</span>
-          </a>
-          <span className="alpha-pill">Alpha</span>
-          <span className="version">v{__WRITER_VERSION__}</span>
-        </div>
+        <p className="status">For macOS. Not yet available to download.</p>
 
-        <p className="caption">Free and open source. Forever</p>
+        <p className="caption">Free and open source, under the GPL.</p>
 
         <ul className="features">
           {FEATURES.map(({ label, description }) => (
@@ -97,7 +72,7 @@ function DemoVideo({ src }: { src: string }) {
         loop
         playsInline
         preload="metadata"
-        aria-label="Writer app demo"
+        aria-label="Pensée app demo"
       />
     </div>
   );

@@ -17,7 +17,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 
-const PATH_MARKER: &str = "__WRITER_AGENT_PATH__=";
+const PATH_MARKER: &str = "__PENSEE_AGENT_PATH__=";
 const SHELL_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 const STDERR_TAIL_LINES: usize = 8;
 /** The built-in tools the chat needs to read, find and edit pages. */

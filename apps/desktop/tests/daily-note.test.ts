@@ -8,7 +8,7 @@ import {
   type DailyNoteDependencies,
 } from "../src/lib/daily-note";
 
-const ROOT = "/Users/writer/vault";
+const ROOT = "/Users/pensee/vault";
 
 function makeDependencies(overrides: Partial<DailyNoteDependencies> = {}): DailyNoteDependencies {
   return {

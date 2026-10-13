@@ -43,7 +43,7 @@ periods the user is in now.
   errors, shared by Today's note and every period note.
 - `hooks/use-daily-note.ts` `openPeriodNote`: binds the stores to it.
 - `components/calendar-panel/`: a lazy chunk, because it is built on Arc
-  (`calendar` and `dropdown-menu`, both with Writer patches).
+  (`calendar` and `dropdown-menu`, both with Pensée patches).
 - `lib/agent-open-files.ts` `collectAgentPeriodNotes` and `lib/agent-context.ts`:
   the agent context.
 

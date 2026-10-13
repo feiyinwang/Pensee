@@ -16,7 +16,7 @@ export const unfurlFreezeFacet = Facet.define<boolean, boolean>({
 
 /**
  * When any provider contributes `true`, decorations that unfold under the
- * selection (prosemark's fold and hide extensions, and the Writer decorations
+ * selection (prosemark's fold and hide extensions, and the Pensée decorations
  * reading `getEffectiveSelectionRanges`) treat the selection as absent, so
  * everything renders folded. For an editor that shows content without owning
  * the caret: a linked-block embed that isn't focused keeps a selection at 0,

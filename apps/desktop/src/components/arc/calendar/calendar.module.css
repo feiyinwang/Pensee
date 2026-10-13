@@ -45,7 +45,7 @@
 .day:disabled { cursor: default; color: var(--text-muted); }
 .day:disabled .dayNumber { opacity: .42; }
 .day.outside:disabled .dayNumber { opacity: .3; }
-/* Writer patch: week-label column (weekLabel) and note dots (markedDates). */
+/* Pensée patch: week-label column (weekLabel) and note dots (markedDates). */
 .labelled { display: grid; grid-template-columns: var(--week-label-width, 32px) minmax(0, 1fr); column-gap: var(--week-label-gap, 4px); }
 .weekLabels { display: grid; grid-template-rows: repeat(6, minmax(0, 1fr)); row-gap: 4px; }
 .weekLabel { display: grid; min-height: 0; }

@@ -2,7 +2,7 @@
 
 ## Summary
 
-External file system changes — files created, renamed, deleted, or modified outside of Writer (Finder, `git pull`, vim, VS Code, scripts) — are inconsistently picked up by the file tree, and editor reload-from-disk for open files. Other editors with the same UX promise (Obsidian, VS Code) reflect external edits live; Writer does not.
+External file system changes — files created, renamed, deleted, or modified outside of Pensée (Finder, `git pull`, vim, VS Code, scripts) — are inconsistently picked up by the file tree, and editor reload-from-disk for open files. Other editors with the same UX promise (Obsidian, VS Code) reflect external edits live; Pensée does not.
 
 The pieces are in place: a `notify` crate watcher (`apps/desktop/src-tauri/src/watcher.rs:100`) is started during workspace bootstrap (`apps/desktop/src-tauri/src/commands/workspace.rs:133`), and a frontend listener (`apps/desktop/src/hooks/use-file-watcher.ts:14`) subscribes to `fs:file-changed` / `fs:directory-changed` and calls `refreshDirectory` / `reloadFromDisk`. End-to-end, the path that should fire on every external change exists.
 
@@ -10,9 +10,9 @@ What's broken is in the Rust-side filtering layer. Three bugs in `watcher.rs` co
 
 ## Goals
 
-- A file created, renamed, deleted, or modified by any process outside Writer appears in the sidebar within ~300 ms of the change.
+- A file created, renamed, deleted, or modified by any process outside Pensée appears in the sidebar within ~300 ms of the change.
 - Open files whose on-disk content changes externally are reloaded into the editor (already implemented; just needs the events to arrive).
-- The fix does not regress the self-write echo suppression — saves from inside Writer must not bounce back as a reload.
+- The fix does not regress the self-write echo suppression — saves from inside Pensée must not bounce back as a reload.
 - The fix does not require a new architecture (no swap to Tauri's `tauri-plugin-fs-watch` or a different crate); the existing `notify` watcher is correct, only the post-receive filter is wrong.
 
 ## Non-Goals
@@ -25,19 +25,19 @@ What's broken is in the Rust-side filtering layer. Three bugs in `watcher.rs` co
 
 ## Reproduction
 
-1. Open Writer on a workspace that lives at a dot-prefixed path — e.g. `~/.notes/`, `~/.obsidian-vault/`, or any folder whose absolute path contains a component starting with `.` other than `.gitignore` / `.writer`.
+1. Open Pensée on a workspace that lives at a dot-prefixed path — e.g. `~/.notes/`, `~/.obsidian-vault/`, or any folder whose absolute path contains a component starting with `.` other than `.gitignore` / `.writer`.
 2. From a terminal: `touch ~/.notes/external.md`.
-3. Observe: nothing changes in Writer's sidebar. The new file does not appear until the workspace is reopened.
+3. Observe: nothing changes in Pensée's sidebar. The new file does not appear until the workspace is reopened.
 
 A second, more-common reproduction:
 
-1. Open Writer on `/var/folders/.../my-notes` (a path that macOS canonicalizes to `/private/var/folders/.../my-notes` — common when users open a temp dir, a workspace inside a mounted DMG, or any path under `/var`/`/tmp`/`/etc`).
+1. Open Pensée on `/var/folders/.../my-notes` (a path that macOS canonicalizes to `/private/var/folders/.../my-notes` — common when users open a temp dir, a workspace inside a mounted DMG, or any path under `/var`/`/tmp`/`/etc`).
 2. Touch a file inside the workspace.
 3. Observe: the Rust watcher emits the event with the canonical path (`/private/var/...`), but the frontend stores `root` as the un-canonicalized path the user opened (`/var/...`). The `path === root` equality check in `use-file-watcher.ts:51` fails, so `refreshDirectory(root)` is never called and the sidebar does not refresh.
 
 A third, only-affects-open-files reproduction:
 
-1. Open Writer, open a markdown file, type a change, save (Cmd+S).
+1. Open Pensée, open a markdown file, type a change, save (Cmd+S).
 2. Watch `[watcher]` events emitted by the Rust side: a single save produces 3 FSEvent records — `Create(File)`, `Modify(Metadata(Extended))`, `Modify(Data(Content))`.
 3. The first one is suppressed by `is_self_write` (the `record_write` entry is consumed and removed); the remaining two propagate to the frontend as `fs:file-changed` events. Frontend's `useFileWatcher` then re-reads the file from disk and may overwrite the in-memory buffer if the user has typed further keystrokes in the meantime.
 
@@ -73,7 +73,7 @@ The function is path-blind: it has no concept of "inside vs. outside the workspa
 
 `notify`'s FSEvents backend canonicalizes every watched path on subscribe (`notify-7.0.0/src/fsevent.rs:367`: `path.to_path_buf().canonicalize()?`) and the events it delivers always use the canonical path. macOS aliases `/var → /private/var`, `/tmp → /private/tmp`, `/etc → /private/etc`, plus any user symlinks.
 
-Writer stores the workspace root unresolved (`commands/workspace.rs:39`: `let root = PathBuf::from(path);` — no `canonicalize`). So:
+Pensée stores the workspace root unresolved (`commands/workspace.rs:39`: `let root = PathBuf::from(path);` — no `canonicalize`). So:
 
 - Backend emits: `fs:directory-changed { path: "/private/var/folders/.../notes" }`
 - Frontend has: `root = "/var/folders/.../notes"`
@@ -99,7 +99,7 @@ fn is_self_write(state: &WorkspaceState, path: &Path) -> bool {
 }
 ```
 
-A single Writer save produces 3 events on macOS FSEvents (verified empirically): `Create(File)`, `Modify(Metadata(Extended))`, `Modify(Data(Content))`. Suppression consumes the entry on the first match, so the remaining 2 are passed through as legitimate `fs:file-changed` events. The frontend `use-file-watcher.ts:21-30` then re-reads from disk and, if the in-memory `diskContent` doesn't match (which it won't if the user has typed further characters since the save started), calls `editorApi.reloadFromDisk` and clobbers in-progress edits.
+A single Pensée save produces 3 events on macOS FSEvents (verified empirically): `Create(File)`, `Modify(Metadata(Extended))`, `Modify(Data(Content))`. Suppression consumes the entry on the first match, so the remaining 2 are passed through as legitimate `fs:file-changed` events. The frontend `use-file-watcher.ts:21-30` then re-reads from disk and, if the in-memory `diskContent` doesn't match (which it won't if the user has typed further characters since the save started), calls `editorApi.reloadFromDisk` and clobbers in-progress edits.
 
 This isn't always user-visible — fast typists notice it; slow-typing or single-keypress saves don't trigger the race. But it's the same bug as the file-tree filtering: an over-eager filter masks the real-event channel and an under-eager filter lets duplicates through.
 
@@ -165,7 +165,7 @@ fn is_self_write(state: &WorkspaceState, path: &Path) -> bool {
 
 Periodic cleanup of expired entries can stay in `record_write` (already does `writes.retain(|_, t| t.elapsed() < SELF_WRITE_TTL)` at line 82).
 
-Trade-off: a _legitimate_ external write within 2s of a save-by-Writer to the same path will be ignored. This is acceptable — the same-path collision window is small, the next external write outside the window will land, and the alternative (current behaviour) actively corrupts in-progress edits.
+Trade-off: a _legitimate_ external write within 2s of a save-by-Pensée to the same path will be ignored. This is acceptable — the same-path collision window is small, the next external write outside the window will land, and the alternative (current behaviour) actively corrupts in-progress edits.
 
 ### Fix 4: Tag the bootstrap-vs-load `WorkspaceIgnore` so over-broad rules don't silently fire
 
@@ -176,7 +176,7 @@ This is a smaller cleanup, not strictly required, but worth mentioning: `is_work
 - **Dot-directory workspace roots**: After Fix 1, a workspace at `~/.notes/` works. Files inside that the user _also_ wants hidden (e.g. `~/.notes/.cache/`) still get filtered because `.cache` is a dot-component of the relative path.
 - **Root canonicalization changes recent-workspaces keys**: After Fix 2, the recent-workspaces list will store canonical paths. Existing entries may be in the un-canonical form. On the first open, a one-time normalization (canonicalize each entry, dedupe) avoids duplicate entries. Drop-in compat: `prepare_workspace_state` should accept either form (canonicalize before lookup).
 - **Symlinked workspaces** (`~/notes -> ~/Documents/notes`): After Fix 2, `find_by_workspace` will only match canonical paths. A user dragging the symlink into a second window will correctly focus the existing window because both resolve to the same canonical path.
-- **Self-write window collision with rapid external edits**: Fix 3 widens the suppression window. A `git pull` that writes to a file Writer just saved within 2s will be suppressed — but `git pull` typically writes many files, and only the same-path collision is suppressed. Acceptable.
+- **Self-write window collision with rapid external edits**: Fix 3 widens the suppression window. A `git pull` that writes to a file Pensée just saved within 2s will be suppressed — but `git pull` typically writes many files, and only the same-path collision is suppressed. Acceptable.
 - **Large workspaces (10k+ files)**: No change — `should_ignore` and `is_workspace_ignored` are still O(path-components) and the event volume is the same.
 - **Renames**: `notify` reports renames as `Modify(Name(_))` events. `event_kind_str` already maps `Modify(_) → "modified"`, so renames fire `fs:file-changed` for both old and new paths. The frontend handler doesn't currently special-case rename — it just reloads if the file is open. The new path appears via the `fs:directory-changed` for the parent. Adequate.
 - **`notify` 7.x macOS behavior**: Confirmed working via standalone reproduction (`/tmp/notify_smoke*` test binaries during investigation): with `notify = { version = "7", features = ["macos_fsevent"] }` and `Config::default().with_poll_interval(...)`, FSEvents delivers `Create(File)` / `Modify(_)` / `Remove(File)` reliably for the workspace root. The bug is not in `notify` or the debounce loop.
@@ -229,7 +229,7 @@ One new integration-style test in `commands/workspace.rs` (or wherever `prepare_
 
 - `cargo test` (the existing `test_ignores_*` tests in `watcher.rs:344-360` need their signatures updated to pass a workspace root).
 - `vp test` (no frontend logic changed; should pass unchanged).
-- Open Writer with each existing workspace in `recent_workspaces.json` and confirm none of them are now treated as new workspaces (canonicalization migration is correct).
+- Open Pensée with each existing workspace in `recent_workspaces.json` and confirm none of them are now treated as new workspaces (canonicalization migration is correct).
 
 ## One refresh per folder at a time
 

@@ -265,7 +265,7 @@
       </div>
     </div>
     <script>
-      // Writer's YouTube player (SPECs/youtube-notes-spec.md). Served from
+      // Pensée's YouTube player (SPECs/youtube-notes-spec.md). Served from
       // 127.0.0.1 so the embed carries an http referrer; the app frames this
       // page and talks to it with postMessage. YouTube's controls are off:
       // this page draws its own (play, time, chapters, subtitles, speed) and
@@ -298,7 +298,7 @@
         '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
       poster.style.backgroundImage = `url("https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg")`;
 
-      const post = (message) => parent.postMessage({ source: "writer-yt", ...message }, "*");
+      const post = (message) => parent.postMessage({ source: "pensee-yt", ...message }, "*");
 
       function clock(seconds) {
         const total = Math.max(0, Math.floor(seconds || 0));
@@ -636,7 +636,7 @@
       addEventListener("message", (event) => {
         if (event.source !== parent) return;
         const message = event.data;
-        if (!message || message.source !== "writer") return;
+        if (!message || message.source !== "pensee") return;
         if (message.cmd === "chapters") {
           chapters = Array.isArray(message.chapters) ? message.chapters : [];
           segments.forEach((s) => s.remove());

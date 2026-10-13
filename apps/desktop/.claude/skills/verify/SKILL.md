@@ -1,9 +1,9 @@
 ---
 name: verify
-description: Build, launch, and drive the Writer desktop app to verify a change end-to-end via the WebDriver e2e harness. Use when a change to apps/desktop needs runtime verification (GUI surface).
+description: Build, launch, and drive the Pensée desktop app to verify a change end-to-end via the WebDriver e2e harness. Use when a change to apps/desktop needs runtime verification (GUI surface).
 ---
 
-# Verifying Writer desktop changes
+# Verifying Pensée desktop changes
 
 The surface is a macOS Tauri GUI. Drive it through the repo's WebdriverIO +
 tauri-webdriver harness in `apps/desktop/e2e/` (see its README for one-time
@@ -14,7 +14,7 @@ setup: `cargo install tauri-webdriver --locked`).
 ```sh
 cd apps/desktop/src-tauri
 cargo tauri build --features e2e --bundles app --ignore-version-mismatches \
-  --config '{"identifier":"com.writer-computer.e2e","bundle":{"createUpdaterArtifacts":false}}'
+  --config '{"identifier":"com.pensee.app.e2e"}'
 ```
 
 Gotchas:
@@ -23,7 +23,7 @@ Gotchas:
   packages lag the Rust crates; without it the CLI hard-errors before
   building.
 - The bundle lands at
-  `src-tauri/target/release/bundle/macos/Writer.app/Contents/MacOS/desktop`
+  `src-tauri/target/release/bundle/macos/Pensée.app/Contents/MacOS/desktop`
   (binary keeps the crate name). Incremental rebuilds are fast; the first
   build is slow.
 - Rebuild after every frontend change too — the app ships the built assets.
@@ -31,13 +31,13 @@ Gotchas:
 ## Launch state
 
 The e2e app uses its own data dir:
-`~/Library/Application Support/com.writer-computer.e2e`. Fresh dir → welcome
+`~/Library/Application Support/com.pensee.app.e2e`. Fresh dir → welcome
 screen (workspace opens need a native dialog you cannot drive). To land in a
 workspace, seed before launch:
 
 ```sh
 printf '["/abs/path/to/workspace-dir"]' > \
-  "$HOME/Library/Application Support/com.writer-computer.e2e/recent_workspaces.json"
+  "$HOME/Library/Application Support/com.pensee.app.e2e/recent_workspaces.json"
 ```
 
 Startup restores `recent_workspaces[0]` when it is a directory. Wipe the data

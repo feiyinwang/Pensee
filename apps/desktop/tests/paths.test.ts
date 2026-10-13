@@ -88,20 +88,20 @@ describe("normalizePath", () => {
 
 describe("markdown destinations", () => {
   test("strips angle brackets around destinations", () => {
-    expect(normalizeMarkdownDestination("<Writer TODOs.md>")).toBe("Writer TODOs.md");
+    expect(normalizeMarkdownDestination("<Project TODOs.md>")).toBe("Project TODOs.md");
   });
 
   test("unescapes markdown escaped spaces", () => {
-    expect(normalizeMarkdownDestination("Writer\\ TODOs.md")).toBe("Writer TODOs.md");
+    expect(normalizeMarkdownDestination("Project\\ TODOs.md")).toBe("Project TODOs.md");
   });
 
   test("decodes local percent escapes after markdown normalization", () => {
-    expect(normalizeLocalMarkdownDestination("<Writer%20TODOs.md>")).toBe("Writer TODOs.md");
+    expect(normalizeLocalMarkdownDestination("<Project%20TODOs.md>")).toBe("Project TODOs.md");
   });
 
   test("wraps generated destinations with spaces in angle brackets", () => {
-    expect(formatMarkdownDestination("Writer TODOs-assets/image.png")).toBe(
-      "<Writer TODOs-assets/image.png>",
+    expect(formatMarkdownDestination("Project TODOs-assets/image.png")).toBe(
+      "<Project TODOs-assets/image.png>",
     );
   });
 

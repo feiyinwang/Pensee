@@ -2,7 +2,7 @@
 
 ## Goal
 
-Answer three questions about Writer's users without compromising the local-first
+Answer three questions about Pensée's users without compromising the local-first
 promise:
 
 1. **Who are my users?** — an optional, self-declared email address.
@@ -62,14 +62,14 @@ it is still gated on `prompted` and on the build-time key.
 
 ### Build-time key, absent by default
 
-`WRITER_POSTHOG_KEY` is read with `option_env!` at compile time. **When it is
+`PENSEE_POSTHOG_KEY` is read with `option_env!` at compile time. **When it is
 unset the telemetry module is inert** — no key, no capture, regardless of
 settings. This is the property that matters for an open-source project: anyone
-who clones and builds Writer gets a binary that cannot phone home, and
-contributors' dev builds never pollute production analytics. `WRITER_POSTHOG_HOST`
+who clones and builds Pensée gets a binary that cannot phone home, and
+contributors' dev builds never pollute production analytics. `PENSEE_POSTHOG_HOST`
 overrides the host (default `https://us.i.posthog.com`) for self-hosted forks.
 
-`WRITER_TELEMETRY_DISABLED` set to any non-empty value in the environment
+`PENSEE_TELEMETRY_DISABLED` set to any non-empty value in the environment
 disables telemetry at runtime regardless of settings, for packagers and for
 users of distro builds.
 
@@ -209,4 +209,4 @@ disabled installs pay nothing beyond an atomic load.
 ## Verification
 
 - `cargo test` covers identity round-tripping and the disabled-by-default guard.
-- With no `WRITER_POSTHOG_KEY` at build time, no request is ever issued.
+- With no `PENSEE_POSTHOG_KEY` at build time, no request is ever issued.

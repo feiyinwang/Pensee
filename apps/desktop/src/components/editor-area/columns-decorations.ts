@@ -600,7 +600,7 @@ const EDITOR_SWALLOWED_EVENTS = [
 
 /**
  * What a band edits with. This used to be a `<textarea>`, and that was the one
- * spot in Writer where markdown stopped being live: you typed `- `, got a
+ * spot in Pensée where markdown stopped being live: you typed `- `, got a
  * literal hyphen, and only saw a bullet after clicking away — which then read as
  * "the app dropped my list". A band is a piece of the document, so it gets the
  * document's editor.
@@ -697,7 +697,7 @@ function beginBandEdit(view: EditorView, cell: HTMLElement, bandEl: HTMLElement)
   const band = (bandEl.dataset.wrBand ?? "anchor") as BandName;
   const before = splitBands(column.md)[band];
   // Two-state geometry, read before the rendered band is swapped out. Off
-  // unless `writer.bandDebug` is set — see band-debug.ts.
+  // unless `pensee.bandDebug` is set — see band-debug.ts.
   const debugBefore = captureRenderedBand(bandEl);
 
   // Identity for the registry below: `finish` is redefined per editor, so the
@@ -2431,7 +2431,7 @@ const gutterHandlePlugin = ViewPlugin.fromClass(
       const host = view.dom.getBoundingClientRect();
       // Sit in the left margin, measured from where the TEXT starts —
       // `contentDOM`'s rect is the padding box, so it would put the handle on
-      // top of the first word. `--writer-editor-side-padding` can be as little
+      // top of the first word. `--pensee-editor-side-padding` can be as little
       // as 24px (clamp(1.5rem, 4vw, 4rem)), so fall back to flush-against-text
       // rather than overlapping.
       // Text-column left edge = contentDOM's padding box + its own padding.
@@ -2645,7 +2645,7 @@ function targetStillValid(view: EditorView, resolved: ResolvedTarget): boolean {
 }
 
 /**
- * `localStorage.setItem("writer.dropDebug", "1")` turns on one line of console
+ * `localStorage.setItem("pensee.dropDebug", "1")` turns on one line of console
  * output per drag-drop event, per channel. It exists because the two channels
  * (the webview's `onDragDropEvent` and Rust's `WindowEvent::DragDrop`) may not
  * agree on units or origin, and the only way to know is to read what each one
@@ -2654,7 +2654,7 @@ function targetStillValid(view: EditorView, resolved: ResolvedTarget): boolean {
  */
 function dropDebugEnabled(): boolean {
   try {
-    return localStorage.getItem("writer.dropDebug") === "1";
+    return localStorage.getItem("pensee.dropDebug") === "1";
   } catch {
     return false;
   }
@@ -2731,7 +2731,7 @@ function fileDropPlugin(getFilePath: () => string) {
         const converted = this.point(raw);
         const rect = this.view.dom.getBoundingClientRect();
         // eslint-disable-next-line no-console
-        console.log("[writer drop]", channel, type, {
+        console.log("[pensee drop]", channel, type, {
           raw,
           converted,
           devicePixelRatio: window.devicePixelRatio,

@@ -27,27 +27,27 @@ function nodeTexts(doc: string, nodeName: string): string[] {
 
 describe("markdown links with spaced destinations", () => {
   test("parses bare-space markdown link destinations", () => {
-    const doc = "[Todo Label](Writer TODOs.md)";
+    const doc = "[Todo Label](Project TODOs.md)";
     expect(nodeTexts(doc, "Link")).toEqual([doc]);
-    expect(nodeTexts(doc, "URL")).toEqual(["Writer TODOs.md"]);
+    expect(nodeTexts(doc, "URL")).toEqual(["Project TODOs.md"]);
   });
 
   test("parses bare-space markdown image destinations", () => {
-    const doc = "![Image Label](Writer TODOs-assets/20260525 image.png)";
+    const doc = "![Image Label](Project TODOs-assets/20260525 image.png)";
     expect(nodeTexts(doc, "Image")).toEqual([doc]);
-    expect(nodeTexts(doc, "URL")).toEqual(["Writer TODOs-assets/20260525 image.png"]);
+    expect(nodeTexts(doc, "URL")).toEqual(["Project TODOs-assets/20260525 image.png"]);
   });
 
   test("keeps quoted titles separate from spaced destinations", () => {
-    const doc = '[Todo](Writer TODOs.md "Readable Title")';
+    const doc = '[Todo](Project TODOs.md "Readable Title")';
     expect(nodeTexts(doc, "Link")).toEqual([doc]);
-    expect(nodeTexts(doc, "URL")).toEqual(["Writer TODOs.md"]);
+    expect(nodeTexts(doc, "URL")).toEqual(["Project TODOs.md"]);
     expect(nodeTexts(doc, "LinkTitle")).toEqual(['"Readable Title"']);
   });
 
   test("leaves standard title parsing intact when the destination has no spaces", () => {
-    const doc = '[Todo](writer-todos.md "Readable Title")';
-    expect(nodeTexts(doc, "URL")).toEqual(["writer-todos.md"]);
+    const doc = '[Todo](project-todos.md "Readable Title")';
+    expect(nodeTexts(doc, "URL")).toEqual(["project-todos.md"]);
     expect(nodeTexts(doc, "LinkTitle")).toEqual(['"Readable Title"']);
   });
 });

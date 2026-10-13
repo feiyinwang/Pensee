@@ -1,18 +1,18 @@
 /**
- * Arc's design tokens, made safe to load inside Writer. See `docs/arc.md`.
+ * Arc's design tokens, made safe to load inside Pensée. See `docs/arc.md`.
  *
  * `foundation.css` defines its tokens on `:root` and is meant to own the page.
  * Here it only joins the page while a board is open:
  *  - Tokens move from `:root` to `body`. Arc popovers and tooltips portal to
  *    `body`, so a narrower container would miss them.
- *  - Every Arc token name Writer already defines (`--accent`, `--text-muted`,
- *    Tailwind's `--text-base`, …) is handed straight back to Writer's value.
+ *  - Every Arc token name Pensée already defines (`--accent`, `--text-muted`,
+ *    Tailwind's `--text-base`, …) is handed straight back to Pensée's value.
  *    The list is measured at injection time, not hard-coded, so a new Tailwind
  *    utility cannot silently start colliding.
  *  - Arc's global "no focus outlines" rule is dropped. It would strip keyboard
  *    focus from the whole app.
  *
- * Net effect: Arc components get Writer's accent, text colours and UI font;
+ * Net effect: Arc components get Pensée's accent, text colours and UI font;
  * nothing outside them changes.
  */
 
@@ -26,7 +26,7 @@ export function arcTokenNames(css: string): string[] {
   return [...new Set(css.match(/--[a-zA-Z0-9-]+(?=\s*:)/g) ?? [])];
 }
 
-/** `hostOwned` are the token names Writer itself defines; they keep Writer's
+/** `hostOwned` are the token names Pensée itself defines; they keep Pensée's
  *  values. The restore rule out-ranks Arc's `[data-theme][data-accent]` rules. */
 export function scopeArcFoundation(css: string, hostOwned: string[]): string {
   const scoped = css.replace(FOCUS_RULE, "").replace(ROOT_SELECTOR, ":root$1 body");

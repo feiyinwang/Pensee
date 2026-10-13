@@ -1,7 +1,7 @@
 /**
  * Geometry probe for the two states of a band: the rendered HTML you read and
  * the nested CodeMirror you type in. Off unless
- * `localStorage.setItem("writer.bandDebug", "1")`.
+ * `localStorage.setItem("pensee.bandDebug", "1")`.
  *
  * It exists because "the caption grows / the caret vanishes when I click in" is
  * a claim about numbers, and the two-state box contract (PRD 2.9) can only be
@@ -16,7 +16,7 @@ import type { EditorView } from "@codemirror/view";
 
 export function bandDebugEnabled(): boolean {
   try {
-    return localStorage.getItem("writer.bandDebug") === "1";
+    return localStorage.getItem("pensee.bandDebug") === "1";
   } catch {
     // Private mode / disabled storage: the probe is a debug aid, never a hard
     // dependency of editing.

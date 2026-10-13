@@ -47,7 +47,7 @@ markdown.
   `- highlight text ^bk-<12 hex of the Apple Books UUID>` /
   `    - note`. Paragraphs in a highlight are joined into one line; a leading
   heading/quote/list marker is escaped. The ` ^id` is an Obsidian block id, which
-  Writer hides and which makes each highlight linkable as a linked block.
+  Pensée hides and which makes each highlight linkable as a linked block.
 - **Append-only.** A highlight whose id is anywhere on the page is never added
   again. Edits to imported highlights, highlights moved or deleted by the writer,
   and everything else on the page stay as they are. Highlights deleted in Apple

@@ -1,6 +1,6 @@
 # E2E tests
 
-End-to-end tests for the Writer desktop app, driven via WebdriverIO and the
+End-to-end tests for the Pensée desktop app, driven via WebdriverIO and the
 [Choochmeque/tauri-webdriver](https://github.com/Choochmeque/tauri-webdriver)
 plugin (the only viable WebDriver path for Tauri v2 on macOS as of April 2026 —
 official `tauri-driver` does not support macOS, see
@@ -34,10 +34,10 @@ This builds the app with `--features e2e` (which embeds the WebDriver server)
 and then runs the smoke spec. The first build is slow; incremental rebuilds
 are fast.
 
-> The e2e build uses an isolated bundle identifier (`com.writer-computer.e2e`)
-> so it does NOT collide with `tauri-plugin-single-instance` from a Writer
+> The e2e build uses an isolated bundle identifier (`com.pensee.app.e2e`)
+> so it does NOT collide with `tauri-plugin-single-instance` from a Pensée
 > dev or release instance running in another worktree. You can leave your
-> normal Writer running.
+> normal Pensée running.
 
 ## What gets tested
 
@@ -60,11 +60,11 @@ bundle identifier (see below).
 
 ## How it works
 
-1. `pnpm run build:app` produces `Writer.app` with the `e2e` Cargo feature,
+1. `pnpm run build:app` produces `Pensée.app` with the `e2e` Cargo feature,
    which includes `tauri-plugin-webdriver` (an embedded HTTP WebDriver server).
 2. `wdio.conf.js` (`onPrepare`) spawns the `tauri-webdriver` intermediary CLI
    on port 4444.
-3. WebdriverIO connects to 4444; the intermediary launches `Writer.app` and
+3. WebdriverIO connects to 4444; the intermediary launches `Pensée.app` and
    proxies WebDriver commands to the embedded server.
 4. The spec runs; afterwards `onComplete` kills the intermediary and the app
    quits.
@@ -73,15 +73,13 @@ bundle identifier (see below).
 
 - `vp run desktop#dev` and `vp build` are unchanged — no WebDriver server.
 - The e2e build invokes
-  `cargo tauri build --features e2e --bundles app --config '{"identifier":"com.writer-computer.e2e","bundle":{"createUpdaterArtifacts":false}}'`.
+  `cargo tauri build --features e2e --bundles app --config '{"identifier":"com.pensee.app.e2e"}'`.
   The overrides:
   - `--bundles app` skips DMG creation.
-  - `createUpdaterArtifacts: false` skips updater artifact signing (which
-    would otherwise demand `TAURI_SIGNING_PRIVATE_KEY`).
-  - `identifier: "com.writer-computer.e2e"` gives the e2e build its own
+  - `identifier: "com.pensee.app.e2e"` gives the e2e build its own
     `tauri-plugin-single-instance` namespace and its own app data dir
-    (`~/Library/Application Support/com.writer-computer.e2e/`). Without this,
-    a Writer dev/release instance running in another worktree would intercept
+    (`~/Library/Application Support/com.pensee.app.e2e/`). Without this,
+    a Pensée dev/release instance running in another worktree would intercept
     the launch and the WebDriver plugin would never start.
 - **Never enable `--features e2e` for releases shipped to users** — it opens
   an HTTP server on localhost:4445.

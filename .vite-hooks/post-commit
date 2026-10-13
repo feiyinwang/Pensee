@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # 提交成功后，后台重新编译并替换 /Applications 里的本地版 Pensée。
-[ -n "${WRITER_SKIP_AUTOBUILD:-}" ] && exit 0
+[ -n "${PENSEE_SKIP_AUTOBUILD:-}" ] && exit 0
 
 ROOT="$(git rev-parse --show-toplevel)"
 [ -d "$ROOT/.git/rebase-merge" ] && exit 0
@@ -12,6 +12,6 @@ case "$BRANCH" in
   *) echo "[post-commit] 分支 $BRANCH 不是个人分支，跳过自动构建"; exit 0 ;;
 esac
 
-nohup "$ROOT/scripts/ship-local.sh" >/tmp/writer-ship-local.log 2>&1 &
+nohup "$ROOT/scripts/ship-local.sh" >/tmp/pensee-ship-local.log 2>&1 &
 echo "[post-commit] 后台构建已启动"
 exit 0

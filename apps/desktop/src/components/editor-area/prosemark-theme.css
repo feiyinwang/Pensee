@@ -1,4 +1,4 @@
-/* Writer theme overrides for ProseMark/CodeMirror */
+/* Pensée theme overrides for ProseMark/CodeMirror */
 
 .cm-editor {
   --pm-header-mark-color: var(--text-muted);
@@ -79,16 +79,16 @@
      side stays at the strict text-col-inset.
      See selection-rect-bleeds-past-text-spec.md and heading-hash-margin-
      spec.md. */
-  --writer-text-col-inset: max(
-    var(--writer-editor-side-padding, 4rem),
+  --pensee-text-col-inset: max(
+    var(--pensee-editor-side-padding, 4rem),
     calc(
-      (100% - var(--writer-editor-outer-width, calc(734px + 4rem + 4rem))) / 2 +
-        var(--writer-editor-side-padding, 4rem)
+      (100% - var(--pensee-editor-outer-width, calc(734px + 4rem + 4rem))) / 2 +
+        var(--pensee-editor-side-padding, 4rem)
     )
   );
   clip-path: inset(
-    0 var(--writer-text-col-inset) 0
-      max(0px, calc(var(--writer-text-col-inset) - var(--writer-editor-side-padding, 4rem)))
+    0 var(--pensee-text-col-inset) 0
+      max(0px, calc(var(--pensee-text-col-inset) - var(--pensee-editor-side-padding, 4rem)))
   );
 }
 
@@ -109,17 +109,17 @@
   width: 100%;
   height: 100%;
   contain: layout paint;
-  clip-path: inset(0 var(--writer-text-col-inset));
+  clip-path: inset(0 var(--pensee-text-col-inset));
 }
 
 .cm-editor .cm-content {
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--writer-editor-outer-width, calc(734px + 4rem + 4rem));
+  max-width: var(--pensee-editor-outer-width, calc(734px + 4rem + 4rem));
   margin: 0 auto;
-  padding: 0 var(--writer-editor-side-padding, 4rem) 40vh;
+  padding: 0 var(--pensee-editor-side-padding, 4rem) 40vh;
   font-family: var(
-    --writer-editor-font-family,
+    --pensee-editor-font-family,
     -apple-system-body,
     ui-sans-serif,
     -apple-system,
@@ -132,9 +132,9 @@
     "Segoe UI Emoji",
     "Segoe UI Symbol"
   );
-  font-size: var(--writer-editor-font-size, 16px);
-  line-height: var(--writer-editor-line-height, 1.8);
-  letter-spacing: var(--writer-editor-letter-spacing, -0.03em);
+  font-size: var(--pensee-editor-font-size, 16px);
+  line-height: var(--pensee-editor-line-height, 1.8);
+  letter-spacing: var(--pensee-editor-letter-spacing, -0.03em);
   color: var(--editor-text);
 }
 

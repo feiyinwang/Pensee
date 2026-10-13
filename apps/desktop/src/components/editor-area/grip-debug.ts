@@ -1,6 +1,6 @@
 /**
  * Why the gutter grip did — or did not — appear under the pointer.
- * Off unless `localStorage.setItem("writer.gripDebug", "1")`.
+ * Off unless `localStorage.setItem("pensee.gripDebug", "1")`.
  *
  * It exists because "no handle shows up here" is the one bug report that cannot
  * be reasoned about from the source. `place()` has nine exits and eight of them
@@ -16,7 +16,7 @@
 
 export function gripDebugEnabled(): boolean {
   try {
-    return localStorage.getItem("writer.gripDebug") === "1";
+    return localStorage.getItem("pensee.gripDebug") === "1";
   } catch {
     // Private mode / disabled storage. The probe is an aid, never a dependency.
     return false;

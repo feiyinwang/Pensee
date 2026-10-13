@@ -238,7 +238,7 @@ pub struct SettingDef {
     pub max: Option<f64>, // range
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub step: Option<f64>, // range
-    /// CSS custom property name (e.g. `--writer-editor-font-size`) that the
+    /// CSS custom property name (e.g. `--pensee-editor-font-size`) that the
     /// frontend should mirror this setting's value into. Optional.
     #[serde(rename = "cssVar", default, skip_serializing_if = "Option::is_none")]
     pub css_var: Option<String>,

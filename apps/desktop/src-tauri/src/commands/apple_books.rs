@@ -146,7 +146,7 @@ mod imp {
     fn find_store(dir: &Path, prefix: &str) -> Result<PathBuf, AppError> {
         let entries = fs::read_dir(dir).map_err(|e| {
             AppError::NotFound(format!(
-                "Apple Books data at {} ({e}). Open Apple Books once, and allow Writer to access data from other apps if macOS asks.",
+                "Apple Books data at {} ({e}). Open Apple Books once, and allow Pensée to access data from other apps if macOS asks.",
                 dir.display()
             ))
         })?;
@@ -198,7 +198,7 @@ mod imp {
         let library = find_store(&documents.join("BKLibrary"), "BKLibrary")?;
 
         let temp = TempDir(
-            std::env::temp_dir().join(format!("writer-apple-books-{}", uuid::Uuid::new_v4())),
+            std::env::temp_dir().join(format!("pensee-apple-books-{}", uuid::Uuid::new_v4())),
         );
         fs::create_dir_all(&temp.0)?;
         let annotations = copy_store(&annotations, &temp.0)?;

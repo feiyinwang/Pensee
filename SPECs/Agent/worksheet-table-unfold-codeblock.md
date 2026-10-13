@@ -43,4 +43,4 @@
   - `cargo fmt --check` passed.
   - `cargo test` passed: 103 Rust tests.
   - `cargo clippy` passed with existing warnings.
-  - `vp dev --host 127.0.0.1` served the app at `http://127.0.0.1:1420/`; `curl` returned the Writer HTML shell.
+  - `vp dev --host 127.0.0.1` served the app at `http://127.0.0.1:1420/`; `curl` returned the Pensée HTML shell.
