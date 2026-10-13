@@ -109,11 +109,13 @@ export function LibraryGroups({ groups }: { groups: LibraryGroup[] }) {
       {group.rows.map((row) => (
         <CommandItem key={row.value} value={row.value} onSelect={row.run}>
           <div className="flex min-w-0 items-center gap-2">
-            <row.icon size={14} className="shrink-0 text-text-muted" aria-hidden />
+            <row.icon size={14} className="shrink-0 text-[var(--color-text-muted)]" aria-hidden />
             <div className="flex min-w-0 flex-col">
               <span className="truncate">{row.label}</span>
               {row.description && (
-                <span className="truncate text-caption text-text-muted">{row.description}</span>
+                <span className="truncate text-caption text-[var(--color-text-muted)]">
+                  {row.description}
+                </span>
               )}
             </div>
           </div>

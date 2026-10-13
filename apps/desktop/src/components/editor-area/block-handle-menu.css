@@ -1,18 +1,14 @@
 /* Block handle menu — the panel the gutter grip opens on hover.
 
-   Tokens only: colours come from App.css so light/dark and the contrast slider
+   Tokens only: colours come from styles/tokens.css so light/dark and the contrast slider
    follow automatically. Declared on :root because the panel is appended to
    <body>, outside any editor scope — an undefined var() there invalidates the
    whole declaration, which is the bug that once stopped the drag lift from
    animating. */
 :root {
   --wr-bmenu-width: 240px;
-  --wr-bmenu-danger: #d64045;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --wr-bmenu-danger: #ff7b7f;
-  }
+  /* The app's error red, which follows the app theme (not the OS). */
+  --wr-bmenu-danger: var(--color-text-error);
 }
 
 .wr-bmenu {
@@ -25,11 +21,9 @@
   padding: 6px;
   box-sizing: border-box;
   border: 1px solid color-mix(in srgb, var(--fg-base) 12%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-menu);
   background: var(--surface-primary);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 6%),
-    0 12px 32px -8px rgb(0 0 0 / 22%);
+  box-shadow: var(--shadow-popover);
   color: var(--text-primary);
   font-size: var(--text-label);
   user-select: none;
@@ -85,7 +79,7 @@
   height: 32px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
@@ -102,13 +96,13 @@
 }
 
 .wr-bmenu-glyph-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
   letter-spacing: -0.5px;
 }
 .wr-bmenu-glyph-quote {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 24px;
+  font-family: var(--font-glyph-serif);
+  font-size: var(--font-size-glyph);
   /* The glyph's ink sits high in its em box; nudge it back onto the tile's
      optical centre instead of its geometric one. */
   transform: translateY(4px);
@@ -133,7 +127,7 @@
   height: 30px;
   padding: 0 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
@@ -205,7 +199,7 @@
   height: 28px;
   padding: 0 10px;
   border: 1px solid color-mix(in srgb, var(--fg-base) 14%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background: transparent;
   color: var(--text-primary);
   font: inherit;

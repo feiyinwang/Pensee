@@ -9,7 +9,7 @@
   margin: 8px 0 4px;
   padding: 8px 6px 8px 8px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background-color: var(--surface-card);
   color: var(--text-primary);
   font-family: var(--ui-font);
@@ -39,7 +39,7 @@
   width: 40px;
   height: 60px;
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: var(--radius-button);
   background: var(--surface-subtle);
   box-shadow: 0 0 0 1px var(--line-subtle);
   color: var(--text-muted);
@@ -81,7 +81,7 @@
   gap: 6px;
   height: 28px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   color: var(--text-muted);
 }
 

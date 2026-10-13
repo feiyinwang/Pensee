@@ -219,7 +219,7 @@ const baseThemeSpec = {
     fontFeatureSettings: '"calt" 0',
     fontKerning: "none",
     padding: "0.2rem",
-    borderRadius: "0.4rem",
+    borderRadius: "var(--radius-chip)",
     fontSize: editorFontSize,
     backgroundColor: "var(--pm-code-background-color)",
   },

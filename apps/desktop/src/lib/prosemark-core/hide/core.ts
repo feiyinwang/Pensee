@@ -7,6 +7,7 @@ import { selectionInertFacet, unfurlFreezeFacet } from "../unfurlFreeze";
 
 const hideTheme = EditorView.theme({
   ".cm-hidden-token": {
+    // token-exception: zero size hides the token; it is not a type size.
     fontSize: "0px",
   },
   ".cm-transparent-token": {

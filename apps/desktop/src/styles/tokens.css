@@ -1,0 +1,496 @@
+/* Design tokens: every colour, font, type size, radius and shadow the app
+   draws with lives here, once (docs/design-tokens.md). App.css imports this
+   file first. A test (tests/design-tokens.test.ts) fails on a raw colour,
+   font stack, px font size, px radius or px shadow anywhere else in src/.
+
+   Four layers, read top to bottom:
+   1. Primitives — raw values named by what they are (--gray-50, --hue-red,
+      --radius-8). Only this file reads them.
+   2. Setting inputs — the variables Settings writes on :root
+      (settings.schema.json `cssVar`), with their defaults for the moment
+      before settings load. lib/theme.ts pushes the theme's two.
+   3. Semantic tokens — named by role (--color-text-muted, --radius-button,
+      --shadow-popover). Components read these. Dark values sit on :root (the
+      pre-hydration theme is dark); light ones under [data-theme="light"].
+   4. Legacy names — aliases of semantic tokens, kept so the rules written
+      against them keep working. They hold no values of their own.
+
+   To swap a colour, font or size: change the primitive, or point the
+   semantic token at another primitive. JS that needs a literal value (the
+   exported .board.svg) reads this file through lib/design-tokens.ts, so it
+   follows too. */
+
+/* ---------------------------------------------------------- 1. primitives */
+
+:root {
+  /* Warm neutrals (Harvey's ramp; SPECs/harvey-neutral-colour-spec.md). */
+  --gray-50: #fafaf9;
+  --gray-100: #f2f1f0;
+  --gray-300: #cccac6;
+  --gray-400: #8f8b85;
+  --gray-500: #706d66;
+  --gray-700: #33312c;
+  --gray-800: #1c1b19;
+  --gray-850: #161513;
+  --gray-900: #0f0e0d;
+  --white: #ffffff;
+  --black: #000000;
+
+  /* Hues. Each mid hue reads at 3:1 or better (non-text) on every gray-50,
+     gray-100, gray-800, gray-850 and gray-900 ground. The deep and pale reds
+     are for text (4.5:1 on light and dark grounds respectively). */
+  --hue-red: #cc4b3c;
+  --hue-orange: #c46a22;
+  --hue-yellow: #a8820a;
+  --hue-green: #3f8f5a;
+  --hue-blue: #3c72c9;
+  --hue-purple: #8a5cc7;
+  --hue-pink: #c4508a;
+  --hue-gray: #85817b;
+  --hue-red-deep: #b23a2e;
+  --hue-red-pale: #e57b6c;
+
+  /* Library cover art: a paper stock and ten printed tones (bg / fg). They
+     are a picture of a book, not chrome, so they do not follow the theme. */
+  --cover-paper-bg: #fbfaf6;
+  --cover-paper-fg: #23211d;
+  --cover-paper-venue: #8a8578;
+  --cover-paper-authors: #5f5b52;
+  --cover-paper-rule: #dcd8cd;
+  --cover-paper-rule-soft: #e9e6dd;
+  --cover-tone-0-bg: #efe6d6;
+  --cover-tone-0-fg: #3a2e1f;
+  --cover-tone-1-bg: #23262b;
+  --cover-tone-1-fg: #f2ede4;
+  --cover-tone-2-bg: #1f4d3f;
+  --cover-tone-2-fg: #e6f2ec;
+  --cover-tone-3-bg: #d9825b;
+  --cover-tone-3-fg: #2b140a;
+  --cover-tone-4-bg: #bfd7ea;
+  --cover-tone-4-fg: #13283a;
+  --cover-tone-5-bg: #4a2c4f;
+  --cover-tone-5-fg: #f3e6f2;
+  --cover-tone-6-bg: #c9d6b8;
+  --cover-tone-6-fg: #1f2a14;
+  --cover-tone-7-bg: #e8b4b8;
+  --cover-tone-7-fg: #3a1418;
+  --cover-tone-8-bg: #e3b23c;
+  --cover-tone-8-fg: #2a1d02;
+  --cover-tone-9-bg: #1e2f55;
+  --cover-tone-9-fg: #e3e9f7;
+
+  /* Font stacks. The Didone is bundled (Bodoni Moda); its fallbacks are the
+     macOS Didones. The book serif is for Library covers. */
+  --font-family-system:
+    -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
+    "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-family-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  --font-family-didone: "Bodoni Moda Variable", "Didot", "Bodoni 72", serif;
+  --font-family-book-serif: "New York", "Iowan Old Style", "Palatino", Georgia, serif;
+  --font-family-glyph-serif: Georgia, "Times New Roman", serif;
+
+  /* Type sizes (SPECs/type-scale-spec.md). */
+  --font-size-8: 8px;
+  --font-size-9: 9px;
+  --font-size-13: 13px;
+  --font-size-14: 14px;
+  --font-size-15: 15px;
+  --font-size-16: 16px;
+  --font-size-17: 17px;
+  --font-size-18: 18px;
+  --font-size-20: 20px;
+  --font-size-21: 21px;
+  --font-size-22: 22px;
+  --font-size-24: 24px;
+  --font-size-26: 26px;
+  --font-size-72: 72px;
+
+  /* Corner radii. */
+  --radius-2: 2px;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-20: 20px;
+  --radius-round: 999px;
+
+  /* Shadows: black at low alpha, so they read on both grounds. */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 6%), 0 6px 16px -6px rgb(0 0 0 / 18%);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 6%), 0 12px 32px -8px rgb(0 0 0 / 22%);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 18%);
+  --shadow-4: 0 15px 35px rgb(0 0 0 / 15%);
+  --shadow-5: 0 24px 60px rgb(0 0 0 / 32%);
+  --shadow-soft: 0 8px 20px rgb(0 0 0 / 8%);
+  --shadow-drop: 0 8px 24px -8px rgb(0 0 0 / 25%);
+  --shadow-lift-sm: 0 14px 28px -10px rgb(0 0 0 / 35%);
+  --shadow-lift-lg: 0 24px 48px -16px rgb(0 0 0 / 35%);
+  --shadow-sheet: 0 2px 8px -4px rgb(0 0 0 / 20%);
+  --shadow-cover: 0 1px 2px rgb(0 0 0 / 12%), 0 6px 16px -6px rgb(0 0 0 / 25%);
+  --shadow-cover-paper:
+    0 0 0 1px rgb(0 0 0 / 6%), 0 1px 2px rgb(0 0 0 / 10%), 0 6px 16px -6px rgb(0 0 0 / 20%);
+  --shadow-paper-lift: 0 1px 2px rgb(0 0 0 / 18%), 0 18px 40px -12px rgb(0 0 0 / 45%);
+  --shadow-paper-curl: 0 10px 18px -8px rgb(0 0 0 / 45%), inset 0 -7px 12px -7px rgb(0 0 0 / 28%);
+  --shadow-knob: 0 0 0 1px rgb(0 0 0 / 30%), 0 1px 3px rgb(0 0 0 / 30%);
+  --shadow-knob-ring: 0 0 0 1px rgb(0 0 0 / 30%);
+}
+
+/* ------------------------------------------------------- 2. setting inputs */
+
+:root {
+  /* theme.{mode}.background / foreground (lib/theme.ts pushes the active
+     mode's pair). settings.schema.json holds the same defaults;
+     tests/design-tokens.test.ts keeps them equal. */
+  --bg-base: var(--gray-900);
+  --fg-base: var(--gray-50);
+  /* typography.* and editor.* */
+  --ui-font: var(--font-family-system);
+  --editor-font: var(--font-family-system);
+  --mono-font: var(--font-family-mono);
+  --pensee-editor-font-size: var(--font-size-18);
+}
+
+[data-theme="light"] {
+  --bg-base: var(--gray-50);
+  --fg-base: var(--gray-900);
+}
+
+/* ------------------------------------------------------ 3. semantic tokens */
+
+:root {
+  /* Grounds. The app (window chrome: sidebar, tab strip) and the canvas
+     (the editor card, content cards, boards). Light mode puts the chrome on
+     the raised grey and the canvas on the ground, like a page with sections;
+     dark mode keeps the chrome on the ground and lifts the canvas. */
+  --color-bg-ground: var(--bg-base);
+  --color-bg-app: var(--color-bg-ground);
+  --color-bg-canvas: var(--gray-850);
+  --color-bg-raised: var(--gray-800);
+  /* Opaque layer under a popover or menu. */
+  --color-bg-popover: var(--color-bg-ground);
+  /* Fills that must read on both the chrome and the canvas: the foreground
+     over transparent, scaled by the Contrast setting (--contrast). */
+  --color-bg-hover: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
+  --color-bg-selected: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 26%), transparent);
+  --color-bg-subtle: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 18%), transparent);
+  --color-bg-subtle-strong: color-mix(
+    in srgb,
+    var(--fg-base) calc(var(--contrast) * 36%),
+    transparent
+  );
+  --color-bg-input: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 28%), transparent);
+  --color-bg-card: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
+  --color-bg-tab-active: color-mix(
+    in srgb,
+    var(--fg-base) calc(var(--contrast) * 34%),
+    transparent
+  );
+  --color-bg-kbd: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
+  --color-bg-code: var(--color-bg-raised);
+  /* A filled button: the foreground, its label in --color-text-inverse. */
+  --color-bg-inverse: var(--fg-base);
+
+  /* Text. Ratios are WCAG on the ground / the raised grey. */
+  --color-text-primary: var(--fg-base);
+  /* Body copy and secondary labels (11.8:1 / 10.5:1). */
+  --color-text-secondary: var(--gray-300);
+  /* Supporting text, timestamps, unchecked boxes (5.7:1 / 5.1:1). */
+  --color-text-muted: var(--gray-400);
+  /* Icons and placeholders (3.7:1 / 3.3:1; non-text). */
+  --color-text-faint: var(--gray-500);
+  /* Text on a --color-bg-inverse fill. */
+  --color-text-inverse: var(--bg-base);
+  /* Error text and outlines (6.8:1). */
+  --color-text-error: var(--hue-red-pale);
+
+  /* Lines. Default divides (decorative); strong is a control's edge, where
+     3:1 is required; subtle is the default at 60%. */
+  --color-border-default: var(--gray-700);
+  --color-border-subtle: color-mix(in srgb, var(--color-border-default) 60%, transparent);
+  --color-border-strong: var(--gray-500);
+  --color-border-floating: color-mix(
+    in srgb,
+    var(--fg-base) calc(var(--contrast) * 45%),
+    transparent
+  );
+  --color-focus: var(--fg-base);
+  --color-selection: color-mix(in srgb, var(--fg-base) 12%, transparent);
+  --color-scrollbar: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
+  --color-blockquote: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
+
+  /* Links are told apart by an underline, not by hue. */
+  --color-link: var(--fg-base);
+  --color-link-underline: color-mix(in srgb, var(--color-link) 50%, transparent);
+
+  /* Status and choice colours. They sit in small marks (a dot, a stroke, a
+     tint), never in text. */
+  --color-status-danger: var(--hue-red);
+  --color-status-warning: var(--hue-orange);
+  --color-status-success: var(--hue-green);
+  --color-status-info: var(--hue-blue);
+  --color-dot-red: var(--hue-red);
+  --color-dot-orange: var(--hue-orange);
+  --color-dot-yellow: var(--hue-yellow);
+  --color-dot-green: var(--hue-green);
+  --color-dot-blue: var(--hue-blue);
+  --color-dot-purple: var(--hue-purple);
+  --color-dot-pink: var(--hue-pink);
+  --color-dot-gray: var(--hue-gray);
+  /* How much of a dot a tinted ground takes (a sticky note's paper). */
+  --color-dot-tint: 16%;
+  /* Tags: a neutral pill; the meaning is its dot. */
+  --color-tag-bg: var(--color-bg-raised);
+  --color-tag-text: var(--color-text-secondary);
+
+  /* Over pictures and video, which are the same in both themes. Shade and
+     highlight are the light falling on drawn paper (a dragged card). */
+  --color-scrim: var(--black);
+  --color-on-scrim: var(--white);
+  --color-shade: var(--black);
+  --color-highlight: var(--white);
+  /* Grounds that stand for a physical thing, not the theme: a PDF page, a
+     video letterbox, an embed's own white page. */
+  --color-page: var(--white);
+  --color-letterbox: var(--black);
+
+  /* Library covers (lib: space-cover.tsx picks a tone by title). */
+  --color-cover-paper-bg: var(--cover-paper-bg);
+  --color-cover-paper-fg: var(--cover-paper-fg);
+  --color-cover-paper-venue: var(--cover-paper-venue);
+  --color-cover-paper-authors: var(--cover-paper-authors);
+  --color-cover-paper-rule: var(--cover-paper-rule);
+  --color-cover-paper-rule-soft: var(--cover-paper-rule-soft);
+
+  /* Fonts. */
+  --font-ui: var(--ui-font);
+  --font-editor: var(--editor-font);
+  --font-mono: var(--mono-font);
+  /* Titles: page title, H1–H2, space titles, the wordmark. Always regular
+     weight; the thick–thin contrast is the emphasis. */
+  --font-title: var(--font-family-didone);
+  --font-book-serif: var(--font-family-book-serif);
+  --font-glyph-serif: var(--font-family-glyph-serif);
+
+  /* Type sizes. caption < label < ui for the chrome; nothing in the UI goes
+     below caption. Cover sizes are part of a cover picture and may. */
+  --font-size-caption: var(--font-size-13);
+  --font-size-label: var(--font-size-14);
+  --font-size-ui: var(--font-size-15);
+  --font-size-heading-sm: var(--font-size-16);
+  --font-size-editor: var(--pensee-editor-font-size);
+  --font-size-title-sm: var(--font-size-20);
+  --font-size-title-md: var(--font-size-21);
+  --font-size-glyph: var(--font-size-24);
+  --font-size-title-lg: var(--font-size-26);
+  --font-size-cover-micro: var(--font-size-8);
+  --font-size-cover-fine: var(--font-size-9);
+  --font-size-cover-small: var(--font-size-13);
+  --font-size-cover-text: var(--font-size-14);
+  --font-size-cover-title: var(--font-size-16);
+  --font-size-cover-title-lg: var(--font-size-17);
+  --font-size-cover-quote: var(--font-size-18);
+  --font-size-cover-display: var(--font-size-22);
+  --font-size-cover-initial: var(--font-size-72);
+
+  /* Radii, by role. */
+  --radius-hairline: var(--radius-2);
+  --radius-button: var(--radius-4);
+  --radius-chip: var(--radius-6);
+  --radius-field: var(--radius-8);
+  --radius-menu: var(--radius-10);
+  --radius-card: var(--radius-12);
+  --radius-sheet: var(--radius-16);
+  --radius-window: var(--radius-20);
+  --radius-pill: var(--radius-round);
+
+  /* Shadows, by role. */
+  --shadow-card: var(--shadow-1);
+  --shadow-popover: var(--shadow-2);
+  --shadow-overlay: var(--shadow-3);
+  --shadow-surface: var(--shadow-4);
+  --shadow-dialog: var(--shadow-5);
+  --shadow-picker: var(--shadow-soft);
+  --shadow-menu: var(--shadow-drop);
+  --shadow-lift: var(--shadow-lift-lg);
+  --shadow-lift-hover: var(--shadow-lift-sm);
+  --shadow-page: var(--shadow-sheet);
+  --shadow-book-cover: var(--shadow-cover);
+  --shadow-paper-cover: var(--shadow-cover-paper);
+  --shadow-drag-paper: var(--shadow-paper-lift);
+  --shadow-drag-curl: var(--shadow-paper-curl);
+  --shadow-swatch-knob: var(--shadow-knob);
+  --shadow-swatch-ring: var(--shadow-knob-ring);
+}
+
+[data-theme="light"] {
+  --color-bg-app: var(--gray-100);
+  --color-bg-canvas: var(--color-bg-ground);
+  --color-bg-raised: var(--gray-100);
+  --color-bg-card: transparent;
+  --color-bg-input: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 20%), transparent);
+  --color-bg-tab-active: color-mix(
+    in srgb,
+    var(--fg-base) calc(var(--contrast) * 24%),
+    transparent
+  );
+  /* On #FAFAF9 / #F2F1F0: secondary 12.4:1 / 11.5:1, muted 4.9:1 / 4.6:1,
+     faint 3.2:1 / 3.0:1, strong border 3.2:1, error 5.7:1. */
+  --color-text-secondary: var(--gray-700);
+  --color-text-muted: var(--gray-500);
+  --color-text-faint: var(--gray-400);
+  --color-text-error: var(--hue-red-deep);
+  --color-border-default: var(--gray-300);
+  --color-border-strong: var(--gray-400);
+  --color-dot-tint: 10%;
+}
+
+/* Boards (board.css and the exported .board.svg draw with these). The
+   palette keys are the ones boards store (ink, muted, red, …), so changing a
+   value re-tints every board. */
+:root {
+  /* Strokes: the dot colours
+     (SPECs/harvey-neutral-colour-spec.md). The keys keep their hue names
+     because boards store them, so every existing board re-tints on its own.
+     `ink` is the foreground and `accent` equals it (the app has no accent
+     colour); `muted` is the ramp's muted grey. */
+  --wr-board-ink: var(--color-text-primary);
+  --wr-board-muted: var(--color-text-muted);
+  --wr-board-accent: var(--color-text-primary);
+  --wr-board-red: var(--color-dot-red);
+  --wr-board-orange: var(--color-dot-orange);
+  --wr-board-yellow: var(--color-dot-yellow);
+  --wr-board-green: var(--color-dot-green);
+  --wr-board-blue: var(--color-dot-blue);
+  --wr-board-purple: var(--color-dot-purple);
+  --wr-board-pink: var(--color-dot-pink);
+
+  /* Fills: each colour mixed toward the board surface (FigJam's soft/strong
+     pairs), so they follow dark mode on their own. One per HUE_TOKENS entry
+     in board-model.ts; board-palette.test.ts checks the two agree. Mixed in
+     OKLab, not OKLCH: the warm ground has a little chroma of its own, and an
+     OKLCH mix swings a cool hue toward it. */
+  --wr-board-ink-soft: color-mix(in oklab, var(--wr-board-ink) 22%, var(--wr-board-surface));
+  --wr-board-muted-soft: color-mix(in oklab, var(--wr-board-muted) 22%, var(--wr-board-surface));
+  --wr-board-red-soft: color-mix(in oklab, var(--wr-board-red) 22%, var(--wr-board-surface));
+  --wr-board-orange-soft: color-mix(in oklab, var(--wr-board-orange) 22%, var(--wr-board-surface));
+  --wr-board-yellow-soft: color-mix(in oklab, var(--wr-board-yellow) 22%, var(--wr-board-surface));
+  --wr-board-green-soft: color-mix(in oklab, var(--wr-board-green) 22%, var(--wr-board-surface));
+  --wr-board-accent-soft: color-mix(in oklab, var(--wr-board-accent) 22%, var(--wr-board-surface));
+  --wr-board-blue-soft: color-mix(in oklab, var(--wr-board-blue) 22%, var(--wr-board-surface));
+  --wr-board-purple-soft: color-mix(in oklab, var(--wr-board-purple) 22%, var(--wr-board-surface));
+  --wr-board-pink-soft: color-mix(in oklab, var(--wr-board-pink) 22%, var(--wr-board-surface));
+
+  /* 1 in dark mode: custom #hex colours remap their lightness (colorVar). */
+  --wr-board-flip: 0;
+
+  --wr-board-dot: color-mix(in srgb, var(--fg-base) 16%, transparent);
+  --wr-board-surface: var(--color-bg-canvas);
+  --wr-board-frame-bg: color-mix(in srgb, var(--fg-base) 3%, transparent);
+  --wr-board-frame-edge: color-mix(in srgb, var(--fg-base) 14%, transparent);
+
+  /* Sticky notes are near-neutral paper (gray-800 here, gray-100 in light
+     mode) with --wr-board-sticky-wash of the note's colour mixed in OKLab;
+     text in the foreground. The keys are the stored ones; the paler three
+     (mint, sky, lavender) take 60% of the tint so each pair of a hue stays
+     two notes. The paper is fixed per mode, not the theme ground, so a note
+     is paper on any custom ground. */
+  --wr-board-sticky-paper: var(--gray-800);
+  --wr-board-sticky-wash: var(--color-dot-tint);
+  --wr-board-sticky-pale: calc(var(--wr-board-sticky-wash) * 0.6);
+  --wr-board-sticky-yellow: color-mix(
+    in oklab,
+    var(--wr-board-yellow) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-orange: color-mix(
+    in oklab,
+    var(--wr-board-orange) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-mint: color-mix(
+    in oklab,
+    var(--wr-board-green) var(--wr-board-sticky-pale),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-green: color-mix(
+    in oklab,
+    var(--wr-board-green) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-sky: color-mix(
+    in oklab,
+    var(--wr-board-blue) var(--wr-board-sticky-pale),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-lavender: color-mix(
+    in oklab,
+    var(--wr-board-purple) var(--wr-board-sticky-pale),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-violet: color-mix(
+    in oklab,
+    var(--wr-board-purple) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-pink: color-mix(
+    in oklab,
+    var(--wr-board-pink) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-rose: color-mix(
+    in oklab,
+    var(--wr-board-red) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-ink: var(--color-text-primary);
+  --wr-board-sticky-edge: color-mix(in srgb, var(--fg-base) 8%, transparent);
+}
+
+/* Board dark mode follows the app's theme, not the OS. */
+:root[data-theme="dark"] {
+  --wr-board-flip: 1;
+}
+
+[data-theme="light"] {
+  --wr-board-sticky-paper: var(--gray-100);
+}
+
+/* ------------------------------------------------------- 4. legacy names */
+
+:root {
+  --accent: var(--color-text-primary);
+  --accent-solid: var(--color-bg-inverse);
+  --on-accent: var(--color-text-inverse);
+  --display-font: var(--font-title);
+
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --text-icon-muted: var(--color-text-faint);
+  --text-error: var(--color-text-error);
+
+  --border-color: var(--color-border-default);
+  --line-subtle: var(--color-border-default);
+  --line-subtler: var(--color-border-subtle);
+  --focus-border: var(--color-focus);
+
+  --surface-primary: var(--color-bg-ground);
+  --surface-card: var(--color-bg-card);
+  --surface-subtle: var(--color-bg-subtle);
+  --surface-subtle-strong: var(--color-bg-subtle-strong);
+  --surface-input: var(--color-bg-input);
+  --surface-selected: var(--color-bg-selected);
+  --item-hover-bg: var(--color-bg-hover);
+  --item-active-bg: var(--color-bg-selected);
+  --tab-active-bg: var(--color-bg-tab-active);
+  --code-bg: var(--color-bg-code);
+  --kbd-bg: var(--color-bg-kbd);
+  --scrollbar-thumb: var(--color-scrollbar);
+  --blockquote-border: var(--color-blockquote);
+  --link-color: var(--color-link);
+  --link-underline: var(--color-link-underline);
+  --editor-selection-bg: var(--color-selection);
+}

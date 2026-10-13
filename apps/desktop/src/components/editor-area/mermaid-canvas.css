@@ -11,7 +11,7 @@
   position: relative;
   height: 480px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background-color: transparent;
   overflow: hidden;
   outline: none;
@@ -73,7 +73,7 @@
   padding: 8px 0;
   max-width: none;
   margin: 0;
-  font-family: var(--pm-code-font, var(--mono-font, "SF Mono", Menlo, Monaco, Consolas, monospace));
+  font-family: var(--pm-code-font, var(--font-mono));
   font-size: var(--text-caption);
   line-height: 1.5;
 }
@@ -85,7 +85,7 @@
    code surface reads as a recessed pane instead of a lifted card. The default
    `--surface-card` lightens against the bg, which is wrong here. */
 [data-theme="dark"] .cm-mermaid-canvas-editor {
-  background-color: color-mix(in srgb, black calc(var(--contrast) * 24%), transparent);
+  background-color: color-mix(in srgb, var(--color-shade) calc(var(--contrast) * 24%), transparent);
 }
 
 /* Restore native scrolling on the inner scroller. The outer prosemark theme
@@ -155,7 +155,7 @@
 .cm-mermaid-canvas-zoom-btn,
 .cm-mermaid-canvas-icon-btn {
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background-color: var(--surface-card);
   color: var(--text-secondary);
   cursor: pointer;
@@ -222,7 +222,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: var(--font-size-label);
   padding: 0;
 }
 
@@ -241,7 +241,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--font-size-heading-sm);
   padding: 0;
 }
 
@@ -256,7 +256,7 @@
   justify-content: center;
   padding: 1.5em 2em;
   color: var(--text-error);
-  font-family: var(--pm-code-font, var(--mono-font, "SF Mono", Menlo, Monaco, Consolas, monospace));
+  font-family: var(--pm-code-font, var(--font-mono));
   font-size: 0.85em;
   text-align: center;
   white-space: pre-wrap;

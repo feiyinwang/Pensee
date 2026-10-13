@@ -71,7 +71,7 @@ function HighlightedPath({ path, indices }: { path: string; indices: number[] })
   return (
     <span>
       {Array.from(path).map((char, i) => (
-        <span key={i} className={set.has(i) ? "text-link font-semibold" : undefined}>
+        <span key={i} className={set.has(i) ? "text-[var(--color-link)] font-semibold" : undefined}>
           {char}
         </span>
       ))}
@@ -83,7 +83,9 @@ function MovePageRow({ result }: { result: SearchResult }) {
   return (
     <div className="flex min-w-0 flex-col">
       <span className="truncate">{getFileStem(result.path)}</span>
-      <span className="truncate text-caption text-text-muted">{result.relative_path}</span>
+      <span className="truncate text-caption text-[var(--color-text-muted)]">
+        {result.relative_path}
+      </span>
     </div>
   );
 }
@@ -501,7 +503,9 @@ export function CommandPalette() {
                   <CommandItem key={c.id} value={c.id} onSelect={c.run}>
                     <div className="flex flex-col">
                       <span>{c.label}</span>
-                      <span className="text-caption text-text-muted">{c.description}</span>
+                      <span className="text-caption text-[var(--color-text-muted)]">
+                        {c.description}
+                      </span>
                     </div>
                   </CommandItem>
                 ))}
@@ -509,10 +513,14 @@ export function CommandPalette() {
                 {visibleBooks.map((b) => (
                   <CommandItem key={b.book} value={b.book} onSelect={() => handleOpenBook(b)}>
                     <div className="flex min-w-0 items-center gap-2">
-                      <BookOpen size={14} className="shrink-0 text-text-muted" aria-hidden />
+                      <BookOpen
+                        size={14}
+                        className="shrink-0 text-[var(--color-text-muted)]"
+                        aria-hidden
+                      />
                       <div className="flex min-w-0 flex-col">
                         <span className="truncate">{b.title}</span>
-                        <span className="truncate text-caption text-text-muted">
+                        <span className="truncate text-caption text-[var(--color-text-muted)]">
                           Book · {getFileName(b.book)}
                         </span>
                       </div>
@@ -524,7 +532,7 @@ export function CommandPalette() {
                   <CommandItem key={r.path} value={r.path} onSelect={() => handleSelect(r.path)}>
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate">{getFileName(r.path)}</span>
-                      <span className="truncate text-caption text-text-muted">
+                      <span className="truncate text-caption text-[var(--color-text-muted)]">
                         <HighlightedPath path={r.relative_path} indices={r.match_indices} />
                       </span>
                     </div>
@@ -539,7 +547,7 @@ export function CommandPalette() {
                   >
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate">{entry.title || getFileStem(entry.name)}</span>
-                      <span className="truncate text-caption text-text-muted">
+                      <span className="truncate text-caption text-[var(--color-text-muted)]">
                         {getParentDir(entry.path)}
                       </span>
                     </div>

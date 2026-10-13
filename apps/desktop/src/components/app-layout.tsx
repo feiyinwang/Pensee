@@ -151,7 +151,7 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
 
   return (
     <div
-      className="relative h-screen w-screen overflow-hidden bg-transparent text-text-primary"
+      className="relative h-screen w-screen overflow-hidden bg-transparent text-[var(--color-text-primary)]"
       // Document footers keep their counts clear of the agent launcher, and the
       // launcher stays in the editor's corner when the calendar is open.
       style={{

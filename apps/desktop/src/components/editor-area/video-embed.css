@@ -11,7 +11,7 @@
   display: block;
   max-width: 100%;
   max-height: 480px;
-  border-radius: 10px;
+  border-radius: var(--radius-menu);
   background: var(--surface-subtle);
 }
 
@@ -24,13 +24,13 @@
   left: 8px;
   bottom: 8px;
   padding: 3px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-button);
   font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1;
   pointer-events: none;
-  background: rgb(0 0 0 / 0.62);
-  color: white;
+  background: color-mix(in srgb, var(--color-scrim) 62%, transparent);
+  color: var(--color-on-scrim);
 }
 
 .cm-video-embed-unresolved {

@@ -21,6 +21,9 @@ export default defineConfig(async () => ({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    // Vitest blanks CSS by default, `?raw` imports too; lib/design-tokens.ts
+    // reads tokens.css as text, so let that one file through.
+    css: { include: [/styles\/tokens\.css/] },
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

@@ -5,7 +5,7 @@
    (--on-accent); the app has no accent colour. */
 .calendar-panel {
   --accent: var(--accent-solid);
-  --accent-strong: color-mix(in srgb, var(--accent-solid) 85%, black);
+  --accent-strong: color-mix(in srgb, var(--accent-solid) 85%, var(--color-shade));
   --accent-foreground: var(--on-accent);
   --surface-muted: var(--item-hover-bg);
   /* The current period's text (today, this week, …): the foreground, marked

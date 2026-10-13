@@ -100,8 +100,9 @@ selection) is drawn in the foreground, and there is no accent setting
 ([SPECs/ink-only-colour-spec.md](../SPECs/ink-only-colour-spec.md)).
 
 Where colour has to carry a meaning or a user's choice (a status, a board
-shape, a sticky note), it is one of eight dot colours (`--dot-*`: red, orange,
-yellow, green, blue, purple, pink, gray), each 3:1 or better on both grounds,
+shape, a sticky note), it is one of eight dot colours (red, orange,
+yellow, green, blue, purple, pink, gray; `--color-dot-*` in
+`styles/tokens.css`), each 3:1 or better on both grounds,
 and it sits in a small mark: a 6px dot before a grey tag's label, a board
 stroke, a light tint on a sticky note. Text stays neutral. Code is not
 coloured: names in the foreground, strings in the secondary grey, comments in

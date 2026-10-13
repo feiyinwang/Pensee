@@ -301,6 +301,7 @@ function ColorWheel({
           max={100}
           value={Math.round(hsv.v * 100)}
           className={styles.wheelSlider}
+          // token-exception: the brightness slider runs from black to the picked hue.
           style={{ background: `linear-gradient(to right, #000, ${hsvToHex({ ...hsv, v: 1 })})` }}
           onChange={(e) => setHsv((cur) => ({ ...cur, v: Number(e.target.value) / 100 }))}
         />

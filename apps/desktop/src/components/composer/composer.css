@@ -118,7 +118,7 @@ button.composer-chip:not(:disabled) {
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 20px;
+  font-size: var(--font-size-title-sm);
   font-weight: 600;
   line-height: 32px;
   white-space: nowrap;
@@ -217,7 +217,7 @@ button.composer-chip:not(:disabled) {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-icon-muted);
   transition:
     background-color var(--motion-hover) var(--ease-hover),
@@ -242,7 +242,7 @@ button.composer-chip:not(:disabled) {
   height: 28px;
   flex-shrink: 0;
   padding: 0 10px 0 14px;
-  border-radius: 4px;
+  border-radius: var(--radius-button);
   background: var(--text-primary);
   color: var(--surface-primary);
   font-size: var(--text-label);
@@ -294,7 +294,7 @@ button.composer-chip:not(:disabled) {
   width: 100%;
   margin-top: 12px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   font-size: var(--text-label);
   font-weight: 500;
   color: var(--text-secondary);

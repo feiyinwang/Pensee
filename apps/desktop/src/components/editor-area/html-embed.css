@@ -14,7 +14,7 @@
 .cm-html-embed-frame {
   position: relative;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background-color: var(--surface-card);
   overflow: hidden;
 }
@@ -49,7 +49,7 @@
   justify-content: center;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background: transparent;
   color: var(--text-icon-muted, var(--text-muted));
   cursor: pointer;
@@ -81,7 +81,8 @@
   display: block;
   width: 100%;
   border: none;
-  background-color: white;
+  /* An embedded page brings its own white ground in either theme. */
+  background-color: var(--color-page);
 }
 
 /* While the height handle is being dragged the page under it must not see
@@ -108,7 +109,7 @@
   width: 32px;
   height: 3px;
   transform: translateX(-50%);
-  border-radius: 2px;
+  border-radius: var(--radius-hairline);
   background-color: var(--text-icon-muted, var(--text-muted));
   opacity: 0;
   transition: opacity var(--motion-hover) var(--ease-hover);

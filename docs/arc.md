@@ -41,7 +41,7 @@ Call `ensureArcTokens()` from `board/arc-tokens.ts` instead, from a lazy-loaded 
 
 Arc components then pick up Pensée's accent, text colours and UI font, and nothing outside them changes. Keep Arc imports behind a dynamic `import()` so notes never pay for `motion` or Arc at startup (the agent panel is a `React.lazy` chunk for this reason).
 
-Arc tokens Pensée does _not_ define (`--surface`, `--border`, `--foreground`, …) keep Arc's opaque neutral values. Where an Arc piece sits on Pensée's translucent glass, remap them on the container instead of editing the vendored file — see the `.agent-panel` block in `components/agent-chat/agent-chat.css`.
+Arc's own colour, shadow and font tokens that Pensée has no name for (`--surface`, `--background`, `--foreground`, `--border*`, `--accent-*`, `--danger`, `--success`, `--warning`, `--focus-ring`, `--shadow-raised`, `--shadow-floating`, `--font-body`, `--font-display`) are pointed at Pensée's semantic tokens by `ARC_MAP` in `board/arc-tokens.ts` ([design-tokens.md](./design-tokens.md)), so a colour swapped in `styles/tokens.css` reaches Arc pieces too. Arc's radii and spacing stay Arc's. Where an Arc piece sits on Pensée's translucent glass, remap tokens on the container instead of editing the vendored file — see the `.agent-panel` block in `components/agent-chat/agent-chat.css`; a container remap wins over `ARC_MAP`.
 
 ## Motion
 

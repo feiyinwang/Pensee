@@ -21,6 +21,7 @@ import {
 } from "./board-model";
 import { boxesUnion, elementBounds } from "./board-geometry";
 import { renderElement } from "./board-render";
+import { type TokenMode, tokenValue } from "@/lib/design-tokens";
 
 export const BOARD_FILE_SUFFIX = ".board.svg";
 const META_ID = "writer-board";
@@ -82,9 +83,10 @@ const SOFT_TOKENS = HUE_TOKENS.map(
     `--wr-board-${h}-soft:color-mix(in oklab,var(--wr-board-${h}) 22%,var(--wr-board-surface))`,
 ).join(";");
 
-/** One mode's colours for a file opened outside Pensée: the warm neutrals
- *  and the dot colours of App.css (SPECs/harvey-neutral-colour-spec.md).
- *  `paper` and `wash` make the sticky notes, as in board.css. */
+/** One mode's colours for a file opened outside Pensée: the board tokens of
+ *  styles/tokens.css, resolved to literal values (lib/design-tokens.ts), so
+ *  the file carries the same colours the app draws. `paper` and `wash` make
+ *  the sticky notes, as in tokens.css. */
 interface FileInks {
   surface: string;
   ink: string;
@@ -101,36 +103,28 @@ interface FileInks {
   flip: 0 | 1;
 }
 
-/** The dots are one set for both modes (App.css `--dot-*`). */
-const DOTS = {
-  red: "#cc4b3c",
-  orange: "#c46a22",
-  yellow: "#a8820a",
-  green: "#3f8f5a",
-  blue: "#3c72c9",
-  purple: "#8a5cc7",
-  pink: "#c4508a",
-} as const;
+function fileInks(mode: TokenMode): FileInks {
+  const board = (key: string) => tokenValue(`--wr-board-${key}`, mode);
+  return {
+    surface: board("surface"),
+    ink: board("ink"),
+    muted: board("muted"),
+    red: board("red"),
+    orange: board("orange"),
+    yellow: board("yellow"),
+    green: board("green"),
+    blue: board("blue"),
+    purple: board("purple"),
+    pink: board("pink"),
+    paper: board("sticky-paper"),
+    wash: board("sticky-wash"),
+    flip: mode === "dark" ? 1 : 0,
+  };
+}
 
-export const FILE_LIGHT: FileInks = {
-  surface: "#fafaf9",
-  ink: "#0f0e0d",
-  muted: "#706d66",
-  ...DOTS,
-  paper: "#f2f1f0",
-  wash: "10%",
-  flip: 0,
-};
+export const FILE_LIGHT: FileInks = fileInks("light");
 
-const FILE_DARK: FileInks = {
-  surface: "#0f0e0d",
-  ink: "#fafaf9",
-  muted: "#8f8b85",
-  ...DOTS,
-  paper: "#1c1b19",
-  wash: "16%",
-  flip: 1,
-};
+const FILE_DARK: FileInks = fileInks("dark");
 
 /** Sticky colour → the hue that tints it and whether it is a pale (60%) tint.
  *  Mirrors the `--wr-board-sticky-*` block in board.css. */

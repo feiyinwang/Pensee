@@ -73,21 +73,15 @@ describe("board palette", () => {
   });
 
   it("draws every hue token in a dot colour or a neutral, never a raw colour", () => {
-    const css = readFileSync(
-      resolve(__dirname, "../src/components/editor-area/board/board.css"),
-      "utf8",
-    );
+    const css = readFileSync(resolve(__dirname, "../src/styles/tokens.css"), "utf8");
     for (const h of HUE_TOKENS) {
       const decl = new RegExp(`--wr-board-${h}:\\s*([^;]+);`).exec(css)?.[1];
-      expect(decl, h).toMatch(/^var\(--(dot-[a-z]+|fg-base|text-primary|text-muted)\)$/);
+      expect(decl, h).toMatch(/^var\(--color-(dot-[a-z]+|text-primary|text-muted)\)$/);
     }
   });
 
   it("declares a soft tint in board.css for every hue token", () => {
-    const css = readFileSync(
-      resolve(__dirname, "../src/components/editor-area/board/board.css"),
-      "utf8",
-    );
+    const css = readFileSync(resolve(__dirname, "../src/styles/tokens.css"), "utf8");
     for (const h of HUE_TOKENS) expect(css).toContain(`--wr-board-${h}-soft:`);
   });
 });

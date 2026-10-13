@@ -24,9 +24,10 @@ export function ScrollFade({
   const direction = axis === "vertical" ? "bottom" : "right";
   const showStart = alwaysFade || scrolledStart;
   const showEnd = alwaysFade || scrolledEnd;
+  const opaque = "black"; // token-exception: an alpha mask's opaque stop.
   const maskImage = `linear-gradient(to ${direction}, ${
-    showStart ? `transparent, black ${fadeSize},` : "black,"
-  } ${showEnd ? `black calc(100% - ${fadeSize}), transparent` : "black"})`;
+    showStart ? `transparent, ${opaque} ${fadeSize},` : `${opaque},`
+  } ${showEnd ? `${opaque} calc(100% - ${fadeSize}), transparent` : opaque})`;
 
   const mergedRef = useCallback(
     (el: HTMLDivElement | null) => {

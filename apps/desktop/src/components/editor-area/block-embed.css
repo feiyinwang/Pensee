@@ -41,7 +41,7 @@
   width: 20px;
   height: 20px;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   color: var(--text-muted);
   font-family: var(--ui-font);
   font-size: var(--text-caption);
@@ -112,7 +112,7 @@
   text-indent: 0;
   margin-left: 6px;
   padding: 0 6px;
-  border-radius: 9px;
+  border-radius: var(--radius-menu);
   background: color-mix(in oklab, var(--accent) 18%, transparent);
   color: var(--text-muted);
   font-family: var(--ui-font);
@@ -153,7 +153,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 6px 8px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-menu);
 }
 
 .wr-backlinks-item + .wr-backlinks-item {
@@ -164,7 +164,7 @@
   align-self: flex-start;
   padding: 2px 6px;
   margin-left: -6px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   color: var(--text-primary);
   font-family: var(--ui-font);
   font-size: var(--text-label);
@@ -190,7 +190,7 @@
 
 /* The citation itself, in the middle of its context. */
 .wr-backlinks-preview .cm-line.wr-backlink-cite {
-  border-radius: 4px;
+  border-radius: var(--radius-button);
   background: color-mix(in oklab, var(--accent) 16%, transparent);
   color: var(--text-primary);
 }
@@ -220,7 +220,7 @@
   width: 18px;
   height: 18px;
   margin-inline-start: 4px;
-  border-radius: 5px;
+  border-radius: var(--radius-chip);
   color: var(--text-muted);
   /* The pin's tip sits on the text's baseline (measured in
      e2e/specs/youtube-pin-click.spec.js). */

@@ -189,7 +189,7 @@ const codeFenceThemeSpec = {
     justifyContent: "center",
     border: "none",
     padding: "0.2rem",
-    borderRadius: "0.2rem",
+    borderRadius: "var(--radius-button)",
     cursor: "pointer",
     backgroundColor: "var(--pm-code-btn-background-color)",
     color: "var(--pm-muted-color)",

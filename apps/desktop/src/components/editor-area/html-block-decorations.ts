@@ -269,7 +269,7 @@ const htmlBlockTheme = EditorView.baseTheme({
   ".cm-html-block-widget pre": {
     backgroundColor: "var(--code-bg)",
     padding: "0.75em 1em",
-    borderRadius: "4px",
+    borderRadius: "var(--radius-button)",
     overflow: "auto",
   },
   ".cm-html-block-widget code": {
@@ -293,7 +293,7 @@ const htmlBlockTheme = EditorView.baseTheme({
   },
   ".cm-html-block-widget details": {
     border: "1px solid var(--border-color)",
-    borderRadius: "4px",
+    borderRadius: "var(--radius-button)",
     padding: "0.5em",
   },
   ".cm-html-block-widget summary": {

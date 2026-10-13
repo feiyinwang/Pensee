@@ -224,7 +224,7 @@ export function EditorSearchOverlay() {
           <button
             type="button"
             onClick={actions.doReplaceAll}
-            className="shrink-0 label-caps rounded-[4px] bg-[var(--text-primary)] px-2.5 text-label whitespace-nowrap font-medium text-[var(--surface-primary)] hover:opacity-90 h-[var(--chrome-control-height)]"
+            className="shrink-0 label-caps rounded-[var(--radius-button)] bg-[var(--text-primary)] px-2.5 text-label whitespace-nowrap font-medium text-[var(--surface-primary)] hover:opacity-90 h-[var(--chrome-control-height)]"
           >
             All
           </button>

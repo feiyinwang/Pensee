@@ -12,8 +12,13 @@
  *  - Arc's global "no focus outlines" rule is dropped. It would strip keyboard
  *    focus from the whole app.
  *
- * Net effect: Arc components get Pensée's accent, text colours and UI font;
- * nothing outside them changes.
+ *  - Arc's own colour, shadow and font tokens that Pensée has no name for
+ *    (`--surface`, `--border`, `--danger`, …) are pointed at Pensée's semantic
+ *    tokens (`ARC_MAP`, styles/tokens.css), so a colour swapped there
+ *    reaches Arc pieces too. Arc's radii and spacing stay Arc's.
+ *
+ * Net effect: Arc components draw in Pensée's tokens; nothing outside them
+ * changes.
  */
 
 import foundationCss from "@/components/arc/foundation.css?raw";
@@ -21,6 +26,30 @@ import foundationCss from "@/components/arc/foundation.css?raw";
 const STYLE_ID = "wr-arc-tokens";
 const FOCUS_RULE = /:is\(\*:focus,\s*\*:focus-visible,\s*\*:focus-within\)\s*\{[^}]*\}/g;
 const ROOT_SELECTOR = /:root((?:\[[^\]]*\])*)/g;
+
+/** Arc token → the Pensée token it draws with. A container that remaps one of
+ *  these (the agent panel, the projects view) still wins, being closer. */
+export const ARC_MAP: Readonly<Record<string, string>> = {
+  "--background": "var(--color-bg-canvas)",
+  "--surface": "var(--color-bg-canvas)",
+  "--surface-raised": "var(--color-bg-popover)",
+  "--surface-muted": "var(--color-bg-subtle)",
+  "--foreground": "var(--color-text-primary)",
+  "--border": "var(--color-border-subtle)",
+  "--border-subtle": "var(--color-border-subtle)",
+  "--border-strong": "var(--color-border-default)",
+  "--accent-foreground": "var(--color-text-inverse)",
+  "--accent-strong": "var(--color-text-primary)",
+  "--accent-subtle": "var(--color-bg-selected)",
+  "--danger": "var(--color-status-danger)",
+  "--success": "var(--color-status-success)",
+  "--warning": "var(--color-status-warning)",
+  "--focus-ring": "var(--color-focus)",
+  "--shadow-raised": "var(--shadow-card)",
+  "--shadow-floating": "var(--shadow-popover)",
+  "--font-body": "var(--font-ui)",
+  "--font-display": "var(--font-ui)",
+};
 
 export function arcTokenNames(css: string): string[] {
   return [...new Set(css.match(/--[a-zA-Z0-9-]+(?=\s*:)/g) ?? [])];
@@ -33,10 +62,13 @@ export function scopeArcFoundation(css: string, hostOwned: string[]): string {
   const host = (name: string) => `--wr-host${name.slice(1)}`;
   const capture = hostOwned.map((n) => `${host(n)}:var(${n})`).join(";");
   const restore = hostOwned.map((n) => `${n}:var(${host(n)})`).join(";");
+  const mapped = Object.entries(ARC_MAP)
+    .map(([arc, pensee]) => `${arc}:${pensee}`)
+    .join(";");
   return [
     scoped,
     `:root{${capture}}`,
-    `:root:root:root body{${restore}${restore ? ";" : ""}--font-body:var(--ui-font);--font-display:var(--ui-font)}`,
+    `:root:root:root body{${restore}${restore ? ";" : ""}${mapped}}`,
     "",
   ].join("\n");
 }

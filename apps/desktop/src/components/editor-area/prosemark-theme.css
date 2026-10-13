@@ -130,21 +130,8 @@
   max-width: var(--pensee-editor-outer-width, calc(660px + 4rem + 4rem));
   margin: 0 auto;
   padding: 0 var(--pensee-editor-side-padding, 4rem) 40vh;
-  font-family: var(
-    --pensee-editor-font-family,
-    -apple-system-body,
-    ui-sans-serif,
-    -apple-system,
-    system-ui,
-    "Segoe UI",
-    Helvetica,
-    "Apple Color Emoji",
-    Arial,
-    sans-serif,
-    "Segoe UI Emoji",
-    "Segoe UI Symbol"
-  );
-  font-size: var(--pensee-editor-font-size, 18px);
+  font-family: var(--pensee-editor-font-family, var(--font-editor));
+  font-size: var(--pensee-editor-font-size, var(--font-size-editor));
   line-height: var(--pensee-editor-line-height, 1.9);
   letter-spacing: var(--pensee-editor-letter-spacing, -0.03em);
   color: var(--editor-text);
@@ -222,7 +209,7 @@
   height: 18px;
   transform: translateY(-50%);
   border: 1.5px solid var(--text-muted);
-  border-radius: 5px;
+  border-radius: var(--radius-chip);
   transition:
     background-color var(--motion-fast) var(--ease-out),
     border-color var(--motion-fast) var(--ease-out);
@@ -246,6 +233,7 @@
   height: 18px;
   transform: translateY(-50%);
   background-color: var(--on-accent);
+  /* token-exception: an alpha mask; the tick's colour is the background above. */
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 12.5L10.5 15L16 9'/%3E%3C/svg%3E")
     center / 20px 20px no-repeat;
   pointer-events: none;

@@ -24,7 +24,9 @@ pre-hydration fallbacks in `App.css`):
 | Light | `#FAFAF9`  | `#0F0E0D`  |
 | Dark  | `#0F0E0D`  | `#FAFAF9`  |
 
-The ramp is named per mode in `App.css` (`--neutral-*`), not mixed from the
+The ramp is named per mode in `styles/tokens.css` (primitives `--gray-*`,
+semantic `--color-text-*`, `--color-border-*`, `--color-bg-*`; see
+[docs/design-tokens.md](../docs/design-tokens.md)), not mixed from the
 primaries, so each step lands on a measured value. A custom Background or
 Foreground still moves the ground and the title text; the steps in between
 stay. WCAG ratios against the ground / the raised surface:
@@ -35,15 +37,15 @@ stay. WCAG ratios against the ground / the raised surface:
 | Secondary      | `--text-secondary`, editor body copy    | `#33312C` | 12.4 / 11.5   | `#CCCAC6` | 11.8 / 10.5  |
 | Muted          | `--text-muted`, unchecked task box      | `#706D66` | 4.9 / 4.6     | `#8F8B85` | 5.7 / 5.1    |
 | Faint          | `--text-icon-muted`, `--text-faint`     | `#8F8B85` | 3.2 / 3.0     | `#706D66` | 3.7 / 3.3    |
-| Control edge   | `--line-strong`                         | `#8F8B85` | 3.2           | `#706D66` | 3.7          |
+| Control edge   | `--color-border-strong`                 | `#8F8B85` | 3.2           | `#706D66` | 3.7          |
 | Hairline       | `--border-color`, `--line-subtle`       | `#CCCAC6` | decorative    | `#33312C` | decorative   |
-| Raised surface | `--neutral-surface`, code, tags         | `#F2F1F0` |               | `#1C1B19` |              |
-| Card           | `--card-ground`: editor, board          | `#FAFAF9` |               | `#161513` |              |
-| Chrome         | `--chrome-ground`: window, sidebar      | `#F2F1F0` |               | `#0F0E0D` |              |
+| Raised surface | `--color-bg-raised`: code, tags         | `#F2F1F0` |               | `#1C1B19` |              |
+| Card           | `--color-bg-canvas`: editor, board      | `#FAFAF9` |               | `#161513` |              |
+| Chrome         | `--color-bg-app`: window, sidebar       | `#F2F1F0` |               | `#0F0E0D` |              |
 
 Faint is for icons and placeholders (non-text, 3:1). Hairlines divide; they are
-never the only edge of a control, which uses `--line-strong` or a fill.
-`--line-subtler` is the hairline at 60%.
+never the only edge of a control, which uses `--color-border-strong` or a
+fill. `--color-border-subtle` (`--line-subtler`) is the hairline at 60%.
 
 Light mode sets the window chrome on the raised grey and the editor card on
 the near-white ground, like a page with sections; dark mode keeps the chrome
@@ -66,8 +68,9 @@ Contrast.
 
 ## Dots
 
-The only colours besides the neutrals: `--dot-*` in `App.css`, one set for
-both modes. Colour sits in a small mark, never in text. Each is 3:1 or better
+The only colours besides the neutrals: `--hue-*` primitives, read as
+`--color-dot-*` and `--color-status-*` (`styles/tokens.css`), one set for both
+modes. Colour sits in a small mark, never in text. Each is 3:1 or better
 (non-text) on all five grounds.
 
 | Dot    | Value     | on #FAFAF9 | on #F2F1F0 | on #0F0E0D | on #1C1B19 |
@@ -81,14 +84,14 @@ both modes. Colour sits in a small mark, never in text. Each is 3:1 or better
 | pink   | `#C4508A` | 4.1        | 3.8        | 4.5        | 4.0        |
 | gray   | `#85817B` | 3.7        | 3.4        | 5.0        | 4.4        |
 
-`--dot-tint` is how much of a dot a tinted ground takes: 10% light, 16% dark.
+`--color-dot-tint` is how much of a dot a tinted ground takes: 10% light, 16% dark.
 The failed-save dot on a tab is red.
 
 ## Tags
 
 Project tags (`project-views.module.css`) and Library statuses
-(`spaces.module.css`) are neutral grey pills (`--neutral-surface`, text
-`--text-secondary`) with a 6px dot before the label. Tone → colour lives once,
+(`spaces.module.css`) are neutral grey pills (`--color-tag-bg`, text
+`--color-tag-text`) with a 6px dot before the label. Tone → colour lives once,
 in `TONE_COLOR` (`lib/projects.ts`), set on the element as `--tag`: overdue red,
 due soon orange, done green, in progress blue, to-do and plain deadlines gray;
 custom statuses purple, brown (orange pulled halfway to gray), pink, yellow.
@@ -104,13 +107,14 @@ fills mix 22% into the board surface in OKLab. The board surface is the card
 ground.
 
 Sticky notes are near-neutral paper: `#F2F1F0` (dark `#1C1B19`) with
-`--dot-tint` of their colour mixed in OKLab (the paler mint, sky and lavender
+`--color-dot-tint` of their colour mixed in OKLab (the paler mint, sky and lavender
 take 60%), text in the foreground. Selection, handles and the toolbar's active
 states stay the foreground. The picker names the colours plainly: Default,
 Gray, Red, Orange, Yellow, Green, Blue, Purple, Pink.
 
-The `.board.svg` style carries the same values (`FILE_LIGHT` / `FILE_DARK` in
-`board-file.ts`); a PNG export is filled with `#FAFAF9`.
+The `.board.svg` style carries the same values: `FILE_LIGHT` / `FILE_DARK` in
+`board-file.ts` read the board tokens through `lib/design-tokens.ts`; a PNG
+export is filled with the light board surface.
 
 ### Older board files
 

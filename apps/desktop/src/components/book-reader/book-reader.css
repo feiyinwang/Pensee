@@ -58,11 +58,12 @@
 .book-pdf-page {
   position: relative;
   flex: none;
-  border-radius: 4px;
-  background: white;
+  border-radius: var(--radius-button);
+  /* A PDF page is white paper in either theme. */
+  background: var(--color-page);
   box-shadow:
     0 0 0 1px var(--line-subtle),
-    0 2px 8px -4px rgb(0 0 0 / 20%);
+    var(--shadow-page);
   overflow: hidden;
 }
 

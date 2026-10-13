@@ -66,7 +66,7 @@ export function EditorSearchOverview({ scrollContainerRef }: EditorSearchOvervie
             background: m.isActive
               ? "var(--accent)"
               : "color-mix(in srgb, var(--accent) 45%, transparent)",
-            borderRadius: "1px",
+            borderRadius: "var(--radius-hairline)",
           }}
         />
       ))}

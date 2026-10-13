@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { tokenValue } from "@/lib/design-tokens";
 import type { SettingDef } from "@/lib/settings-schema";
 import { FontControl } from "./font-control";
 import { SelectControl } from "./select-control";
@@ -121,7 +122,7 @@ function ColorControl({ value, onChange }: { value: string; onChange: (v: string
     }
   }
 
-  const swatch = HEX_RE.test(value) ? value : "#0F0E0D";
+  const swatch = HEX_RE.test(value) ? value : tokenValue("--color-text-primary", "light");
 
   return (
     <div className="relative inline-flex h-9 w-44 items-center gap-2 rounded-lg bg-[var(--surface-input)] pr-3 pl-1">
@@ -216,7 +217,7 @@ function ListControl({ value, onChange }: { value: string[]; onChange: (v: strin
             type="button"
             onClick={() => handleRemove(i)}
             aria-label="Remove item"
-            className="pointer-events-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[13px] leading-none text-[var(--text-icon-muted)] hover:text-[var(--text-secondary)]"
+            className="pointer-events-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-caption leading-none text-[var(--text-icon-muted)] hover:text-[var(--text-secondary)]"
           >
             ×
           </button>

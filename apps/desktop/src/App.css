@@ -1,23 +1,6 @@
 @import "tailwindcss";
-
-@theme {
-  /* Single page background — applied once on body. Anything that needs an
-     opaque-ish backdrop (mermaid blocks, code chips) reads --bg directly. */
-  --color-bg: var(--bg);
-  --color-surface-primary: var(--surface-primary);
-  --color-surface-subtle: var(--surface-subtle);
-  --color-border: var(--border-color);
-  --color-line-subtle: var(--line-subtle);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-muted: var(--text-muted);
-  --color-text-icon-muted: var(--text-icon-muted);
-  --color-item-hover-bg: var(--item-hover-bg);
-  --color-item-active-bg: var(--item-active-bg);
-  --color-kbd-bg: var(--kbd-bg);
-  --color-code-bg: var(--code-bg);
-  --color-link: var(--link-color);
-}
+/* Every colour, font, size, radius and shadow value (docs/design-tokens.md). */
+@import "./styles/tokens.css";
 
 /* Motion tokens (see docs/motion.md). `static` so they are emitted even when
    no Tailwind utility references them, since plain CSS reads them too.
@@ -45,14 +28,28 @@
    drop below it either. The editor's own sizes come from the editor
    settings (--pensee-editor-*), not from here. */
 @theme static {
-  --text-caption: 13px;
+  --text-caption: var(--font-size-caption);
   --text-caption--line-height: 1.4;
-  --text-label: 14px;
+  --text-label: var(--font-size-label);
   --text-label--line-height: 1.4;
-  --text-ui: 15px;
+  --text-ui: var(--font-size-ui);
   --text-ui--line-height: 1.5;
   --text-xs: var(--text-caption);
   --text-xs--line-height: 1.4;
+}
+
+/* Tailwind's radius and shadow utilities (`rounded-lg`, `shadow-md`) read
+   the design tokens, so changing a radius or shadow there moves them too. */
+@theme static {
+  --radius-xs: var(--radius-2);
+  --radius-sm: var(--radius-4);
+  --radius-md: var(--radius-6);
+  --radius-lg: var(--radius-8);
+  --radius-xl: var(--radius-12);
+  --radius-2xl: var(--radius-16);
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: var(--shadow-overlay);
+  --shadow-lg: var(--shadow-popover);
 }
 
 /* Tailwind's colour/opacity transitions don't cover `scale`, which the press
@@ -87,7 +84,7 @@
    reads as labels, distinct from the prose the editor holds. Never monospace:
    that reads as a terminal, not a writing room (SPECs/didone-display-type-spec.md). */
 @utility label-caps {
-  font-family: var(--ui-font);
+  font-family: var(--font-ui);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -101,32 +98,9 @@
 }
 
 :root {
-  /* Primary tokens — pushed by JS via applyThemeTokens(). Defaults below are
-     last-resort fallbacks for the brief window before settings hydrate. */
-  --bg-base: #0f0e0d;
-  --fg-base: #fafaf9;
-  /* The app UI has no accent colour (docs/brand.md): what used to be drawn in
-     an accent is drawn in the foreground. The accent tokens stay as aliases so
-     every rule written against them keeps working. A fill in --accent-solid
-     always carries its glyph in --on-accent (the checked task box, the drag
-     count, the selected calendar day). */
-  --accent: var(--fg-base);
-  --accent-solid: var(--fg-base);
-  --on-accent: var(--bg-base);
-  --ui-font:
-    -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
-    "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-  --editor-font:
-    -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
-    "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-  --mono-font:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-    monospace;
-  /* Display face: the brand's Didone (docs/brand.md) for the page title, H1–H2
-     and space titles, always at regular weight — the thick–thin contrast is
-     the emphasis, so it is never bolded. Bundled; the fallbacks are the macOS
-     Didones in case the bundle fails to load. */
-  --display-font: "Bodoni Moda Variable", "Didot", "Bodoni 72", serif;
+  /* Colours, fonts, sizes, radii and shadows are in styles/tokens.css.
+     What stays here is behaviour: translucency, the contrast multiplier,
+     motion and layout. */
   --bg-opacity: 1;
   --contrast: 0.44;
 
@@ -144,126 +118,30 @@
 
   /* Derived background — applied once on body. Editor and settings pages
      don't add their own bg layer; doing so would multiply opacity and break
-     translucency. Every other surface uses fg-on-transparent so OS vibrancy
-     bleeds through globally when bg-opacity < 1. */
-  --bg: color-mix(in srgb, var(--bg-base) calc(var(--bg-opacity) * 100%), transparent);
+     translucency. */
+  --bg: color-mix(in srgb, var(--color-bg-ground) calc(var(--bg-opacity) * 100%), transparent);
 
-  /* The neutral ramp (SPECs/harvey-neutral-colour-spec.md): warm greys, named
-     rather than mixed, so each step lands on a measured value instead of
-     drifting with the ground under it. Dark values here (the pre-hydration
-     ground is the dark one); [data-theme="light"] below holds the light ones.
-     Ratios are WCAG, against the ground / the raised surface:
-     - secondary: body copy and labels that sit under a title (11:1 / 10:1)
-     - muted: supporting text, timestamps, unchecked boxes (5.7:1 / 5.1:1)
-     - faint: icons and placeholder text (3.7:1 / 3.3:1; non-text, ≥3:1)
-     - line: hairlines that divide, never the only edge of a control
-     - line-strong: the edge of a control, where 3:1 is required
-     The ramp is fixed per mode: a custom Background or Foreground moves the
-     ground and the title text, not these steps. */
-  --neutral-card: #161513;
-  --neutral-surface: #1c1b19;
-  --neutral-line: #33312c;
-  --neutral-line-strong: #706d66;
-  --neutral-faint: #706d66;
-  --neutral-muted: #8f8b85;
-  --neutral-secondary: #cccac6;
-  /* Where things sit: the window chrome (sidebar, tab strip) on one ground,
-     the editor and content cards on another. Light mode puts the chrome on
-     the raised surface and the cards on the near-white ground, like a page
-     with sections; dark mode puts the chrome on the ground and lifts the
-     cards. */
-  --chrome-ground: var(--bg-base);
-  --card-ground: var(--neutral-card);
-
-  --text-primary: var(--fg-base);
-  --text-secondary: var(--neutral-secondary);
-  --text-muted: var(--neutral-muted);
-  --text-icon-muted: var(--neutral-faint);
-  --text-faint: var(--neutral-faint);
-
-  /* Hairlines are the named line step. Fills that have to read on both the
-     chrome and a card (hover, selection, inputs) stay foreground-on-
-     transparent below, and their alpha scales with --contrast. */
-  --border-color: var(--neutral-line);
-  --line-subtle: var(--neutral-line);
-  --line-subtler: color-mix(in srgb, var(--neutral-line) 60%, transparent);
-  --line-strong: var(--neutral-line-strong);
-  --focus-border: var(--fg-base);
   /* The editor sits on its own glass panel, so the sidebar edge needs no rule. */
   --sidebar-divider-right: transparent;
 
-  /* Window backdrop: the chrome's flat ground. There is no accent hue to
-     carry into a gradient, so the window is one colour. */
-  --backdrop: var(--chrome-ground);
-
-  /* Glass panel (the editor card): the card ground, faded with the
-     translucency setting like the backdrop. Start and end are equal so the
-     card is flat; the pair stays because the card and the tab columns draw
-     them as a gradient. */
+  /* Glass panel (the editor card): the canvas, faded with the translucency
+     setting like the backdrop. Start and end are equal so the card is flat;
+     the pair stays because the card and the tab columns draw them as a
+     gradient. */
   --glass-fill-end: color-mix(
     in srgb,
-    var(--card-ground) calc(var(--bg-opacity) * 100%),
+    var(--color-bg-canvas) calc(var(--bg-opacity) * 100%),
     transparent
   );
   --glass-fill-start: var(--glass-fill-end);
-  --glass-border: var(--line-subtler);
+  --glass-border: var(--color-border-subtle);
 
-  --surface-primary: var(--bg-base);
-  --surface-card: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
-  --surface-subtle: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 18%), transparent);
-  --surface-subtle-strong: color-mix(
-    in srgb,
-    var(--fg-base) calc(var(--contrast) * 36%),
-    transparent
-  );
-  --surface-input: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 28%), transparent);
-  --surface-selected: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 26%), transparent);
-  --surface-palette: color-mix(in srgb, var(--bg-base) 80%, transparent);
-
-  --item-hover-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
-  --item-active-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 26%), transparent);
-  --tab-active-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 24%), transparent);
-
-  /* Code sits in a card, so it takes the raised surface itself. */
-  --code-bg: var(--neutral-surface);
-  --kbd-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 16%), transparent);
   --scrollbar-bg: transparent;
-  --scrollbar-thumb: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
-  --blockquote-border: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
-
-  /* Links are told apart by an underline, not by hue: the link colour is the
-     text colour. The underline is a hairline in a softened link colour so it
-     marks the run without boxing it. */
-  --link-color: var(--fg-base);
-  --link-underline: color-mix(in srgb, var(--link-color) 50%, transparent);
   --link-underline-offset: 0.18em;
-  /* Selected text: the foreground at 12% under it (text reads at ~12:1). */
-  --editor-selection-bg: color-mix(in srgb, var(--fg-base) 12%, transparent);
 
-  /* Dots: the only colours besides the neutrals, for things that carry a
-     meaning or a user's choice, never for chrome — a status dot on a grey
-     tag, a board stroke, a sticky note's tint. Colour sits in a small mark,
-     never in text. One set for both modes: each reads at 3:1 or better
-     (non-text) on #FAFAF9, #F2F1F0, #0F0E0D, #161513 and #1C1B19. */
-  --dot-red: #cc4b3c;
-  --dot-orange: #c46a22;
-  --dot-yellow: #a8820a;
-  --dot-green: #3f8f5a;
-  --dot-blue: #3c72c9;
-  --dot-purple: #8a5cc7;
-  --dot-pink: #c4508a;
-  --dot-gray: #85817b;
-  /* How much of its dot a tinted ground takes (a sticky note's paper). More
-     on a dark ground, where the same share reads fainter. */
-  --dot-tint: 16%;
-  /* Error text and error outlines: a red deep enough for text on each
-     ground (6.8:1 on #0F0E0D here, 5.7:1 on #FAFAF9 in light mode). */
-  --text-error: #e57b6c;
-
-  /* Select chevron uses fg-base via color-mix in fill — but SVG `stroke` can't
-     consume CSS vars, so we recreate via stroke= with currentColor and apply
-     color: var(--text-icon-muted) on the host. The data-URL fallback here
-     still works for the dropdown-arrow background-image path. */
+  /* Select chevron, drawn as a background image. token-exception: an SVG in
+     a data URL can't read a CSS variable (nor currentColor, as a background),
+     so its stroke is the mid grey keyword, legible on both grounds. */
   --select-chevron: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='gray' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3 4.5l3 3 3-3'/></svg>");
 
   --chrome-control-height: 32px;
@@ -275,14 +153,13 @@
     var(--pensee-editor-max-width) + var(--pensee-editor-side-padding) +
       var(--pensee-editor-side-padding)
   );
-  --pensee-editor-font-family: var(--editor-font);
-  --pensee-editor-font-size: 18px;
+  --pensee-editor-font-family: var(--font-editor);
   --pensee-editor-line-height: 1.9;
   --pensee-editor-letter-spacing: 0em;
 
-  font-family: var(--ui-font);
+  font-family: var(--font-ui);
   line-height: 1.5;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* The ground is painted on a fixed layer rather than on :root so the
@@ -292,7 +169,7 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: var(--backdrop);
+  background: var(--color-bg-app);
   opacity: var(--bg-opacity);
   pointer-events: none;
 }
@@ -304,7 +181,7 @@ body::before {
   margin-block: 8px;
   margin-right: 8px;
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
+  border-radius: var(--radius-window);
   background: linear-gradient(160deg, var(--glass-fill-start), var(--glass-fill-end));
   overflow: hidden;
 }
@@ -336,39 +213,9 @@ body::before {
   }
 }
 
-/* Light mode: settings/theme cards rely on their border alone — a tinted fill
-   reads as a heavy block on a light surface. Inputs also need a lighter fill
-   since dark-on-light overlays read denser than light-on-dark at the same
-   alpha. */
-[data-theme="light"] {
-  --surface-card: transparent;
-  --surface-input: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 20%), transparent);
-
-  /* The neutral ramp on #FAFAF9 / #F2F1F0 (see :root): secondary 12.4:1 /
-     11.5:1, muted 4.9:1 / 4.6:1, faint 3.2:1 / 3.0:1, line-strong 3.2:1. */
-  --neutral-card: var(--bg-base);
-  --neutral-surface: #f2f1f0;
-  --neutral-line: #cccac6;
-  --neutral-line-strong: #8f8b85;
-  --neutral-faint: #8f8b85;
-  --neutral-muted: #706d66;
-  --neutral-secondary: #33312c;
-  --chrome-ground: var(--neutral-surface);
-  --card-ground: var(--bg-base);
-
-  --dot-tint: 10%;
-  --text-error: #b23a2e;
-}
-
-/* Dark mode: bump tab active bg so the focused tab stands out against the
-   translucent chrome bg without bleeding into the surrounding tab strip. */
-[data-theme="dark"] {
-  --tab-active-bg: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 34%), transparent);
-}
-
 /* App-wide focus indicator for keyboard navigation: 2px of the foreground. */
 :focus-visible {
-  outline: 2px solid var(--fg-base);
+  outline: 2px solid var(--color-focus);
   outline-offset: -2px;
 }
 
@@ -447,7 +294,7 @@ input {
   background: transparent;
   border: 6px solid transparent;
   background-clip: padding-box;
-  border-radius: 9px;
+  border-radius: var(--radius-menu);
 }
 
 *:hover::-webkit-scrollbar-thumb {
@@ -489,8 +336,8 @@ body.tree-dragging [data-tree-path] {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--line-subtler);
-  border-radius: 20px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-window);
+  box-shadow: var(--shadow-surface);
   isolation: isolate;
 }
 
@@ -515,12 +362,12 @@ body.tree-dragging [data-tree-path] {
   -webkit-backdrop-filter: none;
 }
 
-/* Hairline outline for a floating layer. `--line-subtle` is the foreground
-   mixed at 24%, which vanishes once it is spread over half a pixel, so this
-   leans on a stronger mix to land one visible device pixel on a retina
+/* Hairline outline for a floating layer. The hairline grey vanishes once it
+   is spread over half a pixel, so this uses --color-border-floating, a
+   stronger foreground mix that lands one visible device pixel on a retina
    display. */
 .popover-outline {
-  border: 0.5px solid color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 45%), transparent);
+  border: 0.5px solid var(--color-border-floating);
 }
 
 /* Rejecting an input without printing a sentence at it. Kept short and small:
@@ -607,7 +454,7 @@ body.tree-dragging [data-tree-path] {
 
 .compact-picker-card-shadow {
   border-radius: var(--compact-picker-frame-radius-x) / var(--compact-picker-frame-radius-y);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-picker);
   opacity: 0;
   pointer-events: none;
   transform-origin: top left;
@@ -698,8 +545,8 @@ body.tree-dragging [data-tree-path] {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--line-subtler) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+  border-radius: var(--radius-sheet) !important;
+  box-shadow: var(--shadow-dialog);
   isolation: isolate;
 }
 
@@ -756,7 +603,7 @@ body.tree-dragging [data-tree-path] {
 
 [cmdk-item] {
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-menu);
 
   font-size: var(--text-ui);
   color: var(--text-secondary);

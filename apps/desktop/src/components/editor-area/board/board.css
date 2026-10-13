@@ -1,117 +1,12 @@
 /* Board — in-document preview card, full-screen canvas, and chrome.
 
-   Tokens live on :root because the overlay is appended to <body>, outside any
-   editor scope; an undefined var() there invalidates the whole declaration.
-   Colours are derived from the App.css base tokens so light/dark and the
-   contrast slider follow automatically — no board-specific palette. */
+   Its colour tokens (--wr-board-*) are in styles/tokens.css, on :root
+   because the overlay is appended to <body>, outside any editor scope; an
+   undefined var() there invalidates the whole declaration. */
 
 :root {
-  /* Strokes: the dot colours from App.css
-     (SPECs/harvey-neutral-colour-spec.md). The keys keep their hue names
-     because boards store them, so every existing board re-tints on its own.
-     `ink` is the foreground and `accent` equals it (the app has no accent
-     colour); `muted` is the ramp's muted grey. */
-  --wr-board-ink: var(--text-primary);
-  --wr-board-muted: var(--text-muted);
-  --wr-board-accent: var(--fg-base);
-  --wr-board-red: var(--dot-red);
-  --wr-board-orange: var(--dot-orange);
-  --wr-board-yellow: var(--dot-yellow);
-  --wr-board-green: var(--dot-green);
-  --wr-board-blue: var(--dot-blue);
-  --wr-board-purple: var(--dot-purple);
-  --wr-board-pink: var(--dot-pink);
-
-  /* Fills: each colour mixed toward the board surface (FigJam's soft/strong
-     pairs), so they follow dark mode on their own. One per HUE_TOKENS entry
-     in board-model.ts; board-palette.test.ts checks the two agree. Mixed in
-     OKLab, not OKLCH: the warm ground has a little chroma of its own, and an
-     OKLCH mix swings a cool hue toward it. */
-  --wr-board-ink-soft: color-mix(in oklab, var(--wr-board-ink) 22%, var(--wr-board-surface));
-  --wr-board-muted-soft: color-mix(in oklab, var(--wr-board-muted) 22%, var(--wr-board-surface));
-  --wr-board-red-soft: color-mix(in oklab, var(--wr-board-red) 22%, var(--wr-board-surface));
-  --wr-board-orange-soft: color-mix(in oklab, var(--wr-board-orange) 22%, var(--wr-board-surface));
-  --wr-board-yellow-soft: color-mix(in oklab, var(--wr-board-yellow) 22%, var(--wr-board-surface));
-  --wr-board-green-soft: color-mix(in oklab, var(--wr-board-green) 22%, var(--wr-board-surface));
-  --wr-board-accent-soft: color-mix(in oklab, var(--wr-board-accent) 22%, var(--wr-board-surface));
-  --wr-board-blue-soft: color-mix(in oklab, var(--wr-board-blue) 22%, var(--wr-board-surface));
-  --wr-board-purple-soft: color-mix(in oklab, var(--wr-board-purple) 22%, var(--wr-board-surface));
-  --wr-board-pink-soft: color-mix(in oklab, var(--wr-board-pink) 22%, var(--wr-board-surface));
-
-  /* 1 in dark mode: custom #hex colours remap their lightness (colorVar). */
-  --wr-board-flip: 0;
-
-  --wr-board-dot: color-mix(in srgb, var(--fg-base) 16%, transparent);
-  --wr-board-surface: var(--card-ground);
-  --wr-board-frame-bg: color-mix(in srgb, var(--fg-base) 3%, transparent);
-  --wr-board-frame-edge: color-mix(in srgb, var(--fg-base) 14%, transparent);
-
-  /* Sticky notes are near-neutral paper: the raised grey (#F2F1F0, or
-     #1C1B19 in dark mode) with a light tint of the note's colour, --dot-tint
-     (10%, 16% on dark) mixed in OKLab; text in the foreground. The keys are
-     the stored ones; the paler three (mint, sky, lavender) take 60% of the
-     tint so each pair of a hue stays two notes. The paper is fixed, not the
-     theme ground, so a note is paper on any custom ground. */
-  --wr-board-sticky-paper: #f2f1f0;
-  --wr-board-sticky-wash: var(--dot-tint);
-  --wr-board-sticky-pale: calc(var(--wr-board-sticky-wash) * 0.6);
-  --wr-board-sticky-yellow: color-mix(
-    in oklab,
-    var(--wr-board-yellow) var(--wr-board-sticky-wash),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-orange: color-mix(
-    in oklab,
-    var(--wr-board-orange) var(--wr-board-sticky-wash),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-mint: color-mix(
-    in oklab,
-    var(--wr-board-green) var(--wr-board-sticky-pale),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-green: color-mix(
-    in oklab,
-    var(--wr-board-green) var(--wr-board-sticky-wash),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-sky: color-mix(
-    in oklab,
-    var(--wr-board-blue) var(--wr-board-sticky-pale),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-lavender: color-mix(
-    in oklab,
-    var(--wr-board-purple) var(--wr-board-sticky-pale),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-violet: color-mix(
-    in oklab,
-    var(--wr-board-purple) var(--wr-board-sticky-wash),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-pink: color-mix(
-    in oklab,
-    var(--wr-board-pink) var(--wr-board-sticky-wash),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-rose: color-mix(
-    in oklab,
-    var(--wr-board-red) var(--wr-board-sticky-wash),
-    var(--wr-board-sticky-paper)
-  );
-  --wr-board-sticky-ink: var(--fg-base);
-  --wr-board-sticky-edge: color-mix(in srgb, var(--fg-base) 8%, transparent);
-
   --wr-board-card-height: 360px;
-  --wr-board-radius: 10px;
-}
-
-/* Dark mode follows the app's theme, not the OS: the ramp switches in App.css
-   (the dots are one set for both); the notes move to a dark paper. */
-:root[data-theme="dark"] {
-  --wr-board-flip: 1;
-  --wr-board-sticky-paper: #1c1b19;
+  --wr-board-radius: var(--radius-menu);
 }
 
 /* ------------------------------------------------------------------ card */
@@ -198,7 +93,7 @@
   bottom: 8px;
   left: 10px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-subtle);
   color: var(--text-muted);
   font-family: var(--ui-font);
@@ -223,7 +118,7 @@
 .wr-board-card-action {
   padding: 3px 10px;
   border: 1px solid var(--line-subtle);
-  border-radius: 7px;
+  border-radius: var(--radius-field);
   background: var(--surface-primary);
   color: var(--text-secondary);
   font-family: var(--ui-font);
@@ -276,7 +171,7 @@
 .wr-board-image-open {
   padding: 3px 10px;
   border: 1px solid var(--line-subtle);
-  border-radius: 7px;
+  border-radius: var(--radius-field);
   background: var(--surface-primary);
   color: var(--text-secondary);
   font-family: var(--ui-font);
@@ -337,7 +232,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 38%);
+  background: color-mix(in srgb, var(--color-scrim) 38%, transparent);
 }
 
 .wr-board-code-panel {
@@ -348,7 +243,7 @@
   height: min(60vh, 520px);
   padding: 14px;
   border: 1px solid var(--line-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface-primary);
 }
 
@@ -356,7 +251,7 @@
   flex: 1;
   padding: 10px;
   border: 1px solid var(--line-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background: var(--code-bg);
   color: var(--text-primary);
   font-family: var(--mono-font);
@@ -443,7 +338,7 @@
 }
 
 .wr-board-spark-core {
-  stroke: color-mix(in oklch, var(--wr-spark) 30%, white);
+  stroke: color-mix(in oklch, var(--wr-spark) 30%, var(--color-highlight));
 }
 
 .wr-board-spark-halo {
@@ -453,7 +348,7 @@
 }
 
 .wr-board-spark-strand {
-  stroke: color-mix(in oklch, var(--wr-spark) 55%, white);
+  stroke: color-mix(in oklch, var(--wr-spark) 55%, var(--color-highlight));
   stroke-opacity: 0.85;
   filter: drop-shadow(0 0 3px var(--wr-spark));
 }
@@ -468,7 +363,7 @@
 }
 
 .wr-board-spark-dot {
-  fill: color-mix(in oklch, var(--wr-spark) 25%, white);
+  fill: color-mix(in oklch, var(--wr-spark) 25%, var(--color-highlight));
   filter: drop-shadow(0 0 5px var(--wr-spark));
 }
 
@@ -757,7 +652,7 @@
   align-items: center;
   padding: 4px;
   border: 1px solid var(--line-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: color-mix(in srgb, var(--surface-primary) 68%, transparent);
   backdrop-filter: blur(14px) saturate(1.4);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
@@ -781,7 +676,7 @@
 
 .wr-board-banner {
   padding: 5px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background: color-mix(in srgb, var(--wr-board-orange) 18%, var(--surface-primary));
   color: var(--text-primary);
   font-size: var(--text-label);
@@ -804,11 +699,9 @@
   gap: 2px;
   padding: 6px;
   border: 1px solid var(--line-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface-primary);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 6%),
-    0 12px 32px -8px rgb(0 0 0 / 22%);
+  box-shadow: var(--shadow-popover);
   transform: translateY(-50%);
 }
 
@@ -820,7 +713,7 @@
   height: 34px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -853,11 +746,9 @@
   left: calc(100% + 10px);
   padding: 10px;
   border: 1px solid var(--line-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface-primary);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 6%),
-    0 12px 32px -8px rgb(0 0 0 / 22%);
+  box-shadow: var(--shadow-popover);
   /* Height follows the content. Never a ratio of the width. */
   height: auto;
   max-height: 60vh;
@@ -877,7 +768,7 @@
 
 .wr-board-flyout-head kbd {
   padding: 1px 6px;
-  border-radius: 5px;
+  border-radius: var(--radius-chip);
   background: var(--kbd-bg);
   color: var(--text-muted);
   font-family: var(--ui-font);
@@ -911,7 +802,7 @@
   width: 38px;
   height: 38px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -937,7 +828,7 @@
 
 .wr-board-ratio {
   border: 1.5px solid currentcolor;
-  border-radius: 3px;
+  border-radius: var(--radius-button);
 }
 
 .wr-board-ratio.is-dashed {
@@ -948,14 +839,14 @@
   width: 46px;
   height: 46px;
   border: 1px solid color-mix(in srgb, var(--fg-base) 12%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   cursor: pointer;
 }
 
 .wr-board-swatch.is-small {
   width: 18px;
   height: 18px;
-  border-radius: 5px;
+  border-radius: var(--radius-chip);
 }
 
 .wr-board-swatch.is-none {
@@ -1005,11 +896,9 @@
   align-items: center;
   padding: 4px;
   border: 1px solid var(--line-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-menu);
   background: var(--surface-primary);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 6%),
-    0 12px 32px -8px rgb(0 0 0 / 22%);
+  box-shadow: var(--shadow-popover);
 }
 
 .wr-board-zoom-label {
@@ -1119,9 +1008,9 @@
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line-subtle);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-primary);
-  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 25%);
+  box-shadow: var(--shadow-menu);
   font-family: var(--ui-font);
   font-size: var(--text-label);
   transform: translateX(-50%);
@@ -1150,7 +1039,7 @@
   height: 28px;
   padding: 0 10px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
@@ -1173,9 +1062,9 @@
   gap: 4px;
   padding: 5px;
   border: 1px solid var(--line-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--surface-primary);
-  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 22%);
+  box-shadow: var(--shadow-popover);
   font-family: var(--ui-font);
   font-size: var(--text-label);
   transform: translateX(-50%);
@@ -1190,7 +1079,7 @@
   height: 28px;
   padding: 0 8px;
   border: 1px solid var(--line-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background: var(--surface-input, transparent);
   color: var(--text-primary);
   font: inherit;
@@ -1214,7 +1103,7 @@
   min-width: 28px;
   padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-field);
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
@@ -1252,9 +1141,9 @@
   min-width: 190px;
   padding: 4px;
   border: 1px solid var(--line-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-menu);
   background: var(--surface-primary);
-  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 22%);
+  box-shadow: var(--shadow-popover);
 }
 
 .wr-board-export-menu[hidden] {
@@ -1265,7 +1154,7 @@
   height: 30px;
   padding: 0 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-field);
   background: transparent;
   color: var(--text-primary);
   font-family: var(--ui-font);
@@ -1302,7 +1191,7 @@
   align-items: baseline;
   gap: 8px;
   padding: 7px 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-menu);
   color: var(--text-primary);
   cursor: pointer;
 }

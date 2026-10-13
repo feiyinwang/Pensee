@@ -55,7 +55,7 @@ export function XAccountRow() {
           type="button"
           disabled={!clientId || connecting || account === undefined}
           onClick={() => void connectX()}
-          className={`${BUTTON} rounded-[4px] bg-[var(--text-primary)] text-[var(--bg-base)] hover:opacity-90`}
+          className={`${BUTTON} rounded-[var(--radius-button)] bg-[var(--text-primary)] text-[var(--bg-base)] hover:opacity-90`}
         >
           {connecting ? "Waiting for X…" : "Connect X"}
         </button>

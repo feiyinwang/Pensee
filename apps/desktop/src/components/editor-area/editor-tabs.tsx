@@ -51,7 +51,7 @@ function EditorTabButton({ tab, isActive, onSelect, onClose }: EditorTabButtonPr
       onContextMenu={(event) => {
         if (showTabMenu(tab, () => setRenaming(true))) event.preventDefault();
       }}
-      className={` group relative flex shrink-0 items-center overflow-hidden whitespace-nowrap rounded-[8px] px-3.5 text-label leading-[1.15] select-none cursor-default max-w-[180px] h-[var(--chrome-control-height)] ${
+      className={` group relative flex shrink-0 items-center overflow-hidden whitespace-nowrap rounded-[var(--radius-field)] px-3.5 text-label leading-[1.15] select-none cursor-default max-w-[180px] h-[var(--chrome-control-height)] ${
         isActive
           ? "bg-[var(--tab-active-bg)] text-[var(--text-secondary)] backdrop-blur-2xl"
           : "bg-transparent text-[var(--text-muted)] hover:bg-[var(--tab-active-bg)] hover:text-[var(--text-secondary)] hover:backdrop-blur-2xl"
@@ -61,7 +61,7 @@ function EditorTabButton({ tab, isActive, onSelect, onClose }: EditorTabButtonPr
         <span
           aria-label={`Save failed: ${saveError}`}
           title={`Save failed: ${saveError}`}
-          className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--dot-red)]"
+          className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-dot-red)]"
         />
       ) : null}
       {renaming && filePath ? (
@@ -72,6 +72,7 @@ function EditorTabButton({ tab, isActive, onSelect, onClose }: EditorTabButtonPr
         />
       ) : (
         <span
+          // token-exception: an alpha mask fading the title under the close button.
           className={`truncate group-hover:[mask-image:linear-gradient(to_right,black,black_calc(100%_-_28px),transparent)] group-hover:[-webkit-mask-image:linear-gradient(to_right,black,black_calc(100%_-_32px),transparent_calc(100%_-_8px))] ${isLoading ? "animate-pulse opacity-60" : ""}`}
         >
           {title}
@@ -87,7 +88,7 @@ function EditorTabButton({ tab, isActive, onSelect, onClose }: EditorTabButtonPr
             event.stopPropagation();
             onClose(tab.id);
           }}
-          className="pointer-events-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[13px] leading-none text-[var(--text-icon-muted)] hover:text-[var(--text-secondary)]"
+          className="pointer-events-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-caption leading-none text-[var(--text-icon-muted)] hover:text-[var(--text-secondary)]"
           aria-label={`Close ${title}`}
         >
           ×

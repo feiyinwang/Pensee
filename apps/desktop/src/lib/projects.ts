@@ -171,20 +171,20 @@ export function statusTextTone(raw: string | undefined): TagTone | null {
   return statusTone(statusId(raw));
 }
 
-/** The colour each tone draws, as CSS: App.css's dot colours. A tag is a
+/** The colour each tone draws, as CSS: the dot tokens (styles/tokens.css). A tag is a
  *  neutral pill and the colour lives only in its dot (or a timeline bar);
  *  brown, for a status the vault adds, is orange pulled toward gray.
  *  SPECs/harvey-neutral-colour-spec.md. */
 export const TONE_COLOR: Record<TagTone, string> = {
-  gray: "var(--dot-gray)",
-  brown: "color-mix(in oklab, var(--dot-orange) 55%, var(--dot-gray))",
-  orange: "var(--dot-orange)",
-  yellow: "var(--dot-yellow)",
-  green: "var(--dot-green)",
-  blue: "var(--dot-blue)",
-  purple: "var(--dot-purple)",
-  pink: "var(--dot-pink)",
-  red: "var(--dot-red)",
+  gray: "var(--color-dot-gray)",
+  brown: "color-mix(in oklab, var(--color-dot-orange) 55%, var(--color-dot-gray))",
+  orange: "var(--color-dot-orange)",
+  yellow: "var(--color-dot-yellow)",
+  green: "var(--color-dot-green)",
+  blue: "var(--color-dot-blue)",
+  purple: "var(--color-dot-purple)",
+  pink: "var(--color-dot-pink)",
+  red: "var(--color-dot-red)",
 };
 
 function hash(text: string): number {

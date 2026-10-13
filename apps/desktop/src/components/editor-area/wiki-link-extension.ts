@@ -409,7 +409,7 @@ const wikiLinkTheme = EditorView.baseTheme({
   },
   ".cm-tooltip.cm-tooltip-autocomplete > ul > li": {
     padding: "7px 10px",
-    borderRadius: "10px",
+    borderRadius: "var(--radius-menu)",
   },
   ".cm-tooltip.cm-tooltip-autocomplete > ul > completion-section": {
     padding: "12px 10px 6px",

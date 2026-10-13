@@ -6,7 +6,7 @@ const SURFACE: CSSProperties = {
   backdropFilter: "blur(8px)",
   WebkitBackdropFilter: "blur(8px)",
   border: "1px solid var(--line-subtler)",
-  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+  boxShadow: "var(--shadow-overlay)",
   color: "var(--text-secondary)",
   letterSpacing: "-0.01em",
 };

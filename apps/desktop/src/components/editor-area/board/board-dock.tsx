@@ -59,7 +59,7 @@ function swatch(colour: string): ReactNode {
         display: "block",
         width: 18,
         height: 18,
-        borderRadius: 4,
+        borderRadius: "var(--radius-button)",
         background: `var(--wr-board-sticky-${colour})`,
         boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--fg-base) 12%, transparent)",
       }}

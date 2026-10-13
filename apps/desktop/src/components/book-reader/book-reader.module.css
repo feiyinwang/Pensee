@@ -13,9 +13,7 @@
   border-radius: calc(var(--radius-control) - 4px);
   background: var(--surface-raised);
   color: var(--foreground);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 6%),
-    0 6px 16px -6px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-card);
   font-family: var(--font-body);
   font-size: var(--text-label);
   white-space: nowrap;
@@ -124,11 +122,11 @@
 }
 
 .smallA {
-  font-size: 13px;
+  font-size: var(--font-size-caption);
 }
 
 .largeA {
-  font-size: 21px;
+  font-size: var(--font-size-title-md);
 }
 
 .divider {

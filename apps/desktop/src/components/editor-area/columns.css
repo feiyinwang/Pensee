@@ -1,5 +1,5 @@
 /* Columns — any block, side by side.
-   Colours come from App.css tokens so light/dark and the contrast slider all
+   Colours come from the design tokens (styles/tokens.css) so light/dark and the contrast slider all
    follow automatically. Accent shows up in exactly three places: the drop
    target, the resize handle, and the editing focus ring. */
 
@@ -30,7 +30,7 @@
 
   /* Paper for the drag lift. Light: a sheet, the ground lightened. Dark: the
      card colour, lifted a notch so it still reads as paper rather than a hole. */
-  --wr-paper: color-mix(in srgb, var(--bg-base) 40%, white);
+  --wr-paper: color-mix(in srgb, var(--bg-base) 40%, var(--color-highlight));
 }
 :root:has(.cm-editor) {
   color-scheme: light dark;
@@ -168,14 +168,14 @@
   font-family: var(--mono-font);
   font-size: 0.9em;
   background: var(--code-bg);
-  border-radius: 3px;
+  border-radius: var(--radius-button);
   padding: 0.1em 0.32em;
 }
 .wr-band pre {
   font-family: var(--mono-font);
   font-size: 0.86em;
   background: var(--code-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   padding: 8px 10px;
   margin: 0 0 var(--wr-block-gap);
   overflow: auto;
@@ -233,7 +233,7 @@
   font-family: var(--mono-font);
   font-size: 0.9em;
   background: var(--code-bg);
-  border-radius: 3px;
+  border-radius: var(--radius-button);
   padding: 0.1em 0.32em;
 }
 /* An empty band: the aligned slot a neighbour's caption created. No border, no
@@ -347,7 +347,7 @@
   position: absolute;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   cursor: grab;
   opacity: 0;
   z-index: 2;
@@ -390,7 +390,7 @@
   width: 24px;
   height: 24px;
   border: 1px solid color-mix(in srgb, var(--wr-kind-color) 34%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background: color-mix(in srgb, var(--wr-kind-color) 10%, var(--surface-primary));
 }
 .wr-gutter-kind[data-kind="text"] {
@@ -516,7 +516,7 @@ body.wr-resizing-body {
   top: 12%;
   height: 56%;
   width: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-hairline);
   background: var(--accent);
   opacity: 0;
   transition: opacity var(--wr-dur-hover) var(--wr-ease-out);
@@ -553,7 +553,7 @@ body.wr-resizing-body {
   position: absolute;
   z-index: 5;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-button);
   background: color-mix(in srgb, var(--accent) 85%, transparent);
   pointer-events: none;
   opacity: 0;
@@ -587,15 +587,14 @@ body.wr-resizing-body {
   box-sizing: border-box;
   padding: 10px 12px;
   /* Paper is crisper than a card. */
-  border-radius: 2px;
+  border-radius: var(--radius-hairline);
   background: var(--wr-paper);
   border: 1px solid var(--line-subtler);
   color: var(--text-secondary);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 18%),
-    0 18px 40px -12px rgb(0 0 0 / 45%);
+  box-shadow: var(--shadow-drag-paper);
   /* Past the height cap the sheet fades out of view instead of cutting a line
      of text in half. */
+  /* token-exception: an alpha mask; only its opacity counts. */
   mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
   will-change: transform;
 }
@@ -607,7 +606,12 @@ body.wr-resizing-body {
   bottom: 0;
   width: 12px;
   height: 12px;
-  background: linear-gradient(315deg, rgb(0 0 0 / 12%) 0%, rgb(0 0 0 / 4%) 45%, transparent 46%);
+  background: linear-gradient(
+    315deg,
+    color-mix(in srgb, var(--color-shade) 12%, transparent) 0%,
+    color-mix(in srgb, var(--color-shade) 4%, transparent) 45%,
+    transparent 46%
+  );
 }
 /* Carried out of the editor, the sheet crumples into a ball: releasing there
    throws the block away. All CSS — creases are gradients, not an image. */
@@ -619,34 +623,32 @@ body.wr-resizing-body {
   background:
     linear-gradient(
       118deg,
-      rgb(0 0 0 / 10%) 0 21%,
+      color-mix(in srgb, var(--color-shade) 10%, transparent) 0 21%,
       transparent 21.5% 37%,
-      rgb(0 0 0 / 7%) 37.5% 45%,
+      color-mix(in srgb, var(--color-shade) 7%, transparent) 37.5% 45%,
       transparent 45.5%
     ),
     linear-gradient(
       -42deg,
-      rgb(0 0 0 / 9%) 0 17%,
+      color-mix(in srgb, var(--color-shade) 9%, transparent) 0 17%,
       transparent 17.5% 43%,
-      rgb(255 255 255 / 72%) 43.5% 57%,
+      color-mix(in srgb, var(--color-highlight) 72%, transparent) 43.5% 57%,
       transparent 57.5%
     ),
     linear-gradient(
       72deg,
-      rgb(255 255 255 / 66%) 0 25%,
+      color-mix(in srgb, var(--color-highlight) 66%, transparent) 0 25%,
       transparent 25.5% 53%,
-      rgb(0 0 0 / 9%) 53.5% 67%,
+      color-mix(in srgb, var(--color-shade) 9%, transparent) 53.5% 67%,
       transparent 67.5%
     ),
     radial-gradient(
       120% 120% at 32% 28%,
-      white 0%,
+      var(--color-highlight) 0%,
       var(--wr-paper) 46%,
-      color-mix(in srgb, var(--wr-paper) 85%, black) 100%
+      color-mix(in srgb, var(--wr-paper) 85%, var(--color-shade)) 100%
     );
-  box-shadow:
-    0 10px 18px -8px rgb(0 0 0 / 45%),
-    inset 0 -7px 12px -7px rgb(0 0 0 / 28%);
+  box-shadow: var(--shadow-drag-curl);
   transition:
     width var(--wr-dur-move) var(--wr-ease-out),
     height var(--wr-dur-move) var(--wr-ease-out),
@@ -699,7 +701,7 @@ body.wr-resizing-body {
 .wr-lift img {
   display: block;
   width: 100%;
-  border-radius: 4px;
+  border-radius: var(--radius-button);
 }
 
 /* ---- row tools ------------------------------------------------------- */

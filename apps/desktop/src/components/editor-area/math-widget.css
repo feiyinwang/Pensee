@@ -14,9 +14,9 @@
 
 /* Render failures show the raw source, error message in the tooltip. */
 .cm-math-error {
-  font-family: var(--pm-code-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-family: var(--pm-code-font, var(--font-mono));
   color: var(--pm-syntax-invalid);
   background-color: var(--pm-code-background-color);
-  border-radius: 0.4rem;
+  border-radius: var(--radius-chip);
   padding: 0.1rem 0.3rem;
 }

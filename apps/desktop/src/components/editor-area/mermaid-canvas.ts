@@ -644,7 +644,7 @@ function createInnerEditor(
         keymap.of([...editorDefaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
         EditorView.theme({
-          "&": { height: "100%", fontSize: "13px" },
+          "&": { height: "100%", fontSize: "var(--font-size-caption)" },
           ".cm-scroller": {
             fontFamily:
               'var(--pm-code-font, var(--mono-font, "SF Mono", Menlo, Monaco, Consolas, monospace))',
