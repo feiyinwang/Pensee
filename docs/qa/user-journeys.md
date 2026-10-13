@@ -327,29 +327,33 @@ background.
 
 **Feature:** Press ⌘. on a line and pick what the pen does; it writes in blue
 ink right under the line and never writes your conclusion. `!` writes an
-answer **sealed** until you've written your own take (a take that isn't one
-keeps it sealed), then compares the two. `@` lays out the evidence **for and
+answer **sealed**, your take beside it, until you've written that take (a take
+that isn't one keeps it sealed); it then opens with nothing else moving, so you
+can read both, and **Combine** (Tab) turns the two into one MECE list of
+short points, yours in your own words and the pen's only where they add
+something, a point's detail nested under it whoever wrote either. Undo puts
+the two back. `@` lays out the evidence **for and
 against** a claim, each with a paper, and leaves the call to you. `[` brings
 back short points from your **other notes** on the same idea (`Supports: … — [[Note]]`).
 `−` proposes cuts and asks before deleting them; `#` regroups several lines
 in your own words.
 **Spec:** SPECs/second-pen-spec.md
-**Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/pen-box.tsx`, `src/components/arc/floating-button-group/`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src/lib/tauri.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`, `src-tauri/src/commands/search.rs`
+**Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/pen-box.tsx`, `src/components/arc/floating-button-group/`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src/lib/tauri.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`, `src-tauri/src/commands/search.rs`, `src-tauri/src/file_cache.rs`
 
 | ID     | Journey                                                      | Expected                                                                                     | Check      |
 | ------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------- |
-| PEN-01 | ★ ⌘. then `!` on a bullet                                    | A sealed answer (blurred, `^ai-s-…`) appears as its sub-bullet, an empty take under it with the caret and *Your take first…* | auto: pen  |
+| PEN-01 | ★ ⌘. then `!` on a bullet                                    | A sealed answer (blurred, `^ai-s-…`) appears as its sub-bullet, an empty take right beside it (same level) with the caret and *Your take first…* | auto: pen  |
 | PEN-02 | ⌘., then Esc                                                 | A box opens above the line: pills that show their keys (! Answer, @ Check, [[ Connect, − Shorten) and a box to type in, with the keyboard in it; no Ask me, Facts or Mix; Esc closes it | auto: pen  |
 | PEN-03 | Enter on the empty take under a sealed answer                | Nothing opens; the bar says a wrong guess counts                                             | auto: pen  |
 | PEN-04 | Enter on one of several echoes                               | An empty line opens under it; every echo stays                                               | auto: pen  |
 | PEN-05 | Esc right after Connect writes its echoes                    | Those echoes are taken back; echoes written earlier stay                                    | auto: pen  |
-| PEN-06 | Write a real take, Enter                                     | The answer opens (`^ai-r-…`) and the pen's comparison (`^ai-v-…`) appears under your take   | auto: pen  |
+| PEN-06 | Write a real take, Enter                                     | The answer opens (`^ai-r-…`); nothing else moves and no comparison is written; an empty line under your take says *Put the two together, in your words…* with **Combine into one list `Tab`** right after the words | auto: pen  |
 | PEN-07 | ⌘. then `@` on a claim                                       | *For:* (`^ai-p-…`) and *Against:* (`^ai-n-…`) lines, papers as pills, an empty line under Against | auto: pen  |
 | PEN-08 | ⌘. then `−`, Enter, Esc, Enter, Enter                        | Cuts show struck through in red with "−N words"; Enter asks *Delete N words?* and deletes nothing; Esc goes back to the cuts; Enter, Enter removes only them. Ids, links and citations are never cut | auto: pen  |
 | PEN-09 | Hover a paper pill, click **Open paper**                     | A card shows the paper's title, authors, venue, year and citations; the paper opens         | you        |
 | PEN-10 | Write nonsense as your take (`sad lion sits there`), Enter   | The answer stays sealed; the bar says it doesn't read as a take                              | auto: pen  |
 | PEN-11 | ⌘. then `!` on a plain (non-bullet) line                     | A plain sealed line appears right below it, a blank line apart, the take bullet under it     | auto: pen  |
-| PEN-12 | ⌥↵ on an empty take                                          | The answer opens (`^ai-r-…`) with no comparison; the empty take goes                        | auto: pen  |
+| PEN-12 | ⌥↵ on an empty take (an earlier answer, take under it)       | The answer opens (`^ai-r-…`); the empty take goes                                            | auto: pen  |
 | PEN-13 | ⌘. then `!` on a question in a video note                    | The sealed answer comes from the transcript and ends with its time (`— 1:10`)               | auto: pen  |
 | PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the sealed answer (`^ai-s-…`) under it   | auto: pen  |
 | PEN-15 | ⌘. then `[` on a line another note speaks to                 | Short echoes `Label: one sentence — [[Note]]` (`^ai-e-…`, label like Supports or Example, about 20 words) appear under it, label (bold) and link in the same blue as the words; the link opens that note | auto: pen  |
@@ -362,6 +366,9 @@ in your own words.
 | PEN-22 | ⌘. on one line, then on several selected lines               | **# Organize** isn't offered for one line; it is with several lines selected                | auto: pen  |
 | PEN-23 | ⌘. then `@` on a line ending in `?`                          | Nothing is written; the bar says it's a question, not a claim                               | auto: pen  |
 | PEN-24 | Esc on the empty line under *Against*                        | For and Against are taken back                                                              | auto: pen  |
+| PEN-25 | Tab (or **Combine**) on the empty line under an opened answer and your take | After *Reading yours…*, the answer and your take are replaced by one MECE list at their level: your points in your own words (every word), the pen's (`^ai-r-…`) only where they add something, a point's detail nested one level under it whoever wrote either; no heading, no colour band; an empty last line says *Add a point, or go deeper on any line above…* with **Undo `⌘Z`** | auto: pen  |
+| PEN-26 | **Undo** (or ⌘Z) right after Combine                         | The opened answer, your take and the empty line with Combine are back exactly               | auto: pen  |
+| PEN-27 | After Combine, click another line with the last line empty   | The empty line under the list goes                                                           | auto: pen  |
 | PEN-28 | In a big iCloud vault, open it, then ⌘. `[` Enter on a line   | Echoes land in a few seconds (well under 30s), the first Connect after opening included     | you        |
 
 ---

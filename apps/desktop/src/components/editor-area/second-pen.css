@@ -450,3 +450,45 @@
   pointer-events: none;
   user-select: none;
 }
+
+/* The step a waiting line offers (Combine, then Undo): a quiet button right
+   after its words, never out in the margin. */
+.cm-editor .cm-pen-waiting-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: 12px;
+  padding: 1px 4px 1px 8px;
+  border: 0;
+  border-radius: var(--radius-chip);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-caption);
+  font-style: normal;
+  line-height: 1.5;
+  /* Same as .cm-pen-word: never the list line's hanging indent. */
+  text-indent: 0;
+  vertical-align: 0.1em;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background-color var(--motion-hover) var(--ease-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cm-editor .cm-pen-waiting-act:hover {
+    background: var(--color-bg-subtle-strong);
+  }
+}
+
+.cm-editor .cm-pen-waiting-act:focus-visible {
+  outline: 2px solid var(--color-text-faint);
+  outline-offset: 2px;
+}
+
+.cm-editor .cm-pen-waiting-act kbd {
+  padding: 0 4px;
+  border-radius: var(--radius-chip);
+  background: var(--color-bg-kbd);
+  font: inherit;
+}

@@ -6,7 +6,8 @@ An AI that helps you think, not one that thinks for you. It writes in your
 notes the way a second pen would: one line at a time, only when asked, in its
 own ink, right under the line you're on. It never writes your conclusion:
 
-- it **answers** only after you've written your own take, then compares;
+- it **answers** only after you've written your own take, then (when you
+  ask) breaks both into one list of points for you to work through;
 - it **checks** a claim by laying out the evidence on both sides, and you
   make the call;
 - it **connects** a line to what you wrote before in other notes, and you
@@ -80,9 +81,10 @@ notes are gone. The look is unchanged from the first Second pen
     the pen's plain lines already there. Your lines under a plain pen line are
     the bullets right after it.
 - Stored as plain Markdown: the line ends with a hidden block id
-  `^ai-<kind>-<rand>`: `s` a sealed answer, `r` an answer (opened), `v` its
-  comparison with your take, `p` the evidence for, `n` the evidence against,
-  `e` an echo of an earlier note. Lines the earlier pen wrote (`q a h c f m`)
+  `^ai-<kind>-<rand>`: `s` a sealed answer, `r` an answer (opened) or one of
+  its points after Combine, `p` the evidence for, `n` the evidence against,
+  `e` an echo of an earlier note. Lines the earlier pen wrote (`q a h c f m`,
+  and `v`, the comparison the earlier Answer wrote)
   keep their ink and stay hidden-id. Other apps show an ordinary line or
   bullet.
 - Drawn in AI ink (`--color-ai-ink`), every word of it: labels (*For:*,
@@ -103,20 +105,82 @@ notes are gone. The look is unchanged from the first Second pen
 - **⌘. !** on a line (a question, or anything to explain): the pen writes its
   answer under it **sealed**, blurred and unreadable, with *Sealed until you
   write your take · ⌥↵ open it now* above the words, and an empty bullet
-  under it with the caret in it: *Your take first…*
-- **Enter** on your take opens the answer (`^ai-s-…` becomes `^ai-r-…`, so it
-  stays open after a reload) and the pen writes one line under your take
-  comparing the two: what yours already has, what it leaves out, ending with a
-  question back to you. An empty bullet waits under that for your answer.
+  right **beside** it (the next line, at its level, not under it) with the
+  caret in it: *Your take first…* Under a paragraph, the answer is a plain
+  line and your take the bullet right after it.
+- **Enter** on your take: the pen first checks it's a real attempt (wrong is
+  fine; random letters or something off-topic keeps it sealed), then opens
+  the answer (`^ai-s-…` becomes `^ai-r-…`, so it stays open after a reload).
+  **Nothing else moves**, so you read the two side by side. No comparison is
+  written. An empty bullet goes under your take, caret in it: *Put the two
+  together, in your words…* and, right after those words, a quiet
+  **Combine into one list `Tab`** button.
 - **Enter on an empty take**: nothing opens; the bar says *A wrong guess
   counts. Write anything first, or ⌥↵ to open it now.*
-- **⌥↵** on your take opens the answer without a comparison; an empty take
-  line goes away.
+- **⌥↵** on your take opens it without the check (same as Enter after it);
+  on an empty take the answer opens and the take line goes.
 - **Esc** on the empty take takes the sealed answer back.
 - In a **video note** (transcript) or a **book note**, the answer comes from
   the source when it covers it, ending with where (`— 1:10`).
-- Once open, it's an answer like any pen line: Enter on it opens a bullet
-  under it for your reply.
+- An answer the earlier pen wrote (your take *under* it) still opens: its take
+  moves beside it, so Combine works on it too. Comparisons it wrote
+  (`^ai-v-…`) stay as they are.
+
+### Combine: one list of points, you work through them
+
+Reading the two is the moment you reconcile them, and two paragraphs rarely
+line up point for point. Combine breaks both into short points you can take
+one by one, and only when you ask.
+
+- **Tab** (or the **Combine** button) on the empty line under an opened
+  answer and your take. The bar says *Read both first · Tab combine them into
+  one list*. *Reading yours…* shows under your take while the pen reads.
+- The answer, your take and that empty line are replaced by **one list** at
+  their level, built **MECE**: no two points overlap, and together they cover
+  everything in your take and the answer.
+  - **Your points are your words**: the take split, joining words (then, and,
+    so, but) and end punctuation dropped, every word kept, nothing added or
+    reworded. If the pen's split isn't word for word yours, or leaves a word
+    out, your take is split at its own punctuation instead and the pen's
+    points follow it, unnested.
+  - **The pen's points** are only what the answer adds, short (at most 12
+    words), in AI ink with the hollow bullet (`^ai-r-…`). One that says what a
+    point of yours already says is left out: yours stands. One that adds a
+    detail keeps only the detail.
+  - **Nested by meaning, not by who wrote it**: a point that is a part, step,
+    example or reason of another sits under it, the broader one on top,
+    whoever wrote either, so a point of yours can sit under one of the pen's.
+    Separate branches stay side by side. One level of nesting at most (two
+    spaces in); a deeper point sits beside its parent.
+  - A pen point that contradicts the one it sits under or after ends with a
+    faint ` — the opposite`. Never which is right.
+  - No heading over the list, no colour band, no buttons on the points: the
+    next step on any of them is the usual ⌘. box, or Tab under one to go
+    deeper.
+- An empty last line: *Add a point, or go deeper on any line above…* with
+  **Undo `⌘Z`** right after the words. **Undo** (or ⌘Z) puts the opened
+  answer, your take and the Combine line back exactly. Undo goes once you type
+  anywhere; ⌘Z still works as usual.
+- **Click another line** while that last line is still empty and it goes (not
+  an undo step).
+- The lines move from where their words were into their rows
+  (`--motion-base`, `--ease-out`); a line whose words weren't found fades in.
+  Nothing moves under reduced motion.
+- Decided from the prototype `apps/desktop/proto/pen-reconcile` (2026-10-13):
+  *Combine*. Rejected there: the shipped comparison line (the two points often
+  didn't belong together, and overlaps were hard to see), *Woven* (the pen's
+  points tucked under yours: three levels deep; nesting by meaning, one level,
+  came back on 2026-10-13 after the flat list put a detail beside the point it
+  belongs to), *Mixed* (the pen fused the
+  overlaps into one sentence: it did the mixing for you), *Ledger* (two
+  columns, keep or drop each side: a table in the middle of the note), *Line*
+  (only an empty line: no help finding the overlaps), *Split* (both split but
+  nothing paired), *Under each* (a reply line under every pen point: built
+  around the pen's points, not yours). Also rejected: splitting the moment
+  it opens (you need to read first), a bracket or tinted band joining pairs,
+  per-point Break down / Research buttons, a "Your take and the pen's,
+  together" heading, and *Now your version, in one line…* as the last line
+  (the next step is to go deeper, not to summarise).
 
 ### Check: both sides, you make the call
 
@@ -208,7 +272,11 @@ never shows through. It shows, in order of what applies:
 1. **Writing…** while a request runs (nothing while the pen's box is open);
 2. the shorten keys and the words it would save, then *Delete N words?*;
 3. a short message, for 4 seconds (nothing found, an error);
-4. on your take under a sealed answer: `↵ open it and compare  ⌥↵ open it without writing`;
+4. on your take beside a sealed answer: `↵ open it  ⌥↵ open it now`; on the
+   empty line under an opened answer and your take: `Read both first  Tab
+   combine them into one list`; on the empty line under a combined list, while
+   Combine was the last change: `⌘Z back to the two  ⌘. on any line to go
+   deeper`;
 5. on a pen line (an echo too): `↵ reply under it`;
 6. right after the pen writes: `Esc take them back` and the like, for 5 seconds;
 7. otherwise, while the caret is in the note: `⌘. answer, check or connect the line you're on`.

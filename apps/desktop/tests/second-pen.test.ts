@@ -4,7 +4,9 @@ import {
   childIndent,
   citationMarkdown,
   citationsIn,
-  compareReply,
+  combineAt,
+  combineReply,
+  combinedLines,
   connectTerms,
   contentWords,
   cutsFromReply,
@@ -13,6 +15,7 @@ import {
   echoedNotes,
   echoesReply,
   isNonsenseTake,
+  judgeReply,
   isQuestion,
   itemText,
   newPenId,
@@ -27,6 +30,7 @@ import {
   sealedAbove,
   sideLine,
   sidesReply,
+  splitPoints,
   subtreeEnd,
   uncuttable,
   unsealedLine,
@@ -115,7 +119,34 @@ describe("outline", () => {
 });
 
 describe("answer flow", () => {
-  test("your take is the bullet under a sealed answer, and it opens to r", () => {
+  test("your take sits beside a sealed answer; Combine waits under it once open", () => {
+    const lines = ["- Why?", "  - The answer. ^ai-s-ab12", "  - my take", "  - "];
+    expect(sealedAbove(lines, 2)).toBe(1);
+    expect(sealedAbove(lines, 3)).toBe(-1);
+    // Still sealed: nothing to combine yet.
+    expect(combineAt(lines, 3)).toBeNull();
+    const open = ["- Why?", "  - The answer. ^ai-r-ab12", "  - my take", "  - "];
+    expect(sealedAbove(open, 2)).toBe(-1);
+    expect(combineAt(open, 3)).toEqual({ answer: 1, take: 2 });
+    // Only an empty line right under a take, at its level.
+    expect(
+      combineAt(["- Why?", "  - The answer. ^ai-r-ab12", "  - my take", "    - "], 3),
+    ).toBeNull();
+    expect(combineAt(["- Why?", "  - The answer. ^ai-r-ab12", "  - ", "  - "], 3)).toBeNull();
+    // Under a paragraph: the plain pen line, your take the bullet after it.
+    const para = ["Why?", "", "The answer. ^ai-r-ab12", "- my take", "- "];
+    expect(combineAt(para, 4)).toEqual({ answer: 2, take: 3 });
+    expect(sealedAbove(["Why?", "", "The answer. ^ai-s-ab12", "- my take"], 3)).toBe(2);
+  });
+
+  test("a second answer lands after the first one's take and its empty line", () => {
+    const lines = ["- Why?", "  - The answer. ^ai-r-ab12", "  - my take", "  - ", "  - mine"];
+    expect(penLineSlot(lines, 0)).toEqual({ kind: "bullet", after: 3, indent: "  " });
+    const sealed = ["- Why?", "  - The answer. ^ai-s-ab12", "  - my take", "  - mine"];
+    expect(penLineSlot(sealed, 0)).toEqual({ kind: "bullet", after: 2, indent: "  " });
+  });
+
+  test("an earlier answer's take is the bullet under it, and it opens to r", () => {
     const lines = ["- Why?", "  - The answer. ^ai-s-ab12", "    - my take", "  - other"];
     expect(sealedAbove(lines, 2)).toBe(1);
     expect(sealedAbove(lines, 1)).toBe(-1);
@@ -205,13 +236,88 @@ describe("prompts and replies", () => {
     expect(replyLine("“Recall wins.” — 9:00", true)).toBe("“Recall wins.” — 9:00");
   });
 
-  test("a comparison only comes for a real take", () => {
-    expect(compareReply('{"real": false}')).toEqual({ real: false });
-    expect(compareReply('{"real": true, "compare": "Yours has the boredom part."}')).toEqual({
-      real: true,
-      text: "Yours has the boredom part.",
+  test("the answer opens only for a real take", () => {
+    expect(judgeReply('{"real": false}')).toBe(false);
+    expect(judgeReply('Sure. {"real": true}')).toBe(true);
+    expect(judgeReply("no json")).toBeNull();
+  });
+
+  const TAKE =
+    "find a pain point, target that pain point, then think about the scenarios people who have that pain point. explain it in a way that they can understand";
+  const ANSWER =
+    "Online marketing means reaching your audience where they already spend time, by creating content they find useful, then measuring what brings customers.";
+
+  test("Combine nests by meaning, either way round, and keeps your words", () => {
+    const reply = JSON.stringify({
+      points: [
+        {
+          by: "you",
+          text: "find a pain point",
+          under: [{ by: "pen", text: "watch where people quit or complain" }],
+        },
+        { by: "you", text: "target that pain point" },
+        {
+          by: "pen",
+          text: "reach your audience where they already spend time",
+          under: [
+            { by: "you", text: "think about the scenarios people who have that pain point" },
+            {
+              by: "you",
+              text: "explain it in a way that they can understand.",
+              // Deeper than one level: it sits beside its parent.
+              under: [{ by: "pen", text: "say it in their words", how: "The opposite" }],
+            },
+          ],
+        },
+        { by: "pen", text: "measure what brings customers" },
+      ],
     });
-    expect(compareReply("no json")).toBeNull();
+    let n = 0;
+    expect(combinedLines(combineReply(reply, TAKE, ANSWER), "  ", () => `ai-r-000${n++}`)).toEqual([
+      "  - find a pain point",
+      "    - watch where people quit or complain ^ai-r-0000",
+      "  - target that pain point",
+      "  - reach your audience where they already spend time ^ai-r-0001",
+      "    - think about the scenarios people who have that pain point",
+      "    - explain it in a way that they can understand",
+      "    - say it in their words — the opposite ^ai-r-0002",
+      "  - measure what brings customers ^ai-r-0003",
+      "  - ",
+    ]);
+  });
+
+  test("Combine never puts words in your mouth, nor drops any", () => {
+    const flat = (reply: string) =>
+      combineReply(reply, TAKE, ANSWER).map((p) => [p.by, p.text, p.under.length]);
+    const reworded = JSON.stringify({
+      points: [
+        { by: "you", text: "identify customer pain", under: [{ by: "pen", text: "reach them" }] },
+        { by: "you", text: "target that pain point" },
+      ],
+    });
+    // Reworded: your take split at its punctuation, the pen's points after, unnested.
+    expect(flat(reworded)).toEqual([
+      ...splitPoints(TAKE).map((t) => ["you", t, 0]),
+      ["pen", "reach them", 0],
+    ]);
+    // Your last point left out: the same.
+    const dropped = JSON.stringify({
+      points: [
+        { by: "you", text: "find a pain point" },
+        { by: "you", text: "target that pain point" },
+        { by: "pen", text: "reach them" },
+      ],
+    });
+    expect(flat(dropped)).toEqual(flat(reworded));
+    // Every pen point was yours already: only yours, which is fine.
+    const all = splitPoints(TAKE).map((text) => ({ by: "you", text }));
+    expect(combineReply(JSON.stringify({ points: all }), TAKE, ANSWER)).toHaveLength(4);
+    // No reply at all: both are split at their punctuation.
+    expect(
+      combineReply("", TAKE, ANSWER)
+        .filter((p) => p.by === "pen")
+        .map((p) => p.text),
+    ).toEqual(splitPoints(ANSWER));
   });
 
   test("both sides name their papers, or no paper; never two opinions", () => {

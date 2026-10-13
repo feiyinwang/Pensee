@@ -409,14 +409,14 @@ describe("Journeys: second pen", function () {
     ok((await readFile(path)) === before, "nothing should be written");
   });
 
-  it("PEN-01 ★ ⌘. ! writes a sealed answer under the line, your take under it", async function () {
+  it("PEN-01 ★ ⌘. ! writes a sealed answer under the line, your take beside it", async function () {
     const path = `${root}/Notes/Pen.md`;
     await armOn("why does sleep help memory?");
     await pick("!", { shift: true });
     await waitForDisk(
       path,
-      (t) => /help memory\?\n {2}- .+ \^ai-s-[a-z0-9]{4}\n {4}- \n/.test(t),
-      "expected a sealed answer (^ai-s-…) with an empty take under it",
+      (t) => /help memory\?\n {2}- .+ \^ai-s-[a-z0-9]{4}\n {2}- \n/.test(t),
+      "expected a sealed answer (^ai-s-…) with an empty take right beside it, at its level",
       AI_TIMEOUT,
     );
     await browser.waitUntil(
@@ -449,7 +449,10 @@ describe("Journeys: second pen", function () {
     ok(/help memory\?\n {2}- .+ \^ai-s-/.test(text), `the answer should stay sealed:\n${text}`);
   });
 
-  it("PEN-06 a real take opens the answer and the pen compares the two", async function () {
+  // The answer PEN-06 opened: Undo (PEN-26) must bring this very line back.
+  let opened = "";
+
+  it("PEN-06 a real take opens the answer and nothing else moves; Combine waits under your take", async function () {
     const path = `${root}/Notes/Pen.md`;
     // Take the nonsense back, key by key, and write a real take.
     await caretAfter("sad lion sits there");
@@ -465,14 +468,98 @@ describe("Journeys: second pen", function () {
     await key("Enter");
     const text = await waitForDisk(
       path,
-      (t) =>
-        /help memory\?\n {2}- .+ \^ai-r-[a-z0-9]{4}\n {4}- I guess.+\n {6}- .+ \^ai-v-[a-z0-9]{4}/.test(
-          t,
-        ),
-      "expected the answer opened (^ai-r-…) and a comparison (^ai-v-…) under your take",
+      (t) => /help memory\?\n {2}- .+ \^ai-r-[a-z0-9]{4}\n {2}- I guess.+\n {2}- \n/.test(t),
+      "expected the answer opened (^ai-r-…), your take beside it and an empty line under that",
       AI_TIMEOUT,
     );
     ok(!/help memory\?\n {2}- .+ \^ai-s-/.test(text), text);
+    ok(
+      !/\^ai-v-/.test(text.split("help memory?")[1].split("- naps")[0]),
+      `no comparison:\n${text}`,
+    );
+    opened = /help memory\?\n( {2}- .+ \^ai-r-[a-z0-9]{4})\n/.exec(text)[1];
+    await browser.waitUntil(
+      () =>
+        browser.execute(() =>
+          [...document.querySelectorAll(".cm-pen-waiting")].some(
+            (w) =>
+              w.textContent.includes("Put the two together") &&
+              w.querySelector(".cm-pen-waiting-act")?.textContent.includes("Combine"),
+          ),
+        ),
+      { timeout: 3_000, timeoutMsg: "the empty line should offer Combine right after its words" },
+    );
+  });
+
+  /** The lines under "why does sleep help memory?", up to the next question. */
+  const underSleep = (text) => text.split("help memory?\n")[1].split("\n- ")[0].split("\n");
+
+  it("PEN-25 Tab under your take combines the two into one list of points", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretInWaiting("Put the two together");
+    await key("Tab");
+    const text = await waitForDisk(
+      path,
+      (t) => !t.includes(opened) && /help memory\?\n(?: {2,4}- .+\n)+ {2}- \n/.test(t),
+      "expected the answer and your take replaced by one list, an empty line last",
+      AI_TIMEOUT,
+    );
+    const lines = underSleep(text);
+    const mine = lines.filter((l) => l.trim() && !/\^ai-/.test(l) && l.trim() !== "-");
+    const pens = lines.filter((l) => /\^ai-r-[a-z0-9]{4}$/.test(l));
+    ok(pens.length >= 1, `expected the pen's points (^ai-r-…):\n${text}`);
+    ok(mine.length >= 1, `expected your points:\n${text}`);
+    const take = "I guess the brain replays what you learned while you sleep".toLowerCase();
+    for (const line of mine) {
+      ok(take.includes(line.replace(/^\s*- /, "").toLowerCase()), `not your words: ${line}`);
+    }
+    await browser.waitUntil(
+      () =>
+        browser.execute(() =>
+          [...document.querySelectorAll(".cm-pen-waiting")].some(
+            (w) =>
+              w.textContent.includes("Add a point") &&
+              w.querySelector(".cm-pen-waiting-act")?.textContent.includes("Undo"),
+          ),
+        ),
+      { timeout: 3_000, timeoutMsg: "the empty line should say what it's for, with Undo after it" },
+    );
+  });
+
+  it("PEN-26 Undo puts the answer and your take back as they were", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await browser.execute(() =>
+      [...document.querySelectorAll(".cm-pen-waiting-act")]
+        .find((b) => b.textContent.includes("Undo"))
+        .click(),
+    );
+    await waitForDisk(
+      path,
+      (t) =>
+        t.includes(
+          `${opened}\n  - I guess the brain replays what you learned while you sleep\n  - \n`,
+        ),
+      "expected the opened answer, your take and the empty line back",
+    );
+  });
+
+  it("PEN-27 after Combine, the empty line goes once you click another line", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretInWaiting("Put the two together");
+    await key("Tab");
+    await waitForDisk(
+      path,
+      (t) => !t.includes(opened) && /help memory\?\n(?: {2,4}- .+\n)+ {2}- \n/.test(t),
+      "expected the two combined, an empty line last",
+      AI_TIMEOUT,
+    );
+    await caretAfter("naps help you remember");
+    const text = await waitForDisk(
+      path,
+      (t) => /help memory\?\n(?: {2,4}- .+\n)+- why do drafts/.test(t),
+      "expected the empty line under the list gone",
+    );
+    ok(!underSleep(text).some((l) => l.trim() === "-"), text);
   });
 
   it("PEN-11 ⌘. ! on a plain line writes a plain sealed line right below it", async function () {

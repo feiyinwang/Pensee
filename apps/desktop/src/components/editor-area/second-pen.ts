@@ -1,3 +1,4 @@
+import { isolateHistory, undo } from "@codemirror/commands";
 import {
   Annotation,
   ChangeSet,
@@ -8,6 +9,7 @@ import {
   type Range,
   StateEffect,
   StateField,
+  Transaction,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -31,12 +33,16 @@ import {
   type Cut,
   type PenKind,
   type PenSource,
+  answerBefore,
   applyCuts,
   bodyEnd,
   bodyStart,
   childIndent,
   childrenOf,
   citationsIn,
+  combineAt,
+  combineReply,
+  combinedLines,
   connectTerms,
   contentWords,
   cutsFromReply,
@@ -57,7 +63,7 @@ import {
   penPrompt,
   pinnedSecond,
   replyLine,
-  compareReply,
+  judgeReply,
   isNonsenseTake,
   penIdOf,
   sealedAbove,
@@ -82,8 +88,10 @@ import "./second-pen.css";
 
 // The second pen in the editor (SPECs/second-pen-spec.md): ⌘. opens its box
 // on the selection or the caret's line; it answers only after your take
-// (sealed), checks a claim on both sides, and brings back what you wrote in
-// other notes, always right under that line, and Enter / Esc carry each flow.
+// (sealed, your take beside it; once open, Combine breaks both into one list
+// of points for you to work through), checks a claim on both sides, and
+// brings back what you wrote in other notes, always right under that line,
+// and Enter / Esc / Tab carry each flow.
 // Everything a flow knows is read back from the document (`lib/second-pen.ts`),
 // so undo, edits and reloads never leave it confused. The bottom bar says what
 // applies.
@@ -260,10 +268,23 @@ const REST: PenHintPart[] = [
 ];
 const TAKE: PenHintPart[] = [
   { key: "↵" },
-  { text: "open it and compare" },
+  { text: "open it" },
   { gap: true },
   { key: "⌥ ↵" },
-  { text: "open it without writing" },
+  { text: "open it now" },
+];
+const COMBINE: PenHintPart[] = [
+  { text: "Read both first" },
+  { gap: true },
+  { key: "Tab" },
+  { text: "combine them into one list" },
+];
+const COMBINED: PenHintPart[] = [
+  { key: "⌘ Z" },
+  { text: "back to the two" },
+  { gap: true },
+  { key: "⌘ ." },
+  { text: "on any line to go deeper" },
 ];
 const TAKE_EMPTY: PenHintPart[] = [
   { text: "Your take first" },
@@ -280,6 +301,14 @@ const WAITING: Partial<Record<PenKind, string>> = {
   n: "Your call: does your line hold? Rewrite it or keep it.",
 };
 const SEALED_LABEL = "Sealed · write your take under it · ⌥↵ open it now";
+/** The empty line under an opened answer and your take. */
+const JOINT_WAITING = "Put the two together, in your words…";
+/** The empty line under a combined list: what it's for. */
+const ADD_WAITING = "Add a point, or go deeper on any line above…";
+/** Combine's lines move from where their words were, on `--motion-base`
+ *  (160ms) and `--ease-out`: JS-driven, so the token's values, named here. */
+const FLIP_MS = 160;
+const FLIP_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 type Placement =
   /** Right under the anchor line: a sub-bullet, or a plain line below a
@@ -424,21 +453,56 @@ class CitationWidget extends WidgetType {
   }
 }
 
-/** Faint words on an empty line of yours that the pen is waiting on. */
+/** What a waiting line's button does: Combine, or undo the combine. */
+type WaitingAction = "combine" | "undo";
+const ACTION_LABEL: Record<WaitingAction, [string, string]> = {
+  combine: ["Combine into one list", "Tab"],
+  undo: ["Undo", "⌘Z"],
+};
+
+/** Faint words on an empty line of yours that the pen is waiting on, and
+ *  sometimes a button right after them: the step that line offers. */
 class WaitingWidget extends WidgetType {
-  constructor(readonly text: string) {
+  constructor(
+    readonly text: string,
+    readonly action: WaitingAction | null = null,
+  ) {
     super();
   }
 
   eq(other: WaitingWidget): boolean {
-    return other.text === this.text;
+    return other.text === this.text && other.action === this.action;
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
     const span = document.createElement("span");
     span.className = "cm-pen-waiting";
-    span.textContent = this.text;
-    span.setAttribute("aria-hidden", "true");
+    const words = document.createElement("span");
+    words.textContent = this.text;
+    words.setAttribute("aria-hidden", "true");
+    span.append(words);
+    const action = this.action;
+    if (action) {
+      const [label, key] = ACTION_LABEL[action];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "cm-pen-waiting-act";
+      button.append(label);
+      const kbd = document.createElement("kbd");
+      kbd.textContent = key;
+      button.append(kbd);
+      // Keep the editor's focus: the click acts, the caret stays (docs/editor.md).
+      button.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        pens.get(view)?.waitingAction(action, view.posAtDOM(span));
+      });
+      span.append(button);
+    }
     return span;
   }
 
@@ -552,6 +616,11 @@ class PenPlugin {
   private spot: Omit<Pending, "text" | "busy"> | null = null;
   private timers = new Set<number>();
   private destroyed = false;
+  /** Where the empty line under a combined list starts, while it's there:
+   *  it says what it's for, and goes once you move to another line empty. */
+  private added: number | null = null;
+  /** The combine is the last thing that happened: Undo shows on that line. */
+  private undoable = false;
 
   constructor(
     readonly view: EditorView,
@@ -572,7 +641,16 @@ class PenPlugin {
       const typed = update.transactions.some((tr) => tr.docChanged && !tr.annotation(penEdit));
       if (typed) this.batch = [];
       if (typed && this.armed) this.disarm();
+      if (this.added !== null) {
+        this.added = update.changes.mapPos(this.added, -1);
+        // Undone, or written on: the line is just yours now.
+        const undone = update.transactions.some((tr) => tr.isUserEvent("undo"));
+        const line = update.state.doc.lineAt(this.added);
+        if (undone || line.from !== this.added || itemText(line.text)) this.added = null;
+        if (typed) this.undoable = false;
+      }
     }
+    if (this.added !== null && update.selectionSet) this.leaveAdded();
     // The text moved under the box: what it was for is gone.
     if (this.armed && update.selectionSet && !update.docChanged) this.disarm();
     // Esc takes back the last facts or mixes only until you move on.
@@ -741,11 +819,20 @@ class PenPlugin {
     line: { from: number; to: number; number: number },
   ): void {
     const lines = docLines(this.view.state);
-    const parent = parentOf(lines, line.number - 1);
-    const kind = parent >= 0 ? penKindOf(lines[parent]!) : null;
-    const text = kind ? WAITING[kind] : undefined;
-    if (text)
-      ranges.push(Decoration.widget({ widget: new WaitingWidget(text), side: 1 }).range(line.to));
+    const i = line.number - 1;
+    let widget: WaitingWidget | null = null;
+    if (line.from === this.added) {
+      widget = new WaitingWidget(ADD_WAITING, this.undoable ? "undo" : null);
+    } else if (combineAt(lines, i)) {
+      widget = new WaitingWidget(JOINT_WAITING, "combine");
+    } else if (sealedAbove(lines, i) >= 0) {
+      widget = new WaitingWidget(WAITING.s!);
+    } else {
+      const parent = parentOf(lines, i);
+      const text = parent >= 0 ? WAITING[penKindOf(lines[parent]!) ?? "q"] : undefined;
+      if (text) widget = new WaitingWidget(text);
+    }
+    if (widget) ranges.push(Decoration.widget({ widget, side: 1 }).range(line.to));
   }
 
   /* ------------------------------------------------------------ hint */
@@ -793,6 +880,10 @@ class PenPlugin {
     if (state.selection.main.empty && this.caretInNote() && isItem(caretLine)) {
       const lines = docLines(state);
       const i = caretIndex(state);
+      if (this.added !== null && state.doc.line(i + 1).from === this.added) {
+        return this.undoable ? { parts: COMBINED } : { parts: REST, resting: true };
+      }
+      if (combineAt(lines, i)) return { parts: COMBINE };
       if (sealedAbove(lines, i) >= 0) return { parts: itemText(lines[i]!) ? TAKE : TAKE_EMPTY };
       const kind = penKindOf(lines[i]!);
       if (kind && kind !== "s") return { parts: [{ key: "↵" }, { text: "reply under it" }] };
@@ -1018,6 +1109,26 @@ class PenPlugin {
       return true;
     }
     return false;
+  }
+
+  /** Tab on the line under an opened answer and your take: Combine. */
+  tab(): boolean {
+    const { state } = this.view;
+    if (!state.selection.main.empty || this.shortening) return false;
+    const i = caretIndex(state);
+    if (!combineAt(docLines(state), i)) return false;
+    void this.combine(i);
+    return true;
+  }
+
+  /** A waiting line's button, on the line at `pos`. */
+  waitingAction(action: WaitingAction, pos: number): void {
+    if (action === "undo") {
+      undo(this.view);
+      this.view.focus();
+      return;
+    }
+    void this.combine(this.view.state.doc.lineAt(pos).number - 1);
   }
 
   clickCut(target: HTMLElement): boolean {
@@ -1259,8 +1370,8 @@ class PenPlugin {
         this.say("That's all I have on this line. The rest is yours.");
         return;
       }
-      // Sealed, with your take under it: the caret waits there.
-      this.write("s", text, "child");
+      // Sealed, with your take right beside it: the caret waits there.
+      this.write("s", text, "beside");
       this.finish(conversation);
     } catch (error) {
       this.fail(conversation, error);
@@ -1392,15 +1503,20 @@ class PenPlugin {
   }
 
   /** Enter on your take: the pen first reads it. A real attempt (wrong is
-   *  fine) opens the sealed answer (its id says `r` from now on) and the pen
-   *  writes how the two differ under your take, with an empty line under that
-   *  for yours. Gibberish or something unrelated keeps it sealed. ⌥↵ opens it
-   *  without either: an empty take goes. */
-  private async open(sealed: number, take: number, compare: boolean): Promise<void> {
+   *  fine) opens the sealed answer (its id says `r` from now on): nothing
+   *  else moves, so you can read the two side by side, and an empty line
+   *  under your take waits for you to put them together (or Combine).
+   *  Gibberish or something unrelated keeps it sealed. ⌥↵ opens it without
+   *  the reading; an empty take goes. */
+  private async open(sealed: number, take: number, judge: boolean): Promise<void> {
     const lines = docLines(this.view.state);
     const takeText = itemText(lines[take]!);
-    if (!compare) {
-      this.unseal(sealed, takeText ? null : take);
+    if (!takeText) {
+      this.unseal(sealed, take);
+      return;
+    }
+    if (!judge) {
+      this.openBeside(sealed, take);
       return;
     }
     const notATake =
@@ -1412,39 +1528,222 @@ class PenPlugin {
     const parent = parentOf(lines, sealed);
     const question =
       parent >= 0 ? itemText(lines[parent]!) : itemText(lines[Math.max(0, sealed - 2)]!);
-    const answer = itemText(lines[sealed]!);
-    const takePos = this.view.state.doc.line(take + 1).from;
-    const conversation = this.start("Reading your take…", { mode: "under", pos: takePos });
+    const id = penIdOf(lines[sealed]!);
+    const conversation = this.start("Reading your take…", {
+      mode: "under",
+      pos: this.view.state.doc.line(take + 1).from,
+    });
+    this.placement = null;
     try {
-      const judged = compareReply(
+      const real = judgeReply(
         await conversation.send(
           penPrompt({
             ...this.promptBase(lines, parent >= 0 ? [parent] : []),
             source: null,
-            ask: { task: "compare", question, answer, take: takeText },
+            ask: { task: "judge", question, take: takeText },
           }),
         ),
       );
-      if (!judged || !judged.real) {
-        this.placement = null;
-        this.finish(conversation);
-        this.say(judged ? notATake : "Couldn't read your take. Try again.");
-        return;
-      }
-      // The lines may have moved while it read: find the answer by its id.
-      const at = this.lineOfId(penIdOf(lines[sealed]!));
-      if (at === null) {
-        this.placement = null;
-        this.finish(conversation);
-        return;
-      }
-      this.unseal(at, null);
-      if (judged.text) this.write("v", judged.text, "child");
-      else this.placement = null;
       this.finish(conversation);
+      if (!real) {
+        this.say(real === null ? "Couldn't read your take. Try again." : notATake);
+        return;
+      }
+      // The lines may have moved while it read: find the answer by its id,
+      // and your take right after it.
+      const at = this.lineOfId(id);
+      const now = docLines(this.view.state);
+      if (at === null || at + 1 >= now.length || itemText(now[at + 1]!) !== takeText) return;
+      this.openBeside(at, at + 1);
     } catch (error) {
       this.fail(conversation, error);
     }
+  }
+
+  /** The answer at `sealed` opens and an empty line goes under your take at
+   *  `take`, the caret in it. A take the earlier pen kept under the answer
+   *  moves beside it first, so Combine finds the two. */
+  private openBeside(sealed: number, take: number): void {
+    const { state } = this.view;
+    const lines = docLines(state);
+    const answerLine = state.doc.line(sealed + 1);
+    const takeLine = state.doc.line(take + 1);
+    const changes: ChangeSpec[] = [
+      { from: answerLine.from, to: answerLine.to, insert: unsealedLine(answerLine.text) },
+    ];
+    // A take with lines of its own under it: open the answer, nothing more.
+    if (subtreeEnd(lines, take) !== take) {
+      this.unseal(sealed, null);
+      return;
+    }
+    let indent = /^\s*/.exec(takeLine.text)![0];
+    if (isItem(answerLine.text) && answerBefore(lines, take) < 0) {
+      const own = /^\s*/.exec(answerLine.text)![0];
+      changes.push({ from: takeLine.from, to: takeLine.from + indent.length, insert: own });
+      indent = own;
+    }
+    changes.push({ from: takeLine.to, insert: `\n${indent}- ` });
+    const set = state.changes(changes);
+    this.view.dispatch({
+      changes: set,
+      selection: { anchor: set.mapPos(takeLine.to, 1) },
+      annotations: penEdit.of(true),
+      userEvent: "input.pen",
+      scrollIntoView: true,
+    });
+  }
+
+  /** Combine (Tab, or its button): your take and the opened answer in one
+   *  MECE list in their place, yours in your own words, nested by meaning
+   *  (a point's part, step or example under it, whoever wrote either). The
+   *  pen's points that only repeat yours are left out. Never which is right.
+   *  An empty line under the list is yours; ⌘Z puts the two back. */
+  private async combine(i: number): Promise<void> {
+    if (this.conversation) {
+      this.say("The pen is still writing. Esc stops it.");
+      return;
+    }
+    const { state } = this.view;
+    const lines = docLines(state);
+    const at = combineAt(lines, i);
+    if (!at) return;
+    const id = penIdOf(lines[at.answer]!);
+    const answer = itemText(lines[at.answer]!);
+    const take = itemText(lines[at.take]!);
+    const parent = parentOf(lines, at.answer);
+    const question =
+      parent >= 0 ? itemText(lines[parent]!) : itemText(lines[Math.max(0, at.answer - 2)]!);
+    const conversation = this.start("Reading yours…", {
+      mode: "under",
+      pos: state.doc.line(at.take + 1).from,
+    });
+    this.placement = null;
+    try {
+      const reply = await conversation.send(
+        penPrompt({
+          ...this.promptBase(lines, parent >= 0 ? [parent] : []),
+          source: null,
+          ask: { task: "combine", question, answer, take },
+        }),
+      );
+      this.finish(conversation);
+      const a = this.lineOfId(id);
+      const now = docLines(this.view.state);
+      const still = a === null ? null : combineAt(now, a + 2);
+      if (!still || itemText(now[still.take]!) !== take) {
+        this.say("The lines changed while the pen read them. Try again.");
+        return;
+      }
+      this.writeCombined(still, combineReply(reply, take, answer));
+    } catch (error) {
+      this.fail(conversation, error);
+    }
+  }
+
+  private writeCombined(
+    at: { answer: number; take: number },
+    combined: ReturnType<typeof combineReply>,
+  ): void {
+    const { state } = this.view;
+    const answerLine = state.doc.line(at.answer + 1);
+    const takeLine = state.doc.line(at.take + 1);
+    const joint = state.doc.line(at.take + 2);
+    const indent = /^\s*/.exec(isItem(answerLine.text) ? answerLine.text : takeLine.text)![0];
+    const taken = new Set(blockIdsInText(state.doc.toString()));
+    const out = combinedLines(combined, indent, () => {
+      const id = newPenId("r", taken);
+      taken.add(id);
+      return id;
+    });
+    // Where each point's words were, to move them from there.
+    const answerBody = answerLine.text.slice(bodyStart(answerLine.text), bodyEnd(answerLine.text));
+    const takeBody = takeLine.text.slice(bodyStart(takeLine.text), bodyEnd(takeLine.text));
+    const origins = out.map((line) => {
+      const words = itemText(line).replace(/ — [^—]+$/, "");
+      if (!words) return null;
+      const find = (body: string, base: number) => {
+        const lower = body.toLowerCase();
+        let k = lower.indexOf(words.toLowerCase());
+        if (k < 0) k = lower.indexOf(words.toLowerCase().split(/\s+/).slice(0, 3).join(" "));
+        return k < 0 ? null : base + k;
+      };
+      const pos = penKindOf(line)
+        ? find(answerBody, answerLine.from + bodyStart(answerLine.text))
+        : find(takeBody, takeLine.from + bodyStart(takeLine.text));
+      return pos === null ? null : this.view.coordsAtPos(pos);
+    });
+    const from = answerLine.from;
+    const insert = out.join("\n");
+    this.view.dispatch({
+      changes: { from, to: joint.to, insert },
+      selection: { anchor: from + insert.length },
+      annotations: [penEdit.of(true), isolateHistory.of("full")],
+      userEvent: "input.pen",
+      scrollIntoView: true,
+    });
+    this.added = from + insert.length - out[out.length - 1]!.length;
+    this.undoable = true;
+    this.redraw();
+    this.flip(from, out, origins);
+  }
+
+  /** The combined lines move from where their words were into their rows;
+   *  a line whose words weren't found fades in. Not under reduced motion. */
+  private flip(
+    from: number,
+    out: readonly string[],
+    origins: Array<{ left: number; top: number } | null>,
+  ): void {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    this.view.requestMeasure({
+      read: (view) =>
+        out.map((line, k) => {
+          const lineFrom = from + out.slice(0, k).reduce((n, l) => n + l.length + 1, 0);
+          const to = view.coordsAtPos(lineFrom + bodyStart(line));
+          const dom = view.domAtPos(lineFrom).node;
+          const el = (dom instanceof HTMLElement ? dom : dom.parentElement)?.closest<HTMLElement>(
+            ".cm-line",
+          );
+          return { el, to, origin: origins[k] ?? null, empty: !itemText(line) };
+        }),
+      write: (rows) => {
+        for (const { el, to, origin, empty } of rows) {
+          if (!el || empty) continue;
+          const keyframes =
+            origin && to
+              ? [
+                  { transform: `translate(${origin.left - to.left}px, ${origin.top - to.top}px)` },
+                  { transform: "none" },
+                ]
+              : [{ opacity: 0 }, { opacity: 1 }];
+          el.animate(keyframes, { duration: FLIP_MS, easing: FLIP_EASE });
+        }
+      },
+    });
+  }
+
+  /** You moved to another line while the line under a combined list was
+   *  still empty: it goes (not an undo step: it was only ever a prompt). */
+  private leaveAdded(): void {
+    const at = this.added;
+    if (at === null) return;
+    const { state } = this.view;
+    if (state.doc.lineAt(state.selection.main.head).from === at) return;
+    this.added = null;
+    this.undoable = false;
+    const line = state.doc.lineAt(at);
+    if (line.from !== at || !isItem(line.text) || itemText(line.text)) return;
+    queueMicrotask(() => {
+      if (this.destroyed) return;
+      const now = this.view.state;
+      const still = now.doc.lineAt(Math.min(line.from, now.doc.length));
+      if (still.text !== line.text || still.from !== line.from) return;
+      this.view.dispatch({
+        changes: lineRange(now, still.number - 1, still.number - 1),
+        annotations: [penEdit.of(true), Transaction.addToHistory.of(false)],
+        userEvent: "delete.pen",
+      });
+    });
   }
 
   /** The sealed answer at `sealed` opens; `dropTake` goes with it. */
@@ -1631,12 +1930,13 @@ class PenPlugin {
 
   /** Writes one pen line where the running request's placement says, now
    *  that the text may have moved. `answer` adds an empty answer bullet: as
-   *  the pen line's child, or after the anchor's subtree (the next answer,
-   *  beside the one the pen line hangs under). Returns the pen line's id. */
+   *  the pen line's child, right after it at its level (`beside`), or after
+   *  the anchor's subtree (the next answer, beside the one the pen line
+   *  hangs under). Returns the pen line's id. */
   private write(
     kind: PenKind,
     text: string,
-    answer: "child" | "next" | null = null,
+    answer: "child" | "next" | "beside" | null = null,
   ): string | null {
     const placement = this.placement;
     this.placement = null;
@@ -1659,7 +1959,7 @@ class PenPlugin {
     id: string | null,
     text: string,
     placement: Placement,
-    answer: "child" | "next" | null = null,
+    answer: "child" | "next" | "beside" | null = null,
   ): { lineFrom: number; textFrom: number } {
     const { state } = this.view;
     const lines = docLines(state);
@@ -1709,6 +2009,12 @@ class PenPlugin {
     let caret: number | undefined;
     if (answer === "child") {
       const add = `\n${childIndent(written)}- `;
+      all = set.compose(ChangeSet.of({ from: lineEnd, insert: add }, set.newLength));
+      caret = lineEnd + add.length;
+    } else if (answer === "beside") {
+      // Your take right after the pen's line, at its level: beside it, not
+      // under it (under a paragraph, the bullet right after it).
+      const add = `\n${isItem(written) ? /^\s*/.exec(written)![0] : ""}- `;
       all = set.compose(ChangeSet.of({ from: lineEnd, insert: add }, set.newLength));
       caret = lineEnd + add.length;
     } else if (answer === "next") {
@@ -1771,6 +2077,12 @@ class PenPlugin {
     const i = caretIndex(state);
     const line = lines[i]!;
     if (state.selection.main.empty && isItem(line) && !itemText(line) && !penKindOf(line)) {
+      // Your empty take beside a sealed answer: the answer goes with it.
+      const beside = answerBefore(lines, i);
+      if (beside >= 0 && penKindOf(lines[beside]!) === "s") {
+        this.removeLines(beside, i, null);
+        return true;
+      }
       const parent = parentOf(lines, i);
       const parentKind = parent >= 0 ? penKindOf(lines[parent]!) : null;
       // An empty line the pen is waiting on, its only child: take back what
@@ -1869,6 +2181,10 @@ export function secondPen(getFilePath: () => string): Extension {
           if (event.key === "Escape" && !mod && pen.escape()) {
             event.preventDefault();
             event.stopPropagation();
+            return true;
+          }
+          if (event.key === "Tab" && !event.shiftKey && !mod && !event.altKey && pen.tab()) {
+            event.preventDefault();
             return true;
           }
           if (event.key === "Enter" && !event.shiftKey && !mod && pen.enter(event.altKey)) {

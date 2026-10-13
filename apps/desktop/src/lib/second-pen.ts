@@ -11,9 +11,10 @@ import type { Paper } from "./tauri";
 
 /* ------------------------------------------------------------------ ids */
 
-/** What a pen line is: an answer still sealed (`s`) or open (`r`), its
- *  comparison with your take (`v`), the evidence for (`p`) and against (`n`)
- *  a claim, or an echo of an earlier note (`e`). The earlier pen's lines (a
+/** What a pen line is: an answer still sealed (`s`) or open (`r`, also each
+ *  of its points once combined with your take), its comparison with your take
+ *  (`v`, written by the earlier Answer), the evidence for (`p`) and against
+ *  (`n`) a claim, or an echo of an earlier note (`e`). The earlier pen's lines (a
  *  quiz question `q`, a question `a`, a hint `h`, a check `c`, a fact `f`, a
  *  mix `m`) keep their ink. */
 export type PenKind = "s" | "r" | "v" | "p" | "n" | "e" | "q" | "a" | "h" | "c" | "f" | "m";
@@ -189,9 +190,19 @@ export function penLineSlot(lines: readonly string[], anchor: number): PenSlot {
   if (isItem(line) || isPenParagraph(line)) {
     const indent = childIndent(line);
     let after = anchor;
-    for (const child of childrenOf(lines, anchor)) {
+    const children = childrenOf(lines, anchor);
+    for (let c = 0; c < children.length; c++) {
+      const child = children[c]!;
       if (!penKindOf(lines[child]!)) break;
       after = subtreeEnd(lines, child);
+      // An answer's take sits right beside it, and the empty line where you
+      // put the two together beside that: they go with the answer.
+      while (c + 1 < children.length && answerBefore(lines, children[c + 1]!) >= 0) {
+        after = subtreeEnd(lines, children[++c]!);
+        if (c + 1 < children.length && combineAt(lines, children[c + 1]!)) {
+          after = subtreeEnd(lines, children[++c]!);
+        }
+      }
     }
     return { kind: "bullet", after, indent };
   }
@@ -207,13 +218,45 @@ export function penLineSlot(lines: readonly string[], anchor: number): PenSlot {
 
 /* --------------------------------------------------------- answer flow */
 
-/** The sealed answer a line is your take on: its parent, when that is a
- *  sealed answer (`s`) and the line is yours. -1 otherwise. */
+/** The answer (sealed `s` or open `r`) a line of yours is the take on: the
+ *  line right above it at its own level, or the plain pen line it hangs
+ *  under (an answer under a paragraph). -1 otherwise. */
+export function answerBefore(lines: readonly string[], i: number): number {
+  const line = lines[i]!;
+  if (i === 0 || penKindOf(line) || !isItem(line)) return -1;
+  const prev = lines[i - 1]!;
+  const kind = penKindOf(prev);
+  if (kind !== "s" && kind !== "r") return -1;
+  if (isPenParagraph(prev)) return i - 1;
+  return isItem(prev) && indentWidth(prev) === indentWidth(line) ? i - 1 : -1;
+}
+
+/** The sealed answer a line is your take on: the one right beside it, or
+ *  (an answer the earlier pen wrote) its parent. -1 otherwise. */
 export function sealedAbove(lines: readonly string[], i: number): number {
   const line = lines[i]!;
   if (penKindOf(line) || !isItem(line)) return -1;
+  const beside = answerBefore(lines, i);
+  if (beside >= 0) return penKindOf(lines[beside]!) === "s" ? beside : -1;
   const parent = parentOf(lines, i);
   return parent >= 0 && penKindOf(lines[parent]!) === "s" ? parent : -1;
+}
+
+/** The empty line under an opened answer's take, where Combine waits: the
+ *  answer and your take, or null. */
+export function combineAt(
+  lines: readonly string[],
+  i: number,
+): { answer: number; take: number } | null {
+  const line = lines[i]!;
+  if (i < 2 || !isItem(line) || penKindOf(line) || itemText(line)) return null;
+  const take = i - 1;
+  const takeLine = lines[take]!;
+  if (!isItem(takeLine) || !itemText(takeLine) || indentWidth(takeLine) !== indentWidth(line)) {
+    return null;
+  }
+  const answer = answerBefore(lines, take);
+  return answer >= 0 && penKindOf(lines[answer]!) === "r" ? { answer, take } : null;
 }
 
 /** A sealed answer's line, opened: its id says `r` instead of `s`. */
@@ -304,7 +347,8 @@ export const PEN_INSTRUCTIONS = [
 
 export type PenAsk =
   | { task: "answer"; already: string[]; question?: string }
-  | { task: "compare"; question: string; answer: string; take: string }
+  | { task: "judge"; question: string; take: string }
+  | { task: "combine"; question: string; answer: string; take: string }
   | { task: "factQuery" }
   | { task: "factRetry" }
   | { task: "sides"; papers: Paper[] }
@@ -382,14 +426,24 @@ function taskText(input: PenPromptInput): string {
           ? `When ${label} covers it, answer from it, and always end with " — " and the time or place the source gives for the passage you used, e.g. … — 12:34. Never leave the time out when the answer comes from ${label}. When it doesn't cover it, answer from what you know, without a time.`
           : "Answer from what you know. Say so plainly when you aren't sure.",
       ].join("\n");
-    case "compare":
+    case "judge":
+      return [
+        `The writer asked: ${ask.question}`,
+        `The writer's own take, written before they see your answer: ${ask.take}`,
+        'Judge the take: is it a real attempt at the question? A wrong, short, unsure or half-formed guess is real. Random letters, a joke, or words unrelated to the question ("sad lion sits there", ".isoadjoj") are not: then your answer stays hidden.',
+        'Reply with JSON only: {"real": true} or {"real": false}.',
+      ].join("\n");
+    case "combine":
       return [
         `The writer asked: ${ask.question}`,
         `Your answer: ${ask.answer}`,
-        `The writer's own take, written before they saw yours: ${ask.take}`,
-        'First judge the take: is it a real attempt at the question? A wrong, short, unsure or half-formed guess is real. Random letters, a joke, or words unrelated to the question ("sad lion sits there", ".isoadjoj") are not: then your answer stays hidden.',
-        "If it is real, compare it with your answer in at most two short sentences, 40 words in all: what theirs already has, the one thing it leaves out or sees differently, ending with one question that makes them weigh the difference for themselves. Address them as you. Never praise, never grade.",
-        'Reply with JSON only: {"real": true, "compare": "…"} or {"real": false}.',
+        `The writer's own take: ${ask.take}`,
+        "Combine the two into one outline the writer can work through point by point. It must be MECE: no two points overlap, and together they cover everything in the take and the answer.",
+        "The writer's points: their exact words, every word of the take, each part once, in its order. You may only split it and drop joining words (then, and, so, but) and end punctuation. Never add, reword or reorder a word.",
+        "Your points: what your answer adds, each short (at most 12 words), your own words, joining words dropped. When one says what a point of the writer's already says, leave it out: theirs stands. When it adds a detail to it, keep only the detail.",
+        "Nest by meaning, not by who wrote it: a point that is a part, step, example or reason of another goes under it, the broader point on top, whoever wrote either. A writer's point may sit under one of yours. Points that are separate branches stay side by side. One level of nesting at most.",
+        'Mark how: "the opposite" on a point of yours that contradicts the point it sits under or after. Never say which is right.',
+        'Reply with JSON only: {"points": [{"by": "you" or "pen", "text": "…", "how": "the opposite" (only then), "under": [same shape, no deeper "under"]}]}',
       ].join("\n");
     case "factQuery":
       return [
@@ -488,18 +542,111 @@ function jsonIn(reply: string): unknown {
   }
 }
 
-/** A `compare` reply: whether the take was a real attempt, and if so the
- *  comparison. Null when the reply can't be read. */
-export function compareReply(
-  reply: string,
-): { real: false } | { real: true; text: string | null } | null {
-  const value = jsonIn(reply) as { real?: unknown; compare?: unknown } | null;
-  if (!value || typeof value.real !== "boolean") return null;
-  if (!value.real) return { real: false };
-  return {
-    real: true,
-    text: typeof value.compare === "string" ? replyLine(value.compare, true) : null,
+/** A `judge` reply: whether the take was a real attempt. Null when the
+ *  reply can't be read. */
+export function judgeReply(reply: string): boolean | null {
+  const value = jsonIn(reply) as { real?: unknown } | null;
+  return value && typeof value.real === "boolean" ? value.real : null;
+}
+
+/* -------------------------------------------------------------- combine */
+
+/** A point of the combined list: yours (in your words) or the pen's, with
+ *  the points that are a part, step, example or reason of it under it. */
+export interface CombinedPoint {
+  by: "you" | "pen";
+  text: string;
+  /** A pen point that says the opposite of the one it sits under or after. */
+  opposite: boolean;
+  under: CombinedPoint[];
+}
+
+/** The combined list: one level of nesting at most. */
+export type Combined = CombinedPoint[];
+
+const squash = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
+const endPunct = (text: string) =>
+  text
+    .trim()
+    .replace(/[.,;!?。，；！？]+$/u, "")
+    .trim();
+
+/** Short points from a sentence or two, without a model: split at its
+ *  punctuation, joining words and end punctuation dropped. */
+export function splitPoints(text: string): string[] {
+  return text
+    .split(/(?<=[.,;!?。，；！？])\s*/u)
+    .map((part) => endPunct(part.trim().replace(/^(then|and|so|but)\s+/i, "")))
+    .filter(Boolean);
+}
+
+/** The words of a take that must survive the split: all but joining words. */
+const takeWords = (text: string) =>
+  (squash(text).match(/\p{L}+/gu) ?? []).filter((w) => !/^(then|and|so|but)$/.test(w));
+
+/** A `combine` reply, held to its word: your points must be your words, every
+ *  one of them, each once (else your take is split at its punctuation and the
+ *  pen's points follow it, unnested); the pen's must be there unless every
+ *  one of them was yours already (else its answer is split the same way). */
+export function combineReply(reply: string, take: string, answer: string): Combined {
+  const value = jsonIn(reply) as { points?: unknown } | null;
+  const read = (raw: unknown, depth: number): CombinedPoint[] => {
+    const item = raw as { by?: unknown; text?: unknown; how?: unknown; under?: unknown } | null;
+    const kids = Array.isArray(item?.under) ? item.under.flatMap((k) => read(k, depth + 1)) : [];
+    const by = item?.by === "you" ? "you" : item?.by === "pen" ? "pen" : null;
+    const text =
+      typeof item?.text !== "string"
+        ? null
+        : by === "you"
+          ? endPunct(item.text)
+          : replyLine(item.text);
+    // A point with no words: its points take its place.
+    if (!by || !text) return kids;
+    const opposite = by === "pen" && typeof item?.how === "string" && /opposite/i.test(item.how);
+    // One level of nesting: a grandchild sits beside its parent.
+    return depth === 0
+      ? [{ by, text, opposite, under: kids }]
+      : [{ by, text, opposite, under: [] }, ...kids];
   };
+  const points = Array.isArray(value?.points) ? value.points.flatMap((p) => read(p, 0)) : [];
+  const all = points.flatMap((p) => [p, ...p.under]);
+  const yours = all.filter((p) => p.by === "you").map((p) => squash(p.text));
+  const whole = squash(take);
+  const said = new Set(takeWords(yours.join(" ")));
+  const faithful =
+    yours.length > 0 &&
+    new Set(yours).size === yours.length &&
+    yours.every((point) => whole.includes(point)) &&
+    takeWords(take).every((w) => said.has(w));
+  if (faithful) return points;
+  const pens = all.filter((p) => p.by === "pen");
+  const point = (by: CombinedPoint["by"], text: string): CombinedPoint => ({
+    by,
+    text,
+    opposite: false,
+    under: [],
+  });
+  return [
+    ...splitPoints(take).map((t) => point("you", t)),
+    ...(pens.length
+      ? pens.map((p) => point("pen", p.text))
+      : splitPoints(answer).map((t) => point("pen", t))),
+  ];
+}
+
+/** The combined list as Markdown lines at `indent`, a point's own points two
+ *  spaces in, then an empty line for yours. `id` names each pen line. */
+export function combinedLines(combined: Combined, indent: string, id: () => string): string[] {
+  const line = (p: CombinedPoint, at: string) =>
+    p.by === "pen"
+      ? `${at}- ${p.text}${p.opposite ? " — the opposite" : ""} ^${id()}`
+      : `${at}- ${p.text}`;
+  const out = combined.flatMap((p) => [
+    line(p, indent),
+    ...p.under.map((k) => line(k, `${indent}  `)),
+  ]);
+  out.push(`${indent}- `);
+  return out;
 }
 
 /** A take with no word in it at all is nobody's guess: no need to ask. */
