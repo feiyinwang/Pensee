@@ -3,8 +3,8 @@
 ## Problem
 
 The brand (`docs/brand.md`) is a Didone: a thick–thin ¶ and a Bodoni Moda
-wordmark, where "the thick–thin contrast is the typography". The website sets
-its headline and wordmark in Bodoni Moda, but the app had no Didone anywhere.
+wordmark, where "the thick–thin contrast is the typography", but the app had
+no Didone anywhere.
 Titles and headings were SF Pro at weight 600–700, and chrome labels (Spaces,
 Recents, command-palette groups, the welcome and search buttons) were
 monospace capitals through a `label-mono` utility, which read as a developer
@@ -46,7 +46,8 @@ tool, not a writing room.
 ## Out of scope
 
 - Colours (the Ink/Cream theme preset is separate work).
-- The website, which already uses Bodoni Moda.
+- The website (`apps/website`): left alone and not kept in sync; it may be
+  redone from scratch.
 - Raw HTML `<h1>` inside markdown HTML blocks.
 
 ## Verification
