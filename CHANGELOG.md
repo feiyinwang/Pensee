@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Fixed: while an organized outline waited for Enter or Esc, its bullets were knocked out of place by the highlight. The outline is now tinted line by line, so it looks exactly as it will once kept. The *Organized, in your words* line under it is a small status line, lined up with the outline's text.
 - In the second pen's box, nothing runs until you press Enter. Click a pill, or type its key, to pick it, then press Enter with or without a direction. The keys pick pills at the start of the box or after a space, also from a Chinese keyboard (`？！＠…`). They're never typed into the box there, but inside a word they type as usual.
 - Whatever you type in the box goes into your note as your own line, and the pen writes under it. Type "naps and memory", pick **@ Facts**, Enter: your line, then a cited fact under it.
 - **# Organize** shows only when you've selected several lines.

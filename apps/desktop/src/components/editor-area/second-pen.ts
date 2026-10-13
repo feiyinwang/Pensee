@@ -577,13 +577,13 @@ class PenPlugin {
         );
       }),
     );
+    // Organize's outline: whole lines tinted. A mark across them would wrap
+    // each bullet's marker and knock the list's geometry out of place.
     if (this.organizing && this.organizing.to > this.organizing.from) {
-      ranges.push(
-        Decoration.mark({ class: "cm-pen-organized" }).range(
-          this.organizing.from,
-          this.organizing.to,
-        ),
-      );
+      const last = state.doc.lineAt(this.organizing.to).number;
+      for (let n = state.doc.lineAt(this.organizing.from).number; n <= last; n++) {
+        ranges.push(Decoration.line({ class: "cm-pen-organized" }).range(state.doc.line(n).from));
+      }
     }
     const cursor = this.fresh.iter();
     for (; cursor.value; cursor.next()) ranges.push(cursor.value.range(cursor.from, cursor.to));
@@ -1416,7 +1416,8 @@ class PenPlugin {
           setLock.of(true),
           setPending.of({
             pos: from + organized.length,
-            depth: 0,
+            // Lined up with the outline's words: past the bullets' slot.
+            depth: isItem(organized.split("\n")[0] ?? "") ? 1 : 0,
             bullet: false,
             text: "Organized, in your words.",
             busy: false,

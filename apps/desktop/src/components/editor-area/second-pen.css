@@ -307,9 +307,8 @@
 }
 
 /* Organize's outline, in place of your lines until you keep it. */
-.cm-editor .cm-pen-organized {
+.cm-editor .cm-line.cm-pen-organized {
   background: var(--color-ai-tint);
-  border-radius: var(--radius-hairline);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -350,6 +349,15 @@
   -webkit-background-clip: text;
   color: transparent;
   animation: cm-pen-shimmer 1.4s linear infinite;
+}
+
+/* What the pen says when it writes nothing, or after Organize: a status
+   line in the UI's type, not a line of the note. */
+.cm-pen-pending-said {
+  align-items: center;
+  min-height: 2em;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-label);
 }
 
 .cm-pen-pending-said .cm-pen-pending-text {
