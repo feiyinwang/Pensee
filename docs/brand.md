@@ -111,7 +111,7 @@ the muted grey and italic.
 ## Wordmark and lockups
 
 - **Wordmark:** `PENSÉE` in capitals, high-contrast Didone serif, tracked at
-  0.34em. Bodoni Moda (Google Fonts, regular weight, optical size on) is the
+  0.2em. Bodoni Moda (Google Fonts, regular weight, optical size on) is the
   stand-in until a custom wordmark is drawn.
 - **Horizontal lockup:** the mark (display cut) then the wordmark. The mark is
   about 1.6× the cap height of the wordmark, and the gap is about half the
@@ -137,9 +137,10 @@ the muted grey and italic.
   `label-caps` utility, 0.1em). Not monospace; monospace is for code and
   numbers in columns only.
 - **Wordmark in the sidebar:** `PENSÉE` on its own row at the top of the
-  sidebar, under the window buttons, on the file tree's left edge. The Search
+  sidebar, under the window buttons, on the nav's content edge (the Spaces label
+  and row icons). The Search
   icon sits at the right end of the same row; there is no Search field below.
-  Bodoni Moda regular, 16px, tracked 0.34em, in the theme's foreground colour;
+  Bodoni Moda regular, 16px, tracked 0.2em, in the theme's foreground colour;
   no ¶ beside it.
 
 See [`SPECs/didone-display-type-spec.md`](../SPECs/didone-display-type-spec.md).

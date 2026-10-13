@@ -36,16 +36,16 @@ function SidebarSurface() {
           }}
         />
         {/* The wordmark (docs/brand.md): its own row under the window buttons,
-            on the tree's left edge, with the Search icon at the right end.
-            Part of the drag region, so the text ignores the pointer. The
-            -0.34em margin keeps the last letter's tracking from pushing the
-            right edge out. */}
+            on the nav's content edge (pl-6 = the Spaces label and row icons),
+            with the Search icon at the right end. Part of the drag region, so
+            the text ignores the pointer. The -0.2em margin keeps the last
+            letter's tracking from pushing the right edge out. */}
         <div
           data-sidebar-wordmark
           data-tauri-drag-region
-          className="flex shrink-0 items-center justify-between px-3 pt-1 pb-4"
+          className="flex shrink-0 items-center justify-between pl-6 pr-3 pt-1 pb-4"
         >
-          <span className="pointer-events-none block w-fit select-none font-[family-name:var(--display-font)] text-[16px] font-normal uppercase leading-none tracking-[0.34em] -mr-[0.34em] text-[var(--fg-base)]">
+          <span className="pointer-events-none block w-fit select-none font-[family-name:var(--display-font)] text-[16px] font-normal uppercase leading-none tracking-[0.2em] -mr-[0.2em] text-[var(--fg-base)]">
             Pensée
           </span>
           {showSearch && <SidebarSearchButton />}

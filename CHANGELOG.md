@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- **PENSÉE** at the top of the sidebar now lines up with the Spaces label and the icons below it, and its letters sit a little closer together.
 - Your writing has more air, set the way Ulysses sets it: a little more space between lines, a full empty line between paragraphs and after headings, and a slightly narrower column of about 66 characters. If you set your own line height or width in Settings, yours stay.
 - Every colour, font, text size, corner and shadow in Pensée is now set in one place, a token file, so a colour or a font can be swapped there and the whole app follows, including exported boards. A few things moved by a pixel or so as they joined a common scale: some corners are a touch rounder or squarer, the delete item in the block menu uses the app's red, and the crash screen uses the app's colours.
 - Search in the sidebar is now a magnifying-glass icon on the same row as **PENSÉE**, at the right end, so the file list starts higher. Click it or press ⌘P to search as before; hovering shows the shortcut. The **Sidebar Search Button** setting still hides it.
