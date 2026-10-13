@@ -132,7 +132,8 @@ secondary, muted italic).
   `label-caps` utility, 0.1em). Not monospace; monospace is for code and
   numbers in columns only.
 - **Wordmark in the sidebar:** `PENSÉE` on its own row at the top of the
-  sidebar, under the window buttons and above Search, on Search's left edge.
+  sidebar, under the window buttons, on the file tree's left edge. The Search
+  icon sits at the right end of the same row; there is no Search field below.
   Bodoni Moda regular, 16px, tracked 0.34em, in the theme's foreground colour;
   no ¶ beside it.
 

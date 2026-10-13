@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Search in the sidebar is now a magnifying-glass icon on the same row as **PENSÉE**, at the right end, so the file list starts higher. Click it or press ⌘P to search as before; hovering shows the shortcut. The **Sidebar Search Button** setting still hides it.
 - Text is bigger and easier to read everywhere. Your writing now starts at 18px with a little less space between lines, in a column about 68 characters wide, the width of a well-set book page. Headings and the page title grow with it. Around the page, labels, counts and hints are at least 13px: the sidebar, tabs, buttons and menus are 14px, and search, the command palette, chat, Settings descriptions and empty pages are 15px. Word counts, dates, shortcuts and badges went from as small as 10px up to 13px. The small print drawn on Library's default covers stays as it is, since it is part of the cover picture. If you changed the editor's font size, line height or width in Settings, yours stay as you set them.
 - Pensée now has one look: black ink on cream paper in light mode, cream on black in dark. The colour themes (Orange, Teal and the rest) and the **Theme** and **Accent** settings are gone. If you were using one of them, Pensée opens in Ink; if you picked your own background and text colours, they stay, and you can still change them under Light Theme and Dark Theme.
 - With no accent colour, the keyboard focus ring, checked tasks, switches in Settings and the selected day in the calendar are drawn in the text colour, and selected text and highlights in books sit on a light wash of it.
@@ -11,7 +12,7 @@
 - The last bits of blue, orange and teal are gone: link colours in HTML blocks and tables, the board's drop and connect highlights, and the type chip beside a paragraph. The dot on a tab whose save failed is now oxblood, so it still reads as a warning.
 - Titles now share the logo's typeface. A note's title, its first two levels of headings, and the names at the top of **Projects**, **Library** and **Inspirations** are set in Bodoni Moda, a high-contrast serif with heavy stems and hairline strokes, at regular weight instead of bold. Body text and controls stay in the system font. The font ships with the app, so it works offline.
 - The handle beside each paragraph, and the **Text** choice in its menu, now show the logo's ¶ instead of a **T**.
-- The top of the sidebar shows the name **PENSÉE** in the same typeface as the logo, above Search.
+- The top of the sidebar shows the name **PENSÉE** in the same typeface as the logo.
 - Labels like **Spaces** and **Recents** in the sidebar, and the group names in the command palette, are now spaced capitals in the system font instead of a typewriter font.
 - A new **Ink** theme in Pensée's own black and cream, and the theme a fresh install opens in: cream paper with black text in light mode, black with cream text in dark. It has no accent colour and a flat background, without the gradient and glow. Pick it in Settings → **Theme**; if you chose a theme before, yours stays as it was.
 - Links are now underlined everywhere, including `[[wiki links]]`, so you can tell them from the text in any theme.

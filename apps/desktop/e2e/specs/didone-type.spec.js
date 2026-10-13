@@ -143,7 +143,7 @@ describe("Didone display type", function () {
   it("puts the PENSÉE wordmark at the top of the sidebar, in light and dark", async function () {
     const mark = await browser.execute(() => {
       const el = document.querySelector("[data-sidebar-wordmark] span");
-      const search = document.querySelector("[data-sidebar-search-button]");
+      const search = document.querySelector("[data-sidebar-wordmark] [data-sidebar-search-button]");
       if (!el) return null;
       const cs = getComputedStyle(el);
       return {
@@ -152,10 +152,11 @@ describe("Didone display type", function () {
         weight: cs.fontWeight,
         transform: cs.textTransform,
         tracking: parseFloat(cs.letterSpacing) / parseFloat(cs.fontSize),
-        left: el.getBoundingClientRect().left,
+        right: el.getBoundingClientRect().right,
+        middle: (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2,
         searchLeft: search?.getBoundingClientRect().left ?? null,
-        aboveSearch: search
-          ? el.getBoundingClientRect().bottom < search.getBoundingClientRect().top
+        searchMiddle: search
+          ? (search.getBoundingClientRect().top + search.getBoundingClientRect().bottom) / 2
           : null,
       };
     });
@@ -165,10 +166,9 @@ describe("Didone display type", function () {
     ok(mark.family.includes("Bodoni Moda"), `wordmark: ${mark.family}`);
     strictEqual(mark.weight, "400");
     ok(Math.abs(mark.tracking - 0.34) < 0.01, `tracking ${mark.tracking}em`);
-    if (mark.searchLeft !== null) {
-      strictEqual(mark.left, mark.searchLeft, "wordmark sits on the Search field's left edge");
-      ok(mark.aboveSearch, "wordmark sits above Search");
-    }
+    ok(mark.searchLeft !== null, "Search icon sits in the wordmark row");
+    ok(mark.searchLeft > mark.right, "Search icon sits right of the wordmark");
+    ok(Math.abs(mark.middle - mark.searchMiddle) <= 1, "Search icon is centred on the wordmark");
 
     const setTheme = (value) =>
       browser.executeAsync((v, done) => {

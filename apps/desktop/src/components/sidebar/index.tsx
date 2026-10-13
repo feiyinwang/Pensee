@@ -2,6 +2,8 @@ import { FileBrowser } from "./file-browser";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { useWorkspaceGeneration } from "@/hooks/use-workspace";
 import { useSidebarSurface } from "./use-sidebar-surface";
+import { SidebarSearchButton } from "./sidebar-search-button";
+import { useBooleanSetting } from "@/hooks/use-settings";
 
 export function Sidebar() {
   const workspaceGeneration = useWorkspaceGeneration();
@@ -11,6 +13,7 @@ export function Sidebar() {
 
 function SidebarSurface() {
   const surface = useSidebarSurface();
+  const showSearch = useBooleanSetting("appearance.sidebar-show-search");
 
   return (
     <div
@@ -33,13 +36,19 @@ function SidebarSurface() {
           }}
         />
         {/* The wordmark (docs/brand.md): its own row under the window buttons,
-            on the Search field's left edge. Part of the drag region, so the
-            text ignores the pointer. The -0.34em margin keeps the last
-            letter's tracking from pushing the right edge out. */}
-        <div data-sidebar-wordmark data-tauri-drag-region className="shrink-0 px-3 pt-1 pb-4">
+            on the tree's left edge, with the Search icon at the right end.
+            Part of the drag region, so the text ignores the pointer. The
+            -0.34em margin keeps the last letter's tracking from pushing the
+            right edge out. */}
+        <div
+          data-sidebar-wordmark
+          data-tauri-drag-region
+          className="flex shrink-0 items-center justify-between px-3 pt-1 pb-4"
+        >
           <span className="pointer-events-none block w-fit select-none font-[family-name:var(--display-font)] text-[16px] font-normal uppercase leading-none tracking-[0.34em] -mr-[0.34em] text-[var(--fg-base)]">
             Pensée
           </span>
+          {showSearch && <SidebarSearchButton />}
         </div>
         <div data-sidebar-surface-content className="min-h-0 flex-1 overflow-hidden">
           <FileBrowser />
