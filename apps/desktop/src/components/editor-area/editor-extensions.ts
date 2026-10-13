@@ -68,8 +68,10 @@ const headingWeightHighlight = Prec.highest(
     HighlightStyle.define([
       { tag: tags.strong, fontWeight: "600", color: "var(--editor-text-strong)" },
       { tag: tags.heading, fontWeight: "600" },
-      { tag: tags.heading1, fontWeight: "600" },
-      { tag: tags.heading2, fontWeight: "600" },
+      // H1–H2 are display type: the brand Didone at regular weight, like the
+      // page title. `.wr-band h1/h2` in columns.css must match.
+      { tag: tags.heading1, fontFamily: "var(--display-font)", fontWeight: "400" },
+      { tag: tags.heading2, fontFamily: "var(--display-font)", fontWeight: "400" },
       { tag: tags.heading3, fontWeight: "600" },
       { tag: tags.heading4, fontWeight: "600" },
       { tag: tags.heading5, fontWeight: "600" },

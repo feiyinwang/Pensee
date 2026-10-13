@@ -88,6 +88,22 @@ the way macOS icons do.
 - **Clear space:** keep at least the width of the heavy stem empty on every
   side of the mark.
 
+## Type in the app
+
+- **Display:** the page title, editor H1–H2, and space titles (Projects,
+  Library, Inspirations) are set in Bodoni Moda, regular weight, optical size
+  on — never bold. Use the `--display-font` token (`App.css`); the font ships
+  in the app (`@fontsource-variable/bodoni-moda`, the `opsz` build), never from
+  Google Fonts at runtime.
+- **Text and controls:** SF Pro (`--ui-font`, `--editor-font`). H3 and below
+  stay in SF Pro.
+- **Labels:** section headings like Spaces and Recents, command-palette group
+  headings, and label-style buttons are SF Pro in tracked capitals (the
+  `label-caps` utility, 0.1em). Not monospace; monospace is for code and
+  numbers in columns only.
+
+See [`SPECs/didone-display-type-spec.md`](../SPECs/didone-display-type-spec.md).
+
 ## App icon
 
 [`app-icon.svg`](../assets/brand/app-icon.svg) and

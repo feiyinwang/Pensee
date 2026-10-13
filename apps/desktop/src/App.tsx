@@ -12,6 +12,9 @@ import { useMenuEvents } from "./hooks/use-menu-events";
 import { useOpenDrop } from "./hooks/use-open-drop";
 import "./lib/global-recents";
 import "./lib/standalone-watch";
+// Bodoni Moda, the brand's Didone, bundled so titles never wait on the network.
+// The `opsz` build keeps the optical-size axis: hairlines thin out as titles grow.
+import "@fontsource-variable/bodoni-moda/opsz.css";
 import "./App.css";
 
 function App() {

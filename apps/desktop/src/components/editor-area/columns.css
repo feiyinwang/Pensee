@@ -139,6 +139,12 @@
 .wr-band h2 {
   font-size: 1.4em;
 }
+/* Display type, matching the editor's H1–H2 (editor-extensions.ts). */
+.wr-band h1,
+.wr-band h2 {
+  font-family: var(--display-font);
+  font-weight: 400;
+}
 .wr-band h3 {
   font-size: 1.2em;
 }
@@ -675,6 +681,11 @@ body.wr-resizing-body {
   margin: 0 0 0.35em;
   line-height: 1.3;
   font-weight: 640;
+}
+.wr-lift h1,
+.wr-lift h2 {
+  font-family: var(--display-font);
+  font-weight: 400;
 }
 .wr-lift code,
 .wr-lift pre {

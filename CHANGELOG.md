@@ -2,6 +2,8 @@
 
 ## 2026-10-13
 
+- Titles now share the logo's typeface. A note's title, its first two levels of headings, and the names at the top of **Projects**, **Library** and **Inspirations** are set in Bodoni Moda, a high-contrast serif with heavy stems and hairline strokes, at regular weight instead of bold. Body text and controls stay in the system font. The font ships with the app, so it works offline.
+- Labels like **Spaces** and **Recents** in the sidebar, and the group names in the command palette, are now spaced capitals in the system font instead of a typewriter font.
 - The app is now called **Pensée**, French for "a thought". The name is in the menu bar, the window title, dialogs and the website. The command-line tool is now `pensee` (it was `writer`); install it again from the app menu. Your settings, workspaces and notes are unchanged.
 - The app no longer collects usage data: the first-run **Share usage data** prompt and the **Privacy** settings are gone. It used to send opt-in usage events to the upstream project it was forked from. The website no longer sends analytics either.
 - The app no longer checks for updates, and **Check for Updates…** is gone from the app menu. It used to ask the upstream project's releases page on every launch and once a day.

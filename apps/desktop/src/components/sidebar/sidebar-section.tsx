@@ -12,7 +12,7 @@ type SidebarSectionProps = SidebarSectionBaseProps &
   );
 
 export const SIDEBAR_SECTION_LABEL_CLASS =
-  "group flex h-5 items-center gap-1 pl-3 pr-2 label-mono text-left text-[11px] font-medium text-[var(--text-muted)] opacity-80";
+  "group flex h-5 items-center gap-1 pl-3 pr-2 label-caps text-left text-[11px] font-medium text-[var(--text-muted)] opacity-80";
 
 export function SidebarSection({
   title,

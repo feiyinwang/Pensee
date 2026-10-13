@@ -19,6 +19,7 @@
     "@codemirror/search": "catalog:",
     "@codemirror/state": "catalog:",
     "@codemirror/view": "catalog:",
+    "@fontsource-variable/bodoni-moda": "catalog:",
     "@hugeicons/core-free-icons": "catalog:",
     "@hugeicons/react": "catalog:",
     "@lezer/common": "catalog:",

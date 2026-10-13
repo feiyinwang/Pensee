@@ -33,6 +33,9 @@ catalogs:
     '@codemirror/view':
       specifier: ^6.40.0
       version: 6.40.0
+    '@fontsource-variable/bodoni-moda':
+      specifier: ^5.3.0
+      version: 5.3.0
     '@hugeicons/core-free-icons':
       specifier: ^4.1.1
       version: 4.1.1
@@ -179,6 +182,9 @@ importers:
       '@codemirror/view':
         specifier: 'catalog:'
         version: 6.40.0
+      '@fontsource-variable/bodoni-moda':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@hugeicons/core-free-icons':
         specifier: 'catalog:'
         version: 4.1.1
@@ -705,6 +711,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource-variable/bodoni-moda@5.3.0':
+    resolution: {integrity: sha512-yTDXk4+/J8I20KjtkHBbXDQNeE5PR3BZa0gv/YRza+kyxsz+mmg0la/n/hsr6+WvSfVP7Lc8lRTjHGIYwBW43A==}
 
   '@hugeicons/core-free-icons@4.1.1':
     resolution: {integrity: sha512-teqIBvPHl90ygIwKyJwTxOH8aNp1X1PjDTcMvLkEwdPxPD+8mssrZ5kXKIAJJFYPsz69a8LYQY0UPid4PAdavg==}
@@ -5636,6 +5645,8 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource-variable/bodoni-moda@5.3.0': {}
 
   '@hugeicons/core-free-icons@4.1.1': {}
 

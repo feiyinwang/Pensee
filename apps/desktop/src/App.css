@@ -56,14 +56,14 @@
   }
 }
 
-/* Small-caps label voice: monospace, uppercase, tracked out. Used for section
-   headings and primary buttons so chrome text reads as labels, distinct from
-   the prose the editor holds. The document footer's counts stay monospace but
-   in sentence case. */
-@utility label-mono {
-  font-family: var(--mono-font);
+/* Label voice: the UI face in tracked capitals, like the byline on a Library
+   book cover. Used for section headings and primary buttons so chrome text
+   reads as labels, distinct from the prose the editor holds. Never monospace:
+   that reads as a terminal, not a writing room (SPECs/didone-display-type-spec.md). */
+@utility label-caps {
+  font-family: var(--ui-font);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 @utility scrollbar-none {
@@ -89,6 +89,11 @@
   --mono-font:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
     monospace;
+  /* Display face: the brand's Didone (docs/brand.md) for the page title, H1–H2
+     and space titles, always at regular weight — the thick–thin contrast is
+     the emphasis, so it is never bolded. Bundled; the fallbacks are the macOS
+     Didones in case the bundle fails to load. */
+  --display-font: "Bodoni Moda Variable", "Didot", "Bodoni 72", serif;
   --bg-opacity: 1;
   --contrast: 0.44;
 
@@ -668,9 +673,10 @@ body.tree-dragging [data-tree-path] {
 
 [cmdk-group-heading] {
   padding: 6px 10px;
-  font-family: var(--mono-font);
+  /* The label-caps voice (see the utility above). */
+  font-family: var(--ui-font);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   font-size: 11px;
   color: var(--text-muted);
   user-select: none;
