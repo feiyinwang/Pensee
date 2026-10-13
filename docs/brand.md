@@ -138,12 +138,8 @@ the muted grey and italic.
   headings, and label-style buttons are SF Pro in tracked capitals (the
   `label-caps` utility, 0.1em). Not monospace; monospace is for code and
   numbers in columns only.
-- **Wordmark in the sidebar:** `PENSÉE` on its own row at the top of the
-  sidebar, under the window buttons, on the nav's content edge (the Spaces label
-  and row icons). The Search
-  icon sits at the right end of the same row; there is no Search field below.
-  Bodoni Moda regular, 16px, tracked 0.2em, in the theme's foreground colour;
-  no ¶ beside it.
+- **No wordmark in the sidebar:** the sidebar opens with the Search field
+  under the window buttons; `PENSÉE` is not shown there.
 
 See [`SPECs/didone-display-type-spec.md`](../SPECs/didone-display-type-spec.md).
 

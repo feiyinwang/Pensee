@@ -2,8 +2,6 @@ import { FileBrowser } from "./file-browser";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { useWorkspaceGeneration } from "@/hooks/use-workspace";
 import { useSidebarSurface } from "./use-sidebar-surface";
-import { SidebarSearchButton } from "./sidebar-search-button";
-import { useBooleanSetting } from "@/hooks/use-settings";
 
 export function Sidebar() {
   const workspaceGeneration = useWorkspaceGeneration();
@@ -13,7 +11,6 @@ export function Sidebar() {
 
 function SidebarSurface() {
   const surface = useSidebarSurface();
-  const showSearch = useBooleanSetting("appearance.sidebar-show-search");
 
   return (
     <div
@@ -35,21 +32,6 @@ function SidebarSurface() {
             height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
           }}
         />
-        {/* The wordmark (docs/brand.md): its own row under the window buttons,
-            on the nav's content edge (pl-6 = the Spaces label and row icons),
-            with the Search icon at the right end. Part of the drag region, so
-            the text ignores the pointer. The -0.2em margin keeps the last
-            letter's tracking from pushing the right edge out. */}
-        <div
-          data-sidebar-wordmark
-          data-tauri-drag-region
-          className="flex shrink-0 items-center justify-between pl-6 pr-3 pt-1 pb-4"
-        >
-          <span className="pointer-events-none block w-fit select-none font-[family-name:var(--display-font)] text-[16px] font-normal uppercase leading-none tracking-[0.2em] -mr-[0.2em] text-[var(--fg-base)]">
-            Pensée
-          </span>
-          {showSearch && <SidebarSearchButton />}
-        </div>
         <div data-sidebar-surface-content className="min-h-0 flex-1 overflow-hidden">
           <FileBrowser />
         </div>

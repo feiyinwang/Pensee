@@ -35,19 +35,8 @@ tool, not a writing room.
 
 ## Wordmark in the sidebar
 
-- `PENSÉE` sits on its own row at the top of the sidebar
-  (`[data-sidebar-wordmark]` in `sidebar/index.tsx`), directly under the
-  window-button row and above Search. The traffic lights and the sidebar
-  toggle stay where they are.
-- The wordmark per `docs/brand.md`: capitals with the accent kept, Bodoni Moda
-  regular, 16px, tracked 0.34em, with `-0.34em` right margin so the last
-  letter's tracking doesn't push the edge out. The DOM text is `Pensée`,
-  uppercased in CSS, so screen readers read the word. No ¶ mark.
-- Left edge on the Search field's left edge (the sidebar's 12px padding).
-- Colour `--fg-base`, so it follows the active theme.
-- The row is part of the window drag region; the text ignores the pointer.
-- Modelled only on the first row of Harvey's sidebar (a serif name top left);
-  nothing else from that sidebar is copied.
+Removed 2026-10-13: the sidebar has no wordmark; it opens with the Search
+field under the window buttons, as before.
 
 ## Font loading
 
@@ -71,6 +60,6 @@ tool, not a writing room.
 - `vp test`; changed files pass `vp fmt --check`.
 - e2e (`apps/desktop/e2e`, `specs/didone-type.spec.js`): computed
   `font-family`/`font-weight` of the page title, an H1, an H2, a space title,
-  the sidebar labels, the wordmark (and its left edge against Search) and a
+  the sidebar labels and a
   palette group heading, `document.fonts.check` for
-  Bodoni Moda, and screenshots, including the sidebar top in light and dark.
+  Bodoni Moda, and screenshots.

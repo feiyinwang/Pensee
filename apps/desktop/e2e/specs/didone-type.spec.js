@@ -140,58 +140,6 @@ describe("Didone display type", function () {
     }
   });
 
-  it("puts the PENSÉE wordmark at the top of the sidebar, in light and dark", async function () {
-    const mark = await browser.execute(() => {
-      const el = document.querySelector("[data-sidebar-wordmark] span");
-      const search = document.querySelector("[data-sidebar-wordmark] [data-sidebar-search-button]");
-      if (!el) return null;
-      const cs = getComputedStyle(el);
-      return {
-        text: el.textContent,
-        family: cs.fontFamily,
-        weight: cs.fontWeight,
-        transform: cs.textTransform,
-        tracking: parseFloat(cs.letterSpacing) / parseFloat(cs.fontSize),
-        right: el.getBoundingClientRect().right,
-        middle: (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2,
-        searchLeft: search?.getBoundingClientRect().left ?? null,
-        searchMiddle: search
-          ? (search.getBoundingClientRect().top + search.getBoundingClientRect().bottom) / 2
-          : null,
-      };
-    });
-    ok(mark, "wordmark is rendered");
-    strictEqual(mark.text, "Pensée");
-    strictEqual(mark.transform, "uppercase");
-    ok(mark.family.includes("Bodoni Moda"), `wordmark: ${mark.family}`);
-    strictEqual(mark.weight, "400");
-    ok(Math.abs(mark.tracking - 0.34) < 0.01, `tracking ${mark.tracking}em`);
-    ok(mark.searchLeft !== null, "Search icon sits in the wordmark row");
-    ok(mark.searchLeft > mark.right, "Search icon sits right of the wordmark");
-    ok(Math.abs(mark.middle - mark.searchMiddle) <= 1, "Search icon is centred on the wordmark");
-
-    const setTheme = (value) =>
-      browser.executeAsync((v, done) => {
-        window.__TAURI_INTERNALS__
-          .invoke("set_setting", { key: "appearance.theme", value: v, scope: "global" })
-          .then(() => done(null))
-          .catch((error) => done(String(error)));
-      }, value);
-    for (const theme of ["light", "dark"]) {
-      await setTheme(theme);
-      await browser.refresh();
-      await $("[data-sidebar-wordmark]").waitForExist({ timeout: 15_000 });
-      await browser.executeAsync((done) => {
-        void document.fonts.ready.then(() => done(null));
-      });
-      await browser.pause(800);
-      await browser.saveScreenshot(join(SHOTS, `didone-wordmark-${theme}.png`));
-    }
-    await setTheme("system");
-    await browser.refresh();
-    await $("[data-sidebar-wordmark]").waitForExist({ timeout: 15_000 });
-  });
-
   it("sets a space title in Bodoni Moda", async function () {
     await $('[data-space-key="projects"]').click();
     const heading = await $("h1=Projects");

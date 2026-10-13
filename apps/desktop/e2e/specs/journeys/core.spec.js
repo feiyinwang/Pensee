@@ -61,6 +61,17 @@ describe("Journeys: core (smoke)", function () {
     await $('button[aria-label="Hide sidebar"]').waitForExist({ timeout: 3_000 });
   });
 
+  it("SB-07 clicking the sidebar's Search field opens the command palette", async function () {
+    const search = await $("[data-sidebar-surface-content] [data-sidebar-search-button]");
+    await search.waitForExist({ timeout: 5_000 });
+    strictEqual(await $("[data-sidebar-wordmark]").isExisting(), false, "no PENSÉE row");
+    strictEqual((await search.getText()).replace(/\s+/g, ""), "Search⌘P");
+    await search.click();
+    await $("[cmdk-input]").waitForExist({ timeout: 5_000 });
+    await browser.keys("Escape");
+    await $("[cmdk-input]").waitForExist({ timeout: 5_000, reverse: true });
+  });
+
   it("PAL-01 ⌘O finds a note by name and opens it", async function () {
     await openViaPalette("Welcome");
     ok((await editorText()).includes("A note to open first"), "Welcome's text shows");

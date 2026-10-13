@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- The top of the sidebar is back to how it was: the **PENSÉE** name is gone and Search is a full-width field again, showing ⌘P.
 - Clicking a day, week, month, quarter or year in the calendar works again in an iCloud vault, and the dots under days that have a note show up straight away. The calendar used to open every note in your daily-note folder just to learn their names, which took over a minute in an iCloud vault. It did that again each time iCloud touched a file, so the clicks waited behind it. It now reads only the file names.
 - **Library** uses the whole width when you pinch its tab open, so you see more covers in each row instead of empty margins on both sides. Spaces you add with `View: gallery` do the same. Nothing else about Library changes.
 - **Projects** is just the kanban now. **List** and **Timeline** are gone, and so is the switcher at the top right. Your notes keep their **Start** and **Deadline** properties, and deadline tags still show on the cards.

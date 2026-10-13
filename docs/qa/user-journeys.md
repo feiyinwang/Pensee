@@ -43,7 +43,7 @@ file in a compact window.
 
 ## Sidebar — SB
 
-**Feature:** The sidebar shows the search icon, **Today**, **Spaces** (Projects,
+**Feature:** The sidebar shows the Search field (⌘P), **Today**, **Spaces** (Projects,
 Library, Inspirations, Files), Pinned and Recents. **Files** holds the folder tree.
 **Spec:** SPECs/spaces-spec.md, SPECs/sidebar-drag-and-drop-move-spec.md
 **Code:** `src/components/sidebar/`, `src/hooks/use-file-tree.ts`, `src-tauri/src/commands/fs.rs`, `src-tauri/src/watcher.rs`
@@ -56,7 +56,7 @@ Library, Inspirations, Files), Pinned and Recents. **Files** holds the folder tr
 | SB-04 | Right-click empty sidebar space → **New file**    | Files opens with a new note to name            | manual     |
 | SB-05 | Create a note outside Pensée (shell) in the vault | It appears in Files within a couple of seconds | manual     |
 | SB-06 | Drag a note onto a folder in Files                | The file moves on disk; its open tab follows   | you        |
-| SB-07 | Click the magnifying glass (or press ⌘P)          | The command palette opens                      | manual     |
+| SB-07 | Click the **Search** field at the top             | The command palette opens                      | auto: core |
 
 ## Tabs and columns — TAB
 
