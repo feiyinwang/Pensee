@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writer Logo Shapes</title>
+    <style>
+      :root {
+        --page: #ffffff;
+        --card: #f5f5f4;
+        --ink: #0a0a0a;
+        --muted: #6b6b6b;
+      }
+      :root[data-theme="dark"] {
+        --page: #0a0a0a;
+        --card: #161616;
+        --ink: #f5f5f4;
+        --muted: #8a8a8a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          13px/1.4 -apple-system,
+          BlinkMacSystemFont,
+          "Inter",
+          "Helvetica Neue",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 48px 24px 28px;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 640px;
+      }
+      .toggle {
+        font: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid color-mix(in oklab, var(--ink) 15%, transparent);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .toggle:active {
+        transform: scale(0.97);
+      }
+      h2 {
+        max-width: 1200px;
+        margin: 12px auto 12px;
+        padding: 0 24px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      h2 span {
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: 8px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        max-width: 1200px;
+        margin: 0 auto 32px;
+        padding: 0 24px;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 560px) {
+        .grid {
+          grid-template-columns: 1fr;
+          padding: 0 16px;
+        }
+        header {
+          padding: 32px 16px 20px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        h2 {
+          padding: 0 16px;
+        }
+      }
+      .card {
+        position: relative;
+        background: var(--card);
+        border-radius: 10px;
+        aspect-ratio: 1 / 1;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+      }
+      .meta {
+        font-size: 11.5px;
+        line-height: 1.35;
+        max-width: 78%;
+      }
+      .name {
+        font-weight: 500;
+      }
+      .note {
+        color: var(--muted);
+      }
+      .num {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 11.5px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .stage {
+        flex: 1;
+        display: grid;
+        place-items: center;
+      }
+      .hero {
+        width: 42%;
+        aspect-ratio: 1;
+        color: var(--ink);
+      }
+      .hero svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .sizes {
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+        color: var(--ink);
+      }
+      .appicon {
+        width: 40px;
+        height: 40px;
+        border-radius: 9px;
+        background: var(--ink);
+        color: var(--card);
+        display: grid;
+        place-items: center;
+      }
+      .appicon svg {
+        width: 62%;
+        height: 62%;
+      }
+      .s32 {
+        width: 32px;
+        height: 32px;
+      }
+      .s16 {
+        width: 16px;
+        height: 16px;
+      }
+      .sizes svg {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Writer — logo shapes</h1>
+        <p>
+          A fresh start. Fifteen minimal marks, one to three solid shapes each, about writing, clear
+          thinking, and crafting your own thought in an AI world. Each card shows the mark, an app
+          icon, and 32px / 16px.
+        </p>
+      </div>
+      <button class="toggle" id="invert" type="button">Invert</button>
+    </header>
+
+    <h2>Marks of writing<span>Shapes that come from the page itself</span></h2>
+    <main class="grid" id="writing"></main>
+    <h2>Shapes of a thought<span>What a thought looks like once you've worked on it</span></h2>
+    <main class="grid" id="thought"></main>
+    <h2>Clarity and craft<span>Judging, framing, refining</span></h2>
+    <main class="grid" id="craft"></main>
+
+    <script>
+      // Every mark is drawn on a 100×100 box in currentColor. "ID" is swapped for a
+      // unique id per instance so masks don't collide.
+      const writing = [
+        {
+          name: "Paragraph",
+          note: "A block of text, with the shorter last line",
+          svg: `<path d="M18 18H82V66H54V82H18Z"/>`,
+        },
+        {
+          name: "Indented Paragraph",
+          note: "Indent at the start, short line at the end: a whole thought, beginning to end",
+          svg: `<path d="M42 18H82V66H58V82H18V34H42Z"/>`,
+        },
+        {
+          name: "Caret",
+          note: "The proofreader's insertion mark: put your own thought here",
+          svg: `<rect x="12" y="22" width="32" height="10"/><rect x="56" y="22" width="32" height="10"/>
+        <path fill-rule="evenodd" d="M50 40L82 82H18ZM50 62L65 82H35Z"/>`,
+        },
+        {
+          name: "Full Stop",
+          note: "From trailing off to a full stop: finish the thought",
+          svg: `<circle cx="20" cy="59" r="5"/><circle cx="36" cy="59" r="5"/><circle cx="66" cy="50" r="14"/>`,
+        },
+        {
+          name: "Sentence",
+          note: "One line, then a full stop: say it in a sentence",
+          svg: `<rect x="12" y="43" width="56" height="14"/><circle cx="81" cy="50" r="7"/>`,
+        },
+        {
+          name: "Quill",
+          note: "A feather cut to a point: the oldest writing tool",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <path d="M37 63L72 28" stroke="#000" stroke-width="3" stroke-linecap="round"/></mask></defs>
+        <path mask="url(#ID)" d="M30 70A58.5 58.5 0 0 1 84 16A58.5 58.5 0 0 1 30 70Z"/>
+        <path d="M31 69L15 85" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>`,
+        },
+      ];
+
+      const thought = [
+        {
+          name: "Point",
+          note: "A round thought with one sharp corner: it has a point now",
+          svg: `<path transform="translate(4 4)" d="M76 46V76H46A30 30 0 1 1 76 46Z"/>`,
+        },
+        {
+          name: "Diamond Nib",
+          note: "A nib reduced to a diamond and a slit",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <circle cx="50" cy="54" r="5" fill="#000"/><rect x="48.5" y="54" width="3" height="40" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" d="M50 10L78 50L50 90L22 50Z"/>`,
+        },
+        {
+          name: "Shift",
+          note: "One idea split in two halves, nudged out of line: see it from another angle",
+          svg: `<path d="M48 16A30 30 0 0 0 48 76Z"/><path d="M52 24A30 30 0 0 1 52 84Z"/>`,
+        },
+        {
+          name: "Half and Half",
+          note: "Round half, square half: your intuition and the machine's structure in one thought",
+          svg: `<path d="M48 18V82A32 32 0 0 1 48 18Z"/><rect x="52" y="18" width="32" height="64"/>`,
+        },
+        {
+          name: "Flow",
+          note: "Two quarter turns: what you read turns around and comes back out in your own words",
+          svg: `<path d="M50 50H18A32 32 0 0 1 50 18Z"/><path d="M50 50H82A32 32 0 0 1 50 82Z"/>`,
+        },
+        {
+          name: "Square Spiral",
+          note: "Go deeper: each turn gets closer to what you actually think",
+          svg: `<path d="M18 18H82V82H18V34H66V66H34V50H50" fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="miter"/>`,
+        },
+      ];
+
+      const craft = [
+        {
+          name: "Frame",
+          note: "Four corners around one small square: frame the thing that matters",
+          svg: `<path d="M16 34V16H34M66 16H84V34M84 66V84H66M34 84H16V66" fill="none" stroke="currentColor" stroke-width="8"/>
+        <rect x="40" y="40" width="20" height="20"/>`,
+        },
+        {
+          name: "Weigh",
+          note: "A beam on a fulcrum: weigh the idea yourself, don't take the first answer",
+          svg: `<rect x="12" y="36" width="76" height="9"/><path d="M50 50L68 80H32Z"/>`,
+        },
+        {
+          name: "Proportion",
+          note: "Two quarter turns in golden ratio: each refinement smaller, in proportion to the last",
+          svg: `<g transform="translate(-3 0)"><path d="M60 70H20A40 40 0 0 1 60 30Z"/><path d="M63 54.7V30A24.7 24.7 0 0 1 87.7 54.7Z"/></g>`,
+        },
+      ];
+
+      let uid = 0;
+      const svg = (inner, cls = "") => {
+        const id = `m${uid++}`;
+        return `<svg class="${cls}" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${inner.replaceAll("ID", id)}</svg>`;
+      };
+
+      let n = 0;
+      const render = (list, el) => {
+        document.getElementById(el).innerHTML = list
+          .map(
+            (m) => `
+    <article class="card">
+      <div class="meta"><div class="name">${m.name}</div><div class="note">${m.note}</div></div>
+      <div class="num">${String(++n).padStart(2, "0")}</div>
+      <div class="stage"><div class="hero">${svg(m.svg)}</div></div>
+      <div class="sizes">
+        <div class="appicon">${svg(m.svg)}</div>
+        ${svg(m.svg, "s32")}
+        ${svg(m.svg, "s16")}
+      </div>
+    </article>`,
+          )
+          .join("");
+      };
+      render(writing, "writing");
+      render(thought, "thought");
+      render(craft, "craft");
+
+      document.getElementById("invert").addEventListener("click", () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>

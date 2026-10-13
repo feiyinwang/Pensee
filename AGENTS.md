@@ -43,6 +43,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - [docs/keyboard-shortcuts.md](./docs/keyboard-shortcuts.md) — canonical shortcut map
 - [docs/arc.md](./docs/arc.md) — Arc UI (React + motion) registry installs, Pro token, and why `foundation.css` must never be imported globally
 - [docs/motion.md](./docs/motion.md) — animation tokens and rules: ease-out under 180ms, springs for gesture settles, global button press scale
+- [docs/brand.md](./docs/brand.md) — the logo (a Thick–Thin ¶ in a fashion-house serif cut): its two cuts, Ink/Cream colours, wordmark and lockups, the don'ts, and how to regenerate the app icon and favicon from `assets/brand/`
 
 **Infra**
 

@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writer Logo Concepts</title>
+    <style>
+      :root {
+        --page: #ffffff;
+        --card: #f5f5f4;
+        --ink: #0a0a0a;
+        --muted: #6b6b6b;
+        --line: #e7e7e5;
+      }
+      :root[data-theme="dark"] {
+        --page: #0a0a0a;
+        --card: #161616;
+        --ink: #f5f5f4;
+        --muted: #8a8a8a;
+        --line: #262626;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          13px/1.45 -apple-system,
+          BlinkMacSystemFont,
+          "Inter",
+          "Helvetica Neue",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 48px 0 28px;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 640px;
+      }
+      .toggle {
+        font: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .toggle:active {
+        transform: scale(0.97);
+      }
+      h2 {
+        font-size: 13px;
+        font-weight: 500;
+        margin: 28px 0 0;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 24px;
+        padding: 20px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .info .num {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        font-size: 12px;
+      }
+      .info .name {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 2px 0 6px;
+      }
+      .info .idea {
+        color: var(--muted);
+        text-wrap: pretty;
+      }
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .tile {
+        position: relative;
+        background: var(--card);
+        border-radius: 10px;
+        aspect-ratio: 1 / 1;
+        display: grid;
+        place-items: center;
+      }
+      .tile .v {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .tile .hero {
+        width: 46%;
+        aspect-ratio: 1;
+        color: var(--ink);
+      }
+      .tile .hero svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .tile .small {
+        position: absolute;
+        left: 14px;
+        bottom: 12px;
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        color: var(--ink);
+      }
+      .appicon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6.5px;
+        background: var(--ink);
+        color: var(--card);
+        display: grid;
+        place-items: center;
+      }
+      .appicon svg {
+        width: 62%;
+        height: 62%;
+        display: block;
+      }
+      .s16 {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+      @media (max-width: 800px) {
+        .row {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+      }
+      @media (max-width: 560px) {
+        .wrap {
+          padding: 0 16px;
+        }
+        header {
+          padding: 32px 0 20px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .tiles {
+          gap: 8px;
+        }
+        .tile .small {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Writer — 20 concepts, drawn</h1>
+          <p>
+            Message: thinking is made by writing. Black and white, one or two solid shapes, no
+            outlines or textures. Two or three variations per concept; the bottom-left of each tile
+            shows the app icon and 16px.
+          </p>
+        </div>
+        <button class="toggle" id="invert" type="button">Invert</button>
+      </header>
+      <h2>Abstract</h2>
+      <section id="abstract"></section>
+      <h2>W for Writer</h2>
+      <section id="letter"></section>
+    </div>
+
+    <script>
+      // Every mark is drawn on a 100×100 box in currentColor. "ID" becomes a unique id per instance.
+      const f = (n) => +n.toFixed(2);
+      const poly = (pts) => `M${pts.map(([x, y]) => `${f(x)} ${f(y)}`).join("L")}Z`;
+      const line = (d, w, cap = "butt", join = "miter") =>
+        `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="${cap}" stroke-linejoin="${join}"/>`;
+      const cut = (shape, holes) =>
+        `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>${holes}</mask></defs><g mask="url(#ID)">${shape}</g>`;
+      const nibCut = (x, y, r = 5, to = 96, w = 3) =>
+        `<circle cx="${x}" cy="${y}" r="${r}" fill="#000"/><rect x="${x - w / 2}" y="${y}" width="${w}" height="${to - y}" fill="#000"/>`;
+
+      // Concept 3 drop, point up, flat bottom (apex 50,12 · circle 50,54 r26 · cut at y72).
+      const DROP = "M50 12L70.43 37.92A26 26 0 0 1 68.76 72H31.24A26 26 0 0 1 29.57 37.92Z";
+      // Concept 9 / 14: Twist stroke and its horizontal version.
+      const TWIST = "M20 14H59V65A21 21 0 0 0 80 86H41V35A21 21 0 0 0 20 14Z";
+      const STRIKE = "M14 28V56H70A16 16 0 0 1 86 72V44H30A16 16 0 0 1 14 28Z";
+      // Concept 16 cup w.
+      const cupW = (hole = 7) =>
+        cut(
+          `<rect x="16" y="24" width="68" height="28"/><path d="M16 52A17 17 0 0 0 50 52Z"/><path d="M50 52A17 17 0 0 0 84 52Z"/>`,
+          `<rect x="${33 - hole}" y="0" width="${hole * 2}" height="52" fill="#000"/><circle cx="33" cy="52" r="${hole}" fill="#000"/>
+     <rect x="${67 - hole}" y="0" width="${hole * 2}" height="52" fill="#000"/><circle cx="67" cy="52" r="${hole}" fill="#000"/>`,
+        );
+      // Concept 17 folded strip: four segments, alternating direction, with gaps at the folds.
+      const folded = (w, step, layered, y0 = 20, y1 = 80) => {
+        const x0 = 50 - (4 * step + w) / 2;
+        const segs = [];
+        for (let i = 0; i < 4; i++) {
+          const a = x0 + i * step,
+            b = x0 + (i + 1) * step;
+          segs.push(
+            i % 2 === 0
+              ? poly([
+                  [a, y0],
+                  [a + w, y0],
+                  [b + w, y1],
+                  [b, y1],
+                ])
+              : poly([
+                  [a, y1],
+                  [a + w, y1],
+                  [b + w, y0],
+                  [b, y0],
+                ]),
+          );
+        }
+        // Solid: one W, with a hairline stroke so the segments don't show seams.
+        if (!layered)
+          return `<path d="${segs.join("")}" stroke="currentColor" stroke-width="0.8" stroke-linejoin="round"/>`;
+        // Layered: the down-strokes sit in front of the up-strokes, set off by a gap, like folded paper.
+        const front = [segs[0], segs[2]],
+          back = [segs[1], segs[3]];
+        return `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+      ${front.map((d) => `<path d="${d}" fill="#000" stroke="#000" stroke-width="5" stroke-linejoin="round"/>`).join("")}</mask></defs>
+      <g mask="url(#ID)">${back.map((d) => `<path d="${d}"/>`).join("")}</g>${front.map((d) => `<path d="${d}"/>`).join("")}`;
+      };
+      // Concept 18: text lines with a W cut through them.
+      const linesW = (rows, h) =>
+        cut(
+          rows.map((y) => `<rect x="12" y="${y}" width="76" height="${h}"/>`).join(""),
+          `<path d="M14 14L31 86L50 34L69 86L86 14" fill="none" stroke="#000" stroke-width="6" stroke-linejoin="miter"/>`,
+        );
+
+      const abstract = [
+        {
+          name: "Point",
+          idea: "A round thought with one square corner. Writing gives a thought its point.",
+          v: [
+            `<path transform="translate(4 4)" d="M76 46V76H46A30 30 0 1 1 76 46Z"/>`,
+            `<path transform="rotate(180 50 50) translate(4 4)" d="M76 46V76H46A30 30 0 1 1 76 46Z"/>`,
+            `<path d="M18 18H50A32 32 0 0 1 82 50V82H50A32 32 0 0 1 18 50Z"/>`,
+          ],
+        },
+        {
+          name: "Edge",
+          idea: "A disc with one side cut dead straight. A vague thought gets a hard edge the moment it's written.",
+          v: [
+            `<path transform="translate(6 0)" d="M72 24.1A34 34 0 1 0 72 75.9Z"/>`,
+            `<path transform="translate(0 6)" d="M24.1 72A34 34 0 1 1 75.9 72Z"/>`,
+            `<path d="M28 24.1A34 34 0 0 1 72 24.1V75.9A34 34 0 0 1 28 75.9Z"/>`,
+          ],
+        },
+        {
+          name: "Landing",
+          idea: "A drop, point up, on a flat bottom. A thought lands on the line.",
+          v: [
+            `<path transform="translate(0 8)" d="${DROP}"/>`,
+            `<path transform="translate(0 2)" d="${DROP}"/><rect x="20" y="80" width="60" height="6"/>`,
+            `<path transform="translate(0 4)" d="${DROP}"/><rect x="14" y="76" width="72" height="8"/>`,
+          ],
+        },
+        {
+          name: "Drawn Out",
+          idea: "A circle stretched into a line. The thought, drawn out until it's a sentence.",
+          v: [
+            `<path d="M30 34H86V66H30A16 16 0 0 1 30 34Z"/>`,
+            `<path d="M28 32L88 46V54L28 68A18 18 0 0 1 28 32Z"/>`,
+            `<circle cx="30" cy="50" r="18"/><rect x="30" y="44" width="58" height="12"/>`,
+          ],
+        },
+        {
+          name: "Caret",
+          idea: "The proofreader's insertion mark. Put your own thought here.",
+          v: [
+            `<rect x="12" y="22" width="32" height="10"/><rect x="56" y="22" width="32" height="10"/>
+         <path fill-rule="evenodd" d="M50 40L82 82H18ZM50 62L65 82H35Z"/>`,
+            `<circle cx="50" cy="22" r="8"/><path fill-rule="evenodd" d="M50 38L84 84H16ZM50 60L67 84H33Z"/>`,
+            `<rect x="14" y="20" width="72" height="10"/><path fill-rule="evenodd" d="M50 38L82 82H18ZM50 60L65 82H35Z"/>`,
+          ],
+        },
+        {
+          name: "Whole Paragraph",
+          idea: "A first-line indent and a short last line. A complete thought, start to finish.",
+          v: [
+            `<path d="M42 18H82V66H58V82H18V34H42Z"/>`,
+            `<g transform="translate(0 3)"><rect x="34" y="16" width="50" height="11"/><rect x="16" y="33" width="68" height="11"/>
+         <rect x="16" y="50" width="68" height="11"/><rect x="16" y="67" width="40" height="11"/></g>`,
+            `<path d="M40 18H82V60A22 22 0 0 0 60 82H18V40A22 22 0 0 0 40 18Z"/>`,
+          ],
+        },
+        {
+          name: "Carved Line",
+          idea: "A solid block with one sentence cut into it. Clarity carved out of a mass of thinking.",
+          v: [
+            cut(
+              `<rect x="18" y="18" width="64" height="64"/>`,
+              `<rect x="30" y="47" width="34" height="6" fill="#000"/>`,
+            ),
+            cut(
+              `<rect x="18" y="18" width="64" height="64"/>`,
+              `<rect x="0" y="47" width="60" height="6" fill="#000"/>`,
+            ),
+            cut(
+              `<rect x="18" y="18" width="64" height="64"/>`,
+              `<rect x="30" y="38" width="40" height="6" fill="#000"/><rect x="30" y="56" width="24" height="6" fill="#000"/>`,
+            ),
+          ],
+        },
+        {
+          name: "Pilcrow",
+          idea: "¶ as one geometric shape. The paragraph is the unit of a thought.",
+          v: [
+            `<path d="M47 14A22 22 0 0 0 47 58Z"/><rect x="47" y="14" width="10" height="72"/><rect x="65" y="14" width="10" height="72"/><rect x="47" y="14" width="28" height="10"/>`,
+            `<g transform="translate(6 0)"><path d="M44 14A22 22 0 0 0 44 58Z"/><rect x="44" y="14" width="14" height="72"/></g>`,
+            `<circle cx="36" cy="34" r="20"/><rect x="56" y="14" width="10" height="72"/><rect x="74" y="14" width="10" height="72"/>`,
+          ],
+        },
+        {
+          name: "Stroke",
+          idea: "One pen stroke with concave serif ends. The gesture of writing itself.",
+          v: [
+            `<path transform="rotate(30 50 50)" d="${TWIST}"/>`,
+            `<path transform="translate(18.2 0) skewX(-20)" d="${TWIST}"/>`,
+            `<path transform="rotate(-25 50 50)" d="${STRIKE}"/>`,
+          ],
+        },
+        {
+          name: "Nib",
+          idea: "A pen nib reduced to its outline and a slit. Where a thought turns into ink.",
+          v: [
+            cut(`<path d="M28 14H72V46L50 88L28 46Z"/>`, nibCut(50, 52)),
+            cut(`<path d="M28 46V34A22 22 0 0 1 72 34V46L50 88Z"/>`, nibCut(50, 54)),
+            cut(`<path d="M50 10L78 50L50 90L22 50Z"/>`, nibCut(50, 54)),
+          ],
+        },
+        {
+          name: "Untangle",
+          idea: "One loop, then a straight line. Writing is where the knot comes undone.",
+          v: [
+            line("M12 66H40A16 16 0 0 0 40 34A16 16 0 0 0 40 66H88", 8, "round", "round"),
+            line(
+              "M12 70C40 70 56 50 52 30C49 16 34 22 38 40C42 58 60 70 88 70",
+              8,
+              "round",
+              "round",
+            ),
+            line("M14 64H44A12 12 0 0 0 44 40A12 12 0 0 0 44 64H86", 11, "butt", "round"),
+          ],
+        },
+        {
+          name: "Settle",
+          idea: "A tilted bar above a level one. A thought is off-balance until you write it down.",
+          v: [
+            `<rect x="20" y="31" width="60" height="10" transform="rotate(-12 50 36)"/><rect x="20" y="58" width="60" height="10"/>`,
+            `<rect x="20" y="22" width="60" height="9" transform="rotate(-16 50 26.5)"/><rect x="20" y="42" width="60" height="9" transform="rotate(-8 50 46.5)"/><rect x="20" y="62" width="60" height="9"/>`,
+            `<rect x="20" y="64" width="64" height="10"/><rect x="20" y="52" width="64" height="10" transform="rotate(-24 20 62)"/>`,
+          ],
+        },
+      ];
+
+      const letter = [
+        {
+          name: "Caret W",
+          idea: "A W whose middle peak is the insertion caret. Writing is putting your own thought in.",
+          v: [
+            line("M10 18L22 82", 11) + line("M38 82L50 50L62 82", 11) + line("M90 18L78 82", 11),
+            line("M14 22L30 80L50 46L70 80L86 22", 11) + `<circle cx="50" cy="22" r="6.5"/>`,
+            `<path d="M10 18H46L28 82Z"/><path d="M54 18H90L72 82Z"/>`,
+          ],
+        },
+        {
+          name: "Serif W",
+          idea: "A w drawn with concave serifs, in the Twist style. A calligrapher's w.",
+          v: [
+            `<g transform="translate(50 50) scale(.8) translate(-50 -46)">${cupW()}
+          <path d="M0 24H16V40A16 16 0 0 0 0 24Z"/><path d="M100 24H84V40A16 16 0 0 1 100 24Z"/></g>`,
+            `<g transform="translate(50 50) scale(.8) translate(-50 -46)">${cupW()}
+          <path d="M0 24H16V40A16 16 0 0 0 0 24Z"/></g>`,
+          ],
+        },
+        {
+          name: "Nib W",
+          idea: "A W whose two bottom points are pen nibs.",
+          v: [
+            cut(
+              `<path d="M14 18H86V40L68 84L50 48L32 84L14 40Z"/>`,
+              nibCut(32, 58, 4, 96, 2.6) + nibCut(68, 58, 4, 96, 2.6),
+            ),
+            cut(
+              `<path d="M12 18H46V44L29 84L12 44Z"/><path d="M54 18H88V44L71 84L54 44Z"/>`,
+              nibCut(29, 56, 4, 96, 2.6) + nibCut(71, 56, 4, 96, 2.6),
+            ),
+            cut(
+              `<path d="M14 40V34A18 18 0 0 1 50 34A18 18 0 0 1 86 34V40L68 84L50 48L32 84Z"/>`,
+              nibCut(32, 58, 4, 96, 2.6) + nibCut(68, 58, 4, 96, 2.6),
+            ),
+          ],
+        },
+        {
+          name: "Cup W",
+          idea: "Two rounded cups built from quarter circles. The plainest w.",
+          v: [
+            `<g transform="translate(0 4)">${cupW(7)}</g>`,
+            `<g transform="translate(0 4)">${cupW(5)}</g>`,
+            line("M18 24V52A16 16 0 0 0 50 52V30V52A16 16 0 0 0 82 52V24", 11),
+          ],
+        },
+        {
+          name: "Folded W",
+          idea: "A strip of paper folded twice into a W. A thought folded into shape.",
+          v: [folded(13, 18, false), folded(13, 18, true), folded(17, 16, true)],
+        },
+        {
+          name: "Paragraph W",
+          idea: "A W written through lines of text.",
+          v: [linesW([16, 31, 46, 61, 76], 9), linesW([16, 36, 56, 76], 12)],
+        },
+        {
+          name: "Stroke W",
+          idea: "One continuous pen line forming a w, ending in a full stop.",
+          v: [
+            line("M8 26L22 76L38 40L54 76L68 26", 9, "butt", "miter") +
+              `<circle cx="84" cy="71" r="6"/>`,
+            line("M12 28V54A13 13 0 0 0 38 54V36V54A13 13 0 0 0 64 54V28", 9) +
+              `<circle cx="82" cy="71" r="6"/>`,
+            `<g transform="translate(12 0) skewX(-14)">${line("M10 28V54A13 13 0 0 0 36 54V36V54A13 13 0 0 0 62 54V28", 9)}<circle cx="80" cy="71" r="6"/></g>`,
+          ],
+        },
+        {
+          name: "Block W",
+          idea: "A solid block with a W cut from it.",
+          v: [
+            `<path d="M16 16H22L33 58L44 16H56L67 58L78 16H84V84H16Z"/>`,
+            cut(
+              `<rect x="16" y="16" width="68" height="68"/>`,
+              `<rect x="27" y="0" width="12" height="50" fill="#000"/><circle cx="33" cy="50" r="6" fill="#000"/>
+           <rect x="61" y="0" width="12" height="50" fill="#000"/><circle cx="67" cy="50" r="6" fill="#000"/>`,
+            ),
+            cut(
+              `<rect x="16" y="16" width="68" height="68"/>`,
+              `<path d="M26 30L37 70L50 42L63 70L74 30" fill="none" stroke="#000" stroke-width="7" stroke-linejoin="miter"/>`,
+            ),
+          ],
+        },
+      ];
+
+      let uid = 0;
+      const svg = (inner, cls = "") =>
+        `<svg class="${cls}" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${inner.replaceAll("ID", `m${uid++}`)}</svg>`;
+
+      let n = 0;
+      const render = (list, el) => {
+        document.getElementById(el).innerHTML = list
+          .map((c) => {
+            const num = String(++n).padStart(2, "0");
+            const tiles = c.v
+              .map(
+                (m, i) => `
+          <div class="tile">
+            <span class="v">${num}${"abc"[i]}</span>
+            <div class="hero">${svg(m)}</div>
+            <div class="small"><div class="appicon">${svg(m)}</div>${svg(m, "s16")}</div>
+          </div>`,
+              )
+              .join("");
+            return `
+      <div class="row">
+        <div class="info"><div class="num">${num}</div><div class="name">${c.name}</div><div class="idea">${c.idea}</div></div>
+        <div class="tiles">${tiles}</div>
+      </div>`;
+          })
+          .join("");
+      };
+      render(abstract, "abstract");
+      render(letter, "letter");
+
+      document.getElementById("invert").addEventListener("click", () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>

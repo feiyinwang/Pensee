@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writer Logo Directions</title>
+    <style>
+      :root {
+        --page: #ffffff;
+        --card: #f5f5f4;
+        --ink: #0a0a0a;
+        --muted: #6b6b6b;
+        --line: #e7e7e5;
+      }
+      :root[data-theme="dark"] {
+        --page: #0a0a0a;
+        --card: #161616;
+        --ink: #f5f5f4;
+        --muted: #8a8a8a;
+        --line: #262626;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          13px/1.45 -apple-system,
+          BlinkMacSystemFont,
+          "Inter",
+          "Helvetica Neue",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 64px;
+      }
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 48px 0 20px;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 680px;
+      }
+      .toggle {
+        font: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .toggle:active {
+        transform: scale(0.97);
+      }
+      .dir {
+        margin-top: 32px;
+      }
+      .dir h2 {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 0 0 2px;
+      }
+      .dir .why {
+        color: var(--muted);
+        margin: 0 0 14px;
+        max-width: 760px;
+        text-wrap: pretty;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 960px) {
+        .grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 560px) {
+        .wrap {
+          padding: 0 16px 48px;
+        }
+        header {
+          padding: 32px 0 16px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+      .card {
+        position: relative;
+        background: var(--card);
+        border-radius: 10px;
+        aspect-ratio: 1 / 1.12;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .meta {
+        font-size: 11.5px;
+        line-height: 1.35;
+      }
+      .name {
+        font-weight: 500;
+      }
+      .note {
+        color: var(--muted);
+      }
+      .stage {
+        flex: 1;
+        display: grid;
+        place-items: center;
+      }
+      .hero {
+        width: 50%;
+        aspect-ratio: 1;
+        color: var(--ink);
+      }
+      .hero svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .small {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        color: var(--ink);
+      }
+      .appicon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6.5px;
+        background: var(--ink);
+        color: var(--card);
+        display: grid;
+        place-items: center;
+      }
+      .appicon svg {
+        width: 62%;
+        height: 62%;
+        display: block;
+      }
+      .s16 {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Writer — new directions</h1>
+          <p>
+            Message: thinking is made by writing. Drawn after a pass through Logobook's archive of
+            black-and-white marks. The moves borrowed, not the marks: double readings in negative
+            space, repetition around a centre, two shapes in tension, punctuation as a mark.
+          </p>
+        </div>
+        <button class="toggle" id="invert" type="button">Invert</button>
+      </header>
+      <main id="dirs"></main>
+    </div>
+
+    <script>
+      // Every mark is drawn on a 100×100 box in currentColor. "ID" becomes a unique id per instance.
+      const masked = (shape, holes, extra = "") =>
+        `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>${holes}</mask></defs><g mask="url(#ID)">${shape}</g>${extra}`;
+
+      // A nib pointing down, tip at (0, 20): shield shape, with its slit and breather hole.
+      const NIB = "M-12 -20H12V0L0 20L-12 0Z";
+      const nibSlit = (r = 3.4, w = 2.4) =>
+        `<circle cx="0" cy="-1" r="${r}" fill="#000"/><rect x="${-w / 2}" y="-1" width="${w}" height="24" fill="#000"/>`;
+      // Nibs placed around (50, 50). `t` is the transform of one nib; rotations repeat it.
+      const ring = (t, angles) => {
+        const shapes = angles
+          .map((a) => `<path transform="rotate(${a} 50 50) ${t}" d="${NIB}"/>`)
+          .join("");
+        const holes = angles
+          .map((a) => `<g transform="rotate(${a} 50 50) ${t}">${nibSlit()}</g>`)
+          .join("");
+        return masked(shapes, holes);
+      };
+
+      // Calligraphic W: thick down-strokes, thin up-strokes, as a broad-edged pen makes them.
+      const broadW = `<path d="M10 20H26L42 80H26Z"/><path d="M38 80H42L56 38H52Z"/><path d="M50 38H64L76 80H62Z"/><path d="M72 80H76L92 20H88Z"/>`;
+
+      const directions = [
+        {
+          title: "Nib, doubled",
+          why: "A nib's slit and hole are the most recognisable writing detail there is. Here they're cut into other shapes, or repeated around a centre so the nibs make a new shape together.",
+          marks: [
+            {
+              name: "Thought Nib",
+              note: "A round thought with one corner sharpened into a nib",
+              svg: `<g transform="translate(-4 4)">${masked(
+                `<path d="M24 46A30 30 0 1 1 54 76H24Z"/>`,
+                `<path d="M24 76L44 56" stroke="#000" stroke-width="3.4"/><circle cx="44" cy="56" r="5" fill="#000"/>`,
+              )}</g>`,
+            },
+            {
+              name: "Converge",
+              note: "Four nibs pointing at one centre: writing from every side arrives at a point",
+              svg: ring("translate(50 26)", [0, 90, 180, 270]),
+            },
+            {
+              name: "Bloom",
+              note: "Four nibs pointing out from a centre: one idea, written outward",
+              svg: ring("translate(50 28) rotate(180)", [0, 90, 180, 270]),
+            },
+            {
+              name: "Triad",
+              note: "Three nibs turning around a centre: read, think, write",
+              svg: ring("translate(50 30) rotate(180) scale(.9)", [0, 120, 240]),
+            },
+            {
+              name: "Nib Window",
+              note: "The nib as negative space in a solid block, made for the app-icon square",
+              svg: masked(
+                `<rect x="16" y="16" width="68" height="68"/>`,
+                `<path d="M36 24H64V50L50 76L36 50Z" fill="#000"/>`,
+                `<circle cx="50" cy="52" r="4"/><rect x="48.8" y="52" width="2.4" height="22"/>`,
+              ),
+            },
+          ],
+        },
+        {
+          title: "Writing inside a thought",
+          why: "A circle stands for the mind; a straight cut through it is a line of writing. Two shapes in tension work the same way: a large round thought next to a small exact word.",
+          marks: [
+            {
+              name: "A Line in Mind",
+              note: "One sentence cut into a round thought",
+              svg: masked(
+                `<circle cx="50" cy="50" r="34"/>`,
+                `<path d="M8 50H56" stroke="#000" stroke-width="6" stroke-linecap="round"/>`,
+              ),
+            },
+            {
+              name: "Paragraph in Mind",
+              note: "Two lines, the second shorter: a thought, written down",
+              svg: masked(
+                `<circle cx="50" cy="50" r="34"/>`,
+                `<path d="M8 42H66M8 58H46" stroke="#000" stroke-width="6" stroke-linecap="round"/>`,
+              ),
+            },
+            {
+              name: "Thought and Word",
+              note: "A large round thought, and the small exact word it becomes",
+              svg: `<g transform="translate(2 1)"><circle cx="40" cy="42" r="26"/><rect x="66" y="66" width="16" height="16"/></g>`,
+            },
+            {
+              name: "Page Corner",
+              note: "One corner still round like a thought, the rest already a page",
+              svg: `<path d="M18 58A40 40 0 0 1 58 18H82V82H18Z"/>`,
+            },
+          ],
+        },
+        {
+          title: "Punctuation as a mark",
+          why: "Writers live in punctuation, and each mark carries a thought about thinking. These are built from the same square-plus-quarter-circle geometry as the reference board.",
+          marks: [
+            {
+              name: "Semicolon",
+              note: "Not finished yet: the thought continues",
+              svg: `<g transform="translate(0 -2)"><rect x="41" y="18" width="18" height="18"/><path d="M41 50H59V68A18 18 0 0 1 41 86Z"/></g>`,
+            },
+            {
+              name: "Comma",
+              note: "Pause and think before the next clause",
+              svg: `<g transform="translate(0 -2)"><path d="M32 16H68V52A36 36 0 0 1 32 88Z"/></g>`,
+            },
+            {
+              name: "Broad Stroke",
+              note: "The first mark a broad-edged pen makes: thick, cut at an angle",
+              svg: `<path d="M22 84L50 16H78L50 84Z"/>`,
+            },
+          ],
+        },
+        {
+          title: "W, by the pen",
+          why: "A W that comes from how pens actually write, not from geometry alone.",
+          marks: [
+            {
+              name: "Broad-Nib W",
+              note: "Thick down-strokes, thin up-strokes: a W written with a calligraphy pen",
+              svg: broadW,
+            },
+            {
+              name: "Nib-Centre W",
+              note: "A W whose middle peak is split like a nib",
+              svg: masked(
+                `<path d="M14 20L30 80L50 30L70 80L86 20" fill="none" stroke="currentColor" stroke-width="13" stroke-linejoin="miter"/>`,
+                `<circle cx="50" cy="52" r="4" fill="#000"/><rect x="48.6" y="0" width="2.8" height="52" fill="#000"/>`,
+              ),
+            },
+            {
+              name: "Broad-Nib w",
+              note: "The same pen, lowercase and lighter",
+              svg: `<g transform="translate(50 52) scale(.82 .7) translate(-50 -50)">${broadW}</g>`,
+            },
+          ],
+        },
+      ];
+
+      let uid = 0;
+      const svg = (inner, cls = "") =>
+        `<svg class="${cls}" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${inner.replaceAll("ID", `m${uid++}`)}</svg>`;
+
+      document.getElementById("dirs").innerHTML = directions
+        .map(
+          (d) => `
+    <section class="dir">
+      <h2>${d.title}</h2>
+      <p class="why">${d.why}</p>
+      <div class="grid">${d.marks
+        .map(
+          (m) => `
+        <article class="card">
+          <div class="meta"><div class="name">${m.name}</div><div class="note">${m.note}</div></div>
+          <div class="stage"><div class="hero">${svg(m.svg)}</div></div>
+          <div class="small"><div class="appicon">${svg(m.svg)}</div>${svg(m.svg, "s16")}</div>
+        </article>`,
+        )
+        .join("")}</div>
+    </section>`,
+        )
+        .join("");
+
+      document.getElementById("invert").addEventListener("click", () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>

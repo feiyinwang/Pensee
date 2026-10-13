@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writer Punctuation Marks</title>
+    <style>
+      :root {
+        --page: #ffffff;
+        --card: #f5f5f4;
+        --ink: #0a0a0a;
+        --muted: #6b6b6b;
+        --line: #e7e7e5;
+      }
+      :root[data-theme="dark"] {
+        --page: #0a0a0a;
+        --card: #161616;
+        --ink: #f5f5f4;
+        --muted: #8a8a8a;
+        --line: #262626;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          13px/1.45 -apple-system,
+          BlinkMacSystemFont,
+          "Inter",
+          "Helvetica Neue",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 64px;
+      }
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 48px 0 20px;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 680px;
+      }
+      .toggle {
+        font: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .toggle:active {
+        transform: scale(0.97);
+      }
+      .dir {
+        margin-top: 32px;
+      }
+      .dir h2 {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 0 0 2px;
+      }
+      .dir .why {
+        color: var(--muted);
+        margin: 0 0 14px;
+        max-width: 760px;
+        text-wrap: pretty;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 960px) {
+        .grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 560px) {
+        .wrap {
+          padding: 0 16px 48px;
+        }
+        header {
+          padding: 32px 0 16px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+      .card {
+        position: relative;
+        background: var(--card);
+        border-radius: 10px;
+        aspect-ratio: 1 / 1.12;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+      .meta {
+        font-size: 11.5px;
+        line-height: 1.35;
+      }
+      .name {
+        font-weight: 500;
+      }
+      .note {
+        color: var(--muted);
+      }
+      .from {
+        display: block;
+        margin-top: 3px;
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .stage {
+        flex: 1;
+        display: grid;
+        place-items: center;
+      }
+      .hero {
+        width: 50%;
+        aspect-ratio: 1;
+        color: var(--ink);
+      }
+      .hero svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .small {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        color: var(--ink);
+      }
+      .appicon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6.5px;
+        background: var(--ink);
+        color: var(--card);
+        display: grid;
+        place-items: center;
+      }
+      .appicon svg {
+        width: 62%;
+        height: 62%;
+        display: block;
+      }
+      .s16 {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Writer — punctuation, with serifs</h1>
+          <p>
+            Message: thinking is made by writing. Punctuation is where a writer decides how a
+            thought moves: pause, continue, aside, stop. Each mark is drawn with the details you
+            liked before: the Twist cursor's concave serifs, the nib slit, the pilcrow, Echo's
+            offset.
+          </p>
+        </div>
+        <button class="toggle" id="invert" type="button">Invert</button>
+      </header>
+      <main id="dirs"></main>
+    </div>
+
+    <script>
+      // Every mark is drawn on a 100×100 box in currentColor. "ID" becomes a unique id per instance.
+      const masked = (shape, holes, extra = "") =>
+        `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>${holes}</mask></defs><g mask="url(#ID)">${shape}</g>${extra}`;
+
+      // A serif comma around (0, 0): a ball, and a tail that tapers between two arcs.
+      // Bounds: x -18..18, y -18..48.
+      const COMMA = `<circle cx="0" cy="0" r="18"/><path d="M18 0A34 34 0 0 1 -16 48A44 44 0 0 0 0 18Z"/>`;
+      const comma = (x, y, s = 1, fill = "") =>
+        `<g transform="translate(${x} ${y}) scale(${s})"${fill}>${COMMA}</g>`;
+
+      // A horizontal stem with one concave serif at each end (the Twist cursor on its side).
+      const dash = (a, b, t, u, R) =>
+        `M${a} ${t - R}V${u}H${b - R}A${R} ${R} 0 0 1 ${b} ${u + R}V${t}H${a + R}A${R} ${R} 0 0 1 ${a} ${t - R}Z`;
+
+      // Crescent parentheses: thick in the middle, thin at the ends, like a serif face.
+      const parenL = (x) => `M${x} 12A49.1 49.1 0 0 0 ${x} 88A94.25 94.25 0 0 1 ${x} 12Z`;
+      const parenR = (x) => `M${x} 12A49.1 49.1 0 0 1 ${x} 88A94.25 94.25 0 0 0 ${x} 12Z`;
+
+      // Variant helpers.
+      // Pilcrow parts: bowl (half disc), stems, top bar, and concave serif flares.
+      const flareBR = (x, y, r) =>
+        `<path d="M${x} ${y - r}V${y}H${x + r}A${r} ${r} 0 0 1 ${x} ${y - r}Z"/>`; // hugs the corner (x, y), extends right
+      const flareBL = (x, y, r) =>
+        `<path d="M${x} ${y - r}V${y}H${x - r}A${r} ${r} 0 0 0 ${x} ${y - r}Z"/>`; // hugs the corner (x, y), extends left
+      const flareTL = (x, y, r) =>
+        `<path d="M${x - r} ${y}H${x}V${y + r}A${r} ${r} 0 0 0 ${x - r} ${y}Z"/>`; // hugs the corner (x, y), extends left
+      const pil = ({
+        bowl = "half",
+        r = 22,
+        sx = 47,
+        sw = 10,
+        gap = 8,
+        top = 14,
+        bot = 86,
+        bar = 10,
+        flares = "",
+      }) => {
+        const s2 = sx + sw + gap;
+        const bowlShape =
+          bowl === "half"
+            ? `<path d="M${sx} ${top}A${r} ${r} 0 0 0 ${sx} ${top + 2 * r}Z"/>`
+            : bowl === "square"
+              ? `<rect x="${sx - r}" y="${top}" width="${r}" height="${2 * r * 0.82}"/>`
+              : bowl === "ball"
+                ? `<circle cx="${sx - r}" cy="${top + r}" r="${r}"/>`
+                : bowl === "flare"
+                  ? flareTL(sx, top, r)
+                  : "";
+        // A hairline stroke in the fill colour hides the seams where the parts meet.
+        return `<g stroke="currentColor" stroke-width="0.6" stroke-linejoin="round">${bowlShape}<rect x="${sx}" y="${top}" width="${sw}" height="${bot - top}"/>
+      <rect x="${s2}" y="${top}" width="${sw}" height="${bot - top}"/>
+      ${bar ? `<rect x="${sx}" y="${top}" width="${s2 + sw - sx}" height="${bar}"/>` : ""}${flares}</g>`;
+      };
+
+      // Square semicolon parts.
+      const semi = ({
+        x = 39,
+        w = 22,
+        dotY = 12,
+        dot = 22,
+        bodyY = 48,
+        bodyH = 18,
+        tail = 24,
+        side = "left",
+        convex = false,
+        dotShape = "square",
+      }) => {
+        const r = w,
+          bottom = bodyY + bodyH;
+        const dotEl =
+          dotShape === "round"
+            ? `<circle cx="${x + w / 2}" cy="${dotY + dot / 2}" r="${dot / 2 + 1}"/>`
+            : dotShape === "twist"
+              ? `<path d="M${x + 10} ${dotY}H${x + w}V${dotY + dot}H${x}V${dotY + 10}A10 10 0 0 0 ${x + 10} ${dotY}Z"/>`
+              : `<rect x="${x}" y="${dotY}" width="${w}" height="${dot}"/>`;
+        const tailEl =
+          side === "left"
+            ? `<path d="M${x} ${bottom}H${x + w}A${r} ${tail} 0 0 ${convex ? 1 : 0} ${x} ${bottom + tail}Z"/>`
+            : `<path d="M${x} ${bottom}H${x + w}V${bottom + tail}A${r} ${tail} 0 0 0 ${x} ${bottom}Z"/>`;
+        return `${dotEl}<rect x="${x}" y="${bodyY}" width="${w}" height="${bodyH}"/>${tailEl}`;
+      };
+
+      // Twist ¶ as one outline: left stem with a concave serif at the top left, a bar,
+      // right stem with a concave serif at the bottom right. Centred in the 100 box.
+      const twistPil = ({ w1 = 10, g = 8, w2 = 10, T = 14, B = 86, h = 10, R1 = 22, R2 = 14 }) => {
+        const c = w1 + g + w2; // right edge of the right stem (left stem starts at 0)
+        const dx = 50 - (-R1 + c + R2) / 2;
+        const dy = 50 - (T + B) / 2;
+        const d = `M${-R1} ${T}H${c}V${B - R2}A${R2} ${R2} 0 0 0 ${c + R2} ${B}H${w1 + g}V${T + h}H${w1}V${B}H0V${T + R1}A${R1} ${R1} 0 0 0 ${-R1} ${T}Z`;
+        return `<path transform="translate(${dx} ${dy})" d="${d}"/>`;
+      };
+
+      const twistDirection = {
+        title: "Twist ¶, heavier",
+        why: "The same sharp concave serifs, with more weight in the stems. Each card changes one thing: stem weight, the gap between the stems, serif size, or proportion.",
+        marks: [
+          { name: "Current", note: "The one you picked, for reference", svg: twistPil({}) },
+          {
+            name: "Medium",
+            note: "Stems 10 → 14",
+            svg: twistPil({ w1: 14, w2: 14, h: 12, R2: 18 }),
+          },
+          {
+            name: "Heavy",
+            note: "Stems 18, bar and serifs scaled with them",
+            svg: twistPil({ w1: 18, w2: 18, h: 14, R1: 24, R2: 20 }),
+          },
+          {
+            name: "Heavy, Tight",
+            note: "Heavy, with a narrower slit between the stems",
+            svg: twistPil({ w1: 18, g: 5, w2: 18, h: 14, R1: 24, R2: 20 }),
+          },
+          {
+            name: "Thick–Thin",
+            note: "A heavy left stem and a light right one, like a serif typeface",
+            svg: twistPil({ w1: 20, g: 7, w2: 11, h: 13, R1: 24, R2: 16 }),
+          },
+          {
+            name: "Big Serifs",
+            note: "Longer, sharper serifs on a medium-heavy body",
+            svg: twistPil({ w1: 16, g: 7, w2: 16, h: 13, R1: 28, R2: 22 }),
+          },
+          {
+            name: "Matched Serifs",
+            note: "Both serifs the same size: it turns the same at both ends",
+            svg: twistPil({ w1: 16, g: 7, w2: 16, h: 13, R1: 22, R2: 22 }),
+          },
+          {
+            name: "Squat",
+            note: "Shorter and heavier, closer to a square",
+            svg: twistPil({ w1: 18, g: 7, w2: 18, T: 20, B: 80, h: 14, R1: 22, R2: 18 }),
+          },
+          {
+            name: "Lintel",
+            note: "A deep top bar holding both stems",
+            svg: twistPil({ w1: 16, g: 7, w2: 16, h: 22, R1: 24, R2: 20 }),
+          },
+          {
+            name: "Ultra",
+            note: "As heavy as it goes before the slit closes",
+            svg: twistPil({ w1: 22, g: 6, w2: 22, h: 16, R1: 20, R2: 18 }),
+          },
+        ],
+      };
+
+      const TT = { w1: 20, g: 7, w2: 11, h: 13, R1: 24, R2: 16 };
+      const thickThin = {
+        title: "Thick–Thin, variants",
+        why: "Thick–Thin, changing one thing at a time: how much the two stems differ, the gap between them, the top bar, the serif lengths, and the proportion.",
+        marks: [
+          {
+            name: "Thick–Thin",
+            note: "The one you picked: stems 20 / 11, gap 7, bar 13, serifs 24 / 16",
+            svg: twistPil(TT),
+          },
+          { name: "More Contrast", note: "Stems 22 / 8", svg: twistPil({ ...TT, w1: 22, w2: 8 }) },
+          {
+            name: "Less Contrast",
+            note: "Stems 19 / 13",
+            svg: twistPil({ ...TT, w1: 19, w2: 13 }),
+          },
+          { name: "Open Gap", note: "Gap 7 → 10", svg: twistPil({ ...TT, g: 10 }) },
+          { name: "Tight Gap", note: "Gap 7 → 5", svg: twistPil({ ...TT, g: 5 }) },
+          {
+            name: "Hairline Bar",
+            note: "Top bar 13 → 8, like a typeface's thin crossbar",
+            svg: twistPil({ ...TT, h: 8 }),
+          },
+          { name: "Deep Bar", note: "Top bar 13 → 18", svg: twistPil({ ...TT, h: 18 }) },
+          {
+            name: "Long Top Serif",
+            note: "Top serif 24 → 30: a sharper entry stroke",
+            svg: twistPil({ ...TT, R1: 30 }),
+          },
+          {
+            name: "Long Foot",
+            note: "Bottom serif 16 → 22: a sharper exit stroke",
+            svg: twistPil({ ...TT, R2: 22 }),
+          },
+          { name: "Squat", note: "Height 72 → 60", svg: twistPil({ ...TT, T: 20, B: 80 }) },
+          { name: "Tall", note: "Height 72 → 80", svg: twistPil({ ...TT, T: 10, B: 90 }) },
+          {
+            name: "Flipped",
+            note: "Thin stem on the left, thick on the right",
+            svg: twistPil({ ...TT, w1: 11, w2: 20 }),
+          },
+        ],
+      };
+
+      const variantDirections = [
+        {
+          title: "Twist Pilcrow, variants",
+          why: "The same ¶, changing one thing at a time: weight, the shape of the bowl, and where the concave serifs go.",
+          marks: [
+            {
+              name: "Base",
+              note: "Half-disc bowl, two stems, one serif at the bottom right",
+              svg: `<g transform="translate(-7 0)">${pil({ flares: flareBR(75, 86, 14) })}</g>`,
+            },
+            {
+              name: "Heavy",
+              note: "Thicker stems and a larger bowl, for the app icon",
+              svg: `<g transform="translate(-7.5 0)">${pil({ r: 23, sx: 44, sw: 14, gap: 6, bar: 12, flares: flareBR(78, 86, 16) })}</g>`,
+            },
+            {
+              name: "Two Feet",
+              note: "Serifs on both stems, turning outward",
+              svg: `<g transform="translate(-7 0)">${pil({ flares: flareBR(75, 86, 14) + flareBL(47, 86, 14) })}</g>`,
+            },
+            {
+              name: "Square Bowl",
+              note: "The bowl as a block: the most geometric ¶",
+              svg: `<g transform="translate(-6 0)">${pil({ bowl: "square", r: 20, flares: flareBR(75, 86, 14) })}</g>`,
+            },
+            {
+              name: "Twist ¶",
+              note: "The bowl replaced by a concave serif: the Twist cursor, doubled",
+              svg: `<g transform="translate(-8 0)">${pil({ bowl: "flare", r: 22, flares: flareBR(75, 86, 14) })}</g>`,
+            },
+            {
+              name: "Split ¶",
+              note: "No top bar: a bowl on one stem, a Twist cursor beside it",
+              svg: `<g transform="translate(-7 0)">${pil({ bar: 0, flares: flareBR(75, 86, 14) + flareTL(65, 14, 8) })}</g>`,
+            },
+            {
+              name: "Classic Proportion",
+              note: "A smaller bowl and slimmer stems, closer to a book face",
+              svg: `<g transform="translate(-6 -1)">${pil({ r: 18, sw: 8, gap: 8, bot: 88, bar: 8, flares: flareBR(71, 88, 12) })}</g>`,
+            },
+            {
+              name: "Ball ¶",
+              note: "A full circle for the bowl",
+              svg: `<g transform="translate(-3 0)">${pil({ bowl: "ball", r: 18, sx: 50, flares: flareBR(78, 86, 14) })}</g>`,
+            },
+          ],
+        },
+        {
+          title: "Square Semicolon, variants",
+          why: "Squares for the dots, and the comma's tail cut with a single curve. These vary the weight, the tail's length and direction, and the dot.",
+          marks: [
+            {
+              name: "Base",
+              note: "Square dot, square body, concave tail to the left",
+              svg: semi({}),
+            },
+            {
+              name: "Heavy",
+              note: "Wider squares, for the app icon",
+              svg: `<g transform="translate(0 -1)">${semi({ x: 36, w: 28, dotY: 10, dot: 28, bodyY: 50, bodyH: 18, tail: 24 })}</g>`,
+            },
+            {
+              name: "Long Tail",
+              note: "A longer, sharper tail: more of a pen stroke",
+              svg: semi({ dotY: 8, bodyY: 40, tail: 36 }),
+            },
+            {
+              name: "Right Tail",
+              note: "The tail turns the other way",
+              svg: semi({ side: "right" }),
+            },
+            {
+              name: "Quarter Tail",
+              note: "A convex quarter-circle tail, like the reference board",
+              svg: semi({ convex: true }),
+            },
+            {
+              name: "Round Dot",
+              note: "A round dot above the square comma: one soft, one cut",
+              svg: semi({ dotShape: "round" }),
+            },
+            {
+              name: "Twist Dot",
+              note: "The dot gets the same concave cut as the tail, so the two rhyme",
+              svg: semi({ dotShape: "twist" }),
+            },
+            {
+              name: "Italic",
+              note: "Leaning forward, mid-sentence",
+              svg: `<g transform="translate(10.6 0) skewX(-12)">${semi({})}</g>`,
+            },
+            {
+              name: "Echo",
+              note: "The semicolon with its echo just behind",
+              svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+            <g transform="translate(-8 5)" fill="#000" stroke="#000" stroke-width="7" stroke-linejoin="round">${semi({})}</g></mask></defs>
+            <g mask="url(#ID)" transform="translate(8 -5)">${semi({})}</g><g transform="translate(-8 5)">${semi({})}</g>`,
+            },
+          ],
+        },
+      ];
+
+      const directions = [
+        {
+          title: "Comma",
+          why: "The comma is the smallest decision in writing: pause here, then go on. In a serif face it's a ball with a tapering tail, the same concave curve as the Twist cursor.",
+          marks: [
+            {
+              name: "Serif Comma",
+              note: "Pause, think, then go on",
+              from: "Twist serif curve",
+              svg: comma(50, 35),
+            },
+            {
+              name: "Serif Semicolon",
+              note: "Not finished yet: the thought continues",
+              from: "Twist serif curve",
+              svg: `<g transform="translate(0 2.5)"><circle cx="50" cy="22" r="12.6"/>${comma(50, 52, 0.7)}</g>`,
+            },
+            {
+              name: "Closing Quote",
+              note: "In your own words",
+              from: "Twist serif curve",
+              svg: `<g transform="translate(0 6)">${comma(35, 34, 0.65)}${comma(65, 34, 0.65)}</g>`,
+            },
+            {
+              name: "Comma Echo",
+              note: "A pause, and the second thought that follows it",
+              from: "Echo",
+              svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+            <g transform="translate(44 38) scale(.82)" fill="#000" stroke="#000" stroke-width="10">${COMMA}</g></mask></defs>
+            <g mask="url(#ID)">${comma(58, 26, 0.82)}</g>${comma(44, 38, 0.82)}`,
+            },
+            {
+              name: "Comma Nib",
+              note: "The comma's tail split like a nib: the pause is where the pen sits",
+              from: "Nib",
+              svg: masked(
+                comma(50, 35),
+                `<circle cx="50" cy="35" r="4.5" fill="#000"/><path d="M50 35Q47 62 35 82" fill="none" stroke="#000" stroke-width="2.6"/>`,
+              ),
+            },
+            {
+              name: "Square Semicolon",
+              note: "Squares for the dots, and a tail cut with the Twist's concave serif",
+              from: "Twist cursor",
+              svg: `<rect x="41" y="14" width="18" height="18"/><rect x="41" y="46" width="18" height="20"/><path d="M41 66H59A18 20 0 0 0 41 86Z"/>`,
+            },
+          ],
+        },
+        {
+          title: "Dash",
+          why: "The em dash is how a thought interrupts itself and turns. Drawn as the Twist cursor laid on its side, it's also a strike: the edit that makes a sentence clear.",
+          marks: [
+            {
+              name: "Serif Dash",
+              note: "A thought interrupting itself, then turning",
+              from: "Twist cursor · Strike",
+              svg: `<path d="${dash(14, 86, 44, 56, 16)}"/>`,
+            },
+            {
+              name: "Heavy Dash",
+              note: "The same dash with more weight, for the app icon",
+              from: "Twist cursor · Strike",
+              svg: `<path d="${dash(16, 84, 42, 58, 18)}"/>`,
+            },
+            {
+              name: "Dash, Then Stop",
+              note: "A turn, and then the full stop: the thought finished",
+              from: "Twist cursor",
+              svg: `<path d="${dash(10, 64, 44, 56, 14)}"/><circle cx="80" cy="64" r="8"/>`,
+            },
+          ],
+        },
+        {
+          title: "Pilcrow",
+          why: "¶ marks where a paragraph, a whole thought, begins. Here it borrows one concave serif from the Twist cursor so it leans and turns like a pen stroke.",
+          marks: [
+            {
+              name: "Twist Pilcrow",
+              note: "A new paragraph, finished with a single concave serif",
+              from: "Pilcrow · Twist cursor",
+              svg: `<g transform="translate(-7 0)"><path d="M47 14A22 22 0 0 0 47 58Z"/><rect x="47" y="14" width="10" height="72"/>
+            <rect x="65" y="14" width="10" height="72"/><rect x="47" y="14" width="28" height="10"/><path d="M75 72V86H89A14 14 0 0 1 75 72Z"/></g>`,
+            },
+            {
+              name: "Bowl and Flare",
+              note: "A pilcrow cut down to one stem: the bowl, the stroke, the turn",
+              from: "Pilcrow · Serif cursor",
+              svg: `<path d="M44 14A22 22 0 0 0 44 58Z"/><rect x="44" y="14" width="14" height="72"/><path d="M58 68V86H76A18 18 0 0 1 58 68Z"/>`,
+            },
+          ],
+        },
+        {
+          title: "Parentheses",
+          why: "Brackets hold a thought aside so you can look at it. Drawn as serif crescents, thick in the middle and fine at the ends.",
+          marks: [
+            {
+              name: "Aside",
+              note: "( · ) one thought, held up to look at",
+              from: "Serif contrast",
+              svg: `<path d="${parenL(40)}"/><path d="${parenR(60)}"/><circle cx="50" cy="50" r="7"/>`,
+            },
+            {
+              name: "Open Aside",
+              note: "( · a thought you've only just started holding",
+              from: "Serif contrast",
+              svg: `<path d="${parenL(46)}"/><circle cx="62" cy="50" r="9"/>`,
+            },
+          ],
+        },
+      ];
+
+      let uid = 0;
+      const svg = (inner, cls = "") =>
+        `<svg class="${cls}" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${inner.replaceAll("ID", `m${uid++}`)}</svg>`;
+
+      document.getElementById("dirs").innerHTML = [
+        thickThin,
+        twistDirection,
+        ...variantDirections,
+        ...directions,
+      ]
+        .map(
+          (d) => `
+    <section class="dir">
+      <h2>${d.title}</h2>
+      <p class="why">${d.why}</p>
+      <div class="grid">${d.marks
+        .map(
+          (m) => `
+        <article class="card">
+          <div class="meta"><div class="name">${m.name}</div><div class="note">${m.note}</div>${m.from ? `<span class="from">From: ${m.from}</span>` : ""}</div>
+          <div class="stage"><div class="hero">${svg(m.svg)}</div></div>
+          <div class="small"><div class="appicon">${svg(m.svg)}</div>${svg(m.svg, "s16")}</div>
+        </article>`,
+        )
+        .join("")}</div>
+    </section>`,
+        )
+        .join("");
+
+      document.getElementById("invert").addEventListener("click", () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>

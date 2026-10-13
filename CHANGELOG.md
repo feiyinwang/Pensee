@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Writer has a new logo: a pilcrow (¶) cut like a fashion house's serif, with a heavy stem, a hairline stem and two knife-sharp serifs, in cream on black. It's the new app icon in the Dock, the app switcher and the update dialogs, and the website's favicon. The mark, its colours, the wordmark and how to use them are in [docs/brand.md](./docs/brand.md).
 - Clicks register at once while a book is open in a tab you aren't looking at. Before, every click anywhere in Writer waited about a fifth of a second, and the window also stalled now and then while a text cursor blinked. A hidden book's pages now leave the window until you return to its tab, and you come back to the same place.
 - Writer no longer freezes for about half a second after each click or tab switch while a book with highlights is open in another tab. The book's highlights now leave the page while its tab is hidden and come back when you return to it.
 - Switching tabs in **Library** and views in **Projects** is instant. A tab is chosen the moment you press the mouse, not when you let go, and the highlight jumps to it instead of sliding over. In Projects the highlight no longer waits for the new view to draw.

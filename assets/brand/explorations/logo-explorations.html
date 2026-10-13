@@ -1,0 +1,1532 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writer Logo Explorations</title>
+    <style>
+      :root {
+        --page: #ffffff;
+        --card: #f5f5f4;
+        --ink: #0a0a0a;
+        --muted: #6b6b6b;
+        --line: #e7e7e5;
+      }
+      :root[data-theme="dark"] {
+        --page: #0a0a0a;
+        --card: #161616;
+        --ink: #f5f5f4;
+        --muted: #8a8a8a;
+        --line: #262626;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          13px/1.35 -apple-system,
+          BlinkMacSystemFont,
+          "Inter",
+          "Helvetica Neue",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 48px 24px 24px;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .toggle {
+        font: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .toggle:active {
+        transform: scale(0.97);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 64px;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 560px) {
+        .grid {
+          grid-template-columns: 1fr;
+          padding: 0 16px 48px;
+        }
+        header {
+          padding: 32px 16px 20px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+      .section {
+        max-width: 1200px;
+        margin: 8px auto 12px;
+        padding: 0 24px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .section span {
+        color: var(--muted);
+        font-weight: 400;
+        margin-right: 8px;
+      }
+      @media (max-width: 560px) {
+        .section {
+          padding: 0 16px;
+        }
+      }
+      .card {
+        position: relative;
+        background: var(--card);
+        border-radius: 10px;
+        aspect-ratio: 1 / 1;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+      }
+      .card.long {
+        aspect-ratio: auto;
+      }
+      .card.long .stage {
+        flex: none;
+        height: 260px;
+      }
+      .meaning {
+        margin: 16px 0 0;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--muted);
+        text-wrap: pretty;
+      }
+      .tag {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .meta {
+        font-size: 11.5px;
+        line-height: 1.3;
+        max-width: 70%;
+      }
+      .meta .name {
+        font-weight: 500;
+      }
+      .meta .note {
+        color: var(--muted);
+      }
+      .num {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 11.5px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .stage {
+        flex: 1;
+        display: grid;
+        place-items: center;
+      }
+      .hero {
+        position: relative;
+        width: 44%;
+        aspect-ratio: 1;
+        color: var(--ink);
+      }
+      .hero svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .hero .c {
+        position: absolute;
+        top: 4%;
+        right: -2%;
+        width: 9%;
+        aspect-ratio: 1;
+      }
+      .sizes {
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+        color: var(--ink);
+      }
+      .appicon {
+        width: 40px;
+        height: 40px;
+        border-radius: 9px;
+        background: var(--ink);
+        color: var(--card);
+        display: grid;
+        place-items: center;
+      }
+      .appicon svg {
+        width: 62%;
+        height: 62%;
+      }
+      .sizes .s32 {
+        width: 32px;
+        height: 32px;
+      }
+      .sizes .s16 {
+        width: 16px;
+        height: 16px;
+      }
+      .sizes svg {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Writer — logo explorations</h1>
+        <p>
+          Geometric marks about writing and clear thinking. Each card shows the mark, an app icon,
+          and 32px / 16px.
+        </p>
+      </div>
+      <button class="toggle" id="invert" type="button">Invert</button>
+    </header>
+    <h2 class="section">
+      <span>Round 10</span> The Echo shape, read two ways — D01–D04 Second thought, D05–D08 Depth
+    </h2>
+    <main class="grid" id="round10"></main>
+    <h2 class="section"><span>Round 9</span> Echo — minimal variations of the one that worked</h2>
+    <main class="grid" id="round9"></main>
+    <h2 class="section">
+      <span>Round 8</span> Minimal — one or two solid shapes, no outlines, no textures
+    </h2>
+    <main class="grid" id="round8"></main>
+    <h2 class="section">
+      <span>Round 7</span> Strike and two cursors, in the Twist Cursor style — solid is you, outline
+      or stripes is the model
+    </h2>
+    <main class="grid" id="round7"></main>
+    <h2 class="section">
+      <span>Round 6</span> Back to the core: writing to think, thinking with AI, clear thinking,
+      crafting thought
+    </h2>
+    <main class="grid" id="round6"></main>
+    <h2 class="section"><span>Round 5</span> New shapes, with the meaning written out</h2>
+    <main class="grid" id="round5"></main>
+    <h2 class="section"><span>Round 4</span> One idea per mark — crafting what matters, by hand</h2>
+    <main class="grid" id="round4"></main>
+    <h2 class="section">
+      <span>Round 3</span> Gold in the AI world — the ✦ is the raw material, what you make by hand
+      is the gold
+    </h2>
+    <main class="grid" id="round3"></main>
+    <h2 class="section">
+      <span>Round 2</span> The cursor, made ownable — 01 crossed with 02 and 03
+    </h2>
+    <main class="grid" id="round2"></main>
+    <h2 class="section"><span>Round 1</span> First directions</h2>
+    <main class="grid" id="grid"></main>
+
+    <script>
+      // Every mark is drawn on a 100×100 box in currentColor. "ID" is swapped for a
+      // unique id per instance so masks and gradients don't collide.
+      const bayer = [
+        [0, 32, 8, 40, 2, 34, 10, 42],
+        [48, 16, 56, 24, 50, 18, 58, 26],
+        [12, 44, 4, 36, 14, 46, 6, 38],
+        [60, 28, 52, 20, 62, 30, 54, 22],
+        [3, 35, 11, 43, 1, 33, 9, 41],
+        [51, 19, 59, 27, 49, 17, 57, 25],
+        [15, 47, 7, 39, 13, 45, 5, 37],
+        [63, 31, 55, 23, 61, 29, 53, 21],
+      ];
+      const dither = (() => {
+        let out = "";
+        const cell = 8.5;
+        for (let y = 0; y < 8; y++)
+          for (let x = 0; x < 8; x++)
+            if (bayer[y][x] < (x + 1) * 8)
+              out += `<rect x="${16 + x * cell}" y="${16 + y * cell}" width="${cell + 0.3}" height="${cell + 0.3}"/>`;
+        return out;
+      })();
+
+      // Round 4 helpers
+      const f = (n) => +n.toFixed(2);
+      // Quarter (or any) disc sector from center through p1 to p2, short way round.
+      const sector = (cx, cy, x1, y1, x2, y2) => {
+        const r = Math.hypot(x1 - cx, y1 - cy);
+        const sweep = (x1 - cx) * (y2 - cy) - (y1 - cy) * (x2 - cx) > 0 ? 1 : 0;
+        return `<path d="M${f(cx)} ${f(cy)}L${f(x1)} ${f(y1)}A${f(r)} ${f(r)} 0 0 ${sweep} ${f(x2)} ${f(y2)}Z"/>`;
+      };
+      // Ring segment between radii r1<r2 and visual angles a0<a1 (degrees, 0 = right, 90 = up).
+      const ringSeg = (cx, cy, r1, r2, a0, a1) => {
+        const pt = (r, a) => [
+          f(cx + r * Math.cos((a * Math.PI) / 180)),
+          f(cy - r * Math.sin((a * Math.PI) / 180)),
+        ];
+        const [ax, ay] = pt(r2, a0),
+          [bx, by] = pt(r2, a1),
+          [cx2, cy2] = pt(r1, a1),
+          [dx, dy] = pt(r1, a0);
+        const lg = a1 - a0 > 180 ? 1 : 0;
+        return `<path d="M${ax} ${ay}A${r2} ${r2} 0 ${lg} 0 ${bx} ${by}L${cx2} ${cy2}A${r1} ${r1} 0 ${lg} 1 ${dx} ${dy}Z"/>`;
+      };
+
+      const goldenSpiral = (() => {
+        const u = 2.3,
+          ox = 50 - 17 * u,
+          oy = 50 - 10.5 * u;
+        const X = (v) => ox + v * u,
+          Y = (v) => oy + v * u;
+        const parts = [
+          [21, 21, 0, 21, 21, 0],
+          [21, 13, 21, 0, 34, 13],
+          [26, 13, 34, 13, 26, 21],
+          [26, 16, 26, 21, 21, 16],
+          [24, 16, 21, 16, 24, 13],
+          [24, 15, 24, 13, 26, 15],
+        ];
+        const pieces = parts
+          .map(([a, b, c, d, e, g]) => sector(X(a), Y(b), X(c), Y(d), X(e), Y(g)))
+          .join("");
+        return `<defs><mask id="ID"><rect width="100" height="100" fill="#000"/>
+      <g fill="#fff" stroke="#000" stroke-width="2.4" stroke-linejoin="round">${pieces}</g></mask></defs>
+      <rect width="100" height="100" mask="url(#ID)"/>`;
+      })();
+
+      const refine = (() => {
+        let out = `<circle cx="50" cy="50" r="10"/>`;
+        for (let i = 0; i < 8; i++) {
+          const a = (i * Math.PI) / 4;
+          out += `<circle cx="${f(50 + 25 * Math.cos(a))}" cy="${f(50 + 25 * Math.sin(a))}" r="4.6"/>`;
+        }
+        for (let i = 0; i < 16; i++) {
+          const a = (i * Math.PI) / 8 + Math.PI / 16;
+          out += `<circle cx="${f(50 + 39 * Math.cos(a))}" cy="${f(50 + 39 * Math.sin(a))}" r="2.4"/>`;
+        }
+        return out;
+      })();
+
+      const keystone = (() => {
+        let out = "";
+        const step = 36,
+          gap = 2.2;
+        for (let i = 0; i < 5; i++) {
+          const a0 = i * step + gap,
+            a1 = (i + 1) * step - gap;
+          out += ringSeg(50, 74, 20, i === 2 ? 48 : 40, a0, a1);
+        }
+        return out;
+      })();
+
+      const weave = (() => {
+        const pos = [19, 43, 67],
+          w = 14,
+          m = 3;
+        let maskH = "",
+          maskV = "";
+        pos.forEach((vx, i) =>
+          pos.forEach((hy, j) => {
+            if ((i + j) % 2 === 0)
+              maskH += `<rect x="${vx - m}" y="${hy - 1}" width="${w + 2 * m}" height="${w + 2}" fill="#000"/>`;
+            else
+              maskV += `<rect x="${vx - 1}" y="${hy - m}" width="${w + 2}" height="${w + 2 * m}" fill="#000"/>`;
+          }),
+        );
+        const hs = pos.map((y) => `<rect x="13" y="${y}" width="74" height="${w}"/>`).join("");
+        const vs = pos.map((x) => `<rect x="${x}" y="13" width="${w}" height="74"/>`).join("");
+        return `<defs><mask id="ID-h"><rect width="100" height="100" fill="#fff"/>${maskH}</mask>
+      <mask id="ID-v"><rect width="100" height="100" fill="#fff"/>${maskV}</mask></defs>
+      <g mask="url(#ID-h)">${hs}</g><g mask="url(#ID-v)">${vs}</g>`;
+      })();
+
+      // Round 5 helpers
+      const hexPath = (cx, cy, r) =>
+        "M" +
+        [0, 1, 2, 3, 4, 5]
+          .map((k) => {
+            const a = (Math.PI / 3) * k + Math.PI / 6;
+            return `${f(cx + r * Math.cos(a))} ${f(cy + r * Math.sin(a))}`;
+          })
+          .join("L") +
+        "Z";
+
+      const labyrinth = [
+        ringSeg(50, 50, 36, 42, -76, 256),
+        ringSeg(50, 50, 24, 30, 108, 432),
+        ringSeg(50, 50, 12, 18, -64, 244),
+        `<circle cx="50" cy="50" r="5"/>`,
+      ].join("");
+
+      const fingerprint = (() => {
+        let arcs = "";
+        [7, 14, 21, 28, 35, 42].forEach((r, i) => {
+          const cx = 50 + (i % 2 ? 0.8 : -0.8),
+            cy = 58;
+          const leg = i === 3 ? 72 : 96; // one ridge breaks off, like a real print
+          arcs += `<path d="M${cx - r} ${i === 2 ? 70 : 96}V${cy}A${r} ${r} 0 0 1 ${cx + r} ${cy}V${leg}"/>`;
+        });
+        return `<defs><clipPath id="ID"><ellipse cx="50" cy="52" rx="33" ry="41"/></clipPath></defs>
+      <g clip-path="url(#ID)" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round">${arcs}</g>`;
+      })();
+
+      const seal = (() => {
+        let bumps = "";
+        for (let i = 0; i < 12; i++) {
+          const a = (i * Math.PI) / 6;
+          bumps += `<circle cx="${f(50 + 33 * Math.cos(a))}" cy="${f(50 + 33 * Math.sin(a))}" r="9.5" fill="#fff"/>`;
+        }
+        return `<defs><mask id="ID"><circle cx="50" cy="50" r="34" fill="#fff"/>${bumps}
+      <circle cx="50" cy="50" r="22" fill="none" stroke="#000" stroke-width="3"/></mask></defs>
+      <rect width="100" height="100" mask="url(#ID)"/>`;
+      })();
+
+      const moons = (() => {
+        const r = 15;
+        const at = (x, y) => [x, y - r, y + r];
+        const ring = (x, y) =>
+          `<circle cx="${x}" cy="${y}" r="${r - 1}" fill="none" stroke="currentColor" stroke-width="2"/>`;
+        const [x1, t1, b1] = at(32, 32),
+          [x2, t2, b2] = at(68, 32),
+          [x3, t3, b3] = at(32, 68);
+        return (
+          ring(32, 32) +
+          `<path d="M${x1} ${t1}A${r} ${r} 0 0 1 ${x1} ${b1}A8 ${r} 0 0 0 ${x1} ${t1}Z"/>` +
+          ring(68, 32) +
+          `<path d="M${x2} ${t2}A${r} ${r} 0 0 1 ${x2} ${b2}Z"/>` +
+          ring(32, 68) +
+          `<path d="M${x3} ${t3}A${r} ${r} 0 0 1 ${x3} ${b3}A8 ${r} 0 0 1 ${x3} ${t3}Z"/>` +
+          `<circle cx="68" cy="68" r="${r}"/>`
+        );
+      })();
+
+      const tangram = (() => {
+        const u = 16,
+          o = 18,
+          P = (pts, dx = 0, dy = 0) =>
+            `<path d="M${pts.map(([x, y]) => `${o + x * u + dx} ${o + y * u + dy}`).join("L")}Z"/>`;
+        const pieces = [
+          P([
+            [0, 0],
+            [4, 0],
+            [2, 2],
+          ]),
+          P([
+            [0, 0],
+            [2, 2],
+            [0, 4],
+          ]),
+          P([
+            [3, 1],
+            [4, 2],
+            [3, 3],
+            [2, 2],
+          ]),
+          P([
+            [2, 2],
+            [3, 3],
+            [1, 3],
+          ]),
+          P([
+            [0, 4],
+            [1, 3],
+            [3, 3],
+            [2, 4],
+          ]),
+          P([
+            [4, 2],
+            [4, 4],
+            [2, 4],
+          ]),
+        ].join("");
+        const moving = P(
+          [
+            [4, 0],
+            [4, 2],
+            [3, 1],
+          ],
+          6,
+          -6,
+        );
+        return `<defs><mask id="ID"><rect width="100" height="100" fill="#000"/>
+      <g fill="#fff" stroke="#000" stroke-width="2.6" stroke-linejoin="round">${pieces}${moving}</g></mask></defs>
+      <rect width="100" height="100" mask="url(#ID)"/>`;
+      })();
+
+      const treeRings = (() => {
+        let out = `<circle cx="47" cy="47" r="5"/>`;
+        [12, 19, 25, 31, 36, 41].forEach((r, i) => {
+          out += `<circle cx="${47 + i * 0.6}" cy="${47 + i * 0.6}" r="${r}" fill="none" stroke="currentColor" stroke-width="${i % 3 === 2 ? 4 : 2.2}"/>`;
+        });
+        return out;
+      })();
+
+      const hive = (() => {
+        const R = 12.5,
+          d = R * Math.sqrt(3) + 2;
+        const cells = [
+          [0, 0],
+          [d, 0],
+          [-d, 0],
+          [d / 2, d * 0.866],
+          [-d / 2, d * 0.866],
+          [d / 2, -d * 0.866],
+          [-d / 2, -d * 0.866],
+        ];
+        return cells
+          .map(([x, y], i) =>
+            i === 0
+              ? `<path d="${hexPath(50 + x, 50 + y, R)}"/>`
+              : `<path d="${hexPath(50 + x, 50 + y, R - 1.5)}" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>`,
+          )
+          .join("");
+      })();
+
+      const at = (tx, ty, sc) => `translate(${f(tx)} ${f(ty)}) scale(${sc})`;
+      // Round 8: minimal. One or two solid shapes, no outlines, no textures.
+      const TW2 = "M20 14H59V65A21 21 0 0 0 80 86H41V35A21 21 0 0 0 20 14Z";
+      const STRIKE = "M14 28V56H70A16 16 0 0 1 86 72V44H30A16 16 0 0 1 14 28Z";
+      const sc8 = 0.62;
+      const round8 = [
+        {
+          name: "Twist",
+          note: "The I-beam with two serifs instead of four",
+          meaning: "A stroke of the pen: it enters top-left and leaves bottom-right.",
+          svg: `<path d="${TW2}"/>`,
+        },
+        {
+          name: "Wide Twist",
+          note: "Shorter and heavier, closer to a square",
+          meaning: "The same gesture with more weight, so it holds up as an app icon.",
+          svg: `<path d="M16 16H62V62A22 22 0 0 0 84 84H38V38A22 22 0 0 0 16 16Z"/>`,
+        },
+        {
+          name: "Strike",
+          note: "The twist turned on its side",
+          meaning: "A single strikethrough with serifs: thinking is deciding what to cut.",
+          svg: `<path d="${STRIKE}"/>`,
+        },
+        {
+          name: "Carved Strike",
+          note: "A block with the strike cut out of it",
+          meaning: "A word-shaped block with the strike carved through it: the edit is the mark.",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <path transform="translate(15 15) scale(.7)" d="${STRIKE}" fill="#000"/></mask></defs>
+        <rect x="14" y="14" width="72" height="72" mask="url(#ID)"/>`,
+        },
+        {
+          name: "Cut Cursor",
+          note: "The twist with one horizontal cut",
+          meaning: "The cursor and the strike in a single cut: you write, then you cross it out.",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/><rect x="0" y="47.5" width="100" height="5" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" d="${TW2}"/>`,
+        },
+        {
+          name: "Twin",
+          note: "Two twists side by side",
+          meaning:
+            "Two cursors, you and the model, the same shape and equal weight, writing next to each other.",
+          svg: `<path transform="${at(-2.6, 19, sc8)}" d="${TW2}"/><path transform="${at(40.6, 19, sc8)}" d="${TW2}"/>`,
+        },
+        {
+          name: "Arch",
+          note: "Two mirrored twists whose serifs meet at the top",
+          meaning: "Two cursors leaning in until they meet and form one shape: thinking together.",
+          svg: `<path transform="${at(37.58, 19, sc8)}" d="${TW2}"/>
+        <path transform="translate(100 0) scale(-1 1) ${at(37.58, 19, sc8)}" d="${TW2}"/>`,
+        },
+        {
+          name: "I-beam and Block",
+          note: "Your text cursor next to a terminal's block cursor",
+          meaning:
+            "The block cursor is the machine typing; the I-beam is you choosing where to write.",
+          svg: `<path transform="${at(1.6, 19, sc8)}" d="${TW2}"/><rect x="60" y="27.7" width="22" height="44.6"/>`,
+        },
+        {
+          name: "Reflection",
+          note: "The twist, with two short lines of still water below",
+          meaning:
+            "Still Water reduced to two lines: a clear mind reflects your cursor back at you.",
+          svg: `<g transform="translate(0 9)"><path transform="${at(25, 5, 0.5)}" d="${TW2}"/>
+        <rect x="32" y="56" width="36" height="5"/><rect x="40" y="67" width="20" height="3.5"/></g>`,
+        },
+      ];
+
+      const pos = (x, y, sc = 0.7) => [f(x - 20 * sc), f(y - 14 * sc)];
+      // Round 10: the Echo shape read two ways — Second thought, and Depth.
+      const LIGHT = "M28 14H56V70A16 16 0 0 0 72 86H44V30A16 16 0 0 0 28 14Z";
+      const HEAVY = "M20 14H61V67A19 19 0 0 0 80 86H39V33A19 19 0 0 0 20 14Z";
+      const knockout = (t, d, w = 9) =>
+        `<path transform="${t}" d="${d}" fill="#000" stroke="#000" stroke-width="${w}" stroke-linejoin="round"/>`;
+      const pair = ({
+        back,
+        front,
+        backD = TW2,
+        frontD = TW2,
+        s = 0.7,
+        backMode = "solid",
+        gap = 9,
+      }) => {
+        const B = at(...back, s),
+          F = at(...front, s);
+        const b =
+          backMode === "outline"
+            ? `<path transform="${B}" d="${backD}" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>`
+            : `<path transform="${B}" d="${backD}"/>`;
+        return `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>${knockout(F, frontD, gap)}</mask></defs>
+      <g mask="url(#ID)">${b}</g><path transform="${F}" d="${frontD}"/>`;
+      };
+      // Extrusion: the same shape swept from back to front, with the front face set off by a thin gap.
+      const extrude = ({ d = TW2, s = 0.7, front, back, face = "solid", gap = 8 }) => {
+        const steps = 80;
+        let body = "";
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          body += `<path transform="${at(back[0] + (front[0] - back[0]) * t, back[1] + (front[1] - back[1]) * t, s)}" d="${d}"/>`;
+        }
+        const F = at(...front, s);
+        const faceShape =
+          face === "open"
+            ? `<path transform="${F}" d="${d}" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>`
+            : `<path transform="${F}" d="${d}"/>`;
+        return `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>${knockout(F, d, gap)}</mask></defs>
+      <g mask="url(#ID)">${body}</g>${faceShape}`;
+      };
+
+      const round10 = [
+        {
+          tag: "Second thought",
+          name: "Second Thought",
+          note: "A light first thought behind, a heavier second thought in front",
+          meaning:
+            "The first thought is quick and light: the first draft, or the answer you were handed. The second is the one you wrote after thinking again, and it carries more weight.",
+          svg: pair({ backD: LIGHT, frontD: HEAVY, back: pos(21, 17), front: pos(37, 33) }),
+        },
+        {
+          tag: "Second thought",
+          name: "Second Thought, Apart",
+          note: "The two moments fully separate: before, then after",
+          meaning:
+            "Two separate moments: before and after you thought it through. The step between them is the work the app is for.",
+          svg: `<path transform="${at(...pos(14, 14, 0.56), 0.56)}" d="${LIGHT}"/>
+        <path transform="${at(...pos(48, 38, 0.66), 0.66)}" d="${HEAVY}"/>`,
+        },
+        {
+          tag: "Second thought",
+          name: "Draft, Then Final",
+          note: "The first thought in outline, the second solid",
+          meaning:
+            "The first thought is only an outline, the shape of an idea with nothing in it yet. The second is filled in, because you wrote it.",
+          svg: pair({
+            backMode: "outline",
+            backD: TW2,
+            frontD: HEAVY,
+            back: pos(21, 17),
+            front: pos(37, 33),
+            gap: 10,
+          }),
+        },
+        {
+          tag: "Second thought",
+          name: "Close Second",
+          note: "Almost the same shape, a small step on",
+          meaning:
+            "A second thought is rarely a different thought, just the same one moved a little further. That small step is clarity.",
+          svg: pair({ backD: LIGHT, frontD: HEAVY, back: pos(25, 21), front: pos(33, 29) }),
+        },
+        {
+          tag: "Depth",
+          name: "Depth",
+          note: "The cursor extruded into a solid block",
+          meaning:
+            "An answer you're handed is flat. A thought you've written down has depth: you can walk around it.",
+          svg: extrude({ back: pos(37, 17), front: pos(21, 33) }),
+        },
+        {
+          tag: "Depth",
+          name: "Shallow Depth",
+          note: "A thin slab of extrusion",
+          meaning:
+            "Just enough thickness to stop being a symbol and start being an object: a thought with substance.",
+          svg: extrude({ back: pos(33, 23), front: pos(27, 29), gap: 7 }),
+        },
+        {
+          tag: "Depth",
+          name: "Deep",
+          note: "A long extrusion going back",
+          meaning:
+            "Every line you write adds to the thought behind it. The front is what people read; the depth is what you put in.",
+          svg: extrude({ s: 0.62, back: pos(46, 12, 0.62), front: pos(20, 38, 0.62), gap: 8 }),
+        },
+        {
+          tag: "Depth",
+          name: "Depth, Open Face",
+          note: "A solid body, with the front face left open",
+          meaning:
+            "The depth is already there; the face is still blank, waiting for you to write it.",
+          svg: extrude({ back: pos(37, 17), front: pos(21, 33), face: "open", gap: 7 }),
+        },
+      ];
+
+      // Round 9: Echo. A solid cursor in front, its echo behind.
+      const WIDE = "M16 16H62V62A22 22 0 0 0 84 84H38V38A22 22 0 0 0 16 16Z";
+      const echo = ({ d = TW2, s = 0.7, front, back, mode = "solid", gap = 9, outline = 6 }) => {
+        const F = at(front[0], front[1], s),
+          B = at(back[0], back[1], s);
+        if (mode === "xor") {
+          return `<defs><mask id="ID-a"><rect width="100" height="100" fill="#fff"/><path transform="${F}" d="${d}" fill="#000"/></mask>
+        <mask id="ID-b"><rect width="100" height="100" fill="#fff"/><path transform="${B}" d="${d}" fill="#000"/></mask></defs>
+        <path mask="url(#ID-a)" transform="${B}" d="${d}"/><path mask="url(#ID-b)" transform="${F}" d="${d}"/>`;
+        }
+        const backShape =
+          mode === "outline"
+            ? `<path transform="${B}" d="${d}" fill="none" stroke="currentColor" stroke-width="${outline}" stroke-linejoin="round"/>`
+            : `<path transform="${B}" d="${d}"/>`;
+        return `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+      <path transform="${F}" d="${d}" fill="#000" stroke="#000" stroke-width="${gap}" stroke-linejoin="round"/></mask></defs>
+      <g mask="url(#ID)">${backShape}</g><path transform="${F}" d="${d}"/>`;
+      };
+      // Twist at scale .7 is 42 × 50.4; its box starts at (20, 14) in path units.
+
+      const round9 = [
+        {
+          name: "Echo",
+          note: "Solid cursor in front, solid echo behind, a thin gap between",
+          meaning:
+            "Your thought in front; the model's echo just behind it. Same shape, one step back.",
+          svg: echo({ front: pos(21, 33), back: pos(37, 17) }),
+        },
+        {
+          name: "Echo, Outline",
+          note: "The original Echo, cleaned up: heavier outline, tighter offset",
+          meaning: "The echo is hollow: it has your shape, but nothing inside it is yours.",
+          svg: echo({
+            front: pos(21, 33),
+            back: pos(37, 17),
+            mode: "outline",
+            outline: 6.5,
+            gap: 10,
+          }),
+        },
+        {
+          name: "Echo, Overlap",
+          note: "Two solid cursors; where they overlap is cut out",
+          meaning:
+            "Where your thinking and the model's overlap, there's a blank you have to fill yourself.",
+          svg: echo({ front: pos(21, 33), back: pos(37, 17), mode: "xor" }),
+        },
+        {
+          name: "Close Echo",
+          note: "A smaller offset, so the two read as one doubled mark",
+          meaning:
+            "So close it's almost the same thought, but not quite. The gap is where you think for yourself.",
+          svg: echo({ front: pos(25, 29), back: pos(33, 21) }),
+        },
+        {
+          name: "Side Echo",
+          note: "The echo shifted straight across, behind",
+          meaning: "Side by side on the same line: you write, and it follows a step to the right.",
+          svg: echo({ front: pos(18, 25), back: pos(40, 25) }),
+        },
+        {
+          name: "Trailing Echo",
+          note: "The echo behind and above to the left: the direction you came from",
+          meaning:
+            "The echo trails behind where you've already been. You're the one moving forward.",
+          svg: echo({ front: pos(37, 33), back: pos(21, 17) }),
+        },
+        {
+          name: "Wide Echo",
+          note: "Echo built from the heavier, squarer twist",
+          meaning: "The same idea with more weight, built to work as an app icon first.",
+          svg: echo({
+            d: WIDE,
+            s: 0.66,
+            front: [f(18 - 16 * 0.66), f(30 - 16 * 0.66)],
+            back: [f(36 - 16 * 0.66), f(14 - 16 * 0.66)],
+            gap: 10,
+          }),
+        },
+        {
+          name: "Small Echo",
+          note: "A smaller echo, further back",
+          meaning:
+            "The model is behind you and further away: present, but smaller than your own thought.",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <path transform="${at(...pos(20, 30, 0.74), 0.74)}" d="${TW2}" fill="#000" stroke="#000" stroke-width="9" stroke-linejoin="round"/></mask></defs>
+        <path mask="url(#ID)" transform="${at(...pos(50, 16, 0.46), 0.46)}" d="${TW2}"/>
+        <path transform="${at(...pos(20, 30, 0.74), 0.74)}" d="${TW2}"/>`,
+        },
+        {
+          name: "Double Echo",
+          note: "Two echoes receding behind the solid cursor",
+          meaning:
+            "The upper limit for this idea: three copies, one of them yours. Anything more becomes texture.",
+          svg: (() => {
+            const sc = 0.6,
+              d = TW2;
+            const P = [pos(18, 38, sc), pos(30, 26, sc), pos(42, 14, sc)].map(([x, y]) =>
+              at(x, y, sc),
+            );
+            const knock = (t) =>
+              `<path transform="${t}" d="${d}" fill="#000" stroke="#000" stroke-width="10" stroke-linejoin="round"/>`;
+            return `<defs><mask id="ID-1"><rect width="100" height="100" fill="#fff"/>${knock(P[0])}</mask>
+          <mask id="ID-2"><rect width="100" height="100" fill="#fff"/>${knock(P[0])}${knock(P[1])}</mask></defs>
+          <path mask="url(#ID-2)" transform="${P[2]}" d="${d}"/><path mask="url(#ID-1)" transform="${P[1]}" d="${d}"/>
+          <path transform="${P[0]}" d="${d}"/>`;
+          })(),
+        },
+      ];
+
+      // Round 7: twist-cursor language. Solid = you, outline / stripes = the model or a reflection.
+      const TW = "M24 12H58V70A18 18 0 0 0 76 88H42V30A18 18 0 0 0 24 12Z";
+      const stripes = (y0, y1, x0 = 0, x1 = 100, fade = false) => {
+        let out = "",
+          y = y0,
+          i = 0;
+        while (y < y1) {
+          const h = fade ? Math.max(1.4, 4 - i * 0.55) : 2.6;
+          out += `<rect x="${x0}" y="${f(y)}" width="${x1 - x0}" height="${f(h)}"/>`;
+          y += h + (fade ? 2.6 : 2.6);
+          i++;
+        }
+        return out;
+      };
+      // Horizontal twist: the cursor turned on its side, flattened into a serif strike line.
+      const strikeTW = `transform="translate(50 50) scale(1 .4) rotate(90) translate(-50 -50)"`;
+
+      const round7 = [
+        {
+          tag: "Two cursors",
+          name: "Twin Twist",
+          note: "Your cursor, solid; the model's, in outline",
+          meaning:
+            "Two cursors on one page. Both can write, but only the solid one decides what stays.",
+          svg: `<path transform="${at(-0.4, 20, 0.6)}" d="${TW}"/>
+        <path transform="${at(40.6, 20, 0.6)}" d="${TW}" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>`,
+        },
+        {
+          tag: "Two cursors",
+          name: "Solid and Striped",
+          note: "Your cursor, solid; the model's, in horizontal lines",
+          meaning:
+            "The striped cursor is the generated one. It looks like text from far away, but it's only lines. Yours is solid all the way through.",
+          svg: `<defs><clipPath id="ID"><path transform="${at(40.6, 20, 0.6)}" d="${TW}"/></clipPath></defs>
+        <path transform="${at(-0.4, 20, 0.6)}" d="${TW}"/><g clip-path="url(#ID)">${stripes(27, 74, 40, 90)}</g>`,
+        },
+        {
+          tag: "Two cursors",
+          name: "Echo",
+          note: "An outline cursor behind and above the solid one",
+          meaning:
+            "The model is an echo just behind your thought: useful to hear, but a step behind. You're the one in front.",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <path transform="${at(2.7, 20, 0.72)}" d="${TW}" fill="#000" stroke="#000" stroke-width="9"/></mask></defs>
+        <path mask="url(#ID)" transform="${at(20.7, 6, 0.72)}" d="${TW}" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linejoin="round"/>
+        <path transform="${at(2.7, 20, 0.72)}" d="${TW}"/>`,
+        },
+        {
+          tag: "Two cursors",
+          name: "Conversation",
+          note: "Your cursor and its mirror image, facing each other",
+          meaning:
+            "A dialogue, not a handover. The mirror cursor answers yours, and the space between them is where the thinking happens.",
+          svg: `<path transform="${at(-0.4, 20, 0.6)}" d="${TW}"/>
+        <g transform="translate(100 0) scale(-1 1)"><path transform="${at(-0.4, 20, 0.6)}" d="${TW}" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></g>`,
+        },
+        {
+          tag: "Strike",
+          name: "Serif Strike",
+          note: "A struck word between two lines of text",
+          meaning:
+            "The strike line is the twist cursor turned on its side. Crossing a word out is the most deliberate thing a writer does: it means you thought again.",
+          svg: `<rect x="16" y="18" width="68" height="10"/>
+        <rect x="23.5" y="41.5" width="53" height="17" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path ${strikeTW} d="${TW}"/><rect x="16" y="72" width="44" height="10"/>`,
+        },
+        {
+          tag: "Strike",
+          name: "One Word, Struck",
+          note: "An outlined word and a serif strike, nothing else",
+          meaning:
+            "The smallest possible piece of editing: one word, and the decision that it's wrong. That decision is what clear thinking is.",
+          svg: `<rect x="19.5" y="35.5" width="61" height="29" fill="none" stroke="currentColor" stroke-width="3.5"/>
+        <path ${strikeTW} d="${TW}"/>`,
+        },
+        {
+          tag: "Strike",
+          name: "Strike, Then Write",
+          note: "A struck word, then your cursor starting again",
+          meaning:
+            "Cross it out, then begin again. The cursor right after the deleted word is the second, better attempt.",
+          svg: `<rect x="9.5" y="39.5" width="41" height="21" fill="none" stroke="currentColor" stroke-width="3"/>
+        <rect x="5" y="48.5" width="50" height="3"/>
+        <path transform="${at(46.4, 22.6, 0.55)}" d="${TW}"/>`,
+        },
+        {
+          tag: "Strike",
+          name: "Suggestion, Struck",
+          note: "A striped line struck out above a solid line",
+          meaning:
+            "The striped line is the suggestion you were handed; the solid line is the one you wrote instead. Strike, then say it yourself.",
+          svg: `<defs><clipPath id="ID"><rect x="16" y="22" width="68" height="22"/></clipPath></defs>
+        <g clip-path="url(#ID)">${stripes(22, 44, 0, 100, false).replaceAll('height="2.6"', 'height="1.8"')}</g>
+        <g transform="translate(0 -17)"><path ${strikeTW} d="${TW}"/></g>
+        <rect x="16" y="58" width="68" height="22"/>`,
+        },
+        {
+          tag: "Reflection",
+          name: "Cursor on Still Water",
+          note: "Your cursor above the line, its reflection in stripes below",
+          meaning:
+            "Used well, AI reflects your thinking back at you. The reflection is made of lines, a little blurred, and always upside down. It's useful to look at, but it isn't you.",
+          svg: `<defs><clipPath id="ID"><path transform="translate(0 104) scale(1 -1) ${at(25, 4, 0.5)}" d="${TW}"/></clipPath></defs>
+        <path transform="${at(25, 4, 0.5)}" d="${TW}"/><g clip-path="url(#ID)">${stripes(56, 96, 0, 100, true)}</g>`,
+        },
+        {
+          tag: "Reflection",
+          name: "Still Water, Signed",
+          note: "Still Water, with your cursor cut through the sun and its reflection",
+          meaning:
+            "A calm surface reflects clearly. Your cursor stands in the middle, and the water carries its reflection. It's the calm of Still Water, with a mark that's yours.",
+          svg: `<defs><clipPath id="ID-c"><circle cx="50" cy="50" r="36"/></clipPath>
+        <mask id="ID-m"><rect width="100" height="100" fill="#fff"/>
+        <path transform="${at(29, 10.96, 0.42)}" d="${TW}" fill="#000"/>
+        <g transform="translate(0 104) scale(1 -1)"><path transform="${at(29, 10.96, 0.42)}" d="${TW}" fill="#000"/></g></mask></defs>
+        <g clip-path="url(#ID-c)" mask="url(#ID-m)"><rect x="0" y="0" width="100" height="50"/>${stripes(54, 90, 0, 100, true)}</g>`,
+        },
+        {
+          tag: "Reflection",
+          name: "Half Still",
+          note: "One twist cursor: solid on top, still water below",
+          meaning:
+            "The same mark, half thought through and half still settling. The stripes are the part that's still forming. Writing turns them solid.",
+          svg: `<defs><clipPath id="ID-t"><rect x="0" y="0" width="100" height="48"/></clipPath>
+        <clipPath id="ID-b"><path d="${TW}"/></clipPath></defs>
+        <path clip-path="url(#ID-t)" d="${TW}"/><g clip-path="url(#ID-b)">${stripes(52, 90, 0, 100, true)}</g>`,
+        },
+        {
+          tag: "Base mark",
+          name: "Twist Cursor, Heavy",
+          note: "The twist on its own, heavier and wider",
+          meaning:
+            "The plain mark, for comparison. Two serifs instead of four turn a stock I-beam into a gesture: it starts on the left and finishes on the right, like a stroke of the pen.",
+          svg: `<path d="M18 12H60V66A22 22 0 0 0 82 88H40V34A22 22 0 0 0 18 12Z"/>`,
+        },
+      ];
+
+      // Round 6 helpers
+      const beam6 =
+        "M24 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V30A18 18 0 0 0 24 12Z";
+
+      const focus = (() => {
+        const rows = [22, 36, 50, 64, 78];
+        let dots = "",
+          bars = "";
+        rows.forEach((y) => {
+          for (let x = 12; x <= 88; x += 6) dots += `<circle cx="${x}" cy="${y}" r="1.7"/>`;
+          bars += `<rect x="0" y="${y - 3}" width="100" height="6"/>`;
+        });
+        return `<defs><mask id="ID-m"><rect width="100" height="100" fill="#fff"/><circle cx="50" cy="50" r="27.5" fill="#000"/></mask>
+      <clipPath id="ID-c"><circle cx="50" cy="50" r="20"/></clipPath></defs>
+      <g mask="url(#ID-m)">${dots}</g><g clip-path="url(#ID-c)">${bars}</g>
+      <circle cx="50" cy="50" r="23.5" fill="none" stroke="currentColor" stroke-width="3"/>`;
+      })();
+
+      const polish = (() => {
+        const r = 32,
+          step = 8;
+        let d = `M50 18A${r} ${r} 0 0 1 50 82`;
+        for (let y1 = 82; y1 > 18; y1 -= step) {
+          const yc = y1 - step / 2;
+          const hw = Math.round(Math.sqrt(r * r - (yc - 50) ** 2) / 6) * 6;
+          d += `H${50 - hw}V${y1 - step}`;
+        }
+        return `<path d="${d}H50Z"/>`;
+      })();
+
+      const arrange = (() => {
+        const p = [23, 41, 59, 77];
+        const ang = [
+          0.6, 2.4, 4.1, 5.3, 1.2, 3.3, 5.9, 0.2, 2.9, 4.6, 1.8, 3.8, 0.9, 5.1, 2.2, 4.4,
+        ];
+        let out = "";
+        p.forEach((y, j) =>
+          p.forEach((x, i) => {
+            const k = Math.max(0, 7.5 - 2.5 * (i + j));
+            const a = ang[j * 4 + i];
+            out += `<circle cx="${f(x + k * Math.cos(a))}" cy="${f(y + k * Math.sin(a))}" r="5"/>`;
+          }),
+        );
+        return out;
+      })();
+
+      const round6 = [
+        {
+          tag: "Writing to think",
+          name: "Pencil Point",
+          note: "A freshly sharpened pencil",
+          meaning:
+            "Writing is how you sharpen a thought. A vague idea becomes a point only when you try to put it into words.",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <rect x="44" y="0" width="2" height="46" fill="#000"/><rect x="54" y="0" width="2" height="46" fill="#000"/></mask></defs>
+        <g transform="rotate(40 50 52)"><rect x="34" y="14" width="32" height="30" mask="url(#ID)"/>
+        <path d="M34 48H66L56.1 74H43.9Z"/><path d="M45.05 77H54.95L50 90Z"/></g>`,
+        },
+        {
+          tag: "Writing to think",
+          name: "Strike",
+          note: "A struck-out word, and the line that replaced it",
+          meaning:
+            "The thinking happens in the edits. The word you crossed out shows you changed your mind, which means you were actually thinking.",
+          svg: `<rect x="16" y="18" width="68" height="14"/>
+        <rect x="16" y="43" width="28" height="14"/><rect x="53.5" y="44.5" width="29" height="11" fill="none" stroke="currentColor" stroke-width="3"/>
+        <rect x="48" y="48.5" width="40" height="3"/><rect x="16" y="68" width="46" height="14"/>`,
+        },
+        {
+          tag: "Writing to think",
+          name: "Margin Note",
+          note: "Lines of text, and a mark in the margin",
+          meaning:
+            "The important thinking happens in the margin: the bracket around the sentence you're not sure of yet. It's a note to yourself, not to an audience.",
+          svg: `<rect x="34" y="16" width="50" height="7"/><rect x="34" y="31" width="50" height="7"/><rect x="34" y="46" width="50" height="7"/>
+        <rect x="34" y="61" width="50" height="7"/><rect x="34" y="76" width="30" height="7"/>
+        <path d="M14 29H24V35H20V50H24V56H14Z"/>`,
+        },
+        {
+          tag: "Thinking with AI",
+          name: "Mirror",
+          note: "A shape, and its reflection drawn in outline",
+          meaning:
+            "Used well, AI is a mirror, not an oracle. It reflects your thinking back so you can see it clearly. The solid shape is yours; the outline is the reflection.",
+          svg: `<path d="M24 46V14A32 32 0 0 1 56 46Z"/><rect x="12" y="48.5" width="76" height="3"/>
+        <path d="M25.5 55.5H54.5A29 29 0 0 1 25.5 84.5Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>`,
+        },
+        {
+          tag: "Thinking with AI",
+          name: "Two Cursors",
+          note: "Two I-beams on one page, one solid, one outline",
+          meaning:
+            "You and the model work on the same page, but only one of you is holding the pen. The outline cursor suggests; the solid one decides.",
+          svg: `<path transform="translate(-0.4 20) scale(.6)" d="${beam6}"/>
+        <path transform="translate(40.6 20) scale(.6)" d="${beam6}" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>`,
+        },
+        {
+          tag: "Thinking with AI",
+          name: "Open Question",
+          note: "A question mark with the stem left out",
+          meaning:
+            "The best use of a model is to ask you better questions, not to answer for you. The hook is the question; the stem is missing because it's yours to write.",
+          svg: `<path d="M32 36A18 18 0 1 1 50 54" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="butt"/>
+        <circle cx="50" cy="78" r="7"/>`,
+        },
+        {
+          tag: "Clear thinking",
+          name: "Focus",
+          note: "Dotted lines that turn into solid text under a lens",
+          meaning:
+            "From a distance everything is a blur of dots. Look closely at one part and it turns into real sentences. Clear thinking means choosing where to look.",
+          svg: focus,
+        },
+        {
+          tag: "Clear thinking",
+          name: "Untangle",
+          note: "Each loop smaller, until the line runs straight",
+          meaning:
+            "You don't get from confusion to clarity in one jump. Every pass ties a smaller knot, until there's nothing left to untie and the line simply runs.",
+          svg: `<path d="M6 66H28A17 17 0 0 0 28 32A17 17 0 0 0 28 66H56A10 10 0 0 0 56 46A10 10 0 0 0 56 66H74A5 5 0 0 0 74 56A5 5 0 0 0 74 66H94"
+        fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>`,
+        },
+        {
+          tag: "Clear thinking",
+          name: "Draft to Clean",
+          note: "Ragged lines settling into an even paragraph",
+          meaning:
+            "The top is how a thought arrives: uneven and pulled in different directions. The bottom is the same thought after you've worked it: aligned and readable.",
+          svg: `<rect x="30" y="14" width="36" height="5"/><rect x="14" y="25" width="38" height="5"/><rect x="40" y="36" width="44" height="5"/>
+        <rect x="18" y="52" width="64" height="7"/><rect x="18" y="65" width="64" height="7"/><rect x="18" y="78" width="40" height="7"/>`,
+        },
+        {
+          tag: "Crafting thought",
+          name: "Rewrite",
+          note: "Three passes, each shorter and heavier",
+          meaning:
+            "Each rewrite says the same thing in fewer words and with more weight. The first draft is long and thin; the last is short and solid.",
+          svg: `<rect x="18" y="22" width="68" height="3"/><rect x="18" y="36" width="48" height="9"/><rect x="18" y="56" width="28" height="22"/>`,
+        },
+        {
+          tag: "Crafting thought",
+          name: "Polish",
+          note: "A circle, rough on one side and smooth on the other",
+          meaning:
+            "Every idea starts rough. You can see the steps where you got stuck. Craft is working it until the edge runs smooth. Both halves are the same thought.",
+          svg: polish,
+        },
+        {
+          tag: "Crafting thought",
+          name: "Arrange",
+          note: "A grid that settles into place, corner to corner",
+          meaning:
+            "Thinking is putting things in order. The top-left still wobbles; the bottom-right has found its place. The work is moving the line between the two.",
+          svg: arrange,
+        },
+      ];
+
+      const round5 = [
+        {
+          name: "Labyrinth",
+          note: "Rings with one path through them",
+          meaning:
+            "A labyrinth isn't a maze. There's only one path, and you can't get lost. Its whole point is the walking. An AI can drop you in the centre with an answer, but you only understand it if you walked there yourself. Writing is the walk.",
+          svg: labyrinth,
+        },
+        {
+          name: "Fingerprint",
+          note: "Ridges that belong to one person",
+          meaning:
+            "In a world of generated text, the one thing nobody can produce for you is you. Each ridge reads as a line of your own writing: same rules as everyone's, but in a pattern only you have. It stands for authorship, and for your stance.",
+          svg: fingerprint,
+        },
+        {
+          name: "Seal",
+          note: "A wax seal, pressed by hand",
+          meaning:
+            'People used to seal a letter to say "this is from me, and I stand behind it." Writing something down is the same promise: not a draft a model handed you, but a position you\'re willing to sign. The ring inside is the mark of the hand that pressed it.',
+          svg: seal,
+        },
+        {
+          name: "Waxing",
+          note: "Four moon phases, from sliver to full",
+          meaning:
+            "Clarity doesn't arrive all at once; it waxes. The first draft lights only a sliver, the next half, and you keep going until the whole idea is lit. Read in order, it's the writing process itself, and an argument for patience over instant answers.",
+          svg: moons,
+        },
+        {
+          name: "Overlap",
+          note: "Two circles, and the lens where they meet",
+          meaning:
+            "Your best ideas sit where two things you know overlap: a book you read and a problem at work, a memory and a question. A model gives you the average of everything; the intersection that only you can see is the gold. Notes exist to make these overlaps happen.",
+          svg: `<circle cx="38" cy="50" r="26" fill="none" stroke="currentColor" stroke-width="3"/>
+        <circle cx="62" cy="50" r="26" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M50 26.93A26 26 0 0 1 50 73.07A26 26 0 0 1 50 26.93Z"/>`,
+        },
+        {
+          name: "A Room of One's Own",
+          note: "An arched door, light coming through the gap",
+          meaning:
+            "Woolf said a writer needs a room of their own. The app is that room: local, quiet, plain text, no feed, nothing generated for you unless you ask. The sliver of light is the work going on inside.",
+          svg: `<defs><mask id="ID"><path d="M28 88V44A22 22 0 0 1 72 44V88Z" fill="#fff"/>
+        <rect x="60" y="34" width="4" height="54" fill="#000"/></mask></defs>
+        <rect width="100" height="100" mask="url(#ID)"/>`,
+        },
+        {
+          name: "Lighthouse",
+          note: "A fixed light, beams to both sides",
+          meaning:
+            "When the sea fills with fog, from endless generated text to everyone's confident summaries, you need one fixed light to steer by. Writing down what you actually care about builds that light. It doesn't move with the weather.",
+          svg: `<path d="M42 88L46 46H54L58 88Z"/><rect x="44" y="36" width="12" height="8"/><path d="M42 34L50 26L58 34Z"/>
+        <path d="M58 40L92 30V50Z"/><path d="M42 40L8 30V50Z"/><rect x="32" y="88" width="36" height="4"/>`,
+        },
+        {
+          name: "Tangram",
+          note: "Seven pieces, one still being placed",
+          meaning:
+            "Editing is a tangram: you have the same few pieces, and you keep moving them until they make exactly one clear shape. The last piece, lifted just off its slot, is the moment before an idea clicks into place.",
+          svg: tangram,
+        },
+        {
+          name: "Tree Rings",
+          note: "Growth you can count, one ring per season",
+          meaning:
+            "Understanding builds up the way a tree grows, a ring at a time, and the thick rings mark the good years. An AI answer is instant and has no rings. A notes vault that you keep writing in is the trunk.",
+          svg: treeRings,
+        },
+        {
+          name: "Tuning Fork",
+          note: "A struck fork, and the ring it makes",
+          meaning:
+            "You find out what you believe by writing it and listening to how it rings: some sentences ring true, others fall flat. The app is the tuning fork, a fixed pitch to check your thinking against.",
+          svg: `<path d="M38 14V50A12 12 0 0 0 62 50V14" fill="none" stroke="currentColor" stroke-width="8"/>
+        <rect x="46" y="60" width="8" height="30"/>
+        <g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+        <path d="M26 20A22 22 0 0 0 26 46"/><path d="M17 14A30 30 0 0 0 17 52"/>
+        <path d="M74 20A22 22 0 0 1 74 46"/><path d="M83 14A30 30 0 0 1 83 52"/></g>`,
+        },
+        {
+          name: "Hive",
+          note: "Seven cells, one filled",
+          meaning:
+            "Each note is a cell: small, plain and fully yours. Fill one at a time, and a structure appears that no single cell planned. This is the local-first vault seen as a honeycomb, built a note at a time.",
+          svg: hive,
+        },
+        {
+          name: "Key",
+          note: "A plain key",
+          meaning:
+            "Writing isn't a record of what you already think; it's how you unlock it. People often only find out what they mean halfway through a sentence. The app is a key you turn yourself.",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/><circle cx="30" cy="50" r="7" fill="#000"/></mask></defs>
+        <g mask="url(#ID)"><circle cx="30" cy="50" r="18"/></g>
+        <rect x="46" y="46" width="42" height="8"/><rect x="70" y="54" width="6" height="12"/><rect x="80" y="54" width="8" height="8"/>`,
+        },
+      ];
+
+      const round4 = [
+        {
+          name: "Golden Spiral",
+          note: "Proportion you only get by working at it — gold, the hard way",
+          svg: goldenSpiral,
+        },
+        {
+          name: "Refine",
+          note: "Lots of small loose bits on the outside, one solid core in the middle",
+          svg: refine,
+        },
+        {
+          name: "Ingot",
+          note: "The gold bar — the thing worth keeping",
+          svg: `<path d="M32 26H68L74 40H26Z"/><path d="M25 44H75L85 76H15Z"/>`,
+        },
+        {
+          name: "Facet",
+          note: "A gem from above — each cut makes it clearer",
+          svg: `<defs><mask id="ID"><path d="M50 10L90 50L50 90L10 50Z" fill="#fff"/>
+        <path d="M30 30H70V70H30ZM50 30L70 50L50 70L30 50Z" fill="none" stroke="#000" stroke-width="3.5" stroke-linejoin="round"/></mask></defs>
+        <rect width="100" height="100" mask="url(#ID)"/>`,
+        },
+        {
+          name: "Crucible",
+          note: "Melt it all down; what's left at the bottom is what matters",
+          svg: `<circle cx="50" cy="50" r="33" fill="none" stroke="currentColor" stroke-width="8"/>
+        <path d="M26.34 54A24 24 0 0 0 73.66 54Z"/>`,
+        },
+        {
+          name: "Dig",
+          note: "Down through the layers to the thing you actually care about",
+          svg: `<rect x="16" y="14" width="68" height="8"/><rect x="24" y="28" width="52" height="8"/>
+        <rect x="32" y="42" width="36" height="8"/><rect x="40" y="56" width="20" height="8"/>
+        <path d="M50 70L58 78L50 86L42 78Z"/>`,
+        },
+        {
+          name: "Anvil",
+          note: "Thinking as a craft — shaped by hand, blow by blow",
+          svg: `<g transform="translate(3 4)"><path d="M10 30H26V44A16 14 0 0 0 10 30Z"/><rect x="26" y="30" width="58" height="14"/>
+        <path d="M40 44H70L64 60H46Z"/><path d="M46 60H64L76 72H34Z"/><rect x="30" y="72" width="50" height="6"/></g>`,
+        },
+        {
+          name: "Keystone",
+          note: "The one idea that holds the whole argument up",
+          svg: keystone,
+        },
+        {
+          name: "Weave",
+          note: "Ideas crossed by hand, over and under",
+          svg: weave,
+        },
+        {
+          name: "Still Water",
+          note: "A calm surface reflects clearly",
+          svg: `<defs><clipPath id="ID"><circle cx="50" cy="50" r="36"/></clipPath></defs>
+        <g clip-path="url(#ID)"><rect x="0" y="0" width="100" height="50"/><rect x="0" y="54" width="100" height="6"/>
+        <rect x="0" y="64" width="100" height="4.5"/><rect x="0" y="72.5" width="100" height="3"/><rect x="0" y="79.5" width="100" height="2"/></g>`,
+        },
+        {
+          name: "Seed",
+          note: "Write down what you care about; it grows",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <rect x="48" y="26" width="4" height="48" rx="2" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" d="M50 12A43.8 43.8 0 0 1 50 88A43.8 43.8 0 0 1 50 12Z"/>`,
+        },
+        {
+          name: "Bearing",
+          note: "Know which way you're pointing before you ask anyone",
+          svg: `<path d="M50 10L64 50H36Z"/><path d="M38.8 56H61.2L50 86Z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="miter"/>`,
+        },
+      ];
+
+      const round3 = [
+        {
+          name: "Half Spark, Half Cursor",
+          note: "The AI's sparkle on one side, your cursor on the other",
+          svg: `<path transform="translate(5 0)" d="M42 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H42V78A28 28 0 0 0 14 50A28 28 0 0 0 42 22Z"/>`,
+        },
+        {
+          name: "Forged",
+          note: "Half spark, half solid block — the rest you hammer out yourself",
+          svg: `<path d="M50 18H82V82H50A32 32 0 0 0 18 50A32 32 0 0 0 50 18Z"/>`,
+        },
+        {
+          name: "Through the Spark",
+          note: "The AI sparkle, with your cursor cut through it",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <path transform="translate(35 35) scale(.3)" d="M24 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V30A18 18 0 0 0 24 12Z" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" d="M50 10A40 40 0 0 0 90 50A40 40 0 0 0 50 90A40 40 0 0 0 10 50A40 40 0 0 0 50 10Z"/>`,
+        },
+        {
+          name: "Ingot",
+          note: "A gold bar stamped with the ¶ cursor — what you write is the gold",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <path transform="translate(31 31) scale(.38)" d="M42 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V48A18 18 0 0 1 42 12Z" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" d="M28 26H72L86 78H14Z"/>`,
+        },
+        {
+          name: "Nib & Ingot",
+          note: "The pen pours, the gold sets",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <circle cx="50" cy="36" r="3" fill="#000"/><rect x="49" y="36" width="2" height="16" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" d="M50 50L40 40A14.14 14.14 0 1 1 60 40Z"/><path d="M32 60H68L78 86H22Z"/>`,
+        },
+        {
+          name: "Panning",
+          note: "Sift through a lot of generated grit, keep the one nugget",
+          svg: `<path d="M16 52A34 34 0 0 0 84 52H76A26 26 0 0 1 24 52Z"/><path d="M50 52L60 62L50 72L40 62Z"/>
+        <circle cx="30" cy="24" r="3"/><circle cx="44" cy="16" r="2"/><circle cx="60" cy="24" r="3"/>
+        <circle cx="72" cy="14" r="2"/><circle cx="38" cy="36" r="2"/><circle cx="66" cy="40" r="2"/>
+        <circle cx="52" cy="32" r="2.5"/><circle cx="24" cy="42" r="2"/><circle cx="78" cy="30" r="2"/>`,
+        },
+        {
+          name: "Cut Gem",
+          note: "A rough thought, cut by hand into facets",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <path d="M42 26L34 45L50 84L66 45L58 26" fill="none" stroke="#000" stroke-width="3" stroke-linejoin="round"/></mask></defs>
+        <g mask="url(#ID)"><path d="M30 26H70L84 42H16Z"/><path d="M16 45H84L50 84Z"/></g>`,
+        },
+        {
+          name: "Signal",
+          note: "A field of identical generated dots — and one cursor",
+          svg: `<circle cx="18" cy="18" r="3"/><circle cx="18" cy="34" r="3"/><circle cx="18" cy="50" r="3"/><circle cx="18" cy="66" r="3"/><circle cx="18" cy="82" r="3"/><circle cx="34" cy="18" r="3"/><circle cx="34" cy="34" r="3"/><circle cx="34" cy="50" r="3"/><circle cx="34" cy="66" r="3"/><circle cx="34" cy="82" r="3"/><circle cx="50" cy="18" r="3"/><circle cx="50" cy="82" r="3"/><circle cx="66" cy="18" r="3"/><circle cx="66" cy="34" r="3"/><circle cx="66" cy="50" r="3"/><circle cx="66" cy="66" r="3"/><circle cx="66" cy="82" r="3"/><circle cx="82" cy="18" r="3"/><circle cx="82" cy="34" r="3"/><circle cx="82" cy="50" r="3"/><circle cx="82" cy="66" r="3"/><circle cx="82" cy="82" r="3"/><path transform="translate(35 35) scale(.3)" d="M24 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V30A18 18 0 0 0 24 12Z"/>`,
+        },
+        {
+          name: "Slow",
+          note: "Thinking takes time — the gold settles at the bottom",
+          svg: `<rect x="20" y="10" width="60" height="7"/><rect x="20" y="83" width="60" height="7"/>
+        <path d="M27 17L50 50L27 83M73 17L50 50L73 83" fill="none" stroke="currentColor" stroke-width="4"/>
+        <path d="M41.6 38H58.4L50 50Z"/><rect x="49" y="50" width="2" height="14"/><path d="M27 83H73L59.8 64H40.2Z"/>`,
+        },
+      ];
+
+      const round2 = [
+        {
+          name: "Nib Cursor",
+          note: "Cursor serifs on top, a pen nib at the foot",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/><circle cx="50" cy="66" r="4" fill="#000"/><rect x="48.5" y="66" width="3" height="30" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" d="M24 12H76A18 18 0 0 0 58 30V50L68 64L50 90L32 64L42 50V30A18 18 0 0 0 24 12Z"/>`,
+        },
+        {
+          name: "Pilcrow Cursor",
+          note: "One serif swapped for the ¶ bowl — cursor and paragraph at once",
+          svg: `<path d="M42 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V48A18 18 0 0 1 42 12Z"/>`,
+        },
+        {
+          name: "Pilcrow Cursor, Slit",
+          note: "All three: cursor, paragraph bowl, nib slit",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/><circle cx="50" cy="60" r="4.5" fill="#000"/><rect x="48.5" y="60" width="3" height="40" fill="#000"/></mask></defs><path mask="url(#ID)" d="M42 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V48A18 18 0 0 1 42 12Z"/>`,
+        },
+        {
+          name: "Slit Cursor",
+          note: "The I-beam split at the foot like a nib",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/><circle cx="50" cy="60" r="4.5" fill="#000"/><rect x="48.5" y="60" width="3" height="40" fill="#000"/></mask></defs><path mask="url(#ID)" d="M24 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V30A18 18 0 0 0 24 12Z"/>`,
+        },
+        {
+          name: "Twist Cursor",
+          note: "Two serifs instead of four — turns once, like a pen stroke",
+          svg: `<path d="M24 12H58V70A18 18 0 0 0 76 88H42V30A18 18 0 0 0 24 12Z"/>`,
+        },
+        {
+          name: "Twist Cursor, Slit",
+          note: "The twist, with the nib slit",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/><circle cx="50" cy="60" r="4.5" fill="#000"/><rect x="48.5" y="60" width="3" height="40" fill="#000"/></mask></defs><path mask="url(#ID)" d="M24 12H58V70A18 18 0 0 0 76 88H42V30A18 18 0 0 0 24 12Z"/>`,
+        },
+        {
+          name: "Italic Cursor",
+          note: "The I-beam leaning forward, mid-sentence",
+          svg: `<path transform="translate(10.6 0) skewX(-12)" d="M24 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V30A18 18 0 0 0 24 12Z"/>`,
+        },
+        {
+          name: "Italic Pilcrow Cursor",
+          note: "The ¶ hybrid, leaning forward",
+          svg: `<path transform="translate(10.6 0) skewX(-12)" d="M42 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V48A18 18 0 0 1 42 12Z"/>`,
+        },
+        {
+          name: "Serif Pilcrow",
+          note: "03 with cursor-style feet on both stems",
+          svg: `<path transform="translate(-7 0)" d="M47 14H75V72A14 14 0 0 0 89 86H65V24H57V86H33A14 14 0 0 0 47 72V58A22 22 0 0 1 47 14Z"/>`,
+        },
+      ];
+
+      const marks = [
+        {
+          name: "Serif Cursor",
+          note: "The I-beam: where every sentence starts",
+          svg: `<path d="M24 12H76A18 18 0 0 0 58 30V70A18 18 0 0 0 76 88H24A18 18 0 0 0 42 70V30A18 18 0 0 0 24 12Z"/>`,
+        },
+        {
+          name: "Nib",
+          note: "One drop, one slit, one line of ink",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <circle cx="50" cy="54" r="7" fill="#000"/><rect x="47.5" y="54" width="5" height="40" fill="#000"/></mask></defs>
+        <path mask="url(#ID)" transform="translate(0 -6)" d="M50 96L30 76A28.28 28.28 0 1 1 70 76Z"/>`,
+        },
+        {
+          name: "Pilcrow",
+          note: "¶ — the paragraph, the unit of a thought",
+          svg: `<path d="M47 14A22 22 0 0 0 47 58Z"/><rect x="47" y="14" width="10" height="72"/>
+        <rect x="65" y="14" width="10" height="72"/><rect x="47" y="14" width="28" height="10"/>`,
+        },
+        {
+          name: "Letter W",
+          note: "Two cups — W for Writer, drawn in one stroke weight",
+          svg: `<defs><mask id="ID"><rect width="100" height="100" fill="#fff"/>
+        <rect x="26" y="0" width="14" height="52" fill="#000"/><circle cx="33" cy="52" r="7" fill="#000"/>
+        <rect x="60" y="0" width="14" height="52" fill="#000"/><circle cx="67" cy="52" r="7" fill="#000"/></mask></defs>
+        <g mask="url(#ID)" transform="translate(0 4)"><rect x="16" y="24" width="68" height="28"/>
+        <path d="M16 52A17 17 0 0 0 50 52Z"/><path d="M50 52A17 17 0 0 0 84 52Z"/></g>`,
+        },
+        {
+          name: "Loop, then Line",
+          note: "The tangle fades, the sentence runs straight",
+          svg: `<defs><linearGradient id="ID" x1="0" x2="1"><stop offset="0" stop-color="currentColor" stop-opacity="0"/>
+        <stop offset=".6" stop-color="currentColor"/></linearGradient></defs>
+        <path d="M10 68H44A18 18 0 0 0 44 32A18 18 0 0 0 44 68H90" fill="none" stroke="url(#ID)" stroke-width="10" stroke-linecap="round"/>`,
+        },
+        {
+          name: "Distill",
+          note: "Many loose threads in, one clear line out",
+          svg: `<rect x="10" y="27" width="28" height="6"/><rect x="10" y="47" width="28" height="6"/>
+        <rect x="10" y="67" width="28" height="6"/><path d="M38 22V78L70 50Z"/><rect x="62" y="43" width="28" height="14"/>`,
+        },
+        {
+          name: "Paragraph",
+          note: "Plain text, and the cursor waiting for the next word",
+          svg: `<rect x="16" y="18" width="68" height="10"/><rect x="16" y="36" width="68" height="10"/>
+        <rect x="16" y="54" width="68" height="10"/><rect x="16" y="72" width="34" height="10"/>
+        <rect x="58" y="68" width="7" height="18"/>`,
+        },
+        {
+          name: "Page Turn",
+          note: "A page, its corner lifted — the next draft",
+          svg: `<defs><mask id="ID"><rect x="18" y="18" width="64" height="64" fill="#fff"/>
+        <circle cx="82" cy="18" r="30" fill="#000"/>
+        <path d="M52 48V18A30 30 0 0 1 82 48Z" fill="#fff" stroke="#000" stroke-width="7"/></mask></defs>
+        <rect width="100" height="100" mask="url(#ID)"/>`,
+        },
+        {
+          name: "Insight",
+          note: "Lowercase i whose dot is a spark",
+          svg: `<rect x="43" y="46" width="14" height="42"/>
+        <path d="M50 6A18 18 0 0 0 68 24A18 18 0 0 0 50 42A18 18 0 0 0 32 24A18 18 0 0 0 50 6Z"/>`,
+        },
+        {
+          name: "Focus",
+          note: "An eye whose pupil is a caret",
+          svg: `<defs><mask id="ID"><path d="M8 50A52 52 0 0 1 92 50A52 52 0 0 1 8 50Z" fill="#fff"/>
+        <circle cx="50" cy="50" r="15" fill="#000"/><rect x="46" y="39" width="8" height="22" fill="#fff"/></mask></defs>
+        <rect width="100" height="100" mask="url(#ID)"/>`,
+        },
+        {
+          name: "Quote",
+          note: "Say it in your own words",
+          svg: `<g transform="translate(0 2)"><path d="M18 22H44V48A26 26 0 0 1 18 74Z"/>
+        <path d="M56 22H82V48A26 26 0 0 1 56 74Z"/></g>`,
+        },
+        {
+          name: "Clarity",
+          note: "Noise resolving into a solid block, left to right",
+          svg: dither,
+        },
+        {
+          name: "Brackets",
+          note: "Hold one idea at a time",
+          svg: `<path d="M18 16H40V28H31V72H40V84H18Z"/><path d="M82 16H60V28H69V72H60V84H82Z"/>
+        <rect x="43" y="43" width="14" height="14"/>`,
+        },
+        {
+          name: "Letter W, Blocks",
+          note: "Squares and one triangle, on a 3×3 grid",
+          svg: `<path d="M17 17H39V61L50 39L61 61V17H83V83H17Z"/>`,
+        },
+        {
+          name: "Open Book",
+          note: "Two pages and the thought above them",
+          svg: `<g transform="translate(0 6)"><path d="M47 72H13A34 34 0 0 1 47 38Z"/><path d="M53 72H87A34 34 0 0 0 53 38Z"/>
+        <circle cx="50" cy="22" r="7"/></g>`,
+        },
+      ];
+
+      let uid = 0;
+      const svg = (inner, cls = "") => {
+        const id = `m${uid++}`;
+        return `<svg class="${cls}" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${inner.replaceAll("ID", id)}</svg>`;
+      };
+      const copyright = `<svg class="c" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+    <circle cx="10" cy="10" r="8.5"/><path d="M12.6 7.6A3.6 3.6 0 1 0 12.6 12.4"/></svg>`;
+
+      const render = (list, el, prefix) => {
+        document.getElementById(el).innerHTML = list
+          .map(
+            (m, i) => `
+    <article class="card${m.meaning ? " long" : ""}">
+      <div class="meta">${m.tag ? `<span class="tag">${m.tag}</span>` : ""}<div class="name">${m.name}</div><div class="note">${m.note}</div></div>
+      <div class="num">${prefix}${String(i + 1).padStart(2, "0")}</div>
+      <div class="stage"><div class="hero">${svg(m.svg)}${copyright}</div></div>
+      <div class="sizes">
+        <div class="appicon">${svg(m.svg)}</div>
+        ${svg(m.svg, "s32")}
+        ${svg(m.svg, "s16")}
+      </div>
+      ${m.meaning ? `<p class="meaning">${m.meaning}</p>` : ""}
+    </article>`,
+          )
+          .join("");
+      };
+      render(round10, "round10", "D");
+      render(round9, "round9", "H");
+      render(round8, "round8", "M");
+      render(round7, "round7", "S");
+      render(round6, "round6", "T");
+      render(round5, "round5", "E");
+      render(round4, "round4", "C");
+      render(round3, "round3", "G");
+      render(round2, "round2", "R");
+      render(marks, "grid", "");
+
+      document.getElementById("invert").addEventListener("click", () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>

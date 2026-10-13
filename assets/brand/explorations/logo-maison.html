@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writer Maison Cut</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --page: #ffffff;
+        --card: #f5f5f4;
+        --ink: #0a0a0a;
+        --muted: #6b6b6b;
+        --line: #e7e7e5;
+        --canvas: #0b0b0b;
+        --cream: #ece7dc;
+      }
+      :root[data-theme="dark"] {
+        --page: #0a0a0a;
+        --card: #161616;
+        --ink: #f5f5f4;
+        --muted: #8a8a8a;
+        --line: #262626;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          13px/1.45 -apple-system,
+          BlinkMacSystemFont,
+          "Inter",
+          "Helvetica Neue",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 64px;
+      }
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 48px 0 8px;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 700px;
+        text-wrap: pretty;
+      }
+      .toggle {
+        font: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .toggle:active {
+        transform: scale(0.97);
+      }
+      .dir {
+        margin-top: 36px;
+      }
+      .dir h2 {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 0 0 2px;
+      }
+      .dir .why {
+        color: var(--muted);
+        margin: 0 0 14px;
+        max-width: 760px;
+        text-wrap: pretty;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 560px) {
+        .wrap {
+          padding: 0 16px 48px;
+        }
+        header {
+          padding: 32px 0 8px;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        position: relative;
+        background: var(--card);
+        border-radius: 10px;
+        aspect-ratio: 1 / 1;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+      }
+      .meta {
+        font-size: 11.5px;
+        line-height: 1.35;
+        max-width: 85%;
+      }
+      .name {
+        font-weight: 500;
+      }
+      .note {
+        color: var(--muted);
+      }
+      .stage {
+        flex: 1;
+        display: grid;
+        place-items: center;
+      }
+      .hero {
+        width: 50%;
+        aspect-ratio: 1;
+        color: var(--ink);
+      }
+      .hero svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .small {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        color: var(--ink);
+      }
+      .appicon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6.5px;
+        background: var(--ink);
+        color: var(--card);
+        display: grid;
+        place-items: center;
+      }
+      .appicon svg {
+        width: 62%;
+        height: 62%;
+        display: block;
+      }
+      .s16 {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+
+      /* Lockups */
+      .lockups {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 900px) {
+        .lockups {
+          grid-template-columns: 1fr;
+        }
+      }
+      .lockup {
+        border-radius: 10px;
+        min-height: 300px;
+        display: grid;
+        place-items: center;
+        padding: 32px 16px;
+      }
+      .lockup.light {
+        background: var(--card);
+        color: var(--ink);
+      }
+      .lockup.dark {
+        background: var(--canvas);
+        color: var(--cream);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+      }
+      .wordmark {
+        font-family: "Bodoni Moda", "Didot", "Bodoni 72", serif;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        letter-spacing: 0.34em;
+        margin-right: -0.34em; /* optical: trailing tracking */
+        line-height: 1;
+      }
+      .row .wordmark {
+        font-size: 38px;
+      }
+      .stack .wordmark {
+        font-size: 30px;
+      }
+      .tagline {
+        font-family: "Bodoni Moda", "Didot", serif;
+        font-style: italic;
+        font-size: 14px;
+        letter-spacing: 0.02em;
+        opacity: 0.75;
+      }
+      .lockup svg {
+        display: block;
+      }
+
+      /* Monogram canvas */
+      .canvas {
+        border-radius: 10px;
+        height: 360px;
+        background: var(--canvas);
+        color: var(--cream);
+        overflow: hidden;
+      }
+      .canvas svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Writer — the maison cut</h1>
+          <p>
+            Your Thick–Thin ¶, drawn the way a fashion house would draw it: Didone contrast (heavy
+            stems, hairlines that nearly disappear), sharp unbracketed or ball-ended serifs, and the
+            mark treated as one part of a system with a tracked-out wordmark and a monogram canvas.
+            Houses keep two cuts: a delicate one for large sizes and a sturdier one for small ones.
+          </p>
+        </div>
+        <button class="toggle" id="invert" type="button">Invert</button>
+      </header>
+      <main id="main"></main>
+    </div>
+
+    <script>
+      // Local frame: left stem x 0..w1, gap g, right stem w1+g..c. Top bar y T..T+h. Stems to B.
+      // Every builder returns shapes in that frame; `place` centres them in the 100 box.
+      const place = (inner, minX, maxX, T, B) =>
+        `<g transform="translate(${50 - (minX + maxX) / 2} ${50 - (T + B) / 2})" stroke="currentColor" stroke-width="0.4" stroke-linejoin="round">${inner}</g>`;
+      const body = ({ w1, g, w2, T, B, h }) => {
+        const c = w1 + g + w2;
+        return {
+          c,
+          el: `<rect x="0" y="${T}" width="${w1}" height="${B - T}"/><rect x="${w1 + g}" y="${T}" width="${w2}" height="${B - T}"/><rect x="0" y="${T}" width="${c}" height="${h}"/>`,
+        };
+      };
+      // Concave serifs: hug the corner, curve back into the stem.
+      const concaveTL = (x, y, r) =>
+        `<path d="M${x - r} ${y}H${x}V${y + r}A${r} ${r} 0 0 0 ${x - r} ${y}Z"/>`;
+      const concaveBR = (x, y, r) =>
+        `<path d="M${x} ${y - r}V${y}H${x + r}A${r} ${r} 0 0 1 ${x} ${y - r}Z"/>`;
+      const wedgeTL = (x, y, r) => `<path d="M${x - r} ${y}H${x}V${y + r}Z"/>`;
+      const wedgeBR = (x, y, r) => `<path d="M${x} ${y - r}V${y}H${x + r}Z"/>`;
+
+      const cuts = {
+        // The Thick–Thin you picked, for reference.
+        current: () => {
+          const p = { w1: 20, g: 7, w2: 11, T: 14, B: 86, h: 13 };
+          const { c, el } = body(p);
+          return place(el + concaveTL(0, p.T, 24) + concaveBR(c, p.B, 16), -24, c + 16, p.T, p.B);
+        },
+        // Didone: hairline stem and bar, long hairline serifs.
+        didone: () => {
+          const p = { w1: 21, g: 8, w2: 3, T: 12, B: 88, h: 3 };
+          const { c, el } = body(p);
+          return place(el + concaveTL(0, p.T, 30) + concaveBR(c, p.B, 22), -30, c + 22, p.T, p.B);
+        },
+        // Didone, small-size cut: same idea, thin parts thick enough for 16px.
+        didoneMid: () => {
+          const p = { w1: 21, g: 8, w2: 6, T: 12, B: 88, h: 5 };
+          const { c, el } = body(p);
+          return place(el + concaveTL(0, p.T, 28) + concaveBR(c, p.B, 20), -28, c + 20, p.T, p.B);
+        },
+        // Bodoni: flat, unbracketed hairline slabs instead of curves.
+        bodoni: () => {
+          const p = { w1: 21, g: 8, w2: 3, T: 14, B: 86, h: 3 };
+          const { c, el } = body(p);
+          const slabs = `<rect x="-14" y="${p.T}" width="14" height="3"/>
+        <rect x="-5" y="${p.B - 3}" width="${p.w1 + 10}" height="3"/><rect x="${p.w1 + p.g - 6}" y="${p.B - 3}" width="${p.w2 + 12}" height="3"/>`;
+          return place(el + slabs, -14, c + 6, p.T, p.B);
+        },
+        // Ball terminal: the entry stroke ends in a ball, like a Didone "c" or "r".
+        ball: () => {
+          const p = { w1: 21, g: 8, w2: 3, T: 14, B: 86, h: 3 };
+          const { c, el } = body(p);
+          const entry = `<rect x="-16" y="${p.T}" width="16" height="3"/><circle cx="-12" cy="${p.T + 9}" r="9"/>`;
+          return place(el + entry + concaveBR(c, p.B, 20), -21, c + 20, p.T, p.B);
+        },
+        // Wedge: straight, knife-cut serifs.
+        wedge: () => {
+          const p = { w1: 21, g: 8, w2: 4, T: 12, B: 88, h: 4 };
+          const { c, el } = body(p);
+          return place(el + wedgeTL(0, p.T, 28) + wedgeBR(c, p.B, 22), -28, c + 22, p.T, p.B);
+        },
+      };
+
+      const marks = [
+        { name: "Current", note: "Your Thick–Thin, for reference", svg: cuts.current() },
+        {
+          name: "Didone",
+          note: "Hairline stem and bar, long hairline serifs. The display cut: large sizes, print, packaging.",
+          svg: cuts.didone(),
+        },
+        {
+          name: "Didone, Small Cut",
+          note: "The same drawing with thin parts heavy enough for the app icon and 16px",
+          svg: cuts.didoneMid(),
+        },
+        {
+          name: "Bodoni Slab",
+          note: "Flat, unbracketed hairline serifs: the most classic fashion cut",
+          svg: cuts.bodoni(),
+        },
+        {
+          name: "Ball Terminal",
+          note: "The entry stroke ends in a ball, like a Didone c or r",
+          svg: cuts.ball(),
+        },
+        {
+          name: "Knife Wedge",
+          note: "Straight, knife-cut serifs instead of curves: the sharpest of the set",
+          svg: cuts.wedge(),
+        },
+      ];
+
+      let uid = 0;
+      const svg = (inner, cls = "", size) =>
+        `<svg class="${cls}" viewBox="0 0 100 100" fill="currentColor" ${size ? `width="${size}" height="${size}"` : ""} aria-hidden="true">${inner.replaceAll("ID", `m${uid++}`)}</svg>`;
+
+      const cards = marks
+        .map(
+          (m) => `
+      <article class="card">
+        <div class="meta"><div class="name">${m.name}</div><div class="note">${m.note}</div></div>
+        <div class="stage"><div class="hero">${svg(m.svg)}</div></div>
+        <div class="small"><div class="appicon">${svg(m.svg)}</div>${svg(m.svg, "s16")}</div>
+      </article>`,
+        )
+        .join("");
+
+      // Monogram canvas: the ¶ alternating with a four-petal flower, like a house canvas.
+      const quatrefoil =
+        [
+          [50, 34],
+          [66, 50],
+          [50, 66],
+          [34, 50],
+        ]
+          .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="15"/>`)
+          .join("") + `<circle cx="50" cy="50" r="4.5" fill="var(--canvas)"/>`;
+      const canvas = `
+    <svg viewBox="0 0 480 360" preserveAspectRatio="xMidYMid slice" fill="currentColor" aria-hidden="true">
+      <defs>
+        <pattern id="mono" width="120" height="120" patternUnits="userSpaceOnUse">
+          <svg x="10" y="10" width="40" height="40" viewBox="0 0 100 100">${cuts.didoneMid()}</svg>
+          <svg x="72" y="72" width="36" height="36" viewBox="0 0 100 100">${quatrefoil}</svg>
+          <circle cx="90" cy="30" r="1.6"/><circle cx="30" cy="90" r="1.6"/>
+        </pattern>
+      </defs>
+      <rect width="480" height="360" fill="url(#mono)"/>
+    </svg>`;
+
+      document.getElementById("main").innerHTML = `
+    <section class="dir">
+      <h2>The mark, cut five ways</h2>
+      <p class="why">Each keeps the Thick–Thin structure, a heavy left stem with a light right one and one serif in, one out, and pushes the contrast and the serif treatment toward a fashion house.</p>
+      <div class="grid">${cards}</div>
+    </section>
+
+    <section class="dir">
+      <h2>Lockup</h2>
+      <p class="why">How a house would pair it: the Didone mark with a widely tracked serif wordmark in capitals. The wordmark is set in Bodoni Moda as a stand-in for a custom-drawn one.</p>
+      <div class="lockups">
+        <div class="lockup light">
+          <div class="row">${svg(cuts.didone(), "", 64)}<span class="wordmark">WRITER</span></div>
+        </div>
+        <div class="lockup dark">
+          <div class="stack">${svg(cuts.didone(), "", 88)}<span class="wordmark">WRITER</span><span class="tagline">Thinking, made by writing.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dir">
+      <h2>Monogram canvas</h2>
+      <p class="why">The LV move: the mark stops being a logo and becomes a surface. The ¶ alternates with a four-petal flower built from round ¶ bowls, for a splash screen, packaging, merch, or the website's footer.</p>
+      <div class="canvas">${canvas}</div>
+    </section>`;
+
+      document.getElementById("invert").addEventListener("click", () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      });
+    </script>
+  </body>
+</html>
