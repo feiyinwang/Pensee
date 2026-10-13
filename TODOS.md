@@ -10,6 +10,9 @@
 
 ## Done
 
+- QA process: [`docs/qa/qa-checklist.md`](docs/qa/qa-checklist.md) — every user journey that must keep working is in [`docs/qa/user-journeys.md`](docs/qa/user-journeys.md) (101 journeys by feature, ★ smoke set); the `pensee-qa` skill picks the ones a change reaches and drives the real app through them with `apps/desktop/e2e/qa/run.sh` (debug e2e build, seeded vault per spec). Automated so far: the smoke set (`journeys/core.spec.js`) and the calendar (`journeys/calendar.spec.js`). Follow-up: automate the `manual` rows as their areas change; promote the `legacy:` specs onto the QA vault.
+- Calendar clicks in iCloud vaults: [`SPECs/calendar-panel-spec.md`](SPECs/calendar-panel-spec.md) — the panel's dots listed the note folder with `read_directory`, which reads every note's title (over a minute in the user's iCloud vault) and reran on every watcher event, starving the clicks' `create_file_if_missing`. New `list_markdown_stems` reads names only (2ms on the same vault).
+
 - Library fills the width: [`SPECs/spaces-spec.md`](SPECs/spaces-spec.md) — gallery spaces drop the page's 1100px cap (`.page.wide`), so the `auto-fill` cover grid adds columns in a pinched-open tab.
 
 - Projects is kanban only: [`SPECs/project-views-spec.md`](SPECs/project-views-spec.md#views) — List, Timeline, the view switcher and `space-view-store` are gone. The Projects page drops the reading width (`.page.fill`) and the board fills the pane; columns narrow to 200px (`--kanban-col-min`) before scrolling sideways. Done shows what fits in one screen of the board (measured before paint, again on resize) and folds the rest behind **Show N more** (Arc patches `cellFooter` and a column `hidden` count).

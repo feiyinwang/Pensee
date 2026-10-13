@@ -87,6 +87,10 @@ Run an implementation review using the personas and process in [`agent-review.md
 - Challenge whether the final solution is the cleanest version now that you understand the problem fully. Be willing to redesign.
 - Review blocks handoff if any `P0` or unresolved `P1` remains (see escalation rules in `agent-review.md`).
 
+## Step 6b: QA pass
+
+Run the `pensee-qa` skill ([`docs/qa/qa-checklist.md`](../qa/qa-checklist.md)): drive the real app through every user journey the change can reach, fix what fails, and put the `QA:` line in the commit message. A new or changed feature records its journeys in [`docs/qa/user-journeys.md`](../qa/user-journeys.md) first.
+
 ## Step 7: Document and Wrap Up
 
 1. Update relevant docs if behavior or rules changed.

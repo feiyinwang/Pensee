@@ -69,6 +69,24 @@ bundle identifier (see below).
 4. The spec runs; afterwards `onComplete` kills the intermediary and the app
    quits.
 
+## User journeys (QA)
+
+`specs/journeys/` holds one spec per feature area, each `it` named after a
+journey ID in [docs/qa/user-journeys.md](../../../docs/qa/user-journeys.md).
+Run them with:
+
+```sh
+qa/run.sh                 # debug e2e build, then every journey spec
+qa/run.sh core calendar   # just these areas
+qa/run.sh --no-build core # reuse the last build
+```
+
+The debug build (`target/debug`) leaves the release artifacts alone, and each
+spec file starts on a freshly seeded vault (`qa/seed-vault.mjs`, in the e2e
+app's own data dir) with default settings. Shared helpers and the harness traps
+they work around: `specs/journeys/_helpers.js` and the Harness notes in
+[docs/qa/qa-checklist.md](../../../docs/qa/qa-checklist.md).
+
 ## Build flavors
 
 - `vp run desktop#dev` and `vp build` are unchanged — no WebDriver server.

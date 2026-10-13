@@ -1,0 +1,340 @@
+# User Journeys
+
+Every journey here is something the user relies on working. The QA pass
+([qa-checklist.md](./qa-checklist.md), run by the `pensee-qa` skill) walks the
+ones a change can reach, and any that fails is fixed before the work is done.
+
+## How to read and extend this file
+
+- One `##` section per feature: a short **Feature** description, the **Spec**,
+  the **Code** paths that can break it (relative to `apps/desktop/`; used to
+  pick journeys for a change), and a table of journeys.
+- **ID** is `AREA-NN` and never reused or renumbered; a removed journey is
+  deleted, and its ID stays retired.
+- **Check** says how the journey is verified:
+  - `auto: <name>` — `e2e/specs/journeys/<name>.spec.js` has an `it("<ID> …")`.
+    Run with `apps/desktop/e2e/qa/run.sh <name>`.
+  - `legacy: <name>` — `e2e/specs/<name>.spec.js` covers it, but on its own
+    seed, not the QA vault. Promote it to a journey spec when the area changes.
+  - `manual` — no spec yet. Automate it when a change touches its area
+    (qa-checklist.md step 3).
+  - `you` — needs something an agent can't drive (an outside account, Finder,
+    a trackpad gesture). Listed in the QA report for the user to try.
+- **★** marks the smoke set: run on every change, whatever it touches.
+- A new feature adds its section (or rows) in the same commit as the feature.
+  Template at the end.
+
+---
+
+## Workspace and windows — WS
+
+**Feature:** Pensée opens on the last workspace (a folder of markdown files),
+restores its tabs, and can open more workspaces in their own windows or a single
+file in a compact window.
+**Spec:** SPECs/multi-window-spec.md, SPECs/compact-window-spec.md
+**Code:** `src-tauri/src/commands/workspace.rs`, `src-tauri/src/state.rs`, `src/stores/workspace-store.ts`, `src/components/welcome/`, `src/components/compact-file-layout.tsx`, `src/components/app-layout.tsx`
+
+| ID    | Journey                                              | Expected                                                  | Check      |
+| ----- | ---------------------------------------------------- | --------------------------------------------------------- | ---------- |
+| WS-01 | ★ Launch the app                                     | The last workspace opens, with the sidebar and its Spaces | auto: core |
+| WS-02 | Quit with two notes open, relaunch                   | Both tabs come back, the same one in front                | manual     |
+| WS-03 | With no workspace, click **Add Folder** and pick one | The folder opens as the workspace                         | you        |
+| WS-04 | Open a single `.md` file from Finder                 | A compact window opens on it: no sidebar, no tab strip    | you        |
+
+## Sidebar — SB
+
+**Feature:** The sidebar shows the search icon, **Today**, **Spaces** (Projects,
+Library, Inspirations, Files), Pinned and Recents. **Files** holds the folder tree.
+**Spec:** SPECs/spaces-spec.md, SPECs/sidebar-drag-and-drop-move-spec.md
+**Code:** `src/components/sidebar/`, `src/hooks/use-file-tree.ts`, `src-tauri/src/commands/fs.rs`, `src-tauri/src/watcher.rs`
+
+| ID    | Journey                                           | Expected                                       | Check      |
+| ----- | ------------------------------------------------- | ---------------------------------------------- | ---------- |
+| SB-01 | ★ Press ⌘[, then ⌘\\                              | The sidebar hides, then shows again            | auto: core |
+| SB-02 | Click a note under Recents                        | It opens in the active tab                     | manual     |
+| SB-03 | Click **Files**, expand a folder, click a note    | The tree opens and the note opens              | manual     |
+| SB-04 | Right-click empty sidebar space → **New file**    | Files opens with a new note to name            | manual     |
+| SB-05 | Create a note outside Pensée (shell) in the vault | It appears in Files within a couple of seconds | manual     |
+| SB-06 | Drag a note onto a folder in Files                | The file moves on disk; its open tab follows   | you        |
+| SB-07 | Click the magnifying glass (or press ⌘P)          | The command palette opens                      | manual     |
+
+## Tabs and columns — TAB
+
+**Feature:** Every open tab is a column side by side; pinch toggles one tab /
+all. Tabs have history, shortcuts and a right-click menu.
+**Spec:** SPECs/tab-columns-spec.md, SPECs/note-header-menu-spec.md
+**Code:** `src/components/editor-area/editor-tabs.tsx`, `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/tab-menu.ts`, `src/stores/editor-store.ts`, `src/hooks/use-keyboard-shortcuts.ts`
+
+| ID     | Journey                                     | Expected                                          | Check               |
+| ------ | ------------------------------------------- | ------------------------------------------------- | ------------------- |
+| TAB-01 | Open two notes in two tabs                  | Both show as columns side by side                 | legacy: tab-columns |
+| TAB-02 | ⌘W on the front tab                         | It closes; its neighbour takes focus              | manual              |
+| TAB-03 | Ctrl+Tab, Ctrl+Shift+Tab, ⌘1…⌘9             | Focus moves to the next, previous, Nth tab        | manual              |
+| TAB-04 | Follow a link, then ⌥← and ⌥→               | Goes back to the first note, then forward again   | manual              |
+| TAB-05 | Right-click a tab → **Rename**, type, Enter | The file is renamed on disk and in the tab        | manual              |
+| TAB-06 | Right-click a tab → **Delete**              | The note goes to the Trash and its tab closes     | manual              |
+| TAB-07 | Pinch in on a tab, then out                 | One tab fills the window, then all columns return | you                 |
+
+## Composer (new note) — CMP
+
+**Feature:** ⌘T / ⌘N opens one box to make a note, a line in a day's note, or a
+Library item.
+**Spec:** SPECs/composer-spec.md
+**Code:** `src/components/composer/`, `src/hooks/use-composer.ts`
+
+| ID     | Journey                                | Expected                                                    | Check      |
+| ------ | -------------------------------------- | ----------------------------------------------------------- | ---------- |
+| CMP-01 | ★ ⌘T, type a title and text, ⌘⇧↵       | The note is created with that text and opens                | auto: core |
+| CMP-02 | ⌘T, type a title, ⌘↵                   | The note is created, you stay put, a notice offers **Open** | manual     |
+| CMP-03 | ⌘⇧N, type text with an empty title, ⌘↵ | The text lands in today's daily note                        | manual     |
+| CMP-04 | ⌘⇧L, paste a YouTube link in the title | Type switches to Video; creating makes a Library video note | manual     |
+| CMP-05 | Type something, Esc, ⌘T again          | The box reopens with the draft kept                         | manual     |
+
+## Command palette and search — PAL
+
+**Feature:** ⌘P searches files and commands; ⌘O goes to a file; a pasted link
+offers **Add to Library**; content search finds text inside notes.
+**Spec:** SPECs/fuzzy-search-grep-spec.md, SPECs/add-to-library-spec.md
+**Code:** `src/components/command-palette/`, `src-tauri/src/commands/search.rs`
+
+| ID     | Journey                                          | Expected                                          | Check      |
+| ------ | ------------------------------------------------ | ------------------------------------------------- | ---------- |
+| PAL-01 | ★ ⌘O, type part of a note's name, Enter          | That note opens                                   | auto: core |
+| PAL-02 | ⌘P, type a command name (e.g. "Toggle Calendar") | The command runs                                  | manual     |
+| PAL-03 | ⌘O, paste a URL                                  | An **Add to Library** row is on top, kind guessed | manual     |
+| PAL-04 | Search for a word that is only inside a note     | The note is found with the matching line          | manual     |
+
+## Editor — ED
+
+**Feature:** The markdown editor: title row, folded properties, live-rendered
+markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
+**Spec:** SPECs/page-title-spec.md, SPECs/cmd-f-spec.md, SPECs/multilevel-list-numbering-spec.md, SPECs/editor-audit-spec.md
+**Code:** `src/components/editor-area/`, `src/lib/prosemark-core/`, `src/hooks/editor-api.ts`, `src-tauri/src/commands/fs.rs` (write_file)
+
+| ID    | Journey                                                  | Expected                                                    | Check                       |
+| ----- | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------- |
+| ED-01 | ★ Open a note, type a sentence                           | It is saved to disk within a second; no unsaved dot remains | auto: core                  |
+| ED-02 | ★ Click the title, rename, Enter                         | The file is renamed; the caret moves to the body            | auto: core                  |
+| ED-03 | Click **N properties ›** on the title line               | The properties open; clicking again folds them              | manual                      |
+| ED-04 | ⌘B, ⌘I, ⌘E, ⌘K on selected text                          | Bold, italic, code, link markup is applied and rendered     | manual                      |
+| ED-05 | Type `- a`, Enter, Tab, `b`                              | A nested bullet; Shift+Tab lifts it back                    | manual                      |
+| ED-06 | Type `1. a`, Enter, Tab                                  | Nested numbering reads `1.1` style, like a word processor   | manual                      |
+| ED-07 | Click a task checkbox                                    | It toggles `[ ]` ↔ `[x]` in the file                        | manual                      |
+| ED-08 | ⌘⌥1 … ⌘⌥6, then ⌘⌥0                                      | The line becomes H1…H6, then plain paragraph                | legacy: empty-heading-enter |
+| ED-09 | ⌘F, type a word, Enter; replace one, then **All**        | Matches highlight and step; replacements are written        | manual                      |
+| ED-10 | Triple-click a paragraph; double-click a bullet's marker | Selection stops at the text's end with a ¶; marker excluded | manual                      |
+| ED-11 | ⌘Z, ⌘⇧Z after typing                                     | Undo and redo the edit; history does not leak across files  | manual                      |
+| ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab        | manual                      |
+
+## Links — LNK
+
+**Feature:** `[[wiki links]]` with autocomplete and page creation, hover
+previews, heading anchors, `@` date mentions, inline URL icons and full-page
+link previews.
+**Spec:** SPECs/wiki-link-pages-spec.md, SPECs/wiki-link-preview-spec.md, SPECs/heading-anchor-links-spec.md, SPECs/link-preview-spec.md
+**Code:** `src/components/editor-area/` (link-navigation.ts, link-preview.ts, wiki-link-\*.ts, wiki-pages-extension.ts, date-mention.ts), `src/lib/prosemark-core/links.ts`
+
+| ID     | Journey                                      | Expected                                                   | Check      |
+| ------ | -------------------------------------------- | ---------------------------------------------------------- | ---------- |
+| LNK-01 | ★ Click a `[[Welcome]]` link in a note       | Welcome opens in a new column beside the note              | auto: core |
+| LNK-02 | Type `[[Wel`, pick **Welcome** from the list | `[[Welcome]]` is inserted                                  | manual     |
+| LNK-08 | Type `[[Brand new page]]` and click it       | The page is created (empty) and opens beside               | manual     |
+| LNK-03 | Hover a `[[link]]`                           | A preview card of the page shows beside it                 | manual     |
+| LNK-04 | Type `@to`, Enter                            | `[[YYYY-MM-DD]]` for today is inserted; it opens that note | manual     |
+| LNK-05 | Click `[See](#section)`                      | The editor scrolls to that heading                         | manual     |
+| LNK-06 | Paste a URL on its own line                  | The page shows live in a frame with reload / open buttons  | manual     |
+| LNK-07 | A URL mid-sentence                           | Shows as a link icon; click opens the browser              | manual     |
+
+## Blocks — BLK
+
+**Feature:** Each block has a handle menu (turn into, move, duplicate,
+delete). Blocks can be linked into other notes and edited in either place.
+**Spec:** SPECs/block-handle-menu-spec.md, SPECs/block-embed-spec.md
+**Code:** `src/components/editor-area/` (block-handle-menu.ts, block-actions.ts, block-embed.ts, linked-block-sync.ts, block-backlinks.ts)
+
+| ID     | Journey                                                    | Expected                                                     | Check                        |
+| ------ | ---------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------- |
+| BLK-01 | Hover a paragraph, open its ¶ handle, choose **Heading 2** | Only that block becomes `## `                                | legacy: block-handle-heading |
+| BLK-02 | Handle menu on a list item → **Move down**, **Delete**     | Only that item moves / goes; numbers stay in order           | manual                       |
+| BLK-03 | ⌘⇧C in a paragraph, ⌘⇧V in another note                    | A linked block appears; editing it changes the original note | manual                       |
+| BLK-04 | Select text, ⌘⌥N, pick a page                              | The text moves into that page and a link is left behind      | manual                       |
+
+## Rich content — MED
+
+**Feature:** Images, videos and HTML files embed inline; tables render and edit
+in place; LaTeX math and Mermaid diagrams render.
+**Spec:** SPECs/obsidian-image-embed-spec.md, SPECs/table-in-place-cell-editing-spec.md, SPECs/paste-tabular-data-as-table-spec.md, SPECs/latex-math-spec.md, SPECs/mermaid-canvas-widget-spec.md, SPECs/html-file-embed-spec.md
+**Code:** `src/components/editor-area/` (image-src-resolver.ts, table-decorations.ts, mermaid-_.ts, math-_.ts, html-\*.ts, video-embed-widget.ts), `src-tauri/src/commands/images.rs`
+
+| ID     | Journey                                   | Expected                                                 | Check                   |
+| ------ | ----------------------------------------- | -------------------------------------------------------- | ----------------------- |
+| MED-01 | Paste an image into a note                | It is saved to the note's assets folder and shows inline | manual                  |
+| MED-02 | `![[clip.mp4]]` in a note                 | A video player shows                                     | manual                  |
+| MED-03 | Click a cell in a rendered table and type | The cell edits in place; the table stays rendered        | legacy: table-cell-edit |
+| MED-04 | Paste tab-separated rows                  | A markdown table is inserted                             | manual                  |
+| MED-05 | `$x^2$` and a `$$` block                  | Both render as math                                      | legacy: latex-math      |
+| MED-06 | A ```mermaid block                        | Renders in a canvas with pan, zoom, reset, source toggle | manual                  |
+
+## Calendar panel — CAL
+
+**Feature:** ⌘] opens a calendar on the right. Clicking a day, week, month,
+quarter or year creates or opens its note (`2026-10-13`, `2026-W42`, `2026-10`,
+`2026-Q4`, `2026`) in the daily-note folder; a dot marks notes that exist.
+**Spec:** SPECs/calendar-panel-spec.md
+**Code:** `src/components/calendar-panel/`, `src/components/arc/calendar/`, `src/lib/periodic-notes.ts`, `src/lib/daily-note.ts`, `src/hooks/use-daily-note.ts`, `src/hooks/use-calendar-panel.ts`, `src-tauri/src/commands/fs.rs` (list_markdown_stems, create_file_if_missing)
+
+| ID     | Journey                                                 | Expected                                                    | Check          |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------- | -------------- |
+| CAL-01 | ★ ⌘], then the panel button                             | The panel opens, then closes                                | auto: calendar |
+| CAL-02 | ★ Click a day                                           | Its note is created (or opened) and is in front; day filled | auto: calendar |
+| CAL-03 | Click a week number (W42)                               | The week's note opens                                       | auto: calendar |
+| CAL-04 | Title menu → **Months**; click a month, then **Q4**     | The month's, then the quarter's note opens                  | auto: calendar |
+| CAL-05 | Title menu → **Years**; click this year                 | The year's note opens                                       | auto: calendar |
+| CAL-06 | **Today** after notes exist                             | Back on this month; days with a note show a dot             | auto: calendar |
+| CAL-07 | ⌘-click a day                                           | The note opens in a new column right of the active tab      | auto: calendar |
+| CAL-08 | In a large iCloud vault, open the panel and click a day | Dots appear at once; the note opens within a second         | you            |
+
+## Daily note — DN
+
+**Feature:** Today's note, named `YYYY-MM-DD`, lives in the Daily Note Folder
+setting (workspace root when blank) and is reached from the composer, the
+palette and the calendar.
+**Spec:** SPECs/daily-note-spec.md
+**Code:** `src/lib/daily-note.ts`, `src/hooks/use-daily-note.ts`, `src/components/sidebar/` (Today)
+
+| ID    | Journey                                              | Expected                                           | Check      |
+| ----- | ---------------------------------------------------- | -------------------------------------------------- | ---------- |
+| DN-01 | ★ Click **Today** in the sidebar                     | Today's note is created if missing and opens       | auto: core |
+| DN-02 | ⌘P → **Open Today's Note** twice                     | The same note opens; its text is never overwritten | manual     |
+| DN-03 | Set Daily Note Folder to `Journal/Daily`, open today | The note is created in that folder                 | manual     |
+
+## Boards — BRD
+
+**Feature:** `.board.svg` whiteboards shown in notes: shapes, stickies,
+connectors, pen, mind maps, flowcharts, templates, find, present, PNG export.
+Opened full screen or **Edit here** over a note.
+**Spec:** SPECs/board-lark-parity-spec.md, SPECs/board-rich-text-spec.md, SPECs/board-color-palette-spec.md
+**Code:** `src/components/editor-area/board/`
+
+| ID     | Journey                                        | Expected                                                | Check                   |
+| ------ | ---------------------------------------------- | ------------------------------------------------------- | ----------------------- |
+| BRD-01 | `/board` in a note, pick Blank                 | A `.board.svg` is created next to the note and opens    | legacy: board-file      |
+| BRD-02 | Add a sticky, type, Esc; close the board       | The preview in the note shows the sticky                | legacy: board-file      |
+| BRD-03 | Select a shape, click its blue dot             | A connected shape is added with an arrow                | legacy: board-flowchart |
+| BRD-04 | ⌘Z, ⌘⇧Z on the board                           | Undo and redo work on the board, not the note behind it | manual                  |
+| BRD-05 | Hover the board in a note → **Edit here**, Esc | Opens over that note's column only; Esc returns to it   | manual                  |
+| BRD-06 | Export PNG; **Present**                        | A PNG is saved; present mode steps through frames       | manual                  |
+
+## Projects — PRJ
+
+**Feature:** The Projects space is a kanban of `Type: Project` notes by
+**Status**. Moving a card writes the note's frontmatter. Done folds its older cards.
+**Spec:** SPECs/project-views-spec.md
+**Code:** `src/components/spaces/project-views.tsx`, `src/components/arc/blocks/kanban-board/`, `src/lib/projects.ts`, `src/lib/project-template.ts`, `src-tauri/src/commands/spaces.rs`
+
+| ID     | Journey                                   | Expected                                             | Check               |
+| ------ | ----------------------------------------- | ---------------------------------------------------- | ------------------- |
+| PRJ-01 | ★ Click **Projects** in the sidebar       | The kanban shows Launch site and Old idea            | auto: core          |
+| PRJ-02 | Drag a card to another column             | Its note's `Status:` changes on disk                 | you                 |
+| PRJ-03 | Focus a card, Space, →, Space             | The card moves one column; Status is written         | manual              |
+| PRJ-04 | **+** on a column, type a new name, Enter | A project note is created with that Status and shows | legacy: project-add |
+| PRJ-05 | Click a card                              | Its note opens; **Back** returns to Projects         | manual              |
+| PRJ-06 | Done holds more cards than fit            | **Show N more** unfolds them, **Show fewer** folds   | manual              |
+
+## Library — LIB
+
+**Feature:** Books, videos, courses, podcasts, papers and X bookmarks as a
+cover gallery with type tabs; items are added from a link, a file or a title.
+**Spec:** SPECs/add-to-library-spec.md, SPECs/spaces-spec.md
+**Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/commands/covers.rs`
+
+| ID     | Journey                                | Expected                                                   | Check                     |
+| ------ | -------------------------------------- | ---------------------------------------------------------- | ------------------------- |
+| LIB-01 | ★ Click **Library**                    | The seeded book shows under Books                          | auto: core                |
+| LIB-05 | Switch Library tabs (Books, Videos, …) | Covers show; switching is instant                          | legacy: library-covers    |
+| LIB-02 | Click a book cover                     | Its note opens (beside its book file when there is one)    | manual                    |
+| LIB-03 | **+** at the top, paste a YouTube link | A video note named after the video is created and opens    | you                       |
+| LIB-04 | Library → **Bookmarks**                | Bookmark cards show; **Sync now** / **Connect X** is there | legacy: library-bookmarks |
+
+## Book reader — BK
+
+**Feature:** PDFs and EPUBs open beside their book note; highlights become
+bullets; text size and reading place persist.
+**Spec:** SPECs/book-reader-spec.md
+**Code:** `src/components/book-reader/`, `src/lib/book-*.ts`, `src-tauri/src/commands/books.rs`
+
+| ID    | Journey                                 | Expected                                                 | Check                  |
+| ----- | --------------------------------------- | -------------------------------------------------------- | ---------------------- |
+| BK-01 | Drop an EPUB on the window              | It is saved by its note and opens beside it              | you                    |
+| BK-02 | Select text in the book → **Highlight** | A bullet with the passage is added to the note           | manual                 |
+| BK-03 | Close and reopen the book               | It opens on the same passage                             | legacy: book-place     |
+| BK-04 | **Aa** → large A                        | Text grows; the passage stays in view; the size persists | legacy: book-text-size |
+
+## YouTube notes — YT
+
+**Feature:** A note with a YouTube link plays the video under its properties,
+pins moments to lines and fetches the transcript.
+**Spec:** SPECs/youtube-notes-spec.md
+**Code:** `src/components/editor-area/` (video-player.tsx, video-pin.ts, video-transcript.ts), `src-tauri/src/commands/video_player.rs`
+
+| ID    | Journey                            | Expected                                              | Check                     |
+| ----- | ---------------------------------- | ----------------------------------------------------- | ------------------------- |
+| YT-01 | Open a note with a YouTube `Link:` | The player shows under the properties                 | legacy: youtube-notes     |
+| YT-02 | Play, ⌘⇧M on a line                | The line gets a pin; clicking it seeks to that moment | legacy: youtube-pin-click |
+| YT-03 | ⌘⇧J anywhere                       | The front note's video plays or pauses                | manual                    |
+
+## Agent chat — AG
+
+**Feature:** ⌘J opens a Claude chat bottom right that reads the open tabs and
+period notes and edits files.
+**Spec:** SPECs/agent-chat-spec.md
+**Code:** `src/components/agent-chat/`, `src/lib/agent-*.ts`, `src-tauri/src/commands/agent.rs`
+
+| ID    | Journey                            | Expected                                         | Check |
+| ----- | ---------------------------------- | ------------------------------------------------ | ----- |
+| AG-01 | ⌘J, ask "what is this page about?" | An answer about the front tab arrives in seconds | you   |
+| AG-02 | Ask it to add a line to the note   | The file changes and the editor updates in place | you   |
+
+## Settings and appearance — SET
+
+**Feature:** Preferences (⌘,) for accent colour, light/dark colours, fonts,
+editor size and width, daily-note folder, sidebar and status-bar visibility.
+Window zoom with ⌘= / ⌘- / ⌘0.
+**Spec:** SPECs/global-font-settings-spec.md, SPECs/editor-content-width-spec.md, SPECs/window-zoom-spec.md, SPECs/statusbar-sidebar-visibility-spec.md
+**Code:** `src/components/settings-panel/`, `src/stores/settings-store.ts`, `src/styles/tokens.css`, `src-tauri/src/commands/settings.rs`
+
+| ID     | Journey                                   | Expected                                            | Check                       |
+| ------ | ----------------------------------------- | --------------------------------------------------- | --------------------------- |
+| SET-01 | ★ ⌘P → **Settings** (or ⌘,)               | Preferences opens in a tab                          | auto: core                  |
+| SET-02 | Pick another **Accent**                   | Selection, focus ring, calendar day take the colour | manual                      |
+| SET-03 | Change editor font                        | The editor text changes at once and after relaunch  | legacy: font-picker         |
+| SET-04 | ⌘=, ⌘-, ⌘0                                | The window zooms in, out, back to 100%; persists    | legacy: window-zoom         |
+| SET-05 | Right-click the status bar, hide a metric | It hides and stays hidden after relaunch            | legacy: visibility-settings |
+
+## Imports — IMP
+
+**Feature:** Apple Books highlights and X bookmarks sync into notes in the
+background.
+**Spec:** SPECs/apple-books-highlights-spec.md, SPECs/x-bookmarks-spec.md
+**Code:** `src/lib/apple-books.ts`, `src/lib/x-bookmarks.ts`, `src-tauri/src/commands/apple_books.rs`, `src-tauri/src/commands/x_bookmarks.rs`
+
+| ID     | Journey                                    | Expected                                        | Check                |
+| ------ | ------------------------------------------ | ----------------------------------------------- | -------------------- |
+| IMP-01 | Settings → Apple Books → Import Highlights | Highlighted books get pages with bullets        | you                  |
+| IMP-02 | Bookmark a post on X, **Sync now**         | A thread note with its media lands in Bookmarks | legacy: tweet-thread |
+
+---
+
+## Template for a new feature
+
+```md
+## <Feature name> — <AREA>
+
+**Feature:** <one or two sentences: what the user can do, in their words>
+**Spec:** SPECs/<feature>-spec.md
+**Code:** `<paths a change would have to touch to break it>`
+
+| ID        | Journey                          | Expected                               | Check        |
+| --------- | -------------------------------- | -------------------------------------- | ------------ |
+| <AREA>-01 | ★ <the one thing that must work> | <what the user sees / what is on disk> | auto: <name> |
+```

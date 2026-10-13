@@ -67,6 +67,14 @@ export const config = {
     await new Promise((r) => setTimeout(r, 1500));
   },
 
+  // Journey runs (e2e/qa/run.sh) reseed the QA vault before each spec file's
+  // app launch, so every spec starts from the same notes and settings.
+  beforeSession: async function () {
+    if (!process.env.PENSEE_QA_SEED) return;
+    const { seedVault } = await import("./qa/seed-vault.mjs");
+    seedVault();
+  },
+
   onComplete: async function () {
     if (proxy && !proxy.killed) {
       const exited = new Promise((r) => proxy.once("exit", r));

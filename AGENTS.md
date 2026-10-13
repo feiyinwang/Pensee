@@ -46,6 +46,11 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - [docs/design-tokens.md](./docs/design-tokens.md) — the one place every colour, font, type size, radius and shadow is set (`src/styles/tokens.css`): primitives → semantic tokens → legacy aliases, how to swap a value, `lib/design-tokens.ts` for JS that needs literals, and the test that fails on a raw value anywhere else
 - [docs/brand.md](./docs/brand.md) — the logo (a Thick–Thin ¶ in a fashion-house serif cut): its two cuts, Ink/Cream colours, wordmark and lockups, the don'ts, and how to regenerate the app icon and favicon from `assets/brand/`
 
+**QA**
+
+- [docs/qa/user-journeys.md](./docs/qa/user-journeys.md) — every user journey that must keep working, by feature: what the feature is, the code that can break it, and how each journey is checked
+- [docs/qa/qa-checklist.md](./docs/qa/qa-checklist.md) — the QA pass the `pensee-qa` skill runs after each change: pick journeys from the changed files, drive the real app with `apps/desktop/e2e/qa/run.sh`, fix failures, report; plus the e2e harness traps
+
 **Infra**
 
 - [docs/website-deploy.md](./docs/website-deploy.md) — how to deploy the marketing website to Cloudflare Workers
@@ -66,6 +71,8 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - If a behavior or rule changes in practice, update the owning doc in the same task.
 - In autonomous/loop mode, complete exactly one task at a time and commit immediately. Do not batch unless the user explicitly asks.
 - When coding or reviewing, follow the Engineering Guardrails below and the guidelines in linked docs.
+- After every change to `apps/desktop/`, run the `pensee-qa` skill before committing: the journeys the change can reach must pass in the real app, and a failing one is fixed in the same task.
+- A new feature, or a change to what a feature does, records its user journeys and feature description in [`docs/qa/user-journeys.md`](./docs/qa/user-journeys.md) in the same commit, with journey specs in `apps/desktop/e2e/specs/journeys/`.
 
 ## Engineering Guardrails
 
@@ -85,6 +92,7 @@ Frontend:
 
 - `vp check` — format, lint, and TypeScript type checks
 - `vp test` — JavaScript/TypeScript tests
+- `apps/desktop/e2e/qa/run.sh [areas…]` — user-journey specs in the real app (the `pensee-qa` skill)
 
 Rust (from `apps/desktop/src-tauri/`):
 
