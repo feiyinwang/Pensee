@@ -41,6 +41,7 @@ import {
   cutsFromReply,
   echoLine,
   echoQuote,
+  echoedNotes,
   echoesReply,
   isItem,
   isPenParagraph,
@@ -51,6 +52,7 @@ import {
   noteForPen,
   parentOf,
   penKindOf,
+  penLabelEnd,
   penLineSlot,
   penPrompt,
   pinnedSecond,
@@ -524,6 +526,9 @@ class PenPlugin {
   private conversation: PenConversation | null = null;
   private busyLabel = "Writing…";
   private shortening: ShortenLine[] | null = null;
+  /** Shorten's last step: Enter asked "Delete these words?"; Enter again
+   *  deletes them, Esc goes back to reviewing the cuts. */
+  private confirming = false;
   private fresh: DecorationSet = Decoration.none;
   private message: { parts: PenHintPart[]; until: number } | null = null;
   private after: { parts: PenHintPart[]; until: number } | null = null;
@@ -686,26 +691,19 @@ class PenPlugin {
       ranges.push(Decoration.widget({ widget: new SealWidget(), side: 1 }).range(from + end));
       return;
     }
-    if (kind === "p" || kind === "n") {
-      const label = /^(For|Against):\s/.exec(text.slice(start));
-      if (label) {
+    if (kind === "p" || kind === "n" || kind === "e") {
+      // What the line is (For, Against, Supports…): quieter than what it says.
+      const label = penLabelEnd(text.slice(start));
+      if (label !== null) {
         ranges.push(
-          Decoration.mark({ class: "cm-pen-side" }).range(
-            from + start,
-            from + start + label[0].length - 1,
-          ),
+          Decoration.mark({ class: "cm-pen-side" }).range(from + start, from + start + label),
         );
       }
+    }
+    if (kind === "p" || kind === "n") {
       if (citationsIn(text).length === 0 && end > start) {
         ranges.push(Decoration.widget({ widget: new NoPaperWidget(), side: 1 }).range(from + end));
       }
-    }
-    if (kind === "e") {
-      // The relation after the note's link: fainter.
-      const body = text.slice(start, end);
-      const at = body.lastIndexOf(" · ");
-      if (at > 0)
-        ranges.push(Decoration.mark({ class: "cm-pen-src" }).range(from + start + at, from + end));
     }
     if (kind === "f" || kind === "p" || kind === "n") {
       // Always the pill, never its Markdown: the paper's details live in the
@@ -756,21 +754,22 @@ class PenPlugin {
       };
     }
     if (this.shortening) {
-      const saved = this.shortening.reduce(
-        (n, line) =>
-          n +
-          wordCount(
-            applyCuts(
-              line.text,
-              line.cuts.filter((c) => !c.kept),
-            ),
-          ) -
-          wordCount(line.text),
-        0,
-      );
+      const saved = this.savedWords();
+      if (this.confirming) {
+        return {
+          parts: [
+            { strong: `Delete ${saved} ${saved === 1 ? "word" : "words"}?` },
+            { gap: true },
+            { key: "↵" },
+            { text: "delete" },
+            { key: "Esc" },
+            { text: "keep reviewing" },
+          ],
+        };
+      }
       return {
         parts: [
-          { strong: `${String(saved).replace("-", "−")} words` },
+          { strong: `−${saved} words` },
           { text: "Only cuts. Click a cut to keep it." },
           { gap: true },
           { key: "↵" },
@@ -977,7 +976,7 @@ class PenPlugin {
       return true;
     }
     if (this.shortening) {
-      this.endShorten(false);
+      this.shortenKey("Escape");
       return true;
     }
     if (this.conversation) {
@@ -1023,8 +1022,57 @@ class PenPlugin {
     const cut = this.shortening[l!]?.cuts[c!];
     if (!cut) return false;
     cut.kept = !cut.kept;
-    this.redraw();
+    // Changing the cuts goes back to reviewing them.
+    if (this.confirming) this.askConfirm(false);
+    else this.redraw();
     return true;
+  }
+
+  /** The words the cuts still marked would remove. */
+  private savedWords(): number {
+    return (this.shortening ?? []).reduce(
+      (n, line) =>
+        n +
+        wordCount(line.text) -
+        wordCount(
+          applyCuts(
+            line.text,
+            line.cuts.filter((c) => !c.kept),
+          ),
+        ),
+      0,
+    );
+  }
+
+  /** Shorten's keys: Enter asks to confirm, then deletes; Esc steps back
+   *  (from the question to the cuts, from the cuts to your lines as they
+   *  were). */
+  shortenKey(key: "Enter" | "Escape"): void {
+    if (key === "Enter") {
+      if (this.confirming || this.savedWords() === 0) this.endShorten(this.confirming);
+      else this.askConfirm(true);
+    } else if (this.confirming) this.askConfirm(false);
+    else this.endShorten(false);
+  }
+
+  /** The question, right under the last line being shortened, or gone. */
+  private askConfirm(on: boolean): void {
+    this.confirming = on;
+    const last = this.shortening?.[this.shortening.length - 1];
+    let pending: Pending | null = null;
+    if (on && last) {
+      const saved = this.savedWords();
+      pending = {
+        ...this.spotFor({ mode: "under", pos: this.view.state.doc.lineAt(last.from).from }),
+        text: `Delete ${saved} ${saved === 1 ? "word" : "words"}?`,
+        busy: false,
+        keys: [
+          ["↵", "delete"],
+          ["Esc", "keep reviewing"],
+        ],
+      };
+    }
+    this.view.dispatch({ effects: [setPending.of(pending), refresh.of(null)] });
   }
 
   isShortening(): boolean {
@@ -1052,6 +1100,7 @@ class PenPlugin {
     const lines = this.shortening;
     if (!lines) return;
     this.shortening = null;
+    this.confirming = false;
     const changes: ChangeSpec[] = apply
       ? lines.map((line) => ({
           from: line.from,
@@ -1064,7 +1113,7 @@ class PenPlugin {
       : [];
     this.view.dispatch({
       changes,
-      effects: [setLock.of(false), refresh.of(null)],
+      effects: [setLock.of(false), setPending.of(null), refresh.of(null)],
       annotations: penEdit.of(true),
       userEvent: "input.pen",
     });
@@ -1517,16 +1566,16 @@ class PenPlugin {
           ...contentWords(base.lines),
         ]),
       ].slice(0, 16);
-      // Echoes already under the line aren't offered twice.
-      const shown = new Set(
+      // A note already echoed under the line isn't offered again.
+      const shown = echoedNotes(
         childrenOf(lines, anchor)
           .filter((j) => penKindOf(lines[j]!) === "e")
-          .map((j) => itemText(lines[j]!)),
+          .map((j) => lines[j]!),
       );
       const found = terms.length ? await findLinesMentioning(terms, this.getFilePath(), 40) : [];
       const candidates = found
         .map((line) => ({ note: line.stem, text: echoQuote(line.text) }))
-        .filter((c) => c.text.length >= 12 && ![...shown].some((s) => s.includes(c.text)));
+        .filter((c) => c.text.length >= 12 && !shown.has(c.note));
       const picked = candidates.length
         ? echoesReply(
             await conversation.send(
@@ -1547,10 +1596,10 @@ class PenPlugin {
       }
       const at = this.placement;
       const ids: string[] = [];
-      for (const { index, rel } of picked) {
-        const c = candidates[index]!;
+      for (const echo of picked) {
+        const c = candidates[echo.index]!;
         this.placement = at && { ...at, pos: this.mapped(at.pos) };
-        const id = this.write("e", echoLine(c.text, c.note, rel));
+        const id = this.write("e", echoLine(echo, c.text, c.note));
         if (id) ids.push(id);
       }
       this.batch = ids;
@@ -1803,8 +1852,7 @@ export function secondPen(getFilePath: () => string): Extension {
             return true;
           }
           if (pen.isShortening()) {
-            if (event.key === "Enter") pen.endShorten(true);
-            else if (event.key === "Escape") pen.endShorten(false);
+            if (event.key === "Enter" || event.key === "Escape") pen.shortenKey(event.key);
             else return false;
             event.preventDefault();
             event.stopPropagation();

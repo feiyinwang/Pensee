@@ -330,8 +330,9 @@ ink right under the line and never writes your conclusion. `!` writes an
 answer **sealed** until you've written your own take (a take that isn't one
 keeps it sealed), then compares the two. `@` lays out the evidence **for and
 against** a claim, each with a paper, and leaves the call to you. `[` brings
-back lines you wrote in **other notes** on the same idea, linked. `−` proposes
-cuts, `#` regroups several lines in your own words.
+back short points from your **other notes** on the same idea (`Supports: … — [[Note]]`).
+`−` proposes cuts and asks before deleting them; `#` regroups several lines
+in your own words.
 **Spec:** SPECs/second-pen-spec.md
 **Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/pen-box.tsx`, `src/components/arc/floating-button-group/`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src/lib/tauri.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`, `src-tauri/src/commands/search.rs`
 
@@ -344,14 +345,14 @@ cuts, `#` regroups several lines in your own words.
 | PEN-05 | Esc on the empty line under a kept echo                      | The echo is taken back                                                                       | auto: pen  |
 | PEN-06 | Write a real take, Enter                                     | The answer opens (`^ai-r-…`) and the pen's comparison (`^ai-v-…`) appears under your take   | auto: pen  |
 | PEN-07 | ⌘. then `@` on a claim                                       | *For:* (`^ai-p-…`) and *Against:* (`^ai-n-…`) lines, papers as pills, an empty line under Against | auto: pen  |
-| PEN-08 | ⌘. then `−`, then Enter                                      | Cuts show struck through in red with "−N words" in the bar; Enter removes only them          | auto: pen  |
+| PEN-08 | ⌘. then `−`, Enter, Esc, Enter, Enter                        | Cuts show struck through in red with "−N words"; Enter asks *Delete N words?* and deletes nothing; Esc goes back to the cuts; Enter, Enter removes only them. Ids, links and citations are never cut | auto: pen  |
 | PEN-09 | Hover a paper pill, click **Open paper**                     | A card shows the paper's title, authors, venue, year and citations; the paper opens         | you        |
 | PEN-10 | Write nonsense as your take (`sad lion sits there`), Enter   | The answer stays sealed; the bar says it doesn't read as a take                              | auto: pen  |
 | PEN-11 | ⌘. then `!` on a plain (non-bullet) line                     | A plain sealed line appears right below it, a blank line apart, the take bullet under it     | auto: pen  |
 | PEN-12 | ⌥↵ on an empty take                                          | The answer opens (`^ai-r-…`) with no comparison; the empty take goes                        | auto: pen  |
 | PEN-13 | ⌘. then `!` on a question in a video note                    | The sealed answer comes from the transcript and ends with its time (`— 1:10`)               | auto: pen  |
 | PEN-14 | ⌘., type a question in the box, Enter                        | Your question goes in as a sub-bullet of the line; the sealed answer (`^ai-s-…`) under it   | auto: pen  |
-| PEN-15 | ⌘. then `[` on a line another note speaks to                 | Echoes `“…” — [[Note]] · relation` (`^ai-e-…`) appear under it; the link opens that note     | auto: pen  |
+| PEN-15 | ⌘. then `[` on a line another note speaks to                 | Short echoes `Label: one sentence — [[Note]]` (`^ai-e-…`, label like Supports or Example, about 20 words) appear under it; the link opens that note | auto: pen  |
 | PEN-16 | Select several lines, ⌘., `#` Enter, then Esc                | An outline replaces them, tinted; Esc puts your lines back exactly                           | auto: pen  |
 | PEN-17 | Select several lines, ⌘., `#` Enter, then Enter              | The outline stays, with your own words in it                                                 | auto: pen  |
 | PEN-18 | ⌘., type `@` (or a full-width `［`), then Backspace           | The key lights its pill and types nothing; Backspace unselects it                            | auto: pen  |

@@ -10,6 +10,7 @@ import {
   cutsFromReply,
   echoLine,
   echoQuote,
+  echoedNotes,
   echoesReply,
   isNonsenseTake,
   isQuestion,
@@ -20,6 +21,7 @@ import {
   childrenOf,
   penIdKind,
   penKindOf,
+  penLabelEnd,
   penLineSlot,
   penPrompt,
   replyLine,
@@ -28,6 +30,7 @@ import {
   sidesReply,
   subtreeEnd,
   unansweredSiblings,
+  uncuttable,
   unsealedLine,
   videoPassages,
 } from "../src/lib/second-pen";
@@ -274,18 +277,38 @@ describe("prompts and replies", () => {
     ]);
     expect(
       echoesReply(
-        '[{"n": 2, "rel": "same idea"}, {"n": 2, "rel": "another angle"}, {"n": 9, "rel": "same idea"}, {"n": 1, "rel": "made up"}]',
+        '[{"n": 2, "label": "supports"}, {"n": 2, "label": "Summary"}, {"n": 9, "label": "Example"}, {"n": 1, "label": "made up"}]',
         3,
       ),
-    ).toEqual([{ index: 1, rel: "same idea" }]);
+    ).toEqual([{ index: 1, label: "Supports", point: null }]);
+    const [long] = echoesReply(
+      `[{"n": 1, "label": "Example", "point": "${"word ".repeat(50)}"}]`,
+      1,
+    );
+    expect(long!.point!.split(" ").length).toBe(32);
+    expect(long!.point!.endsWith("…")).toBe(true);
     expect(echoQuote("  - [ ] A reward after every chapter. ^abc123")).toBe(
       "A reward after every chapter.",
     );
     expect(echoQuote(`## ${"word ".repeat(60)}`).endsWith("…")).toBe(true);
     expect(echoQuote("<p><small>1:10</small> Recall won.</p>")).toBe("1:10 Recall won.");
-    expect(echoLine("Flat after scrolling.", "Why I quit Twitter", "same idea")).toBe(
-      "“Flat after scrolling.” — [[Why I quit Twitter]] · same idea",
-    );
+    expect(
+      echoLine(
+        { index: 0, label: "Supports", point: "You felt flat after an hour of scrolling." },
+        "After an hour of scrolling I feel flat, not bored, like the colour went out of things.",
+        "Why I quit Twitter",
+      ),
+    ).toBe("Supports: You felt flat after an hour of scrolling. — [[Why I quit Twitter]]");
+    expect(penLabelEnd("Supports: You felt flat. — [[A]]")).toBe(9);
+    expect(penLabelEnd("Another angle: x")).toBe(14);
+    expect(penLabelEnd("Notes: x")).toBeNull();
+    // Without a point, a short quote stands in.
+    expect(
+      echoLine({ index: 0, label: "Summary", point: null }, "x ".repeat(80), "N").length,
+    ).toBeLessThan(120);
+    expect(
+      echoedNotes(["- Example: You slept. — [[Sleep log]] ^ai-e-aaaa", "- [[A#^b|alias]] x"]),
+    ).toEqual(new Set(["Sleep log", "A"]));
   });
 
   test("a citation is a link that keeps the paper's details", () => {
@@ -324,5 +347,18 @@ describe("shorten", () => {
 
   test("an unreadable reply is null", () => {
     expect(cutsFromReply("sorry", ["x"])).toBeNull();
+  });
+
+  test("never cuts an id, a link or a citation", () => {
+    const text = "Supports: you really slept well — [[Sleep log]] · another angle ^ai-e-jjfohink";
+    const cuts = cutsFromReply(
+      '[[" really", "[[Sleep log]]", " ^ai-e-jjfohink", "Sleep", "[link](https://x.org)"]]',
+      [text],
+    );
+    expect(cuts![0]!.map((c) => text.slice(c.from, c.to))).toEqual([" really"]);
+    expect(uncuttable('a [p](https://x.org "t") b ^id-1').map((c) => [c.from, c.to])).toEqual([
+      [2, 24],
+      [27, 32],
+    ]);
   });
 });

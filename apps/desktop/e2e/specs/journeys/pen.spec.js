@@ -383,7 +383,7 @@ describe("Journeys: second pen", function () {
 
   it("PEN-04 Enter on one of several echoes keeps it and drops the unanswered one beside it", async function () {
     const path = `${root}/Notes/Pen.md`;
-    await caretAfter("Familiar faces, forgotten names.");
+    await caretAfter("forgot their names.");
     await key("Enter");
     const text = await waitForDisk(
       path,
@@ -577,13 +577,22 @@ describe("Journeys: second pen", function () {
     await pick("［");
     await waitForDisk(
       path,
-      (t) => /\n {2}- “.+” — \[\[Sleep log\]\] · [a-z ]+ \^ai-e-[a-z0-9]{4}/.test(t),
+      (t) =>
+        /\n {2}- (Supports|Contradicts|Example|Definition|Summary|Answer|Another angle): .+ — \[\[Sleep log\]\] \^ai-e-[a-z0-9]{4}/.test(
+          t,
+        ),
       "expected an echo of Sleep log (^ai-e-…)",
       AI_TIMEOUT,
     );
+    // Short: a point, not the whole line; the link keeps the original.
+    const echoes = (await readFile(path)).split("\n").filter((l) => /\^ai-e-/.test(l));
+    for (const line of echoes) {
+      const point = line.replace(/^\s*- [A-Z][a-z]+( angle)?: /, "").split(" — [[")[0];
+      ok(point.split(/\s+/).length <= 33, `an echo should be short: ${line}`);
+    }
   });
 
-  it("PEN-08 ⌘. − proposes cuts; Enter applies them", async function () {
+  it("PEN-08 ⌘. − proposes cuts; Enter asks, Esc goes back, Enter again deletes them", async function () {
     const path = `${root}/Notes/Pen.md`;
     await armOn("I think we basically");
     await pick("-");
@@ -592,6 +601,24 @@ describe("Journeys: second pen", function () {
       { timeout: AI_TIMEOUT, timeoutMsg: `no cuts shown: ${await barText()}` },
     );
     ok((await barText()).includes("words"), await barText());
+    // Enter asks first; nothing is deleted until the second Enter.
+    const before = await readFile(path);
+    await key("Enter");
+    await browser.waitUntil(async () => /Delete \d+ words?\?/.test(await barText()), {
+      timeout: 3_000,
+      timeoutMsg: `Enter should ask before deleting: ${await barText()}`,
+    });
+    ok((await readFile(path)) === before, "nothing should be deleted before confirming");
+    await key("Escape");
+    await browser.waitUntil(async () => !/Delete \d+ words?\?/.test(await barText()), {
+      timeout: 3_000,
+      timeoutMsg: "Esc should go back to reviewing the cuts",
+    });
+    ok(
+      await browser.execute(() => document.querySelectorAll(".cm-pen-cut").length > 0),
+      "the cuts should still show",
+    );
+    await key("Enter");
     await key("Enter");
     const text = await waitForDisk(
       path,

@@ -369,15 +369,20 @@ function paperBlock(papers: readonly Paper[]): string {
     .join("\n");
 }
 
-/** How an echo relates to the line it was found for. */
-export const ECHO_RELATIONS = [
-  "same idea",
-  "you wrote the opposite",
-  "you answered this before",
-  "another angle",
-  "you tried it",
+/** What an echo is, said first in a word or two: it supports the line,
+ *  contradicts it, is an example of it (your own experience included), a
+ *  definition of its term, a summary of the same idea, an earlier answer to
+ *  its question, or another angle on it. */
+export const ECHO_LABELS = [
+  "Supports",
+  "Contradicts",
+  "Example",
+  "Definition",
+  "Summary",
+  "Answer",
+  "Another angle",
 ] as const;
-export type EchoRelation = (typeof ECHO_RELATIONS)[number];
+export type EchoLabel = (typeof ECHO_LABELS)[number];
 
 function taskText(input: PenPromptInput): string {
   const { ask, source } = input;
@@ -437,8 +442,9 @@ function taskText(input: PenPromptInput): string {
           .map((c, k) => `<line n="${k + 1}" note="${c.note.replace(/"/g, "'")}">${c.text}</line>`)
           .join("\n"),
         "Pick 1 to 3 that meet the idea of the target lines: the same idea, the opposite of it, an earlier answer to the target's question, another angle on it, or the writer's own experience of it. Prefer different notes. Skip a line that only shares a word and is about something else.",
-        `For each, say how it relates, with exactly one of: ${ECHO_RELATIONS.map((r) => `"${r}"`).join(", ")}.`,
-        'Reply with JSON only: [{"n": N, "rel": "…"}], best first. [] only when no line is about the same subject.',
+        `For each, label what it is for the target lines with exactly one of: ${ECHO_LABELS.map((r) => `"${r}"`).join(", ")}. Supports: it backs the target up. Contradicts: it says the opposite. Example: a case of it, the writer's own experience included. Definition: it defines the target's term. Summary: the same idea, said before. Answer: it answers the target's question. Another angle: a different view on it.`,
+        "And write its point: what the writer found or thought there, as it bears on the target lines, in one short sentence of at most 20 words (two only if one can't carry it), addressed as you, in the note's language. Never copy the whole line: the link to the note keeps the original.",
+        'Reply with JSON only: [{"n": N, "label": "…", "point": "…"}], best first. [] only when no line is about the same subject.',
       ].join("\n");
     case "organize":
       return [
@@ -450,7 +456,7 @@ function taskText(input: PenPromptInput): string {
       ].join("\n");
     case "shorten":
       return [
-        "Shorten each target line by cutting words only: filler, hedges, repetition. Never add, reorder or rewrite a word. Keep every idea and the meaning: cut words that add nothing, never a whole thought.",
+        "Shorten each target line by cutting words only: filler, hedges, repetition. Never add, reorder or rewrite a word. Keep every idea and the meaning: cut words that add nothing, never a whole thought. Never cut an id (^…), a [[link]] or a [citation](…).",
         'Reply with JSON only: an array with one array per target line, in order, of the exact substrings to delete. Example for two lines: [["I think ", " basically"], []]. An empty array where every word is pulling its weight.',
       ].join("\n");
   }
@@ -584,20 +590,36 @@ export function contentWords(lines: readonly string[]): string[] {
   return [...new Set((words ?? []).filter((w) => !STOP_WORDS.has(w)))];
 }
 
-/** The echoes a `connectPick` reply chose: candidate indexes (0-based) with
- *  how each relates, at most 3, one per candidate. */
-export function echoesReply(
-  reply: string,
-  count: number,
-): Array<{ index: number; rel: EchoRelation }> {
+export interface Echo {
+  /** The candidate it came from, 0-based. */
+  index: number;
+  label: EchoLabel;
+  /** The pen's short point; null when the reply gave none. */
+  point: string | null;
+}
+
+/** An echo's point is short: past this many words it's cut at a word. */
+const ECHO_POINT_WORDS = 32;
+
+/** The echoes a `connectPick` reply chose, at most 3, one per candidate. */
+export function echoesReply(reply: string, count: number): Echo[] {
   const value = jsonIn(reply);
   if (!Array.isArray(value)) return [];
-  const out: Array<{ index: number; rel: EchoRelation }> = [];
-  for (const item of value as Array<{ n?: unknown; rel?: unknown }>) {
+  const out: Echo[] = [];
+  for (const item of value as Array<{ n?: unknown; label?: unknown; point?: unknown }>) {
     const index = typeof item?.n === "number" ? item.n - 1 : -1;
-    const rel = ECHO_RELATIONS.find((r) => r === item?.rel);
-    if (index < 0 || index >= count || !rel || out.some((o) => o.index === index)) continue;
-    out.push({ index, rel });
+    const asked = typeof item?.label === "string" ? item.label.trim().toLowerCase() : "";
+    const label = ECHO_LABELS.find((l) => l.toLowerCase() === asked);
+    if (index < 0 || index >= count || !label || out.some((o) => o.index === index)) continue;
+    let point = typeof item.point === "string" ? replyLine(item.point) : null;
+    const words = point?.split(/\s+/) ?? [];
+    if (point && words.length > ECHO_POINT_WORDS) {
+      point = `${words
+        .slice(0, ECHO_POINT_WORDS)
+        .join(" ")
+        .replace(/[\s,;:.]+$/, "")}…`;
+    }
+    out.push({ index, label, point });
     if (out.length === 3) break;
   }
   return out;
@@ -605,9 +627,9 @@ export function echoesReply(
 
 const ECHO_QUOTE_MAX = 200;
 
-/** One of your earlier lines as an echo quotes it: no marker, task box,
- *  heading hashes or block id, cut at a word near 200 characters. */
-export function echoQuote(line: string): string {
+/** One of your earlier lines, clean: no marker, task box, heading hashes,
+ *  HTML or block id, cut at a word near `max` characters. */
+export function echoQuote(line: string, max = ECHO_QUOTE_MAX): string {
   let text = line
     .replace(/<[^>]+>/g, "")
     .replace(/^\s*(#{1,6}\s+|>\s*)/, "")
@@ -615,16 +637,35 @@ export function echoQuote(line: string): string {
     .replace(BLOCK_ID_AT_END_RE, "")
     .replace(/^["“]|["”]$/g, "")
     .trim();
-  if (text.length > ECHO_QUOTE_MAX) {
-    const cut = text.lastIndexOf(" ", ECHO_QUOTE_MAX);
-    text = `${text.slice(0, cut > 80 ? cut : ECHO_QUOTE_MAX).replace(/[\s,;:.]+$/, "")}…`;
+  if (text.length > max) {
+    const cut = text.lastIndexOf(" ", max);
+    text = `${text.slice(0, cut > max * 0.4 ? cut : max).replace(/[\s,;:.]+$/, "")}…`;
   }
   return text;
 }
 
-/** An echo as the pen writes it: the quote, its note as a link, the relation. */
-export function echoLine(quote: string, note: string, rel: EchoRelation): string {
-  return `“${quote}” — [[${note}]] · ${rel}`;
+/** An echo as the pen writes it: what it is, its short point (or, without
+ *  one, a short quote), and its note as a link that keeps the original. */
+export function echoLine(echo: Echo, line: string, note: string): string {
+  const point = echo.point ?? `“${echoQuote(line, 90)}”`;
+  return `${echo.label}: ${point} — [[${note}]]`;
+}
+
+/** Where a Check side's or an echo's label ends (`For:`, `Supports:`), as an
+ *  offset into the line's words; null when it has none. */
+export function penLabelEnd(words: string): number | null {
+  const match =
+    /^(For|Against|Supports|Contradicts|Example|Definition|Summary|Answer|Another angle):\s/.exec(
+      words,
+    );
+  return match ? match[0].length - 1 : null;
+}
+
+/** The notes the echoes under a line already link to. */
+export function echoedNotes(echoLines: readonly string[]): Set<string> {
+  return new Set(
+    echoLines.flatMap((line) => [...line.matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1]!.trim())),
+  );
 }
 
 /** `Smith et al. 2024`, `Murre & Dros 2015`, or the venue when no author. */
@@ -705,10 +746,22 @@ export interface Cut {
 
 /** The cuts a `shorten` reply proposes for each line, as offsets into that
  *  line's words. Substrings that aren't there are dropped; overlaps too. */
+/** What Shorten never cuts: block ids (`^ai-e-ab12`), `[[links]]` and
+ *  Markdown links (a paper's citation). Offsets into `text`. */
+export function uncuttable(text: string): Cut[] {
+  return [...text.matchAll(/(^|\s)\^[A-Za-z0-9-]+|\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)/g)].map(
+    (m) => {
+      const lead = m[1]?.length ?? 0;
+      return { from: m.index + lead, to: m.index + m[0].length };
+    },
+  );
+}
+
 export function cutsFromReply(reply: string, texts: readonly string[]): Cut[][] | null {
   const value = jsonIn(reply);
   if (!Array.isArray(value)) return null;
   return texts.map((text, k) => {
+    const kept = uncuttable(text);
     const wanted = Array.isArray(value[k]) ? (value[k] as unknown[]) : [];
     const cuts: Cut[] = [];
     let from = 0;
@@ -718,7 +771,8 @@ export function cutsFromReply(reply: string, texts: readonly string[]): Cut[][] 
       if (at < 0) at = text.indexOf(item);
       if (at < 0) continue;
       const cut = { from: at, to: at + item.length };
-      if (cuts.some((c) => cut.from < c.to && cut.to > c.from)) continue;
+      const overlaps = (c: Cut) => cut.from < c.to && cut.to > c.from;
+      if (cuts.some(overlaps) || kept.some(overlaps)) continue;
       cuts.push(cut);
       from = cut.to;
     }

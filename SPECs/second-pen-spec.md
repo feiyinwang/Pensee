@@ -41,7 +41,7 @@ notes are gone. The look is unchanged from the first Second pen
   | --- | --- |
   | `!` **Answer** | writes an answer, sealed, with a line under it for your take. It opens once you've written yours |
   | `@` **Check** | the evidence for and against the line, each with a paper (or *no paper*), then a line for your call. No verdict |
-  | `[[` **Connect** | up to three lines you wrote in other notes that meet this one, each linked to its note and saying how they relate |
+  | `[[` **Connect** | up to three short points from what you wrote in other notes, each saying what it is (Supports, Example…) and linked to its note |
   | `−` **Shorten** | proposes cuts on the lines, nothing else |
   | `#` **Organize** | only with several lines selected: regroups them into an outline in your own words |
 
@@ -132,11 +132,16 @@ notes are gone. The look is unchanged from the first Second pen
 ### Connect: what you wrote before
 
 - **⌘. [** on a line: the pen looks through your other notes for lines on the
-  same idea and writes up to three **echoes** under it, each one of your own
-  earlier lines quoted, then its note as a link, then how it relates:
-  `“After an hour of scrolling I feel flat…” — [[Why I quit Twitter]] · same idea`.
-  The relations: *same idea*, *you wrote the opposite*, *you answered this
-  before*, *another angle*, *you tried it*.
+  same idea and writes up to three **echoes** under it. Each is short: a
+  label saying what it is, one sentence (two at most, about 20 words) in the
+  pen's words on what you found or thought there, and the note as a link. The
+  link keeps the original, so the echo never copies the whole line:
+  `Supports: You remembered more after eight hours of sleep before an exam. — [[Sleep log]]`.
+  The labels: *Supports*, *Contradicts*, *Example* (your own experience
+  included), *Definition*, *Summary* (the same idea, said before), *Answer*
+  (to the line's question), *Another angle*. The label is drawn quieter than
+  the sentence, like Check's *For:* and *Against:*.
+- A note already echoed under the line isn't offered again.
 - **Enter** on an echo keeps it (a click on its link opens that note): the other echoes
   on that line that have nothing under them go, and an empty bullet opens
   under the kept one: *How are these connected? In your words.* The link is a
@@ -159,10 +164,13 @@ notes are gone. The look is unchanged from the first Second pen
 ### Shorten
 
 - The pen proposes cuts on the target lines: struck through in red, nothing
-  added, reordered or rewritten.
+  added, reordered or rewritten. It never cuts a block id (`^…`, hidden or
+  not), a `[[link]]` or a paper's citation.
 - Click a cut to keep those words (click again to cut them).
-- **Enter** applies the cuts, **Esc** cancels. While cuts are shown the lines
-  can't be edited.
+- **Enter** asks before deleting: *Delete 12 words?* under the lines and in
+  the bar. **Enter** again deletes them; **Esc** goes back to reviewing the
+  cuts (and clicking a cut does too). **Esc** while reviewing cancels, your
+  lines as they were. While cuts are shown the lines can't be edited.
 - "Nothing to cut. Every word is pulling its weight." when it finds none.
 
 ### What it knows
@@ -184,7 +192,7 @@ pen's. The bar has the page's own solid background, so text scrolling under it
 never shows through. It shows, in order of what applies:
 
 1. **Writing…** while a request runs (nothing while the pen's box is open);
-2. the shorten keys and the words it would save;
+2. the shorten keys and the words it would save, then *Delete N words?*;
 3. a short message, for 4 seconds (nothing found, an error);
 4. on your take under a sealed answer: `↵ open it and compare  ⌥↵ open it without writing`;
 5. on an echo: `↵ keep it and say how they connect`;
