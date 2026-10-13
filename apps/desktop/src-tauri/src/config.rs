@@ -282,6 +282,48 @@ pub fn settings_schema() -> Vec<SettingDef> {
     load_schema()
 }
 
+/// (background, foreground) of every colour theme preset Pensée has shipped
+/// and since removed, light mode. Recorded from git before the preset folders
+/// were deleted: the fourteen of `shared/themes/` (amber … warm-paper) plus the
+/// older `default`. Used only by `migrate_removed_theme_presets`.
+const REMOVED_PRESETS_LIGHT: &[(&str, &str)] = &[
+    ("#F7F2E4", "#2E2208"), // amber
+    ("#FAF0EB", "#36160D"), // ember
+    ("#ECF5EF", "#0F2A1B"), // forest
+    ("#FFFFFF", "#000000"), // high-contrast
+    ("#EEF0FA", "#151A3D"), // indigo
+    ("#ECEFF6", "#0E1630"), // midnight
+    ("#EAF1F8", "#0C2338"), // ocean
+    ("#F2F5E9", "#20260B"), // olive
+    ("#FFFFFF", "#0D0D0D"), // orange
+    ("#F8EEF4", "#34122A"), // plum
+    ("#EEF1F5", "#111827"), // slate
+    ("#E9F2F1", "#0B2A30"), // teal (and the older writer)
+    ("#F2EEF9", "#221538"), // violet
+    ("#F6EFE3", "#2A211A"), // warm-paper
+    ("#FFFFFF", "#1A1A1A"), // default (before the preset picker)
+];
+
+/// Dark-mode counterpart of `REMOVED_PRESETS_LIGHT`, plus the older `writer`.
+const REMOVED_PRESETS_DARK: &[(&str, &str)] = &[
+    ("#4A3600", "#FFFFFF"), // amber
+    ("#692313", "#FFFFFF"), // ember
+    ("#004123", "#FFFFFF"), // forest
+    ("#000000", "#FFFFFF"), // high-contrast
+    ("#243281", "#FFFFFF"), // indigo
+    ("#172448", "#FFFFFF"), // midnight
+    ("#003A66", "#FFFFFF"), // ocean
+    ("#303E00", "#FFFFFF"), // olive
+    ("#111111", "#FCFCFC"), // orange
+    ("#63204E", "#FFFFFF"), // plum
+    ("#2A3B4F", "#FFFFFF"), // slate
+    ("#003E4A", "#FFFFFF"), // teal
+    ("#46297F", "#FFFFFF"), // violet
+    ("#1F1A14", "#F2E8D8"), // warm-paper
+    ("#1E1E1E", "#FFFFFF"), // default (before the preset picker)
+    ("#0A6470", "#FFFFFF"), // writer (Teal's earlier dark ground)
+];
+
 /// Manages the three-layer settings: defaults → global → workspace.
 pub struct Settings {
     defaults: HashMap<String, ConfigValue>,
@@ -356,6 +398,7 @@ impl Settings {
         settings.migrate_from_preferences(&global_config_dir)?;
         settings.migrate_theme_fonts()?;
         settings.migrate_editor_width()?;
+        settings.migrate_removed_theme_presets()?;
 
         Ok(settings)
     }
@@ -441,6 +484,52 @@ impl Settings {
             }
         }
         self.reset_global(OLD_KEY)
+    }
+
+    /// Ink only (SPECs/ink-only-colour-spec.md): the colour theme presets and
+    /// the accent setting are gone. Per mode, a config whose background and
+    /// foreground (stored, or the default where unset) are exactly one of the
+    /// removed presets' pairs was a preset pick, so that mode's primaries are
+    /// dropped and it reads as Ink. A background/foreground pair that matches
+    /// no old preset was made by hand and is kept. Stored accent keys are
+    /// dropped in both modes. Hex compares ignore case. Running it again finds
+    /// nothing to do, so it needs no marker key.
+    fn migrate_removed_theme_presets(&mut self) -> std::io::Result<()> {
+        for (mode, pairs) in [
+            ("light", REMOVED_PRESETS_LIGHT),
+            ("dark", REMOVED_PRESETS_DARK),
+        ] {
+            let read = |settings: &Self, suffix: &str| {
+                settings
+                    .get_global_or_default(&format!("theme.{mode}.{suffix}"))
+                    .and_then(ConfigValue::as_str)
+                    .map(str::to_ascii_lowercase)
+            };
+            let background = read(self, "background");
+            let foreground = read(self, "foreground");
+            let was_preset = pairs.iter().any(|(bg, fg)| {
+                background.as_deref() == Some(&bg.to_ascii_lowercase())
+                    && foreground.as_deref() == Some(&fg.to_ascii_lowercase())
+            });
+            let suffixes: &[&str] = if was_preset {
+                &[
+                    "accent",
+                    "background",
+                    "foreground",
+                    "translucent",
+                    "contrast",
+                ]
+            } else {
+                &["accent"]
+            };
+            for suffix in suffixes {
+                let key = format!("theme.{mode}.{suffix}");
+                if self.global.contains_key(&key) {
+                    self.reset_global(&key)?;
+                }
+            }
+        }
+        Ok(())
     }
 
     /// One-time migration: read theme from old `preferences.json` (tauri-plugin-store format)
@@ -805,6 +894,82 @@ mod tests {
             settings.get("fonts.editor"),
             Some(&ConfigValue::String("Palatino, serif".into()))
         );
+    }
+
+    #[test]
+    fn test_removed_theme_preset_migration() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config");
+
+        // The Orange preset as an old config stored it, in mixed case: both
+        // modes read as Ink afterwards and every theme key is gone.
+        std::fs::write(
+            &config_path,
+            "appearance.theme = dark\n\
+             theme.light.accent = #FF6A00\n\
+             theme.light.background = #ffffff\n\
+             theme.light.foreground = #0D0D0D\n\
+             theme.light.translucent = 0\n\
+             theme.light.contrast = 20\n\
+             theme.dark.accent = #FF6A00\n\
+             theme.dark.background = #111111\n\
+             theme.dark.foreground = #FCFCFC\n\
+             theme.dark.translucent = 20\n\
+             theme.dark.contrast = 16\n",
+        )
+        .unwrap();
+        let settings = Settings::new(dir.path().to_path_buf()).unwrap();
+        for mode in ["light", "dark"] {
+            for suffix in ["background", "foreground", "translucent", "contrast"] {
+                let key = format!("theme.{mode}.{suffix}");
+                assert_eq!(settings.get(&key), settings.defaults.get(&key), "{key}");
+            }
+            assert!(settings.get(&format!("theme.{mode}.accent")).is_none());
+        }
+        let raw = std::fs::read_to_string(&config_path).unwrap();
+        assert!(!raw.contains("theme."), "{raw}");
+        assert!(raw.contains("appearance.theme = dark"));
+
+        // A hand-made pair is kept, only its accent goes; a mode can migrate
+        // on its own (dark here is Teal's).
+        std::fs::write(
+            &config_path,
+            "theme.light.accent = #123456\n\
+             theme.light.background = #F0EAD6\n\
+             theme.light.foreground = #222222\n\
+             theme.light.contrast = 30\n\
+             theme.dark.background = #003E4A\n\
+             theme.dark.foreground = #FFFFFF\n\
+             theme.dark.contrast = 30\n",
+        )
+        .unwrap();
+        let settings = Settings::new(dir.path().to_path_buf()).unwrap();
+        assert_eq!(
+            settings.get("theme.light.background"),
+            Some(&ConfigValue::String("#F0EAD6".into()))
+        );
+        assert_eq!(
+            settings.get("theme.light.contrast"),
+            Some(&ConfigValue::Number(30.0))
+        );
+        assert!(settings.get("theme.light.accent").is_none());
+        assert_eq!(
+            settings.get("theme.dark.background"),
+            settings.defaults.get("theme.dark.background")
+        );
+        assert_eq!(
+            settings.get("theme.dark.contrast"),
+            settings.defaults.get("theme.dark.contrast")
+        );
+        let raw = std::fs::read_to_string(&config_path).unwrap();
+        assert!(raw.contains("theme.light.background = #F0EAD6"));
+        assert!(!raw.contains("accent"));
+        assert!(!raw.contains("theme.dark."));
+
+        // A second launch changes nothing.
+        let before = std::fs::read_to_string(&config_path).unwrap();
+        Settings::new(dir.path().to_path_buf()).unwrap();
+        assert_eq!(std::fs::read_to_string(&config_path).unwrap(), before);
     }
 
     #[test]

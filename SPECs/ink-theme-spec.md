@@ -1,6 +1,8 @@
 # Ink theme
 
-Status: implemented
+Status: implemented; superseded in part by
+[ink-only-colour-spec.md](ink-only-colour-spec.md): Ink is now the only theme,
+the presets and the accent setting are gone, and the ground is always flat.
 
 The brand is black and cream with no accent colour ([docs/brand.md](../docs/brand.md)),
 but a fresh install opened in Teal glass and none of the presets was black and
@@ -85,13 +87,13 @@ without support it stays white, the old behaviour.
 
 Measured (WCAG ratio of the glyph on its fill):
 
-| Fill                           | Before (white) | After           |
-| ------------------------------ | -------------- | --------------- |
-| Ink light, task box            | 20:1           | 20:1 (white)    |
-| Ink dark, task box (`#A5A29A`) | 2.5:1          | ~8:1 (Ink)      |
-| Ink dark, toggle (Cream track) | 1.2:1          | ~16:1 (Ink)     |
-| Orange, task box               | 5.4:1          | 5.4:1 (white)   |
-| Orange, toggle                 | 2.9:1          | 2.9:1 (white)   |
+| Fill                           | Before (white) | After         |
+| ------------------------------ | -------------- | ------------- |
+| Ink light, task box            | 20:1           | 20:1 (white)  |
+| Ink dark, task box (`#A5A29A`) | 2.5:1          | ~8:1 (Ink)    |
+| Ink dark, toggle (Cream track) | 1.2:1          | ~16:1 (Ink)   |
+| Orange, task box               | 5.4:1          | 5.4:1 (white) |
+| Orange, toggle                 | 2.9:1          | 2.9:1 (white) |
 
 Most other presets' dark modes have pale accents and flip to an Ink glyph too
 (white on them was 2.7–3.2:1; Ink is 6–7:1). Orange keeps white in both modes.
@@ -103,8 +105,7 @@ Most other presets' dark modes have pale accents and flip to an Ink glyph too
   unreachable (`--accent` is always set on `:root`) and blue, so it is gone.
 - **Selection**: `--editor-selection-bg` is the accent at 30%; text on it reads
   at about 8:1 (light) and 7:1 (dark).
-- **Calendar today**: drawn in `--period-current` (the link colour) at weight
-  600. In Ink that is the text colour, so today is marked by weight alone,
+- **Calendar today**: drawn in `--period-current` (the link colour) at weight 600. In Ink that is the text colour, so today is marked by weight alone,
   like the current week, month, quarter and year.
 - The board colour picker labelled its accent swatch "Teal"; it is "Accent"
   now.

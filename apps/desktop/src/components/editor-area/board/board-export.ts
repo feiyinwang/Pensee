@@ -8,6 +8,7 @@
  */
 
 import { type BoardScene, cloneScene, isLinker } from "./board-model";
+import { FILE_LIGHT } from "./board-file";
 
 /** The selection plus what belongs with it: a section's contents, and the
  *  connectors whose both ends are included. */
@@ -35,7 +36,8 @@ export async function svgToPngBase64(svgText: string, scale = 2): Promise<string
   canvas.height = Math.ceil(img.naturalHeight * scale);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available to render the PNG.");
-  ctx.fillStyle = "#ffffff";
+  // The light board's own ground (Cream), so the picture is the board as drawn.
+  ctx.fillStyle = FILE_LIGHT.surface;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL("image/png").split(",")[1];

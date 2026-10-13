@@ -11,7 +11,10 @@ fill with its matching outline, never a black outline on nothing. The picker
 lists the same hues in the same order everywhere: neutrals first, then round
 the wheel (red, orange, yellow, green, teal, blue, purple, pink).
 
-We copy the method but use Pensée's own colours, the `--wr-board-*` tokens:
+We copy the method but use Pensée's own colours, the `--wr-board-*` tokens.
+Since [ink-only-colour-spec.md](ink-only-colour-spec.md#boards) their values
+are the writing inks (red is oxblood, blue indigo ink, …) and fills mix in
+OKLab; the keys below are unchanged.
 
 - **Strong** (outline, line, text): the token itself, e.g. `--wr-board-blue`.
 - **Soft** (fill): `--wr-board-<hue>-soft`, defined as
@@ -32,8 +35,9 @@ We copy the method but use Pensée's own colours, the `--wr-board-*` tokens:
 ## Palette
 
 - One palette for the whole app, stored in the `board.palette` setting (a list
-  of strings). Default: `ink, muted, red, orange, yellow, green, accent, blue,
-  purple, pink`.
+  of strings). Default: `ink`, `muted`, `red`, `orange`, `yellow`, `green`,
+  `blue`, `purple`, `pink`. `accent` was dropped from it: it is the same ink as
+  `ink`.
 - An entry is a token name or a custom colour as `#rrggbb`.
 - The Fill picker shows **No fill**, then every entry's soft version (a custom
   colour is used as it was picked). The Border picker shows every entry's

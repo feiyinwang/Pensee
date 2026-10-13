@@ -255,7 +255,7 @@
   align-items: center;
   justify-content: center;
   padding: 1.5em 2em;
-  color: var(--text-error, #ff6b6b);
+  color: var(--text-error);
   font-family: var(--pm-code-font, var(--mono-font, "SF Mono", Menlo, Monaco, Consolas, monospace));
   font-size: 0.85em;
   text-align: center;

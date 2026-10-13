@@ -13,7 +13,11 @@ export type PaletteEntry = HueToken | `#${string}`;
 
 export const PALETTE_SETTING = "board.palette";
 
-export const DEFAULT_PALETTE: readonly PaletteEntry[] = HUE_TOKENS;
+/** Every hue token but `accent`, which draws the same ink as `ink` now that
+ *  the app has no accent colour. `accent` stays a valid token, so shapes and
+ *  saved palettes that use it keep working. Equal to the `board.palette`
+ *  default in settings.schema.json (board-palette.test.ts). */
+export const DEFAULT_PALETTE: readonly PaletteEntry[] = HUE_TOKENS.filter((t) => t !== "accent");
 
 /** A saved palette, cleaned: unknown, soft and duplicate entries dropped, and
  *  the default back when nothing usable is left. */

@@ -756,7 +756,7 @@ const tableTheme = EditorView.baseTheme({
     position: "relative",
   },
   ".cm-table-widget th.is-editing, .cm-table-widget td.is-editing": {
-    boxShadow: "inset 0 0 0 2px var(--accent)",
+    boxShadow: "inset 0 0 0 2px var(--fg-base)",
   },
   ".cm-table-cell-editor": {
     // Zero chrome: it must read as the cell's own text, not a form control.
@@ -810,7 +810,7 @@ const tableTheme = EditorView.baseTheme({
   ".cm-table-widget table": {
     borderCollapse: "separate",
     borderSpacing: "0",
-    border: `${tableBorderWidthPx}px solid var(--border-color, #3e3e42)`,
+    border: `${tableBorderWidthPx}px solid var(--border-color)`,
     borderRadius: "8px",
     overflow: "hidden",
     fontFamily: "inherit",
@@ -835,8 +835,8 @@ const tableTheme = EditorView.baseTheme({
     verticalAlign: "top",
     fontSize: "inherit",
     lineHeight: `${tableCellLineHeight}`,
-    borderBottom: `${tableBorderWidthPx}px solid var(--border-color, #3e3e42)`,
-    borderRight: `${tableBorderWidthPx}px solid var(--border-color, #3e3e42)`,
+    borderBottom: `${tableBorderWidthPx}px solid var(--border-color)`,
+    borderRight: `${tableBorderWidthPx}px solid var(--border-color)`,
   },
   ".cm-table-widget th:last-child, .cm-table-widget td:last-child": {
     borderRight: "none",
@@ -846,7 +846,7 @@ const tableTheme = EditorView.baseTheme({
   },
   ".cm-table-widget th": {
     fontWeight: "600",
-    backgroundColor: "var(--surface-subtle, var(--code-bg, #2d2d2d))",
+    backgroundColor: "var(--surface-subtle)",
     // Headers match their left-aligned bodies instead of taking the browser's
     // centered `th` default. An alignment parsed from the delimiter row is set
     // as an inline style on the cell, so `:---:` / `---:` still win here.

@@ -15,20 +15,30 @@
   --editor-text: color-mix(in srgb, var(--fg-base) 72%, transparent);
   --editor-text-strong: var(--text-primary);
 
+  /* Code is set in ink tiers, not hues (SPECs/ink-only-colour-spec.md):
+     names and keywords in the foreground; strings and literals a step back
+     (7.3:1 on Cream, 8.4:1 on Ink); comments further back and italic (5.8:1
+     and 7:1, still 5:1 on a code block's fill). The tiers are opaque mixes
+     toward the ground, not alpha, so text never reads through to what's
+     behind it. */
+  --pm-syntax-ink: var(--fg-base);
+  --pm-syntax-ink-secondary: color-mix(in srgb, var(--fg-base) 72%, var(--bg-base));
+  --pm-syntax-ink-muted: color-mix(in srgb, var(--fg-base) 65%, var(--bg-base));
   --pm-syntax-link: var(--link-color);
-  --pm-syntax-keyword: oklch(70.05% 0.217 296.83);
-  --pm-syntax-atom: oklch(65.69% 0.2 259.93);
-  --pm-syntax-literal: oklch(71.27% 0.101 169.93);
-  --pm-syntax-string: oklch(68.53% 0.164 25.1);
-  --pm-syntax-regexp: oklch(76.88% 0.16 43.42);
-  --pm-syntax-definition-variable: oklch(61.42% 0.158 259.6);
-  --pm-syntax-local-variable: oklch(75.88% 0.082 184.11);
-  --pm-syntax-type-namespace: oklch(64.51% 0.083 165.19);
-  --pm-syntax-class-name: oklch(76.14% 0.1 168.52);
-  --pm-syntax-special-variable-macro: oklch(66.67% 0.193 282.06);
-  --pm-syntax-definition-property: oklch(58.92% 0.132 259.4);
-  --pm-syntax-comment: var(--text-muted);
-  --pm-syntax-invalid: oklch(75.93% 0.182 28.91);
+  --pm-syntax-keyword: var(--pm-syntax-ink);
+  --pm-syntax-atom: var(--pm-syntax-ink-secondary);
+  --pm-syntax-literal: var(--pm-syntax-ink-secondary);
+  --pm-syntax-string: var(--pm-syntax-ink-secondary);
+  --pm-syntax-regexp: var(--pm-syntax-ink-secondary);
+  --pm-syntax-definition-variable: var(--pm-syntax-ink);
+  --pm-syntax-local-variable: var(--pm-syntax-ink);
+  --pm-syntax-type-namespace: var(--pm-syntax-ink);
+  --pm-syntax-class-name: var(--pm-syntax-ink);
+  --pm-syntax-special-variable-macro: var(--pm-syntax-ink);
+  --pm-syntax-definition-property: var(--pm-syntax-ink);
+  --pm-syntax-comment: var(--pm-syntax-ink-muted);
+  /* Invalid code is an error, the one place code keeps a hue: the oxblood ink. */
+  --pm-syntax-invalid: var(--ink-oxblood);
 }
 
 /* @codemirror/view's base theme sets `.cm-cursor { border-left: 1.2px solid black }`,
@@ -39,7 +49,7 @@
   border-left-color: var(--text-primary);
 }
 
-/* Selection — dimmed accent. CodeMirror's drawSelection extension paints
+/* Selection — the foreground at 15% (--editor-selection-bg). CodeMirror's drawSelection extension paints
    `.cm-selectionBackground` rectangles; the native `::selection` is the
    fallback for text the drawn layer doesn't cover. Override both, and bump
    specificity past CM's base theme on the focused-state selector. */
@@ -212,14 +222,15 @@
     border-color var(--motion-fast) var(--ease-out);
 }
 
+/* A checked task is a foreground box with a ground-coloured tick. */
 .cm-editor .cm-list-prefix-task-checked::before {
   background-color: var(--accent-solid);
   border-color: var(--accent-solid);
 }
 
-/* The tick sits on its own layer, a mask filled with --on-accent, so it can
-   be Ink on a pale accent and white on a dark one (a data-URL image can't
-   read a CSS variable). Same box and position as the ::before it sits on. */
+/* The tick sits on its own layer, a mask filled with --on-accent (the ground
+   colour), because a data-URL image can't read a CSS variable. Same box and
+   position as the ::before it sits on. */
 .cm-editor .cm-list-prefix-task-checked::after {
   content: "";
   position: absolute;

@@ -2,10 +2,12 @@ import { ok, strictEqual } from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Ink theme (see SPECs/ink-theme-spec.md). Run against a fresh data dir (no
-// `config`) with a workspace seeded in recent_workspaces.json: the app must
-// open in Ink in both modes, with a flat ground, underlined links and a
-// readable tick on a checked task, and list Ink first under Settings → Theme.
+// Ink, the only theme (see SPECs/ink-theme-spec.md and
+// SPECs/ink-only-colour-spec.md). Run against a fresh data dir (no `config`)
+// with a workspace seeded in recent_workspaces.json: the app must open in Ink
+// in both modes, with a flat ground, underlined links and a ground-coloured
+// tick on a foreground task box, and Settings must offer no theme picker and
+// no accent colour.
 // Screenshots land in $INK_SHOTS (default /tmp/ink-theme-shots).
 const SHOTS = process.env.INK_SHOTS ?? "/tmp/ink-theme-shots";
 const FILE_STEM = "ink-theme-e2e";
@@ -73,7 +75,6 @@ const themeState = () =>
     const tick = document.querySelector(".cm-list-prefix-task-checked");
     return {
       mode: document.documentElement.getAttribute("data-theme"),
-      flat: document.documentElement.getAttribute("data-backdrop"),
       accent: root.getPropertyValue("--accent").trim(),
       bgBase: root.getPropertyValue("--bg-base").trim(),
       fgBase: root.getPropertyValue("--fg-base").trim(),
@@ -141,7 +142,6 @@ describe("Ink theme on a fresh install", function () {
       await setMode(mode);
       const state = await themeState();
       console.log(mode, JSON.stringify(state));
-      strictEqual(state.flat, "flat");
       strictEqual(state.backdrop, "none");
       const ink = "#0b0b0b";
       const cream = "#ece7dc";
@@ -153,24 +153,25 @@ describe("Ink theme on a fresh install", function () {
     });
   }
 
-  it("lists Ink first under Settings → Theme", async function () {
+  it("offers no theme picker and no accent colour in Settings", async function () {
     await pressCmd("p");
     const settingsCommand = await $('[cmdk-item][data-value="open-settings"]');
     await settingsCommand.waitForExist({ timeout: 5_000 });
     await settingsCommand.click();
     await $("[data-settings-panel]").waitForExist({ timeout: 5_000 });
-    const theme = await browser.execute(() => {
-      const select = [...document.querySelectorAll("[data-settings-panel] select")].find((s) =>
-        [...s.options].some((o) => o.value === "Ink"),
+    const found = await browser.execute(() => {
+      const panel = document.querySelector("[data-settings-panel]");
+      const text = panel ? panel.textContent : "";
+      const presetSelect = [...document.querySelectorAll("[data-settings-panel] select")].some(
+        (s) => [...s.options].some((o) => o.value === "Ink"),
       );
-      return select ? { value: select.value, first: select.options[0].value } : null;
+      return { presetSelect, accent: /\bAccent\b/.test(text) };
     });
-    console.log("theme select", JSON.stringify(theme));
+    console.log("settings", JSON.stringify(found));
     await browser.saveScreenshot(resolve(SHOTS, "ink-dark-settings.png"));
     await setMode("light");
     await browser.saveScreenshot(resolve(SHOTS, "ink-light-settings.png"));
-    ok(theme, "no theme select listing Ink");
-    strictEqual(theme.value, "Ink");
-    strictEqual(theme.first, "Ink");
+    strictEqual(found.presetSelect, false);
+    strictEqual(found.accent, false);
   });
 });

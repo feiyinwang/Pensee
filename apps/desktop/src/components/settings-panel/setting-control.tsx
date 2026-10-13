@@ -21,13 +21,19 @@ function BooleanControl({ value, onChange }: { value: boolean; onChange: (v: boo
       aria-label="Toggle setting"
       className="relative h-5 w-9 rounded-full transition-colors"
       style={{
-        backgroundColor: value ? "var(--link-color)" : "var(--border-color)",
+        // On: a foreground track with a ground-coloured knob. Off: the
+        // foreground at 20%, its knob a muted ink that holds 3:1 on the ground.
+        backgroundColor: value
+          ? "var(--fg-base)"
+          : "color-mix(in srgb, var(--fg-base) 20%, transparent)",
       }}
     >
       <span
         className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full transition-transform"
         style={{
-          backgroundColor: value ? "var(--on-accent)" : "white",
+          backgroundColor: value
+            ? "var(--bg-base)"
+            : "color-mix(in srgb, var(--fg-base) 55%, var(--bg-base))",
           transform: value ? "translateX(16px)" : "translateX(0)",
         }}
       />
@@ -115,7 +121,7 @@ function ColorControl({ value, onChange }: { value: string; onChange: (v: string
     }
   }
 
-  const swatch = HEX_RE.test(value) ? value : "#000000";
+  const swatch = HEX_RE.test(value) ? value : "#0B0B0B";
 
   return (
     <div className="relative inline-flex h-9 w-44 items-center gap-2 rounded-lg bg-[var(--surface-input)] pr-3 pl-1">
@@ -170,7 +176,7 @@ function RangeControl({
         value={value}
         aria-label="Range value"
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1 w-44 appearance-none rounded-full bg-[var(--surface-subtle)] accent-[var(--accent)] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow"
+        className="h-1 w-44 appearance-none rounded-full bg-[var(--surface-subtle)] accent-[var(--fg-base)] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--fg-base)] [&::-webkit-slider-thumb]:shadow"
       />
       <span className="w-10 shrink-0 text-right text-caption whitespace-nowrap tabular-nums text-[var(--text-muted)]">
         {Math.round(value)}

@@ -13,12 +13,7 @@ import { defaultHideExtensions } from "./hide";
 import { defaultFoldableSyntaxExtensions } from "./fold";
 import { urlClassExtension } from "./urlClass";
 import { codeBlockDecorationsExtension, codeFenceTheme } from "./codeFenceExtension";
-import {
-  baseSyntaxHighlights,
-  baseTheme,
-  generalSyntaxHighlights,
-  lightTheme,
-} from "./syntaxHighlighting";
+import { baseSyntaxHighlights, baseTheme, generalSyntaxHighlights } from "./syntaxHighlighting";
 import { fixedTabWidthExtension } from "./tabWidthExtension";
 import { listExtension } from "./list";
 import { revealBlockOnArrowExtension } from "./revealBlockOnArrow";
@@ -79,5 +74,3 @@ export const prosemarkBaseThemeSetup = (): Extension => [
   baseTheme,
   codeFenceTheme,
 ];
-
-export const prosemarkLightThemeSetup = (): Extension => [prosemarkBaseThemeSetup(), lightTheme];

@@ -1,5 +1,5 @@
 {
-  "$comment": "Settings contract: keys, types, defaults, labels, descriptions, and CSS-var bindings. Read by Rust (apps/desktop/src-tauri/src/config.rs) via include_str! and by the frontend via a static import (lib/settings-schema.ts). Theme preset *values* are not part of the contract — they live in shared/themes/*.json, one file per preset. Per docs/consolidation.md: do not declare defaults, labels, or types anywhere else.",
+  "$comment": "Settings contract: keys, types, defaults, labels, descriptions, and CSS-var bindings. Read by Rust (apps/desktop/src-tauri/src/config.rs) via include_str! and by the frontend via a static import (lib/settings-schema.ts). The theme defaults are the brand's Ink (shared/themes/ink/*.json records the same values; a test keeps them equal). There is no accent setting: the app UI has no accent colour. Per docs/consolidation.md: do not declare defaults, labels, or types anywhere else.",
   "settings": [
     {
       "key": "editor.font-size",
@@ -163,15 +163,6 @@
       "default": "\"SF Mono\", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace"
     },
     {
-      "key": "theme.light.accent",
-      "label": "Accent",
-      "description": "Light theme accent color",
-      "category": "Theme",
-      "type": "color",
-      "cssVar": "--accent",
-      "default": "#0B0B0B"
-    },
-    {
       "key": "theme.light.background",
       "label": "Background",
       "description": "Light theme background color",
@@ -210,15 +201,6 @@
       "max": 100,
       "step": 1,
       "default": 20
-    },
-    {
-      "key": "theme.dark.accent",
-      "label": "Accent",
-      "description": "Dark theme accent color",
-      "category": "Theme",
-      "type": "color",
-      "cssVar": "--accent",
-      "default": "#ECE7DC"
     },
     {
       "key": "theme.dark.background",
@@ -266,18 +248,7 @@
       "description": "Colours offered for shape fills and borders on boards, in order. Edit them from a shape's Fill or Border menu.",
       "category": "Board",
       "type": "list",
-      "default": [
-        "ink",
-        "muted",
-        "red",
-        "orange",
-        "yellow",
-        "green",
-        "accent",
-        "blue",
-        "purple",
-        "pink"
-      ]
+      "default": ["ink", "muted", "red", "orange", "yellow", "green", "blue", "purple", "pink"]
     },
     {
       "key": "files.associations",

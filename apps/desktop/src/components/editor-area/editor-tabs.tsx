@@ -61,7 +61,7 @@ function EditorTabButton({ tab, isActive, onSelect, onClose }: EditorTabButtonPr
         <span
           aria-label={`Save failed: ${saveError}`}
           title={`Save failed: ${saveError}`}
-          className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff5f57]"
+          className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--fg-base)]"
         />
       ) : null}
       {renaming && filePath ? (

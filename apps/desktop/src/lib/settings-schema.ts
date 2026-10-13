@@ -6,12 +6,10 @@
  *       and CSS-var bindings. Read by Rust (`include_str!` in config.rs) and
  *       imported here statically so TypeScript can derive literal types.
  *
- *   - `apps/desktop/shared/themes/<slug>/{light,dark}.json`
- *       Theme preset *values*, registered by `theme-presets.ts`.
- *
- * Splitting contract from values follows the same separation Rust uses: the
- * schema describes how a setting works; presets are just curated bundles of
- * values that map onto those settings.
+ *   - `apps/desktop/shared/themes/ink/{light,dark}.json`
+ *       The brand's Ink values. The schema's theme defaults are Ink and
+ *       `tests/settings-schema.test.ts` keeps the two equal. There are no
+ *       other presets and no accent colour (SPECs/ink-only-colour-spec.md).
  */
 
 import schemaFile from "@shared/settings.schema.json";
@@ -64,7 +62,7 @@ export const SETTINGS_SCHEMA: readonly SettingDef[] = schemaFile.settings;
 
 export type ThemeMode = "light" | "dark";
 
-export type PrimarySuffix = "accent" | "background" | "foreground" | "translucent" | "contrast";
+export type PrimarySuffix = "background" | "foreground" | "translucent" | "contrast";
 
 /** A flat record keyed by the kebab-case suffix of `theme.{mode}.{suffix}`.
  *  Mirrors the JSON schema names so iteration code uses the same key as the

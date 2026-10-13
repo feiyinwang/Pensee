@@ -245,7 +245,7 @@ const htmlBlockTheme = EditorView.baseTheme({
   ".cm-html-block-widget h3": { fontSize: "1.2em" },
   ".cm-html-block-widget p": { margin: "0.5em 0" },
   ".cm-html-block-widget a": {
-    color: "var(--link-color, #4fc1ff)",
+    color: "var(--link-color)",
     textDecoration: "underline",
     textDecorationColor: "var(--link-underline)",
     textUnderlineOffset: "var(--link-underline-offset)",
@@ -259,15 +259,15 @@ const htmlBlockTheme = EditorView.baseTheme({
     width: "100%",
   },
   ".cm-html-block-widget th, .cm-html-block-widget td": {
-    border: "1px solid var(--border-color, #3e3e42)",
+    border: "1px solid var(--border-color)",
     padding: "0.4em 0.8em",
   },
   ".cm-html-block-widget th": {
     fontWeight: "600",
-    backgroundColor: "var(--code-bg, #2d2d2d)",
+    backgroundColor: "var(--code-bg)",
   },
   ".cm-html-block-widget pre": {
-    backgroundColor: "var(--code-bg, #2d2d2d)",
+    backgroundColor: "var(--code-bg)",
     padding: "0.75em 1em",
     borderRadius: "4px",
     overflow: "auto",
@@ -277,14 +277,14 @@ const htmlBlockTheme = EditorView.baseTheme({
     fontSize: "0.9em",
   },
   ".cm-html-block-widget blockquote": {
-    borderLeft: "3px solid var(--blockquote-border, #4e4e52)",
+    borderLeft: "3px solid var(--blockquote-border)",
     paddingLeft: "1em",
     margin: "0.5em 0",
-    color: "var(--text-muted, #858585)",
+    color: "var(--text-muted)",
   },
   ".cm-html-block-widget hr": {
     border: "none",
-    borderTop: "1px solid var(--border-color, #3e3e42)",
+    borderTop: "1px solid var(--border-color)",
     margin: "0.75em 0",
   },
   ".cm-html-block-widget ul, .cm-html-block-widget ol": {
@@ -292,7 +292,7 @@ const htmlBlockTheme = EditorView.baseTheme({
     margin: "0.25em 0",
   },
   ".cm-html-block-widget details": {
-    border: "1px solid var(--border-color, #3e3e42)",
+    border: "1px solid var(--border-color)",
     borderRadius: "4px",
     padding: "0.5em",
   },

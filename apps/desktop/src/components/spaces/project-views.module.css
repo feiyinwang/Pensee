@@ -12,20 +12,25 @@
   --foreground: var(--text-primary);
 }
 
-/* Tags (Notion's palette). A colour has one meaning: blue in progress, green
-   done, red overdue, orange due soon, gray neither (lib/projects.ts). The fill
-   is a soft tint and the text mixes the hue into the theme's text colour, so
-   both stay readable on light and dark themes. */
+/* Tags. A colour has one meaning: blue in progress, green done, red overdue,
+   orange due soon, gray neither (lib/projects.ts). The colours are the
+   writing inks (App.css, docs/brand.md), named as the board names them:
+   red is oxblood, orange sepia, yellow ochre, green verdigris, blue indigo,
+   purple aubergine, pink rose madder, gray graphite, brown an umber between
+   sepia and graphite. The fill is a 14% wash of the ink (22% on a dark
+   ground); the text is the ink pulled a quarter of the way to the theme's
+   text colour, which is darker on Cream and lighter on Ink, so every tag
+   reads at 4.7:1 or better on its own wash. */
 .projectViews {
-  --tag-gray: oklch(66% 0.01 250);
-  --tag-brown: oklch(64% 0.06 55);
-  --tag-orange: oklch(72% 0.15 55);
-  --tag-yellow: oklch(82% 0.14 92);
-  --tag-green: oklch(70% 0.15 150);
-  --tag-blue: oklch(68% 0.13 245);
-  --tag-purple: oklch(68% 0.14 300);
-  --tag-pink: oklch(70% 0.14 350);
-  --tag-red: oklch(65% 0.2 25);
+  --tag-gray: var(--ink-graphite);
+  --tag-brown: color-mix(in oklab, var(--ink-sepia) 50%, var(--ink-graphite));
+  --tag-orange: var(--ink-sepia);
+  --tag-yellow: var(--ink-ochre);
+  --tag-green: var(--ink-verdigris);
+  --tag-blue: var(--ink-indigo);
+  --tag-purple: var(--ink-aubergine);
+  --tag-pink: var(--ink-rose);
+  --tag-red: var(--ink-oxblood);
 }
 
 .projectViews [data-tone="gray"] {
@@ -58,8 +63,8 @@
 
 .tag {
   --badge-color: var(--tag);
-  --badge-background: color-mix(in oklab, var(--tag) 24%, transparent);
-  --badge-foreground: color-mix(in oklab, var(--tag) 45%, var(--fg-base));
+  --badge-background: color-mix(in srgb, var(--tag) var(--ink-wash), transparent);
+  --badge-foreground: color-mix(in oklab, var(--tag) 75%, var(--fg-base));
   --badge-border: transparent;
   flex-shrink: 0;
   border-radius: 6px;

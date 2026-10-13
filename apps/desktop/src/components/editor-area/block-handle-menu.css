@@ -97,8 +97,8 @@
   background: color-mix(in srgb, var(--fg-base) 7%, transparent);
 }
 .wr-bmenu-tile[data-active="true"] {
-  background: color-mix(in srgb, var(--accent, #ff6a00) 14%, transparent);
-  color: var(--accent, #ff6a00);
+  background: color-mix(in srgb, var(--fg-base) 14%, transparent);
+  color: var(--fg-base);
 }
 
 .wr-bmenu-glyph-mono {

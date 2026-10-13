@@ -54,7 +54,7 @@ Status and deadlines show as Notion-style tags (Arc's badge, `Tag` in `project-v
 | Deadline today, tomorrow or within 7 days | orange, "Due today" / "Due tomorrow" / "Due Oct 15" |
 | Any other deadline, or a done project's   | gray, "Due Mar 4"                                   |
 
-No status has no tag, only muted text. The words carry the meaning too, so it never rests on colour alone. Tag text mixes the hue into the theme's text colour; measured at 5:1 or more on the dark and light themes. Timeline bars take their status colour, and a red or orange deadline tag sits beside the bar's dates.
+No status has no tag, only muted text. The words carry the meaning too, so it never rests on colour alone. The colours are the writing inks (red is oxblood, orange sepia, green verdigris, blue indigo, gray graphite; [ink-only-colour-spec.md](ink-only-colour-spec.md#project-tags)); tag text mixes the ink into the theme's text colour, measured at 5.2:1 or more on Cream and 6.5:1 on Ink. Timeline bars take their status colour, and a red or orange deadline tag sits beside the bar's dates.
 
 ## Not in this pass
 

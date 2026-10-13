@@ -70,10 +70,38 @@ Both SVGs use `currentColor`, so they take the text colour they're placed in.
 | Cream | `#ece7dc` | Mark and wordmark on Ink; the app-icon mark |
 
 Black and cream only. No accent colour, no gradients on the mark. The app's
-default theme, **Ink**, is these two colours with no accent and a flat ground
+only theme, **Ink**, is these two colours on a flat ground
 ([SPECs/ink-theme-spec.md](../SPECs/ink-theme-spec.md)). The app
 icon's body may carry a faint top-to-bottom fall-off (`#1e1e1e` → `#0b0b0b`),
 the way macOS icons do.
+
+**The app UI has no accent colour.** Anything that used to be drawn in an
+accent (selection, focus ring, checked tasks, switches, links, today, board
+selection) is drawn in the foreground, and there is no accent setting
+([SPECs/ink-only-colour-spec.md](../SPECs/ink-only-colour-spec.md)).
+
+### Writing inks
+
+Where colour has to carry meaning or a user's choice (board shapes and sticky
+notes, project tags, error text), it comes from a small set of traditional
+writing inks, never from chrome. They are the `--ink-*` tokens in `App.css`.
+
+| Ink         | Light (on Cream) | Dark (on Ink) |
+| ----------- | ---------------- | ------------- |
+| Graphite    | `#6b665e`        | `#a39d92`     |
+| Oxblood     | `#8c2f2a`        | `#d98a80`     |
+| Sepia       | `#8a5a2b`        | `#cf9f6e`     |
+| Ochre       | `#8f6c14`        | `#d9b65c`     |
+| Verdigris   | `#3f6b5a`        | `#8fbfa9`     |
+| Indigo ink  | `#2e3f6b`        | `#93a6d6`     |
+| Aubergine   | `#5b3a5e`        | `#b893b9`     |
+| Rose madder | `#9a4b5c`        | `#d897a6`     |
+
+Each reads at 3:1 or better as a stroke on its ground. Tinted grounds (sticky
+notes, tag fills) are a wash of the ink: 14% on Cream, 22% on a dark ground.
+Where an ink sets text it is pulled toward the text colour until it reads at
+4.5:1. Code is not coloured: it is set in three tiers of ink (foreground,
+secondary, muted italic).
 
 ## Wordmark and lockups
 

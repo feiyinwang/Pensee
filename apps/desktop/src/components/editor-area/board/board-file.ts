@@ -79,11 +79,107 @@ function escapeXml(text: string): string {
  */
 const SOFT_TOKENS = HUE_TOKENS.map(
   (h) =>
-    `--wr-board-${h}-soft:color-mix(in oklch,var(--wr-board-${h}) 22%,var(--wr-board-surface))`,
+    `--wr-board-${h}-soft:color-mix(in oklab,var(--wr-board-${h}) 22%,var(--wr-board-surface))`,
 ).join(";");
 
-const FILE_STYLE = `.wr-board-expand{display:none}:root{${SOFT_TOKENS};--wr-board-flip:0;--wr-board-yellow:oklch(0.76 0.155 80);--wr-board-pink:oklch(0.64 0.2 350);--wr-board-surface:#fff;--wr-board-ink:#1f2328;--wr-board-muted:#6b7280;--wr-board-accent:#0d9488;--wr-board-red:#e5484d;--wr-board-orange:#f76b15;--wr-board-green:#30a46c;--wr-board-blue:#3b82f6;--wr-board-purple:#8e4ec6;--wr-board-frame-bg:rgb(0 0 0/3%);--wr-board-frame-edge:rgb(0 0 0/14%);--wr-board-sticky-yellow:#fdf1c7;--wr-board-sticky-orange:#fadfba;--wr-board-sticky-mint:#d7f2e3;--wr-board-sticky-green:#d6f0cf;--wr-board-sticky-sky:#d3ecf7;--wr-board-sticky-lavender:#dcdcf6;--wr-board-sticky-violet:#ded5f7;--wr-board-sticky-pink:#f6d9ea;--wr-board-sticky-rose:#f8d9d6;--wr-board-sticky-ink:#1e1b16;--wr-board-sticky-edge:rgb(0 0 0/6%)}
-@media (prefers-color-scheme:dark){:root{--wr-board-surface:#0d1117;--wr-board-ink:#e6edf3;--wr-board-muted:#9aa4b2;--wr-board-accent:#2dd4bf;--wr-board-red:#ff6369;--wr-board-orange:#ff8b3d;--wr-board-green:#4cc38a;--wr-board-blue:#6a9bff;--wr-board-purple:#b38aea;--wr-board-yellow:oklch(0.83 0.15 85);--wr-board-pink:oklch(0.72 0.17 350);--wr-board-flip:1;--wr-board-frame-bg:rgb(255 255 255/4%);--wr-board-frame-edge:rgb(255 255 255/16%);--wr-board-sticky-ink:#1a1a1a}}`;
+/** One mode's colours for a file opened outside Pensée: Ink and Cream, and
+ *  the writing inks of App.css's `--ink-*` tokens (docs/brand.md). `paper`
+ *  and `wash` make the sticky notes, as in board.css. */
+interface FileInks {
+  surface: string;
+  ink: string;
+  muted: string;
+  red: string;
+  orange: string;
+  yellow: string;
+  green: string;
+  blue: string;
+  purple: string;
+  pink: string;
+  paper: string;
+  wash: string;
+  flip: 0 | 1;
+}
+
+export const FILE_LIGHT: FileInks = {
+  surface: "#ece7dc",
+  ink: "#0b0b0b",
+  muted: "#6b665e",
+  red: "#8c2f2a",
+  orange: "#8a5a2b",
+  yellow: "#8f6c14",
+  green: "#3f6b5a",
+  blue: "#2e3f6b",
+  purple: "#5b3a5e",
+  pink: "#9a4b5c",
+  paper: "#ece7dc",
+  wash: "14%",
+  flip: 0,
+};
+
+const FILE_DARK: FileInks = {
+  surface: "#0b0b0b",
+  ink: "#ece7dc",
+  muted: "#a39d92",
+  red: "#d98a80",
+  orange: "#cf9f6e",
+  yellow: "#d9b65c",
+  green: "#8fbfa9",
+  blue: "#93a6d6",
+  purple: "#b893b9",
+  pink: "#d897a6",
+  paper: "#1a1916",
+  wash: "22%",
+  flip: 1,
+};
+
+/** Sticky colour → the ink it washes and whether it is a pale (60%) wash.
+ *  Mirrors the `--wr-board-sticky-*` block in board.css. */
+const STICKY_WASH: [sticky: string, hue: string, pale: boolean][] = [
+  ["yellow", "yellow", false],
+  ["orange", "orange", false],
+  ["mint", "green", true],
+  ["green", "green", false],
+  ["sky", "blue", true],
+  ["lavender", "purple", true],
+  ["violet", "purple", false],
+  ["pink", "pink", false],
+  ["rose", "red", false],
+];
+
+function fileTokens(c: FileInks): string {
+  const hues = [
+    "ink",
+    "muted",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "purple",
+    "pink",
+  ] as const;
+  const stickies = STICKY_WASH.map(
+    ([sticky, hue, pale]) =>
+      `--wr-board-sticky-${sticky}:color-mix(in oklab,var(--wr-board-${hue}) ${pale ? "calc(var(--wr-board-sticky-wash) * 0.6)" : "var(--wr-board-sticky-wash)"},var(--wr-board-sticky-paper))`,
+  );
+  return [
+    ...hues.map((h) => `--wr-board-${h}:${c[h]}`),
+    `--wr-board-accent:${c.ink}`,
+    `--wr-board-surface:${c.surface}`,
+    `--wr-board-flip:${c.flip}`,
+    `--wr-board-frame-bg:color-mix(in srgb,${c.ink} 3%,transparent)`,
+    `--wr-board-frame-edge:color-mix(in srgb,${c.ink} 14%,transparent)`,
+    `--wr-board-sticky-paper:${c.paper}`,
+    `--wr-board-sticky-wash:${c.wash}`,
+    ...stickies,
+    `--wr-board-sticky-ink:${c.ink}`,
+    `--wr-board-sticky-edge:color-mix(in srgb,${c.ink} 8%,transparent)`,
+  ].join(";");
+}
+
+const FILE_STYLE = `.wr-board-expand{display:none}:root{${SOFT_TOKENS};${fileTokens(FILE_LIGHT)}}
+@media (prefers-color-scheme:dark){:root{${fileTokens(FILE_DARK)}}}`;
 
 const SVG_NS_ATTR = / xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g;
 

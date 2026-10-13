@@ -310,8 +310,9 @@ export function truncateLines(
 }
 
 export const LINE_HEIGHT = 1.35;
-const STICKY_LINK_FILL =
-  "color-mix(in oklch, var(--wr-board-accent) 45%, var(--wr-board-sticky-ink))";
+/** `[[link]]` text on a note: the note's own text ink (links are told apart by
+ *  their underline, not by hue). */
+const STICKY_LINK_FILL = "var(--wr-board-sticky-ink)";
 export const STICKY_FONT_MAX = 22;
 export const STICKY_FONT_MIN = 11;
 
@@ -354,7 +355,7 @@ function appendLines(
     align: "l" | "c" | "r";
     fill: string;
     weight?: number;
-    /** `[[link]]` colour; the accent unless the background needs another. */
+    /** `[[link]]` colour; the foreground (`--wr-board-accent`) unless the background needs another. */
     linkFill?: string;
   },
 ): SVGTextElement {
@@ -701,7 +702,6 @@ function renderSticky(g: SVGGElement, el: BoardEl & { c: string; tx: string }): 
       size,
       align: "c",
       fill: "var(--wr-board-sticky-ink)",
-      // Notes stay pastel in dark mode too, where the accent turns light.
       linkFill: STICKY_LINK_FILL,
     });
   }

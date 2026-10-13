@@ -33,13 +33,15 @@
   pointer-events: none;
 }
 
-/* Highlights and the jump flash (highlight-painter.ts). */
+/* Highlights and the jump flash (highlight-painter.ts): a wash of the
+   foreground under the text, 14% for a highlight and 30% for the flash. Text
+   on them reads at ~12:1 and ~8:1 (Cream) or ~7:1 (Ink). */
 ::highlight(book-highlight) {
-  background-color: color-mix(in oklch, var(--accent) 30%, transparent);
+  background-color: color-mix(in srgb, var(--fg-base) 14%, transparent);
 }
 
 ::highlight(book-flash) {
-  background-color: color-mix(in oklch, var(--accent) 60%, transparent);
+  background-color: color-mix(in srgb, var(--fg-base) 30%, transparent);
 }
 
 /* ------------------------------------------------------------------ PDF */

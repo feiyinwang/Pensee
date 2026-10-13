@@ -1,14 +1,15 @@
 /* Calendar panel (Cmd+]). Arc's Calendar and Segmented control draw on
    Pensée's translucent backdrop here, so their surfaces are remapped on the
-   container instead of in the vendored files (docs/arc.md). The accent fill
-   uses Pensée's --accent-solid, and the day number on it --on-accent. */
+   container instead of in the vendored files (docs/arc.md). The selected day
+   is a foreground fill (--accent-solid) with its number in the ground colour
+   (--on-accent); the app has no accent colour. */
 .calendar-panel {
   --accent: var(--accent-solid);
   --accent-strong: color-mix(in srgb, var(--accent-solid) 85%, black);
   --accent-foreground: var(--on-accent);
   --surface-muted: var(--item-hover-bg);
-  /* The current period's text: Pensée's own light accent (inherited before the
-     override above), which reads on the backdrop where --accent-solid is dim. */
+  /* The current period's text (today, this week, …): the foreground, marked
+     by weight like the rest of the current periods. */
   --period-current: var(--link-color);
   /* The week (and quarter) column keeps clear of the grid it labels. */
   --week-label-width: 40px;
@@ -25,7 +26,7 @@
   width: 100%;
 }
 
-/* Today reads in the accent (like the current week, month, quarter, year);
+/* Today reads in --period-current (like the current week, month, quarter, year);
    the dot under a number means "has a note" (the Pensée patch's markedDates),
    so Arc's own today dot is turned off. */
 .calendar-panel-calendar [aria-current="date"]:not([aria-selected="true"]) {

@@ -6,30 +6,37 @@
    contrast slider follow automatically — no board-specific palette. */
 
 :root {
+  /* Strokes: the writing inks from App.css (docs/brand.md), so a board reads
+     like a page written in several inks. The keys keep their old hue names
+     (red, orange, …) because boards store them; only the values changed, so
+     every existing board re-tints on its own. `ink` is the foreground and
+     `accent` equals it (the app has no accent colour). */
   --wr-board-ink: var(--text-primary);
-  --wr-board-muted: var(--text-muted);
-  --wr-board-accent: var(--accent);
-  --wr-board-red: #e5484d;
-  --wr-board-orange: #f76b15;
-  --wr-board-green: #30a46c;
-  --wr-board-blue: #3b82f6;
-  --wr-board-purple: #8e4ec6;
-  --wr-board-yellow: oklch(0.76 0.155 80);
-  --wr-board-pink: oklch(0.64 0.2 350);
+  --wr-board-muted: var(--ink-graphite);
+  --wr-board-accent: var(--fg-base);
+  --wr-board-red: var(--ink-oxblood);
+  --wr-board-orange: var(--ink-sepia);
+  --wr-board-yellow: var(--ink-ochre);
+  --wr-board-green: var(--ink-verdigris);
+  --wr-board-blue: var(--ink-indigo);
+  --wr-board-purple: var(--ink-aubergine);
+  --wr-board-pink: var(--ink-rose);
 
-  /* Fills: each hue mixed toward the board surface (FigJam's soft/strong
+  /* Fills: each ink mixed toward the board surface (FigJam's soft/strong
      pairs), so they follow dark mode on their own. One per HUE_TOKENS entry
-     in board-model.ts; board-palette.test.ts checks the two agree. */
-  --wr-board-ink-soft: color-mix(in oklch, var(--wr-board-ink) 22%, var(--wr-board-surface));
-  --wr-board-muted-soft: color-mix(in oklch, var(--wr-board-muted) 22%, var(--wr-board-surface));
-  --wr-board-red-soft: color-mix(in oklch, var(--wr-board-red) 22%, var(--wr-board-surface));
-  --wr-board-orange-soft: color-mix(in oklch, var(--wr-board-orange) 22%, var(--wr-board-surface));
-  --wr-board-yellow-soft: color-mix(in oklch, var(--wr-board-yellow) 22%, var(--wr-board-surface));
-  --wr-board-green-soft: color-mix(in oklch, var(--wr-board-green) 22%, var(--wr-board-surface));
-  --wr-board-accent-soft: color-mix(in oklch, var(--wr-board-accent) 22%, var(--wr-board-surface));
-  --wr-board-blue-soft: color-mix(in oklch, var(--wr-board-blue) 22%, var(--wr-board-surface));
-  --wr-board-purple-soft: color-mix(in oklch, var(--wr-board-purple) 22%, var(--wr-board-surface));
-  --wr-board-pink-soft: color-mix(in oklch, var(--wr-board-pink) 22%, var(--wr-board-surface));
+     in board-model.ts; board-palette.test.ts checks the two agree. Mixed in
+     OKLab, not OKLCH: Cream has a little chroma of its own, and an OKLCH mix
+     swings a cool ink's hue toward it (indigo came out pink). */
+  --wr-board-ink-soft: color-mix(in oklab, var(--wr-board-ink) 22%, var(--wr-board-surface));
+  --wr-board-muted-soft: color-mix(in oklab, var(--wr-board-muted) 22%, var(--wr-board-surface));
+  --wr-board-red-soft: color-mix(in oklab, var(--wr-board-red) 22%, var(--wr-board-surface));
+  --wr-board-orange-soft: color-mix(in oklab, var(--wr-board-orange) 22%, var(--wr-board-surface));
+  --wr-board-yellow-soft: color-mix(in oklab, var(--wr-board-yellow) 22%, var(--wr-board-surface));
+  --wr-board-green-soft: color-mix(in oklab, var(--wr-board-green) 22%, var(--wr-board-surface));
+  --wr-board-accent-soft: color-mix(in oklab, var(--wr-board-accent) 22%, var(--wr-board-surface));
+  --wr-board-blue-soft: color-mix(in oklab, var(--wr-board-blue) 22%, var(--wr-board-surface));
+  --wr-board-purple-soft: color-mix(in oklab, var(--wr-board-purple) 22%, var(--wr-board-surface));
+  --wr-board-pink-soft: color-mix(in oklab, var(--wr-board-pink) 22%, var(--wr-board-surface));
 
   /* 1 in dark mode: custom #hex colours remap their lightness (colorVar). */
   --wr-board-flip: 0;
@@ -39,34 +46,71 @@
   --wr-board-frame-bg: color-mix(in srgb, var(--fg-base) 3%, transparent);
   --wr-board-frame-edge: color-mix(in srgb, var(--fg-base) 14%, transparent);
 
-  --wr-board-sticky-yellow: #fdf1c7;
-  --wr-board-sticky-orange: #fadfba;
-  --wr-board-sticky-mint: #d7f2e3;
-  --wr-board-sticky-green: #d6f0cf;
-  --wr-board-sticky-sky: #d3ecf7;
-  --wr-board-sticky-lavender: #dcdcf6;
-  --wr-board-sticky-violet: #ded5f7;
-  --wr-board-sticky-pink: #f6d9ea;
-  --wr-board-sticky-rose: #f8d9d6;
-  --wr-board-sticky-ink: #1e1b16;
-  --wr-board-sticky-edge: rgb(0 0 0 / 6%);
+  /* Sticky notes are paper washes: each note's ink at --ink-wash (14%) on
+     Cream paper, or 22% on a dark paper in dark mode; text in the foreground. The keys are
+     the stored ones; the paler three (mint, sky, lavender) take 60% of the
+     wash so each pair of a hue stays two notes. Cream and the dark paper are
+     fixed, not the theme ground, so a note is paper on any custom ground. */
+  --wr-board-sticky-paper: #ece7dc;
+  --wr-board-sticky-wash: var(--ink-wash);
+  --wr-board-sticky-pale: calc(var(--wr-board-sticky-wash) * 0.6);
+  --wr-board-sticky-yellow: color-mix(
+    in oklab,
+    var(--wr-board-yellow) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-orange: color-mix(
+    in oklab,
+    var(--wr-board-orange) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-mint: color-mix(
+    in oklab,
+    var(--wr-board-green) var(--wr-board-sticky-pale),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-green: color-mix(
+    in oklab,
+    var(--wr-board-green) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-sky: color-mix(
+    in oklab,
+    var(--wr-board-blue) var(--wr-board-sticky-pale),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-lavender: color-mix(
+    in oklab,
+    var(--wr-board-purple) var(--wr-board-sticky-pale),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-violet: color-mix(
+    in oklab,
+    var(--wr-board-purple) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-pink: color-mix(
+    in oklab,
+    var(--wr-board-pink) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-rose: color-mix(
+    in oklab,
+    var(--wr-board-red) var(--wr-board-sticky-wash),
+    var(--wr-board-sticky-paper)
+  );
+  --wr-board-sticky-ink: var(--fg-base);
+  --wr-board-sticky-edge: color-mix(in srgb, var(--fg-base) 8%, transparent);
 
   --wr-board-card-height: 360px;
   --wr-board-radius: 10px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --wr-board-red: #ff6369;
-    --wr-board-orange: #ff8b3d;
-    --wr-board-green: #4cc38a;
-    --wr-board-blue: #6a9bff;
-    --wr-board-purple: #b38aea;
-    --wr-board-yellow: oklch(0.83 0.15 85);
-    --wr-board-pink: oklch(0.72 0.17 350);
-    --wr-board-flip: 1;
-    --wr-board-sticky-ink: #1a1a1a;
-  }
+/* Dark mode follows the app's theme, not the OS: the inks themselves switch in
+   App.css; the notes move to a dark paper. */
+:root[data-theme="dark"] {
+  --wr-board-flip: 1;
+  --wr-board-sticky-paper: #1a1916;
 }
 
 /* ------------------------------------------------------------------ card */
@@ -108,7 +152,7 @@
 }
 
 .wr-board-card:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--fg-base);
   outline-offset: 2px;
 }
 
@@ -341,31 +385,31 @@
   cursor: pointer;
 }
 
-/* Where a click with the shape or note tool will drop its item. */
+/* Where a click with the shape or note tool will drop its item: a faint
+   foreground outline, the same ink as the selection. */
 .wr-board-ghost {
-  fill: color-mix(in srgb, var(--wr-board-blue) 8%, transparent);
-  stroke: var(--wr-board-blue);
-  stroke-opacity: 0.6;
+  fill: color-mix(in srgb, var(--fg-base) 6%, transparent);
+  stroke: color-mix(in srgb, var(--fg-base) 60%, var(--wr-board-surface));
   pointer-events: none;
 }
 
-/* The shape a dropped card will connect to: lit border and a soft glow, so
-   it is obvious which one it is, and it moves as the cursor does. */
+/* The shape a dropped card will connect to: a foreground border and a soft
+   halo of the same ink, so it is obvious which one it is, and it moves as the
+   cursor does. */
 .wr-board-connect-target {
   fill: none;
-  stroke: var(--wr-board-blue);
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--wr-board-blue) 55%, transparent));
+  stroke: var(--fg-base);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--fg-base) 35%, transparent));
   pointer-events: none;
 }
 
 .wr-board-ghost-link {
-  stroke: var(--wr-board-blue);
-  stroke-opacity: 0.6;
+  stroke: color-mix(in srgb, var(--fg-base) 60%, var(--wr-board-surface));
   pointer-events: none;
 }
 
 /* Docking spark (board-spark.ts). Each group sets --wr-spark to the target
-   card's outline colour. Lit lines are three strokes: a wide soft glow, the
+   card's outline ink, or the foreground when it has none. Lit lines are three strokes: a wide soft glow, the
    coloured body, and a near-white core, which is what makes them read as
    light rather than paint. */
 .wr-board-spark {
@@ -489,7 +533,7 @@
 }
 
 /* The board focuses its own host (and the overlay can take focus) so keys
-   reach it; App.css's global :focus-visible ring then drew an accent outline
+   reach it; App.css's global :focus-visible ring then drew a focus outline
    round the whole board. Only the container opts out — buttons inside keep
    their keyboard ring, which `[data-no-focus-ring]` would also have removed. */
 .wr-board-host:focus-visible,
@@ -595,22 +639,22 @@
 /* -------------------------------------------------------------- overlay */
 
 .wr-board-marquee {
-  fill: color-mix(in srgb, var(--accent) 10%, transparent);
-  stroke: var(--accent);
+  fill: color-mix(in srgb, var(--fg-base) 10%, transparent);
+  stroke: var(--fg-base);
 }
 
 .wr-board-selbox {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--fg-base);
 }
 
 .wr-board-handle {
   fill: var(--surface-primary);
-  stroke: var(--accent);
+  stroke: var(--fg-base);
 }
 
 .wr-board-handle-stem {
-  stroke: var(--accent);
+  stroke: var(--fg-base);
 }
 
 .wr-board-guide {
@@ -620,7 +664,7 @@
 
 .wr-board-link-sel {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--fg-base);
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.45;
@@ -629,7 +673,7 @@
 
 .wr-board-bind-hint {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--fg-base);
   stroke-dasharray: 4 3;
 }
 
@@ -661,10 +705,10 @@
   visibility: hidden;
 }
 
-/* Quick-connect dots (Lark's blue side dots): blue, so they never read as
-   the accent-coloured resize and rotate handles. */
+/* Quick-connect dots (Lark's side dots): solid discs of a softened
+   foreground, so they never read as the outlined resize and rotate handles. */
 .wr-board-qdot {
-  fill: color-mix(in srgb, var(--wr-board-blue) 60%, transparent);
+  fill: color-mix(in srgb, var(--fg-base) 60%, var(--wr-board-surface));
   stroke: var(--wr-board-surface);
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
@@ -673,7 +717,7 @@
 }
 
 .wr-board-qdot:hover {
-  fill: var(--wr-board-blue);
+  fill: var(--fg-base);
 }
 
 .wr-board-placeholder {
@@ -902,7 +946,7 @@
 .wr-board-swatch {
   width: 46px;
   height: 46px;
-  border: 1px solid rgb(0 0 0 / 8%);
+  border: 1px solid color-mix(in srgb, var(--fg-base) 12%, transparent);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -926,7 +970,7 @@
 }
 
 .wr-board-swatch.is-active {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--fg-base);
   outline-offset: 1px;
 }
 
@@ -1152,7 +1196,7 @@
 }
 
 .wr-board-find input:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--fg-base);
   outline-offset: 0;
 }
 
@@ -1183,12 +1227,12 @@
 
 .wr-board-match {
   fill: none;
-  stroke: color-mix(in srgb, var(--accent) 45%, transparent);
+  stroke: color-mix(in srgb, var(--fg-base) 45%, transparent);
   pointer-events: none;
 }
 
 .wr-board-match.is-current {
-  stroke: var(--accent);
+  stroke: var(--fg-base);
 }
 
 /* --------------------------------------------------------------- export */

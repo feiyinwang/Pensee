@@ -66,7 +66,7 @@
 .shapeOption:focus-visible,
 .sizeOption:focus-visible,
 .action:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--fg-base);
   outline-offset: 1px;
 }
 
@@ -184,7 +184,7 @@
 .swatch[aria-checked="true"] {
   box-shadow:
     0 0 0 2px var(--surface-raised),
-    0 0 0 4px var(--accent);
+    0 0 0 4px var(--fg-base);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -244,7 +244,7 @@
 .textButton:focus-visible,
 .wheelHex:focus-visible,
 .wheelSlider:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--fg-base);
   outline-offset: 1px;
 }
 
@@ -432,7 +432,7 @@
 
 .shapeOption[aria-checked="true"],
 .sizeOption[aria-checked="true"] {
-  background: var(--accent-subtle);
+  background: color-mix(in srgb, var(--fg-base) 12%, transparent);
   color: var(--foreground);
 }
 

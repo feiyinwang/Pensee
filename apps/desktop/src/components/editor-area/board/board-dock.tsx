@@ -61,7 +61,7 @@ function swatch(colour: string): ReactNode {
         height: 18,
         borderRadius: 4,
         background: `var(--wr-board-sticky-${colour})`,
-        boxShadow: "inset 0 0 0 1px rgb(0 0 0 / 10%)",
+        boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--fg-base) 12%, transparent)",
       }}
     />
   );

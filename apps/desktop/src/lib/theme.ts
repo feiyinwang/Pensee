@@ -94,30 +94,13 @@ export function applyCssVarBindings(settings: Record<string, unknown>) {
   }
 }
 
-/** A theme whose accent is its foreground has no accent (Ink is one). The
- *  window backdrop exists to carry the accent's hue into the ground, so such a
- *  theme gets a flat ground instead: `data-backdrop="flat"` on :root. Unset
- *  primaries count as their schema default, like everywhere else. */
-export function isFlatBackdrop(mode: ThemeMode, settings: Record<string, unknown>): boolean {
-  const read = (suffix: PrimarySuffix) => {
-    const def = getPrimaryDefs(mode).find((d) => suffixOf(mode, d.key) === suffix);
-    return def ? (settings[def.key] ?? def.default) : undefined;
-  };
-  const accent = read("accent");
-  const foreground = read("foreground");
-  return (
-    typeof accent === "string" &&
-    typeof foreground === "string" &&
-    accent.toLowerCase() === foreground.toLowerCase()
-  );
-}
-
+/** Pushes the mode's background and foreground. There is no accent primary:
+ *  the app UI has no accent colour, and `--accent`, `--accent-solid` and
+ *  `--on-accent` are aliases of these two in App.css, so they follow every
+ *  push without being written here. */
 function pushForMode(mode: ThemeMode, settings: Record<string, unknown>) {
   setThemeAttribute(mode === "dark");
   applyPrimaries(mode, settings);
-  const root = document.documentElement;
-  if (isFlatBackdrop(mode, settings)) root.setAttribute("data-backdrop", "flat");
-  else root.removeAttribute("data-backdrop");
 }
 
 /**

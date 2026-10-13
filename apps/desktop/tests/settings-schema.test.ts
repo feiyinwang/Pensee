@@ -6,10 +6,9 @@ import {
   type ThemeMode,
 } from "../src/lib/settings-schema";
 
-// Every preset folder ships one JSON per mode holding exactly the editable
-// primaries. Glob-load them the same way a preset picker would so adding a
-// schema primary (e.g. mono-font) fails here until every preset defines it.
-const presetFiles = import.meta.glob<Record<string, unknown>>("../shared/themes/*/*.json", {
+// The one theme: Ink, recorded in shared/themes/ink/ as one JSON per mode
+// holding exactly the editable primaries (SPECs/ink-only-colour-spec.md).
+const themeFiles = import.meta.glob<Record<string, unknown>>("../shared/themes/*/*.json", {
   eager: true,
   import: "default",
 });
@@ -103,18 +102,40 @@ describe("daily note folder setting", () => {
   });
 });
 
-describe("theme presets", () => {
-  test("at least one preset file is discovered", () => {
-    expect(Object.keys(presetFiles).length).toBeGreaterThan(0);
+describe("Ink, the only theme", () => {
+  test("is the only theme folder, one file per mode", () => {
+    expect(Object.keys(themeFiles).sort()).toEqual([
+      "../shared/themes/ink/dark.json",
+      "../shared/themes/ink/light.json",
+    ]);
   });
 
-  test("define every editable primary from the settings schema", () => {
-    for (const [path, preset] of Object.entries(presetFiles)) {
-      const mode: ThemeMode = path.endsWith("/dark.json") ? "dark" : "light";
-      const schemaKeys = getPrimaryDefs(mode)
-        .map((def) => suffixOf(mode, def.key))
-        .sort();
-      expect(Object.keys(preset).sort(), path).toEqual(schemaKeys);
+  test("has no accent setting: the app UI has no accent colour", () => {
+    for (const mode of ["light", "dark"] as const) {
+      expect(getPrimaryDefs(mode).map((def) => suffixOf(mode, def.key))).toEqual([
+        "background",
+        "foreground",
+        "translucent",
+        "contrast",
+      ]);
     }
+    expect(SETTINGS_SCHEMA.some((def) => def.key.endsWith(".accent"))).toBe(false);
+  });
+
+  test("its files equal the schema's theme defaults, so a fresh install opens in Ink", () => {
+    for (const [path, values] of Object.entries(themeFiles)) {
+      const mode: ThemeMode = path.endsWith("/dark.json") ? "dark" : "light";
+      const defaults = Object.fromEntries(
+        getPrimaryDefs(mode).map((def) => [suffixOf(mode, def.key), def.default]),
+      );
+      expect(values, path).toEqual(defaults);
+    }
+    const ink = "#0B0B0B";
+    const cream = "#ECE7DC";
+    const defaultOf = (key: string) => SETTINGS_SCHEMA.find((def) => def.key === key)?.default;
+    expect(defaultOf("theme.light.background")).toBe(cream);
+    expect(defaultOf("theme.light.foreground")).toBe(ink);
+    expect(defaultOf("theme.dark.background")).toBe(ink);
+    expect(defaultOf("theme.dark.foreground")).toBe(cream);
   });
 });

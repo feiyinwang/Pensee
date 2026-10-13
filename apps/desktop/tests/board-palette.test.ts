@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { HUE_TOKENS, isColor, parseBoard } from "../src/components/editor-area/board/board-model";
 import { colorVar } from "../src/components/editor-area/board/board-render";
+import { SETTINGS_SCHEMA } from "../src/lib/settings-schema";
 import {
   DEFAULT_PALETTE,
   fillOf,
@@ -60,6 +61,26 @@ describe("board palette", () => {
   it("draws a custom colour through the dark-mode remap", () => {
     expect(colorVar("blue")).toBe("var(--wr-board-blue)");
     expect(colorVar("#00ff00")).toMatch(/^oklch\(from #00ff00 /);
+  });
+
+  it("offers every ink but `accent`, which is the same ink as `ink`", () => {
+    expect(DEFAULT_PALETTE).not.toContain("accent");
+    expect(DEFAULT_PALETTE).toEqual(HUE_TOKENS.filter((t) => t !== "accent"));
+    const schemaDefault = SETTINGS_SCHEMA.find((def) => def.key === "board.palette")?.default;
+    expect(schemaDefault).toEqual([...DEFAULT_PALETTE]);
+    // A saved palette that still lists it keeps it.
+    expect(normalizePalette(["ink", "accent"])).toEqual(["ink", "accent"]);
+  });
+
+  it("draws every hue token in a writing ink, never a raw colour", () => {
+    const css = readFileSync(
+      resolve(__dirname, "../src/components/editor-area/board/board.css"),
+      "utf8",
+    );
+    for (const h of HUE_TOKENS) {
+      const decl = new RegExp(`--wr-board-${h}:\\s*([^;]+);`).exec(css)?.[1];
+      expect(decl, h).toMatch(/^var\(--(ink-[a-z]+|fg-base|text-primary)\)$/);
+    }
   });
 
   it("declares a soft tint in board.css for every hue token", () => {

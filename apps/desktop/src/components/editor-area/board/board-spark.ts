@@ -135,11 +135,11 @@ function outlineSamples(g: SVGGElement, d: string, step: number): Point[] {
   return pts;
 }
 
-/** The colour the card glows in: its outline, or blue when it has none. */
+/** The ink the card glows in: its outline, or the foreground when it has none. */
 export function sparkColor(el: Card): string {
-  if (el.t === "sticky") return "var(--wr-board-blue)";
+  if (el.t === "sticky") return "var(--wr-board-ink)";
   const s = el.st.s;
-  if (s === "none" || s === "ink" || s === "muted") return "var(--wr-board-blue)";
+  if (s === "none" || s === "muted") return "var(--wr-board-ink)";
   return colorVar(s);
 }
 

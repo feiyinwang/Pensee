@@ -284,6 +284,7 @@ export const generalSyntaxHighlights = syntaxHighlighting(
     {
       tag: tags.comment,
       color: "var(--pm-syntax-comment)",
+      fontStyle: "italic",
     },
     {
       tag: tags.invalid,
@@ -291,30 +292,3 @@ export const generalSyntaxHighlights = syntaxHighlighting(
     },
   ]),
 );
-
-export const lightTheme = EditorView.theme({
-  ".cm-content": {
-    "--pm-cursor-color": "black",
-    "--pm-header-mark-color": "oklch(82.8% 0.111 230.318)",
-    "--pm-link-color": "oklch(58.8% 0.158 241.966)",
-    "--pm-muted-color": "oklch(37.2% 0.044 257.287)",
-    "--pm-code-background-color": "oklch(92.9% 0.013 255.508)",
-    "--pm-code-btn-background-color": "oklch(86.9% 0.022 252.894)",
-    "--pm-code-btn-hover-background-color": "oklch(70.4% 0.04 256.788)",
-    "--pm-blockquote-vertical-line-background-color": "oklch(70.4% 0.04 256.788)",
-    "--pm-syntax-link": "oklch(62.75% 0.188 259.38)",
-    "--pm-syntax-keyword": "oklch(58.13% 0.248 297.57)",
-    "--pm-syntax-atom": "oklch(51.29% 0.219 260.63)",
-    "--pm-syntax-literal": "oklch(57.38% 0.111 170.31)",
-    "--pm-syntax-string": "oklch(54.86% 0.184 25.53)",
-    "--pm-syntax-regexp": "oklch(65.88% 0.184 43.8)",
-    "--pm-syntax-definition-variable": "oklch(45.32% 0.171 260.3)",
-    "--pm-syntax-local-variable": "oklch(64.13% 0.09 184.42)",
-    "--pm-syntax-type-namespace": "oklch(49.1% 0.091 165.52)",
-    "--pm-syntax-class-name": "oklch(64.42% 0.11 168.83)",
-    "--pm-syntax-special-variable-macro": "oklch(52.58% 0.212 282.71)",
-    "--pm-syntax-definition-property": "oklch(42.1% 0.142 260.08)",
-    "--pm-syntax-comment": "oklch(62.79% 0.022 252.89)",
-    "--pm-syntax-invalid": "oklch(64.62% 0.203 29.2)",
-  },
-});
