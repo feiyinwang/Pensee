@@ -18,6 +18,12 @@ export function readDirectory(path: string): Promise<DirEntry[]> {
   return invoke("read_directory", { path });
 }
 
+/** Stems of the `.md` files directly in `path`, without opening any of them
+ *  (cheap on slow iCloud storage, unlike `readDirectory`). */
+export function listMarkdownStems(path: string): Promise<string[]> {
+  return invoke("list_markdown_stems", { path });
+}
+
 export function readRecentFiles(limit: number, offset: number): Promise<DirEntry[]> {
   return invoke("read_recent_files", { limit, offset });
 }

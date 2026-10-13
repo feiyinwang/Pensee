@@ -44,7 +44,9 @@ function useNoteFolder(): string | null {
 }
 
 /** Stems of the `.md` files in the note folder, re-read whenever the watcher
- *  reports a change, so a note created anywhere gets its dot. */
+ *  reports a change, so a note created anywhere gets its dot. Names only: a
+ *  listing that opened every note (`readDirectory`) took a minute in an iCloud
+ *  vault and, re-run on each watcher event, starved the clicks' own file reads. */
 function useExistingStems(folder: string | null): Set<string> {
   const version = useSidebarMetadataVersion();
   const [stems, setStems] = useState<Set<string>>(() => new Set());
@@ -52,13 +54,13 @@ function useExistingStems(folder: string | null): Set<string> {
     if (!folder) return;
     let cancelled = false;
     tauri
-      .readDirectory(folder)
-      .then((entries) => {
+      .listMarkdownStems(folder)
+      .then((names) => !cancelled && setStems(new Set(names)))
+      .catch((error) => {
         if (cancelled) return;
-        setStems(new Set(entries.filter((e) => e.is_markdown).map((e) => getFileStem(e.path))));
-      })
-      // A folder that doesn't exist yet just has no notes; the first click creates it.
-      .catch(() => !cancelled && setStems(new Set()));
+        console.error(`Calendar: listing ${folder} failed`, error);
+        setStems(new Set());
+      });
     return () => {
       cancelled = true;
     };

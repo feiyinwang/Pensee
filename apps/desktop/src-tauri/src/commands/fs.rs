@@ -315,6 +315,38 @@ pub async fn read_directory(
     .await
 }
 
+/// The stems of the `.md` files directly in `path`, read off the directory
+/// listing alone. No file is opened, so this stays fast on iCloud vaults whose
+/// notes can each take a second to read (`read_directory` reads every title).
+/// A folder that doesn't exist yet has no notes.
+pub fn list_markdown_stems_impl(path: &str) -> Result<Vec<String>, AppError> {
+    let dir_path = PathBuf::from(path);
+    if !dir_path.exists() {
+        return Ok(Vec::new());
+    }
+    let mut stems = Vec::new();
+    for entry in fs::read_dir(&dir_path)?.flatten() {
+        let entry_path = entry.path();
+        let is_markdown = entry_path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("md"));
+        if !is_markdown || !entry.file_type()?.is_file() {
+            continue;
+        }
+        if let Some(stem) = entry_path.file_stem().and_then(|stem| stem.to_str()) {
+            if !stem.starts_with('.') {
+                stems.push(stem.to_string());
+            }
+        }
+    }
+    Ok(stems)
+}
+
+#[tauri::command]
+pub async fn list_markdown_stems(path: String) -> Result<Vec<String>, AppError> {
+    blocking(move || list_markdown_stems_impl(&path)).await
+}
+
 pub fn read_file_impl(path: &str) -> Result<FileContent, AppError> {
     let file_path = PathBuf::from(path);
     if !file_path.exists() {
@@ -993,6 +1025,25 @@ mod tests {
         assert_eq!(reopened.path, path_str);
         assert_eq!(reopened.content, "# Monday\n\nnotes");
         assert_eq!(fs::read_to_string(&path).unwrap(), "# Monday\n\nnotes");
+    }
+
+    #[test]
+    fn test_list_markdown_stems_names_notes_without_reading_them() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("2026-10-13.md"), "x").unwrap();
+        fs::write(dir.path().join("2026-W42.MD"), "x").unwrap();
+        fs::write(dir.path().join(".hidden.md"), "x").unwrap();
+        fs::write(dir.path().join("photo.png"), "x").unwrap();
+        fs::create_dir(dir.path().join("2026-10-13-assets.md")).unwrap();
+
+        let mut stems = list_markdown_stems_impl(&dir.path().to_string_lossy()).unwrap();
+        stems.sort();
+        assert_eq!(stems, vec!["2026-10-13", "2026-W42"]);
+
+        let missing = dir.path().join("Journal");
+        assert!(list_markdown_stems_impl(&missing.to_string_lossy())
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Clicking a day, week, month, quarter or year in the calendar works again in an iCloud vault, and the dots under days that have a note show up straight away. The calendar used to open every note in your daily-note folder just to learn their names, which took over a minute in an iCloud vault. It did that again each time iCloud touched a file, so the clicks waited behind it. It now reads only the file names.
 - **Library** uses the whole width when you pinch its tab open, so you see more covers in each row instead of empty margins on both sides. Spaces you add with `View: gallery` do the same. Nothing else about Library changes.
 - **Projects** is just the kanban now. **List** and **Timeline** are gone, and so is the switcher at the top right. Your notes keep their **Start** and **Deadline** properties, and deadline tags still show on the cards.
 - The Projects board uses all the room it has. Pinch a tab open to the whole window and the columns spread across it, with no sideways scrollbar and no empty margins. The board reaches the bottom of the window. It only scrolls when there isn't room: sideways in a narrow tab column, and down when a column is taller than the window.

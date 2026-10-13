@@ -28,7 +28,7 @@ periods the user is in now.
   new column right of the active tab, or focuses the tab already showing it.
 - States: the current period reads in the accent colour. The open note gets the
   accent fill (on days, Arc's gliding selection disc). A note that exists shows a
-  dot under its label. The folder is re-read on every watcher event.
+  dot under its label. The folder is re-read on every watcher event, by file name only (`list_markdown_stems`): opening each note for its title (`read_directory`) took over a minute in an iCloud vault and, repeated on every event, starved the clicks' own file reads.
 - Agent chat: every message carries the current year, quarter, month, week and
   day notes that exist, broadest first, as `<period_note period=… path=…>`. A note
   already open as a tab is referenced with `open_tab="true"` and not sent twice.
@@ -44,6 +44,8 @@ periods the user is in now.
 - `hooks/use-daily-note.ts` `openPeriodNote`: binds the stores to it.
 - `components/calendar-panel/`: a lazy chunk, because it is built on Arc
   (`calendar` and `dropdown-menu`, both with Pensée patches).
+- QA: journeys `CAL-*` in `docs/qa/user-journeys.md`, specs in
+  `e2e/specs/journeys/calendar.spec.js`.
 - `lib/agent-open-files.ts` `collectAgentPeriodNotes` and `lib/agent-context.ts`:
   the agent context.
 
