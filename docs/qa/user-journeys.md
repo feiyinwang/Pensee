@@ -115,7 +115,7 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ----- | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------- |
 | ED-01 | ★ Open a note, type a sentence                           | It is saved to disk within a second; no unsaved dot remains | auto: core                  |
 | ED-02 | ★ Click the title, rename, Enter                         | The file is renamed; the caret moves to the body            | auto: core                  |
-| ED-03 | Click **N properties ›** on the title line               | The properties open; clicking again folds them              | manual                      |
+| ED-03 | Click **N properties ›** under the title                 | The properties open; clicking again folds them              | auto: editor                |
 | ED-04 | ⌘B, ⌘I, ⌘E, ⌘K on selected text                          | Bold, italic, code, link markup is applied and rendered     | manual                      |
 | ED-05 | Type `- a`, Enter, Tab, `b`                              | A nested bullet; Shift+Tab lifts it back                    | manual                      |
 | ED-06 | Type `1. a`, Enter, Tab                                  | Nested numbering reads `1.1` style, like a word processor   | manual                      |
