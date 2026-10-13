@@ -27,7 +27,7 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 
 | Space | Shows | View |
 |---|---|---|
-| Projects | `Type: Project` | list, kanban or timeline ([project-views-spec.md](project-views-spec.md)) |
+| Projects | `Type: Project` | kanban ([project-views-spec.md](project-views-spec.md)) |
 | Library | tabs: Books (`Book`), Videos (`YouTube`, `Video`), Courses (`Course`), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab |
 | Inspirations | `Type: Inspiration` | cards: title and first line |
 | Files | every file | the folder tree (moved here from the sidebar's Everything section) |

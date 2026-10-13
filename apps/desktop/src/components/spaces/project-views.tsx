@@ -8,15 +8,12 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
-  type MouseEvent,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Badge } from "@/components/arc/badge/badge";
 import { KanbanBoard, type KanbanCard } from "@/components/arc/blocks/kanban-board/kanban-board";
-import { SortableDataTable } from "@/components/arc/sortable-data-table/sortable-data-table";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
-import { Add01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, ArrowDown01Icon, ArrowUp01Icon } from "@hugeicons/core-free-icons";
 import { editPage } from "@/components/editor-area/linked-block-sync";
 import { navigateToFile, openLinkedPage } from "@/hooks/editor-api";
 import {
@@ -31,10 +28,9 @@ import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import { getFileStem } from "@/lib/paths";
 import type { SearchResult } from "@/types/fs";
 import {
+  DONE,
   NO_STATUS,
   PROJECT_TYPE,
-  dayToDate,
-  formatDay,
   projectOf,
   statusColumns,
   deadlineTag,
@@ -50,14 +46,12 @@ import {
   type TagTone,
   TONE_COLOR,
 } from "@/lib/projects";
-import { formatRelativeTime } from "@/lib/relative-time";
-import type { SpaceView } from "@/lib/spaces";
 import { noteTitle } from "./space-cover";
 import styles from "./project-views.module.css";
 
-/** Project views (SPECs/project-views-spec.md): one set of projects shown as a
- *  list, a kanban or a timeline. Edits write the project note's frontmatter. */
-export default function ProjectViews({ notes, view }: { notes: TypedNote[]; view: SpaceView }) {
+/** Project views (SPECs/project-views-spec.md): the projects as a kanban, a
+ *  column per status. Edits write the project note's frontmatter. */
+export default function ProjectViews({ notes }: { notes: TypedNote[] }) {
   ensureArcTokens();
   // Read the project template now, so a new project doesn't wait on it (in an
   // iCloud vault its first read can take seconds).
@@ -68,22 +62,14 @@ export default function ProjectViews({ notes, view }: { notes: TypedNote[]; view
   const { projects, columns, edit, add } = useProjects(notes);
   return (
     <div className={styles.projectViews}>
-      {view === "kanban" ? (
-        <Kanban projects={projects} columns={columns} edit={edit} add={add} />
-      ) : view === "timeline" ? (
-        <Timeline projects={projects} columns={columns} edit={edit} add={add} />
-      ) : (
-        <ProjectList projects={projects} columns={columns} add={add} />
-      )}
+      <Kanban projects={projects} columns={columns} edit={edit} add={add} />
     </div>
   );
 }
 
-/** What a view changes: a status column id, or days. */
+/** What the board changes: a status column id. */
 interface Change {
   status?: string;
-  start?: Day;
-  deadline?: Day;
 }
 
 type EditProject = (project: Project, change: Change) => void;
@@ -119,8 +105,8 @@ function queueWrite(path: string, write: () => Promise<void>): Promise<void> {
 }
 
 /** Projects with any change still being written shown in place, so a moved
- *  card or bar doesn't jump back until the file is re-read. A project created
- *  here shows first until the re-read notes include it. */
+ *  card doesn't jump back until the file is re-read. A project created here
+ *  shows first until the re-read notes include it. */
 function useProjects(notes: TypedNote[]) {
   const [pending, setPending] = useState<ReadonlyMap<string, Pending>>(new Map());
   const [created, setCreated] = useState<readonly Project[]>([]);
@@ -169,11 +155,7 @@ function useProjects(notes: TypedNote[]) {
     (change: Change): ProjectEdit => {
       const column =
         change.status === undefined ? undefined : columns.find((c) => c.id === change.status);
-      return {
-        status: column ? statusValue(column) : undefined,
-        start: change.start,
-        deadline: change.deadline,
-      };
+      return { status: column ? statusValue(column) : undefined };
     },
     [columns],
   );
@@ -235,8 +217,8 @@ function useProjects(notes: TypedNote[]) {
         excerpt: null,
       },
       status: change.status ?? NO_STATUS,
-      start: change.start ?? null,
-      deadline: change.deadline ?? null,
+      start: null,
+      deadline: null,
     };
     setCreated((current) => [project, ...current]);
   }, []);
@@ -289,20 +271,6 @@ function openNote(event: { metaKey: boolean; ctrlKey: boolean }, path: string) {
   void open(path).catch((error: unknown) => {
     window.alert(`Failed to open: ${error instanceof Error ? error.message : String(error)}`);
   });
-}
-
-/** "+ New project", then the add field. */
-function NewProject(props: Omit<AddFieldProps, "onClose">) {
-  const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <button type="button" className={styles.newButton} onClick={() => setOpen(true)}>
-        <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={1.8} aria-hidden />
-        New project
-      </button>
-    );
-  }
-  return <AddField {...props} onClose={() => setOpen(false)} />;
 }
 
 /** Notes suggested under the add field. */
@@ -502,103 +470,6 @@ function AddField({ projects, columns, onAdd, onClose }: AddFieldProps) {
   );
 }
 
-/* List ------------------------------------------------------------------ */
-
-interface ListRow extends Record<string, unknown> {
-  path: string;
-  name: string;
-  /** The column's place on the board, so sorting by status follows the board. */
-  status: number;
-  start: Day | null;
-  deadline: Day | null;
-  edited: number;
-}
-
-/** Fixed widths for the short columns, sized for their longest value ("Overdue ·
- *  Dec 20, 2023", "143 weeks ago") so nothing wraps. Arc's table would lock
- *  them as percentages, which squeeze in a narrow column; below the sum plus
- *  the name's minimum the table scrolls inside its card (Arc's rule). */
-const LIST_WIDTHS = { status: 116, start: 124, deadline: 204, edited: 136 };
-
-function ProjectList({
-  projects,
-  columns,
-  add,
-}: {
-  projects: Project[];
-  columns: StatusColumn[];
-  add: AddProject;
-}) {
-  const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
-  const rows = useMemo<ListRow[]>(
-    () =>
-      projects.map((project) => ({
-        path: project.note.path,
-        name: noteTitle(project.note),
-        status: columns.findIndex((c) => c.id === project.status),
-        start: project.start,
-        deadline: project.deadline,
-        edited: project.note.modified_at,
-      })),
-    [projects, columns],
-  );
-  const day = (value: unknown) => (typeof value === "number" ? formatDay(value) : "");
-  const now = today();
-  return (
-    <>
-      <SortableDataTable<ListRow>
-        rows={rows}
-        rowKey="path"
-        caption="Projects"
-        defaultSort={{ key: "edited", direction: "desc" }}
-        columns={[
-          {
-            // Takes the room the fixed columns leave.
-            key: "name",
-            label: "Name",
-            render: (_, row) => (
-              <button
-                type="button"
-                className={styles.rowName}
-                onClick={(event) => openNote(event, row.path)}
-              >
-                {row.name}
-              </button>
-            ),
-          },
-          {
-            key: "status",
-            label: "Status",
-            numeric: false,
-            width: LIST_WIDTHS.status,
-            render: (_, row) => (
-              <StatusTag status={byPath.get(row.path)!.status} columns={columns} />
-            ),
-          },
-          { key: "start", label: "Start", numeric: false, width: LIST_WIDTHS.start, render: day },
-          {
-            key: "deadline",
-            label: "Deadline",
-            numeric: false,
-            width: LIST_WIDTHS.deadline,
-            render: (_, row) => <DeadlineTag project={byPath.get(row.path)!} now={now} />,
-          },
-          {
-            key: "edited",
-            label: "Last edited",
-            numeric: false,
-            width: LIST_WIDTHS.edited,
-            render: (value) => formatRelativeTime(value as number) ?? "",
-          },
-        ]}
-      />
-      <div className={styles.listNew}>
-        <NewProject projects={projects} columns={columns} onAdd={(choice) => add(choice, {})} />
-      </div>
-    </>
-  );
-}
-
 /** A tag: Arc's badge as a neutral pill, its meaning in a coloured dot. */
 function Tag({ tone, children }: { tone: TagTone; children: string }) {
   return (
@@ -621,9 +492,24 @@ function DeadlineTag({ project, now }: { project: Project; now: Day }) {
 
 /* Kanban ---------------------------------------------------------------- */
 
+/** Room kept under the last done card that shows: the fold toggle and the
+ *  column's add row. */
+const FOLD_RESERVE_PX = 96;
+
+/** The element that scrolls Arc's board around `cell`. Arc's block is
+ *  vendored (docs/arc.md), so this walks up to it instead of a ref. */
+function scrollerOf(cell: HTMLElement, host: HTMLElement): HTMLElement | null {
+  let node = cell.parentElement;
+  while (node && node !== host && getComputedStyle(node).overflowY !== "auto")
+    node = node.parentElement;
+  return node === host ? null : node;
+}
+
 /** Arc's kanban block over the projects: a card per project, a column per
  *  status. Moving a card writes its Status; "Add project" makes a note. The
- *  order inside a column has no field in the note, so it lasts this session. */
+ *  order inside a column has no field in the note, so it lasts this session.
+ *  Done shows as many cards as fit in one screen of the board; the rest fold
+ *  behind "Show N more". */
 function Kanban({
   projects,
   columns,
@@ -636,46 +522,104 @@ function Kanban({
   add: AddProject;
 }) {
   const [order, setOrder] = useState<readonly string[]>([]);
+  const [doneOpen, setDoneOpen] = useState(false);
+  // Done cards that fit in one screen of the board; null while measuring,
+  // which renders them all for one pass before paint.
+  const [doneFit, setDoneFit] = useState<number | null>(null);
   const now = today();
+  const host = useRef<HTMLDivElement>(null);
+
+  const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
+  const sorted = useMemo(() => {
+    const rank = new Map(order.map((path, i) => [path, i]));
+    // Projects not placed by hand yet (new, or never moved) keep the newest-edit order, first.
+    return [...projects].sort(
+      (a, b) => (rank.get(a.note.path) ?? -1) - (rank.get(b.note.path) ?? -1),
+    );
+  }, [projects, order]);
+  const done = useMemo(
+    () => sorted.filter((p) => p.status === DONE).map((p) => p.note.path),
+    [sorted],
+  );
+  const doneShown = doneOpen || doneFit === null ? done.length : Math.min(doneFit, done.length);
+  const doneHidden = useMemo(() => new Set(done.slice(doneShown)), [done, doneShown]);
+
+  const cards = useMemo<KanbanCard[]>(
+    () =>
+      sorted
+        .filter((project) => !doneHidden.has(project.note.path))
+        .map((project) => ({
+          id: project.note.path,
+          title: noteTitle(project.note),
+          column: project.status,
+          assignee: "",
+          meta: project.deadline === null ? undefined : <DeadlineTag project={project} now={now} />,
+        })),
+    [sorted, doneHidden, now],
+  );
 
   // Opens with Ongoing in the middle when the board is wider than the page.
-  // Arc's block is vendored (docs/arc.md), so this finds its column and scroller.
-  const host = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const cell = host.current?.querySelector<HTMLElement>('[data-cell="ongoing"]');
-    let scroller = cell?.parentElement;
-    while (scroller && scroller !== host.current && getComputedStyle(scroller).overflowX !== "auto")
-      scroller = scroller.parentElement;
-    if (!cell || !scroller || scroller === host.current) return;
+    const scroller = cell && scrollerOf(cell, host.current!);
+    if (!cell || !scroller) return;
     const c = cell.getBoundingClientRect();
     const s = scroller.getBoundingClientRect();
     scroller.scrollLeft += c.left + c.width / 2 - (s.left + s.width / 2);
   }, []);
 
-  const byPath = useMemo(() => new Map(projects.map((p) => [p.note.path, p])), [projects]);
-  const cards = useMemo<KanbanCard[]>(() => {
-    const rank = new Map(order.map((path, i) => [path, i]));
-    // Projects not placed by hand yet (new, or never moved) keep the newest-edit order, first.
-    const sorted = [...projects].sort(
-      (a, b) => (rank.get(a.note.path) ?? -1) - (rank.get(b.note.path) ?? -1),
-    );
-    return sorted.map((project) => ({
-      id: project.note.path,
-      title: noteTitle(project.note),
-      column: project.status,
-      assignee: "",
-      meta: project.deadline === null ? undefined : <DeadlineTag project={project} now={now} />,
-    }));
-  }, [projects, order, now]);
+  // Measure again when the done cards change.
+  const doneKey = done.join("\n");
+  useLayoutEffect(() => setDoneFit(null), [doneKey]);
+
+  // With every done card rendered, count the ones whose bottom sits within
+  // one screen of the board, leaving room for the toggle under them.
+  const measuredSize = useRef({ width: 0, height: 0 });
+  useLayoutEffect(() => {
+    if (doneFit !== null) return;
+    const cell = host.current?.querySelector<HTMLElement>(`[data-cell="${DONE}"]`);
+    const scroller = cell && scrollerOf(cell, host.current!);
+    if (!cell || !scroller) {
+      console.error("[projects] kanban: no Done column to measure; showing every done card");
+      setDoneFit(Number.POSITIVE_INFINITY);
+      return;
+    }
+    measuredSize.current = { width: scroller.clientWidth, height: scroller.clientHeight };
+    const top = scroller.getBoundingClientRect().top - scroller.scrollTop;
+    const floor = scroller.clientHeight - FOLD_RESERVE_PX;
+    let fit = 0;
+    for (const card of cell.querySelectorAll<HTMLElement>("[data-card-id]")) {
+      if (card.getBoundingClientRect().bottom - top > floor) break;
+      fit += 1;
+    }
+    setDoneFit(Math.max(1, fit));
+  }, [doneFit]);
+
+  // A pinch to one tab, a new column split or a window resize changes what
+  // fits; measure again once the board's size really changes.
+  useEffect(() => {
+    const cell = host.current?.querySelector<HTMLElement>(`[data-cell="${DONE}"]`);
+    const scroller = cell && scrollerOf(cell, host.current!);
+    if (!scroller) return;
+    const observer = new ResizeObserver(() => {
+      const { width, height } = measuredSize.current;
+      if (scroller.clientWidth === width && scroller.clientHeight === height) return;
+      setDoneFit(null);
+    });
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
 
   const onCardsChange = (next: KanbanCard[]) => {
     for (const card of next) {
       const project = byPath.get(card.id);
       if (project && project.status !== card.column) edit(project, { status: card.column });
     }
-    setOrder(next.filter((card) => byPath.has(card.id)).map((card) => card.id));
+    // Folded done cards aren't on the board; they keep their place at Done's end.
+    setOrder([...next.filter((card) => byPath.has(card.id)).map((card) => card.id), ...doneHidden]);
   };
 
+  const foldable = doneFit !== null && done.length > doneFit;
   return (
     <div ref={host} className={styles.boardHost}>
       <KanbanBoard
@@ -686,6 +630,7 @@ function Kanban({
             id: column.id,
             name: column.label,
             label: tone ? <Tag tone={tone}>{column.label}</Tag> : column.label,
+            hidden: column.id === DONE ? doneHidden.size : undefined,
           };
         })}
         people={[]}
@@ -704,421 +649,25 @@ function Kanban({
             onClose={close}
           />
         )}
+        cellFooter={(column) =>
+          column === DONE && foldable ? (
+            <button
+              type="button"
+              className={styles.foldToggle}
+              aria-expanded={doneOpen}
+              onClick={() => setDoneOpen((open) => !open)}
+            >
+              <HugeiconsIcon
+                icon={doneOpen ? ArrowUp01Icon : ArrowDown01Icon}
+                size={14}
+                strokeWidth={1.8}
+                aria-hidden
+              />
+              {doneOpen ? "Show fewer" : `Show ${doneHidden.size} more`}
+            </button>
+          ) : null
+        }
       />
     </div>
   );
-}
-
-/* Timeline -------------------------------------------------------------- */
-
-const DAY_PX = 3;
-/** Pointer travel before a press on a bar becomes a drag. */
-const DRAG_THRESHOLD_PX = 4;
-const MIN_BAR_PX = 20;
-/** Grab width of a bar's ends. */
-const HANDLE_PX = 6;
-
-type BarPart = "move" | "start" | "end";
-
-interface BarDrag {
-  path: string;
-  start: Day | null;
-  deadline: Day | null;
-}
-
-/** First day of the month `day` falls in. */
-function monthStart(day: Day): Day {
-  const date = dayToDate(day);
-  return Math.round(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) / 86_400_000);
-}
-
-function addMonths(day: Day, months: number): Day {
-  const date = dayToDate(day);
-  return Math.round(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate()) / 86_400_000,
-  );
-}
-
-const monthFormat = new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" });
-
-/** The days a project's bar covers; one date alone is a one-day bar. */
-function span(project: { start: Day | null; deadline: Day | null }): [Day, Day] | null {
-  const { start, deadline } = project;
-  if (start === null && deadline === null) return null;
-  const a = start ?? deadline!;
-  const b = deadline ?? start!;
-  return a <= b ? [a, b] : [b, a];
-}
-
-/** The dates a drag of `part` by `delta` days gives `project`. Only dates the
- *  project has move, except an end handle, which sets the date it stands for. */
-function dragged(project: Project, part: BarPart, delta: number): BarDrag {
-  const [from, to] = span(project)!;
-  const result: BarDrag = {
-    path: project.note.path,
-    start: project.start,
-    deadline: project.deadline,
-  };
-  if (part === "move") {
-    if (result.start !== null) result.start += delta;
-    if (result.deadline !== null) result.deadline += delta;
-  } else if (part === "start") {
-    result.start = Math.min(from + delta, project.deadline ?? Infinity);
-  } else {
-    result.deadline = Math.max(to + delta, project.start ?? -Infinity);
-  }
-  return result;
-}
-
-function changeOf(project: Project, next: BarDrag): Change {
-  const change: Change = {};
-  if (next.start !== null && next.start !== project.start) change.start = next.start;
-  if (next.deadline !== null && next.deadline !== project.deadline) change.deadline = next.deadline;
-  return change;
-}
-
-function Timeline({
-  projects,
-  columns,
-  edit,
-  add,
-}: {
-  projects: Project[];
-  columns: StatusColumn[];
-  edit: EditProject;
-  add: AddProject;
-}) {
-  const now = today();
-  const scroller = useRef<HTMLDivElement>(null);
-  const [preview, setPreview] = useState<BarDrag | null>(null);
-  const [view, setView] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
-  const justDragged = useRef(false);
-  const [focusPath, setFocusPath] = useState<string | null>(null);
-
-  // Done projects stay on the board and the list, not on the timeline.
-  const open = useMemo(() => projects.filter((p) => p.status !== "done"), [projects]);
-  const shown = useMemo(
-    () =>
-      open.map((project) =>
-        preview?.path === project.note.path ? { ...project, ...preview } : project,
-      ),
-    [open, preview],
-  );
-  const dated = useMemo(
-    () =>
-      shown
-        .filter((p) => span(p) !== null)
-        .sort(
-          (a, b) => span(a)![0] - span(b)![0] || noteTitle(a.note).localeCompare(noteTitle(b.note)),
-        ),
-    [shown],
-  );
-  const undated = useMemo(() => shown.filter((p) => span(p) === null), [shown]);
-
-  // The range stays put while a bar is dragged, so the grid doesn't slide under it.
-  const rangeProjects = preview ? open : shown;
-  const [rangeStart, rangeEnd] = useMemo(() => {
-    let min = now;
-    let max = now;
-    for (const project of rangeProjects) {
-      const s = span(project);
-      if (!s) continue;
-      min = Math.min(min, s[0]);
-      max = Math.max(max, s[1]);
-    }
-    return [monthStart(addMonths(min, -1)), monthStart(addMonths(max, 3))];
-  }, [rangeProjects, now]);
-
-  const months = useMemo(() => {
-    const list: { day: Day; label: string; year: number; january: boolean }[] = [];
-    for (let day = rangeStart; day < rangeEnd; day = addMonths(day, 1)) {
-      const date = dayToDate(day);
-      list.push({
-        day,
-        label: monthFormat.format(date),
-        year: date.getUTCFullYear(),
-        january: date.getUTCMonth() === 0,
-      });
-    }
-    return list;
-  }, [rangeStart, rangeEnd]);
-
-  const x = (day: Day) => (day - rangeStart) * DAY_PX;
-  const trackWidth = x(rangeEnd);
-
-  const trackLeft = useCallback(() => {
-    const node = scroller.current;
-    const name = node?.querySelector<HTMLElement>("[data-name-cell]");
-    return name?.offsetWidth ?? 0;
-  }, []);
-
-  const scrollToDay = useCallback(
-    (day: Day, behavior: ScrollBehavior) => {
-      const node = scroller.current;
-      if (!node) return;
-      const visible = node.clientWidth - trackLeft();
-      node.scrollTo({ left: Math.max(0, (day - rangeStart) * DAY_PX - visible / 3), behavior });
-    },
-    [rangeStart, trackLeft],
-  );
-
-  // Opens on today.
-  const opened = useRef(false);
-  useLayoutEffect(() => {
-    if (opened.current) return;
-    opened.current = true;
-    scrollToDay(now, "auto");
-  }, [now, scrollToDay]);
-
-  // Which days are in view, for the arrows that point at bars off screen.
-  useLayoutEffect(() => {
-    const node = scroller.current;
-    if (!node) return;
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      setView({ left: node.scrollLeft, width: node.clientWidth - trackLeft() });
-    };
-    measure();
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
-    };
-    node.addEventListener("scroll", onScroll, { passive: true });
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    return () => {
-      node.removeEventListener("scroll", onScroll);
-      observer.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [trackLeft]);
-
-  useLayoutEffect(() => {
-    if (!focusPath) return;
-    scroller.current
-      ?.querySelector<HTMLElement>(`[data-bar="${CSS.escape(focusPath)}"]`)
-      ?.focus({ preventScroll: true });
-    setFocusPath(null);
-  }, [focusPath, projects]);
-
-  const onBarPointerDown = (event: ReactPointerEvent<HTMLElement>, project: Project) => {
-    if (event.button !== 0) return;
-    const bar = event.currentTarget.getBoundingClientRect();
-    const offset = event.clientX - bar.left;
-    const part: BarPart =
-      offset < HANDLE_PX ? "start" : offset > bar.width - HANDLE_PX ? "end" : "move";
-    const startX = event.clientX;
-    let moved = false;
-    let last: BarDrag | null = null;
-
-    const onMove = (e: PointerEvent) => {
-      if (!moved && Math.abs(e.clientX - startX) < DRAG_THRESHOLD_PX) return;
-      moved = true;
-      const next = dragged(project, part, Math.round((e.clientX - startX) / DAY_PX));
-      if (last && next.start === last.start && next.deadline === last.deadline) return;
-      last = next;
-      setPreview(next);
-    };
-    const finish = (commit: boolean) => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onCancel);
-      window.removeEventListener("keydown", onKey, true);
-      if (!moved) return;
-      justDragged.current = true;
-      window.setTimeout(() => (justDragged.current = false), 0);
-      setPreview(null);
-      if (!commit || !last) return;
-      const change = changeOf(project, last);
-      if (Object.keys(change).length > 0) edit(project, change);
-    };
-    const onUp = () => finish(true);
-    const onCancel = () => finish(false);
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key !== "Escape" || !moved) return;
-      e.preventDefault();
-      finish(false);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onCancel);
-    window.addEventListener("keydown", onKey, true);
-  };
-
-  const onBarKeyDown = (event: KeyboardEvent<HTMLElement>, project: Project) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      openNote(event, project.note.path);
-      return;
-    }
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    event.preventDefault();
-    const delta = event.key === "ArrowLeft" ? -1 : 1;
-    const change = changeOf(project, dragged(project, event.shiftKey ? "end" : "move", delta));
-    if (Object.keys(change).length === 0) return;
-    edit(project, change);
-    setFocusPath(project.note.path);
-  };
-
-  const onTrackClick = (event: MouseEvent<HTMLDivElement>, project: Project) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    edit(project, { start: rangeStart + Math.floor((event.clientX - rect.left) / DAY_PX) });
-  };
-
-  const viewStart = rangeStart + Math.floor(view.left / DAY_PX);
-  const viewEnd = rangeStart + Math.floor((view.left + view.width) / DAY_PX);
-  const firstMonthInView =
-    monthStart(viewStart) === viewStart ? viewStart : addMonths(monthStart(viewStart), 1);
-
-  const nameCell = (project: Project) => (
-    <button
-      type="button"
-      data-name-cell=""
-      className={styles.nameCell}
-      onClick={(event) => openNote(event, project.note.path)}
-    >
-      <span className={styles.name}>{noteTitle(project.note)}</span>
-    </button>
-  );
-
-  return (
-    <div className={styles.timeline} ref={scroller}>
-      <div
-        className={styles.timelineInner}
-        style={{ width: `calc(var(--name-width) + ${trackWidth}px)` }}
-      >
-        <div className={styles.timelineHeader}>
-          <div className={styles.corner} data-name-cell="">
-            <button
-              type="button"
-              className={styles.todayButton}
-              onClick={() => scrollToDay(now, "smooth")}
-            >
-              Today
-            </button>
-          </div>
-          <div className={styles.months} style={{ width: trackWidth }}>
-            {months.map((month) => (
-              <span key={month.day} className={styles.month} style={{ left: x(month.day) }}>
-                {/* The year shows on January and on the first month label in view. */}
-                {month.january || month.day === firstMonthInView
-                  ? `${month.label} ${month.year}`
-                  : month.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.rows}>
-          <div className={styles.grid} style={{ width: trackWidth }} aria-hidden>
-            {months.map((month) => (
-              <span key={month.day} className={styles.gridLine} style={{ left: x(month.day) }} />
-            ))}
-            <span className={styles.todayLine} style={{ left: x(now) + DAY_PX / 2 }} />
-          </div>
-
-          {dated.map((project) => {
-            const [from, to] = span(project)!;
-            const left = x(from);
-            const width = Math.max((to - from + 1) * DAY_PX, MIN_BAR_PX);
-            const before = to < viewStart;
-            const after = from > viewEnd;
-            return (
-              <div key={project.note.path} className={styles.row}>
-                {nameCell(project)}
-                <div className={styles.track} style={{ width: trackWidth }}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    data-bar={project.note.path}
-                    data-dragging={preview?.path === project.note.path ? "" : undefined}
-                    className={styles.bar}
-                    style={
-                      {
-                        left,
-                        width,
-                        "--tag": TONE_COLOR[statusTone(project.status) ?? "gray"],
-                      } as CSSProperties
-                    }
-                    aria-label={`${noteTitle(project.note)}, ${datesLabel(project)}`}
-                    onPointerDown={(event) => onBarPointerDown(event, project)}
-                    onClick={(event) => {
-                      if (!justDragged.current) openNote(event, project.note.path);
-                    }}
-                    onKeyDown={(event) => onBarKeyDown(event, project)}
-                  >
-                    <span className={styles.handle} data-side="start" />
-                    <span className={styles.handle} data-side="end" />
-                  </div>
-                  <span className={styles.barDates} style={{ left: left + width + 8 }}>
-                    {datesLabel(project)}
-                    {alarm(project, now)}
-                  </span>
-                  {(before || after) && (
-                    <button
-                      type="button"
-                      className={styles.offscreen}
-                      data-side={before ? "start" : "end"}
-                      style={
-                        before ? { left: view.left + 6 } : { left: view.left + view.width - 6 }
-                      }
-                      onClick={() => scrollToDay(from, "smooth")}
-                    >
-                      {before ? `← ${formatDay(to)}` : `${formatDay(from)} →`}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          {undated.length > 0 && (
-            <>
-              <div className={styles.groupRow}>
-                <span className={styles.groupLabel} data-name-cell="">
-                  No dates
-                  <span className={styles.groupCount}>{undated.length}</span>
-                </span>
-              </div>
-              {undated.map((project) => (
-                <div key={project.note.path} className={styles.row}>
-                  {nameCell(project)}
-                  <div
-                    className={styles.track}
-                    data-empty=""
-                    style={{ width: trackWidth }}
-                    title="Click to start it on this day"
-                    onClick={(event) => onTrackClick(event, project)}
-                  />
-                </div>
-              ))}
-            </>
-          )}
-
-          <div className={styles.newRow}>
-            <div className={styles.newCell}>
-              <NewProject
-                projects={projects}
-                columns={columns}
-                onAdd={(choice) => add(choice, { start: now })}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** The deadline tag beside a bar, only when it asks for attention. */
-function alarm(project: Project, now: Day) {
-  const tag = deadlineTag(project, now);
-  return tag && tag.tone !== "gray" ? <Tag tone={tag.tone}>{tag.label}</Tag> : null;
-}
-
-function datesLabel(project: Project): string {
-  const { start, deadline } = project;
-  if (start !== null && deadline !== null) return `${formatDay(start)} – ${formatDay(deadline)}`;
-  if (start !== null) return `Starts ${formatDay(start)}`;
-  return `Due ${formatDay(deadline!)}`;
 }

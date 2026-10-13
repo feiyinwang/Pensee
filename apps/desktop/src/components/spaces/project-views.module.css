@@ -10,6 +10,13 @@
   --border-subtle: var(--line-subtler);
   --border-strong: var(--line-subtle);
   --foreground: var(--text-primary);
+  /* Columns narrow to 200px before the board scrolls sideways, so a
+     pinched-open tab on a laptop shows every column at once. */
+  --kanban-col-min: 200px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Tags. A colour has one meaning: blue in progress, green done, red overdue,
@@ -33,341 +40,29 @@
   white-space: nowrap;
 }
 
-/* Arc's table tints the sorted column twice, its band and the cells, which
-   only reads once when the cells are opaque. On glass the band alone does it. */
-.projectViews table th[data-sorted],
-.projectViews table td[data-sorted] {
-  --cell-base: transparent;
-}
-
-/* Short values stay on one line; the table keeps a width that fits them and
-   scrolls sideways inside its card when the pane is narrower (Arc's responsive
-   rule). Under 620px Arc folds each row into two lines itself, so leave it be. */
-@media (min-width: 621px) {
-  .projectViews table {
-    /* Name's minimum plus the fixed columns (LIST_WIDTHS in project-views.tsx). */
-    min-width: calc(200px + 116px + 124px + 204px + 136px);
-  }
-
-  .projectViews table td {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
 /* Kanban: a box only for finding Arc's columns, not for layout. */
 .boardHost {
   display: contents;
 }
 
-/* Kanban: Arc's block, page-tall instead of its fixed 640px, without its own frame. */
+/* Kanban: Arc's block, without its own frame, filling the page's height
+   (spaces.module.css .fill) instead of its fixed 640px. */
 .projectViews .board {
-  height: calc(100vh - 200px);
+  flex: 1;
+  height: auto;
+  min-height: 420px;
   border: 0;
   border-radius: 0;
 }
 
-/* List: the name opens the note; the rest of the row is Arc's table. */
-.rowName {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-  color: var(--fg-base);
-  text-align: left;
-}
-
-.rowName:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.rowName:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-button);
-}
-
-.noStatus {
-  white-space: nowrap;
-  font-size: var(--text-caption);
-  color: var(--text-muted);
-}
-
-/* Timeline ------------------------------------------------------------ */
-
-.timeline {
-  --name-width: 220px;
-  --row-height: 36px;
-  position: relative;
-  overflow: auto;
-  max-height: calc(100vh - 200px);
-  border: 1px solid var(--line-subtler);
-  border-radius: var(--radius-card);
-  background: var(--surface-primary);
-}
-
-.timelineInner {
-  position: relative;
-  min-width: 100%;
-}
-
-.timelineHeader {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  height: var(--row-height);
-  border-bottom: 1px solid var(--line-subtler);
-  background: var(--surface-primary);
-}
-
-.corner {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  width: var(--name-width);
-  padding: 0 8px;
-  border-right: 1px solid var(--line-subtler);
-  background: var(--surface-primary);
-}
-
-.todayButton {
-  height: 28px;
-  padding: 0 10px;
-  border-radius: var(--radius-chip);
-  border: 1px solid var(--line-subtle);
-  font-size: var(--text-label);
-  white-space: nowrap;
-  flex-shrink: 0;
-  font-weight: 500;
-  color: var(--fg-base);
-}
-
-.todayButton:hover {
-  background: var(--surface-subtle);
-}
-
-.months {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.month {
-  position: absolute;
-  top: 0;
-  height: var(--row-height);
-  padding-left: 6px;
-  line-height: var(--row-height);
-  white-space: nowrap;
-  font-size: var(--text-caption);
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.rows {
-  position: relative;
-}
-
-.grid {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--name-width);
-  pointer-events: none;
-}
-
-.gridLine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--line-subtler);
-}
-
-.todayLine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--accent);
-}
-
-.row {
-  display: flex;
-  height: var(--row-height);
-  border-bottom: 1px solid var(--line-subtler);
-}
-
-.row:last-child {
-  border-bottom: 0;
-}
-
-.nameCell {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  width: var(--name-width);
-  padding: 0 12px;
-  border-right: 1px solid var(--line-subtler);
-  background: var(--surface-primary);
-  text-align: left;
-}
-
-.nameCell:hover .name {
-  color: var(--fg-base);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.nameCell:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-label);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.track {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.track[data-empty] {
-  cursor: copy;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .track[data-empty]:hover {
-    background: var(--surface-subtle);
-  }
-}
-
-.bar {
-  position: absolute;
-  top: 8px;
-  height: calc(var(--row-height) - 16px);
-  border-radius: var(--radius-chip);
-  border: 1px solid color-mix(in oklab, var(--tag) 70%, transparent);
-  background: color-mix(in oklab, var(--tag) 35%, transparent);
-  cursor: grab;
-  touch-action: none;
-}
-
-.bar[data-dragging] {
-  cursor: grabbing;
-}
-
-.bar:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: ew-resize;
-}
-
-.handle[data-side="start"] {
-  left: 0;
-}
-
-.handle[data-side="end"] {
-  right: 0;
-}
-
-.barDates {
-  position: absolute;
-  top: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: var(--row-height);
-  white-space: nowrap;
-  font-size: var(--text-caption);
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-/* Points at a bar outside the visible days; click scrolls to it. */
-.offscreen {
-  position: absolute;
-  top: 8px;
-  z-index: 1;
-  height: calc(var(--row-height) - 16px);
-  padding: 0 8px;
-  border-radius: var(--radius-chip);
-  white-space: nowrap;
-  font-size: var(--text-caption);
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--surface-subtle);
-}
-
-.offscreen[data-side="end"] {
-  translate: -100% 0;
-}
-
-.offscreen:hover {
-  color: var(--fg-base);
-  background: var(--surface-selected);
-}
-
-.groupRow {
-  display: flex;
-  height: var(--row-height);
-  border-bottom: 1px solid var(--line-subtler);
-}
-
-.groupLabel {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: var(--name-width);
-  padding: 0 12px;
-  border-right: 1px solid var(--line-subtler);
-  background: var(--surface-primary);
-  font-size: var(--text-caption);
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.groupCount {
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-/* New project (Timeline last row) ------------------------------------- */
-
-.newButton {
+/* Done's fold toggle: as quiet as the column's add row under it. */
+.foldToggle {
   display: flex;
   align-items: center;
   gap: 6px;
   width: 100%;
-  height: 32px;
-  margin-top: 8px;
-  padding: 0 8px;
+  height: 34px;
+  padding: 0 var(--space-2);
   border-radius: var(--radius-field);
   font-size: var(--text-label);
   color: var(--text-muted);
@@ -378,16 +73,24 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .newButton:hover {
+  .foldToggle:hover {
     color: var(--fg-base);
     background: var(--surface-subtle-strong);
   }
 }
 
-.newButton:focus-visible {
+.foldToggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+
+.noStatus {
+  white-space: nowrap;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+/* Add field ---------------------------------------------------------- */
 
 .newForm {
   display: flex;
@@ -417,8 +120,7 @@
 }
 
 /* Notes the typed name matches, under the field: the exact name (or Create)
-   first. In the flow, not floating, so a kanban column or the timeline's
-   scroller never clips it. */
+   first. In the flow, not floating, so the kanban's scroller never clips it. */
 .suggestions {
   display: flex;
   flex-direction: column;
@@ -473,41 +175,14 @@
   color: var(--text-muted);
 }
 
-/* List: the add field under the table, as wide as a name. */
-.listNew {
-  max-width: 360px;
-  padding: 0 4px;
-}
-
 .newError {
   padding: 0 2px;
   font-size: var(--text-caption);
   color: var(--text-error);
 }
 
-/* The timeline's new row sits in the name column, under the last project. */
-.newRow {
-  display: flex;
-}
-
-.newCell {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  flex-shrink: 0;
-  width: var(--name-width);
-  padding: 0 8px 8px;
-  border-right: 1px solid var(--line-subtler);
-  background: var(--surface-primary);
-}
-
-.newCell .newButton,
-.newCell .newForm {
-  margin-top: 4px;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .newButton {
+  .foldToggle {
     transition: none;
   }
 }

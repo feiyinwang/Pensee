@@ -3,7 +3,7 @@ import { avatar } from "../../lib/media";
 
 /** Sample board for the kanban block. Replace with cards from your issue tracker. */
 
-export interface KanbanColumn { id: string; name: string; /** Work in progress limit. The column warns once it holds more cards. */ limit?: number; /** Pensée patch: shown in the column head in place of name (name still labels it for screen readers). */ label?: ReactNode }
+export interface KanbanColumn { id: string; name: string; /** Work in progress limit. The column warns once it holds more cards. */ limit?: number; /** Pensée patch: shown in the column head in place of name (name still labels it for screen readers). */ label?: ReactNode; /** Pensée patch: cards of this column left out of `cards`, still counted in its head. */ hidden?: number }
 export interface KanbanPerson { id: string; name: string; avatar?: string }
 export interface KanbanChecklistItem { id: string; text: string; done: boolean }
 export interface KanbanCard {

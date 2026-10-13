@@ -22,25 +22,18 @@ import { useSpaceDef, useTypedNotes, type SpaceDef, type TypedNote } from "@/hoo
 import { libraryKindOfTab } from "@/lib/library-add";
 import { TONE_COLOR, statusTextTone } from "@/lib/projects";
 import { formatRelativeTime } from "@/lib/relative-time";
-import {
-  SPACE_VIEW_LABELS,
-  allTypes,
-  notesInTab,
-  type SpaceTab,
-  type SpaceView,
-} from "@/lib/spaces";
-import { useSpaceViewStore } from "@/stores/space-view-store";
+import { allTypes, notesInTab, type SpaceTab } from "@/lib/spaces";
 import { FilesSpace } from "./files-space";
 import { NoteGallery } from "./note-gallery";
 import { XBookmarksEmpty, XSyncBar } from "./x-sync-bar";
 import { noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
 
-// Arc and motion load only when a space with views opens (docs/arc.md).
+// Arc and motion load only when the Projects kanban opens (docs/arc.md).
 const ProjectViews = lazy(() => import("./project-views"));
 
 /** A space's page (SPECs/spaces-spec.md): the notes of its types as a
- *  gallery, list or cards, or the folder tree for Files. */
+ *  gallery, list or cards, the Projects kanban, or the folder tree for Files. */
 export function SpacePage({
   location,
   isActive,
@@ -62,7 +55,15 @@ export function SpacePage({
       aria-hidden={!isShown}
     >
       <EditorScrollContainer>
-        <div className={inColumn ? styles.page : `${styles.page} ${styles.lone}`}>
+        <div
+          className={[
+            styles.page,
+            !inColumn && styles.lone,
+            space?.view === "kanban" && styles.fill,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
           {space === null ? (
             <Empty
               title="This note isn't a space any more"
@@ -111,11 +112,6 @@ function TypedSpace({ space }: { space: SpaceDef }) {
     () => (notes ? new Map(space.tabs.map((t) => [t.id, notesInTab(notes, t)])) : null),
     [notes, space.tabs],
   );
-  const picked = useSpaceViewStore((s) => s.views[space.key]);
-  const setView = useSpaceViewStore((s) => s.setView);
-  const view = picked && space.views?.includes(picked) ? picked : space.view;
-  // Like the tabs: the view picker moves at once, the view follows.
-  const shownView = useDeferredValue(view);
   const tab = space.tabs.find((t) => t.id === tabId) ?? space.tabs[0];
   if (!tab) return null;
   const shownTab = space.tabs.find((t) => t.id === shownId) ?? tab;
@@ -140,15 +136,6 @@ function TypedSpace({ space }: { space: SpaceDef }) {
                   <span className={styles.tabCount}>{notesByTab.get(t.id)?.length ?? 0}</span>
                 ) : undefined,
               }))}
-            />
-          )}
-          {space.views && (
-            <SegmentedControl
-              className={styles.typeTabs}
-              label={`${space.name} views`}
-              value={view}
-              onValueChange={(next) => setView(space.key, next as SpaceView)}
-              options={space.views.map((v) => ({ value: v, label: SPACE_VIEW_LABELS[v] }))}
             />
           )}
           {addKind && (
@@ -179,7 +166,7 @@ function TypedSpace({ space }: { space: SpaceDef }) {
         .filter((t) => warm || t.id === shownTab.id)
         .map((t) => (
           <div key={t.id} className={t.id === shownTab.id ? undefined : styles.offstage}>
-            <TabBody space={space} tab={t} shown={notesByTab?.get(t.id) ?? null} view={shownView} />
+            <TabBody space={space} tab={t} shown={notesByTab?.get(t.id) ?? null} />
           </div>
         ))}
     </>
@@ -198,12 +185,10 @@ const TabBody = memo(function TabBody({
   space,
   tab,
   shown,
-  view,
 }: {
   space: SpaceDef;
   tab: SpaceTab;
   shown: TypedNote[] | null;
-  view: SpaceView;
 }) {
   const addKind = addKindOf(space, tab);
   return (
@@ -219,9 +204,9 @@ const TabBody = memo(function TabBody({
             addKind ? { label: `Add ${tab.noun}`, run: () => openLibraryAdd(addKind) } : undefined
           }
         />
-      ) : space.views ? (
+      ) : space.view === "kanban" ? (
         <Suspense fallback={null}>
-          <ProjectViews notes={shown} view={view} />
+          <ProjectViews notes={shown} />
         </Suspense>
       ) : space.view === "list" ? (
         <NoteList notes={shown} />

@@ -2,6 +2,9 @@
 
 ## 2026-10-13
 
+- **Projects** is just the kanban now. **List** and **Timeline** are gone, and so is the switcher at the top right. Your notes keep their **Start** and **Deadline** properties, and deadline tags still show on the cards.
+- The Projects board uses all the room it has. Pinch a tab open to the whole window and the columns spread across it, with no sideways scrollbar and no empty margins. The board reaches the bottom of the window. It only scrolls when there isn't room: sideways in a narrow tab column, and down when a column is taller than the window.
+- **Done** shows as many projects as fit on one screen, newest first. The rest fold under **Show N more** at the bottom of the column, and **Show fewer** folds them again. The count at the top of Done still counts them all.
 - Pensée has an accent colour again, blue by default. Selected text sits on a soft blue, and the keyboard focus ring, checked tasks, switches in Settings, the selected day in the calendar and the small ¶ after a selected paragraph are blue too. Pick another colour under **Accent** in Settings › Appearance. Links, buttons and titles stay in the text colour.
 - All colours are now at the same strength, so red, orange, yellow, green, blue, purple and pink feel equally bright and none shouts louder than another. Boards, stickies and status marks use the new shades.
 - Tags in **Projects** and statuses in **Library** are soft pastel pills, as in Harvey: a pale version of the tag's colour with the words in the text colour, readable in light and dark mode.

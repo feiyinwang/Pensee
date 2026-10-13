@@ -1,8 +1,8 @@
 import { stringify } from "yaml";
 import type { TypedNote } from "./tauri";
 
-// Project views (SPECs/project-views-spec.md): one model behind List, Kanban
-// and Timeline, so a project shows the same status and dates in each.
+// Project views (SPECs/project-views-spec.md): the model behind the Projects
+// kanban, so a project shows the same status and dates on every card.
 
 /** A calendar day as days since 1970-01-01, so day math is plain integers. */
 export type Day = number;
@@ -21,6 +21,8 @@ export interface Project {
 }
 
 export const NO_STATUS = "none";
+/** The Done column's id. */
+export const DONE = "done";
 
 /** The `Type` that makes a note a project. */
 export const PROJECT_TYPE = "Project";
@@ -29,7 +31,7 @@ const BASE_COLUMNS: readonly StatusColumn[] = [
   { id: NO_STATUS, label: "No status" },
   { id: "to-do", label: "To-do" },
   { id: "ongoing", label: "Ongoing" },
-  { id: "done", label: "Done" },
+  { id: DONE, label: "Done" },
 ];
 
 const STATUS_ALIASES: Record<string, string> = {
@@ -172,8 +174,7 @@ export function statusTextTone(raw: string | undefined): TagTone | null {
 }
 
 /** The colour each tone draws, as CSS: the dot tokens (styles/tokens.css). A tag
- *  draws its pastel (a timeline bar its fill);
- *  brown, for a status the vault adds, is orange pulled toward gray.
+ *  draws its pastel; brown, for a status the vault adds, is orange pulled toward gray.
  *  SPECs/harvey-neutral-colour-spec.md. */
 export const TONE_COLOR: Record<TagTone, string> = {
   gray: "var(--color-dot-gray)",

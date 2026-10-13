@@ -18,7 +18,8 @@
 .groupPill { position: absolute; inset: 0; border-radius: var(--radius-pill); background: var(--surface-raised); box-shadow: var(--shadow-resting), 0 0 0 1px var(--border); }
 
 .scroller { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 var(--space-4) var(--space-4); scrollbar-width: thin; }
-.board { --col: minmax(248px, 1fr); display: grid; gap: var(--space-3); width: max(100%, calc(var(--cols) * 260px)); min-height: 100%; grid-template-rows: auto; align-content: start; }
+/* Pensée patch: --kanban-col-min sets the narrowest column before the board scrolls sideways. */
+.board { --col: minmax(var(--kanban-col-min, 248px), 1fr); display: grid; gap: var(--space-3); width: max(100%, calc(var(--cols) * (var(--kanban-col-min, 248px) + 12px))); min-height: 100%; grid-template-rows: auto; align-content: start; }
 .board[data-mode="status"] { grid-template-rows: auto 1fr; }
 .headRow, .row { display: grid; grid-template-columns: repeat(var(--cols), var(--col)); gap: var(--space-3); }
 .headRow { position: sticky; top: 0; z-index: 2; padding-top: 2px; background: var(--surface); }

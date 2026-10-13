@@ -44,6 +44,8 @@ export interface KanbanBoardProps {
   noun?: string;
   /** Pensée patch: renders the add field for a column in place of the block's own textarea; `close` hides it. */
   composer?: (column: string, close: () => void) => ReactNode;
+  /** Pensée patch: rendered under a column's cards, above its add row. */
+  cellFooter?: (column: string) => ReactNode;
 }
 
 interface DragState { id: string; cell: string; index: number; width: number; height: number; origin: { cell: string; index: number }; dropping: boolean }
@@ -112,6 +114,7 @@ export function KanbanBoard({
   showIds = true,
   noun = "card",
   composer: renderComposer, // Pensée patch: Projects renders its own add field
+  cellFooter, // Pensée patch: Projects folds its older done cards behind a toggle
 }: KanbanBoardProps) {
   const uid = useId();
   const reduced = useReducedMotion() ?? false;
@@ -453,6 +456,7 @@ export function KanbanBoard({
     const composing = composer === key;
     return <div key={key} className={styles.cell} data-cell={key} data-over={over(column) || undefined} data-target={drag && drag.cell === key && !drag.dropping ? "" : undefined}>
       {items}
+      {cellFooter && !lane ? <motion.div key="footer" layout="position" transition={layoutTransition}>{cellFooter(column.id)}</motion.div> : null}
       <AnimatePresence initial={false}>
         {composing && renderComposer ? <motion.div key="composer" className={styles.composer} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={layoutTransition}>{renderComposer(column.id, () => setComposer(null))}</motion.div> : composing ? <motion.form key="composer" className={styles.composer} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={layoutTransition} onSubmit={event => { event.preventDefault(); addCard(key); }}>
           <textarea autoFocus rows={2} value={draft} placeholder={`${noun[0].toUpperCase()}${noun.slice(1)} name`} aria-label={`New ${noun} in ${column.name}`} onChange={event => setDraft(event.target.value)} onBlur={() => { if (!draft.trim()) setComposer(null); }} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); addCard(key); } if (event.key === "Escape") { setComposer(null); setDraft(""); } }} />
@@ -479,7 +483,7 @@ export function KanbanBoard({
           <div className={styles.board} style={{ ["--cols" as string]: columns.length }} data-mode={groupBy}>
             <div className={styles.headRow}>
               {columns.map(column => {
-                const count = counts.get(column.id) ?? 0;
+                const count = (counts.get(column.id) ?? 0) + (column.hidden ?? 0);
                 const isOver = over(column);
                 return <div key={column.id} className={styles.columnHead} data-over={isOver || undefined}>
                   <span className={styles.columnName}>{column.label ?? column.name}</span>

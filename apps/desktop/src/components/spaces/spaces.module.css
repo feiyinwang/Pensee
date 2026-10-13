@@ -34,6 +34,25 @@
   padding-top: 0;
 }
 
+/* The Projects kanban takes all the room its tab has: no reading-width cap,
+   and the board ends at the bottom of the pane (project-views.module.css),
+   scrolling inside itself only when a column is taller than that. Below the
+   board's minimum height the page scrolls instead. */
+.page.fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: none;
+  padding-bottom: 1.5rem;
+}
+
+.page.fill > :not(.header, .offstage) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .header {
   display: flex;
   align-items: center;
