@@ -131,7 +131,7 @@ tag reads at 5.2:1 or better on Cream (ochre is the lowest, oxblood 7.1:1) and
 ## Hard-coded colours removed
 
 The `#ff6a00` fallbacks (block menu active tile, gutter image chip), the
-gutter text chip's blue, the save-failed tab dot's red (now the foreground),
+gutter text chip's blue, the save-failed tab dot's macOS red (now oxblood: it is a warning),
 VS Code blue link and grey fallbacks in HTML blocks, tables and wiki links,
 the board's blue ghost/glow/dots and its Radix-style hues, the teal and GitHub
 greys in the `.board.svg` style, the drag-lift paper's cool white and the
