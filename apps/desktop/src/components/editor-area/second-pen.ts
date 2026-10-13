@@ -40,6 +40,7 @@ import {
   cutsFromReply,
   factReply,
   isItem,
+  isPenParagraph,
   itemText,
   newPenId,
   noteForPen,
@@ -47,6 +48,7 @@ import {
   penKindOf,
   penLine,
   penLineSlot,
+  penParagraph,
   penPrompt,
   pinnedSecond,
   questionAbove,
@@ -115,11 +117,10 @@ const ANSWER: PenHintPart[] = [
 ];
 
 type Placement =
-  /** Under the anchor line, after the pen lines already there. */
+  /** Right under the anchor line: a sub-bullet, or a plain line below a
+   *  paragraph or heading. */
   | { mode: "under"; pos: number }
-  /** A sibling right after the anchor line's subtree (one more question). */
-  | { mode: "after"; pos: number }
-  /** The empty line at `pos` becomes the pen line (a quiz on everything). */
+  /** The empty line at `pos` becomes the pen line. */
   | { mode: "slot"; pos: number };
 
 interface ShortenLine {
@@ -200,6 +201,10 @@ async function readSource(
 function lineRange(state: EditorState, first: number, last: number): { from: number; to: number } {
   const start = state.doc.line(first + 1);
   const end = state.doc.line(last + 1);
+  // A plain pen line is a blank line apart from what's above: take both.
+  if (isPenParagraph(start.text) && first > 0 && !state.doc.line(first).text.trim()) {
+    return { from: Math.max(0, start.from - 2), to: end.to };
+  }
   // Take the line break before the lines (or after them, at the top).
   return start.from > 0
     ? { from: start.from - 1, to: end.to }
@@ -748,37 +753,51 @@ class PenPlugin {
       return;
     }
 
+    // A thread's questions so far (follow-ups nest under your answers), so
+    // one more never repeats one, and its note line, so it stays on topic.
+    let root = above;
+    while (continuing && root !== null) {
+      const up = parentOf(lines, root);
+      const higher = up >= 0 ? questionAbove(lines, up) : null;
+      if (higher === null || penKindOf(lines[higher]!) !== penKindOf(lines[root]!)) break;
+      root = higher;
+    }
+    const thread =
+      continuing && root !== null
+        ? lines
+            .slice(root, subtreeEnd(lines, root) + 1)
+            .map((_, k) => root + k)
+            .filter((j) => penKindOf(lines[j]!) === penKindOf(lines[root]!))
+            .map((j) => {
+              const answers = childrenOf(lines, j)
+                .filter((c) => !penKindOf(lines[c]!))
+                .map((c) => itemText(lines[c]!))
+                .filter(Boolean);
+              return `${itemText(lines[j]!)}${answers.length ? ` (the writer answered: ${answers.join("; ")})` : ""}`;
+            })
+        : [];
+    const threadNote = continuing && root !== null ? parentOf(lines, root) : -1;
+
     let placement: Placement;
     let anchor: number | null;
     let already: string[];
     let promptLines: number[];
-    if (continuing) {
-      anchor = above;
-      placement = { mode: "after", pos: state.doc.line(above + 1).from };
-      const parent = parentOf(lines, above);
-      const group = parent >= 0 ? childrenOf(lines, parent) : [above];
-      already = group
-        .filter((j) => penKindOf(lines[j]!) === penKindOf(lines[above]!))
-        .map((j) => {
-          const answers = childrenOf(lines, j)
-            .filter((c) => !penKindOf(lines[c]!))
-            .map((c) => itemText(lines[c]!))
-            .filter(Boolean);
-          return `${itemText(lines[j]!)}${answers.length ? ` (the writer answered: ${answers.join("; ")})` : ""}`;
-        });
-      promptLines = parent >= 0 ? [parent] : [];
-    } else if (targets.length) {
+    if (targets.length) {
+      // Right under the line you're on: a sub-bullet, or a line below.
       anchor = targets[targets.length - 1]!;
       placement = { mode: "under", pos: state.doc.line(anchor + 1).from };
-      already = childrenOf(lines, anchor)
-        .filter((j) => penKindOf(lines[j]!) === (quiz ? "q" : "a"))
-        .map((j) => itemText(lines[j]!));
-      promptLines = targets;
-    } else if (quiz && isBlankLine(lines[caret]!)) {
-      anchor = null;
+      already = continuing
+        ? thread
+        : childrenOf(lines, anchor)
+            .filter((j) => penKindOf(lines[j]!) === (quiz ? "q" : "a"))
+            .map((j) => itemText(lines[j]!));
+      promptLines = [...(threadNote >= 0 ? [threadNote] : []), ...targets];
+    } else if ((quiz || continuing) && isBlankLine(lines[caret]!)) {
+      // An empty line becomes the question.
+      anchor = continuing ? caret : null;
       placement = { mode: "slot", pos: state.doc.line(caret + 1).from };
-      already = [];
-      promptLines = [];
+      already = thread;
+      promptLines = threadNote >= 0 ? [threadNote] : [];
     } else {
       this.say("Put the caret on a line, or select some, first.");
       return;
@@ -813,7 +832,7 @@ class PenPlugin {
         );
         return;
       }
-      this.write(quiz ? "q" : "a", text, { withAnswer: quiz });
+      this.write(quiz ? "q" : "a", text, quiz ? "child" : null);
       this.finish(conversation);
       this.sayAfter([
         { key: "⌘ ." },
@@ -849,29 +868,37 @@ class PenPlugin {
     this.placement = { mode: "under", pos: state.doc.line(anchor + 1).from };
     try {
       const base = { ...this.promptBase(lines, targets), source: null };
-      const query = replyLine(
-        await conversation.send(penPrompt({ ...base, ask: { task: "factQuery" } })),
-      );
-      const papers = query ? await searchPapers(query) : [];
-      if (!papers.length) {
-        this.placement = null;
-        this.finish(conversation);
-        this.say("No paper found for this line.");
-        return;
+      // One more never cites the same paper or says the same thing again.
+      const given = childrenOf(lines, anchor).filter((j) => penKindOf(lines[j]!) === "f");
+      const cited = new Set(given.flatMap((j) => citationsIn(lines[j]!).map((c) => c.url)));
+      const already = given.map((j) => itemText(lines[j]!));
+      let found: ReturnType<typeof factReply> = null;
+      let searched = false;
+      // A query that finds nothing usable gets one broader try.
+      for (const ask of [{ task: "factQuery" }, { task: "factRetry" }] as const) {
+        const query = replyLine(await conversation.send(penPrompt({ ...base, ask })));
+        const papers = query
+          ? (await searchPapers(query)).filter((paper) => !cited.has(paper.url))
+          : [];
+        if (!papers.length) continue;
+        searched = true;
+        this.busyLabel = "Reading the paper…";
+        this.redraw();
+        found = factReply(
+          await conversation.send(
+            penPrompt({ ...base, ask: { task: "factWrite", papers, already } }),
+          ),
+          papers,
+        );
+        if (found) break;
       }
-      this.busyLabel = "Reading the paper…";
-      this.redraw();
-      const found = factReply(
-        await conversation.send(penPrompt({ ...base, ask: { task: "factWrite", papers } })),
-        papers,
-      );
       if (!found) {
         this.placement = null;
         this.finish(conversation);
-        this.say("No fact here I'd stand behind.");
+        this.say(searched ? "No fact here I'd stand behind." : "No paper found for this line.");
         return;
       }
-      const id = this.write("f", `${found.fact} ${citationMarkdown(found.paper)}`, {});
+      const id = this.write("f", `${found.fact} ${citationMarkdown(found.paper)}`);
       this.batch = id ? [...this.batch, id] : this.batch;
       this.finish(conversation);
       this.sayAfter([
@@ -917,7 +944,7 @@ class PenPlugin {
         this.say("That's all I have on this line. The rest is yours.");
         return;
       }
-      const id = this.write("m", text, {});
+      const id = this.write("m", text);
       this.batch = id ? [...this.batch, id] : this.batch;
       this.finish(conversation);
       this.sayAfter([
@@ -1012,7 +1039,8 @@ class PenPlugin {
       .map((c) => itemText(lines[c]!))
       .filter(Boolean);
     const conversation = this.start(step === "hint" ? "Writing a hint…" : "Checking your answer…");
-    this.placement = { mode: "after", pos: answerPos };
+    // The hint or check goes under your answer.
+    this.placement = { mode: "under", pos: answerPos };
     try {
       const { source } = await readSource(path, this.view.state.doc.toString(), lines, question);
       const ask: PenAsk =
@@ -1033,11 +1061,12 @@ class PenPlugin {
         );
         return;
       }
-      // After a hint, the next answer sits beside it, under the question.
-      this.write(step === "hint" ? "h" : "c", step === "hint" ? `Hint: ${text}` : text, {
-        withAnswer: step === "hint",
-        answerBeside: true,
-      });
+      // After a hint, the next answer goes beside the one it hangs under.
+      this.write(
+        step === "hint" ? "h" : "c",
+        step === "hint" ? `Hint: ${text}` : text,
+        step === "hint" ? "next" : null,
+      );
       this.finish(conversation);
       if (step === "check") {
         this.sayAfter([
@@ -1059,10 +1088,14 @@ class PenPlugin {
 
   /** Writes one pen line where the running request's placement says, now
    *  that the text may have moved. Returns its id. */
+  /** Writes one pen line where the running request's placement says, now
+   *  that the text may have moved. `answer` adds an empty answer bullet: as
+   *  the pen line's child, or after the anchor's subtree (the next answer,
+   *  beside the one the pen line hangs under). Returns the pen line's id. */
   private write(
     kind: PenKind,
     text: string,
-    { withAnswer = false, answerBeside = false }: { withAnswer?: boolean; answerBeside?: boolean },
+    answer: "child" | "next" | null = null,
   ): string | null {
     const placement = this.placement;
     this.placement = null;
@@ -1071,41 +1104,59 @@ class PenPlugin {
     const lines = docLines(state);
     const anchor = state.doc.lineAt(Math.min(placement.pos, state.doc.length)).number - 1;
     const id = newPenId(kind, new Set(blockIdsInText(state.doc.toString())));
-    let changes: ChangeSpec;
+    let insert: { from: number; to: number; text: string };
     let textFrom: number;
-    let indent: string;
-    if (placement.mode === "slot" && isBlankLine(lines[anchor]!)) {
+    let written: string;
+    const anchorLine = lines[anchor]!;
+    if (placement.mode === "slot" && isBlankLine(anchorLine)) {
       const line = state.doc.line(anchor + 1);
-      indent = /^\s*/.exec(line.text)![0];
-      changes = { from: line.from, to: line.to, insert: penLine(indent, text, id) };
-      textFrom = line.from + indent.length + 2;
       this.slotQuestions.add(id);
-    } else {
-      let after: number;
-      if (placement.mode === "after") {
-        after = subtreeEnd(lines, anchor);
-        indent = /^\s*/.exec(lines[anchor]!)![0];
-      } else if (placement.mode === "under") {
-        ({ after, indent } = penLineSlot(lines, anchor));
+      if (isItem(anchorLine)) {
+        const indent = /^\s*/.exec(line.text)![0];
+        written = penLine(indent, text, id);
+        insert = { from: line.from, to: line.to, text: written };
+        textFrom = line.from + indent.length + 2;
       } else {
-        after = anchor;
-        indent = /^\s*/.exec(lines[anchor]!)![0];
+        // A blank line becomes a plain pen line, kept apart from its neighbours.
+        written = penParagraph(text, id);
+        insert = { from: line.from, to: line.to, text: `\n${written}\n` };
+        textFrom = line.from + 1;
       }
-      const end = state.doc.line(after + 1).to;
-      changes = { from: end, insert: `\n${penLine(indent, text, id)}` };
-      textFrom = end + 1 + indent.length + 2;
+    } else {
+      const slot = penLineSlot(lines, anchor);
+      const end = state.doc.line(slot.after + 1).to;
+      if (slot.kind === "bullet") {
+        written = penLine(slot.indent, text, id);
+        insert = { from: end, to: end, text: `\n${written}` };
+        textFrom = end + 1 + slot.indent.length + 2;
+      } else {
+        written = penParagraph(text, id);
+        insert = { from: end, to: end, text: `\n\n${written}${slot.blankAfter ? "\n" : ""}` };
+        textFrom = end + 2;
+      }
     }
-    const answerIndent = answerBeside ? indent : childIndent(penLine(indent, text, id));
-    const set = ChangeSet.of(changes, state.doc.length);
-    // `textFrom` is already in the new text: `- TEXT ^ID` ends after " ^" + id.
+    const set = ChangeSet.of(
+      { from: insert.from, to: insert.to, insert: insert.text },
+      state.doc.length,
+    );
+    // `textFrom` is in the new text; the pen line ends after " ^" + id.
     const lineEnd = textFrom + text.length + 2 + id.length;
-    const answer = withAnswer ? `\n${answerIndent}- ` : "";
-    const all = answer
-      ? set.compose(ChangeSet.of({ from: lineEnd, insert: answer }, set.newLength))
-      : set;
+    let all = set;
+    let caret: number | undefined;
+    if (answer === "child") {
+      const bullet = `\n${childIndent(written)}- `;
+      all = set.compose(ChangeSet.of({ from: lineEnd, insert: bullet }, set.newLength));
+      caret = lineEnd + bullet.length;
+    } else if (answer === "next") {
+      const after = set.apply(state.doc);
+      const at = after.line(subtreeEnd(after.toString().split("\n"), anchor) + 1).to;
+      const bullet = `\n${/^\s*/.exec(anchorLine)![0]}- `;
+      all = set.compose(ChangeSet.of({ from: at, insert: bullet }, set.newLength));
+      caret = at + bullet.length;
+    }
     this.view.dispatch({
       changes: all,
-      selection: answer ? { anchor: lineEnd + answer.length } : undefined,
+      selection: caret === undefined ? undefined : { anchor: caret },
       annotations: penEdit.of(true),
       userEvent: "input.pen",
       scrollIntoView: true,
@@ -1166,14 +1217,19 @@ class PenPlugin {
       const parentKind = parent >= 0 ? penKindOf(lines[parent]!) : null;
       if (parentKind === "q" || parentKind === "a") {
         const prev = i - 1;
-        if (penKindOf(lines[prev]!) === "h" && parentOf(lines, prev) === parent) {
+        // The hint hangs under the answer before this one.
+        if (penKindOf(lines[prev]!) === "h" && parentOf(lines, parentOf(lines, prev)) === parent) {
           this.removeLines(prev, i, null);
           return true;
         }
         if (childrenOf(lines, parent).length === 1) {
           const id = /\^(ai-[a-z]-[a-z0-9]{4})\s*$/.exec(lines[parent]!)?.[1];
+          // A question that took an empty bullet's place gives it back; a
+          // plain one leaves the blank line it came from.
           const restore =
-            id && this.slotQuestions.has(id) ? `${/^\s*/.exec(lines[parent]!)![0]}- ` : null;
+            id && this.slotQuestions.has(id) && isItem(lines[parent]!)
+              ? `${/^\s*/.exec(lines[parent]!)![0]}- `
+              : null;
           if (id) this.slotQuestions.delete(id);
           this.removeLines(parent, i, restore);
           return true;

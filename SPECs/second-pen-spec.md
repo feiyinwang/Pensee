@@ -42,30 +42,37 @@ note's edge are not part of it.
 
 ### What it writes
 
-- A real bullet, under your line: the first child of the line, after any of
-  the pen's lines already there. Under a paragraph or heading it is a bullet
-  on the next line. Under an empty line in a source note (a quiz on
-  everything so far) the empty line becomes the question.
+- One line, right below the line you used the key on:
+  - under a **bullet**, a **sub-bullet**, after the pen's sub-bullets already
+    there (so one more lands after the last);
+  - under a **paragraph or heading**, a **plain line** right below it (a blank
+    line apart, so it stays its own line in any Markdown app), after the
+    pen's plain lines already there;
+  - on an **empty line** (a quiz on everything so far, or one more in a quiz
+    from an empty answer), that line becomes the question.
 - Stored as plain Markdown: the line ends with a hidden block id `^ai-<kind>-<rand>`
   (`q` quiz question, `a` question, `h` hint, `c` check, `f` fact, `m` mix).
-  Other apps show an ordinary bullet. The id is hidden like any block id.
-- Drawn in AI ink (`--color-ai-ink`) with a hollow marker. A fact's or check's
-  trailing ` — source` is fainter. The words fade in as they land.
+  Other apps show an ordinary line or bullet. The id is hidden like any block id.
+- Drawn in AI ink (`--color-ai-ink`); a bullet gets a hollow marker. A fact's
+  or check's trailing ` — source` is fainter. The words fade in as they land.
 - Its lines are your text: edit them, delete them, undo them like any line.
 
 ### Answering
 
 - **Enter on a pen line** opens an answer bullet under it, after any answers
-  already there, with the caret in it.
+  already there, with the caret in it. Under a plain pen line, the answers are
+  the bullets right after it.
 - On a **mix**, Enter also keeps that mix and removes the pen's other mixes
   on the same line that have no answers yet.
 - A **quiz question** puts the caret straight into an empty answer under it.
   - **Enter** on your answer: the pen checks it, writing the source's own
-    words that answer the question (`“…” — 9:00`) under your answer. Then it
-    waits.
-  - **Enter on an empty answer**: it is written as *I don't know*, and the pen
-    adds a hint with a new empty answer under it. A second empty answer gets
-    the source.
+    words that answer the question (`“…” — 9:00`) as a sub-bullet of your
+    answer. Then it waits.
+  - **Enter on an empty answer**: it is written as *I don't know*, the pen
+    puts a hint under it, and a new empty answer opens beside it. A second
+    empty answer gets the source under it.
+  - **⌘. ?** with the caret on one of your answers asks one more on that idea,
+    as a sub-bullet of that answer.
   - Once a question has its check, Enter in its answers is a plain Enter.
 - **Esc** on an empty answer takes back the question (or the hint) it answers.
   Right after the pen writes facts or mixes, Esc takes back the ones you

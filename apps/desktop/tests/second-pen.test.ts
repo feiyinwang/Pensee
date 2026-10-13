@@ -10,6 +10,8 @@ import {
   itemText,
   newPenId,
   noteForPen,
+  parentOf,
+  childrenOf,
   penIdKind,
   penKindOf,
   penLineSlot,
@@ -75,14 +77,29 @@ describe("outline", () => {
     expect(subtreeEnd(lines, 5)).toBe(5);
   });
 
-  test("the next pen line goes after the pen lines that open the children", () => {
-    expect(penLineSlot(lines, 0)).toEqual({ after: 3, indent: "  " });
-    expect(penLineSlot(lines, 5)).toEqual({ after: 5, indent: "  " });
+  test("under a bullet the pen writes a sub-bullet, after its own ones", () => {
+    expect(penLineSlot(lines, 0)).toEqual({ kind: "bullet", after: 3, indent: "  " });
+    expect(penLineSlot(lines, 5)).toEqual({ kind: "bullet", after: 5, indent: "  " });
+    expect(penLineSlot(lines, 2)).toEqual({ kind: "bullet", after: 2, indent: "      " });
   });
 
-  test("under a paragraph the pen writes top-level bullets after it", () => {
-    const para = ["A thought.", "- one ^ai-a-cccc", "- my bullet"];
-    expect(penLineSlot(para, 0)).toEqual({ after: 1, indent: "" });
+  test("under a paragraph or heading the pen writes a plain line below", () => {
+    const para = ["A thought", "on two lines.", "", "Why? ^ai-a-cccc", "- my answer", "", "Next."];
+    expect(penLineSlot(para, 0)).toEqual({ kind: "line", after: 4, blankAfter: false });
+    expect(penLineSlot(["# Heading", "Text"], 0)).toEqual({
+      kind: "line",
+      after: 0,
+      blankAfter: true,
+    });
+    expect(penLineSlot(["Last line"], 0)).toEqual({ kind: "line", after: 0, blankAfter: false });
+  });
+
+  test("the bullets right after a plain pen line are its answers", () => {
+    const para = ["Why? ^ai-q-cccc", "- my answer", "  - “…” — 1:10 ^ai-c-dddd", "- more"];
+    expect(parentOf(para, 1)).toBe(0);
+    expect(childrenOf(para, 0)).toEqual([1, 3]);
+    expect(subtreeEnd(para, 0)).toBe(3);
+    expect(parentOf(["Just text", "- a bullet"], 1)).toBe(-1);
   });
 
   test("an answer belongs to the question above it", () => {
@@ -95,11 +112,12 @@ describe("answer flow", () => {
   test("an empty first answer asks for a hint, then the check", () => {
     const lines = ["- note", "  - Q? ^ai-q-aaaa", "    - "];
     expect(answerStep(lines, 2)).toEqual({ question: 1, step: "hint" });
+    // The hint hangs under the answer that asked for it.
     const hinted = [
       "- note",
       "  - Q? ^ai-q-aaaa",
       "    - I don't know",
-      "    - Hint: … ^ai-h-bbbb",
+      "      - Hint: … ^ai-h-bbbb",
       "    - ",
     ];
     expect(answerStep(hinted, 4)).toEqual({ question: 1, step: "check" });
@@ -108,12 +126,28 @@ describe("answer flow", () => {
   test("a written answer is checked, once", () => {
     const lines = ["- Q? ^ai-q-aaaa", "  - rereaders first"];
     expect(answerStep(lines, 1)).toEqual({ question: 0, step: "check" });
-    const checked = [...lines, "  - “…” — 9:00 ^ai-c-cccc", "  - more"];
+    const checked = [...lines, "    - “…” — 9:00 ^ai-c-cccc", "  - more"];
     expect(answerStep(checked, 3)).toBeNull();
   });
 
   test("a question about your thinking is never checked", () => {
     expect(answerStep(["- Why? ^ai-a-aaaa", "  - because"], 1)).toBeNull();
+  });
+
+  test("keeping a plain mix drops the unanswered plain ones around it", () => {
+    const lines = [
+      "An idea.",
+      "",
+      "× one ^ai-m-aaaa",
+      "",
+      "× two ^ai-m-bbbb",
+      "- liked",
+      "",
+      "× three ^ai-m-cccc",
+      "",
+      "Other.",
+    ];
+    expect(unansweredSiblingMixes(lines, 2)).toEqual([7]);
   });
 
   test("keeping a mix drops the unanswered ones beside it", () => {

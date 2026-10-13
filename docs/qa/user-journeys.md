@@ -334,16 +334,17 @@ quizzes you, and Enter on your answer checks it against the source.
 
 | ID     | Journey                                                      | Expected                                                                                     | Check      |
 | ------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------- |
-| PEN-01 | ★ ⌘. then `?` on a line                                      | One blue question bullet appears under the line; the file has it with `^ai-a-…`             | auto: pen  |
+| PEN-01 | ★ ⌘. then `?` on a bullet                                    | One blue question appears as its sub-bullet; the file has it with `^ai-a-…`                 | auto: pen  |
 | PEN-02 | ⌘., then Esc                                                 | The bottom bar lists `? @ + −` while armed, then goes back to "⌘ . think about…"           | auto: pen  |
 | PEN-03 | Enter on a pen question                                      | An empty answer bullet opens under it, the caret in it                                       | auto: pen  |
 | PEN-04 | Enter on one of several mixes                                | That mix stays with an answer under it; the unanswered mixes beside it are gone             | auto: pen  |
 | PEN-05 | Esc on the empty answer under a question                     | The question is taken back                                                                   | auto: pen  |
-| PEN-06 | In a video note: ⌘. `?`, Enter on the empty answer, Enter    | A quiz question (`^ai-q-…`), then *I don't know* + a hint (`^ai-h-…`), then the check quoting the transcript (`^ai-c-…`) | auto: pen  |
+| PEN-06 | In a video note: ⌘. `?`, Enter on the empty answer, Enter    | A quiz question (`^ai-q-…`) with an answer bullet; *I don't know* with a hint under it (`^ai-h-…`) and a new answer; *I don't know* with the check under it, quoting the transcript (`^ai-c-…`) | auto: pen  |
 | PEN-07 | ⌘. then `@` on a line                                        | One fact with a paper pill after it; the file has `[Author Year](https://… "title \| …") ^ai-f-…` | auto: pen  |
 | PEN-08 | ⌘. then `−`, then Enter                                      | Cuts show struck through in red with "−N words" in the bar; Enter removes only them          | auto: pen  |
 | PEN-09 | Hover a fact's paper pill, click **Open paper**              | A card shows the paper's title, authors, venue, year and citations; the paper opens         | you        |
 | PEN-10 | ⌘. `?` from an empty line in a video note while it plays     | The question is on what was watched up to now                                                | you        |
+| PEN-11 | ⌘. then `?` on a plain (non-bullet) line                     | A plain blue line appears right below it, no bullet; the file has it a blank line apart     | auto: pen  |
 
 ---
 

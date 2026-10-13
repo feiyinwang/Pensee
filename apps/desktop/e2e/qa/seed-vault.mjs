@@ -21,6 +21,8 @@ const NOTES = {
   // The second pen (PEN journeys): its own lines already in a note, and a
   // video note with a transcript to quiz on.
   "Notes/Pen.md": [
+    "Writing is thinking on paper.",
+    "",
     "- rereading feels like learning because the page looks familiar",
     "  - What would you notice if it weren't? ^ai-a-aaaa",
     "  - × a familiar face — you know them, not their name ^ai-m-bbbb",

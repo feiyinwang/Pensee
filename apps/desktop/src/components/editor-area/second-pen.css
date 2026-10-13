@@ -26,6 +26,9 @@
 /* Words the pen just wrote settle in, one after another. */
 .cm-editor .cm-pen-word {
   display: inline-block;
+  /* List lines hang their text with a negative text-indent; an inline block
+     inherits it and would pull each word back over the one before. */
+  text-indent: 0;
   animation: cm-pen-word-in 220ms var(--ease-out) both;
 }
 
@@ -65,6 +68,8 @@
 /* A fact's paper: a pill after the claim. */
 .cm-pen-cite {
   display: inline-flex;
+  /* Same as .cm-pen-word: never the list line's hanging indent. */
+  text-indent: 0;
   align-items: center;
   gap: 4px;
   margin-inline-start: 6px;

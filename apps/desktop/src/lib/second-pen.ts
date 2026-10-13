@@ -101,22 +101,36 @@ export function bodyEnd(line: string): number {
   return (id ? line.slice(0, id.index) : line).trimEnd().length;
 }
 
+/** A pen line written as a plain line under a paragraph or heading, not as
+ *  a bullet. Your answers to it are the bullets right after it. */
+export function isPenParagraph(line: string): boolean {
+  return !isItem(line) && penKindOf(line) !== null;
+}
+
 /** The last line (0-based index) of the item at `i` with its children: the
- *  following lines indented past it, up to a blank line. */
+ *  following lines indented past it, up to a blank line. A pen paragraph's
+ *  children are the bullets right after it. */
 export function subtreeEnd(lines: readonly string[], i: number): number {
   const own = indentWidth(lines[i]!);
+  const takesItems = isPenParagraph(lines[i]!);
   let j = i;
-  while (j + 1 < lines.length && lines[j + 1]!.trim() && indentWidth(lines[j + 1]!) > own) j++;
+  for (; j + 1 < lines.length; j++) {
+    const next = lines[j + 1]!;
+    if (!next.trim()) break;
+    if (!(indentWidth(next) > own || (takesItems && isItem(next)))) break;
+  }
   return j;
 }
 
-/** The nearest line above `i` it hangs under, or -1 at the top level. */
+/** The nearest line above `i` it hangs under, or -1 at the top level. A
+ *  top-level bullet right after a pen paragraph hangs under it. */
 export function parentOf(lines: readonly string[], i: number): number {
   const own = indentWidth(lines[i]!);
   for (let j = i - 1; j >= 0; j--) {
     const line = lines[j]!;
     if (!line.trim()) return -1;
     if (indentWidth(line) < own) return j;
+    if (own === 0 && isItem(lines[i]!) && !isItem(line)) return isPenParagraph(line) ? j : -1;
   }
   return -1;
 }
@@ -129,33 +143,64 @@ export function childrenOf(lines: readonly string[], i: number): number[] {
   return children;
 }
 
+/** The pen's lines under a paragraph or heading: the plain pen lines after
+ *  it, each a blank line apart. Indexes, in order. */
+function penParagraphsAfter(lines: readonly string[], end: number): number[] {
+  const found: number[] = [];
+  let j = end;
+  while (j + 2 < lines.length && !lines[j + 1]!.trim() && isPenParagraph(lines[j + 2]!)) {
+    found.push(j + 2);
+    j = subtreeEnd(lines, j + 2);
+  }
+  return found;
+}
+
+/** The last line of the paragraph `i` is in (a heading is one line). */
+function paragraphEnd(lines: readonly string[], i: number): number {
+  let j = i;
+  if (/^\s*#{1,6}\s/.test(lines[i]!)) return j;
+  while (
+    j + 1 < lines.length &&
+    lines[j + 1]!.trim() &&
+    !isItem(lines[j + 1]!) &&
+    !/^\s*#{1,6}\s/.test(lines[j + 1]!)
+  )
+    j++;
+  return j;
+}
+
+export type PenSlot =
+  /** A sub-bullet: after line `after`, at `indent`. */
+  | { kind: "bullet"; after: number; indent: string }
+  /** A plain line after line `after`, a blank line apart (and one after
+   *  when more text follows, so it never joins the next block). */
+  | { kind: "line"; after: number; blankAfter: boolean };
+
 /**
- * Where the pen's next line under `anchor` goes: after the pen's lines that
- * already open its children (and their answers), so a second request lands
- * after the first. `after` is the line to insert below.
- *
- * Under a paragraph or heading the pen's lines are top-level bullets right
- * after it.
+ * Where the pen's line for `anchor` goes: right under it. Under a bullet, a
+ * sub-bullet, after the pen's sub-bullets already there so a second request
+ * lands after the first. Under a paragraph or heading, a plain line below it,
+ * after the pen's plain lines already there.
  */
-export function penLineSlot(
-  lines: readonly string[],
-  anchor: number,
-): { after: number; indent: string } {
-  const indent = childIndent(lines[anchor]!);
-  let after = anchor;
-  if (isItem(lines[anchor]!)) {
+export function penLineSlot(lines: readonly string[], anchor: number): PenSlot {
+  const line = lines[anchor]!;
+  if (isItem(line) || isPenParagraph(line)) {
+    const indent = childIndent(line);
+    let after = anchor;
     for (const child of childrenOf(lines, anchor)) {
       if (!penKindOf(lines[child]!)) break;
       after = subtreeEnd(lines, child);
     }
-    return { after, indent };
+    return { kind: "bullet", after, indent };
   }
-  for (let j = anchor + 1; j < lines.length; j = subtreeEnd(lines, j) + 1) {
-    const line = lines[j]!;
-    if (!line.trim() || indentWidth(line) > 0 || !penKindOf(line)) break;
-    after = subtreeEnd(lines, j);
-  }
-  return { after, indent };
+  const end = paragraphEnd(lines, anchor);
+  const pens = penParagraphsAfter(lines, end);
+  const after = pens.length ? subtreeEnd(lines, pens[pens.length - 1]!) : end;
+  return {
+    kind: "line",
+    after,
+    blankAfter: after + 1 < lines.length && !!lines[after + 1]!.trim(),
+  };
 }
 
 /** The pen line a line belongs to: itself, or the nearest pen question it
@@ -172,11 +217,16 @@ export function penLine(indent: string, text: string, id: string): string {
   return `${indent}- ${text} ^${id}`;
 }
 
+export function penParagraph(text: string, id: string): string {
+  return `${text} ^${id}`;
+}
+
 /* --------------------------------------------------------- answer flow */
 
 /** What Enter on your answer under a quiz question does, read from the
  *  document: `check` your answer, give a `hint` (an empty answer, no hint
- *  yet), or nothing once the question has its check. */
+ *  yet), or nothing once the question has its check. The hint and the check
+ *  hang under the answer that asked for them. */
 export type AnswerStep = { question: number; step: "check" | "hint" } | null;
 
 export function answerStep(lines: readonly string[], i: number): AnswerStep {
@@ -184,7 +234,7 @@ export function answerStep(lines: readonly string[], i: number): AnswerStep {
   if (penKindOf(line) || !isItem(line)) return null;
   const q = parentOf(lines, i);
   if (q < 0 || penKindOf(lines[q]!) !== "q") return null;
-  const kinds = childrenOf(lines, q).map((c) => penKindOf(lines[c]!));
+  const kinds = lines.slice(q + 1, subtreeEnd(lines, q) + 1).map(penKindOf);
   if (kinds.includes("c")) return null;
   return { question: q, step: !itemText(line) && !kinds.includes("h") ? "hint" : "check" };
 }
@@ -192,11 +242,16 @@ export function answerStep(lines: readonly string[], i: number): AnswerStep {
 /** Mixes beside `i` under the same line that nobody answered: the ones
  *  keeping `i` removes. Indexes, last first so removing them in order works. */
 export function unansweredSiblingMixes(lines: readonly string[], i: number): number[] {
-  const parent = parentOf(lines, i);
-  const siblings =
-    parent >= 0
-      ? childrenOf(lines, parent)
-      : lines.flatMap((_, j) => (indentWidth(lines[j]!) === indentWidth(lines[i]!) ? [j] : []));
+  let siblings: number[];
+  if (isPenParagraph(lines[i]!)) {
+    // Plain pen lines under a paragraph: the run around `i`, a blank apart.
+    let first = i;
+    while (first >= 2 && !lines[first - 1]!.trim() && isPenParagraph(lines[first - 2]!)) first -= 2;
+    siblings = [first, ...penParagraphsAfter(lines, subtreeEnd(lines, first))];
+  } else {
+    const parent = parentOf(lines, i);
+    siblings = parent >= 0 ? childrenOf(lines, parent) : [];
+  }
   return siblings
     .filter((j) => j !== i && penKindOf(lines[j]!) === "m" && subtreeEnd(lines, j) === j)
     .reverse();
@@ -285,7 +340,8 @@ export type PenAsk =
   | { task: "check"; question: string; answers: string[] }
   | { task: "mix"; already: string[] }
   | { task: "factQuery" }
-  | { task: "factWrite"; papers: Paper[] }
+  | { task: "factRetry" }
+  | { task: "factWrite"; papers: Paper[]; already: string[] }
   | { task: "shorten" };
 
 export interface PenPromptInput {
@@ -375,12 +431,20 @@ function taskText(input: PenPromptInput): string {
         "Write a search query for research papers that would support, test or add to the target lines.",
         "3 to 8 English words, the terms researchers would use. Reply with the query only.",
       ].join("\n");
+    case "factRetry":
+      return [
+        "That search found nothing usable. Write a different, broader search query: 2 to 5 English words, the field's common terms.",
+        "Reply with the query only.",
+      ].join("\n");
     case "factWrite":
       return [
         "These research papers came back for the target lines, best first.",
         paperBlock(ask.papers),
         "Pick the first paper whose abstract supports a fact that fills a gap in the target lines. Write that fact in one sentence, using only what the abstract says.",
         'Reply with JSON only: {"paper": N, "fact": "…"}. If no abstract supports a useful fact, reply {"paper": 0}.',
+        ask.already.length
+          ? `Facts already given here (say something else):\n${list(ask.already)}`
+          : "",
       ].join("\n");
     case "shorten":
       return [
@@ -394,9 +458,7 @@ export function penPrompt(input: PenPromptInput): string {
   const parts = [
     `<note title="${input.title.replace(/"/g, "'")}">\n${input.note}\n</note>`,
     input.lines.length ? `<target-lines>\n${input.lines.join("\n")}\n</target-lines>` : "",
-    input.source && input.ask.task !== "factWrite" && input.ask.task !== "factQuery"
-      ? sourceBlock(input.source)
-      : "",
+    input.source && !input.ask.task.startsWith("fact") ? sourceBlock(input.source) : "",
     taskText(input),
   ];
   return parts.filter(Boolean).join("\n\n");

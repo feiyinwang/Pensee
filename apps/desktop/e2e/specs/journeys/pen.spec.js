@@ -210,6 +210,21 @@ describe("Journeys: second pen", function () {
     );
   });
 
+  it("PEN-11 ⌘. ? on a plain line writes a plain line right below it", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await caretAfter("Writing is thinking on paper.");
+    await key(".", { meta: true });
+    await key("?", { shift: true });
+    const text = await waitForDisk(
+      path,
+      (t) =>
+        /^Writing is thinking on paper\.\n\n[^\s-].+ \^ai-a-[a-z0-9]{4}\n\n- rereading/.test(t),
+      "expected a plain pen line (no bullet) right below the paragraph",
+      AI_TIMEOUT,
+    );
+    ok(text.startsWith("Writing is thinking on paper."), text);
+  });
+
   it("PEN-08 ⌘. − proposes cuts; Enter applies them", async function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("I think we basically");
@@ -263,14 +278,14 @@ describe("Journeys: second pen", function () {
     await key("Enter");
     await waitForDisk(
       path,
-      (t) => t.includes("I don't know") && /\^ai-h-[a-z0-9]{4}/.test(t),
+      (t) => / {4}- I don't know\n {6}- Hint: .+ \^ai-h-[a-z0-9]{4}\n {4}- $/m.test(t),
       "expected I don't know and a hint",
       AI_TIMEOUT,
     );
     await key("Enter");
     await waitForDisk(
       path,
-      (t) => /\^ai-c-[a-z0-9]{4}/.test(t),
+      (t) => / {4}- I don't know\n {6}- .+ \^ai-c-[a-z0-9]{4}/.test(t),
       "expected the check, quoting the transcript",
       AI_TIMEOUT,
     );
