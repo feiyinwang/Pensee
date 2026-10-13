@@ -32,7 +32,7 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 | Inspirations | `Type: Inspiration` | cards: title and first line |
 | Files | every file | the folder tree (moved here from the sidebar's Everything section) |
 
-Library opens on Books. Its tabs are an Arc segmented control with the count of each tab.
+Library opens on Books. Its tabs are an Arc segmented control with the count of each tab. A gallery space (Library, or one you add with `View: gallery`) has no reading-width cap: its cover grid fills the width its tab has, adding a column for every cover's width of room.
 
 Clicking a card opens its note in place. When the note's `Book` file (a PDF or EPUB, relative to the note) exists, the book opens in the column right after the note, as **Open beside** does (`openBookBesideOpenPage` in `lib/book-import.ts`). A note without one, or whose file is gone, just opens, with no notice.
 

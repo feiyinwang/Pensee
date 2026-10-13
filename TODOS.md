@@ -10,6 +10,8 @@
 
 ## Done
 
+- Library fills the width: [`SPECs/spaces-spec.md`](SPECs/spaces-spec.md) — gallery spaces drop the page's 1100px cap (`.page.wide`), so the `auto-fill` cover grid adds columns in a pinched-open tab.
+
 - Projects is kanban only: [`SPECs/project-views-spec.md`](SPECs/project-views-spec.md#views) — List, Timeline, the view switcher and `space-view-store` are gone. The Projects page drops the reading width (`.page.fill`) and the board fills the pane; columns narrow to 200px (`--kanban-col-min`) before scrolling sideways. Done shows what fits in one screen of the board (measured before paint, again on resize) and folds the rest behind **Show N more** (Arc patches `cellFooter` and a column `hidden` count).
 
 - Properties toggle: `PageHeader` (`components/editor-area/page-header.tsx`) owns the title row and the frontmatter entries; the rows are closed behind a "N properties ›" toggle at the title's right, forced open while no row has a key (a fresh `---`). The title opts out of the focus ring (`data-no-focus-ring`).

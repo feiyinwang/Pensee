@@ -60,6 +60,7 @@ export function SpacePage({
             styles.page,
             !inColumn && styles.lone,
             space?.view === "kanban" && styles.fill,
+            space?.view === "gallery" && styles.wide,
           ]
             .filter(Boolean)
             .join(" ")}

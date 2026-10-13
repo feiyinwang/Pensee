@@ -34,6 +34,13 @@
   padding-top: 0;
 }
 
+/* A gallery (Library) fills the width its tab has: its grid adds a column
+   of covers for every cover's width of room, so a tab pinched open to the
+   whole window shows more covers instead of empty margins. */
+.page.wide {
+  max-width: none;
+}
+
 /* The Projects kanban takes all the room its tab has: no reading-width cap,
    and the board ends at the bottom of the pane (project-views.module.css),
    scrolling inside itself only when a column is taller than that. Below the
