@@ -21,12 +21,20 @@ import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemir
  * over a line break is a deliberate choice.
  */
 
+/** Hidden markup a line can open with: heading hashes, list markers, quotes. */
+const LINE_PREFIX = /^\s*(?:#{1,6}\s*|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|>\s*)*$/;
+
 /** Pull a pointer range's end back over trailing newlines, so it ends on the
  *  last character of a line instead of the start of the (blank) one after.
- *  Never collapses a range: a click on a blank line keeps its newline. */
+ *  An end inside the next line's hidden prefix counts as that line's start:
+ *  the heading guard parks it after `## `, and depending on filter order this
+ *  runs before or after that. Never collapses a range: a click on a blank
+ *  line keeps its newline. */
 export function trimTrailingNewlines(doc: Text, range: SelectionRange): SelectionRange {
   if (range.empty) return range;
   let to = range.to;
+  const line = doc.lineAt(to);
+  if (line.from > range.from && LINE_PREFIX.test(doc.sliceString(line.from, to))) to = line.from;
   while (to - 1 > range.from && doc.sliceString(to - 1, to) === "\n") to--;
   if (to === range.to) return range;
   return range.head > range.anchor

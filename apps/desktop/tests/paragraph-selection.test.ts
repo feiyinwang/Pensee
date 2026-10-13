@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { EditorSelection, EditorState } from "@codemirror/state";
+import { markdown } from "@codemirror/lang-markdown";
+import { headingDecorations } from "../src/components/editor-area/heading-decorations";
 import {
   paragraphMarkPositions,
   paragraphSelection,
@@ -59,4 +61,31 @@ describe("¶ placement", () => {
   test("a caret gets none", () => {
     expect(paragraphMarkPositions(doc, [EditorSelection.cursor(PARA_TO)])).toEqual([]);
   });
+});
+
+describe("with the real heading guard", () => {
+  // The guard parks a pointer end that lands in `## ` after it. Whichever
+  // filter runs first, the paragraph selection must still end on its period.
+  const cases = [
+    ["blank line before the heading", "Love how he tried.\n\n## Key message"],
+    ["heading right after", "Love how he tried.\n## Key message"],
+  ] as const;
+  for (const [name, doc] of cases) {
+    for (const order of ["guard registered first", "guard registered last"] as const) {
+      test(`${name}, ${order}`, () => {
+        const exts =
+          order === "guard registered first"
+            ? [markdown(), headingDecorations, paragraphSelection]
+            : [markdown(), paragraphSelection, headingDecorations];
+        const state = EditorState.create({ doc, extensions: exts });
+        const end = doc.indexOf(".") + 1;
+        const headingStart = doc.indexOf("##");
+        const sel = state.update({
+          selection: EditorSelection.single(0, headingStart),
+          userEvent: "select.pointer",
+        }).state.selection.main;
+        expect([sel.from, sel.to]).toEqual([0, end]);
+      });
+    }
+  }
 });
