@@ -247,6 +247,8 @@ const htmlBlockTheme = EditorView.baseTheme({
   ".cm-html-block-widget a": {
     color: "var(--link-color, #4fc1ff)",
     textDecoration: "underline",
+    textDecorationColor: "var(--link-underline)",
+    textUnderlineOffset: "var(--link-underline-offset)",
   },
   ".cm-html-block-widget img": {
     maxWidth: "100%",

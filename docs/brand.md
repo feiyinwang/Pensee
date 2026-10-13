@@ -69,7 +69,9 @@ Both SVGs use `currentColor`, so they take the text colour they're placed in.
 | Ink   | `#0b0b0b` | Mark on light grounds; dark grounds         |
 | Cream | `#ece7dc` | Mark and wordmark on Ink; the app-icon mark |
 
-Black and cream only. No accent colour, no gradients on the mark. The app
+Black and cream only. No accent colour, no gradients on the mark. The app's
+default theme, **Ink**, is these two colours with no accent and a flat ground
+([SPECs/ink-theme-spec.md](../SPECs/ink-theme-spec.md)). The app
 icon's body may carry a faint top-to-bottom fall-off (`#1e1e1e` → `#0b0b0b`),
 the way macOS icons do.
 

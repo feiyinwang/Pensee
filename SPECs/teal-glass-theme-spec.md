@@ -1,6 +1,7 @@
 # Teal glass theme
 
-Status: implemented
+Status: implemented. No longer the default since 2026-10-13: a fresh install
+opens in Ink ([ink-theme-spec.md](ink-theme-spec.md)); Teal is a preset.
 
 The app's default look moves from neutral charcoal with an orange accent to a
 deep teal gradient with frosted glass panels, modelled on a reference the user

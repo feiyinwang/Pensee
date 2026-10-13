@@ -190,6 +190,8 @@
 .wr-band a {
   color: var(--link-color);
   text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: var(--link-underline-offset);
 }
 .wr-band blockquote {
   margin: 0 0 var(--wr-block-gap);

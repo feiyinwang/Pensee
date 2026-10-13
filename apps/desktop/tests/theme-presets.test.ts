@@ -7,6 +7,7 @@ import {
   THEME_PRESETS,
   themePresetWrites,
 } from "../src/lib/theme-presets";
+import { isFlatBackdrop } from "../src/lib/theme";
 
 const primaries = {
   accent: "#FF6A00",
@@ -23,6 +24,10 @@ describe("theme presets", () => {
     expect(DEFAULT_THEME_PRESET_NAME).not.toBe(CUSTOM_THEME_NAME);
     expect(THEME_PRESETS[0].name).toBe(DEFAULT_THEME_PRESET_NAME);
     expect(activeThemePresetName({})).toBe(DEFAULT_THEME_PRESET_NAME);
+  });
+
+  test("a fresh install opens in Ink, the brand's black and cream", () => {
+    expect(DEFAULT_THEME_PRESET_NAME).toBe("Ink");
   });
 
   test("preset names are unique", () => {
@@ -74,5 +79,34 @@ describe("theme presets", () => {
         "/shared/themes/half/dark.json": incomplete as typeof primaries,
       }),
     ).toThrow(/missing "contrast"/);
+  });
+});
+
+describe("flat backdrop", () => {
+  const ink = THEME_PRESETS.find((preset) => preset.name === "Ink")!;
+  const orange = THEME_PRESETS.find((preset) => preset.name === "Orange")!;
+
+  test("Ink, which has no accent, gets a flat ground in both modes", () => {
+    const settings = Object.fromEntries(themePresetWrites(ink));
+    expect(isFlatBackdrop("light", settings)).toBe(true);
+    expect(isFlatBackdrop("dark", settings)).toBe(true);
+    // Unset primaries read as the schema defaults, which are Ink.
+    expect(isFlatBackdrop("light", {})).toBe(true);
+    expect(isFlatBackdrop("dark", {})).toBe(true);
+  });
+
+  test("a theme with an accent keeps its gradient", () => {
+    const settings = Object.fromEntries(themePresetWrites(orange));
+    expect(isFlatBackdrop("light", settings)).toBe(false);
+    expect(isFlatBackdrop("dark", settings)).toBe(false);
+  });
+
+  test("accent and foreground compare without case", () => {
+    expect(
+      isFlatBackdrop("light", {
+        "theme.light.accent": "#abcdef",
+        "theme.light.foreground": "#ABCDEF",
+      }),
+    ).toBe(true);
   });
 });

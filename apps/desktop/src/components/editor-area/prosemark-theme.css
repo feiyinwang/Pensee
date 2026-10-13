@@ -215,10 +215,23 @@
 .cm-editor .cm-list-prefix-task-checked::before {
   background-color: var(--accent-solid);
   border-color: var(--accent-solid);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 12.5L10.5 15L16 9'/%3E%3C/svg%3E");
-  background-size: 20px 20px;
-  background-position: center;
-  background-repeat: no-repeat;
+}
+
+/* The tick sits on its own layer, a mask filled with --on-accent, so it can
+   be Ink on a pale accent and white on a dark one (a data-URL image can't
+   read a CSS variable). Same box and position as the ::before it sits on. */
+.cm-editor .cm-list-prefix-task-checked::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: calc(var(--cm-list-marker-offset) + (var(--cm-list-marker-width) - 28px) / 2);
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  background-color: var(--on-accent);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 12.5L10.5 15L16 9'/%3E%3C/svg%3E")
+    center / 20px 20px no-repeat;
+  pointer-events: none;
 }
 
 /* Hang ATX heading hash markers (`#`/`##`/…) in the left margin so the

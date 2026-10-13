@@ -85,6 +85,8 @@ export const baseSyntaxHighlights = syntaxHighlighting(
       tag: markdownTags.linkURL,
       color: "var(--pm-link-color)",
       textDecoration: "underline",
+      textDecorationColor: "var(--link-underline)",
+      textUnderlineOffset: "var(--link-underline-offset)",
       cursor: "pointer",
     },
     {
@@ -117,6 +119,8 @@ const baseThemeSpec = {
   },
   ".cm-rendered-link": {
     textDecoration: "underline",
+    textDecorationColor: "var(--link-underline)",
+    textUnderlineOffset: "var(--link-underline-offset)",
     cursor: "pointer",
     color: "var(--pm-link-color)",
   },

@@ -35,7 +35,7 @@ const LABELS: Record<string, string> = {
   orange: "Orange",
   yellow: "Yellow",
   green: "Green",
-  accent: "Teal",
+  accent: "Accent",
   blue: "Blue",
   purple: "Purple",
   pink: "Pink",

@@ -25,8 +25,11 @@ function BooleanControl({ value, onChange }: { value: boolean; onChange: (v: boo
       }}
     >
       <span
-        className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform"
-        style={{ transform: value ? "translateX(16px)" : "translateX(0)" }}
+        className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full transition-transform"
+        style={{
+          backgroundColor: value ? "var(--on-accent)" : "white",
+          transform: value ? "translateX(16px)" : "translateX(0)",
+        }}
       />
     </button>
   );

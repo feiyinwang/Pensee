@@ -77,9 +77,9 @@
 :root {
   /* Primary tokens — pushed by JS via applyThemeTokens(). Defaults below are
      last-resort fallbacks for the brief window before settings hydrate. */
-  --accent: #8fdcd5;
-  --bg-base: #003e4a;
-  --fg-base: #ffffff;
+  --accent: #ece7dc;
+  --bg-base: #0b0b0b;
+  --fg-base: #ece7dc;
   --ui-font:
     -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
     "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
@@ -176,12 +176,20 @@
   --scrollbar-thumb: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
   --blockquote-border: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 58%), transparent);
 
-  /* Filled accent surface that carries a white glyph (checked task box, drag
-     count badge). A pale accent can't hold white on its own, so it is pulled
-     toward black just far enough to keep the glyph at 3:1. */
+  /* Filled accent surface that carries a glyph (checked task box, drag count
+     badge, the selected calendar day). It is the accent pulled toward black so
+     a mid-tone accent holds a white glyph; --on-accent below picks the glyph. */
   --accent-solid: color-mix(in srgb, var(--accent) 70%, black);
+  /* The glyph on an accent fill. White here; the @supports block below flips
+     it to Ink when --accent-solid is too light to hold white. */
+  --on-accent: white;
 
+  /* Links are told apart by an underline, not by hue: in a theme without an
+     accent (Ink) the link colour is the text colour. The underline is a
+     hairline in a softened link colour so it marks the run without boxing it. */
   --link-color: var(--accent);
+  --link-underline: color-mix(in srgb, var(--link-color) 50%, transparent);
+  --link-underline-offset: 0.18em;
   --editor-selection-bg: color-mix(in srgb, var(--accent) 30%, transparent);
 
   /* Select chevron uses fg-base via color-mix in fill — but SVG `stroke` can't
@@ -276,6 +284,15 @@ body::before {
   --surface-input: color-mix(in srgb, var(--fg-base) calc(var(--contrast) * 20%), transparent);
 }
 
+/* A theme with no accent (accent = foreground, see isFlatBackdrop in
+   lib/theme.ts) gets a flat ground: no gradient, no glow, no wash on the
+   editor card. Placed after the light-mode block so it wins over its
+   --glass-fill-* values. */
+:root[data-backdrop="flat"] {
+  --backdrop: var(--bg-base);
+  --glass-fill-start: var(--glass-fill-end);
+}
+
 /* OKLCH backdrop stops (see the --backdrop comment in :root). Relative colour
    syntax needs WebKit 18+, hence the guard: without it the tokens would be
    invalid at use and the window would lose its background entirely. */
@@ -291,6 +308,16 @@ body::before {
     --backdrop-lift: oklch(from var(--bg-base) calc(l + 0.03) c h);
     --backdrop-glow: oklch(from var(--bg-base) 0.99 calc(c * 0.3) h);
   }
+
+  /* --on-accent: white while --accent-solid is darker than OKLCH L 0.56 (the
+     grey that has equal contrast against black and white), Ink above it. Pale
+     accents (Cream, most dark-mode presets) get an Ink glyph that reads at 6:1
+     or better instead of a white one near 3:1. */
+  :root {
+    --on-accent: oklch(
+      from var(--accent-solid) calc(0.149 + 0.851 * clamp(0, (0.56 - l) * 1000, 1)) 0 0
+    );
+  }
 }
 
 /* Dark mode: bump tab active bg so the focused tab stands out against the
@@ -301,7 +328,7 @@ body::before {
 
 /* App-wide focus indicator for keyboard navigation */
 :focus-visible {
-  outline: 2px solid var(--accent, rgba(100, 149, 237, 0.7));
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 

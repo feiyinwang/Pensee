@@ -376,7 +376,9 @@ const wikiLinkTheme = EditorView.baseTheme({
   ".cm-wiki-link": {
     color: "var(--pm-link-color, #7cacf8)",
     cursor: "pointer",
-    textDecoration: "none",
+    textDecoration: "underline",
+    textDecorationColor: "var(--link-underline)",
+    textUnderlineOffset: "var(--link-underline-offset)",
   },
   ".cm-wiki-link-editing": {
     color: "var(--pm-link-color, #7cacf8)",

@@ -1,11 +1,11 @@
 /* Calendar panel (Cmd+]). Arc's Calendar and Segmented control draw on
    Pensée's translucent backdrop here, so their surfaces are remapped on the
    container instead of in the vendored files (docs/arc.md). The accent fill
-   uses Pensée's darker --accent-solid so a white day number stays readable. */
+   uses Pensée's --accent-solid, and the day number on it --on-accent. */
 .calendar-panel {
   --accent: var(--accent-solid);
   --accent-strong: color-mix(in srgb, var(--accent-solid) 85%, black);
-  --accent-foreground: white;
+  --accent-foreground: var(--on-accent);
   --surface-muted: var(--item-hover-bg);
   /* The current period's text: Pensée's own light accent (inherited before the
      override above), which reads on the backdrop where --accent-solid is dim. */
