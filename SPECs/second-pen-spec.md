@@ -135,26 +135,33 @@ one by one, and only when you ask.
 - **Tab** (or the **Combine** button) on the empty line under an opened
   answer and your take. The bar says *Read both first · Tab combine them into
   one list*. *Reading yours…* shows under your take while the pen reads.
-- The answer, your take and that empty line are replaced by **one list** at
-  their level, built **MECE**: no two points overlap, and together they cover
-  everything in your take and the answer.
-  - **Your points are your words**: the take split, joining words (then, and,
-    so, but) and end punctuation dropped, every word kept, nothing added or
+- The answer, your take and that empty line are replaced by **one tree** at
+  their level, built **MECE** at every level: points side by side are the
+  same kind of thing at the same level of detail, no two overlap, and
+  together they cover what they sit under. A point that isn't the same kind
+  or level as its neighbours goes under the one it belongs to, never beside
+  them.
+  - **Your points are your words**: the take split, one idea per point,
+    joining words (then, and, so, but) and end punctuation dropped, every word kept, nothing added or
     reworded. If the pen's split isn't word for word yours, or leaves a word
     out, your take is split at its own punctuation instead and the pen's
     points follow it, unnested.
   - **The pen's points** are only what the answer adds, short (at most 12
     words), in AI ink with the hollow bullet (`^ai-r-…`). One that says what a
     point of yours already says is left out: yours stands. One that adds a
-    detail keeps only the detail. Never your words: a pen point that is a
-    piece of your take is dropped in code, whatever the model labelled it,
+    detail keeps only the detail. Never your take said again: a pen point
+    that is a piece of your take, or whose every word is in it ("slow down
+    yourself" for your "slow down myself": person and function words don't
+    count), is dropped in code, whatever the model labelled it,
     and when the model's pen points were all copies of your take, the
     answer's own points (split at its punctuation) stand in for them.
   - **Nested by meaning, not by who wrote it**: a point that is a part, step,
     example or reason of another sits under it, the broader one on top,
     whoever wrote either, so a point of yours can sit under one of the pen's.
-    Separate branches stay side by side. One level of nesting at most (two
-    spaces in); a deeper point sits beside its parent.
+    Separate branches stay side by side. Two levels of nesting at most (two
+    spaces in per level); a deeper point sits beside its parent. Raised from
+    one level on 2026-10-14: with one, the pen flattened a tree into one
+    level, putting a step beside the point it belongs to.
   - A pen point that contradicts the one it sits under or after ends with a
     faint ` — the opposite`. Never which is right.
   - No heading over the list, no colour band, no buttons on the points: the

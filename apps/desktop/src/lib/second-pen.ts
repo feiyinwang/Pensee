@@ -434,12 +434,12 @@ function taskText(input: PenPromptInput): string {
         `The writer asked: ${ask.question}`,
         `Your answer: ${ask.answer}`,
         `The writer's own take: ${ask.take}`,
-        "Combine the two into one outline the writer can work through point by point. It must be MECE: no two points overlap, and together they cover everything in the take and the answer.",
-        "The writer's points: their exact words, every word of the take, each part once, in its order. You may only split it and drop joining words (then, and, so, but) and end punctuation. Never add, reword or reorder a word.",
-        "Your points: what your answer adds, each short (at most 12 words), your own words, joining words dropped. When one says what a point of the writer's already says, leave it out: theirs stands. When it adds a detail to it, keep only the detail.",
-        "Nest by meaning, not by who wrote it: a point that is a part, step, example or reason of another goes under it, the broader point on top, whoever wrote either. A writer's point may sit under one of yours. Points that are separate branches stay side by side. One level of nesting at most.",
+        "Combine the two into one tree the writer can think through point by point. It must be MECE at every level: the points side by side (at the top, or under one point) are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A point that is not the same kind or level as the points beside it never stays beside them: it goes under the point it belongs to. Together the tree covers everything in the take and the answer.",
+        "The writer's points: their exact words, every word of the take, each part once, in its order. Split the take wherever one idea ends and the next starts: one idea per point. You may only split it and drop joining words (then, and, so, but) and end punctuation. Never add, reword or reorder a word.",
+        `Your points: only what your answer adds that the take doesn't say, each short (at most 12 words), your own words, joining words dropped. Never say again what the writer said, not even in other words ("slow down yourself" when they wrote "slow down myself"): their point stands and you write nothing for it. When yours adds a detail to theirs, write only the detail, under their point. When your answer adds nothing, give no points of yours.`,
+        "Nest by meaning, not by who wrote it: a point that is a part, step, example, reason or result of another goes under it, the broader point on top, whoever wrote either. A writer's point may sit under one of yours. Points that are separate branches stay side by side. Two levels of nesting at most.",
         'Mark how: "the opposite" on a point of yours that contradicts the point it sits under or after. Never say which is right.',
-        'Reply with JSON only: {"points": [{"by": "you" or "pen", "text": "…", "how": "the opposite" (only then), "under": [same shape, no deeper "under"]}]}',
+        'Reply with JSON only: {"points": [{"by": "you" or "pen", "text": "…", "how": "the opposite" (only then), "under": [same shape, "under" two levels deep at most]}]}',
       ].join("\n");
     case "factQuery":
       return [
@@ -560,8 +560,10 @@ export interface CombinedPoint {
   under: CombinedPoint[];
 }
 
-/** The combined list: one level of nesting at most. */
+/** The combined tree: two levels of nesting at most. */
 export type Combined = CombinedPoint[];
+
+const MAX_NEST = 2;
 
 const squash = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
 const endPunct = (text: string) =>
@@ -583,11 +585,23 @@ export function splitPoints(text: string): string[] {
 const takeWords = (text: string) =>
   (squash(text).match(/\p{L}+/gu) ?? []).filter((w) => !/^(then|and|so|but)$/.test(w));
 
+/** Who a line speaks of: the pen says "you" for the writer's "I", so neither
+ *  counts as a word of what it says. */
+const PERSON_WORDS = new Set("i me my mine myself you your yours yourself".split(" "));
+
+/** What a line says: its words but joining, function and person words, a
+ *  plural's "s" dropped. */
+const meaningWords = (text: string) =>
+  takeWords(text)
+    .filter((w) => w.length > 1 && !STOP_WORDS.has(w) && !PERSON_WORDS.has(w))
+    .map((w) => w.replace(/(?<=\p{L}{3})s$/u, ""));
+
 /** A `combine` reply, held to its word: your points must be your words, every
  *  one of them, each once (else your take is split at its punctuation and the
  *  pen's points follow it, unnested); the pen's must be there unless every
  *  one of them was yours already (else its answer is split the same way), and
- *  never in your words (a copy of your take is dropped, never written as the
+ *  never your take said again (a pen point whose every word is in your take,
+ *  "yourself" for your "myself" included, is dropped, never written as the
  *  pen's). */
 export function combineReply(reply: string, take: string, answer: string): Combined {
   const value = jsonIn(reply) as { points?: unknown } | null;
@@ -604,22 +618,28 @@ export function combineReply(reply: string, take: string, answer: string): Combi
     // A point with no words: its points take its place.
     if (!by || !text) return kids;
     const opposite = by === "pen" && typeof item?.how === "string" && /opposite/i.test(item.how);
-    // One level of nesting: a grandchild sits beside its parent.
-    return depth === 0
+    // Past the deepest level, a point's points sit beside it.
+    return depth < MAX_NEST
       ? [{ by, text, opposite, under: kids }]
       : [{ by, text, opposite, under: [] }, ...kids];
   };
   const parsed = Array.isArray(value?.points) ? value.points.flatMap((p) => read(p, 0)) : [];
   const whole = squash(take);
-  // A pen point in the take's own words only repeats you: it goes (its points
-  // take its place). When every pen point did, the model echoed your take
-  // instead of its answer, so the answer's own points stand in for them.
-  const repeats = (p: CombinedPoint) => p.by === "pen" && whole.includes(squash(endPunct(p.text)));
-  const echoed = parsed.some((p) => repeats(p) || p.under.some(repeats));
-  const points = parsed.flatMap((p) => {
-    const under = p.under.filter((k) => !repeats(k));
+  const said = new Set(meaningWords(take));
+  // A pen point that only says your take again goes (its points take its
+  // place). When every pen point did, the model echoed your take instead of
+  // its answer, so the answer's own points stand in for them.
+  const repeats = (p: CombinedPoint) =>
+    p.by === "pen" &&
+    (whole.includes(squash(endPunct(p.text))) || meaningWords(p.text).every((w) => said.has(w)));
+  const flat = (ps: readonly CombinedPoint[]): CombinedPoint[] =>
+    ps.flatMap((p) => [p, ...flat(p.under)]);
+  const echoed = flat(parsed).some(repeats);
+  const prune = (p: CombinedPoint): CombinedPoint[] => {
+    const under = p.under.flatMap(prune);
     return repeats(p) ? under : [{ ...p, under }];
-  });
+  };
+  const points = parsed.flatMap(prune);
   const point = (by: CombinedPoint["by"], text: string): CombinedPoint => ({
     by,
     text,
@@ -630,14 +650,14 @@ export function combineReply(reply: string, take: string, answer: string): Combi
     splitPoints(answer)
       .map((t) => point("pen", t))
       .filter((p) => !repeats(p));
-  const all = points.flatMap((p) => [p, ...p.under]);
+  const all = flat(points);
   const yours = all.filter((p) => p.by === "you").map((p) => squash(p.text));
-  const said = new Set(takeWords(yours.join(" ")));
+  const kept = new Set(takeWords(yours.join(" ")));
   const faithful =
     yours.length > 0 &&
     new Set(yours).size === yours.length &&
     yours.every((point) => whole.includes(point)) &&
-    takeWords(take).every((w) => said.has(w));
+    takeWords(take).every((w) => kept.has(w));
   const pens = all.filter((p) => p.by === "pen");
   if (faithful) return pens.length || !echoed ? points : [...points, ...answerPoints()];
   return [
@@ -646,17 +666,16 @@ export function combineReply(reply: string, take: string, answer: string): Combi
   ];
 }
 
-/** The combined list as Markdown lines at `indent`, a point's own points two
- *  spaces in, then an empty line for yours. `id` names each pen line. */
+/** The combined tree as Markdown lines at `indent`, each level two spaces
+ *  further in, then an empty line for yours. `id` names each pen line. */
 export function combinedLines(combined: Combined, indent: string, id: () => string): string[] {
-  const line = (p: CombinedPoint, at: string) =>
+  const lines = (p: CombinedPoint, at: string): string[] => [
     p.by === "pen"
       ? `${at}- ${p.text}${p.opposite ? " — the opposite" : ""} ^${id()}`
-      : `${at}- ${p.text}`;
-  const out = combined.flatMap((p) => [
-    line(p, indent),
-    ...p.under.map((k) => line(k, `${indent}  `)),
-  ]);
+      : `${at}- ${p.text}`,
+    ...p.under.flatMap((k) => lines(k, `${at}  `)),
+  ];
+  const out = combined.flatMap((p) => lines(p, indent));
   out.push(`${indent}- `);
   return out;
 }

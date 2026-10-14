@@ -258,8 +258,15 @@ describe("prompts and replies", () => {
             {
               by: "you",
               text: "explain it in a way that they can understand.",
-              // Deeper than one level: it sits beside its parent.
-              under: [{ by: "pen", text: "say it in their words", how: "The opposite" }],
+              under: [
+                {
+                  by: "pen",
+                  text: "say it in their words",
+                  how: "The opposite",
+                  // Deeper than two levels: it sits beside its parent.
+                  under: [{ by: "pen", text: "use the words customers use in reviews" }],
+                },
+              ],
             },
           ],
         },
@@ -274,8 +281,9 @@ describe("prompts and replies", () => {
       "  - reach your audience where they already spend time ^ai-r-0001",
       "    - think about the scenarios people who have that pain point",
       "    - explain it in a way that they can understand",
-      "    - say it in their words — the opposite ^ai-r-0002",
-      "  - measure what brings customers ^ai-r-0003",
+      "      - say it in their words — the opposite ^ai-r-0002",
+      "      - use the words customers use in reviews ^ai-r-0003",
+      "  - measure what brings customers ^ai-r-0004",
       "  - ",
     ]);
   });
@@ -312,6 +320,39 @@ describe("prompts and replies", () => {
         .filter((p) => p.by === "pen")
         .map((p) => p.text),
     ).toEqual(splitPoints(ANSWER));
+  });
+
+  test("Combine drops a pen point that says your take again in other words", () => {
+    const take =
+      "Slow down myself and try to do one anchor and then make the link together, you actually think carefully instead of just skim it";
+    const answer = "Slow down yourself: take one anchor at a time and link it before the next.";
+    const reply = JSON.stringify({
+      points: [
+        {
+          by: "you",
+          text: "Slow down myself",
+          under: [
+            { by: "pen", text: "Slow down yourself" },
+            { by: "you", text: "try to do one anchor" },
+            {
+              by: "you",
+              text: "make the link together",
+              under: [{ by: "pen", text: "link each anchor before taking the next" }],
+            },
+          ],
+        },
+        { by: "you", text: "you actually think carefully instead of just skim it" },
+      ],
+    });
+    let n = 0;
+    expect(combinedLines(combineReply(reply, take, answer), "", () => `ai-r-000${n++}`)).toEqual([
+      "- Slow down myself",
+      "  - try to do one anchor",
+      "  - make the link together",
+      "    - link each anchor before taking the next ^ai-r-0000",
+      "- you actually think carefully instead of just skim it",
+      "- ",
+    ]);
   });
 
   test("Combine never writes your words as the pen's", () => {

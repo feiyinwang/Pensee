@@ -488,7 +488,7 @@ describe("Journeys: second pen", function () {
     await key("Tab");
     const text = await waitForDisk(
       path,
-      (t) => !t.includes(opened) && /help memory\?\n(?: {2,4}- .+\n)+ {2}- \n/.test(t),
+      (t) => !t.includes(opened) && /help memory\?\n(?: {2,6}- .+\n)+ {2}- \n/.test(t),
       "expected the answer and your take replaced by one list, an empty line last",
       AI_TIMEOUT,
     );
@@ -537,14 +537,14 @@ describe("Journeys: second pen", function () {
     await key("Tab");
     await waitForDisk(
       path,
-      (t) => !t.includes(opened) && /help memory\?\n(?: {2,4}- .+\n)+ {2}- \n/.test(t),
+      (t) => !t.includes(opened) && /help memory\?\n(?: {2,6}- .+\n)+ {2}- \n/.test(t),
       "expected the two combined, an empty line last",
       AI_TIMEOUT,
     );
     await caretAfter("naps help you remember");
     const text = await waitForDisk(
       path,
-      (t) => /help memory\?\n(?: {2,4}- .+\n)+- why do drafts/.test(t),
+      (t) => /help memory\?\n(?: {2,6}- .+\n)+- why do drafts/.test(t),
       "expected the empty line under the list gone",
     );
     ok(!underSleep(text).some((l) => l.trim() === "-"), text);
