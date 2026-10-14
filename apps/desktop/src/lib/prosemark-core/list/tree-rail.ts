@@ -2,7 +2,7 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
-import { animate, motionValue, spring, type AnimationPlaybackControls } from "motion";
+import { animate, type AnimationPlaybackControls } from "motion";
 import { treeChanged } from "../utils";
 
 // Tree rail for bullet and task lists (SPECs/list-tree-rail-spec.md), after the
@@ -28,40 +28,6 @@ const TASK_HOLE_HALF = 12;
 // interruptible.
 const GLIDE_S = 0.18;
 const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
-
-// The bounce ball (after beui's bounce sidebar): it sits on the hovered
-// item's bullet (else the caret's), at that item's level, or on the line just
-// left of a task's box, and is tossed there when the target changes.
-//
-// Hover moves fire constantly, so it must be quick and interruptible (Emil):
-// x and y are springs that carry the ball's velocity into each new target,
-// so sweeping the pointer down a list never restarts it from rest. The hop
-// is a sideways kick at launch, away from the text, not a fixed curve, so an
-// interrupted hop bends smoothly into the next.
-const DOT_SIZE = 7;
-/** A task's dot sits this far left of the box's centre, on the line in. */
-const DOT_TASK_OFFSET = TASK_HOLE_HALF + 5;
-/** Set as duration + bounce (Emil): looks settled at --motion-settle (180ms);
- *  bounce 0.2 for a playful, physical landing, inside his 0.1–0.3. Resolved
- *  to stiffness and damping the way motion resolves `visualDuration`, because
- *  motion drops the launch velocity of a duration spring, and the ball needs
- *  it: its current speed on a retarget, and the sideways kick of the hop. */
-const BALL_VISUAL_DURATION = 0.18;
-const BALL_BOUNCE = 0.2;
-const BALL_SPRING = (() => {
-  const root = (2 * Math.PI) / (BALL_VISUAL_DURATION * 1.2);
-  const stiffness = root * root;
-  return {
-    type: "spring",
-    stiffness,
-    damping: 2 * (1 - BALL_BOUNCE) * Math.sqrt(stiffness),
-    mass: 1,
-  } as const;
-})();
-/** The hop's height: a share of the travel, capped, as beui's arc(): ~5px
- *  between neighbouring rows, never more than 20px on a long jump. */
-const HOP_SHARE = 0.13;
-const HOP_MAX = 20;
 
 export interface RailNode {
   /** `ListItem.from`; stable for the item while the doc is unchanged. */
@@ -219,37 +185,6 @@ export function sharedLength(a: readonly RailSegment[], b: readonly RailSegment[
   return len;
 }
 
-/** How far BALL_SPRING carries the ball per unit of launch velocity, with
- *  nowhere to go: what turns a hop height into a kick. Read off motion's own
- *  spring, so it stays true if the spring changes. */
-const HOP_PEAK_PER_VELOCITY = (() => {
-  const run = spring({ ...BALL_SPRING, keyframes: [0, 0], velocity: 1000 });
-  let peak = 0;
-  for (let ms = 0; ms <= 1000; ms += 2) {
-    const { value, done } = run.next(ms);
-    peak = Math.max(peak, Math.abs(value));
-    if (done && ms > 0) break;
-  }
-  return peak / 1000;
-})();
-
-/** The sideways kick (px/s) that makes the ball hop `HOP_SHARE` of the travel
- *  (capped) off the straight line, to the left of it, away from the text. */
-export function hopKick(dx: number, dy: number): { vx: number; vy: number } {
-  const travel = Math.hypot(dx, dy);
-  if (travel === 0) return { vx: 0, vy: 0 };
-  const speed = Math.min(HOP_SHARE * travel, HOP_MAX) / HOP_PEAK_PER_VELOCITY;
-  let nx = -dy / travel;
-  let ny = dx / travel;
-  if (nx > 0 || (nx === 0 && ny > 0)) {
-    nx = -nx;
-    ny = -ny;
-  }
-  return { vx: nx * speed, vy: ny * speed };
-}
-
-export const __ballSpring = BALL_SPRING;
-
 // ---------------------------------------------------------------------------
 // Syntax tree → items
 
@@ -372,13 +307,6 @@ class TreeRailView {
   private shown: RailSegment[] = [];
   private shownLen = 0;
   private anim: AnimationPlaybackControls | null = null;
-  private readonly dotLayer: HTMLDivElement;
-  private readonly dot: HTMLSpanElement;
-  /** The item the ball sits on, and where it is headed. */
-  private dotItem: number | null = null;
-  private dotAt: { x: number; y: number } | null = null;
-  private readonly ballX = motionValue(0);
-  private readonly ballY = motionValue(0);
 
   constructor(private readonly view: EditorView) {
     this.dom = view.scrollDOM.appendChild(document.createElement("div"));
@@ -400,28 +328,14 @@ class TreeRailView {
     this.basePath.classList.add("cm-list-rail");
     this.accentPath = g.appendChild(svgEl("path"));
     this.accentPath.classList.add("cm-list-rail-accent");
-    // Above the text, so the dot covers the caret's bullet.
-    this.dotLayer = view.scrollDOM.appendChild(document.createElement("div"));
-    this.dotLayer.className = "cm-list-rail-dot-layer";
-    this.dotLayer.setAttribute("aria-hidden", "true");
-    this.dot = this.dotLayer.appendChild(document.createElement("span"));
-    this.dot.className = "cm-list-rail-dot";
-    const drawBall = () => {
-      this.dot.style.transform = `translate(${fmt(this.ballX.get())}px, ${fmt(this.ballY.get())}px)`;
-    };
-    this.ballX.on("change", drawBall);
-    this.ballY.on("change", drawBall);
     this.measureReq = { read: () => this.measure(), write: (m) => this.draw(m) };
     view.requestMeasure(this.measureReq);
   }
 
   update(update: ViewUpdate): void {
     if (update.docChanged) {
-      // Item ids are positions: carry them through the edit, so typing in an
-      // item keeps its dot still and Enter onto a new item makes it hop.
-      const map = (id: number | null) => (id === null ? null : update.changes.mapPos(id, -1));
-      this.dotItem = map(this.dotItem);
-      this.hover = map(this.hover);
+      // Item ids are positions: carry the hovered one through the edit.
+      if (this.hover !== null) this.hover = update.changes.mapPos(this.hover, -1);
     }
     if (
       update.docChanged ||
@@ -432,7 +346,6 @@ class TreeRailView {
       update.view.requestMeasure(this.measureReq);
     } else if (update.selectionSet || update.focusChanged) {
       this.retarget(false);
-      this.placeDot();
     }
   }
 
@@ -440,20 +353,16 @@ class TreeRailView {
     if (id === this.hover) return;
     this.hover = id;
     this.retarget(true);
-    this.placeDot();
   }
 
   destroy(): void {
     this.anim?.stop();
-    this.ballX.destroy();
-    this.ballY.destroy();
     this.dom.remove();
-    this.dotLayer.remove();
   }
 
   private caretItem(): number | null {
-    // The editor holding focus, not the window: the dot stays on your place
-    // while another app is in front.
+    // The editor holding focus, not the window: the accent stays on your
+    // place while another app is in front.
     if (this.view.root.activeElement !== this.view.contentDOM) return null;
     return bulletItemAt(this.view.state, this.view.state.selection.main.head);
   }
@@ -555,7 +464,6 @@ class TreeRailView {
       this.basePath.removeAttribute("d");
       this.target = null;
       this.paint([], 0);
-      this.placeDot();
       return;
     }
     // The mask and its white field both cover the rails' bounds; a mask in
@@ -588,51 +496,6 @@ class TreeRailView {
     // A re-measure is a layout change, not motion: settle at once.
     this.target = null;
     this.retarget(false);
-    this.placeDot();
-  }
-
-  /** The dot onto the caret's item: a hop when the caret went to another
-   *  item, a snap when only the layout moved, gone with no caret item. */
-  /** The ball onto the hovered item, else the caret's: tossed there when
-   *  the item changes, carried along when only the layout moved, gone with
-   *  neither. */
-  private placeDot(): void {
-    const id = this.hover ?? this.caretItem();
-    const node = id === null ? undefined : this.geo?.nodes.get(id);
-    if (!node) {
-      this.dotItem = null;
-      this.dotAt = null;
-      this.ballX.stop();
-      this.ballY.stop();
-      this.dot.classList.remove("is-visible");
-      return;
-    }
-    const to = {
-      x: node.x - (node.task ? DOT_TASK_OFFSET : 0) - DOT_SIZE / 2,
-      y: node.y - DOT_SIZE / 2,
-    };
-    const from = this.dotAt;
-    const shown = this.dot.classList.contains("is-visible");
-    const moved = id !== this.dotItem;
-    this.dotItem = id;
-    if (from && from.x === to.x && from.y === to.y && shown) return;
-    this.dotAt = to;
-    const flying = this.ballX.isAnimating() || this.ballY.isAnimating();
-    // Appearing, reduced motion, or the layout moving under a resting ball:
-    // it is just there.
-    if (!shown || prefersReducedMotion() || (!moved && !flying)) {
-      this.ballX.jump(to.x);
-      this.ballY.jump(to.y);
-      this.dot.classList.add("is-visible");
-      return;
-    }
-    // Both springs start from the ball's current velocity, plus a sideways
-    // kick when it leaves for another item: the hop.
-    const kick = moved
-      ? hopKick(to.x - this.ballX.get(), to.y - this.ballY.get())
-      : { vx: 0, vy: 0 };
-    animate(this.ballX, to.x, { ...BALL_SPRING, velocity: this.ballX.getVelocity() + kick.vx });
-    animate(this.ballY, to.y, { ...BALL_SPRING, velocity: this.ballY.getVelocity() + kick.vy });
   }
 
   /** Point the accent at the hovered item, else the caret's item. */
@@ -732,33 +595,11 @@ const treeRailTheme = EditorView.baseTheme({
     opacity: "0",
     transition: "opacity var(--motion-fast) var(--ease-out)",
   },
-  ".cm-list-rail-dot-layer": {
-    position: "absolute",
-    left: "0",
-    top: "0",
-    zIndex: "149",
-    pointerEvents: "none",
-  },
-  ".cm-list-rail-dot": {
-    position: "absolute",
-    left: "0",
-    top: "0",
-    width: `${DOT_SIZE.toString()}px`,
-    height: `${DOT_SIZE.toString()}px`,
-    borderRadius: "50%",
-    background: "var(--text-primary, currentColor)",
-    opacity: "0",
-    transition: "opacity var(--motion-fast) var(--ease-out)",
-    willChange: "transform",
-  },
-  ".cm-list-rail-dot.is-visible": {
-    opacity: "1",
-  },
   ".cm-list-rail-accent.is-visible": {
     opacity: "1",
   },
   "@media (prefers-reduced-motion: reduce)": {
-    ".cm-list-rail-accent, .cm-list-rail-dot": { transition: "none" },
+    ".cm-list-rail-accent": { transition: "none" },
   },
 });
 

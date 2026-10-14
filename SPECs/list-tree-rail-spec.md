@@ -31,29 +31,6 @@ the list down to one item, through each ancestor's curve.
   Coming back from hidden, the run appears in place and only fades in.
 - Reduced motion: no glide and no fade.
 
-## The bounce ball
-
-After beui's bounce sidebar: a solid ball marks the hovered item, at its
-level; with no hover, the item the caret is in.
-
-- On a bullet it covers the bullet. On a task it sits on the line just left of
-  the box.
-- When the pointer moves onto another item, or the caret goes to another item
-  with no hover (a click, the arrow keys, Enter onto a new item), the ball is
-  tossed there: x and y are springs (set as Emil's duration + bounce:
-  `--motion-settle` 180ms, bounce 0.2), plus a sideways kick at launch to the
-  left of the travel, away from the text, sized so the hop peaks at 13% of the
-  travel (about 5px between rows, at most 20px), as beui's arc does.
-- Interruptible: a new target starts from the ball's current position and
-  velocity, so sweeping the pointer down a list carries the ball along
-  instead of restarting it from rest at every row.
-- Motion drops the launch velocity of duration springs, so the duration +
-  bounce pair is resolved to stiffness and damping with motion's own formula.
-- Typing in the same item, or the layout moving, moves it with no hop; a
-  layout move mid-hop shifts where the hop lands instead of snapping.
-- Hidden with no hover and the caret outside a bullet or task list (or the
-  editor not focused). Reduced motion: no hop, no fade.
-
 ## How it is built
 
 `lib/prosemark-core/list/tree-rail.ts`, part of `listExtension`.
@@ -75,9 +52,11 @@ level; with no hover, the item the caret is in.
 - The gaps around markers are an SVG mask, not background-coloured knockouts,
   so translucent themes work.
 - Rebuilt on doc, viewport, geometry and tree changes (`treeChanged`); a
-  selection or focus change only moves the accent and the dot.
+  selection or focus change only moves the accent.
 
 ## Not in scope
 
+- A ball that bounces between bullets (after beui's bounce sidebar): tried
+  and removed on 2026-10-14.
 - The agent chat's markdown lists.
 - Clicking the rail (tree-nav rows are links; here the text is the target).

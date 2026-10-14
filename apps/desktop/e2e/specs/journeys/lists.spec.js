@@ -1,7 +1,7 @@
 // List journeys (ED-14 in docs/qa/user-journeys.md): the tree rail.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { ok, strictEqual } from "node:assert/strict";
-import { mouseClick, pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
+import { pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
 
 /** The front editor's rail paths and the accent's state. */
 const railState = () =>
@@ -37,31 +37,6 @@ const framesRun = () =>
       done(true);
     });
   });
-
-/** The caret dot: shown, and its centre. */
-const dotState = () =>
-  browser.execute(() => {
-    const dot = document.querySelector(".cm-list-rail-dot");
-    if (!dot) return null;
-    const box = dot.getBoundingClientRect();
-    return {
-      shown: dot.classList.contains("is-visible"),
-      x: box.left + box.width / 2,
-      y: box.top + box.height / 2,
-      focused: document.hasFocus(),
-    };
-  });
-
-/** The bullet glyph's slot on the visible list line holding `text`: the
- *  marker column of its prefix mark. */
-const markerCentre = (text) =>
-  browser.execute((needle) => {
-    const line = [...document.querySelectorAll(".cm-line")].find(
-      (el) => el.offsetParent && el.textContent.includes(needle),
-    );
-    const body = line?.querySelector(".cm-list-body")?.getBoundingClientRect();
-    return body ? { y: body.top + body.height / 2 } : null;
-  }, text);
 
 /** Move the pointer over the body of the visible list line holding `text`. */
 const hoverLine = (text) =>
@@ -117,27 +92,5 @@ describe("Journeys: lists", function () {
       timeoutMsg: "the accent does not follow the pointer to the first item",
     });
     strictEqual((await railState()).base.includes("A"), true, "the grey lines stay");
-  });
-
-  it("ED-15 the ball sits on the caret's bullet and hops to the hovered one", async function () {
-    // Continues from ED-14: the caret is in `nested`; move the pointer off.
-    await browser.execute(() =>
-      document.querySelector(".cm-content")?.dispatchEvent(new MouseEvent("mouseleave")),
-    );
-    await flushMeasure();
-    const dot = await dotState();
-    ok(dot?.shown, "the ball shows on the caret's item");
-    const nested = await markerCentre("nested");
-    ok(nested && Math.abs(dot.y - nested.y) < 6, "the ball is on the caret's line");
-
-    await hoverLine("one");
-    // The hop is a spring on animation frames: a hidden window has none, so
-    // it can only be watched landing when frames run.
-    if (!(await framesRun())) return;
-    const target = await markerCentre("one");
-    await browser.waitUntil(async () => Math.abs((await dotState()).y - target.y) < 6, {
-      timeout: 5_000,
-      timeoutMsg: "the ball did not hop to the hovered bullet",
-    });
   });
 });

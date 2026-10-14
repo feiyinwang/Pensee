@@ -1,13 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
-import { spring } from "motion";
 import { EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import {
   accentPath,
   bulletItemAt,
-  hopKick,
-  __ballSpring,
   pathLength,
   railGeometry,
   segmentsToPath,
@@ -86,32 +83,5 @@ describe("bulletItemAt", () => {
   test("ignores ordered items and plain text", () => {
     expect(bulletItemAt(state, 13)).toBeNull();
     expect(bulletItemAt(state, state.doc.length)).toBeNull();
-  });
-});
-
-describe("hopKick", () => {
-  /** How far the ball swings sideways (px) when kicked with `velocity` by
-   *  the ball's own spring: the hop's height. */
-  const swing = (velocity: number) => {
-    const run = spring({ ...__ballSpring, keyframes: [0, 0], velocity });
-    let peak = 0;
-    for (let ms = 0; ms <= 1000; ms += 1) peak = Math.max(peak, Math.abs(run.next(ms).value));
-    return peak;
-  };
-
-  test("kicks left of the travel, either way, away from the text", () => {
-    expect(hopKick(0, 34).vx).toBeLessThan(0);
-    expect(hopKick(0, -34).vx).toBeLessThan(0);
-    expect(hopKick(0, 34).vy).toBe(0);
-  });
-
-  test("a ~5px hop between rows, capped at 20px on a long jump", () => {
-    expect(swing(hopKick(0, 34).vx)).toBeCloseTo(0.13 * 34, 1);
-    expect(swing(hopKick(0, 600).vx)).toBeCloseTo(20, 0);
-  });
-
-  test("the ball settles fast: it looks there within --motion-settle", () => {
-    const run = spring({ ...__ballSpring, keyframes: [0, 100] });
-    expect(run.next(180).value).toBeGreaterThan(95);
   });
 });
