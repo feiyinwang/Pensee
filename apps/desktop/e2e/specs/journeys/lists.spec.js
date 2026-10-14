@@ -119,24 +119,25 @@ describe("Journeys: lists", function () {
     strictEqual((await railState()).base.includes("A"), true, "the grey lines stay");
   });
 
-  it("ED-15 a dot sits on the caret's bullet and hops to the next one", async function () {
-    // Continues from ED-14: the caret is in `nested`.
+  it("ED-15 the ball sits on the caret's bullet and hops to the hovered one", async function () {
+    // Continues from ED-14: the caret is in `nested`; move the pointer off.
+    await browser.execute(() =>
+      document.querySelector(".cm-content")?.dispatchEvent(new MouseEvent("mouseleave")),
+    );
     await flushMeasure();
     const dot = await dotState();
-    ok(dot?.shown, "a dot shows on the caret's item");
+    ok(dot?.shown, "the ball shows on the caret's item");
     const nested = await markerCentre("nested");
-    ok(nested && Math.abs(dot.y - nested.y) < 6, "the dot is on the caret's line");
+    ok(nested && Math.abs(dot.y - nested.y) < 6, "the ball is on the caret's line");
 
-    const one = await $('//*[contains(@class,"cm-list-body")][normalize-space(.)="one"]');
-    await mouseClick(one);
-    await flushMeasure();
+    await hoverLine("one");
     // The hop is a spring on animation frames: a hidden window has none, so
     // it can only be watched landing when frames run.
     if (!(await framesRun())) return;
     const target = await markerCentre("one");
     await browser.waitUntil(async () => Math.abs((await dotState()).y - target.y) < 6, {
       timeout: 5_000,
-      timeoutMsg: "the dot did not move to the clicked bullet",
+      timeoutMsg: "the ball did not hop to the hovered bullet",
     });
   });
 });

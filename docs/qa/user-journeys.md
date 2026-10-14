@@ -127,7 +127,7 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab           | manual                      |
 | ED-13 | Click an unchecked task, then click it again             | Box pops, tick draws in, six dots burst once; uncheck is still | auto: editor                |
 | ED-14 | Type a nested bullet; hover it, then hover the first one | A line curves in from the parent; a darker run follows hover   | auto: lists                 |
-| ED-15 | Put the caret in a bullet, then in another               | A solid dot covers its bullet, then hops to the other          | auto: lists                 |
+| ED-15 | Put the caret in a bullet, then hover another            | A ball covers the caret's bullet, then hops to the hovered one | auto: lists                 |
 
 ## Links — LNK
 

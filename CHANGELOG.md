@@ -2,7 +2,7 @@
 
 ## 2026-10-14
 
-- A dot marks the bullet you're writing in, and hops to the next one along a small curve when you move, with a little bounce as it lands. On a todo it sits just left of the box.
+- A small ball sits on the bullet under your mouse, at that bullet's level, and bounces from bullet to bullet along a small curve as you move over the list. With the mouse elsewhere it rests on the bullet you're writing in. On a todo it sits just left of the box.
 - Todo boxes sit one notch to the right, centred on the bullets' column, so a list of bullets and todos lines up.
 - Fixed: after **Combine**, a line could run through the middle of a combined point, and your own points lost their curve from the line above.
 - Fixed: **Combine** could write your own points a second time as the pen's, in blue, and lose what its answer said. The pen's points are never your words now; when it only repeated you, its answer's own points are used instead.

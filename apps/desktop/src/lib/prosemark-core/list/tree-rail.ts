@@ -29,19 +29,19 @@ const TASK_HOLE_HALF = 12;
 const GLIDE_S = 0.18;
 const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-// The caret's dot (after beui's bounce sidebar): it sits on the caret's
-// bullet, or on the line just left of a task's box, and hops there along an
-// arc when the caret moves to another item. A light underdamped spring gives
+// The bounce ball (after beui's bounce sidebar): it sits on the hovered
+// item's bullet (else the caret's), at that item's level, or on the line just
+// left of a task's box, and hops there along an arc when it moves. A light underdamped spring gives
 // it a quick landing; a long jump gets a little softer. The arc bulges to the
 // left, away from the text, and is capped so a long jump stays near the rail.
 const DOT_SIZE = 7;
 /** A task's dot sits this far left of the box's centre, on the line in. */
 const DOT_TASK_OFFSET = TASK_HOLE_HALF + 5;
 const BOUNCE = { stiffness: 280, damping: 18, mass: 0.3 };
-/** The hop's height: a share of the distance, capped, so neighbouring rows
- *  get a ~5px hop and a long jump peaks near 20px instead of swinging out. */
-const HOP_SHARE = 0.13;
-const HOP_MAX = 20;
+/** arc()'s strength and its cap, as beui sets them: neighbouring rows get a
+ *  ~5px hop and a long jump peaks near 20px instead of swinging out. */
+const ARC_STRENGTH = 0.26;
+const ARC_MAX_BULGE = 40;
 
 export interface RailNode {
   /** `ListItem.from`; stable for the item while the doc is unchanged. */
@@ -199,6 +199,27 @@ export function sharedLength(a: readonly RailSegment[], b: readonly RailSegment[
   return len;
 }
 
+/** The control point of the ball's hop, as motion's arc() places it: off the
+ *  midpoint by strength × distance (capped), so the quadratic curve peaks at
+ *  half that, on the left of the travel (away from the text). */
+export function hopControl(
+  start: { x: number; y: number },
+  to: { x: number; y: number },
+): { x: number; y: number } {
+  const dx = to.x - start.x;
+  const dy = to.y - start.y;
+  const travel = Math.hypot(dx, dy);
+  if (travel === 0) return { ...to };
+  const bulge = Math.min(ARC_STRENGTH * travel, ARC_MAX_BULGE);
+  let nx = -dy / travel;
+  let ny = dx / travel;
+  if (nx > 0 || (nx === 0 && ny > 0)) {
+    nx = -nx;
+    ny = -ny;
+  }
+  return { x: (start.x + to.x) / 2 + nx * bulge, y: (start.y + to.y) / 2 + ny * bulge };
+}
+
 // ---------------------------------------------------------------------------
 // Syntax tree → items
 
@@ -329,6 +350,9 @@ class TreeRailView {
   /** Where the dot is drawn right now (mid-hop it is between items). */
   private dotNow: { x: number; y: number } | null = null;
   private dotAnim: AnimationPlaybackControls | null = null;
+  /** The landing point of the hop in flight, read live by the hop, so a
+   *  layout move mid-hop shifts where it lands instead of snapping. */
+  private hopTo: { x: number; y: number } | null = null;
 
   constructor(private readonly view: EditorView) {
     this.dom = view.scrollDOM.appendChild(document.createElement("div"));
@@ -385,6 +409,7 @@ class TreeRailView {
     if (id === this.hover) return;
     this.hover = id;
     this.retarget(true);
+    this.placeDot();
   }
 
   destroy(): void {
@@ -536,11 +561,16 @@ class TreeRailView {
 
   /** The dot onto the caret's item: a hop when the caret went to another
    *  item, a snap when only the layout moved, gone with no caret item. */
+  /** The dot onto the hovered item, else the caret's: a hop when it goes to
+   *  another item, a snap when only the layout moved, gone with neither. */
   private placeDot(): void {
-    const id = this.caretItem();
+    const id = this.hover ?? this.caretItem();
     const node = id === null ? undefined : this.geo?.nodes.get(id);
     if (!node) {
       this.dotItem = null;
+      this.dotAnim?.stop();
+      this.dotAnim = null;
+      this.hopTo = null;
       this.dot.classList.remove("is-visible");
       return;
     }
@@ -554,7 +584,15 @@ class TreeRailView {
     this.dotItem = id;
     if (from && from.x === to.x && from.y === to.y && shown) return;
     this.dotAt = to;
+    if (!moved && this.hopTo) {
+      // Mid-hop, the same item moved (a re-measure): land where it is now.
+      this.hopTo.x = to.x;
+      this.hopTo.y = to.y;
+      return;
+    }
     this.dotAnim?.stop();
+    this.dotAnim = null;
+    this.hopTo = null;
     this.dot.classList.add("is-visible");
     const start = this.dotNow ?? from;
     const dx = start ? to.x - start.x : 0;
@@ -564,33 +602,34 @@ class TreeRailView {
       this.setDot(to);
       return;
     }
-    // A quadratic curve whose control point sits off the midpoint, to the
-    // left of the travel (away from the text), twice the hop's height.
-    const hop = Math.min(HOP_SHARE * travel, HOP_MAX);
-    let nx = -dy / travel;
-    let ny = dx / travel;
-    if (nx > 0 || (nx === 0 && ny > 0)) {
-      nx = -nx;
-      ny = -ny;
-    }
-    const cx = (start.x + to.x) / 2 + nx * hop * 2;
-    const cy = (start.y + to.y) / 2 + ny * hop * 2;
+    const { x: cx, y: cy } = hopControl(start, to);
+    const hopTo = { ...to };
+    this.hopTo = hopTo;
     const long = Math.min(1, Math.max(0, (travel - 48) / 120));
-    // One spring over the curve's progress; its overshoot past 1 carries on
-    // along the curve's end, which is the landing bounce.
-    this.dotAnim = animate(0, 1, {
+    // One spring over the curve's progress (0 → 1000, as motion drives its
+    // paths); its overshoot past the end carries on along the curve, which is
+    // the landing bounce.
+    const anim = animate(0, 1000, {
       type: "spring",
       stiffness: BOUNCE.stiffness - 60 * long,
       damping: BOUNCE.damping + long,
       mass: BOUNCE.mass + 0.15 * long,
-      onUpdate: (t) => {
+      onUpdate: (p) => {
+        const t = p / 1000;
         const u = 1 - t;
         this.setDot({
-          x: u * u * start.x + 2 * u * t * cx + t * t * to.x,
-          y: u * u * start.y + 2 * u * t * cy + t * t * to.y,
+          x: u * u * start.x + 2 * u * t * cx + t * t * hopTo.x,
+          y: u * u * start.y + 2 * u * t * cy + t * t * hopTo.y,
         });
       },
+      onComplete: () => {
+        if (this.dotAnim !== anim) return;
+        this.setDot(hopTo);
+        this.dotAnim = null;
+        this.hopTo = null;
+      },
     });
+    this.dotAnim = anim;
   }
 
   private setDot(at: { x: number; y: number }): void {

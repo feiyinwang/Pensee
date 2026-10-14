@@ -5,6 +5,7 @@ import { GFM } from "@lezer/markdown";
 import {
   accentPath,
   bulletItemAt,
+  hopControl,
   pathLength,
   railGeometry,
   segmentsToPath,
@@ -83,5 +84,26 @@ describe("bulletItemAt", () => {
   test("ignores ordered items and plain text", () => {
     expect(bulletItemAt(state, 13)).toBeNull();
     expect(bulletItemAt(state, state.doc.length)).toBeNull();
+  });
+});
+
+describe("hopControl", () => {
+  // The curve's highest point off the straight line: half the control's offset.
+  const peakLeft = (start: { x: number; y: number }, to: { x: number; y: number }) =>
+    (start.x + to.x) / 2 - hopControl(start, to).x;
+
+  test("hops left of the travel, either way, like beui's arc", () => {
+    expect(hopControl({ x: 10, y: 0 }, { x: 10, y: 34 }).x).toBeLessThan(10);
+    expect(hopControl({ x: 10, y: 34 }, { x: 10, y: 0 }).x).toBeLessThan(10);
+  });
+
+  test("a ~5px hop between rows, capped near 20px on a long jump", () => {
+    expect(peakLeft({ x: 0, y: 0 }, { x: 0, y: 34 }) / 2).toBeCloseTo(4.42, 1);
+    expect(peakLeft({ x: 0, y: 0 }, { x: 0, y: 600 }) / 2).toBe(20);
+  });
+
+  test("across levels the curve still bows outward, away from the text", () => {
+    const c = hopControl({ x: 40, y: 0 }, { x: 10, y: 34 });
+    expect(c.x).toBeLessThan(25);
   });
 });
