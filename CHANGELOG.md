@@ -2,7 +2,7 @@
 
 ## 2026-10-14
 
-- Lists are lighter. The lines and curves into every bullet are gone; each nested list now has one faint straight line down from its parent's bullet, and the line of the list you're in (where you hover, or where you're writing) is a shade darker, so you can still tell which level you're on.
+- Lists are lighter. The lines and curves into every bullet are gone; each nested list now has one faint straight line down from its parent's bullet, and the line under the bullet you're on (where you hover, or where you're writing) is a shade darker, so you can see everything that hangs from it.
 - Todo boxes sit one notch to the right, centred on the bullets' column, so a list of bullets and todos lines up.
 - Fixed: after **Combine**, a line could run through the middle of a combined point, and your own points lost their curve from the line above.
 - Fixed: **Combine** could write your own points a second time as the pen's, in blue, and lose what its answer said. The pen's points are never your words now; when it only repeated you, its answer's own points are used instead.

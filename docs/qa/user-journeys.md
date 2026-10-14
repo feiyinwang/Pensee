@@ -126,7 +126,7 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ED-11 | ⌘Z, ⌘⇧Z after typing                                     | Undo and redo the edit; history does not leak across files     | manual                      |
 | ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab           | manual                      |
 | ED-13 | Click an unchecked task, then click it again             | Box pops, tick draws in, six dots burst once; uncheck is still | auto: editor                |
-| ED-14 | Type a nested bullet; hover it, then hover the first one | A faint straight guide joins the nested list; hovering in it darkens that guide, hovering the top level clears it | auto: lists |
+| ED-14 | Type a nested bullet; hover its parent, then the nested one | A faint straight guide drops from the parent; hovering the parent darkens it, hovering the nested (childless) one clears it | auto: lists |
 
 ## Links — LNK
 

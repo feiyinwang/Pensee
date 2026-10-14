@@ -50,7 +50,7 @@ describe("Journeys: lists", function () {
     await workspaceRoot();
   });
 
-  it("ED-14 a nested list gets one straight guide; hovering in it darkens that guide", async function () {
+  it("ED-14 a nested list gets one straight guide; hovering its parent darkens it", async function () {
     // Seeded with `- one`, `- two`, `- [ ] a task`.
     await pressCmd("o");
     const input = await $("[cmdk-input]");
@@ -74,16 +74,18 @@ describe("Journeys: lists", function () {
       `the guide is one straight line: ${paths[0]}`,
     );
 
-    await hoverLine("nested");
+    // The nested item hangs from the seeded task: hovering the task darkens
+    // its guide; the nested item has no children, so hovering it clears it.
+    await hoverLine("a task");
     await browser.waitUntil(async () => (await guideState()).active === 1, {
       timeout: 2_000,
-      timeoutMsg: "hovering the nested item does not darken its guide",
+      timeoutMsg: "hovering the parent does not darken the guide hanging from it",
     });
 
-    await hoverLine("one");
+    await hoverLine("nested");
     await browser.waitUntil(async () => (await guideState()).active === 0, {
       timeout: 2_000,
-      timeoutMsg: "hovering a top-level item still darkens a guide",
+      timeoutMsg: "hovering a childless item still darkens a guide",
     });
   });
 });

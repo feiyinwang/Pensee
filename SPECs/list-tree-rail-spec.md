@@ -1,9 +1,9 @@
 # List tree rail: guides
 
 Bullets and tasks show their depth with faint straight guides, one per nested
-list, like an editor's indent guides. The guide of the list you are in is a
-shade darker, so you can tell which level you are on without a line on every
-item.
+list, like an editor's indent guides. The guide hanging from the item you are
+on is a shade darker, so its column lights up under it without a line on
+every item.
 
 ## Decision (2026-10-14, from `proto/list-depth`)
 
@@ -14,9 +14,12 @@ wrapped lines and AI-ink runs; **Guides** was picked.
   just under the parent's bullet to the end of the last child's subtree. No
   curves, no per-item connectors.
 - A top-level list has no line: it sits at the left edge already.
-- Resting colour `--color-border-subtle`; the guide of the list holding the
-  hovered item (else the caret's item, while the editor has focus) is
-  `--color-text-faint`. The change is a colour fade on `--motion-hover` with
+- Resting colour `--color-border-subtle`; the guide hanging from the hovered
+  item (else the caret's item, while the editor has focus) is
+  `--color-text-faint`: the line in that item's own bullet column, down its
+  subtree. An item with no children has no guide, so nothing darkens.
+  (First shipped darkening the guide the item hangs *on*, one column to its
+  left; corrected the same day: it read as a different level.) The change is a colour fade on `--motion-hover` with
   `--ease-out`; nothing travels. Instant under reduced motion.
 - Rejected:
   - **Current** (the tree from 2026-10-13: a rail down every list and an 8px

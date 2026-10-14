@@ -6,9 +6,9 @@ import { treeChanged } from "../utils";
 
 // Indent guides for bullet and task lists (SPECs/list-tree-rail-spec.md): one
 // straight hairline per nested list, dropping from under the parent's bullet
-// to the end of its last child's subtree. The guide of the list holding the
-// hovered item (or, with no hover, the caret's item) is a shade darker, so you
-// can tell which level you are on.
+// to the end of its last child's subtree. The guide hanging from the hovered
+// item (or, with no hover, the caret's item) is a shade darker, so the item's
+// own column lights up under it.
 //
 // Everything is drawn in one SVG behind the text, in the editor's scroll
 // space, so it never enters the contenteditable DOM or its hit-testing.
@@ -167,17 +167,10 @@ function collectItems(state: EditorState, from: number, to: number): ItemInfo[] 
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-interface Measured {
-  guides: Guide[];
-  /** Each measured item's parent, to find the list an item sits in. */
-  parents: Map<number, number | null>;
-}
-
 class TreeRailView {
   private readonly dom: HTMLDivElement;
   private readonly group: SVGGElement;
-  private readonly measureReq: { read: () => Measured | null; write: (m: Measured | null) => void };
-  private parents = new Map<number, number | null>();
+  private readonly measureReq: { read: () => Guide[] | null; write: (m: Guide[] | null) => void };
   private paths = new Map<number, SVGPathElement>();
   private hover: number | null = null;
   private active: SVGPathElement | null = null;
@@ -226,7 +219,7 @@ class TreeRailView {
     return bulletItemAt(this.view.state, this.view.state.selection.main.head);
   }
 
-  private measure(): Measured | null {
+  private measure(): Guide[] | null {
     const { view } = this;
     const { from, to } = view.viewport;
     const items = collectItems(view.state, from, to);
@@ -298,16 +291,12 @@ class TreeRailView {
         task: item.task,
       };
     });
-    return {
-      guides: guideGeometry(nodes),
-      parents: new Map(items.map((i) => [i.id, i.parent])),
-    };
+    return guideGeometry(nodes);
   }
 
-  private draw(m: Measured | null): void {
-    this.parents = m?.parents ?? new Map();
+  private draw(guides: Guide[] | null): void {
     this.paths = new Map(
-      (m?.guides ?? []).map((g) => {
+      (guides ?? []).map((g) => {
         const path = document.createElementNS(SVG_NS, "path");
         path.classList.add("cm-list-guide");
         path.setAttribute("d", guidePath(g));
@@ -319,11 +308,11 @@ class TreeRailView {
     this.highlight();
   }
 
-  /** Darken the guide of the list holding the hovered item, else the caret's. */
+  /** Darken the guide hanging from the hovered item, else the caret's item.
+   *  An item with no children has no guide, so nothing darkens. */
   private highlight(): void {
     const id = this.hover ?? this.caretItem();
-    const parent = id === null ? null : this.parents.get(id);
-    const next = parent == null ? null : (this.paths.get(parent) ?? null);
+    const next = id === null ? null : (this.paths.get(id) ?? null);
     if (next === this.active) return;
     this.active?.classList.remove("is-active");
     next?.classList.add("is-active");
