@@ -10,13 +10,13 @@ import {
   buildFooterMenuItemsSpec,
   FOOTER_METRICS,
   type FooterContextMenuState,
-  type FooterMetricSettingKey,
+  type FooterItemSettingKey,
 } from "../src/components/editor-area/footer-context-menu";
 
 function makeState(
-  visibility: Record<FooterMetricSettingKey, boolean>,
-): FooterContextMenuState & { toggles: Array<[FooterMetricSettingKey, boolean]> } {
-  const toggles: Array<[FooterMetricSettingKey, boolean]> = [];
+  visibility: Record<FooterItemSettingKey, boolean>,
+): FooterContextMenuState & { toggles: Array<[FooterItemSettingKey, boolean]> } {
+  const toggles: Array<[FooterItemSettingKey, boolean]> = [];
   return {
     toggles,
     visibility,
@@ -25,11 +25,12 @@ function makeState(
 }
 
 describe("buildFooterMenuItemsSpec", () => {
-  test("lists every metric even when hidden, with checked reflecting visibility", () => {
+  test("lists every footer item even when hidden, with checked reflecting visibility", () => {
     const state = makeState({
       "statusbar.show-words": true,
       "statusbar.show-characters": false,
       "statusbar.show-paragraphs": true,
+      "statusbar.show-width": false,
     });
 
     const spec = buildFooterMenuItemsSpec(state);
@@ -38,6 +39,7 @@ describe("buildFooterMenuItemsSpec", () => {
       ["statusbar.show-words", "Words", true],
       ["statusbar.show-characters", "Characters", false],
       ["statusbar.show-paragraphs", "Paragraphs", true],
+      ["statusbar.show-width", "Page Width", false],
     ]);
   });
 
@@ -46,6 +48,7 @@ describe("buildFooterMenuItemsSpec", () => {
       "statusbar.show-words": true,
       "statusbar.show-characters": false,
       "statusbar.show-paragraphs": true,
+      "statusbar.show-width": false,
     });
 
     const spec = buildFooterMenuItemsSpec(state);
@@ -55,6 +58,7 @@ describe("buildFooterMenuItemsSpec", () => {
       ["statusbar.show-words", false],
       ["statusbar.show-characters", true],
       ["statusbar.show-paragraphs", false],
+      ["statusbar.show-width", true],
     ]);
   });
 

@@ -5,8 +5,9 @@ import { type PenHint, usePenHint } from "./pen-hint-store";
 import {
   FOOTER_METRICS,
   showFooterContextMenu,
-  type FooterMetricSettingKey,
+  type FooterItemSettingKey,
 } from "./footer-context-menu";
+import { PageWidthPresets } from "./page-width-presets";
 
 function FooterMetric({ label, value }: { label: string; value: number }) {
   return (
@@ -44,15 +45,17 @@ function PenHintLine({ hint }: { hint: PenHint }) {
 export function DocumentFooter({ filePath }: { filePath: string }) {
   const stats = useFileStats(filePath);
   const setSetting = useSetSetting();
-  const visibility: Record<FooterMetricSettingKey, boolean> = {
+  const visibility: Record<FooterItemSettingKey, boolean> = {
     "statusbar.show-words": useBooleanSetting("statusbar.show-words"),
     "statusbar.show-characters": useBooleanSetting("statusbar.show-characters"),
     "statusbar.show-paragraphs": useBooleanSetting("statusbar.show-paragraphs"),
+    "statusbar.show-width": useBooleanSetting("statusbar.show-width"),
   };
   const visibleMetrics = FOOTER_METRICS.filter((metric) => visibility[metric.settingKey]);
+  const showWidth = visibility["statusbar.show-width"];
   const penHint = usePenHint(filePath);
 
-  if (visibleMetrics.length === 0 && !penHint) return null;
+  if (visibleMetrics.length === 0 && !showWidth && !penHint) return null;
 
   const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -72,6 +75,7 @@ export function DocumentFooter({ filePath }: { filePath: string }) {
       className="flex absolute bottom-0 w-full z-10 h-11 shrink-0 rounded-b-[inherit] bg-[var(--color-bg-canvas)] items-center justify-end gap-5 pl-6 pr-[var(--agent-launcher-clearance,1.5rem)] font-[family-name:var(--mono-font)] text-caption leading-[1.15] text-[var(--text-muted)] md:pl-8 md:pr-[var(--agent-launcher-clearance,2rem)]"
     >
       {penHint && <PenHintLine hint={penHint} />}
+      {showWidth && <PageWidthPresets />}
       {visibleMetrics.map((metric) => (
         <FooterMetric
           key={metric.settingKey}

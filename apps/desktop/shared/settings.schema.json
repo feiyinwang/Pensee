@@ -66,6 +66,14 @@
       "default": true
     },
     {
+      "key": "statusbar.show-width",
+      "label": "Page Width",
+      "description": "Show the page width presets (Readable, Wide, Full) in the status bar",
+      "category": "Status Bar",
+      "type": "boolean",
+      "default": true
+    },
+    {
       "key": "appearance.theme",
       "label": "Schema",
       "description": "Light or dark color schema",

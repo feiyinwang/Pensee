@@ -36,23 +36,34 @@ export const FOOTER_METRICS = [
 
 export type FooterMetricSettingKey = (typeof FOOTER_METRICS)[number]["settingKey"];
 
+/**
+ * Everything in the footer the context menu can show or hide: the metrics,
+ * then the page width presets. The menu iterates this list in order.
+ */
+export const FOOTER_ITEMS = [
+  ...FOOTER_METRICS,
+  { settingKey: "statusbar.show-width", menuLabel: "Page Width" },
+] as const satisfies ReadonlyArray<{ settingKey: string; menuLabel: string }>;
+
+export type FooterItemSettingKey = (typeof FOOTER_ITEMS)[number]["settingKey"];
+
 export interface FooterContextMenuState {
-  /** Current visibility per metric setting key. */
-  visibility: Record<FooterMetricSettingKey, boolean>;
+  /** Current visibility per footer item setting key. */
+  visibility: Record<FooterItemSettingKey, boolean>;
   /** Called with the setting key and the new visibility value. */
-  onToggle: (key: FooterMetricSettingKey, visible: boolean) => void;
+  onToggle: (key: FooterItemSettingKey, visible: boolean) => void;
 }
 
 /**
- * Build the check-item entries for the footer context menu. Every metric is
- * always listed (checked = currently visible) so a hidden metric can be
+ * Build the check-item entries for the footer context menu. Every item is
+ * always listed (checked = currently visible) so a hidden item can be
  * re-shown from the same menu. Pulled out from `showFooterContextMenu` so it
  * can be unit-tested without the Tauri runtime.
  */
 export function buildFooterMenuItemsSpec(
   state: FooterContextMenuState,
-): Array<{ id: FooterMetricSettingKey; text: string; checked: boolean; action: () => void }> {
-  return FOOTER_METRICS.map(({ settingKey, menuLabel }) => ({
+): Array<{ id: FooterItemSettingKey; text: string; checked: boolean; action: () => void }> {
+  return FOOTER_ITEMS.map(({ settingKey, menuLabel }) => ({
     id: settingKey,
     text: menuLabel,
     checked: state.visibility[settingKey],

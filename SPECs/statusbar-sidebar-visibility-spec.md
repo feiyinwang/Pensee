@@ -33,6 +33,10 @@ No settings-panel code changes: the generic boolean control renders them.
 - The metric list (setting key ↔ stat key ↔ labels) lives once in
   `FOOTER_METRICS` (`footer-context-menu.ts`); the footer and the menu both
   iterate it.
+- The page width presets ([editor-content-width-spec.md](editor-content-width-spec.md#presets))
+  are a fourth footer item, `statusbar.show-width`. The menu lists
+  `FOOTER_ITEMS` (the metrics, then **Page Width**); the footer is not
+  rendered when every item is off and the pen has no hint.
 
 ### Sidebar
 
