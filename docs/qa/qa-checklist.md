@@ -137,3 +137,4 @@ Learned the hard way; each one cost a failed run.
   show here; make them `you` journeys, or time the Rust command directly
   against the user's vault, read-only.
 - The pen waits on empty lines of yours that show faint words (`.cm-pen-waiting`, a widget CodeMirror ignores events on): put the caret there by clicking just left of the words (`caretInWaiting` in `pen.spec.js`); to replace typed text, click after it and send Backspace keydowns (CodeMirror runs its keymap on them).
+- The e2e window is hidden (`document.visibilityState` is `hidden`): WebKit freezes its animation clock and runs measure frames late. Wait for an animation to start (`waitUntil`), and to check what happens when one ends, `finish()` it from the spec (ED-13). `getAnimations()` leaves out `::before`/`::after` animations; pass `{ subtree: true }`.

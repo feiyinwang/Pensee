@@ -12,6 +12,7 @@
 
 ## Done
 
+- Todo check celebration: `lib/prosemark-core/list/task-celebration.ts` — a checkbox toggle to `[x]` pops the box, draws the tick and bursts six dots (WAAPI on the prefix pseudo-elements, dots in a layer on `scrollDOM`), after the SpectrumUI TaskCheckbox. Toggle-only, never on render; skipped under reduced motion. Journey ED-13.
 - QA process: [`docs/qa/qa-checklist.md`](docs/qa/qa-checklist.md) — every user journey that must keep working is in [`docs/qa/user-journeys.md`](docs/qa/user-journeys.md) (101 journeys by feature, ★ smoke set); the `pensee-qa` skill picks the ones a change reaches and drives the real app through them with `apps/desktop/e2e/qa/run.sh` (debug e2e build, seeded vault per spec). Automated so far: the smoke set (`journeys/core.spec.js`) and the calendar (`journeys/calendar.spec.js`). Follow-up: automate the `manual` rows as their areas change; promote the `legacy:` specs onto the QA vault.
 - Calendar clicks in iCloud vaults: [`SPECs/calendar-panel-spec.md`](SPECs/calendar-panel-spec.md) — the panel's dots listed the note folder with `read_directory`, which reads every note's title (over a minute in the user's iCloud vault) and reran on every watcher event, starving the clicks' `create_file_if_missing`. New `list_markdown_stems` reads names only (2ms on the same vault).
 

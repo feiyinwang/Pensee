@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-14
+
+- Checking a todo now celebrates: the box pops, the tick draws in and a few dots burst out and fade. Unchecking stays quiet, and with Reduce Motion on nothing moves.
+
 ## 2026-10-13
 
 - **! Answer** now leaves the reconciling to you. Your take sits beside the sealed answer instead of under it, and once you open it nothing moves and no comparison is written: you read the two side by side. Under your take, **Combine into one list** (Tab) breaks both into one MECE list: yours in your own words, the pen's points only where they add something, and a point's detail nested under it, whoever wrote either (a point of yours can sit under one of the pen's). The last line asks you to add a point or go deeper on any line above, and **Undo** (⌘Z) puts the two back. That empty line goes when you click elsewhere.

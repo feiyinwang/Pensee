@@ -17,6 +17,7 @@ import {
 } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, keymap } from "@codemirror/view";
 import { eventHandlersWithClass } from "../utils";
+import { TOGGLE_CHECKBOX_EVENT, taskCelebration } from "./task-celebration";
 
 // Visual list geometry. Keep indent steps and marker column aligned to the
 // source prefix width; caret boundary tuning happens on the inner source mark.
@@ -963,7 +964,7 @@ export const computeCheckboxToggle = (
       to: innerCharPos + 1,
       insert: currentlyChecked ? " " : "x",
     },
-    userEvent: "input.toggle-checkbox",
+    userEvent: TOGGLE_CHECKBOX_EVENT,
   };
 };
 
@@ -1008,6 +1009,7 @@ export const listExtension: Extension = [
     ]),
   ),
   checkboxClickHandler,
+  taskCelebration,
 ];
 
 // Internals exposed only for tests. Not part of the public API.

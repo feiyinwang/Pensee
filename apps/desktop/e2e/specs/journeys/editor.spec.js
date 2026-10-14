@@ -37,6 +37,21 @@ const headerLayout = () =>
     };
   });
 
+/** The front note's task box and whether a check celebration is playing. */
+const taskState = () =>
+  browser.execute(() => {
+    const box = [...document.querySelectorAll(".cm-list-prefix-task")].find(
+      (el) => el.offsetParent,
+    );
+    const layer = document.querySelector(".cm-task-celebration");
+    return {
+      checked: Boolean(box?.classList.contains("cm-list-prefix-task-checked")),
+      dots: layer ? layer.children.length : 0,
+      boxAnimations: box ? box.getAnimations({ subtree: true }).length : 0,
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+  });
+
 describe("Journeys: editor", function () {
   before(async function () {
     await workspaceRoot();
@@ -75,5 +90,52 @@ describe("Journeys: editor", function () {
     });
     layout = await headerLayout();
     strictEqual(layout.expanded, "false");
+  });
+
+  it("ED-13 checking a task celebrates once; unchecking is still", async function () {
+    // Seeded with `- [ ] a task`.
+    await openViaPalette("Welcome");
+    // Function selectors aren't supported: tag the visible box, select that.
+    const box = async () => {
+      await browser.execute(() => {
+        document.querySelector("[data-qa-task]")?.removeAttribute("data-qa-task");
+        [...document.querySelectorAll(".cm-list-prefix-task")]
+          .find((el) => el.offsetParent)
+          ?.setAttribute("data-qa-task", "");
+      });
+      return $("[data-qa-task]");
+    };
+    await $(".cm-list-prefix-task").waitForExist({ timeout: 5_000 });
+    strictEqual((await taskState()).checked, false, "the seeded task starts unchecked");
+
+    await mouseClick(await box());
+    // The burst starts on CodeMirror's next measure frame, which a window
+    // that isn't in front gets late: wait for it rather than read at once.
+    let checked = await taskState();
+    strictEqual(checked.checked, true, "the click checks the task");
+    if (checked.reducedMotion) {
+      await browser.pause(600);
+      strictEqual((await taskState()).dots, 0, "no burst under reduced motion");
+    } else {
+      await browser.waitUntil(async () => (checked = await taskState()).dots > 0, {
+        timeout: 2_000,
+        timeoutMsg: "no burst after checking the task",
+      });
+      strictEqual(checked.dots, 6, "six dots burst from the box");
+      ok(checked.boxAnimations >= 3, "the box pops and the tick draws in");
+    }
+    // The e2e window is hidden, so WebKit's animation clock stands still:
+    // finish the running animations to stand in for the half second passing.
+    await browser.execute(() => document.getAnimations().forEach((a) => a.finish()));
+    await browser.waitUntil(async () => (await taskState()).dots === 0, {
+      timeout: 2_000,
+      timeoutMsg: "the burst removes itself when it finishes",
+    });
+
+    await mouseClick(await box());
+    await browser.pause(600); // longer than a burst would take to start
+    const unchecked = await taskState();
+    strictEqual(unchecked.checked, false, "a second click unchecks it");
+    strictEqual(unchecked.dots, 0, "unchecking plays no burst");
   });
 });

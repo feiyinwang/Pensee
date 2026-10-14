@@ -8,6 +8,7 @@ import {
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import { computeCheckboxToggle, listExtension, __test } from "../src/lib/prosemark-core/list";
+import { newlyCheckedTicks } from "../src/lib/prosemark-core/list/task-celebration";
 import { withFullParse } from "./helpers/parsed-state";
 
 const {
@@ -632,6 +633,33 @@ describe("computeCheckboxToggle", () => {
   test("returns null when not pointing at a task pattern", () => {
     const s = makeState("- foo");
     expect(computeCheckboxToggle(s, 0)).toBeNull();
+  });
+});
+
+describe("newlyCheckedTicks (celebration trigger)", () => {
+  test("a toggle to `[x]` reports the tick's position", () => {
+    const s = makeState("- [ ] task");
+    const tr = s.update(computeCheckboxToggle(s, 0)!);
+    expect(newlyCheckedTicks([tr])).toEqual([3]);
+  });
+
+  test("a toggle back to `[ ]` reports nothing", () => {
+    const s = makeState("- [x] done");
+    const tr = s.update(computeCheckboxToggle(s, 0)!);
+    expect(newlyCheckedTicks([tr])).toEqual([]);
+  });
+
+  test("typing an `x` into the box by hand reports nothing", () => {
+    const s = makeState("- [ ] task");
+    const tr = s.update({ changes: { from: 3, to: 4, insert: "x" }, userEvent: "input.type" });
+    expect(newlyCheckedTicks([tr])).toEqual([]);
+  });
+
+  test("a later edit in the same update maps the tick forward", () => {
+    const s = makeState("- [ ] task");
+    const toggle = s.update(computeCheckboxToggle(s, 0)!);
+    const typed = toggle.state.update({ changes: { from: 0, insert: "ab\n" } });
+    expect(newlyCheckedTicks([toggle, typed])).toEqual([6]);
   });
 });
 

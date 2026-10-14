@@ -125,6 +125,7 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ED-10 | Triple-click a paragraph; double-click a bullet's marker | Selection stops at the text's end with a ¶; marker excluded | manual                      |
 | ED-11 | ⌘Z, ⌘⇧Z after typing                                     | Undo and redo the edit; history does not leak across files  | manual                      |
 | ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab        | manual                      |
+| ED-13 | Click an unchecked task, then click it again             | Box pops, tick draws in, six dots burst once; uncheck is still | auto: editor              |
 
 ## Links — LNK
 
