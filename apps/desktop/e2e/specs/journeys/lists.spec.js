@@ -1,4 +1,4 @@
-// List journeys (ED-14 in docs/qa/user-journeys.md): the list guides.
+// List journeys (ED-14, ED-15 in docs/qa/user-journeys.md): the list guides.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { ok, strictEqual } from "node:assert/strict";
 import { pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
@@ -17,6 +17,24 @@ const guideState = () =>
       active: guides.filter((g) => g.classList.contains("is-active")).length,
     };
   });
+
+/** Vertical extent of the visible line holding `text`, in the guide layer's
+ *  space (the layer sits at the scroller's origin). */
+const lineSpan = (text) =>
+  browser.execute((needle) => {
+    const line = [
+      ...(document.querySelector("[data-column-tab][data-focused]") ?? document).querySelectorAll(
+        ".cm-line",
+      ),
+    ].find((el) => el.offsetParent && el.textContent.includes(needle));
+    if (!line) throw new Error(`no line with ${needle}`);
+    const scroller = line.closest(".cm-scroller");
+    const top = line.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    return { top: top + scroller.scrollTop, bottom: top + scroller.scrollTop + line.offsetHeight };
+  }, text);
+
+/** Each guide's runs as [y0, y1] pairs, read back from its path. */
+const runs = (d) => [...d.matchAll(/M[\d.]+ ([\d.]+)V([\d.]+)/g)].map((m) => [+m[1], +m[2]]);
 
 /** Run CodeMirror's pending measure now. It waits for an animation frame,
  *  and a hidden e2e window gets none, so the guides would never be drawn. */
@@ -87,5 +105,24 @@ describe("Journeys: lists", function () {
       timeout: 2_000,
       timeoutMsg: "hovering a childless item still darkens a guide",
     });
+  });
+
+  it("ED-15 a line outside the list's indent cuts the guides it would cross", async function () {
+    // ED-14 left `- one`, `- two`, `- [ ] a task`, `  - nested`. A line with
+    // no marker right under it is a lazy continuation: inside the list, but
+    // drawn from the content edge.
+    await typeInEditor("\nplain words here\n  - after");
+    await flushMeasure();
+    const { paths } = await guideState();
+    strictEqual(paths.length, 1, `one guide, under the task: ${paths.join(" | ")}`);
+    const plain = await lineSpan("plain words here");
+    const segments = runs(paths[0] ?? "");
+    strictEqual(segments.length, 2, `the guide is cut in two: ${paths[0]}`);
+    for (const [y0, y1] of segments) {
+      ok(
+        y1 <= plain.top || y0 >= plain.bottom,
+        `run ${y0}–${y1} crosses ${plain.top}–${plain.bottom}`,
+      );
+    }
   });
 });

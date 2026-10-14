@@ -33,16 +33,35 @@ describe("guideGeometry", () => {
   test("a guide reaches the end of a wrapped last child", () => {
     const [, inner] = guideGeometry(nodes);
     expect(inner?.parent).toBe(2);
-    expect(inner?.y1).toBe(115 - 8);
+    expect(inner?.segments).toEqual([[50, 115 - 8]]);
   });
 
   test("a task parent leaves room for its box", () => {
     const [guide] = guideGeometry([{ ...node(1, null, 10, 10), task: true }, node(2, 1, 40, 40)]);
-    expect(guide?.y0).toBe(24);
+    expect(guide?.segments[0]?.[0]).toBe(24);
   });
 
   test("a child whose parent is out of the scan draws nothing", () => {
     expect(guideGeometry([node(2, 99, 40, 40)])).toEqual([]);
+  });
+
+  test("text outside the list's indent cuts every guide it would cross", () => {
+    // A lazy continuation under a1x (y 116..130) sits at the content edge.
+    const paths = guideGeometry(nodes, [{ top: 116, bottom: 130 }]).map(guidePath);
+    expect(paths).toEqual(["M10 20V108", "M40 50V107"]);
+  });
+
+  test("a guide resumes below the text when more children follow", () => {
+    const [outer] = guideGeometry(nodes, [{ top: 116, bottom: 120 }]);
+    expect(outer?.segments).toEqual([
+      [20, 108],
+      [128, 137],
+    ]);
+  });
+
+  test("text right under the parent leaves no stub above it", () => {
+    const [outer] = guideGeometry(nodes, [{ top: 18, bottom: 30 }]);
+    expect(outer?.segments[0]).toEqual([38, 137]);
   });
 });
 

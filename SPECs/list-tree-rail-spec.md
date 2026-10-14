@@ -39,6 +39,11 @@ wrapped lines and AI-ink runs; **Guides** was picked.
   child is covered to its end and the guide never touches the next sibling.
 - Guides never cross a marker: a guide sits at its parent's column, and every
   item inside it is at least one indent further right.
+- Guides never cross text. Only a marker line gets the list's hanging indent;
+  any other text inside a list (a lazy continuation under a nested bullet, a
+  paragraph or code under an item) starts at the content edge, left of every
+  guide. A guide stops 8px above such a line and, if more children follow,
+  starts again 8px below it. Blank lines don't cut a guide.
 - Bullets and tasks join. A numbered item is not part of the tree: a bullet
   list under a number has no guide, and numbers keep their look.
 

@@ -2,6 +2,7 @@
 
 ## 2026-10-14
 
+- Fixed: a list's guide lines ran through text under a nested bullet that isn't itself a bullet (a line you typed without a dash). A guide now stops above such a line and picks up again below it.
 - **Combine** (Tab under your take) builds a tree now, not one flat list. Points side by side are the same kind of thing at the same level; a step, part or result of a point goes under it, up to two levels deep. Your take is split one idea per point, and the pen no longer says your point back to you in other words ("Slow down yourself" under your "Slow down myself"): it only adds what you didn't say.
 - **@ Check** labels its two lines for what your line asks, not always For and Against. On a claim it's still **For:** and **Against:**; under "how to use it" it's something like **How:** and **Caveat:**, and a *why* gets **Why:** and **But:**. It also works on questions now instead of saying there's no claim. Your call under it reads *what does this change?*
 - Lists are lighter. The lines and curves into every bullet are gone; each nested list now has one faint straight line down from its parent's bullet, and the line under the bullet you're on (where you hover, or where you're writing) is a shade darker, so you can see everything that hangs from it.

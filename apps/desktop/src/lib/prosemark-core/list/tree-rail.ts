@@ -39,12 +39,38 @@ export interface Guide {
   /** The item whose children this guide joins. */
   parent: number;
   x: number;
-  y0: number;
-  y1: number;
+  /** Top-to-bottom runs of the guide; more than one when text cuts it. */
+  segments: [y0: number, y1: number][];
 }
 
-/** One guide per nested list, at its parent's bullet column. */
-export function guideGeometry(list: readonly RailNode[]): Guide[] {
+/** A text line, in layer px, that guides must not cross. */
+export interface Blocker {
+  top: number;
+  bottom: number;
+}
+
+/** Cut `[y0, y1]` around the blockers that overlap it, keeping END_INSET of
+ *  air on both sides of each, as a guide keeps at its end. */
+const cutAround = (y0: number, y1: number, blockers: readonly Blocker[]): [number, number][] => {
+  const segments: [number, number][] = [];
+  let top = y0;
+  for (const b of blockers) {
+    if (b.bottom <= top || b.top >= y1) continue;
+    const end = b.top - END_INSET;
+    if (end > top) segments.push([top, end]);
+    top = Math.max(top, b.bottom + END_INSET);
+  }
+  if (y1 > top) segments.push([top, y1]);
+  return segments;
+};
+
+/** One guide per nested list, at its parent's bullet column, cut around
+ *  `blockers` (sorted top to bottom): text that sits in the list but outside
+ *  its indent, which a guide would otherwise strike through. */
+export function guideGeometry(
+  list: readonly RailNode[],
+  blockers: readonly Blocker[] = [],
+): Guide[] {
   const nodes = new Map(list.map((n) => [n.id, n]));
   const lastChild = new Map<number, RailNode>();
   for (const n of list) {
@@ -58,14 +84,16 @@ export function guideGeometry(list: readonly RailNode[]): Guide[] {
     if (!parent) continue;
     const y0 = parent.y + (parent.task ? TASK_GAP : DOT_GAP);
     const y1 = Math.max(last.y, last.bottom - END_INSET);
-    if (y1 > y0) guides.push({ parent: id, x: parent.x, y0, y1 });
+    const segments = y1 > y0 ? cutAround(y0, y1, blockers) : [];
+    if (segments.length > 0) guides.push({ parent: id, x: parent.x, segments });
   }
   return guides;
 }
 
 const fmt = (n: number): string => (Math.round(n * 100) / 100).toString();
 
-export const guidePath = (g: Guide): string => `M${fmt(g.x)} ${fmt(g.y0)}V${fmt(g.y1)}`;
+export const guidePath = (g: Guide): string =>
+  g.segments.map(([y0, y1]) => `M${fmt(g.x)} ${fmt(y0)}V${fmt(y1)}`).join("");
 
 // ---------------------------------------------------------------------------
 // Syntax tree → items
@@ -129,16 +157,33 @@ interface ItemInfo {
   task: boolean;
 }
 
-function collectItems(state: EditorState, from: number, to: number): ItemInfo[] {
+interface Scan {
+  items: ItemInfo[];
+  /** Line starts of the scan's text lines that are not list-item lines. Only
+   *  a marker line gets the list's hanging indent (index.ts); any other text
+   *  in a list (a lazy continuation, a paragraph or code under an item)
+   *  starts at the content edge, left of every guide. Blank lines are left
+   *  out: a loose list's guide runs across them. */
+  plainLines: number[];
+}
+
+function scanLists(state: EditorState, from: number, to: number): Scan {
   const a = outermostList(state, from);
   const b = outermostList(state, to);
   const scanFrom = Math.min(from, a?.from ?? from);
   const scanTo = Math.max(to, b?.to ?? to);
   const items: ItemInfo[] = [];
+  const markLines = new Set<number>();
   syntaxTree(state).iterate({
     from: scanFrom,
     to: scanTo,
     enter: (ref) => {
+      if (ref.name === "ListMark") {
+        // Same test as index.ts: a bare marker renders as text, unindented.
+        const after = state.doc.sliceString(ref.to, ref.to + 1);
+        if (after === " " || after === "\t") markLines.add(state.doc.lineAt(ref.from).from);
+        return;
+      }
       if (ref.name !== "ListItem") return;
       const node = ref.node;
       if (!isBulletItem(node, state)) return;
@@ -159,7 +204,15 @@ function collectItems(state: EditorState, from: number, to: number): ItemInfo[] 
       });
     },
   });
-  return items;
+  const plainLines: number[] = [];
+  if (items.length > 0) {
+    const last = state.doc.lineAt(scanTo).number;
+    for (let n = state.doc.lineAt(scanFrom).number; n <= last; n++) {
+      const line = state.doc.line(n);
+      if (!markLines.has(line.from) && line.text.trim() !== "") plainLines.push(line.from);
+    }
+  }
+  return { items, plainLines };
 }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +275,7 @@ class TreeRailView {
   private measure(): Guide[] | null {
     const { view } = this;
     const { from, to } = view.viewport;
-    const items = collectItems(view.state, from, to);
+    const { items, plainLines } = scanLists(view.state, from, to);
     if (items.length === 0) return null;
 
     const scroller = view.scrollDOM.getBoundingClientRect();
@@ -291,7 +344,11 @@ class TreeRailView {
         task: item.task,
       };
     });
-    return guideGeometry(nodes);
+    const blockers = plainLines.map((pos) => {
+      const block = view.lineBlockAt(pos);
+      return { top: docTop + block.top, bottom: docTop + block.bottom };
+    });
+    return guideGeometry(nodes, blockers);
   }
 
   private draw(guides: Guide[] | null): void {
