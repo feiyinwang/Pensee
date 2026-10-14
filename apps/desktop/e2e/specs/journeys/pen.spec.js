@@ -397,18 +397,6 @@ describe("Journeys: second pen", function () {
     );
   });
 
-  it("PEN-23 ⌘. @ on a question says it's not a claim and writes nothing", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    const before = await readFile(path);
-    await armOn("why does sleep help memory?");
-    await pick("@", { shift: true });
-    await browser.waitUntil(async () => (await barText()).includes("not a claim"), {
-      timeout: 3_000,
-      timeoutMsg: `expected "not a claim": ${await barText()}`,
-    });
-    ok((await readFile(path)) === before, "nothing should be written");
-  });
-
   it("PEN-01 ★ ⌘. ! writes a sealed answer under the line, your take beside it", async function () {
     const path = `${root}/Notes/Pen.md`;
     await armOn("why does sleep help memory?");
@@ -629,7 +617,7 @@ describe("Journeys: second pen", function () {
       "the clicked pill should be selected",
     );
     await key("Enter");
-    // PEN-07: For, Against, and your call waiting under Against.
+    // PEN-07: on a claim, For, Against, and your call waiting under Against.
     const text = await waitForDisk(
       path,
       (t) =>
@@ -653,6 +641,29 @@ describe("Journeys: second pen", function () {
       path,
       (t) => !t.includes("^ai-p-") && !t.includes("^ai-n-"),
       "expected For and Against to be gone",
+    );
+  });
+
+  it("PEN-23 ⌘. @ on a how-to line labels for what it asks, not For and Against", async function () {
+    const path = `${root}/Notes/Pen.md`;
+    await armOn("how to make a new habit stick");
+    await pick("@", { shift: true });
+    const text = await waitForDisk(
+      path,
+      (t) => /habit stick\n {2}- [^:\n]+: .+ \^ai-p-[a-z0-9]{4}\n {2}- [^:\n]+: .+ \^ai-n-/.test(t),
+      "expected two labelled lines (^ai-p-…, ^ai-n-…) under the how-to line",
+      AI_TIMEOUT,
+    );
+    const labels = [...text.matchAll(/^ {2}- ([^:\n]+): .+ \^ai-[pn]-/gm)].map((m) => m[1]);
+    ok(
+      !labels.includes("For") && !labels.includes("Against"),
+      `a how-to takes no side, so no For / Against: ${labels.join(", ")}`,
+    );
+    await key("Escape");
+    await waitForDisk(
+      path,
+      (t) => !t.includes("^ai-p-") && !t.includes("^ai-n-"),
+      "expected Esc to take both lines back",
     );
   });
 

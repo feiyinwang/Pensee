@@ -87,7 +87,7 @@ notes are gone. The look is unchanged from the first Second pen
   and `v`, the comparison the earlier Answer wrote)
   keep their ink and stay hidden-id. Other apps show an ordinary line or
   bullet.
-- Drawn in AI ink (`--color-ai-ink`), every word of it: labels (*For:*,
+- Drawn in AI ink (`--color-ai-ink`), every word of it: labels (*For:*, *How:*,
   *Supports:*), a source's time, *no paper*, the seal's words and `[[links]]`
   inside it keep that one colour (a link keeps its underline); a bullet gets a
   hollow marker. Its id is
@@ -185,17 +185,20 @@ one by one, and only when you ask.
   together" heading, and *Now your version, in one line…* as the last line
   (the next step is to go deeper, not to summarise).
 
-### Check: both sides, you make the call
+### Check: what the papers say, you make the call
 
-- **⌘. @** on a claim: the pen searches recent, well-cited papers (OpenAlex)
-  and writes two lines under it: **For:** the strongest support it found,
-  then **Against:** the strongest challenge or limit. Each ends with its
-  paper's pill, or *no paper* when it is a limit of the evidence rather than a
-  finding (one small study, never measured). It never writes a verdict.
-- An empty bullet under *Against* waits, caret in it: *Your call: does your
-  line hold? Rewrite it or keep it.*
-- A line that ends with `?` is a question: *That's a question, not a claim.
-  Nothing to check.* No paper found: *No paper found for this line.*
+- **⌘. @** on a line: the pen searches recent, well-cited papers (OpenAlex)
+  and writes two lines under it, labelled for what the line asks, read with
+  the lines it sits under. On a claim: **For:** the strongest support, then
+  **Against:** the strongest challenge or limit. On anything else the labels
+  fit the ask instead (*How:* and *Caveat:* under "how to use it", *Why:* and
+  *But:*, *Answer:* and *Limit:*); a line that takes no side never gets For
+  and Against. Each ends with its paper's pill, or *no paper* when it is a
+  limit of the evidence rather than a finding (one small study, never
+  measured, nothing on this exact use). It never writes a verdict.
+- An empty bullet under the second line waits, caret in it: *Your call: what
+  does this change? Rewrite your line or keep it.*
+- No paper found: *No paper found for this line.*
 - **Esc** on the empty *your call* bullet takes both lines back.
 - One more never cites a paper already there.
 
@@ -304,7 +307,7 @@ never shows through. It shows, in order of what applies:
 - `lib/second-pen-agent.ts`: one request → one reply, over the pen channel.
 - `components/editor-area/second-pen.ts`: the editor extension (the box as
   a CodeMirror tooltip, the progress line as a block widget, decorations
-  (the seal, the For / Against labels, the waiting-line placeholders), the
+  (the seal, a check's labels, the waiting-line placeholders), the
   sealed answer, both sides, echoes, shorten, organize) and the bottom bar's
   hint.
 - `components/editor-area/pen-box.tsx`: the box's React (Arc's floating button

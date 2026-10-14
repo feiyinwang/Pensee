@@ -16,7 +16,6 @@ import {
   echoesReply,
   isNonsenseTake,
   judgeReply,
-  isQuestion,
   itemText,
   newPenId,
   noteForPen,
@@ -28,6 +27,7 @@ import {
   penPrompt,
   replyLine,
   sealedAbove,
+  SIDE_LABEL_AT_START_RE,
   sideLine,
   sidesReply,
   splitPoints,
@@ -154,12 +154,6 @@ describe("answer flow", () => {
     expect(unsealedLine(lines[1]!)).toBe("  - The answer. ^ai-r-ab12");
     // Once open, the take is an ordinary line.
     expect(sealedAbove(["- Why?", "  - The answer. ^ai-r-ab12", "    - my take"], 2)).toBe(-1);
-  });
-
-  test("a line ending in a question mark is a question, not a claim", () => {
-    expect(isQuestion("Why do I never finish side projects?")).toBe(true);
-    expect(isQuestion("为什么？")).toBe(true);
-    expect(isQuestion("Caffeine helps (I think?) a lot")).toBe(false);
   });
 
   test("a take with no word in it is nobody's guess", () => {
@@ -360,26 +354,43 @@ describe("prompts and replies", () => {
     ]);
   });
 
-  test("both sides name their papers, or no paper; never two opinions", () => {
+  test("a check's two lines name their papers, or no paper; never two opinions", () => {
     const reply =
-      '{"for": {"paper": 1, "text": "The curve replicates."}, "against": {"paper": 0, "text": "One lab, one person."}}';
-    expect(sidesReply(reply, [paper])).toEqual({
-      pro: { text: "The curve replicates.", paper },
-      con: { text: "One lab, one person.", paper: null },
-    });
+      '{"claim": true, "lines": [{"label": "Evidence", "paper": 1, "text": "The curve replicates."}, {"label": "Limit", "paper": 0, "text": "One lab, one person."}]}';
+    // A claim is always For and Against, whatever the reply called them.
+    expect(sidesReply(reply, [paper])).toEqual([
+      { label: "For", text: "The curve replicates.", paper },
+      { label: "Against", text: "One lab, one person.", paper: null },
+    ]);
+    // The labels fit what the line asks, not always For and Against.
     expect(
-      sidesReply('{"for": {"paper": 0, "text": "a"}, "against": {"paper": 0, "text": "b"}}', [
-        paper,
-      ]),
+      sidesReply(
+        '{"claim": false, "lines": [{"label": "How:", "paper": 1, "text": "Space the reviews."}, {"label": "Caveat", "paper": 0, "text": "Not tested on goals."}]}',
+        [paper],
+      )?.map((s) => s.label),
+    ).toEqual(["How", "Caveat"]);
+    const line = (label: string, paperN = 1) =>
+      `{"lines": [{"label": "${label}", "paper": ${paperN}, "text": "a"}, {"label": "B", "paper": 0, "text": "b"}]}`;
+    expect(
+      sidesReply(line("A whole sentence that is far too long to be a label"), [paper]),
     ).toBeNull();
+    expect(sidesReply(line(""), [paper])).toBeNull();
+    expect(sidesReply(line("A", 0), [paper])).toBeNull();
+    expect(sidesReply(line("A", 3), [paper])).toBeNull();
     expect(sidesReply("{}", [paper])).toBeNull();
     expect(
-      sidesReply('{"for": {"paper": 3, "text": "a"}, "against": {"paper": 1, "text": "b"}}', [
-        paper,
-      ]),
+      sidesReply('{"lines": [{"label": "For", "paper": 1, "text": "a"}]}', [paper]),
     ).toBeNull();
-    expect(sideLine("Against", { text: "One lab.", paper: null })).toBe("Against: One lab.");
-    expect(sideLine("For", { text: "Yes.", paper })).toMatch(/^For: Yes\. \[Murre & Dros 2015\]\(/);
+    expect(sideLine({ label: "Against", text: "One lab.", paper: null })).toBe("Against: One lab.");
+    expect(sideLine({ label: "How", text: "Yes.", paper })).toMatch(
+      /^How: Yes\. \[Murre & Dros 2015\]\(/,
+    );
+  });
+
+  test("a check's label is drawn: a word or two and a colon, never a citation", () => {
+    expect(SIDE_LABEL_AT_START_RE.exec("Caveat: small study")?.[0]).toBe("Caveat:");
+    expect(SIDE_LABEL_AT_START_RE.exec("如何：先定目标")?.[0]).toBe("如何：");
+    expect(SIDE_LABEL_AT_START_RE.exec("[Murre 2015](https://x): y")).toBeNull();
   });
 
   test("connect: search words, picked echoes, and the echo line", () => {

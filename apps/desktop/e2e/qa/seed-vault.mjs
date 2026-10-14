@@ -33,6 +33,7 @@ const NOTES = {
     "  - Sleep replays the day's memories and links them to older ones. ^ai-s-aaaa",
     "    - ",
     "- naps help you remember what you studied",
+    "- how to make a new habit stick",
     "",
   ].join("\n"),
   "Notes/Sleep log.md": [

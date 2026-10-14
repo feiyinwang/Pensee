@@ -13,10 +13,11 @@ import type { Paper } from "./tauri";
 
 /** What a pen line is: an answer still sealed (`s`) or open (`r`, also each
  *  of its points once combined with your take), its comparison with your take
- *  (`v`, written by the earlier Answer), the evidence for (`p`) and against
- *  (`n`) a claim, or an echo of an earlier note (`e`). The earlier pen's lines (a
- *  quiz question `q`, a question `a`, a hint `h`, a check `c`, a fact `f`, a
- *  mix `m`) keep their ink. */
+ *  (`v`, written by the earlier Answer), the two lines of a check, labelled
+ *  for what the line asks (`p`, then `n`, which your call waits under), or
+ *  an echo of an earlier note (`e`). The earlier pen's lines (a quiz question
+ *  `q`, a question `a`, a hint `h`, a check `c`, a fact `f`, a mix `m`) keep
+ *  their ink. */
 export type PenKind = "s" | "r" | "v" | "p" | "n" | "e" | "q" | "a" | "h" | "c" | "f" | "m";
 
 const PEN_ID_RE = /^ai-([srvpneqahcfm])-[a-z0-9]{4}$/;
@@ -264,11 +265,6 @@ export function unsealedLine(line: string): string {
   return line.replace(/\^ai-s-([a-z0-9]{4})(\s*)$/, "^ai-r-$1$2");
 }
 
-/** A question, not a claim: Check has nothing to weigh. */
-export function isQuestion(text: string): boolean {
-  return /[?？]\s*$/.test(text);
-}
-
 /* --------------------------------------------------------------- source */
 
 export interface PenSource {
@@ -447,7 +443,7 @@ function taskText(input: PenPromptInput): string {
       ].join("\n");
     case "factQuery":
       return [
-        "Write a search query for research papers that would support or challenge the target lines.",
+        "Write a search query for research papers that bear on the target lines: ones that would support or challenge a claim, or answer what the lines ask (how to do it, why, when).",
         "3 to 8 English words, the terms researchers would use. Reply with the query only.",
       ].join("\n");
     case "factRetry":
@@ -459,10 +455,13 @@ function taskText(input: PenPromptInput): string {
       return [
         "These research papers came back for the target lines, best first.",
         paperBlock(ask.papers),
-        "Lay out the evidence on both sides of the target lines, using only what the abstracts say. Never give a verdict.",
-        "for: the strongest support for the lines, one sentence, from one paper.",
-        "against: the strongest challenge to them, one sentence, from one paper; when no paper challenges them, the main limit of the evidence for them (a small study, a different population, never measured directly), with paper 0.",
-        'Reply with JSON only: {"for": {"paper": N, "text": "…"}, "against": {"paper": N, "text": "…"}}. Use paper 0 for a side no paper speaks to. If no abstract bears on the lines at all, reply {}.',
+        "Write two lines on what the papers say about the target lines, using only what the abstracts say. Never give a verdict.",
+        "First work out what the target lines are, read with the lines they sit under: a claim to weigh, or something the writer wants to know (how to do it, why, when, what it is). Pick the two lines and their labels to fit that and what the papers offer.",
+        'A claim is a line that says something is so ("naps help you remember", "rereading feels like learning"): set "claim": true. Its first line is the strongest support, its second the strongest challenge (or, when no paper challenges it, the limit of the evidence for it); they are labelled For and Against for you.',
+        'Anything else (how to do something, why, when, what it is): set "claim": false and give each line a label that says what it gives, e.g. "How" and "Caveat" for how to do something, "Why" and "But", "Answer" and "Limit". Never "For" or "Against": the line takes no side.',
+        "Each line: one sentence, from one paper. The second: when no paper gives it, the main limit of the evidence in the first (a small study, a different population, never measured directly, nothing on this exact use), with paper 0.",
+        "Each label: one or two words, capitalised, no colon, in the note's language.",
+        'Reply with JSON only: {"claim": true or false, "lines": [{"label": "…", "paper": N, "text": "…"}, {"label": "…", "paper": N, "text": "…"}]}. Use paper 0 for a line no paper speaks to. If no abstract bears on the lines at all, reply {}.',
       ].join("\n");
     case "connectQuery":
       return [
@@ -668,37 +667,50 @@ export function isNonsenseTake(text: string): boolean {
 }
 
 export interface Side {
+  /** What the line gives, fit to what was asked: `For`, `How`, `Caveat`… */
+  label: string;
   text: string;
   paper: Paper | null;
 }
 
-/** The two sides from a `sides` reply; null when no abstract bore on the
- *  lines, or the reply named a paper that isn't there. */
-export function sidesReply(
-  reply: string,
-  papers: readonly Paper[],
-): { pro: Side; con: Side } | null {
-  const value = jsonIn(reply) as Record<string, unknown> | null;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const side = (raw: unknown): Side | null => {
-    const v = raw as { paper?: unknown; text?: unknown } | null;
+/** A side's label: a word or two, never a sentence or a colon. */
+const SIDE_LABEL_RE = /^[^\s:：][^:：\n]{0,23}$/u;
+
+/** A check's label at the start of its line (`For:`, `How:`), drawn bold. */
+export const SIDE_LABEL_AT_START_RE = /^[^\s:：[][^:：\n[]{0,23}[:：]/u;
+
+/** The two lines from a `sides` reply; null when no abstract bore on the
+ *  lines, or the reply named a paper that isn't there. A claim's lines are
+ *  always For and Against, whatever the reply called them. */
+export function sidesReply(reply: string, papers: readonly Paper[]): [Side, Side] | null {
+  const value = jsonIn(reply) as { claim?: unknown; lines?: unknown } | null;
+  if (!value || typeof value !== "object" || !Array.isArray(value.lines)) return null;
+  const claim = value.claim === true;
+  const side = (raw: unknown, claimLabel: string): Side | null => {
+    const v = raw as { label?: unknown; paper?: unknown; text?: unknown } | null;
     if (!v || typeof v.text !== "string") return null;
     const text = replyLine(v.text);
-    if (!text) return null;
+    const label = claim
+      ? claimLabel
+      : typeof v.label === "string"
+        ? v.label.trim().replace(/[:：]$/, "")
+        : "";
+    if (!text || !SIDE_LABEL_RE.test(label)) return null;
     const n = typeof v.paper === "number" ? v.paper : 0;
-    if (n === 0) return { text, paper: null };
+    if (n === 0) return { label, text, paper: null };
     const paper = papers[n - 1];
-    return paper ? { text, paper } : null;
+    return paper ? { label, text, paper } : null;
   };
-  const pro = side(value.for);
-  const con = side(value.against);
-  // Two sides, and at least one of them a paper: otherwise it's an opinion.
-  return pro && con && (pro.paper || con.paper) ? { pro, con } : null;
+  if (value.lines.length !== 2) return null;
+  const first = side(value.lines[0], "For");
+  const second = side(value.lines[1], "Against");
+  // Two lines, and at least one of them a paper: otherwise it's an opinion.
+  return first && second && (first.paper || second.paper) ? [first, second] : null;
 }
 
 /** A side as the pen writes it: its label, the sentence, its paper's pill. */
-export function sideLine(label: "For" | "Against", side: Side): string {
-  return `${label}: ${side.text}${side.paper ? ` ${citationMarkdown(side.paper)}` : ""}`;
+export function sideLine(side: Side): string {
+  return `${side.label}: ${side.text}${side.paper ? ` ${citationMarkdown(side.paper)}` : ""}`;
 }
 
 /** The search words from a `connectQuery` reply, at most 8. */

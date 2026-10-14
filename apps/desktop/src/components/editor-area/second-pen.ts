@@ -52,7 +52,6 @@ import {
   echoesReply,
   isItem,
   isPenParagraph,
-  isQuestion,
   organizedReply,
   itemText,
   newPenId,
@@ -67,6 +66,7 @@ import {
   isNonsenseTake,
   penIdOf,
   sealedAbove,
+  SIDE_LABEL_AT_START_RE,
   sideLine,
   sidesReply,
   sourcePartStart,
@@ -89,16 +89,18 @@ import "./second-pen.css";
 // The second pen in the editor (SPECs/second-pen-spec.md): ⌘. opens its box
 // on the selection or the caret's line; it answers only after your take
 // (sealed, your take beside it; once open, Combine breaks both into one list
-// of points for you to work through), checks a claim on both sides, and
+// of points for you to work through), checks a line against papers (both
+// sides of a claim, or whatever the line asks: how, why…), and
 // brings back what you wrote in other notes, always right under that line,
 // and Enter / Esc / Tab carry each flow.
 // Everything a flow knows is read back from the document (`lib/second-pen.ts`),
 // so undo, edits and reloads never leave it confused. The bottom bar says what
 // applies.
 
-/** The label a pen line starts with (`Another angle:`, `For:`), drawn bold
- *  so what the line is reads before what it says. */
-const PEN_LABEL_RE = new RegExp(`^(?:${[...ECHO_LABELS, "For", "Against"].join("|")}):`);
+/** The label an echo starts with (`Another angle:`), drawn bold so what the
+ *  line is reads before what it says. A check's label is the pen's own
+ *  pick (`SIDE_LABEL_AT_START_RE`). */
+const ECHO_LABEL_RE = new RegExp(`^(?:${ECHO_LABELS.join("|")}):`);
 
 /** Lines from the line's own words that make Connect skip asking the pen
  *  for more words: enough for it to pick up to three from. */
@@ -298,7 +300,7 @@ const TAKE_EMPTY: PenHintPart[] = [
 /** What an empty line of yours waits for, by the pen line it hangs under. */
 const WAITING: Partial<Record<PenKind, string>> = {
   s: "Your take first…",
-  n: "Your call: does your line hold? Rewrite it or keep it.",
+  n: "Your call: what does this change? Rewrite your line or keep it.",
 };
 const SEALED_LABEL = "Sealed · write your take under it · ⌥↵ open it now";
 /** The empty line under an opened answer and your take. */
@@ -776,7 +778,9 @@ class PenPlugin {
       return;
     }
     if (kind === "e" || kind === "p" || kind === "n") {
-      const label = PEN_LABEL_RE.exec(text.slice(start, end));
+      const label = (kind === "e" ? ECHO_LABEL_RE : SIDE_LABEL_AT_START_RE).exec(
+        text.slice(start, end),
+      );
       if (label) {
         ranges.push(
           Decoration.mark({ class: "cm-pen-label" }).range(
@@ -1770,8 +1774,9 @@ class PenPlugin {
     return at < 0 ? null : at;
   }
 
-  /** `@`: the evidence for and against the line, from papers, and an empty
-   *  line under it for your call. Never a verdict. */
+  /** `@`: two lines from papers on the line, labelled for what it asks (For
+   *  and Against on a claim, How and Caveat on a how-to…), and an empty line
+   *  under them for your call. Never a verdict. */
   private async check(direction = ""): Promise<void> {
     const typedContext = this.takeTyped()?.context ?? [];
     const { state } = this.view;
@@ -1782,10 +1787,6 @@ class PenPlugin {
       return;
     }
     const anchor = targets[targets.length - 1]!;
-    if (targets.every((i) => isQuestion(itemText(lines[i]!)))) {
-      this.say("That's a question, not a claim. Nothing to check.");
-      return;
-    }
     const conversation = this.start("Finding papers…", {
       mode: "under",
       pos: state.doc.line(anchor + 1).from,
@@ -1828,11 +1829,11 @@ class PenPlugin {
         return;
       }
       const at = this.placement;
-      const forId = this.write("p", sideLine("For", found.pro));
+      const firstId = this.write("p", sideLine(found[0]));
       this.placement = at && { ...at, pos: this.mapped(at.pos) };
-      // Your call waits under the evidence against.
-      const againstId = this.write("n", sideLine("Against", found.con), "child");
-      this.batch = [forId, againstId].filter((id): id is string => !!id);
+      // Your call waits under the second line.
+      const secondId = this.write("n", sideLine(found[1]), "child");
+      this.batch = [firstId, secondId].filter((id): id is string => !!id);
       this.finish(conversation);
     } catch (error) {
       this.fail(conversation, error);
