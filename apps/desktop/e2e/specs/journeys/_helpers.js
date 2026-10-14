@@ -110,7 +110,11 @@ export async function fillField(selector, text) {
 export async function typeInEditor(text, { atEnd = true } = {}) {
   await browser.execute(
     (value, toEnd) => {
-      const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+      const editor = [
+        ...(document.querySelector("[data-column-tab][data-focused]") ?? document).querySelectorAll(
+          ".cm-content",
+        ),
+      ].find((el) => el.offsetParent);
       if (!editor) throw new Error("no editor in front");
       editor.focus();
       if (toEnd) {

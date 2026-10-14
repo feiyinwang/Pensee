@@ -1,23 +1,25 @@
-// List journeys (ED-14 in docs/qa/user-journeys.md): the tree rail.
+// List journeys (ED-14 in docs/qa/user-journeys.md): the list guides.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { ok, strictEqual } from "node:assert/strict";
 import { pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
 
-/** The front editor's rail paths and the accent's state. */
-const railState = () =>
+/** The front editor's guide paths, and which one is darkened. */
+const guideState = () =>
   browser.execute(() => {
-    const editor = [...document.querySelectorAll(".cm-editor")].find((el) => el.offsetParent);
-    const base = editor?.querySelector(".cm-list-rail");
-    const accent = editor?.querySelector(".cm-list-rail-accent");
+    const editor = [
+      ...(document.querySelector("[data-column-tab][data-focused]") ?? document).querySelectorAll(
+        ".cm-editor",
+      ),
+    ].find((el) => el.offsetParent);
+    const guides = [...(editor?.querySelectorAll(".cm-list-guide") ?? [])];
     return {
-      base: base?.getAttribute("d") ?? "",
-      accent: accent?.getAttribute("d") ?? "",
-      accentShown: Boolean(accent?.classList.contains("is-visible")),
+      paths: guides.map((g) => g.getAttribute("d") ?? ""),
+      active: guides.filter((g) => g.classList.contains("is-active")).length,
     };
   });
 
 /** Run CodeMirror's pending measure now. It waits for an animation frame,
- *  and a hidden e2e window gets none, so the rail would never be drawn. */
+ *  and a hidden e2e window gets none, so the guides would never be drawn. */
 const flushMeasure = () =>
   browser.execute(() => {
     // `EditorView.findFromDOM`, without the module: the content's tile.
@@ -28,22 +30,14 @@ const flushMeasure = () =>
     }
   });
 
-/** Whether this window gets animation frames (a hidden one gets none). */
-const framesRun = () =>
-  browser.executeAsync((done) => {
-    const timer = setTimeout(() => done(false), 300);
-    requestAnimationFrame(() => {
-      clearTimeout(timer);
-      done(true);
-    });
-  });
-
 /** Move the pointer over the body of the visible list line holding `text`. */
 const hoverLine = (text) =>
   browser.execute((needle) => {
-    const line = [...document.querySelectorAll(".cm-line")].find(
-      (el) => el.offsetParent && el.textContent.includes(needle),
-    );
+    const line = [
+      ...(document.querySelector("[data-column-tab][data-focused]") ?? document).querySelectorAll(
+        ".cm-line",
+      ),
+    ].find((el) => el.offsetParent && el.textContent.includes(needle));
     const body = line?.querySelector(".cm-list-body");
     if (!line || !body) throw new Error(`no list line with ${needle}`);
     const box = body.getBoundingClientRect();
@@ -56,7 +50,7 @@ describe("Journeys: lists", function () {
     await workspaceRoot();
   });
 
-  it("ED-14 bullets hang on a rail; a nested one curves in; hover lights the path", async function () {
+  it("ED-14 a nested list gets one straight guide; hovering in it darkens that guide", async function () {
     // Seeded with `- one`, `- two`, `- [ ] a task`.
     await pressCmd("o");
     const input = await $("[cmdk-input]");
@@ -68,29 +62,28 @@ describe("Journeys: lists", function () {
     await waitForTitle("Welcome");
 
     await flushMeasure();
-    ok((await railState()).base.startsWith("M"), "a rail under the seeded list");
-    ok(!(await railState()).base.includes("A"), "a flat list has no curves");
+    strictEqual((await guideState()).paths.length, 0, "a flat list has no guides");
 
     // The seed ends in a newline, so the caret sits on the empty last line.
     await typeInEditor("  - nested");
     await flushMeasure();
-    ok((await railState()).base.includes("A"), "the nested item gets a curve from its parent");
+    const { paths } = await guideState();
+    strictEqual(paths.length, 1, "the nested list gets one guide");
+    ok(
+      /^M[\d.]+ [\d.]+V[\d.]+$/.test(paths[0] ?? ""),
+      `the guide is one straight line: ${paths[0]}`,
+    );
 
     await hoverLine("nested");
-    let rail = await railState();
-    await browser.waitUntil(async () => (rail = await railState()).accentShown, {
+    await browser.waitUntil(async () => (await guideState()).active === 1, {
       timeout: 2_000,
-      timeoutMsg: "hovering the nested item shows no accent",
+      timeoutMsg: "hovering the nested item does not darken its guide",
     });
-    ok(rail.accent.includes("A"), "the accent runs through the curve into the nested item");
 
-    // The glide back is eased on animation frames: watch it only when they run.
-    if (!(await framesRun())) return;
     await hoverLine("one");
-    await browser.waitUntil(async () => !(await railState()).accent.includes("A"), {
+    await browser.waitUntil(async () => (await guideState()).active === 0, {
       timeout: 2_000,
-      timeoutMsg: "the accent does not follow the pointer to the first item",
+      timeoutMsg: "hovering a top-level item still darkens a guide",
     });
-    strictEqual((await railState()).base.includes("A"), true, "the grey lines stay");
   });
 });

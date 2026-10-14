@@ -33,6 +33,15 @@ for name in "$@"; do specs+=(--spec "./specs/journeys/$name.spec.js"); done
 
 # A run that died earlier can leave the WebDriver proxy holding its port.
 pkill -f tauri-webdriver 2>/dev/null || true
+# An e2e app left running (from this or another worktree) keeps the app-side
+# WebDriver port, and the specs then drive its old build instead of this one.
+if holder=$(lsof -nP -iTCP:4445 -sTCP:LISTEN -Fn -Fp 2>/dev/null | head -1) && [[ -n $holder ]]; then
+  pid=${holder#p}
+  echo "Port 4445 is held by another app (pid $pid):" >&2
+  ps -o command= -p "$pid" >&2 || true
+  echo "Quit it, then rerun." >&2
+  exit 1
+fi
 cd "$E2E_DIR"
 # wdio.conf.js reseeds the QA vault (qa/seed-vault.mjs) before every spec file.
 PENSEE_QA_SEED=1 PENSEE_E2E_APP="$APP" pnpm exec wdio run ./wdio.conf.js "${specs[@]}"

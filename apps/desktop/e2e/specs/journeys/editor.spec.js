@@ -18,7 +18,11 @@ async function openViaPalette(name) {
 /** The front note's title and properties toggle boxes, and the toggle's state. */
 const headerLayout = () =>
   browser.execute(() => {
-    const title = [...document.querySelectorAll("[data-page-title]")].find((el) => el.offsetParent);
+    const title = [
+      ...(document.querySelector("[data-column-tab][data-focused]") ?? document).querySelectorAll(
+        "[data-page-title]",
+      ),
+    ].find((el) => el.offsetParent);
     const toggle = [...document.querySelectorAll(".page-header-toggle")].find(
       (el) => el.offsetParent,
     );

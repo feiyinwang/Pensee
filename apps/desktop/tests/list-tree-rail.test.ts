@@ -3,62 +3,46 @@ import { EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import {
-  accentPath,
   bulletItemAt,
-  pathLength,
-  railGeometry,
-  segmentsToPath,
-  sharedLength,
+  guideGeometry,
+  guidePath,
   type RailNode,
 } from "../src/lib/prosemark-core/list/tree-rail";
 import { withFullParse } from "./helpers/parsed-state";
 
-// a            (x 10)
-//   a1         (x 40)
-//   a2
-// b
+// a            (x 10, y 10)
+//   a1         (x 40, y 40)
+//     a1x      (x 70, y 70, wraps to bottom 115)
+//   a2         (x 40, y 130)
+// b            (x 10, y 160)
+const node = (id: number, parent: number | null, x: number, y: number, bottom = y + 15) =>
+  ({ id, parent, x, y, bottom, task: false }) satisfies RailNode;
 const nodes: RailNode[] = [
-  { id: 1, parent: null, group: 0, x: 10, y: 10, task: false },
-  { id: 2, parent: 1, group: 5, x: 40, y: 40, task: false },
-  { id: 3, parent: 1, group: 5, x: 40, y: 70, task: false },
-  { id: 4, parent: null, group: 0, x: 10, y: 100, task: false },
+  node(1, null, 10, 10, 145),
+  node(2, 1, 40, 40, 115),
+  node(3, 2, 70, 70, 115),
+  node(4, 1, 40, 130),
+  node(5, null, 10, 160),
 ];
 
-describe("railGeometry", () => {
-  test("a top-level list is one rail down its bullets; a nested list drops from its parent and curves into each item", () => {
-    const { base } = railGeometry(nodes);
-    expect(segmentsToPath(base)).toBe(
-      "M10 10V100" + "M10 10V62" + "M10 32A8 8 0 0 0 18 40H40" + "M10 62A8 8 0 0 0 18 70H40",
-    );
+describe("guideGeometry", () => {
+  test("one straight guide per nested list, at its parent's column; none for the top level", () => {
+    expect(guideGeometry(nodes).map(guidePath)).toEqual(["M10 20V137", "M40 50V107"]);
   });
 
-  test("the curve shrinks to fit a narrow indent", () => {
-    const { base } = railGeometry([
-      { id: 1, parent: null, group: 0, x: 10, y: 10, task: false },
-      { id: 2, parent: 1, group: 5, x: 20, y: 40, task: false },
-    ]);
-    expect(segmentsToPath(base)).toContain("A5 5 0 0 0 15 40H20");
-  });
-});
-
-describe("accentPath", () => {
-  const geo = railGeometry(nodes);
-
-  test("a top-level item: down the rail from the list's first item", () => {
-    expect(segmentsToPath(accentPath(geo, 4))).toBe("M10 10V100");
-    expect(accentPath(geo, 1)).toEqual([]);
+  test("a guide reaches the end of a wrapped last child", () => {
+    const [, inner] = guideGeometry(nodes);
+    expect(inner?.parent).toBe(2);
+    expect(inner?.y1).toBe(115 - 8);
   });
 
-  test("a nested item: down the parent's line and through its curve", () => {
-    expect(segmentsToPath(accentPath(geo, 3))).toBe("M10 10V62A8 8 0 0 0 18 70H40");
+  test("a task parent leaves room for its box", () => {
+    const [guide] = guideGeometry([{ ...node(1, null, 10, 10), task: true }, node(2, 1, 40, 40)]);
+    expect(guide?.y0).toBe(24);
   });
 
-  test("siblings share the run down to where they part", () => {
-    const a1 = accentPath(geo, 2);
-    const a2 = accentPath(geo, 3);
-    expect(sharedLength(a1, a2)).toBe(22);
-    expect(sharedLength(a2, a2)).toBeCloseTo(pathLength(a2));
-    expect(sharedLength(accentPath(geo, 4), a2)).toBe(52);
+  test("a child whose parent is out of the scan draws nothing", () => {
+    expect(guideGeometry([node(2, 99, 40, 40)])).toEqual([]);
   });
 });
 
