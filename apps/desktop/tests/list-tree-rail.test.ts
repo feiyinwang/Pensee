@@ -1,11 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
+import { spring } from "motion";
 import { EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import {
   accentPath,
   bulletItemAt,
-  hopControl,
+  hopKick,
+  __ballSpring,
   pathLength,
   railGeometry,
   segmentsToPath,
@@ -87,23 +89,29 @@ describe("bulletItemAt", () => {
   });
 });
 
-describe("hopControl", () => {
-  // The curve's highest point off the straight line: half the control's offset.
-  const peakLeft = (start: { x: number; y: number }, to: { x: number; y: number }) =>
-    (start.x + to.x) / 2 - hopControl(start, to).x;
+describe("hopKick", () => {
+  /** How far the ball swings sideways (px) when kicked with `velocity` by
+   *  the ball's own spring: the hop's height. */
+  const swing = (velocity: number) => {
+    const run = spring({ ...__ballSpring, keyframes: [0, 0], velocity });
+    let peak = 0;
+    for (let ms = 0; ms <= 1000; ms += 1) peak = Math.max(peak, Math.abs(run.next(ms).value));
+    return peak;
+  };
 
-  test("hops left of the travel, either way, like beui's arc", () => {
-    expect(hopControl({ x: 10, y: 0 }, { x: 10, y: 34 }).x).toBeLessThan(10);
-    expect(hopControl({ x: 10, y: 34 }, { x: 10, y: 0 }).x).toBeLessThan(10);
+  test("kicks left of the travel, either way, away from the text", () => {
+    expect(hopKick(0, 34).vx).toBeLessThan(0);
+    expect(hopKick(0, -34).vx).toBeLessThan(0);
+    expect(hopKick(0, 34).vy).toBe(0);
   });
 
-  test("a ~5px hop between rows, capped near 20px on a long jump", () => {
-    expect(peakLeft({ x: 0, y: 0 }, { x: 0, y: 34 }) / 2).toBeCloseTo(4.42, 1);
-    expect(peakLeft({ x: 0, y: 0 }, { x: 0, y: 600 }) / 2).toBe(20);
+  test("a ~5px hop between rows, capped at 20px on a long jump", () => {
+    expect(swing(hopKick(0, 34).vx)).toBeCloseTo(0.13 * 34, 1);
+    expect(swing(hopKick(0, 600).vx)).toBeCloseTo(20, 0);
   });
 
-  test("across levels the curve still bows outward, away from the text", () => {
-    const c = hopControl({ x: 40, y: 0 }, { x: 10, y: 34 });
-    expect(c.x).toBeLessThan(25);
+  test("the ball settles fast: it looks there within --motion-settle", () => {
+    const run = spring({ ...__ballSpring, keyframes: [0, 100] });
+    expect(run.next(180).value).toBeGreaterThan(95);
   });
 });

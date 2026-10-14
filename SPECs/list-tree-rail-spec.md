@@ -39,17 +39,20 @@ level; with no hover, the item the caret is in.
 - On a bullet it covers the bullet. On a task it sits on the line just left of
   the box.
 - When the pointer moves onto another item, or the caret goes to another item
-  with no hover (a click, the arrow keys, Enter onto a new item), the ball
-  hops there: one spring over a curve that bulges left, away
-  from the text, about 5px between neighbouring rows and at most 20px on a
-  long jump. The spring's overshoot carries on along the curve's end, which is
-  the landing bounce. A long jump gets a softer spring.
+  with no hover (a click, the arrow keys, Enter onto a new item), the ball is
+  tossed there: x and y are springs (set as Emil's duration + bounce:
+  `--motion-settle` 180ms, bounce 0.2), plus a sideways kick at launch to the
+  left of the travel, away from the text, sized so the hop peaks at 13% of the
+  travel (about 5px between rows, at most 20px), as beui's arc does.
+- Interruptible: a new target starts from the ball's current position and
+  velocity, so sweeping the pointer down a list carries the ball along
+  instead of restarting it from rest at every row.
+- Motion drops the launch velocity of duration springs, so the duration +
+  bounce pair is resolved to stiffness and damping with motion's own formula.
 - Typing in the same item, or the layout moving, moves it with no hop; a
   layout move mid-hop shifts where the hop lands instead of snapping.
 - Hidden with no hover and the caret outside a bullet or task list (or the
   editor not focused). Reduced motion: no hop, no fade.
-- Motion's `arc()` path only works through its React components, so the curve
-  is drawn by hand from the spring's progress.
 
 ## How it is built
 

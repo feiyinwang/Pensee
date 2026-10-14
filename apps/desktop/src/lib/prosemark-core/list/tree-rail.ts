@@ -2,7 +2,7 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
-import { animate, type AnimationPlaybackControls } from "motion";
+import { animate, motionValue, spring, type AnimationPlaybackControls } from "motion";
 import { treeChanged } from "../utils";
 
 // Tree rail for bullet and task lists (SPECs/list-tree-rail-spec.md), after the
@@ -31,17 +31,37 @@ const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 // The bounce ball (after beui's bounce sidebar): it sits on the hovered
 // item's bullet (else the caret's), at that item's level, or on the line just
-// left of a task's box, and hops there along an arc when it moves. A light underdamped spring gives
-// it a quick landing; a long jump gets a little softer. The arc bulges to the
-// left, away from the text, and is capped so a long jump stays near the rail.
+// left of a task's box, and is tossed there when the target changes.
+//
+// Hover moves fire constantly, so it must be quick and interruptible (Emil):
+// x and y are springs that carry the ball's velocity into each new target,
+// so sweeping the pointer down a list never restarts it from rest. The hop
+// is a sideways kick at launch, away from the text, not a fixed curve, so an
+// interrupted hop bends smoothly into the next.
 const DOT_SIZE = 7;
 /** A task's dot sits this far left of the box's centre, on the line in. */
 const DOT_TASK_OFFSET = TASK_HOLE_HALF + 5;
-const BOUNCE = { stiffness: 280, damping: 18, mass: 0.3 };
-/** arc()'s strength and its cap, as beui sets them: neighbouring rows get a
- *  ~5px hop and a long jump peaks near 20px instead of swinging out. */
-const ARC_STRENGTH = 0.26;
-const ARC_MAX_BULGE = 40;
+/** Set as duration + bounce (Emil): looks settled at --motion-settle (180ms);
+ *  bounce 0.2 for a playful, physical landing, inside his 0.1–0.3. Resolved
+ *  to stiffness and damping the way motion resolves `visualDuration`, because
+ *  motion drops the launch velocity of a duration spring, and the ball needs
+ *  it: its current speed on a retarget, and the sideways kick of the hop. */
+const BALL_VISUAL_DURATION = 0.18;
+const BALL_BOUNCE = 0.2;
+const BALL_SPRING = (() => {
+  const root = (2 * Math.PI) / (BALL_VISUAL_DURATION * 1.2);
+  const stiffness = root * root;
+  return {
+    type: "spring",
+    stiffness,
+    damping: 2 * (1 - BALL_BOUNCE) * Math.sqrt(stiffness),
+    mass: 1,
+  } as const;
+})();
+/** The hop's height: a share of the travel, capped, as beui's arc(): ~5px
+ *  between neighbouring rows, never more than 20px on a long jump. */
+const HOP_SHARE = 0.13;
+const HOP_MAX = 20;
 
 export interface RailNode {
   /** `ListItem.from`; stable for the item while the doc is unchanged. */
@@ -199,26 +219,36 @@ export function sharedLength(a: readonly RailSegment[], b: readonly RailSegment[
   return len;
 }
 
-/** The control point of the ball's hop, as motion's arc() places it: off the
- *  midpoint by strength × distance (capped), so the quadratic curve peaks at
- *  half that, on the left of the travel (away from the text). */
-export function hopControl(
-  start: { x: number; y: number },
-  to: { x: number; y: number },
-): { x: number; y: number } {
-  const dx = to.x - start.x;
-  const dy = to.y - start.y;
+/** How far BALL_SPRING carries the ball per unit of launch velocity, with
+ *  nowhere to go: what turns a hop height into a kick. Read off motion's own
+ *  spring, so it stays true if the spring changes. */
+const HOP_PEAK_PER_VELOCITY = (() => {
+  const run = spring({ ...BALL_SPRING, keyframes: [0, 0], velocity: 1000 });
+  let peak = 0;
+  for (let ms = 0; ms <= 1000; ms += 2) {
+    const { value, done } = run.next(ms);
+    peak = Math.max(peak, Math.abs(value));
+    if (done && ms > 0) break;
+  }
+  return peak / 1000;
+})();
+
+/** The sideways kick (px/s) that makes the ball hop `HOP_SHARE` of the travel
+ *  (capped) off the straight line, to the left of it, away from the text. */
+export function hopKick(dx: number, dy: number): { vx: number; vy: number } {
   const travel = Math.hypot(dx, dy);
-  if (travel === 0) return { ...to };
-  const bulge = Math.min(ARC_STRENGTH * travel, ARC_MAX_BULGE);
+  if (travel === 0) return { vx: 0, vy: 0 };
+  const speed = Math.min(HOP_SHARE * travel, HOP_MAX) / HOP_PEAK_PER_VELOCITY;
   let nx = -dy / travel;
   let ny = dx / travel;
   if (nx > 0 || (nx === 0 && ny > 0)) {
     nx = -nx;
     ny = -ny;
   }
-  return { x: (start.x + to.x) / 2 + nx * bulge, y: (start.y + to.y) / 2 + ny * bulge };
+  return { vx: nx * speed, vy: ny * speed };
 }
+
+export const __ballSpring = BALL_SPRING;
 
 // ---------------------------------------------------------------------------
 // Syntax tree → items
@@ -344,15 +374,11 @@ class TreeRailView {
   private anim: AnimationPlaybackControls | null = null;
   private readonly dotLayer: HTMLDivElement;
   private readonly dot: HTMLSpanElement;
-  /** The item the dot sits on, and where it is headed. */
+  /** The item the ball sits on, and where it is headed. */
   private dotItem: number | null = null;
   private dotAt: { x: number; y: number } | null = null;
-  /** Where the dot is drawn right now (mid-hop it is between items). */
-  private dotNow: { x: number; y: number } | null = null;
-  private dotAnim: AnimationPlaybackControls | null = null;
-  /** The landing point of the hop in flight, read live by the hop, so a
-   *  layout move mid-hop shifts where it lands instead of snapping. */
-  private hopTo: { x: number; y: number } | null = null;
+  private readonly ballX = motionValue(0);
+  private readonly ballY = motionValue(0);
 
   constructor(private readonly view: EditorView) {
     this.dom = view.scrollDOM.appendChild(document.createElement("div"));
@@ -380,6 +406,11 @@ class TreeRailView {
     this.dotLayer.setAttribute("aria-hidden", "true");
     this.dot = this.dotLayer.appendChild(document.createElement("span"));
     this.dot.className = "cm-list-rail-dot";
+    const drawBall = () => {
+      this.dot.style.transform = `translate(${fmt(this.ballX.get())}px, ${fmt(this.ballY.get())}px)`;
+    };
+    this.ballX.on("change", drawBall);
+    this.ballY.on("change", drawBall);
     this.measureReq = { read: () => this.measure(), write: (m) => this.draw(m) };
     view.requestMeasure(this.measureReq);
   }
@@ -414,7 +445,8 @@ class TreeRailView {
 
   destroy(): void {
     this.anim?.stop();
-    this.dotAnim?.stop();
+    this.ballX.destroy();
+    this.ballY.destroy();
     this.dom.remove();
     this.dotLayer.remove();
   }
@@ -561,16 +593,17 @@ class TreeRailView {
 
   /** The dot onto the caret's item: a hop when the caret went to another
    *  item, a snap when only the layout moved, gone with no caret item. */
-  /** The dot onto the hovered item, else the caret's: a hop when it goes to
-   *  another item, a snap when only the layout moved, gone with neither. */
+  /** The ball onto the hovered item, else the caret's: tossed there when
+   *  the item changes, carried along when only the layout moved, gone with
+   *  neither. */
   private placeDot(): void {
     const id = this.hover ?? this.caretItem();
     const node = id === null ? undefined : this.geo?.nodes.get(id);
     if (!node) {
       this.dotItem = null;
-      this.dotAnim?.stop();
-      this.dotAnim = null;
-      this.hopTo = null;
+      this.dotAt = null;
+      this.ballX.stop();
+      this.ballY.stop();
       this.dot.classList.remove("is-visible");
       return;
     }
@@ -584,57 +617,22 @@ class TreeRailView {
     this.dotItem = id;
     if (from && from.x === to.x && from.y === to.y && shown) return;
     this.dotAt = to;
-    if (!moved && this.hopTo) {
-      // Mid-hop, the same item moved (a re-measure): land where it is now.
-      this.hopTo.x = to.x;
-      this.hopTo.y = to.y;
+    const flying = this.ballX.isAnimating() || this.ballY.isAnimating();
+    // Appearing, reduced motion, or the layout moving under a resting ball:
+    // it is just there.
+    if (!shown || prefersReducedMotion() || (!moved && !flying)) {
+      this.ballX.jump(to.x);
+      this.ballY.jump(to.y);
+      this.dot.classList.add("is-visible");
       return;
     }
-    this.dotAnim?.stop();
-    this.dotAnim = null;
-    this.hopTo = null;
-    this.dot.classList.add("is-visible");
-    const start = this.dotNow ?? from;
-    const dx = start ? to.x - start.x : 0;
-    const dy = start ? to.y - start.y : 0;
-    const travel = Math.hypot(dx, dy);
-    if (!moved || !shown || !start || travel < 1 || prefersReducedMotion()) {
-      this.setDot(to);
-      return;
-    }
-    const { x: cx, y: cy } = hopControl(start, to);
-    const hopTo = { ...to };
-    this.hopTo = hopTo;
-    const long = Math.min(1, Math.max(0, (travel - 48) / 120));
-    // One spring over the curve's progress (0 → 1000, as motion drives its
-    // paths); its overshoot past the end carries on along the curve, which is
-    // the landing bounce.
-    const anim = animate(0, 1000, {
-      type: "spring",
-      stiffness: BOUNCE.stiffness - 60 * long,
-      damping: BOUNCE.damping + long,
-      mass: BOUNCE.mass + 0.15 * long,
-      onUpdate: (p) => {
-        const t = p / 1000;
-        const u = 1 - t;
-        this.setDot({
-          x: u * u * start.x + 2 * u * t * cx + t * t * hopTo.x,
-          y: u * u * start.y + 2 * u * t * cy + t * t * hopTo.y,
-        });
-      },
-      onComplete: () => {
-        if (this.dotAnim !== anim) return;
-        this.setDot(hopTo);
-        this.dotAnim = null;
-        this.hopTo = null;
-      },
-    });
-    this.dotAnim = anim;
-  }
-
-  private setDot(at: { x: number; y: number }): void {
-    this.dotNow = at;
-    this.dot.style.transform = `translate(${fmt(at.x)}px, ${fmt(at.y)}px)`;
+    // Both springs start from the ball's current velocity, plus a sideways
+    // kick when it leaves for another item: the hop.
+    const kick = moved
+      ? hopKick(to.x - this.ballX.get(), to.y - this.ballY.get())
+      : { vx: 0, vy: 0 };
+    animate(this.ballX, to.x, { ...BALL_SPRING, velocity: this.ballX.getVelocity() + kick.vx });
+    animate(this.ballY, to.y, { ...BALL_SPRING, velocity: this.ballY.getVelocity() + kick.vy });
   }
 
   /** Point the accent at the hovered item, else the caret's item. */
