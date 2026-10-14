@@ -146,7 +146,10 @@ one by one, and only when you ask.
   - **The pen's points** are only what the answer adds, short (at most 12
     words), in AI ink with the hollow bullet (`^ai-r-…`). One that says what a
     point of yours already says is left out: yours stands. One that adds a
-    detail keeps only the detail.
+    detail keeps only the detail. Never your words: a pen point that is a
+    piece of your take is dropped in code, whatever the model labelled it,
+    and when the model's pen points were all copies of your take, the
+    answer's own points (split at its punctuation) stand in for them.
   - **Nested by meaning, not by who wrote it**: a point that is a part, step,
     example or reason of another sits under it, the broader one on top,
     whoever wrote either, so a point of yours can sit under one of the pen's.

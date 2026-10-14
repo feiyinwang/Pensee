@@ -2,6 +2,10 @@
 
 ## 2026-10-14
 
+- A dot marks the bullet you're writing in, and hops to the next one along a small curve when you move, with a little bounce as it lands. On a todo it sits just left of the box.
+- Todo boxes sit one notch to the right, centred on the bullets' column, so a list of bullets and todos lines up.
+- Fixed: after **Combine**, a line could run through the middle of a combined point, and your own points lost their curve from the line above.
+- Fixed: **Combine** could write your own points a second time as the pen's, in blue, and lose what its answer said. The pen's points are never your words now; when it only repeated you, its answer's own points are used instead.
 - Bullets now hang on thin lines that show the outline's shape. A list's items share one line down their bullets, and a nested bullet is reached by a line that drops from its parent and curves into it, like the replies in a thread. Hover a bullet and a darker line runs down to it through every level above; move to another and it glides there. With the pointer away, it rests on the bullet you're writing in. Tasks join in; numbered lists stay as they were.
 - The page can be wider. Three small buttons in the status bar, left of the word count, set the page width: **Readable** (660px, as before), **Wide** (960px) and **Full width**. Deep outlines stop wrapping into a narrow strip in the middle of the window. The choice applies to every note and moves the Content Width slider in Preferences with it. To hide the buttons, right-click the status bar and untick **Page Width**.
 - Checking a todo now celebrates: the box pops, the tick draws in and a few dots burst out and fade. Unchecking stays quiet, and with Reduce Motion on nothing moves.

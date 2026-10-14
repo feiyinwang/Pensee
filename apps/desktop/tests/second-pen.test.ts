@@ -320,6 +320,46 @@ describe("prompts and replies", () => {
     ).toEqual(splitPoints(ANSWER));
   });
 
+  test("Combine never writes your words as the pen's", () => {
+    const take = "comes up idea by idea sex, coming up with 10 ideas/day";
+    const answer =
+      "Notice problems people face. Imagine how to solve them better than existing options do.";
+    const flat = (reply: string) =>
+      combineReply(reply, take, answer).map((p) => [p.by, p.text, p.under.length]);
+    // The pen echoed your take as its points: they go, and its answer stands in.
+    const echoed = JSON.stringify({
+      points: [
+        { by: "you", text: "comes up idea by idea sex" },
+        { by: "you", text: "coming up with 10 ideas/day" },
+        { by: "pen", text: "Comes up idea by idea sex." },
+        { by: "pen", text: "coming up with 10 ideas/day" },
+      ],
+    });
+    expect(flat(echoed)).toEqual([
+      ["you", "comes up idea by idea sex", 0],
+      ["you", "coming up with 10 ideas/day", 0],
+      ["pen", "Notice problems people face", 0],
+      ["pen", "Imagine how to solve them better than existing options do", 0],
+    ]);
+    // One echo among real points: only the echo goes, its points move up.
+    const mixed = JSON.stringify({
+      points: [
+        {
+          by: "pen",
+          text: "coming up with 10 ideas/day",
+          under: [{ by: "you", text: "coming up with 10 ideas/day" }],
+        },
+        { by: "you", text: "comes up idea by idea sex" },
+        { by: "pen", text: "notice problems people face" },
+      ],
+    });
+    expect(flat(mixed)).toEqual([
+      ["you", "coming up with 10 ideas/day", 0],
+      ["you", "comes up idea by idea sex", 0],
+      ["pen", "notice problems people face", 0],
+    ]);
+  });
+
   test("both sides name their papers, or no paper; never two opinions", () => {
     const reply =
       '{"for": {"paper": 1, "text": "The curve replicates."}, "against": {"paper": 0, "text": "One lab, one person."}}';

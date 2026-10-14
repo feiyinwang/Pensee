@@ -224,7 +224,7 @@
 
 .cm-editor .cm-list-prefix-task::before {
   content: "";
-  inset-inline-start: calc(var(--cm-list-marker-offset) + (var(--cm-list-marker-width) - 28px) / 2);
+  inset-inline-start: calc(var(--cm-list-marker-offset) + (var(--cm-list-marker-width) - 18px) / 2);
   top: 50%;
   width: 18px;
   height: 18px;
@@ -248,7 +248,7 @@
 .cm-editor .cm-list-prefix-task-checked::after {
   content: "";
   position: absolute;
-  inset-inline-start: calc(var(--cm-list-marker-offset) + (var(--cm-list-marker-width) - 28px) / 2);
+  inset-inline-start: calc(var(--cm-list-marker-offset) + (var(--cm-list-marker-width) - 18px) / 2);
   top: 50%;
   width: 18px;
   height: 18px;

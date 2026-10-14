@@ -127,6 +127,7 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab           | manual                      |
 | ED-13 | Click an unchecked task, then click it again             | Box pops, tick draws in, six dots burst once; uncheck is still | auto: editor                |
 | ED-14 | Type a nested bullet; hover it, then hover the first one | A line curves in from the parent; a darker run follows hover   | auto: lists                 |
+| ED-15 | Put the caret in a bullet, then in another               | A solid dot covers its bullet, then hops to the other          | auto: lists                 |
 
 ## Links — LNK
 
@@ -375,6 +376,7 @@ in your own words.
 | PEN-26 | **Undo** (or ⌘Z) right after Combine                                        | The opened answer, your take and the empty line with Combine are back exactly                                                                                                                                                                                                                                                                                                          | auto: pen |
 | PEN-27 | After Combine, click another line with the last line empty                  | The empty line under the list goes                                                                                                                                                                                                                                                                                                                                                     | auto: pen |
 | PEN-28 | In a big iCloud vault, open it, then ⌘. `[` Enter on a line                 | Echoes land in a few seconds (well under 30s), the first Connect after opening included                                                                                                                                                                                                                                                                                                | you       |
+| PEN-29 | Combine when the pen only echoes your take | Your points once in your ink; the pen's are its answer's own points, never your words | manual (logic in second-pen.test.ts) |
 
 ---
 

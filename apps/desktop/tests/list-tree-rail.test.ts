@@ -75,6 +75,11 @@ describe("bulletItemAt", () => {
     expect(bulletItemAt(state, 9)).toBe(6);
   });
 
+  test("at the end of an item's text, that item (where the caret types)", () => {
+    expect(bulletItemAt(state, 3)).toBe(0); // `- a|`
+    expect(bulletItemAt(state, 10)).toBe(6); // `  - a1|`
+  });
+
   test("ignores ordered items and plain text", () => {
     expect(bulletItemAt(state, 13)).toBeNull();
     expect(bulletItemAt(state, state.doc.length)).toBeNull();

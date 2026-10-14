@@ -31,6 +31,23 @@ the list down to one item, through each ancestor's curve.
   Coming back from hidden, the run appears in place and only fades in.
 - Reduced motion: no glide and no fade.
 
+## The caret's dot
+
+After beui's bounce sidebar: a solid dot marks the item the caret is in.
+
+- On a bullet it covers the bullet. On a task it sits on the line just left of
+  the box.
+- When the caret goes to another item (a click, the arrow keys, Enter onto a
+  new item) the dot hops there: one spring over a curve that bulges left, away
+  from the text, about 5px between neighbouring rows and at most 20px on a
+  long jump. The spring's overshoot carries on along the curve's end, which is
+  the landing bounce. A long jump gets a softer spring.
+- Typing in the same item, or the layout moving, moves it with no hop.
+- Hidden when the editor loses focus or the caret is outside a bullet or task
+  list. Reduced motion: no hop, no fade.
+- Motion's `arc()` path only works through its React components, so the curve
+  is drawn by hand from the spring's progress.
+
 ## How it is built
 
 `lib/prosemark-core/list/tree-rail.ts`, part of `listExtension`.
@@ -38,16 +55,21 @@ the list down to one item, through each ancestor's curve.
 - One SVG in a layer on `scrollDOM`, behind the text (`z-index: -1`, like
   CodeMirror's selection layer). Nothing enters the contenteditable DOM, so
   caret motion and hit-testing are unchanged.
+- Positions are layout offsets (`offsetLeft`/`offsetTop` up to the scroller),
+  never client rects: Combine flies its lines in with a transform, and a rail
+  measured mid-flight would stay where the line was in flight.
+- Task boxes are centred on the bullet column (they sat 5px left of it), so
+  bullets and tasks share one rail.
 - Geometry comes from the syntax tree (`ListItem` with a bullet `ListMark`)
   over the outermost lists that touch the viewport, so a rail that crosses
   the screen is drawn when both of its ends are out of view. Marker centres
-  come from the rendered prefix mark (its width gives the `ch`; the column is
+  come from the rendered prefix mark (its offset width gives the `ch`; the column is
   `(depth + 0.5) × LIST_UNIT_CH` ch), with `lineBlockAt` for lines not in the
   DOM.
 - The gaps around markers are an SVG mask, not background-coloured knockouts,
   so translucent themes work.
 - Rebuilt on doc, viewport, geometry and tree changes (`treeChanged`); a
-  selection or focus change only moves the accent.
+  selection or focus change only moves the accent and the dot.
 
 ## Not in scope
 

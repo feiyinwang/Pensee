@@ -23,14 +23,25 @@ const ELBOW_R = 8;
 const DOT_HOLE_R = 7;
 /** Space kept clear around a task box: half its 18px side plus the gap. */
 const TASK_HOLE_HALF = 12;
-/** A task box sits left of the bullet column: prosemark-theme.css centres its
- *  18px box in a 28px slot, so its centre is (28 - 18) / 2 px left. */
-const TASK_X_SHIFT = -5;
 // Matches --motion-settle and --ease-out (docs/motion.md): the run glides like
 // a settle, and a retarget restarts from what is on screen, so it stays
 // interruptible.
 const GLIDE_S = 0.18;
 const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+// The caret's dot (after beui's bounce sidebar): it sits on the caret's
+// bullet, or on the line just left of a task's box, and hops there along an
+// arc when the caret moves to another item. A light underdamped spring gives
+// it a quick landing; a long jump gets a little softer. The arc bulges to the
+// left, away from the text, and is capped so a long jump stays near the rail.
+const DOT_SIZE = 7;
+/** A task's dot sits this far left of the box's centre, on the line in. */
+const DOT_TASK_OFFSET = TASK_HOLE_HALF + 5;
+const BOUNCE = { stiffness: 280, damping: 18, mass: 0.3 };
+/** The hop's height: a share of the distance, capped, so neighbouring rows
+ *  get a ~5px hop and a long jump peaks near 20px instead of swinging out. */
+const HOP_SHARE = 0.13;
+const HOP_MAX = 20;
 
 export interface RailNode {
   /** `ListItem.from`; stable for the item while the doc is unchanged. */
@@ -214,13 +225,20 @@ const itemDepth = (item: SyntaxNode): number => {
 };
 
 /** The bullet/task item `pos` sits in: the innermost list item around it, if
- *  that item is a bullet or task. */
+ *  that item is a bullet or task. Both sides of `pos` are looked at: at the
+ *  end of an item's text (where the caret usually is) the node after `pos` is
+ *  already outside the item. */
 export function bulletItemAt(state: EditorState, pos: number): number | null {
-  let node: SyntaxNode | null = syntaxTree(state).resolveInner(pos, 1);
-  for (; node; node = node.parent) {
-    if (node.name === "ListItem") return isBulletItem(node, state) ? node.from : null;
+  const tree = syntaxTree(state);
+  let inner: SyntaxNode | null = null;
+  for (const side of [-1, 1] as const) {
+    for (let node: SyntaxNode | null = tree.resolveInner(pos, side); node; node = node.parent) {
+      if (node.name !== "ListItem") continue;
+      if (!inner || node.from > inner.from) inner = node;
+      break;
+    }
   }
-  return null;
+  return inner && isBulletItem(inner, state) ? inner.from : null;
 }
 
 /** The outermost list around `pos`, so a rail that crosses the viewport is
@@ -303,6 +321,14 @@ class TreeRailView {
   private shown: RailSegment[] = [];
   private shownLen = 0;
   private anim: AnimationPlaybackControls | null = null;
+  private readonly dotLayer: HTMLDivElement;
+  private readonly dot: HTMLSpanElement;
+  /** The item the dot sits on, and where it is headed. */
+  private dotItem: number | null = null;
+  private dotAt: { x: number; y: number } | null = null;
+  /** Where the dot is drawn right now (mid-hop it is between items). */
+  private dotNow: { x: number; y: number } | null = null;
+  private dotAnim: AnimationPlaybackControls | null = null;
 
   constructor(private readonly view: EditorView) {
     this.dom = view.scrollDOM.appendChild(document.createElement("div"));
@@ -324,11 +350,24 @@ class TreeRailView {
     this.basePath.classList.add("cm-list-rail");
     this.accentPath = g.appendChild(svgEl("path"));
     this.accentPath.classList.add("cm-list-rail-accent");
+    // Above the text, so the dot covers the caret's bullet.
+    this.dotLayer = view.scrollDOM.appendChild(document.createElement("div"));
+    this.dotLayer.className = "cm-list-rail-dot-layer";
+    this.dotLayer.setAttribute("aria-hidden", "true");
+    this.dot = this.dotLayer.appendChild(document.createElement("span"));
+    this.dot.className = "cm-list-rail-dot";
     this.measureReq = { read: () => this.measure(), write: (m) => this.draw(m) };
     view.requestMeasure(this.measureReq);
   }
 
   update(update: ViewUpdate): void {
+    if (update.docChanged) {
+      // Item ids are positions: carry them through the edit, so typing in an
+      // item keeps its dot still and Enter onto a new item makes it hop.
+      const map = (id: number | null) => (id === null ? null : update.changes.mapPos(id, -1));
+      this.dotItem = map(this.dotItem);
+      this.hover = map(this.hover);
+    }
     if (
       update.docChanged ||
       update.viewportChanged ||
@@ -338,6 +377,7 @@ class TreeRailView {
       update.view.requestMeasure(this.measureReq);
     } else if (update.selectionSet || update.focusChanged) {
       this.retarget(false);
+      this.placeDot();
     }
   }
 
@@ -349,11 +389,15 @@ class TreeRailView {
 
   destroy(): void {
     this.anim?.stop();
+    this.dotAnim?.stop();
     this.dom.remove();
+    this.dotLayer.remove();
   }
 
   private caretItem(): number | null {
-    if (!this.view.hasFocus) return null;
+    // The editor holding focus, not the window: the dot stays on your place
+    // while another app is in front.
+    if (this.view.root.activeElement !== this.view.contentDOM) return null;
     return bulletItemAt(this.view.state, this.view.state.selection.main.head);
   }
 
@@ -365,29 +409,53 @@ class TreeRailView {
 
     const scroller = view.scrollDOM.getBoundingClientRect();
     const sx = view.scaleX;
-    const sy = view.scaleY;
     const baseLeft = scroller.left - view.scrollDOM.scrollLeft * sx;
-    const baseTop = scroller.top - view.scrollDOM.scrollTop * sy;
+    const sy = view.scaleY;
+    const docTop = (view.documentTop - (scroller.top - view.scrollDOM.scrollTop * sy)) / sy;
 
-    // A rendered prefix mark is `(depth + 1) * LIST_UNIT_CH` ch wide and
-    // starts at the line's content edge: it gives both the edge and the ch.
-    const prefixRect = (item: ItemInfo): DOMRect | null => {
+    // Layout boxes, never client rects: lines can be mid-animation (Combine
+    // flies its lines in with a transform), and a rail measured then would
+    // stay where the line was in flight. Offsets ignore transforms and are
+    // already in the layer's space (it sits at the scroller's origin).
+    const prefixBox = (item: ItemInfo) => {
       if (item.markFrom < from || item.markFrom > to) return null;
       const { node } = view.domAtPos(item.markFrom + 1);
       const el = (node instanceof Element ? node : node.parentElement)?.closest(".cm-list-prefix");
-      return el ? el.getBoundingClientRect() : null;
+      if (!(el instanceof HTMLElement) || el.offsetWidth === 0) return null;
+      // Sum offsets while inside the content (where lines may be animated),
+      // then place that sum from the first ancestor outside it, which never is.
+      let left = 0;
+      let top = 0;
+      let at: Element | null = el;
+      while (at instanceof HTMLElement && at !== view.contentDOM && view.contentDOM.contains(at)) {
+        left += at.offsetLeft;
+        top += at.offsetTop;
+        at = at.offsetParent;
+      }
+      if (!(at instanceof HTMLElement)) return null;
+      const origin = at.getBoundingClientRect();
+      const clientX = origin.left + (at.clientLeft - at.scrollLeft + left) * sx;
+      const clientY = origin.top + (at.clientTop - at.scrollTop + top) * sy;
+      return {
+        left: (clientX - baseLeft) / sx,
+        top: (clientY - (scroller.top - view.scrollDOM.scrollTop * sy)) / sy,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+      };
     };
 
+    // A rendered prefix mark is `(depth + 1) * LIST_UNIT_CH` ch wide and
+    // starts at the line's content edge: it gives both the edge and the ch.
     let edge: number | null = null;
     let ch: number | null = null;
-    const rects = new Map<number, DOMRect>();
+    const boxes = new Map<number, NonNullable<ReturnType<typeof prefixBox>>>();
     for (const item of items) {
-      const rect = prefixRect(item);
-      if (!rect || rect.width === 0) continue;
-      rects.set(item.id, rect);
+      const box = prefixBox(item);
+      if (!box) continue;
+      boxes.set(item.id, box);
       if (ch === null) {
-        ch = rect.width / ((item.depth + 1) * LIST_UNIT_CH);
-        edge = rect.left;
+        ch = box.width / ((item.depth + 1) * LIST_UNIT_CH);
+        edge = box.left;
       }
     }
     if (ch === null || edge === null) return null;
@@ -398,22 +466,17 @@ class TreeRailView {
     let maxX = -Infinity;
     let maxY = -Infinity;
     for (const item of items) {
-      const rect = rects.get(item.id);
-      const left = rect?.left ?? edge;
-      const x = left + (item.depth + 0.5) * LIST_UNIT_CH * ch + (item.task ? TASK_X_SHIFT * sx : 0);
-      let y: number;
-      const coords = rect ? view.coordsAtPos(item.markFrom, 1) : null;
-      if (coords) y = (coords.top + coords.bottom) / 2;
-      else {
-        const block = view.lineBlockAt(item.markFrom);
-        y = view.documentTop + (block.top + view.defaultLineHeight / 2) * sy;
-      }
+      const box = boxes.get(item.id);
+      const x = (box?.left ?? edge) + (item.depth + 0.5) * LIST_UNIT_CH * ch;
+      const y = box
+        ? box.top + box.height / 2
+        : docTop + view.lineBlockAt(item.markFrom).top + view.defaultLineHeight / 2;
       const node: RailNode = {
         id: item.id,
         parent: item.parent,
         group: item.group,
-        x: (x - baseLeft) / sx,
-        y: (y - baseTop) / sy,
+        x,
+        y,
         task: item.task,
       };
       nodes.push(node);
@@ -435,6 +498,7 @@ class TreeRailView {
       this.basePath.removeAttribute("d");
       this.target = null;
       this.paint([], 0);
+      this.placeDot();
       return;
     }
     // The mask and its white field both cover the rails' bounds; a mask in
@@ -467,6 +531,71 @@ class TreeRailView {
     // A re-measure is a layout change, not motion: settle at once.
     this.target = null;
     this.retarget(false);
+    this.placeDot();
+  }
+
+  /** The dot onto the caret's item: a hop when the caret went to another
+   *  item, a snap when only the layout moved, gone with no caret item. */
+  private placeDot(): void {
+    const id = this.caretItem();
+    const node = id === null ? undefined : this.geo?.nodes.get(id);
+    if (!node) {
+      this.dotItem = null;
+      this.dot.classList.remove("is-visible");
+      return;
+    }
+    const to = {
+      x: node.x - (node.task ? DOT_TASK_OFFSET : 0) - DOT_SIZE / 2,
+      y: node.y - DOT_SIZE / 2,
+    };
+    const from = this.dotAt;
+    const shown = this.dot.classList.contains("is-visible");
+    const moved = id !== this.dotItem;
+    this.dotItem = id;
+    if (from && from.x === to.x && from.y === to.y && shown) return;
+    this.dotAt = to;
+    this.dotAnim?.stop();
+    this.dot.classList.add("is-visible");
+    const start = this.dotNow ?? from;
+    const dx = start ? to.x - start.x : 0;
+    const dy = start ? to.y - start.y : 0;
+    const travel = Math.hypot(dx, dy);
+    if (!moved || !shown || !start || travel < 1 || prefersReducedMotion()) {
+      this.setDot(to);
+      return;
+    }
+    // A quadratic curve whose control point sits off the midpoint, to the
+    // left of the travel (away from the text), twice the hop's height.
+    const hop = Math.min(HOP_SHARE * travel, HOP_MAX);
+    let nx = -dy / travel;
+    let ny = dx / travel;
+    if (nx > 0 || (nx === 0 && ny > 0)) {
+      nx = -nx;
+      ny = -ny;
+    }
+    const cx = (start.x + to.x) / 2 + nx * hop * 2;
+    const cy = (start.y + to.y) / 2 + ny * hop * 2;
+    const long = Math.min(1, Math.max(0, (travel - 48) / 120));
+    // One spring over the curve's progress; its overshoot past 1 carries on
+    // along the curve's end, which is the landing bounce.
+    this.dotAnim = animate(0, 1, {
+      type: "spring",
+      stiffness: BOUNCE.stiffness - 60 * long,
+      damping: BOUNCE.damping + long,
+      mass: BOUNCE.mass + 0.15 * long,
+      onUpdate: (t) => {
+        const u = 1 - t;
+        this.setDot({
+          x: u * u * start.x + 2 * u * t * cx + t * t * to.x,
+          y: u * u * start.y + 2 * u * t * cy + t * t * to.y,
+        });
+      },
+    });
+  }
+
+  private setDot(at: { x: number; y: number }): void {
+    this.dotNow = at;
+    this.dot.style.transform = `translate(${fmt(at.x)}px, ${fmt(at.y)}px)`;
   }
 
   /** Point the accent at the hovered item, else the caret's item. */
@@ -566,11 +695,33 @@ const treeRailTheme = EditorView.baseTheme({
     opacity: "0",
     transition: "opacity var(--motion-fast) var(--ease-out)",
   },
+  ".cm-list-rail-dot-layer": {
+    position: "absolute",
+    left: "0",
+    top: "0",
+    zIndex: "149",
+    pointerEvents: "none",
+  },
+  ".cm-list-rail-dot": {
+    position: "absolute",
+    left: "0",
+    top: "0",
+    width: `${DOT_SIZE.toString()}px`,
+    height: `${DOT_SIZE.toString()}px`,
+    borderRadius: "50%",
+    background: "var(--text-primary, currentColor)",
+    opacity: "0",
+    transition: "opacity var(--motion-fast) var(--ease-out)",
+    willChange: "transform",
+  },
+  ".cm-list-rail-dot.is-visible": {
+    opacity: "1",
+  },
   ".cm-list-rail-accent.is-visible": {
     opacity: "1",
   },
   "@media (prefers-reduced-motion: reduce)": {
-    ".cm-list-rail-accent": { transition: "none" },
+    ".cm-list-rail-accent, .cm-list-rail-dot": { transition: "none" },
   },
 });
 

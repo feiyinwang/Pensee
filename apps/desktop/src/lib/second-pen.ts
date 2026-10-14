@@ -587,7 +587,9 @@ const takeWords = (text: string) =>
 /** A `combine` reply, held to its word: your points must be your words, every
  *  one of them, each once (else your take is split at its punctuation and the
  *  pen's points follow it, unnested); the pen's must be there unless every
- *  one of them was yours already (else its answer is split the same way). */
+ *  one of them was yours already (else its answer is split the same way), and
+ *  never in your words (a copy of your take is dropped, never written as the
+ *  pen's). */
 export function combineReply(reply: string, take: string, answer: string): Combined {
   const value = jsonIn(reply) as { points?: unknown } | null;
   const read = (raw: unknown, depth: number): CombinedPoint[] => {
@@ -608,29 +610,40 @@ export function combineReply(reply: string, take: string, answer: string): Combi
       ? [{ by, text, opposite, under: kids }]
       : [{ by, text, opposite, under: [] }, ...kids];
   };
-  const points = Array.isArray(value?.points) ? value.points.flatMap((p) => read(p, 0)) : [];
-  const all = points.flatMap((p) => [p, ...p.under]);
-  const yours = all.filter((p) => p.by === "you").map((p) => squash(p.text));
+  const parsed = Array.isArray(value?.points) ? value.points.flatMap((p) => read(p, 0)) : [];
   const whole = squash(take);
-  const said = new Set(takeWords(yours.join(" ")));
-  const faithful =
-    yours.length > 0 &&
-    new Set(yours).size === yours.length &&
-    yours.every((point) => whole.includes(point)) &&
-    takeWords(take).every((w) => said.has(w));
-  if (faithful) return points;
-  const pens = all.filter((p) => p.by === "pen");
+  // A pen point in the take's own words only repeats you: it goes (its points
+  // take its place). When every pen point did, the model echoed your take
+  // instead of its answer, so the answer's own points stand in for them.
+  const repeats = (p: CombinedPoint) => p.by === "pen" && whole.includes(squash(endPunct(p.text)));
+  const echoed = parsed.some((p) => repeats(p) || p.under.some(repeats));
+  const points = parsed.flatMap((p) => {
+    const under = p.under.filter((k) => !repeats(k));
+    return repeats(p) ? under : [{ ...p, under }];
+  });
   const point = (by: CombinedPoint["by"], text: string): CombinedPoint => ({
     by,
     text,
     opposite: false,
     under: [],
   });
+  const answerPoints = () =>
+    splitPoints(answer)
+      .map((t) => point("pen", t))
+      .filter((p) => !repeats(p));
+  const all = points.flatMap((p) => [p, ...p.under]);
+  const yours = all.filter((p) => p.by === "you").map((p) => squash(p.text));
+  const said = new Set(takeWords(yours.join(" ")));
+  const faithful =
+    yours.length > 0 &&
+    new Set(yours).size === yours.length &&
+    yours.every((point) => whole.includes(point)) &&
+    takeWords(take).every((w) => said.has(w));
+  const pens = all.filter((p) => p.by === "pen");
+  if (faithful) return pens.length || !echoed ? points : [...points, ...answerPoints()];
   return [
     ...splitPoints(take).map((t) => point("you", t)),
-    ...(pens.length
-      ? pens.map((p) => point("pen", p.text))
-      : splitPoints(answer).map((t) => point("pen", t))),
+    ...(pens.length ? pens.map((p) => point("pen", p.text)) : answerPoints()),
   ];
 }
 
