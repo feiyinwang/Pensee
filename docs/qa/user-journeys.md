@@ -108,24 +108,25 @@ offers **Add to Library**; content search finds text inside notes.
 
 **Feature:** The markdown editor: title row, folded properties, live-rendered
 markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
-**Spec:** SPECs/page-title-spec.md, SPECs/cmd-f-spec.md, SPECs/multilevel-list-numbering-spec.md, SPECs/editor-audit-spec.md
+**Spec:** SPECs/page-title-spec.md, SPECs/cmd-f-spec.md, SPECs/multilevel-list-numbering-spec.md, SPECs/editor-audit-spec.md, SPECs/list-tree-rail-spec.md
 **Code:** `src/components/editor-area/`, `src/lib/prosemark-core/`, `src/hooks/editor-api.ts`, `src-tauri/src/commands/fs.rs` (write_file)
 
-| ID    | Journey                                                  | Expected                                                    | Check                       |
-| ----- | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------- |
-| ED-01 | ★ Open a note, type a sentence                           | It is saved to disk within a second; no unsaved dot remains | auto: core                  |
-| ED-02 | ★ Click the title, rename, Enter                         | The file is renamed; the caret moves to the body            | auto: core                  |
-| ED-03 | Click **N properties ›** under the title                 | The properties open; clicking again folds them              | auto: editor                |
-| ED-04 | ⌘B, ⌘I, ⌘E, ⌘K on selected text                          | Bold, italic, code, link markup is applied and rendered     | manual                      |
-| ED-05 | Type `- a`, Enter, Tab, `b`                              | A nested bullet; Shift+Tab lifts it back                    | manual                      |
-| ED-06 | Type `1. a`, Enter, Tab                                  | Nested numbering reads `1.1` style, like a word processor   | manual                      |
-| ED-07 | Click a task checkbox                                    | It toggles `[ ]` ↔ `[x]` in the file                        | manual                      |
-| ED-08 | ⌘⌥1 … ⌘⌥6, then ⌘⌥0                                      | The line becomes H1…H6, then plain paragraph                | legacy: empty-heading-enter |
-| ED-09 | ⌘F, type a word, Enter; replace one, then **All**        | Matches highlight and step; replacements are written        | manual                      |
-| ED-10 | Triple-click a paragraph; double-click a bullet's marker | Selection stops at the text's end with a ¶; marker excluded | manual                      |
-| ED-11 | ⌘Z, ⌘⇧Z after typing                                     | Undo and redo the edit; history does not leak across files  | manual                      |
-| ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab        | manual                      |
-| ED-13 | Click an unchecked task, then click it again             | Box pops, tick draws in, six dots burst once; uncheck is still | auto: editor              |
+| ID    | Journey                                                  | Expected                                                       | Check                       |
+| ----- | -------------------------------------------------------- | -------------------------------------------------------------- | --------------------------- |
+| ED-01 | ★ Open a note, type a sentence                           | It is saved to disk within a second; no unsaved dot remains    | auto: core                  |
+| ED-02 | ★ Click the title, rename, Enter                         | The file is renamed; the caret moves to the body               | auto: core                  |
+| ED-03 | Click **N properties ›** under the title                 | The properties open; clicking again folds them                 | auto: editor                |
+| ED-04 | ⌘B, ⌘I, ⌘E, ⌘K on selected text                          | Bold, italic, code, link markup is applied and rendered        | manual                      |
+| ED-05 | Type `- a`, Enter, Tab, `b`                              | A nested bullet; Shift+Tab lifts it back                       | manual                      |
+| ED-06 | Type `1. a`, Enter, Tab                                  | Nested numbering reads `1.1` style, like a word processor      | manual                      |
+| ED-07 | Click a task checkbox                                    | It toggles `[ ]` ↔ `[x]` in the file                           | manual                      |
+| ED-08 | ⌘⌥1 … ⌘⌥6, then ⌘⌥0                                      | The line becomes H1…H6, then plain paragraph                   | legacy: empty-heading-enter |
+| ED-09 | ⌘F, type a word, Enter; replace one, then **All**        | Matches highlight and step; replacements are written           | manual                      |
+| ED-10 | Triple-click a paragraph; double-click a bullet's marker | Selection stops at the text's end with a ¶; marker excluded    | manual                      |
+| ED-11 | ⌘Z, ⌘⇧Z after typing                                     | Undo and redo the edit; history does not leak across files     | manual                      |
+| ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab           | manual                      |
+| ED-13 | Click an unchecked task, then click it again             | Box pops, tick draws in, six dots burst once; uncheck is still | auto: editor                |
+| ED-14 | Type a nested bullet; hover it, then hover the first one | A line curves in from the parent; a darker run follows hover   | auto: lists                 |
 
 ## Links — LNK
 

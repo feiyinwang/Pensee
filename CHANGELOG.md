@@ -2,6 +2,7 @@
 
 ## 2026-10-14
 
+- Bullets now hang on thin lines that show the outline's shape. A list's items share one line down their bullets, and a nested bullet is reached by a line that drops from its parent and curves into it, like the replies in a thread. Hover a bullet and a darker line runs down to it through every level above; move to another and it glides there. With the pointer away, it rests on the bullet you're writing in. Tasks join in; numbered lists stay as they were.
 - Checking a todo now celebrates: the box pops, the tick draws in and a few dots burst out and fade. Unchecking stays quiet, and with Reduce Motion on nothing moves.
 
 ## 2026-10-13

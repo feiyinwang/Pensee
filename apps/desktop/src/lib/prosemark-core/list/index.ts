@@ -17,6 +17,7 @@ import {
 } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, keymap } from "@codemirror/view";
 import { eventHandlersWithClass } from "../utils";
+import { listTreeRail } from "./tree-rail";
 import { TOGGLE_CHECKBOX_EVENT, taskCelebration } from "./task-celebration";
 
 // Visual list geometry. Keep indent steps and marker column aligned to the
@@ -1010,6 +1011,7 @@ export const listExtension: Extension = [
   ),
   checkboxClickHandler,
   taskCelebration,
+  listTreeRail,
 ];
 
 // Internals exposed only for tests. Not part of the public API.
