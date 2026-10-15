@@ -2,6 +2,7 @@
 
 ## 2026-10-15
 
+- The sidebar's **Inspirations** space is gone; Spaces now lists Projects, Library and Files. Notes with `Type: Inspiration` stay in your vault, and a space note with `Shows: Inspiration` brings the view back.
 - Hovering the sidebar and calendar buttons at the top of the window now shows what they do and their shortcut: *Hide sidebar (⌘[)*, *Show calendar (⌘])*.
 - Nothing in the app is set in all caps any more: sidebar and command-palette headings, the welcome buttons, backlink titles, Library cover bylines and code-block language labels now read in sentence case or as you wrote them. The command palette's search field says *Search notes and commands…*.
 - Fixed: **# Organize** could cut a line down to its first idea and drop the rest ("the boring middle part" for a line that also listed auth, settings and edge cases). It now only cuts filler and hedges ("I think", "basically", "really"). A line that holds two points becomes two points, one under the other, and if a shortened point would lose anything, your line stays as you wrote it.

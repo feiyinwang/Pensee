@@ -46,7 +46,7 @@ file in a compact window.
 ## Sidebar — SB
 
 **Feature:** The sidebar shows the Search field (⌘P), **Today**, **Spaces** (Projects,
-Library, Inspirations, Files), Pinned and Recents. **Files** holds the folder tree.
+Library, Files), Pinned and Recents. **Files** holds the folder tree.
 **Spec:** SPECs/spaces-spec.md, SPECs/sidebar-drag-and-drop-move-spec.md
 **Code:** `src/components/sidebar/`, `src/components/chrome-tooltip.tsx`, `src/hooks/use-file-tree.ts`, `src-tauri/src/commands/fs.rs`, `src-tauri/src/watcher.rs`
 
@@ -60,6 +60,7 @@ Library, Inspirations, Files), Pinned and Recents. **Files** holds the folder tr
 | SB-06 | Drag a note onto a folder in Files                | The file moves on disk; its open tab follows   | you        |
 | SB-07 | Click the **Search** field at the top             | The command palette opens                      | auto: core |
 | SB-08 | Hover the sidebar button, top left                | A tooltip under it reads `Hide sidebar (⌘[)`   | auto: core |
+| SB-09 | Look at **Spaces** in the sidebar                 | Projects, Library, Files; no Inspirations      | auto: core |
 
 ## Tabs and columns — TAB
 

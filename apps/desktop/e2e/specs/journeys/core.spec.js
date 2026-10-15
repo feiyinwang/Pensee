@@ -96,6 +96,16 @@ describe("Journeys: core (smoke)", function () {
     }
   });
 
+  it("SB-09 the Spaces section lists Projects, Library and Files", async function () {
+    await $('section[aria-label="Spaces"] [data-space-key]').waitForExist({ timeout: 5_000 });
+    const keys = await browser.execute(() =>
+      [...document.querySelectorAll('section[aria-label="Spaces"] [data-space-key]')]
+        .map((el) => el.getAttribute("data-space-key"))
+        .filter((key) => !key.startsWith("note:")),
+    );
+    strictEqual(keys.join(","), "projects,library,files");
+  });
+
   it("PAL-01 ⌘O finds a note by name and opens it", async function () {
     await openViaPalette("Welcome");
     ok((await editorText()).includes("A note to open first"), "Welcome's text shows");

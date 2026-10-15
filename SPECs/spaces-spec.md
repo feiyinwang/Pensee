@@ -2,7 +2,7 @@
 
 ## Summary
 
-The sidebar stops being a folder tree. It shows **Search**, **Today**, a **Spaces** section (Projects, Library, Inspirations, Files, and any space note in the vault), then Pinned and Recents. Clicking a space opens it as a page in the editor area. A space is a saved question about frontmatter, `Type:`, never a folder: a note belongs to Library because it says `Type: Book`, wherever it lives on disk.
+The sidebar stops being a folder tree. It shows **Search**, **Today**, a **Spaces** section (Projects, Library, Files, and any space note in the vault), then Pinned and Recents. Clicking a space opens it as a page in the editor area. A space is a saved question about frontmatter, `Type:`, never a folder: a note belongs to Library because it says `Type: Book`, wherever it lives on disk.
 
 Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new note since August lands at the root, and 600+ notes already carry `Type:` (Book 162, YouTube 83, Project 66, Paper 58, Course 15). The folders were not being used; the types were.
 
@@ -21,7 +21,7 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
   ```
 
   `Shows` takes one type or a comma list; `View` is `gallery`, `list` or `cards` (default `gallery`). In Obsidian it is an ordinary note.
-- The four built-in spaces are defined in code (`lib/spaces.ts`), so a vault gets them without Pensée writing files into it.
+- The three built-in spaces are defined in code (`lib/spaces.ts`), so a vault gets them without Pensée writing files into it.
 
 ## Built-in spaces
 
@@ -29,7 +29,6 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 |---|---|---|
 | Projects | `Type: Project` | kanban ([project-views-spec.md](project-views-spec.md)) |
 | Library | tabs: Books (`Book`), Videos (`YouTube`, `Video`), Courses (`Course`), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab |
-| Inspirations | `Type: Inspiration` | cards: title and first line |
 | Files | every file | the folder tree (moved here from the sidebar's Everything section) |
 
 Library opens on Books. Its tabs are an Arc segmented control with the count of each tab. A gallery space (Library, or one you add with `View: gallery`) has no reading-width cap: its cover grid fills the width its tab has, adding a column for every cover's width of room.
