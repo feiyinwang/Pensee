@@ -486,10 +486,11 @@ function taskText(input: PenPromptInput): string {
         `<lines>\n${ask.lines.map((line, k) => `<line n="${k + 1}">${line}</line>`).join("\n")}\n</lines>`,
         "Organize them into one short tree the writer can think through point by point. It must be MECE at every level: the points side by side (at the top, or under one point) are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A point that is a part, step, example, reason or result of another goes under it. There is no limit on depth: go as many levels deep as the meaning goes.",
         "The writer's indentation says what belongs to what: a line they indented under another stays under it, unless it plainly belongs elsewhere. A line indented further than the line above it allows (two levels in under a top line) goes under the line it belongs to.",
-        "Make it shorter. Each point is one short line, at most 12 words: the writer's own words with the filler, hedges and repetition cut. You may adjust a word or two so it reads (a joining word, a tense, the order), never more, and never add an idea or drop one. Lines that say the same thing become one point. Keep every [[link]] and [text](link) as it is.",
+        "Never flatten: every level the writer made stays a level, and you add levels wherever the meaning needs them.",
+        "Make it shorter. Each point is one of the writer's lines cut to one short line, at most 12 words: their own words with the filler, hedges and repetition cut. You may adjust a word or two so it reads (a joining word, a tense, the order), never more, and never add an idea or drop one. Keep every [[link]] and [text](link) as it is.",
         "Where points side by side need a name to read as one kind of thing, put them in a group: a name of your own, 1 to 4 words, no colon, no end punctuation, with those points under it. Groups may sit inside groups. Only where a name helps: never a group of one point, never a name that only says a point again.",
-        "Every line goes in exactly once, by its number: a point lists the line or lines it says.",
-        'Reply with JSON only: {"points": [{"lines": [1], "text": "…", "under": [...]}, {"lines": [2, 5], "text": "…"}, {"group": "…", "under": [...]}]}',
+        'Every line goes in exactly once, as its own point, by its number in "line". A point\'s "line" is that one line only, never the lines under it: those are points of their own in its "under".',
+        'Reply with JSON only: {"points": [{"line": 1, "text": "…", "under": [{"line": 2, "text": "…", "under": [...]}]}, {"group": "…", "under": [...]}]}',
       ].join("\n");
   }
 }
@@ -899,9 +900,9 @@ export function sourcePartStart(text: string): number | null {
 
 /* ------------------------------------------------------------- organize */
 
-/** A point of an organized outline: your lines (their indexes in the lines
- *  sent; several when they said the same thing) in `text`, shortened in your
- *  words, or a group the pen named, with the points under it. */
+/** A point of an organized outline: one of your lines (its index in the
+ *  lines sent; with a word-for-word repeat of it, both) in `text`, shortened
+ *  in your words, or a group the pen named, with the points under it. */
 export type OrganizedPoint =
   | { lines: number[]; text: string; under: OrganizedPoint[] }
   | { group: string; under: OrganizedPoint[] };
@@ -923,26 +924,42 @@ export function inTheirWords(text: string, lines: readonly string[]): boolean {
   return added <= Math.max(1, Math.ceil(words.length / 4));
 }
 
-/** An `organize` reply, held to its word: every one of `lines` exactly once
- *  (a repeat after the first is dropped), else null. A point's text that
- *  isn't the lines in their own words, shorter, gives way to the lines as
- *  written; so does a merge of lines with two block ids or two kinds of task
- *  box. A group with fewer than two points gives way to them. No depth
- *  limit: as deep as the meaning goes. */
+/** An `organize` reply, held to its word: every one of `lines` exactly once,
+ *  else null. A point is one line of yours, its text that line cut short in
+ *  your words (or the line as written, when the text strays). Lines a point
+ *  lists past its own that nothing else places (a model may list a whole
+ *  branch on its top point) go under it as you nested them, never folded
+ *  into its text; one that only repeats the point word for word goes. A
+ *  group with fewer than two points gives way to them. No depth limit. */
 export function organizeReply(reply: string, lines: readonly string[]): OrganizedPoint[] | null {
   const value = jsonIn(reply) as { points?: unknown } | null;
   if (!Array.isArray(value?.points)) return null;
   const seen = new Set<number>();
-  const asWritten = (k: number) => itemText(lines[k]!);
+  const asWritten = (k: number): OrganizedPoint => ({
+    lines: [k],
+    text: itemText(lines[k]!),
+    under: [],
+  });
+  // Lines as you nested them, by their indentation.
+  const nested = (ks: readonly number[]): OrganizedPoint[] => {
+    const top: OrganizedPoint[] = [];
+    const stack: { width: number; point: OrganizedPoint }[] = [];
+    for (const k of ks) {
+      const point = asWritten(k);
+      const width = indentWidth(lines[k]!);
+      while (stack.length && stack[stack.length - 1]!.width >= width) stack.pop();
+      (stack.length ? stack[stack.length - 1]!.point.under : top).push(point);
+      stack.push({ width, point });
+    }
+    return top;
+  };
+  const kidsOf = (item: Record<string, unknown> | null): unknown[] => {
+    const kids = item?.under ?? item?.children ?? item?.points ?? item?.items;
+    return Array.isArray(kids) ? kids : [];
+  };
   const read = (raw: unknown): OrganizedPoint[] => {
-    const item = raw as {
-      line?: unknown;
-      lines?: unknown;
-      text?: unknown;
-      group?: unknown;
-      under?: unknown;
-    } | null;
-    const under = Array.isArray(item?.under) ? item.under.flatMap(read) : [];
+    const item = (typeof raw === "object" ? raw : null) as Record<string, unknown> | null;
+    const under = kidsOf(item).flatMap(read);
     const asked = Array.isArray(item?.lines)
       ? item.lines
       : item?.line !== undefined
@@ -952,23 +969,26 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
       const mine = asked
         .map((n) => (typeof n === "number" && Number.isInteger(n) ? n - 1 : -1))
         .filter((k) => k >= 0 && k < lines.length && !seen.has(k))
-        .filter((k, at, all) => all.indexOf(k) === at);
+        .filter((k, at, all) => all.indexOf(k) === at)
+        .sort((a, b) => a - b);
       if (!mine.length) return under;
       mine.forEach((k) => seen.add(k));
-      const originals = mine.map((k) => lines[k]!);
+      const [own, ...rest] = mine as [number, ...number[]];
+      const said = squash(itemText(lines[own]!));
+      const extra = rest.filter(
+        (k) => squash(itemText(lines[k]!)) !== said || blockIdOf(lines[k]!) !== null,
+      );
       const text =
         typeof item?.text === "string"
           ? item.text.replace(BLOCK_ID_AT_END_RE, "").replace(/\s+/g, " ").trim()
           : "";
-      const mergeable =
-        originals.filter(blockIdOf).length <= 1 && new Set(originals.map(boxOf)).size === 1;
-      if (mergeable && inTheirWords(text, originals)) return [{ lines: mine, text, under }];
-      // As written: one point per line, what was under the first under it.
-      return mine.map((k, at) => ({
-        lines: [k],
-        text: asWritten(k),
-        under: at === 0 ? under : [],
-      }));
+      return [
+        {
+          lines: [own],
+          text: inTheirWords(text, [lines[own]!]) ? text : itemText(lines[own]!),
+          under: [...nested(extra), ...under],
+        },
+      ];
     }
     const group = typeof item?.group === "string" ? replyLine(item.group) : null;
     if (!group || under.length < 2) return under;

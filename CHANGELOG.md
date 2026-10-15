@@ -2,6 +2,7 @@
 
 ## 2026-10-15
 
+- Fixed: **# Organize** could fold a whole branch into one line and come out one level deep (blueberry › its benefit › its types › biomechanical became just "blueberry", the rest gone). Every level you write now stays a level, as deep as it goes, and each of your lines stays a point of its own. Lines that only mean the same thing are no longer merged; an exact repeat still goes.
 - **# Organize** now makes your list shorter as it structures it. Each point becomes one short line in your own words: filler and repetition cut, a word or two adjusted at most, and lines that say the same thing merged into one. There's still no limit on how deep the outline goes. Under the outline it tells you how much shorter it got (*Organized in 4 levels, 118 → 64 words*). A point that strays from your words, drops a link or gets longer is put back as you wrote it.
 - **− Shorten** is gone from the pen's box: Organize does the cutting now.
 - **# Organize** builds a real outline now, as many levels deep as your lines need, not one layer of headings with everything flat under it. Lines side by side are the same kind of thing; a reason, step or example goes under its point. What you indented stays under the line you put it under, and a line you indented too far lands under the line it belongs to. Your lines keep their exact words; the short group names the pen adds are written in its blue ink, and Enter on one doesn't ask the pen for a reply.

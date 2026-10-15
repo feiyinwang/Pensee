@@ -501,7 +501,7 @@ describe("organize", () => {
     "- excitement fades after a week",
     "  - [ ] the boring middle, see [[Auth notes]] ^yt-540",
     "- small scope worked",
-    "- keeping the scope small worked",
+    "- small scope worked",
   ];
   const reply = JSON.stringify({
     points: [
@@ -511,14 +511,14 @@ describe("organize", () => {
           {
             group: "How I set it up",
             under: [
-              { lines: [1], text: "I start too many things at once" },
-              { lines: [2], text: "no deadline, it drifts", under: [{ line: 3 }] },
+              { line: 1, text: "I start too many things at once" },
+              { line: 2, text: "no deadline, it drifts", under: [{ line: 3 }] },
             ],
           },
           {
-            lines: [4],
+            line: 4,
             text: "excitement fades after a week",
-            under: [{ lines: [5], text: "the boring middle, see [[Auth notes]]" }],
+            under: [{ line: 5, text: "the boring middle, see [[Auth notes]]" }],
           },
         ],
       },
@@ -537,6 +537,7 @@ describe("organize", () => {
     expect(prompt).toContain('<line n="3">      - the habit app, then nothing</line>');
     expect(prompt).toContain("MECE at every level");
     expect(prompt).toContain("no limit on depth");
+    expect(prompt).toContain("Never flatten");
   });
 
   test("a short tree in your words, as deep as its meaning, every line once", () => {
@@ -551,7 +552,89 @@ describe("organize", () => {
       "      - the habit app, then nothing",
       "  - excitement fades after a week",
       "    - [ ] the boring middle, see [[Auth notes]] ^yt-540",
+      // A word-for-word repeat goes.
       "- small scope worked",
+    ]);
+  });
+
+  // The writer's example (2026-10-15): Organize came out one level deep.
+  const fruit = [
+    "fruit",
+    "* apple",
+    "* banana",
+    "* blueberry",
+    "   * benefit of eating blueberry",
+    "      * Types of benefits",
+    "         * Biomechnical functionalities",
+  ];
+  const fruitTree = [
+    "- fruit",
+    "  - apple",
+    "  - banana",
+    "  - blueberry",
+    "    - benefits of eating blueberry",
+    "      - types of benefits",
+    "        - biomechanical functionalities",
+  ];
+
+  test("a branch's lines listed on its top point stay nested under it, never folded in", () => {
+    // Its children under a key the prompt didn't ask for.
+    const points = organizeReply(
+      JSON.stringify({
+        points: [
+          {
+            line: 1,
+            text: "fruit",
+            children: [
+              { line: 2, text: "apple" },
+              { line: 3, text: "banana" },
+              {
+                lines: [4, 5, 6, 7],
+                text: "blueberry",
+                children: [
+                  {
+                    line: 5,
+                    text: "benefits of eating blueberry",
+                    children: [
+                      {
+                        lines: [6, 7],
+                        text: "types of benefits",
+                        children: [{ line: 7, text: "biomechanical functionalities" }],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+      fruit,
+    )!;
+    expect(outlineDepth(points)).toBe(5);
+    expect(organizedLines(points, fruit, "", () => "x")).toEqual(fruitTree);
+  });
+
+  test("lines a point lists that nothing else places go under it as you nested them", () => {
+    const points = organizeReply(
+      JSON.stringify({
+        points: [
+          {
+            line: 1,
+            under: [{ line: 2 }, { line: 3 }, { lines: [4, 5, 6, 7], text: "blueberry" }],
+          },
+        ],
+      }),
+      fruit,
+    )!;
+    expect(organizedLines(points, fruit, "", () => "x")).toEqual([
+      "- fruit",
+      "  - apple",
+      "  - banana",
+      "  - blueberry",
+      "    - benefit of eating blueberry",
+      "      - Types of benefits",
+      "        - Biomechnical functionalities",
     ]);
   });
 
@@ -559,10 +642,12 @@ describe("organize", () => {
     const points = organizeReply(
       JSON.stringify({
         points: [
-          { lines: [1], text: "Overcommitting kills momentum" },
-          { lines: [2], text: "no deadline so it drifts and drifts and drifts away" },
-          { lines: [5], text: "the boring middle" },
-          { lines: [3, 4, 6, 7], text: "" },
+          { line: 1, text: "Overcommitting kills momentum" },
+          { line: 2, text: "no deadline so it drifts and drifts and drifts away" },
+          { line: 5, text: "the boring middle" },
+          { line: 3 },
+          { line: 4 },
+          { lines: [6, 7] },
         ],
       }),
       yours,
@@ -572,11 +657,9 @@ describe("organize", () => {
       "- no deadline so it drifts",
       // A link of yours never goes.
       "- [ ] the boring middle, see [[Auth notes]] ^yt-540",
-      // A merge that fails gives back every line it took.
       "- the habit app, then nothing",
       "- excitement fades after a week",
       "- small scope worked",
-      "- keeping the scope small worked",
     ]);
   });
 
@@ -586,12 +669,12 @@ describe("organize", () => {
     expect(inTheirWords("procrastination ruins focus", ["- I start too many things"])).toBe(false);
   });
 
-  test("lines with two block ids are never merged", () => {
+  test("a repeat with its own block id is kept", () => {
     const lines = ["- a idea ^one-1", "- a idea ^two-2"];
     const points = organizeReply('{"points": [{"lines": [1, 2], "text": "a idea"}]}', lines)!;
     expect(organizedLines(points, lines, "", () => "x")).toEqual([
       "- a idea ^one-1",
-      "- a idea ^two-2",
+      "  - a idea ^two-2",
     ]);
   });
 

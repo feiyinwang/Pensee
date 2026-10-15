@@ -759,7 +759,8 @@ describe("Journeys: second pen", function () {
     await key("Enter");
     const text = await waitForDisk(
       path,
-      (t) => /sleep help\w* memory/.test(t) && t.includes("sleep on it"),
+      // Case aside: a shortened line may start with a capital.
+      (t) => /sleep help\w* memory/i.test(t) && /sleep on it/i.test(t),
       "the outline should keep your own words",
     );
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
@@ -770,7 +771,8 @@ describe("Journeys: second pen", function () {
     await waitForBox();
     ok(!(await pop()).pills.some((p) => p.includes("Organize")), "one line: no Organize");
     await key("Escape");
-    await caretAfter("sleep on it");
+    // A line Organize (PEN-17) leaves as it was.
+    await caretAfter("drafts get better overnight");
     await selectTo("naps help you remember");
     await key(".", { meta: true });
     await waitForBox();
@@ -828,5 +830,40 @@ describe("Journeys: second pen", function () {
     lines.forEach((l, k) =>
       ok(k === 0 || indent(l) <= indent(lines[k - 1]) + 2, `skipped a level:\n${text}`),
     );
+  });
+
+  it("PEN-31 Organize keeps every level you wrote: blueberry, its benefit, its types, five levels deep", async function () {
+    const path = `${root}/Notes/Fruit.md`;
+    const before = await readFile(path);
+    await openViaPalette("Fruit");
+    await caretAfter("fruit");
+    await selectTo("Biomechnical functionalities");
+    await key(".", { meta: true });
+    await waitForBox();
+    await pick("#", { shift: true });
+    await browser.waitUntil(
+      () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
+      { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
+    );
+    await key("Enter");
+    const text = await waitForDisk(path, (t) => t !== before, "expected an outline");
+    const lines = text.split("\n");
+    const indent = (l) => /^ */.exec(l)[0].length;
+    const at = (re) => {
+      const k = lines.findIndex((l) => re.test(l));
+      ok(k >= 0, `${re} is gone:\n${text}`);
+      return k;
+    };
+    // Each one under the one before it, a level deeper.
+    const chain = [/blueberr/i, /benefit/i, /types/i, /biomech/i].map(at);
+    chain
+      .slice(1)
+      .forEach((k, n) =>
+        ok(
+          k > chain[n] && indent(lines[k]) > indent(lines[chain[n]]),
+          `${lines[k].trim()} should sit under ${lines[chain[n]].trim()}:\n${text}`,
+        ),
+      );
+    ok(indent(lines[chain[0]]) > 0, `blueberry should sit under fruit:\n${text}`);
   });
 });

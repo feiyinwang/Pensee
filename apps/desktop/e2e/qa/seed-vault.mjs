@@ -50,6 +50,18 @@ const NOTES = {
     "- small scope worked: the CLI I shipped in a weekend",
     "",
   ].join("\n"),
+  // The writer's own example (PEN-31): Organize must keep all five levels.
+  "Notes/Fruit.md": [
+    "fruit",
+    "",
+    "* apple",
+    "* banana",
+    "* blueberry",
+    "   * benefit of eating blueberry",
+    "      * Types of benefits",
+    "         * Biomechnical functionalities",
+    "",
+  ].join("\n"),
   "Notes/Sleep log.md": [
     "- Slept eight hours before the exam and remembered far more of the reading.",
     "- After a short nap the second half of the essay finally made sense.",

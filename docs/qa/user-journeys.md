@@ -382,6 +382,7 @@ Organize does the cutting.
 | PEN-28 | In a big iCloud vault, open it, then ⌘. `[` Enter on a line                 | Echoes land in a few seconds (well under 30s), the first Connect after opening included                                                                                                                                                                                                                                                                                                | you       |
 | PEN-29 | Combine when the pen only echoes your take | Your points once in your ink; the pen's are its answer's own points, never your words | manual (logic in second-pen.test.ts) |
 | PEN-30 | Select a list with a line typed straight to level 3, ⌘., `#` Enter, then Enter | A nested outline, as deep as it needs and no level skipped: no more words than you wrote, each point in your words (a word or two adjusted at most), every other line a group name in the pen's ink (`^ai-g-…`) | auto: pen |
+| PEN-31 | Organize `fruit` / apple, banana, blueberry › benefit › types › biomechanical (your example), then Enter | Every level you wrote stays: blueberry under fruit, then its benefit, its types and biomechanical each a level deeper; nothing folded into one line | auto: pen |
 
 ---
 

@@ -255,13 +255,19 @@ one by one, and only when you ask.
   another stays under it unless it plainly belongs elsewhere, and a line you
   indented too far (straight to level 3 under a top line) goes under the line
   it belongs to.
-- **Shorter, in your words.** Each point is one short line (at most about 12
-  words): your words with the filler, hedges and repetition cut, a word or two
-  adjusted at most so it reads. Lines that say the same thing become one
-  point. Checked in code: a point with more words than your line, a link of
-  yours missing, or more than one word in four that isn't yours is your line
-  as you wrote it. Lines with two block ids, or a task and a bullet, are
-  never merged. A task's box and a block id stay on their point.
+- **Never flattened.** Every level you wrote stays a level; the pen adds
+  levels where the meaning needs them. Each point is one of your lines: a
+  line the pen lists on a point past its own (a whole branch on its top
+  point, as Haiku does) that nothing else places goes under that point as you
+  nested it, never folded into its text (2026-10-15: `blueberry › benefit ›
+  types › biomechanical` came out as one line, "blueberry").
+- **Shorter, in your words.** Each point is your line cut to one short line
+  (at most about 12 words): filler, hedges and repetition cut, a word or two
+  adjusted at most so it reads. Checked in code: a point with more words than
+  your line, a link of yours missing, or more than one word in four that
+  isn't yours is your line as you wrote it. A line that repeats a point word
+  for word (and has no block id of its own) goes. A task's box and a block
+  id stay on their point.
 - Where points side by side need a name, it adds a group, a name of its own
   (1 to 4 words) with those points under it, written in its ink (a hidden
   `^ai-g-…`). Never a group of one point. Enter on a group's name doesn't ask
