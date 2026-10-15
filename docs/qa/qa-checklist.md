@@ -31,14 +31,29 @@ a full Rust rebuild.
 
 ## 2. Pick the journeys
 
-1. List changed files: `git status --short` plus `git diff --name-only master...`.
+Run only the journeys this change's code can reach. A journey whose Code paths
+the change didn't touch is not run, ★ or not: running it proves nothing about
+this change and costs minutes per pass (the user's call, 2026-10-15).
+
+1. List the files **this task** changed (not other sessions' edits in the same
+   tree): your own edits, plus `git diff --name-only master...` on a branch.
 2. For each feature section in user-journeys.md, the section is **in** when a
    changed file sits under one of its **Code** paths (relative to `apps/desktop/`).
-3. A shared file pulls in every section that uses it. `src/styles/tokens.css`,
+   A file named with a parenthesised list (`fs.rs (write_file)`,
+   `editor-area/ (link-preview.ts, …)`) only pulls the section in when the
+   change touches one of the listed parts.
+3. Inside a section that is in, pick the journeys the changed code can reach,
+   not the whole table: a change to the board's drag code picks the drag
+   journeys, not the one that renames a board. When you can't tell which rows
+   a file reaches, pick them all.
+4. Shared files reach every screen: `src/styles/tokens.css`,
    `src/components/app-layout.tsx`, `src/stores/editor-store.ts`,
-   `src/hooks/use-keyboard-shortcuts.ts` and `src-tauri/src/lib.rs` put **all**
-   sections in, because each of them reaches every screen.
-4. Always add every ★ journey (the smoke set), whatever changed.
+   `src/hooks/use-keyboard-shortcuts.ts`, `src-tauri/src/lib.rs`. For these,
+   pick every ★ journey (one per feature) plus the rows the specific edit
+   reaches (a new shortcut in `use-keyboard-shortcuts.ts` → that shortcut's
+   journeys), never every row of every section.
+5. Nothing picked (the change only reaches `manual`/`you` rows, or no Code
+   path at all, e.g. a dev-only script) → no run; say so in the report.
 
 Write the picked IDs down before running anything, so the report can show what
 was and wasn't covered.
@@ -66,16 +81,23 @@ report for the user to try.
 ## 4. Run
 
 ```bash
-apps/desktop/e2e/qa/run.sh core calendar <other areas>
+apps/desktop/e2e/qa/run.sh --only CAL-02,CAL-05,ED-01
 ```
 
+- `--only <IDs>` runs just those `it("<ID> …")` journeys, from whichever spec
+  files hold them. Prefer it to naming areas: `core` and `pen` hold 17 and 24
+  journeys, and an area name runs all of them.
+- A picked journey that fails only under `--only` but passes when its whole
+  file runs leans on an earlier journey's state: fix the spec so it arranges
+  its own state (in its `it` or the file's `before`).
 - It builds a debug e2e app (`target/debug`, about 90s incremental; it never
   touches the release build `scripts/ship-local.sh` uses), then runs the specs.
   Each spec file starts on a freshly seeded QA vault (`e2e/qa/seed-vault.mjs`)
   with default settings.
 - `--no-build` only when nothing under `apps/desktop/` changed since the last
   build: the app embeds the frontend, so a stale build tests old code.
-- No arguments runs every journey spec.
+- No arguments runs every journey spec: only when the user asks for a full
+  pass, never as the default.
 
 ## 5. Fix what fails
 

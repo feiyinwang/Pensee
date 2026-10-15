@@ -13,14 +13,16 @@ ones a change can reach, and any that fails is fixed before the work is done.
   deleted, and its ID stays retired.
 - **Check** says how the journey is verified:
   - `auto: <name>` — `e2e/specs/journeys/<name>.spec.js` has an `it("<ID> …")`.
-    Run with `apps/desktop/e2e/qa/run.sh <name>`.
+    Run with `apps/desktop/e2e/qa/run.sh --only <ID>,<ID>` (or `<name>` for the whole file).
   - `legacy: <name>` — `e2e/specs/<name>.spec.js` covers it, but on its own
     seed, not the QA vault. Promote it to a journey spec when the area changes.
   - `manual` — no spec yet. Automate it when a change touches its area
     (qa-checklist.md step 3).
   - `you` — needs something an agent can't drive (an outside account, Finder,
     a trackpad gesture). Listed in the QA report for the user to try.
-- **★** marks the smoke set: run on every change, whatever it touches.
+- **★** marks the smoke set: the feature's one journey that must never break.
+  Run when the change reaches that feature's Code, or touches a shared file
+  (qa-checklist.md step 2); not on every change.
 - A new feature adds its section (or rows) in the same commit as the feature.
   Template at the end.
 

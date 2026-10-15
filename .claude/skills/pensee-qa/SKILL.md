@@ -18,6 +18,11 @@ The user asked for this after features they relied on broke silently. A
 skipped pass is how that happens, so "it's a small change" is not a reason to
 skip. Only step 0 of the checklist decides a skip.
 
+The pass is scoped, not exhaustive: run only the journeys whose Code paths
+this task's change touches (checklist step 2). Journeys the change can't reach
+are not run, ★ included. The user asked for this because full passes cost too
+much time for what they prove.
+
 ## Job A: record the feature's journeys
 
 In `docs/qa/user-journeys.md`, in the same commit as the feature:
@@ -45,9 +50,9 @@ harness notes change as new traps are found.
 
 Strict points that are easy to get wrong:
 
-- Run the picked specs with `apps/desktop/e2e/qa/run.sh <areas>`, which
-  rebuilds the app. Use `--no-build` only when no app file changed since the
-  last build.
+- Run the picked journeys with `apps/desktop/e2e/qa/run.sh --only <IDs>`,
+  which rebuilds the app. Use `--no-build` only when no app file changed since
+  the last build.
 - A failing journey is fixed in this task, then every picked journey is rerun.
 - Never weaken a spec's expectation to make it pass. If Expected is wrong
   (the behaviour changed on purpose), change the row in user-journeys.md
