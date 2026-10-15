@@ -2,7 +2,7 @@
 
 ## 2026-10-15
 
-- **# Organize** works on a single paragraph too: select one line, or as many as you like, and its points become the outline. Picking a pill in the pen's box widens it a little, so _Organize: add a direction, or just press Enter_ shows in full.
+- **# Organize** works on a single paragraph too: select one line, or as many as you like, and its points become the outline. Picking a pill keeps the pen's box as wide as its row of pills, with no empty space after the last one; its hint now reads _Add a direction, or just press Enter_, since the lit pill already names it.
 - When Claude is signed out (an expired or revoked sign-in), the pen and the Agent now say _Claude is signed out. Run `claude` in Terminal, type /login, then try again._ instead of the raw API error.
 - A podcast's artwork now shows whole in its player instead of cropped to a square. When the picture isn't square, a blurred copy of it fills the space around it. The speed button shows its keys (`< >`) next to it, like **Pin ⌘⇧M**, and hovering play shows _Play ⌘ ⇧ J_.
 - Fixed: words typed right after opening a video note went straight under the transcript's closing tag, where other Markdown apps read them as part of the transcript. They now go on a line of their own under the box, after a blank line, and typing at the transcript's edges never breaks it.

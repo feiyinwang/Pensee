@@ -770,11 +770,14 @@ describe("Journeys: second pen", function () {
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
   });
 
-  it("PEN-22 # Organize is offered for one line too, and picking it widens the box to fit", async function () {
+  it("PEN-22 # Organize is offered for one line too, and picking it keeps the box's width", async function () {
     await armOn("naps help you remember");
     await waitForBox();
     ok((await pop()).pills.some((p) => p.includes("Organize")), "one line: Organize");
-    // Picked, not run: the placeholder and the key hint fit uncut.
+    const before = await browser.execute(
+      () => document.querySelector(".pen-box")?.getBoundingClientRect().width ?? 0,
+    );
+    // Picked, not run: no wider than its pills, and the placeholder and key hint fit uncut.
     await key("#", { shift: true });
     const fit = await browser.execute(() => {
       const box = document.querySelector(".pen-box");
@@ -793,6 +796,7 @@ describe("Journeys: second pen", function () {
     });
     ok(fit.mode === "#", `Organize picked: ${JSON.stringify(fit)}`);
     ok(fit.need <= fit.room, `placeholder cut: ${JSON.stringify(fit)}`);
+    ok(Math.abs(fit.width - before) < 1, `box widened from ${before}: ${JSON.stringify(fit)}`);
     await key("Escape");
     // A line Organize (PEN-17) leaves as it was.
     await caretAfter("drafts get better overnight");

@@ -223,15 +223,13 @@
   font-size: var(--text-sm);
 }
 
-/* A picked pill's placeholder and key hint need the room: wider, not cut. */
-.pen-box[data-mode] {
-  min-width: 460px;
-}
-
 .pen-box-field {
   display: flex;
   align-items: center;
   gap: 6px;
+  /* The pills set the box's width; the field fills it, and a picked pill's
+     key hint never pushes it wider. */
+  contain: inline-size;
   min-height: 34px;
   padding: 0 4px 0 6px;
   border: 1px solid var(--border-strong);

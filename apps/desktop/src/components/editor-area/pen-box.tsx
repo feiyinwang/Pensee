@@ -135,9 +135,7 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
           autoComplete="off"
           value={text}
           placeholder={
-            modePill
-              ? `${modePill.label}: add a direction, or just press Enter`
-              : "Pick a pill, or ask a question"
+            modePill ? "Add a direction, or just press Enter" : "Pick a pill, or ask a question"
           }
           aria-label="Ask a question, or press a pill's key to pick it"
           onChange={(event) => onChange(event.target.value)}
