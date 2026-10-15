@@ -5,7 +5,7 @@ import { useEditorStore } from "@/stores/editor-store";
 const ComposerDialog = lazy(() => import("./composer-dialog"));
 const ComposerCard = lazy(() => import("./composer-card"));
 
-/** ⌘T's composer (SPECs/composer-spec.md). The New tab page shows its own. */
+/** ⌘N's composer (SPECs/composer-spec.md). The New tab page shows its own. */
 export function Composer() {
   const open = useComposerStore((s) => s.open);
   const onLauncher = useEditorStore(

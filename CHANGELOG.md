@@ -2,6 +2,8 @@
 
 ## 2026-10-15
 
+- ⌘T opens today's note, made if missing, wherever you are; the sidebar's **Today** shows `⌘T` on hover. ⌘N is the new-note box.
+- In the new-note box, ⌘↵ into today's note (no title) now opens today's note after adding your text, so you land where you wrote.
 - Podcasts play in their note. Adding a podcast to Library opens its note with a player under the properties: play/pause, a track to seek, the speed (click to cycle, `<` / `>` to step) and **Pin**. ⌘⇧J plays and pauses and ⌘⇧M pins the moment on the line you're writing, the same keys as a YouTube note. Apple Podcasts, Spotify, Overcast and Pocket Casts episode links, a podcast's own page and plain audio files all work; a Spotify episode is played from the show's public feed, so a Spotify-only show says so instead.
 - The sidebar's **Inspirations** space is gone; Spaces now lists Projects, Library and Files. Notes with `Type: Inspiration` stay in your vault, and a space note with `Shows: Inspiration` brings the view back.
 - Hovering the sidebar and calendar buttons at the top of the window now shows what they do and their shortcut: *Hide sidebar (⌘[)*, *Show calendar (⌘])*.

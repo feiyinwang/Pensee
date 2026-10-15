@@ -106,7 +106,7 @@ function useComposerMotion(): void {
 }
 
 export interface ComposerCardProps {
-  /** `dialog` floats over the page (⌘T); `inline` is the New tab page. */
+  /** `dialog` floats over the page (⌘N); `inline` is the New tab page. */
   variant: "dialog" | "inline";
   onClose?: () => void;
 }

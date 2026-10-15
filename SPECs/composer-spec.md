@@ -13,14 +13,14 @@ on ⌘O / ⌘P.
 
 ## Ways in
 
-| Way in                                    | Opens the composer…                                         |
-| ----------------------------------------- | ----------------------------------------------------------- |
-| ⌘T, ⌘N, the tab bar's **+**               | as it was left (an empty draft starts over as a plain note) |
-| ⌘⇧N                                       | with the date chip on today                                 |
-| ⌘⇧L, **Add to Library…** in ⌘O            | ready for Library: type Book until a link says otherwise    |
-| A Library tab's **Add <noun>** / **+**    | with that tab's kind picked                                 |
-| Drop one PDF or EPUB while it is showing  | with the file attached                                      |
-| A window with no tabs (the New tab page)  | in the page itself; ⌘T puts the caret there                 |
+| Way in                                   | Opens the composer…                                         |
+| ---------------------------------------- | ----------------------------------------------------------- |
+| ⌘N, the tab bar's **+**                  | as it was left (an empty draft starts over as a plain note) |
+| ⌘⇧N                                      | with the date chip on today                                 |
+| ⌘⇧L, **Add to Library…** in ⌘O           | ready for Library: type Book until a link says otherwise    |
+| A Library tab's **Add <noun>** / **+**   | with that tab's kind picked                                 |
+| Drop one PDF or EPUB while it is showing | with the file attached                                      |
+| A window with no tabs (the New tab page) | in the page itself; ⌘N puts the caret there                 |
 
 Compact one-file windows have no workspace to file into: the composer is
 inert there and ⌘N keeps the palette's create field.
@@ -64,11 +64,15 @@ inert there and ⌘N keeps the palette's create field.
   there is nothing to make, and still named for the type chip ("Add book").
   It shows **⌘↵** inside it.
 - **⌘↵** (or the button) makes it and stays on the page: the box closes and
-  an "Added …" notice offers **Open**. **⌘⇧↵** makes it and opens it. Open
-  today (nothing typed), Open note (a link already in Library) and a podcast
-  link open: a podcast's note is where it plays
-  ([podcast-notes-spec.md](podcast-notes-spec.md)).
-- Esc closes the box and keeps the draft for the next ⌘T.
+  an "Added …" notice offers **Open**. **⌘⇧↵** makes it and opens it. A
+  day's note (Open today, Add to today), Open note (a link already in
+  Library) and a podcast link always open: the writing went there, or the
+  note is where the episode plays
+  ([podcast-notes-spec.md](podcast-notes-spec.md)), so that is where you land.
+- Esc closes the box and keeps the draft for the next ⌘N.
+
+⌘T is not a way in: it opens today's note itself, as the sidebar's **Today**
+does (made if missing), so the page is the place to write.
 
 A plain note with text but no title is `Untitled` (`Untitled 2`…). A title
 that's taken is refused in the box, with **Open it**; nothing is

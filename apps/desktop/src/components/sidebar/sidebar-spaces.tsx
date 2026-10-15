@@ -29,12 +29,15 @@ function Row({
   label,
   spaceKey,
   active = false,
+  shortcut,
   onClick,
 }: {
   icon: IconSvgElement;
   label: string;
   spaceKey?: string;
   active?: boolean;
+  /** The key after ⌘ that does the same, shown on hover. */
+  shortcut?: string;
   onClick: () => void;
 }) {
   return (
@@ -55,6 +58,11 @@ function Row({
       >
         {label}
       </span>
+      {shortcut && (
+        <kbd className="pointer-events-none ml-auto shrink-0 text-caption text-[var(--text-muted)] opacity-0 group-hover:opacity-100">
+          ⌘<span className="ml-0.5">{shortcut}</span>
+        </kbd>
+      )}
     </button>
   );
 }
@@ -75,7 +83,7 @@ export function SidebarSpaces() {
   return (
     <>
       <div className="flex flex-col gap-px">
-        <Row icon={Sun03Icon} label="Today" onClick={openToday} />
+        <Row icon={Sun03Icon} label="Today" shortcut="T" onClick={openToday} />
       </div>
       <section className="flex flex-col gap-1" aria-label="Spaces">
         <div className={SIDEBAR_SECTION_LABEL_CLASS}>Spaces</div>

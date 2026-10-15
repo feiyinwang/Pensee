@@ -138,8 +138,8 @@ describe("Journeys: core (smoke)", function () {
     strictEqual(await activeTitle(), "Welcome renamed");
   });
 
-  it("CMP-01 ⌘T, a title and text, ⌘⇧↵ makes the note and opens it", async function () {
-    await pressCmd("t");
+  it("CMP-01 ⌘N, a title and text, ⌘⇧↵ makes the note and opens it", async function () {
+    await pressCmd("n");
     const dialog = await $('[role="dialog"][aria-label="New note"]');
     await dialog.waitForExist({ timeout: 5_000 });
     await fillField('[aria-label="New note"] input[aria-label="Title"]', "Composer note");
@@ -169,6 +169,57 @@ describe("Journeys: core (smoke)", function () {
     );
     await today.click();
     await waitForFile(`${root}/${dayStamp()}.md`);
+    await waitForTitle(dayStamp());
+  });
+
+  it("DN-04 ⌘T opens today's note from another note", async function () {
+    await openViaPalette("On writing");
+    await pressCmd("t");
+    await waitForTitle(dayStamp());
+    const hint = await browser.execute(
+      () =>
+        [...document.querySelectorAll("button")]
+          .find((button) => button.textContent.startsWith("Today"))
+          ?.querySelector("kbd")?.textContent ?? null,
+    );
+    strictEqual(hint, "⌘T", "Today carries its shortcut");
+  });
+
+  it("CMP-03 ⌘⇧N, text, ⌘↵ adds it to today's note and opens it", async function () {
+    await openViaPalette("On writing");
+    await pressCmd("n", { shift: true });
+    await $('[role="dialog"][aria-label="New note"]').waitForExist({ timeout: 5_000 });
+    await fillField('[aria-label="New note"] textarea[aria-label="Text"]', "A line for today.");
+    await browser.execute(() => {
+      document.querySelector('[role="dialog"][aria-label="New note"] textarea').dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    await waitForTitle(dayStamp());
+    ok((await readFile(`${root}/${dayStamp()}.md`)).includes("A line for today."));
+  });
+
+  it("CMP-06 ⌘⇧N with nothing typed, ⌘↵ opens today's note", async function () {
+    await openViaPalette("On writing");
+    await pressCmd("n", { shift: true });
+    const button = await $('[aria-label="New note"] button.composer-submit');
+    await button.waitForExist({ timeout: 5_000 });
+    strictEqual((await button.getText()).replace("⌘↵", "").trim(), "Open today");
+    await browser.execute(() => {
+      document.querySelector('[role="dialog"][aria-label="New note"] input').dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
     await waitForTitle(dayStamp());
   });
 

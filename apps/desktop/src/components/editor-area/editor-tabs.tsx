@@ -172,7 +172,7 @@ export function EditorTabs() {
           type="button"
           onClick={() => openComposer()}
           className="ml-1 flex h-[var(--chrome-control-height)] w-9 shrink-0 items-center justify-center rounded-lg text-base text-[var(--text-icon-muted)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--text-secondary)]"
-          title="New note (⌘T)"
+          title="New note (⌘N)"
           aria-label="New note"
         >
           +

@@ -6,6 +6,7 @@ import { useAgentStore } from "@/stores/agent-store";
 import { toggleSidebar } from "@/hooks/use-sidebar";
 import { toggleCalendarPanel } from "@/hooks/use-calendar-panel";
 import { openComposer } from "@/hooks/use-composer";
+import { openTodaysNote } from "@/hooks/use-daily-note";
 import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 
@@ -142,10 +143,12 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+T — the composer, over the page (in place on the New tab page)
-      if (mod && e.key === "t") {
+      // Cmd+T — today's note, made if missing, as the sidebar's Today does.
+      // A compact window has no daily-note folder to file it in.
+      if (mod && !e.shiftKey && e.key === "t") {
         e.preventDefault();
-        openComposer();
+        if (isCompactFileMode) return;
+        void openTodaysNote();
         return;
       }
 

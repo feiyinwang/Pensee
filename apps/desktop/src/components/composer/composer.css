@@ -1,4 +1,4 @@
-/* The ⌘T composer (SPECs/composer-spec.md): Linear's new-issue layout on
+/* The ⌘N composer (SPECs/composer-spec.md): Linear's new-issue layout on
    Pensée's card surface. Arc pieces (the chip menus) draw on Pensée's
    translucent surfaces through the token remap below, as in the agent panel. */
 
@@ -305,7 +305,7 @@ button.composer-chip:not(:disabled) {
   color: var(--text-primary);
 }
 
-/* ⌘T: over the page, where ⌘O's palette sits. No entrance motion: it opens
+/* ⌘N: over the page, where ⌘O's palette sits. No entrance motion: it opens
    from the keyboard, often, so it is simply there (docs/motion.md). */
 .composer-dialog {
   position: fixed;

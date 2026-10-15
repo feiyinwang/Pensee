@@ -9,7 +9,7 @@ import {
 import type { TypedNote } from "./tauri";
 import { safePageName } from "./wiki-pages";
 
-// The ⌘T composer (SPECs/composer-spec.md). Pure: what a draft would make,
+// The ⌘N composer (SPECs/composer-spec.md). Pure: what a draft would make,
 // the type a pasted link implies, and the words on the box. The writes live in
 // hooks/use-composer.ts.
 

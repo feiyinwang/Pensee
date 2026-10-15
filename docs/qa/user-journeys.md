@@ -81,18 +81,19 @@ all. Tabs have history, shortcuts and a right-click menu.
 
 ## Composer (new note) — CMP
 
-**Feature:** ⌘T / ⌘N opens one box to make a note, a line in a day's note, or a
+**Feature:** ⌘N opens one box to make a note, a line in a day's note, or a
 Library item.
 **Spec:** SPECs/composer-spec.md
 **Code:** `src/components/composer/`, `src/hooks/use-composer.ts`
 
 | ID     | Journey                                | Expected                                                    | Check      |
 | ------ | -------------------------------------- | ----------------------------------------------------------- | ---------- |
-| CMP-01 | ★ ⌘T, type a title and text, ⌘⇧↵       | The note is created with that text and opens                | auto: core |
-| CMP-02 | ⌘T, type a title, ⌘↵                   | The note is created, you stay put, a notice offers **Open** | manual     |
-| CMP-03 | ⌘⇧N, type text with an empty title, ⌘↵ | The text lands in today's daily note                        | manual     |
+| CMP-01 | ★ ⌘N, type a title and text, ⌘⇧↵       | The note is created with that text and opens                | auto: core |
+| CMP-02 | ⌘N, type a title, ⌘↵                   | The note is created, you stay put, a notice offers **Open** | manual     |
+| CMP-03 | ⌘⇧N, type text with an empty title, ⌘↵ | The text lands at the end of today's note, which opens      | auto: core |
 | CMP-04 | ⌘⇧L, paste a YouTube link in the title | Type switches to Video; creating makes a Library video note | manual     |
-| CMP-05 | Type something, Esc, ⌘T again          | The box reopens with the draft kept                         | manual     |
+| CMP-05 | Type something, Esc, ⌘N again          | The box reopens with the draft kept                         | manual     |
+| CMP-06 | ⌘⇧N, leave everything empty, ⌘↵        | The button reads **Open today**; today's note opens         | auto: core |
 
 ## Command palette and search — PAL
 
@@ -206,8 +207,8 @@ quarter or year creates or opens its note (`2026-10-13`, `2026-W42`, `2026-10`,
 ## Daily note — DN
 
 **Feature:** Today's note, named `YYYY-MM-DD`, lives in the Daily Note Folder
-setting (workspace root when blank) and is reached from the composer, the
-palette and the calendar.
+setting (workspace root when blank) and is reached from ⌘T, the sidebar's
+**Today** (which shows `⌘T` on hover), the composer, the palette and the calendar.
 **Spec:** SPECs/daily-note-spec.md
 **Code:** `src/lib/daily-note.ts`, `src/hooks/use-daily-note.ts`, `src/components/sidebar/` (Today)
 
@@ -216,6 +217,8 @@ palette and the calendar.
 | DN-01 | ★ Click **Today** in the sidebar                     | Today's note is created if missing and opens       | auto: core |
 | DN-02 | ⌘P → **Open Today's Note** twice                     | The same note opens; its text is never overwritten | manual     |
 | DN-03 | Set Daily Note Folder to `Journal/Daily`, open today | The note is created in that folder                 | manual     |
+| DN-04 | ★ From another note, press ⌘T                        | Today's note is created if missing and opens       | auto: core |
+| DN-05 | Hover **Today** in the sidebar                       | `⌘T` shows at the row's right end                  | you        |
 
 ## Boards — BRD
 

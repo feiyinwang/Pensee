@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { closeComposer } from "@/hooks/use-composer";
 import ComposerCard from "./composer-card";
 
-// ⌘T's composer over the page. Lazy with the card, so Arc loads on first use.
+// ⌘N's composer over the page. Lazy with the card, so Arc loads on first use.
 //
 // A floating card, not a Radix dialog. A modal Radix dialog sets
 // `pointer-events: none` on <body> and the chips' Arc menus and calendar come

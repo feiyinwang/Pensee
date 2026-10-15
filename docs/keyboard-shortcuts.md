@@ -6,38 +6,39 @@ Canonical shortcut reference for Pensée.
 
 These shortcuts are handled by the global `useKeyboardShortcuts` hook and work regardless of editor focus.
 
-| Shortcut        | Action                        |
-| --------------- | ----------------------------- |
-| Cmd+P           | File search (command palette) |
-| Cmd+O           | Go to file                    |
-| Cmd+T / Cmd+N   | New note (the composer)       |
-| Cmd+Shift+N     | Composer, dated today         |
-| Cmd+Shift+L     | Composer, ready for Library   |
-| Cmd+Enter       | Composer: create, stay here   |
-| Cmd+Shift+Enter | Composer: create and open it  |
-| Cmd+W           | Close current tab             |
-| Cmd+\\          | Toggle sidebar                |
-| Cmd+[           | Toggle sidebar                |
-| Cmd+]           | Toggle the calendar panel     |
-| Ctrl+Tab        | Next tab                      |
-| Ctrl+Shift+Tab  | Previous tab                  |
-| Cmd+1 ... Cmd+9 | Jump to Nth tab               |
-| Alt+ArrowLeft   | Navigate back                 |
-| Alt+ArrowRight  | Navigate forward              |
-| Cmd+= / Cmd++   | Zoom in                       |
-| Cmd+-           | Zoom out                      |
-| Cmd+0           | Actual size (100%)            |
-| Cmd+J           | Toggle the agent chat         |
-| Cmd+Shift+M     | Pin the video's moment¹       |
-| Cmd+Shift+J     | Play / pause the video¹       |
-| Shift+< / >     | Video slower / faster²        |
+| Shortcut        | Action                         |
+| --------------- | ------------------------------ |
+| Cmd+P           | File search (command palette)  |
+| Cmd+O           | Go to file                     |
+| Cmd+T           | Today's note (made if missing) |
+| Cmd+N           | New note (the composer)        |
+| Cmd+Shift+N     | Composer, dated today          |
+| Cmd+Shift+L     | Composer, ready for Library    |
+| Cmd+Enter       | Composer: create, stay here³   |
+| Cmd+Shift+Enter | Composer: create and open it   |
+| Cmd+W           | Close current tab              |
+| Cmd+\\          | Toggle sidebar                 |
+| Cmd+[           | Toggle sidebar                 |
+| Cmd+]           | Toggle the calendar panel      |
+| Ctrl+Tab        | Next tab                       |
+| Ctrl+Shift+Tab  | Previous tab                   |
+| Cmd+1 ... Cmd+9 | Jump to Nth tab                |
+| Alt+ArrowLeft   | Navigate back                  |
+| Alt+ArrowRight  | Navigate forward               |
+| Cmd+= / Cmd++   | Zoom in                        |
+| Cmd+-           | Zoom out                       |
+| Cmd+0           | Actual size (100%)             |
+| Cmd+J           | Toggle the agent chat          |
+| Cmd+Shift+M     | Pin the video's moment¹        |
+| Cmd+Shift+J     | Play / pause the video¹        |
+| Shift+< / >     | Video slower / faster²         |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
 create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
 Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N (the palette's create field there),
 and history navigation still work. The composer
 ([SPECs/composer-spec.md](../SPECs/composer-spec.md)) needs a workspace to file
-notes in, so Cmd+T, Cmd+Shift+N, Cmd+Shift+L and Cmd+] are inert there too.
+notes in, so Cmd+Shift+N, Cmd+Shift+L and Cmd+] are inert there too.
 Cmd+Shift+L replaces CodeMirror's select-all-matches binding in the editor.
 
 ¹ Only while a YouTube or podcast note's player is open; handled in
@@ -49,6 +50,8 @@ means the episode in a podcast note.
 ² In a note that plays a video or episode (or with nothing editable focused
 while one is open), `<` and `>` change its speed instead of typing; elsewhere
 they type.
+
+³ Writing into a day's note (no title, a date) opens that note instead.
 
 Zoom scales the whole window (WebKit page zoom, persisted in the global
 `appearance.zoom` setting) and steps along the browser ladder 50 · 67 · 75 · 80 ·
@@ -106,17 +109,17 @@ The `secondPen` CodeMirror extension ([SPECs/second-pen-spec.md](../SPECs/second
 ⌘. opens the pen's box above the selection or the caret's line: pills, and a
 box to type in.
 
-| Shortcut                      | Action                                                     |
-| ----------------------------- | ---------------------------------------------------------- |
-| Cmd+.                         | Open / close the pen's box                                 |
-| ! @ [ # (or full-width)       | At the start of the box or after a space: select that pill (Answer, Check, Connect, Organize); again or Backspace unselects |
-| Click a pill                  | Select it (nothing runs yet)                               |
-| Enter                         | Run the selected pill, steered by what you typed; none selected: ask the AI what you typed. What you typed goes in as your own line, the pen's under it |
-| Cmd+Enter (text typed)        | Ask me, steered by what you typed                         |
-| Enter / Esc after Organize    | Keep the outline / put your lines back                     |
-| Enter on a pen line           | Answer under it (on a mix: keep it, drop the others)      |
-| Enter on a quiz answer        | Check it against the source (empty: a hint first)         |
-| Esc                           | Close the box, stop the pen, or take back an unanswered line |
+| Shortcut                   | Action                                                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cmd+.                      | Open / close the pen's box                                                                                                                              |
+| ! @ [ # (or full-width)    | At the start of the box or after a space: select that pill (Answer, Check, Connect, Organize); again or Backspace unselects                             |
+| Click a pill               | Select it (nothing runs yet)                                                                                                                            |
+| Enter                      | Run the selected pill, steered by what you typed; none selected: ask the AI what you typed. What you typed goes in as your own line, the pen's under it |
+| Cmd+Enter (text typed)     | Ask me, steered by what you typed                                                                                                                       |
+| Enter / Esc after Organize | Keep the outline / put your lines back                                                                                                                  |
+| Enter on a pen line        | Answer under it (on a mix: keep it, drop the others)                                                                                                    |
+| Enter on a quiz answer     | Check it against the source (empty: a hint first)                                                                                                       |
+| Esc                        | Close the box, stop the pen, or take back an unanswered line                                                                                            |
 
 ## Editor (inherited from CodeMirror)
 

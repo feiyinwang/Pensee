@@ -25,7 +25,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
 // The composer's entry points and writes (SPECs/composer-spec.md). Every way
-// in — ⌘T, ⌘N, ⌘⇧N, ⌘⇧L, a Library tab's Add, the tab bar's + — goes through
+// in — ⌘N, ⌘⇧N, ⌘⇧L, a Library tab's Add, the tab bar's + — goes through
 // `openComposer`; every write through `submitComposer`.
 
 export interface ComposerPreset {
@@ -41,7 +41,7 @@ function canCompose(): boolean {
   return Boolean(root) && getWorkspaceChromeMode(root, chromeMode) !== "compact-file";
 }
 
-/** The New tab page shows the composer in place; it takes ⌘T there. */
+/** The New tab page shows the composer in place; it takes ⌘N there. */
 export function isLauncherActive(): boolean {
   const { tabs, activeTabId } = useEditorStore.getState();
   return tabs.find((tab) => tab.id === activeTabId)?.location.kind === "launcher";
@@ -192,8 +192,9 @@ async function writeNote(
   await finish(created.path, created.stem, open);
 }
 
-/** A date and no title: the text goes to the end of the day's note. */
-async function writeDay(day: string, draft: ComposerDraft, open: boolean) {
+/** A date and no title: the text goes to the end of the day's note, and the
+ *  day's note opens, so ⌘↵ lands where the writing went. */
+async function writeDay(day: string, draft: ComposerDraft) {
   const path = await dayNotePath(day);
   if (draft.body.trim()) {
     await editPage(path, (page) => ({
@@ -201,14 +202,14 @@ async function writeDay(day: string, draft: ComposerDraft, open: boolean) {
       body: appendBlock(page.body, draft.body),
     }));
   }
-  // Nothing written: the button said "Open today", so it opens.
-  await finish(path, day, open || !draft.body.trim());
+  await finish(path, day, true);
 }
 
 /** Do what `target` says with the box's draft; `open` (⌘⇧↵) goes to the
- *  note. Notes and days are written before the box lets go, so a name clash
- *  shows in it; Library adds read the web or copy a file, so the box lets go
- *  first and a notice follows. A date links the new note from that day. */
+ *  note (a day's note always opens). Notes and days are written before the
+ *  box lets go, so a name clash shows in it; Library adds read the web or
+ *  copy a file, so the box lets go first and a notice follows. A date links
+ *  the new note from that day. */
 export async function submitComposer(target: ComposerTarget, open = false): Promise<void> {
   const store = useComposerStore.getState();
   if (store.busy || target.kind === "empty") return;
@@ -218,7 +219,7 @@ export async function submitComposer(target: ComposerTarget, open = false): Prom
     store.setBusy(true);
     try {
       if (target.kind === "note") await writeNote(target, draft, open);
-      else await writeDay(target.day, draft, open);
+      else await writeDay(target.day, draft);
     } catch (error) {
       console.error("[composer] Couldn't write the note:", error);
       store.setError({ message: error instanceof Error ? error.message : String(error) });
