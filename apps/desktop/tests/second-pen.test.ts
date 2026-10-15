@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
-  applyCuts,
   childIndent,
   citationMarkdown,
   citationsIn,
@@ -9,7 +8,6 @@ import {
   combinedLines,
   connectTerms,
   contentWords,
-  cutsFromReply,
   echoLine,
   echoQuote,
   echoedNotes,
@@ -20,6 +18,7 @@ import {
   newPenId,
   noteForPen,
   organizeReply,
+  inTheirWords,
   organizedLines,
   outlineDepth,
   parentOf,
@@ -35,7 +34,6 @@ import {
   sidesReply,
   splitPoints,
   subtreeEnd,
-  uncuttable,
   unsealedLine,
   videoPassages,
 } from "../src/lib/second-pen";
@@ -495,51 +493,15 @@ describe("prompts and replies", () => {
   });
 });
 
-describe("shorten", () => {
-  test("only substrings that are there, in order, without overlaps", () => {
-    const text = "I think we basically need a hint, maybe";
-    const cuts = cutsFromReply('[["I think ", " basically", "absent", "I think we"]]', [text]);
-    expect(cuts).toEqual([
-      [
-        { from: 0, to: 8 },
-        { from: 10, to: 20 },
-      ],
-    ]);
-    expect(applyCuts(text, cuts![0]!)).toBe("we need a hint, maybe");
-  });
-
-  test("tidy spacing where words left", () => {
-    expect(applyCuts("hint before giving up completely, like", [{ from: 21, to: 32 }])).toBe(
-      "hint before giving up, like",
-    );
-  });
-
-  test("an unreadable reply is null", () => {
-    expect(cutsFromReply("sorry", ["x"])).toBeNull();
-  });
-
-  test("never cuts an id, a link or a citation", () => {
-    const text = "Supports: you really slept well — [[Sleep log]] · another angle ^ai-e-jjfohink";
-    const cuts = cutsFromReply(
-      '[[" really", "[[Sleep log]]", " ^ai-e-jjfohink", "Sleep", "[link](https://x.org)"]]',
-      [text],
-    );
-    expect(cuts![0]!.map((c) => text.slice(c.from, c.to))).toEqual([" really"]);
-    expect(uncuttable('a [p](https://x.org "t") b ^id-1').map((c) => [c.from, c.to])).toEqual([
-      [2, 24],
-      [27, 32],
-    ]);
-  });
-});
-
 describe("organize", () => {
   const yours = [
-    "- I start too many things at once",
+    "- I think I basically start too many things at once",
     "- no deadline so it drifts",
     "      - the habit app, then nothing",
     "- excitement fades after a week",
-    "  - [ ] the boring middle ^yt-540",
+    "  - [ ] the boring middle, see [[Auth notes]] ^yt-540",
     "- small scope worked",
+    "- keeping the scope small worked",
   ];
   const reply = JSON.stringify({
     points: [
@@ -548,16 +510,23 @@ describe("organize", () => {
         under: [
           {
             group: "How I set it up",
-            under: [{ line: 1 }, { line: 2, under: [{ line: 3 }] }],
+            under: [
+              { lines: [1], text: "I start too many things at once" },
+              { lines: [2], text: "no deadline, it drifts", under: [{ line: 3 }] },
+            ],
           },
-          { line: 4, under: [{ line: 5 }] },
+          {
+            lines: [4],
+            text: "excitement fades after a week",
+            under: [{ lines: [5], text: "the boring middle, see [[Auth notes]]" }],
+          },
         ],
       },
-      { line: 6 },
+      { lines: [6, 7], text: "small scope worked" },
     ],
   });
 
-  test("the prompt numbers your lines with their indentation", () => {
+  test("the prompt numbers your lines with their indentation and asks for no depth limit", () => {
     const prompt = penPrompt({
       title: "T",
       note: "",
@@ -567,39 +536,85 @@ describe("organize", () => {
     });
     expect(prompt).toContain('<line n="3">      - the habit app, then nothing</line>');
     expect(prompt).toContain("MECE at every level");
+    expect(prompt).toContain("no limit on depth");
   });
 
-  test("a tree as deep as its meaning, every line once", () => {
-    const points = organizeReply(reply, yours.length)!;
+  test("a short tree in your words, as deep as its meaning, every line once", () => {
+    const points = organizeReply(reply, yours)!;
     expect(outlineDepth(points)).toBe(4);
     let n = 0;
     expect(organizedLines(points, yours, "", () => `ai-g-000${n++}`)).toEqual([
       "- Why I stall ^ai-g-0000",
       "  - How I set it up ^ai-g-0001",
       "    - I start too many things at once",
-      "    - no deadline so it drifts",
+      "    - no deadline, it drifts",
       "      - the habit app, then nothing",
       "  - excitement fades after a week",
-      "    - [ ] the boring middle ^yt-540",
+      "    - [ ] the boring middle, see [[Auth notes]] ^yt-540",
       "- small scope worked",
     ]);
   });
 
+  test("a point that isn't your words, shorter, is your line as written", () => {
+    const points = organizeReply(
+      JSON.stringify({
+        points: [
+          { lines: [1], text: "Overcommitting kills momentum" },
+          { lines: [2], text: "no deadline so it drifts and drifts and drifts away" },
+          { lines: [5], text: "the boring middle" },
+          { lines: [3, 4, 6, 7], text: "" },
+        ],
+      }),
+      yours,
+    )!;
+    expect(organizedLines(points, yours, "", () => "x")).toEqual([
+      "- I think I basically start too many things at once",
+      "- no deadline so it drifts",
+      // A link of yours never goes.
+      "- [ ] the boring middle, see [[Auth notes]] ^yt-540",
+      // A merge that fails gives back every line it took.
+      "- the habit app, then nothing",
+      "- excitement fades after a week",
+      "- small scope worked",
+      "- keeping the scope small worked",
+    ]);
+  });
+
+  test("your words: a word or two may change, never the idea", () => {
+    expect(inTheirWords("start too many things", ["- I start too many things at once"])).toBe(true);
+    expect(inTheirWords("no deadline, so it drifts", ["- no deadline so it drifts"])).toBe(true);
+    expect(inTheirWords("procrastination ruins focus", ["- I start too many things"])).toBe(false);
+  });
+
+  test("lines with two block ids are never merged", () => {
+    const lines = ["- a idea ^one-1", "- a idea ^two-2"];
+    const points = organizeReply('{"points": [{"lines": [1, 2], "text": "a idea"}]}', lines)!;
+    expect(organizedLines(points, lines, "", () => "x")).toEqual([
+      "- a idea ^one-1",
+      "- a idea ^two-2",
+    ]);
+  });
+
   test("a missing line fails; a repeat is dropped", () => {
-    expect(organizeReply('{"points": [{"line": 1}, {"line": 2}]}', 3)).toBeNull();
-    const points = organizeReply('{"points": [{"line": 1}, {"line": 2}, {"line": 1}]}', 2)!;
+    expect(
+      organizeReply('{"points": [{"line": 1}, {"line": 2}]}', ["- a", "- b", "- c"]),
+    ).toBeNull();
+    const points = organizeReply('{"points": [{"line": 1}, {"line": 2}, {"line": 1}]}', [
+      "- a",
+      "- b",
+    ])!;
     expect(organizedLines(points, ["- a", "- b"], "  ", () => "x")).toEqual(["  - a", "  - b"]);
   });
 
-  test("a group of one gives way to its line", () => {
+  test("a group of one gives way to its point", () => {
     const points = organizeReply(
       '{"points": [{"group": "Alone", "under": [{"line": 1}]}, {"line": 2}]}',
-      2,
+      ["- a", "- b"],
     )!;
     expect(organizedLines(points, ["- a", "- b"], "", () => "x")).toEqual(["- a", "- b"]);
   });
 
   test("not JSON is no outline", () => {
-    expect(organizeReply("- a\n- b", 2)).toBeNull();
+    expect(organizeReply("- a\n- b", ["- a", "- b"])).toBeNull();
   });
 });

@@ -12,7 +12,8 @@ own ink, right under the line you're on. It never writes your conclusion:
   make the call;
 - it **connects** a line to what you wrote before in other notes, and you
   write how they connect;
-- it **shortens** and **organizes** your own words, nothing added.
+- it **organizes** your lines into a short outline in your own words,
+  nothing added.
 
 Decided from the prototype `apps/desktop/proto/thinking-pen` (2026-10-13):
 Answer → *Sealed*, Check → *Both sides*, Connect → *Inline*. Rejected there:
@@ -43,13 +44,12 @@ notes are gone. The look is unchanged from the first Second pen
   | `!` **Answer** | writes an answer, sealed, with a line under it for your take. It opens once you've written yours |
   | `@` **Check** | the evidence for and against the line, each with a paper (or *no paper*), then a line for your call. No verdict |
   | `[[` **Connect** | up to three short points from what you wrote in other notes, each saying what it is (Supports, Example…) and linked to its note |
-  | `−` **Shorten** | proposes cuts on the lines, nothing else |
-  | `#` **Organize** | only with several lines selected: regroups them into an outline in your own words |
+  | `#` **Organize** | only with several lines selected: regroups them into a short outline in your own words |
 
   On an empty line: **Answer** only (to what you type).
 - **Nothing runs until Enter.** Clicking a pill selects it (it lights up);
-  so does typing its key, `! @ [ − #` or an input method's full-width
-  `！＠［【－＃`, at the start of the box or after a space, and the key isn't
+  so does typing its key, `! @ [ #` or an input method's full-width
+  `！＠［【＃`, at the start of the box or after a space, and the key isn't
   typed. Inside a word it types as usual, so "off-shore" and "why!" work. The
   same key again, a click on the lit pill, or Backspace in the empty box
   unselects it.
@@ -57,8 +57,8 @@ notes are gone. The look is unchanged from the first Second pen
   pill selected, Enter is **Answer** on what you typed.
 - **What you typed goes into the note** as your own line, under the line you
   were on (or on the empty line), and the pen works under it, for Answer,
-  Check and Connect. For Shorten and Organize, which change your lines, it
-  only steers and adds no line.
+  Check and Connect. For Organize, which changes your lines, it only steers
+  and adds no line.
 - Picking the same pill again on the same line gives one more, after the
   ones already there, never repeating them.
 
@@ -245,27 +245,34 @@ one by one, and only when you ask.
 
 ### Organize
 
-- With two or more lines selected, the pen regroups them into one tree you
-  can think through point by point, MECE at every level: the points side by
-  side are the same kind of thing at the same level of detail, no two
-  overlap, and together they cover what they sit under. A line that is a
-  part, step, example, reason or result of another goes under it, as many
-  levels deep as that takes. No depth limit.
+- With two or more lines selected, the pen regroups them into one short tree
+  you can think through point by point, MECE at every level: the points side
+  by side are the same kind of thing at the same level of detail, no two
+  overlap, and together they cover what they sit under. A point that is a
+  part, step, example, reason or result of another goes under it. No depth
+  limit: as many levels as the meaning goes.
 - Your indentation says what belongs to what: a line you indented under
   another stays under it unless it plainly belongs elsewhere, and a line you
   indented too far (straight to level 3 under a top line) goes under the line
   it belongs to.
-- Your lines keep their words: the pen picks them by number, so it can only
-  reorder and nest them (a task's box and a block id stay on their line).
-  Where lines side by side need a name, it adds a group, a short name of its
-  own with those lines under it, written in its ink (a hidden `^ai-g-…`).
-  Never a group of one line. Enter on a group's name doesn't ask the pen for
-  a reply: it's a heading for your lines.
+- **Shorter, in your words.** Each point is one short line (at most about 12
+  words): your words with the filler, hedges and repetition cut, a word or two
+  adjusted at most so it reads. Lines that say the same thing become one
+  point. Checked in code: a point with more words than your line, a link of
+  yours missing, or more than one word in four that isn't yours is your line
+  as you wrote it. Lines with two block ids, or a task and a bullet, are
+  never merged. A task's box and a block id stay on their point.
+- Where points side by side need a name, it adds a group, a name of its own
+  (1 to 4 words) with those points under it, written in its ink (a hidden
+  `^ai-g-…`). Never a group of one point. Enter on a group's name doesn't ask
+  the pen for a reply: it's a heading for your lines.
 - A reply that leaves out one of your lines isn't shown: *Couldn't organize
   these lines. Try again.*
 - The outline replaces your lines, tinted, and the text waits: *Organized in
-  4 levels, in your words.* **Enter** keeps it, **Esc** puts your lines back
-  exactly as they were.
+  4 levels, 118 → 64 words, in your words.* **Enter** keeps it, **Esc** puts
+  your lines back exactly as they were.
+- There is no Shorten of its own any more (2026-10-15): Organize does the
+  cutting, so the `−` pill is gone.
 
 Decided from `apps/desktop/proto/organize-depth` (2026-10-15):
 
@@ -276,18 +283,6 @@ Decided from `apps/desktop/proto/organize-depth` (2026-10-15):
   names (problems and fixes end up side by side at the top, harder to keep
   MECE); a **depth dial** (2 / 3 / All, Tab deeper): one more choice on
   every Organize, when the pen should get the depth right itself.
-
-### Shorten
-
-- The pen proposes cuts on the target lines: struck through in red, nothing
-  added, reordered or rewritten. It never cuts a block id (`^…`, hidden or
-  not), a `[[link]]` or a paper's citation.
-- Click a cut to keep those words (click again to cut them).
-- **Enter** asks before deleting: *Delete 12 words?* under the lines and in
-  the bar. **Enter** again deletes them; **Esc** goes back to reviewing the
-  cuts (and clicking a cut does too). **Esc** while reviewing cancels, your
-  lines as they were. While cuts are shown the lines can't be edited.
-- "Nothing to cut. Every word is pulling its weight." when it finds none.
 
 ### What it knows
 
@@ -308,9 +303,8 @@ pen's. The bar has the page's own solid background, so text scrolling under it
 never shows through. It shows, in order of what applies:
 
 1. **Writing…** while a request runs (nothing while the pen's box is open);
-2. the shorten keys and the words it would save, then *Delete N words?*;
-3. a short message, for 4 seconds (nothing found, an error);
-4. on your take beside a sealed answer: `↵ open it  ⌥↵ open it now`; on the
+2. a short message, for 4 seconds (nothing found, an error);
+3. on your take beside a sealed answer: `↵ open it  ⌥↵ open it now`; on the
    empty line under an opened answer and your take: `Read both first  Tab
    combine them into one list`; on the empty line under a combined list, while
    Combine was the last change: `⌘Z back to the two  ⌘. on any line to go
@@ -340,7 +334,7 @@ never shows through. It shows, in order of what applies:
 - `components/editor-area/second-pen.ts`: the editor extension (the box as
   a CodeMirror tooltip, the progress line as a block widget, decorations
   (the seal, a check's labels, the waiting-line placeholders), the
-  sealed answer, both sides, echoes, shorten, organize) and the bottom bar's
+  sealed answer, both sides, echoes, organize) and the bottom bar's
   hint.
 - `components/editor-area/pen-box.tsx`: the box's React (Arc's floating button
   group and the field), loaded on first use and prefetched when idle.

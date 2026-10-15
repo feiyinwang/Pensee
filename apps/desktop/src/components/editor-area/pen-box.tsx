@@ -6,7 +6,7 @@ import { ensureArcTokens } from "./board/arc-tokens";
 // The second pen's box (SPECs/second-pen-spec.md#asking-the-pens-box): Arc's
 // floating button group for what the pen can do, each pill showing its key,
 // and under it the box to type in. Nothing runs until Enter: clicking a pill,
-// or typing its key (! @ [ − #, half- or full-width) at the start of the box
+// or typing its key (! @ [ #, half- or full-width) at the start of the box
 // or after a space, selects it and types nothing. Enter runs the selected
 // pill, steered by whatever was typed; with none selected, Enter is Answer on
 // what you typed. Loaded on demand, so notes never pay for Arc or motion at
@@ -29,11 +29,8 @@ function Key({ char }: { char: string }): ReactNode {
   return <span className="pen-pill-key">{char}</span>;
 }
 
-/** The pill a typed character names: `-` is `−`, and a Chinese or Japanese
- *  input method's full-width punctuation counts as its plain key. */
+/** The pill a typed character names: a Chinese or Japanese input method's full-width punctuation counts as its plain key. */
 const KEY_OF: Record<string, string> = {
-  "-": "−",
-  "－": "−",
   "！": "!",
   "＠": "@",
   "＃": "#",

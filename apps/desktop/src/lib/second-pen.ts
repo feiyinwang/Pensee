@@ -351,7 +351,6 @@ export type PenAsk =
   | { task: "sides"; papers: Paper[] }
   | { task: "connectQuery" }
   | { task: "connectPick"; candidates: Array<{ note: string; text: string }> }
-  | { task: "shorten" }
   | { task: "organize"; lines: readonly string[] };
 
 export interface PenPromptInput {
@@ -485,16 +484,12 @@ function taskText(input: PenPromptInput): string {
       return [
         "The writer's lines to organize, numbered, with their own indentation:",
         `<lines>\n${ask.lines.map((line, k) => `<line n="${k + 1}">${line}</line>`).join("\n")}\n</lines>`,
-        "Organize them into one tree the writer can think through point by point. It must be MECE at every level: the points side by side (at the top, or under one point) are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A line that is a part, step, example, reason or result of another goes under it, as many levels deep as that takes. A line that is not the same kind or level as the lines beside it never stays beside them.",
+        "Organize them into one short tree the writer can think through point by point. It must be MECE at every level: the points side by side (at the top, or under one point) are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A point that is a part, step, example, reason or result of another goes under it. There is no limit on depth: go as many levels deep as the meaning goes.",
         "The writer's indentation says what belongs to what: a line they indented under another stays under it, unless it plainly belongs elsewhere. A line indented further than the line above it allows (two levels in under a top line) goes under the line it belongs to.",
-        "Where lines side by side need a name to read as one kind of thing, put them in a group: a short name of your own (2 to 5 words, no colon, no end punctuation) with those lines under it. Groups may sit inside groups. Only where a name helps: never a group of one line, never a name that only says a line again.",
-        "Use every line exactly once, by its number. Never write a line's words yourself.",
-        'Reply with JSON only: {"points": [{"line": 1, "under": [...]}, {"group": "…", "under": [...]}]}',
-      ].join("\n");
-    case "shorten":
-      return [
-        "Shorten each target line by cutting words only: filler, hedges, repetition. Never add, reorder or rewrite a word. Keep every idea and the meaning: cut words that add nothing, never a whole thought. Never cut an id (^…), a [[link]] or a [citation](…).",
-        'Reply with JSON only: an array with one array per target line, in order, of the exact substrings to delete. Example for two lines: [["I think ", " basically"], []]. An empty array where every word is pulling its weight.',
+        "Make it shorter. Each point is one short line, at most 12 words: the writer's own words with the filler, hedges and repetition cut. You may adjust a word or two so it reads (a joining word, a tense, the order), never more, and never add an idea or drop one. Lines that say the same thing become one point. Keep every [[link]] and [text](link) as it is.",
+        "Where points side by side need a name to read as one kind of thing, put them in a group: a name of your own, 1 to 4 words, no colon, no end punctuation, with those points under it. Groups may sit inside groups. Only where a name helps: never a group of one point, never a name that only says a point again.",
+        "Every line goes in exactly once, by its number: a point lists the line or lines it says.",
+        'Reply with JSON only: {"points": [{"lines": [1], "text": "…", "under": [...]}, {"lines": [2, 5], "text": "…"}, {"group": "…", "under": [...]}]}',
       ].join("\n");
   }
 }
@@ -902,99 +897,103 @@ export function sourcePartStart(text: string): number | null {
   return at > 0 ? at : null;
 }
 
-/* ------------------------------------------------------------- shorten */
-
-export interface Cut {
-  from: number;
-  to: number;
-}
-
-/** The cuts a `shorten` reply proposes for each line, as offsets into that
- *  line's words. Substrings that aren't there are dropped; overlaps too. */
-/** What Shorten never cuts: block ids (`^ai-e-ab12`), `[[links]]` and
- *  Markdown links (a paper's citation). Offsets into `text`. */
-export function uncuttable(text: string): Cut[] {
-  return [...text.matchAll(/(^|\s)\^[A-Za-z0-9-]+|\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)/g)].map(
-    (m) => {
-      const lead = m[1]?.length ?? 0;
-      return { from: m.index + lead, to: m.index + m[0].length };
-    },
-  );
-}
-
-export function cutsFromReply(reply: string, texts: readonly string[]): Cut[][] | null {
-  const value = jsonIn(reply);
-  if (!Array.isArray(value)) return null;
-  return texts.map((text, k) => {
-    const kept = uncuttable(text);
-    const wanted = Array.isArray(value[k]) ? (value[k] as unknown[]) : [];
-    const cuts: Cut[] = [];
-    let from = 0;
-    for (const item of wanted) {
-      if (typeof item !== "string" || !item.trim()) continue;
-      let at = text.indexOf(item, from);
-      if (at < 0) at = text.indexOf(item);
-      if (at < 0) continue;
-      const cut = { from: at, to: at + item.length };
-      const overlaps = (c: Cut) => cut.from < c.to && cut.to > c.from;
-      if (cuts.some(overlaps) || kept.some(overlaps)) continue;
-      cuts.push(cut);
-      from = cut.to;
-    }
-    return cuts.sort((a, b) => a.from - b.from);
-  });
-}
-
 /* ------------------------------------------------------------- organize */
 
-/** A point of an organized outline: one of your lines (its index in the
- *  lines sent), or a group the pen named, with the points under it. */
+/** A point of an organized outline: your lines (their indexes in the lines
+ *  sent; several when they said the same thing) in `text`, shortened in your
+ *  words, or a group the pen named, with the points under it. */
 export type OrganizedPoint =
-  | { line: number; under: OrganizedPoint[] }
+  | { lines: number[]; text: string; under: OrganizedPoint[] }
   | { group: string; under: OrganizedPoint[] };
 
-/** An `organize` reply, held to its word: every one of your `count` lines
- *  exactly once (a repeat after the first is dropped), else null. A group
- *  with nothing under it is dropped; one with a single point gives way to
- *  that point. No depth limit: as deep as the meaning goes. */
-export function organizeReply(reply: string, count: number): OrganizedPoint[] | null {
+const LINKS_RE = /\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)/g;
+const boxOf = (line: string) => ITEM_RE.exec(line)?.[4] ?? "";
+const blockIdOf = (line: string) => BLOCK_ID_AT_END_RE.exec(line)?.[1] ?? null;
+
+/** Whether `text` says `lines` in their own words, shorter: no more words
+ *  than they had, every link of theirs kept, and at most a word or two that
+ *  isn't theirs (one in four). */
+export function inTheirWords(text: string, lines: readonly string[]): boolean {
+  const theirs = lines.map(itemText).join(" ");
+  if (!text || wordCount(text) > wordCount(theirs)) return false;
+  if ((theirs.match(LINKS_RE) ?? []).some((link) => !text.includes(link))) return false;
+  const known = new Set(meaningWords(theirs));
+  const words = meaningWords(text);
+  const added = words.filter((w) => !known.has(w)).length;
+  return added <= Math.max(1, Math.ceil(words.length / 4));
+}
+
+/** An `organize` reply, held to its word: every one of `lines` exactly once
+ *  (a repeat after the first is dropped), else null. A point's text that
+ *  isn't the lines in their own words, shorter, gives way to the lines as
+ *  written; so does a merge of lines with two block ids or two kinds of task
+ *  box. A group with fewer than two points gives way to them. No depth
+ *  limit: as deep as the meaning goes. */
+export function organizeReply(reply: string, lines: readonly string[]): OrganizedPoint[] | null {
   const value = jsonIn(reply) as { points?: unknown } | null;
   if (!Array.isArray(value?.points)) return null;
   const seen = new Set<number>();
+  const asWritten = (k: number) => itemText(lines[k]!);
   const read = (raw: unknown): OrganizedPoint[] => {
-    const item = raw as { line?: unknown; group?: unknown; under?: unknown } | null;
+    const item = raw as {
+      line?: unknown;
+      lines?: unknown;
+      text?: unknown;
+      group?: unknown;
+      under?: unknown;
+    } | null;
     const under = Array.isArray(item?.under) ? item.under.flatMap(read) : [];
-    if (typeof item?.line === "number") {
-      const line = item.line - 1;
-      if (!Number.isInteger(line) || line < 0 || line >= count || seen.has(line)) return under;
-      seen.add(line);
-      return [{ line, under }];
+    const asked = Array.isArray(item?.lines)
+      ? item.lines
+      : item?.line !== undefined
+        ? [item.line]
+        : null;
+    if (asked) {
+      const mine = asked
+        .map((n) => (typeof n === "number" && Number.isInteger(n) ? n - 1 : -1))
+        .filter((k) => k >= 0 && k < lines.length && !seen.has(k))
+        .filter((k, at, all) => all.indexOf(k) === at);
+      if (!mine.length) return under;
+      mine.forEach((k) => seen.add(k));
+      const originals = mine.map((k) => lines[k]!);
+      const text =
+        typeof item?.text === "string"
+          ? item.text.replace(BLOCK_ID_AT_END_RE, "").replace(/\s+/g, " ").trim()
+          : "";
+      const mergeable =
+        originals.filter(blockIdOf).length <= 1 && new Set(originals.map(boxOf)).size === 1;
+      if (mergeable && inTheirWords(text, originals)) return [{ lines: mine, text, under }];
+      // As written: one point per line, what was under the first under it.
+      return mine.map((k, at) => ({
+        lines: [k],
+        text: asWritten(k),
+        under: at === 0 ? under : [],
+      }));
     }
     const group = typeof item?.group === "string" ? replyLine(item.group) : null;
     if (!group || under.length < 2) return under;
     return [{ group: endPunct(group.replace(/[:：]\s*$/u, "")), under }];
   };
   const points = value.points.flatMap(read);
-  return seen.size === count ? points : null;
+  return seen.size === lines.length ? points : null;
 }
 
 /** An organized outline as Markdown lines at `indent`, each level two spaces
- *  further in. Your lines keep everything but their marker and indent (a
- *  task's box and a block id stay); a group's name is the pen's, named by
- *  `id`. */
+ *  further in. Your point keeps its lines' task box and block id; a group's
+ *  name is the pen's, named by `id`. */
 export function organizedLines(
   points: readonly OrganizedPoint[],
   lines: readonly string[],
   indent: string,
   id: () => string,
 ): string[] {
-  const own = (line: string) =>
-    line
-      .replace(/^[ \t]*([-*+]|\d+[.)])([ \t]+|$)/, "")
-      .replace(/^[ \t]+/, "")
-      .trimEnd();
+  const yours = (p: { lines: number[]; text: string }) => {
+    const originals = p.lines.map((k) => lines[k]!);
+    const block = originals.map(blockIdOf).find(Boolean);
+    return `${boxOf(originals[0]!)}${p.text}${block ? ` ^${block}` : ""}`;
+  };
   const write = (p: OrganizedPoint, at: string): string[] => [
-    "line" in p ? `${at}- ${own(lines[p.line]!)}` : `${at}- ${p.group} ^${id()}`,
+    "group" in p ? `${at}- ${p.group} ^${id()}` : `${at}- ${yours(p)}`,
     ...p.under.flatMap((k) => write(k, `${at}  `)),
   ];
   return points.flatMap((p) => write(p, indent));
@@ -1003,19 +1002,6 @@ export function organizedLines(
 /** How many levels deep an outline goes. */
 export function outlineDepth(points: readonly OrganizedPoint[]): number {
   return points.reduce((most, p) => Math.max(most, 1 + outlineDepth(p.under)), 0);
-}
-
-/** `text` without `cuts`, its spacing tidied where words left. */
-export function applyCuts(text: string, cuts: readonly Cut[]): string {
-  let out = text;
-  for (const cut of [...cuts].sort((a, b) => b.from - a.from)) {
-    out = out.slice(0, cut.from) + out.slice(cut.to);
-  }
-  return out
-    .replace(/[ \t]{2,}/g, " ")
-    .replace(/[ \t]+([,.;:!?])/g, "$1")
-    .replace(/^[ \t]+/, "")
-    .replace(/,([.;:!?])/g, "$1");
 }
 
 export function wordCount(text: string): number {

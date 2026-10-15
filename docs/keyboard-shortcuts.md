@@ -105,7 +105,7 @@ box to type in.
 | Shortcut                      | Action                                                     |
 | ----------------------------- | ---------------------------------------------------------- |
 | Cmd+.                         | Open / close the pen's box                                 |
-| ? ! @ + − # > (or full-width) | At the start of the box or after a space: select that pill (Ask me, Answer, Facts, Mix, Shorten, Organize, New topic); again or Backspace unselects |
+| ! @ [ # (or full-width)       | At the start of the box or after a space: select that pill (Answer, Check, Connect, Organize); again or Backspace unselects |
 | Click a pill                  | Select it (nothing runs yet)                               |
 | Enter                         | Run the selected pill, steered by what you typed; none selected: ask the AI what you typed. What you typed goes in as your own line, the pen's under it |
 | Cmd+Enter (text typed)        | Ask me, steered by what you typed                         |

@@ -30,11 +30,9 @@ import { getFileStem } from "@/lib/paths";
 import {
   ECHO_LABELS,
   type Citation,
-  type Cut,
   type PenKind,
   type PenSource,
   answerBefore,
-  applyCuts,
   bodyEnd,
   bodyStart,
   childIndent,
@@ -45,7 +43,6 @@ import {
   combinedLines,
   connectTerms,
   contentWords,
-  cutsFromReply,
   echoLine,
   echoQuote,
   echoedNotes,
@@ -55,6 +52,7 @@ import {
   organizedLines,
   organizeReply,
   outlineDepth,
+  wordCount,
   itemText,
   newPenId,
   noteForPen,
@@ -75,7 +73,6 @@ import {
   subtreeEnd,
   unsealedLine,
   videoPassages,
-  wordCount,
 } from "@/lib/second-pen";
 import { type PenConversation, penConversation, warmPen } from "@/lib/second-pen-agent";
 import { findLinesMentioning, searchPapers } from "@/lib/tauri";
@@ -108,13 +105,13 @@ const ECHO_LABEL_RE = new RegExp(`^(?:${ECHO_LABELS.join("|")}):`);
  *  for more words: enough for it to pick up to three from. */
 const CONNECT_ENOUGH = 6;
 
-/** The pen's own edits: allowed while shorten locks the lines. */
+/** The pen's own edits: allowed while Organize's outline locks the lines. */
 const penEdit = Annotation.define<true>();
 const setLock = StateEffect.define<boolean>();
-/** Redraw: the plugin's own state (armed, a message, cuts) changed. */
+/** Redraw: the plugin's own state (armed, a message) changed. */
 const refresh = StateEffect.define<null>();
 
-/** Shorten's cuts are on screen: the text waits for Enter or Esc. */
+/** Organize's outline is on screen: the text waits for Enter or Esc. */
 const lockField = StateField.define<boolean>({
   create: () => false,
   update(value, tr) {
@@ -320,13 +317,6 @@ type Placement =
   | { mode: "under"; pos: number }
   /** The empty line at `pos` becomes the pen line. */
   | { mode: "slot"; pos: number };
-
-interface ShortenLine {
-  /** Where the line's words start; the text is locked while cuts show. */
-  from: number;
-  text: string;
-  cuts: Array<Cut & { kept: boolean }>;
-}
 
 // One split per version of the text, shared by the hint, Enter and requests.
 const splitCache = new WeakMap<EditorState["doc"], string[]>();
@@ -599,10 +589,6 @@ class PenPlugin {
   private armed: number[] | null = null;
   private conversation: PenConversation | null = null;
   private busyLabel = "Writing…";
-  private shortening: ShortenLine[] | null = null;
-  /** Shorten's last step: Enter asked "Delete these words?"; Enter again
-   *  deletes them, Esc goes back to reviewing the cuts. */
-  private confirming = false;
   private fresh: DecorationSet = Decoration.none;
   private message: { parts: PenHintPart[]; until: number } | null = null;
   private after: { parts: PenHintPart[]; until: number } | null = null;
@@ -740,16 +726,6 @@ class PenPlugin {
         if (end > start) ranges.push(Decoration.mark({ class: "cm-pen-armed" }).range(start, end));
       }
     }
-    this.shortening?.forEach((line, l) =>
-      line.cuts.forEach((cut, c) => {
-        ranges.push(
-          Decoration.mark({
-            class: cut.kept ? "cm-pen-cut cm-pen-cut-kept" : "cm-pen-cut",
-            attributes: { "data-pen-cut": `${l}:${c}`, title: "Click to keep these words" },
-          }).range(line.from + cut.from, line.from + cut.to),
-        );
-      }),
-    );
     // Organize's outline: whole lines tinted. A mark across them would wrap
     // each bullet's marker and knock the list's geometry out of place.
     if (this.organizing && this.organizing.to > this.organizing.from) {
@@ -854,32 +830,6 @@ class PenPlugin {
         parts: [{ text: this.busyLabel }, { gap: true }, { key: "Esc" }, { text: "stop" }],
       };
     }
-    if (this.shortening) {
-      const saved = this.savedWords();
-      if (this.confirming) {
-        return {
-          parts: [
-            { strong: `Delete ${saved} ${saved === 1 ? "word" : "words"}?` },
-            { gap: true },
-            { key: "↵" },
-            { text: "delete" },
-            { key: "Esc" },
-            { text: "keep reviewing" },
-          ],
-        };
-      }
-      return {
-        parts: [
-          { strong: `−${saved} words` },
-          { text: "Only cuts. Click a cut to keep it." },
-          { gap: true },
-          { key: "↵" },
-          { text: "shorten" },
-          { key: "Esc" },
-          { text: "cancel" },
-        ],
-      };
-    }
     if (this.message && now < this.message.until) return { parts: this.message.parts };
     const caretLine = state.doc.lineAt(state.selection.main.head).text;
     // Only a list line can be a take or a pen line: skip the rest cheaply.
@@ -912,7 +862,7 @@ class PenPlugin {
   /* ------------------------------------------------------------ keys */
 
   arm(): void {
-    if (this.shortening || this.organizing) return;
+    if (this.organizing) return;
     if (this.conversation) {
       this.say("The pen is still writing. Esc stops it.");
       return;
@@ -965,14 +915,13 @@ class PenPlugin {
         title: "The evidence for and against the line. You make the call.",
       },
       { key: "[[", label: "Connect", title: "What you wrote before, in other notes, on this." },
-      { key: "−", label: "Shorten", title: "Proposes cuts. Nothing is added." },
       // Only with several lines selected: there's something to regroup.
       ...(withText.length > 1
         ? [
             {
               key: "#",
               label: "Organize",
-              title: "Regroups the selected lines, in your own words.",
+              title: "Regroups the selected lines into a short outline, in your words.",
             },
           ]
         : []),
@@ -1042,7 +991,7 @@ class PenPlugin {
     this.closePop(true);
     // What you typed goes in the note first, as your own line under the line
     // you're on (or on the empty line), and what the pen writes goes under it.
-    // Shorten and Organize change your lines: for them it only steers.
+    // Organize changes your lines: for it, it only steers.
     if (text && WRITES_TYPED.has(key === "[[" ? "[" : key) && !this.conversation) {
       const { state } = this.view;
       const lines = docLines(state);
@@ -1066,9 +1015,6 @@ class PenPlugin {
       case "#":
         void this.organize(text);
         break;
-      case "−":
-        void this.shorten(text);
-        break;
     }
   }
 
@@ -1076,10 +1022,6 @@ class PenPlugin {
   escape(): boolean {
     if (this.armed) {
       this.closePop(true);
-      return true;
-    }
-    if (this.shortening) {
-      this.shortenKey("Escape");
       return true;
     }
     if (this.conversation) {
@@ -1097,7 +1039,7 @@ class PenPlugin {
    *  it without a comparison); false for a plain Enter. */
   enter(alt = false): boolean {
     const { state } = this.view;
-    if (!state.selection.main.empty || this.shortening) return false;
+    if (!state.selection.main.empty) return false;
     const lines = docLines(state);
     const i = caretIndex(state);
     const sealed = sealedAbove(lines, i);
@@ -1122,7 +1064,7 @@ class PenPlugin {
   /** Tab on the line under an opened answer and your take: Combine. */
   tab(): boolean {
     const { state } = this.view;
-    if (!state.selection.main.empty || this.shortening) return false;
+    if (!state.selection.main.empty) return false;
     const i = caretIndex(state);
     if (!combineAt(docLines(state), i)) return false;
     void this.combine(i);
@@ -1139,70 +1081,6 @@ class PenPlugin {
     void this.combine(this.view.state.doc.lineAt(pos).number - 1);
   }
 
-  clickCut(target: HTMLElement): boolean {
-    const at = target.closest<HTMLElement>("[data-pen-cut]")?.dataset.penCut;
-    if (!at || !this.shortening) return false;
-    const [l, c] = at.split(":").map(Number);
-    const cut = this.shortening[l!]?.cuts[c!];
-    if (!cut) return false;
-    cut.kept = !cut.kept;
-    // Changing the cuts goes back to reviewing them.
-    if (this.confirming) this.askConfirm(false);
-    else this.redraw();
-    return true;
-  }
-
-  /** The words the cuts still marked would remove. */
-  private savedWords(): number {
-    return (this.shortening ?? []).reduce(
-      (n, line) =>
-        n +
-        wordCount(line.text) -
-        wordCount(
-          applyCuts(
-            line.text,
-            line.cuts.filter((c) => !c.kept),
-          ),
-        ),
-      0,
-    );
-  }
-
-  /** Shorten's keys: Enter asks to confirm, then deletes; Esc steps back
-   *  (from the question to the cuts, from the cuts to your lines as they
-   *  were). */
-  shortenKey(key: "Enter" | "Escape"): void {
-    if (key === "Enter") {
-      if (this.confirming || this.savedWords() === 0) this.endShorten(this.confirming);
-      else this.askConfirm(true);
-    } else if (this.confirming) this.askConfirm(false);
-    else this.endShorten(false);
-  }
-
-  /** The question, right under the last line being shortened, or gone. */
-  private askConfirm(on: boolean): void {
-    this.confirming = on;
-    const last = this.shortening?.[this.shortening.length - 1];
-    let pending: Pending | null = null;
-    if (on && last) {
-      const saved = this.savedWords();
-      pending = {
-        ...this.spotFor({ mode: "under", pos: this.view.state.doc.lineAt(last.from).from }),
-        text: `Delete ${saved} ${saved === 1 ? "word" : "words"}?`,
-        busy: false,
-        keys: [
-          ["↵", "delete"],
-          ["Esc", "keep reviewing"],
-        ],
-      };
-    }
-    this.view.dispatch({ effects: [setPending.of(pending), refresh.of(null)] });
-  }
-
-  isShortening(): boolean {
-    return this.shortening !== null;
-  }
-
   isOrganizing(): boolean {
     return this.organizing !== null;
   }
@@ -1214,29 +1092,6 @@ class PenPlugin {
     this.organizing = null;
     this.view.dispatch({
       changes: keep ? [] : [{ from: organized.from, to: organized.to, insert: organized.original }],
-      effects: [setLock.of(false), setPending.of(null), refresh.of(null)],
-      annotations: penEdit.of(true),
-      userEvent: "input.pen",
-    });
-  }
-
-  endShorten(apply: boolean): void {
-    const lines = this.shortening;
-    if (!lines) return;
-    this.shortening = null;
-    this.confirming = false;
-    const changes: ChangeSpec[] = apply
-      ? lines.map((line) => ({
-          from: line.from,
-          to: line.from + line.text.length,
-          insert: applyCuts(
-            line.text,
-            line.cuts.filter((c) => !c.kept),
-          ),
-        }))
-      : [];
-    this.view.dispatch({
-      changes,
       effects: [setLock.of(false), setPending.of(null), refresh.of(null)],
       annotations: penEdit.of(true),
       userEvent: "input.pen",
@@ -1386,9 +1241,10 @@ class PenPlugin {
     }
   }
 
-  /** `#`: the selected lines regrouped into a MECE outline, as deep as
+  /** `#`: the selected lines regrouped into a short MECE outline, as deep as
    *  their meaning goes, in their place until Enter keeps it or Esc puts your
-   *  lines back. Your lines keep their words; the groups it names are its. */
+   *  lines back. Each point is your words, cut short; the groups it names are
+   *  its. */
   private async organize(direction = ""): Promise<void> {
     const { state } = this.view;
     const lines = docLines(state);
@@ -1422,7 +1278,7 @@ class PenPlugin {
         }),
       );
       this.finish(conversation);
-      const points = organizeReply(reply, yours.length);
+      const points = organizeReply(reply, yours);
       if (!points) {
         this.say("Couldn't organize these lines. Try again.");
         return;
@@ -1438,6 +1294,8 @@ class PenPlugin {
         return id;
       }).join("\n");
       const depth = outlineDepth(points);
+      const before = wordCount(yours.map(itemText).join(" "));
+      const after = wordCount(organized.split("\n").map(itemText).join(" "));
       this.spot = null;
       this.organizing = { from, to: from + organized.length, original: block };
       this.view.dispatch({
@@ -1451,10 +1309,7 @@ class PenPlugin {
             // Lined up with the outline's words: past the bullets' slot.
             depth: isItem(organized.split("\n")[0] ?? "") ? 1 : 0,
             bullet: false,
-            text:
-              depth > 1
-                ? `Organized in ${depth} levels, in your words.`
-                : "Organized, in your words.",
+            text: `Organized in ${depth} ${depth === 1 ? "level" : "levels"}, ${before} → ${after} words, in your words.`,
             busy: false,
             keys: [
               ["↵", "keep"],
@@ -1465,62 +1320,6 @@ class PenPlugin {
         ],
         scrollIntoView: true,
       });
-    } catch (error) {
-      this.fail(conversation, error);
-    }
-  }
-
-  /** `−`: cuts on the lines, struck through until Enter or Esc. */
-  private async shorten(direction = ""): Promise<void> {
-    const { state } = this.view;
-    const lines = docLines(state);
-    const targets = targetIndexes(state).filter((i) => itemText(lines[i]!));
-    if (!targets.length) {
-      this.say("Put the caret on a line, or select some, first.");
-      return;
-    }
-    const texts = targets.map((i) => lines[i]!.slice(bodyStart(lines[i]!), bodyEnd(lines[i]!)));
-    // No line to write: the progress shows under the last line it reads.
-    const conversation = this.start("Finding words to cut…", {
-      mode: "under",
-      pos: state.doc.line(targets[targets.length - 1]! + 1).from,
-    });
-    this.placement = null;
-    try {
-      const reply = await conversation.send(
-        penPrompt({
-          ...this.promptBase(lines, targets, direction),
-          source: null,
-          ask: { task: "shorten" },
-        }),
-      );
-      this.finish(conversation);
-      const cuts = cutsFromReply(reply, texts);
-      // The text moved while it read: its cuts no longer line up.
-      const now = docLines(this.view.state);
-      const moved = targets.some(
-        (i, k) => now[i]?.slice(bodyStart(now[i]!), bodyEnd(now[i]!)) !== texts[k],
-      );
-      if (!cuts || moved) {
-        this.say(
-          moved
-            ? "The lines changed while the pen read them. Try again."
-            : "Couldn't shorten this. Try again.",
-        );
-        return;
-      }
-      if (cuts.every((c) => c.length === 0)) {
-        this.say("Nothing to cut. Every word is pulling its weight.");
-        return;
-      }
-      this.shortening = targets
-        .map((i, k) => ({
-          from: this.view.state.doc.line(i + 1).from + bodyStart(now[i]!),
-          text: texts[k]!,
-          cuts: cuts[k]!.map((cut) => ({ ...cut, kept: false })),
-        }))
-        .filter((line) => line.cuts.length);
-      this.view.dispatch({ effects: [setLock.of(true), refresh.of(null)] });
     } catch (error) {
       this.fail(conversation, error);
     }
@@ -2181,13 +1980,6 @@ export function secondPen(getFilePath: () => string): Extension {
             event.stopPropagation();
             return true;
           }
-          if (pen.isShortening()) {
-            if (event.key === "Enter" || event.key === "Escape") pen.shortenKey(event.key);
-            else return false;
-            event.preventDefault();
-            event.stopPropagation();
-            return true;
-          }
           if (
             mod &&
             !event.altKey &&
@@ -2214,13 +2006,9 @@ export function secondPen(getFilePath: () => string): Extension {
           }
           return false;
         },
-        mousedown(event: MouseEvent, view: EditorView): boolean {
+        mousedown(_event: MouseEvent, view: EditorView): boolean {
           const pen = view.plugin(plugin);
           if (!pen) return false;
-          if (event.target instanceof HTMLElement && pen.clickCut(event.target)) {
-            event.preventDefault();
-            return true;
-          }
           if (pen.isArmed()) pen.escape();
           return false;
         },

@@ -51,31 +51,6 @@
   }
 }
 
-/* Shorten: red pencil, deletion only. A kept cut reads as text again. */
-.cm-editor .cm-pen-cut {
-  cursor: pointer;
-  color: var(--color-text-faint);
-  text-decoration: line-through;
-  text-decoration-color: var(--color-status-danger);
-  text-decoration-thickness: 1.5px;
-  border-radius: var(--radius-hairline);
-  transition:
-    color var(--motion-fast) var(--ease-out),
-    background-color var(--motion-fast) var(--ease-out);
-}
-
-.cm-editor .cm-pen-cut-kept {
-  color: inherit;
-  text-decoration-color: transparent;
-  background: var(--color-bg-subtle);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .cm-editor .cm-pen-cut:hover {
-    background: var(--color-bg-hover);
-  }
-}
-
 /* A fact's paper: a pill after the claim. */
 .cm-pen-cite {
   display: inline-flex;

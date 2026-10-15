@@ -336,13 +336,13 @@ describe("Journeys: second pen", function () {
     // After its 150ms entrance, which starts it a few pixels low.
     await browser.pause(300);
     const box = await pop();
-    for (const label of ["Answer", "Check", "Connect", "Shorten"]) {
+    for (const label of ["Answer", "Check", "Connect"]) {
       ok(
         box.pills.some((p) => p.includes(label)),
         `no ${label} pill: ${JSON.stringify(box.pills)}`,
       );
     }
-    for (const gone of ["Ask me", "Facts", "Mix"]) {
+    for (const gone of ["Ask me", "Facts", "Mix", "Shorten"]) {
       ok(!box.pills.some((p) => p.includes(gone)), `${gone} should be gone: ${box.pills}`);
     }
     ok(box.focused, "the box to type in should have the keyboard");
@@ -725,42 +725,6 @@ describe("Journeys: second pen", function () {
     ok(text.includes("^ai-e-bbbb") && text.includes("^ai-e-cccc"), `earlier echoes stay:\n${text}`);
   });
 
-  it("PEN-08 ⌘. − proposes cuts; Enter asks, Esc goes back, Enter again deletes them", async function () {
-    const path = `${root}/Notes/Pen.md`;
-    await armOn("I think we basically");
-    await pick("-");
-    await browser.waitUntil(
-      () => browser.execute(() => document.querySelectorAll(".cm-pen-cut").length > 0),
-      { timeout: AI_TIMEOUT, timeoutMsg: `no cuts shown: ${await barText()}` },
-    );
-    ok((await barText()).includes("words"), await barText());
-    // Enter asks first; nothing is deleted until the second Enter.
-    const before = await readFile(path);
-    await key("Enter");
-    await browser.waitUntil(async () => /Delete \d+ words?\?/.test(await barText()), {
-      timeout: 3_000,
-      timeoutMsg: `Enter should ask before deleting: ${await barText()}`,
-    });
-    ok((await readFile(path)) === before, "nothing should be deleted before confirming");
-    await key("Escape");
-    await browser.waitUntil(async () => !/Delete \d+ words?\?/.test(await barText()), {
-      timeout: 3_000,
-      timeoutMsg: "Esc should go back to reviewing the cuts",
-    });
-    ok(
-      await browser.execute(() => document.querySelectorAll(".cm-pen-cut").length > 0),
-      "the cuts should still show",
-    );
-    await key("Enter");
-    await key("Enter");
-    const text = await waitForDisk(
-      path,
-      (t) => !t.includes("I think we basically just need to really sleep on it"),
-      "expected the cuts applied",
-    );
-    ok(/sleep on it/.test(text), `the line lost its meaning:\n${text}`);
-  });
-
   it("PEN-16 Organize on several lines, then Esc puts your lines back exactly", async function () {
     const path = `${root}/Notes/Pen.md`;
     const before = await readFile(path);
@@ -777,7 +741,7 @@ describe("Journeys: second pen", function () {
     await waitForDisk(path, (t) => t === before, "Esc should put the lines back exactly");
   });
 
-  it("PEN-17 Organize, then Enter keeps it, in your own words", async function () {
+  it("PEN-17 Organize, then Enter keeps it, shorter, in your own words", async function () {
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("sleep on it");
     await selectTo("why does sleep help memory?");
@@ -787,10 +751,15 @@ describe("Journeys: second pen", function () {
       () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
       { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
     );
+    // Under the outline, where the pen wrote it.
+    const said = await browser.execute(
+      () => document.querySelector(".cm-pen-pending-text")?.textContent ?? "",
+    );
+    ok(/Organized in \d+ levels?, \d+ → \d+ words/.test(said), `under the outline: ${said}`);
     await key("Enter");
     const text = await waitForDisk(
       path,
-      (t) => t.includes("why does sleep help memory?") && t.includes("sleep on it"),
+      (t) => /sleep help\w* memory/.test(t) && t.includes("sleep on it"),
       "the outline should keep your own words",
     );
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
@@ -825,9 +794,9 @@ describe("Journeys: second pen", function () {
     );
   });
 
-  it("PEN-30 Organize builds a deep MECE outline: your lines once each, the pen's group names in its ink", async function () {
+  it("PEN-30 Organize builds a short, deep MECE outline in your words, group names in the pen's ink", async function () {
     const path = `${root}/Notes/Side projects.md`;
-    const yours = (await readFile(path)).split("\n").filter((l) => l.trim());
+    const before = await readFile(path);
     await openViaPalette("Side projects");
     await caretAfter("too many things at once");
     await selectTo("the CLI I shipped in a weekend");
@@ -839,28 +808,25 @@ describe("Journeys: second pen", function () {
       { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
     );
     await key("Enter");
-    const text = await waitForDisk(path, (t) => /\^ai-g-|^ {2}/m.test(t), "expected an outline");
+    const text = await waitForDisk(path, (t) => t !== before, "expected an outline");
     const lines = text.split("\n").filter((l) => l.trim());
-    const words = (l) => l.replace(/^\s*- /, "").trim();
-    // Every line of yours once, in your words; every other line is the pen's group name.
-    for (const line of yours) {
-      const count = lines.filter((l) => words(l) === words(line)).length;
-      ok(count === 1, `"${words(line)}" should be there once:\n${text}`);
+    const words = (t) => t.toLowerCase().match(/[a-z0-9']+/g) ?? [];
+    const yours = new Set(words(before));
+    const groups = lines.filter((l) => / \^ai-g-[a-z0-9]{4}$/.test(l));
+    const points = lines.filter((l) => !groups.includes(l));
+    // Shorter: no more words of yours than you wrote.
+    const count = points.flatMap((l) => words(l.replace(/^\s*- /, ""))).length;
+    ok(count <= words(before).length, `longer than what you wrote:\n${text}`);
+    // Your words: at most one in four of a point's words isn't yours.
+    for (const l of points) {
+      const w = words(l.replace(/^\s*- /, ""));
+      const added = w.filter((x) => !yours.has(x)).length;
+      ok(added <= Math.max(1, Math.ceil(w.length / 4)), `not in your words: "${l}"\n${text}`);
     }
-    const mine = new Set(yours.map(words));
-    for (const line of lines.filter((l) => !mine.has(words(l)))) {
-      ok(/ \^ai-g-[a-z0-9]{4}$/.test(line), `a line that isn't yours is the pen's group:\n${text}`);
-    }
-    // No level skipped; the line you nested under the boring middle stays under it.
+    // No level skipped.
     const indent = (l) => /^ */.exec(l)[0].length;
     lines.forEach((l, k) =>
       ok(k === 0 || indent(l) <= indent(lines[k - 1]) + 2, `skipped a level:\n${text}`),
-    );
-    const middle = lines.findIndex((l) => l.includes("the boring middle part"));
-    const stall = lines.findIndex((l) => l.includes("I always stall at settings pages"));
-    ok(
-      stall > middle && indent(lines[stall]) > indent(lines[middle]),
-      `settings stall left its point:\n${text}`,
     );
   });
 });
