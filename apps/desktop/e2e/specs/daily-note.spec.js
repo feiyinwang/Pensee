@@ -123,7 +123,7 @@ describe("Daily note", function () {
   });
 
   it("exposes the palette command", async function () {
-    await pressCmd("p");
+    await pressCmd("f");
     const command = await $('[cmdk-item][data-value="daily-note"]');
     await command.waitForExist({ timeout: 5_000 });
     ok((await command.getText()).includes("Open Today's Note"));

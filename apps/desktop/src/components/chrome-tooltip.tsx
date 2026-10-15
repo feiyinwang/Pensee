@@ -14,7 +14,7 @@ let lastClosedAt = 0;
  * A tooltip for window chrome: under a button, or right of a sidebar row. The
  * webview never shows a native `title`, so the chrome draws its own. Plain DOM,
  * no Arc: the chrome mounts at startup and Arc stays behind a dynamic import
- * (docs/arc.md). `keys` is the shortcut, one keycap each (`["⌥", "⌘", "P"]`).
+ * (docs/arc.md). `keys` is the shortcut, one keycap each (`["⌘", "P"]`).
  * Spread `triggerProps` on the trigger and render `tooltip` beside it.
  */
 export function useChromeTooltip(

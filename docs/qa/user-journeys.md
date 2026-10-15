@@ -47,7 +47,7 @@ paints (a short fade, rise and unblur, as one piece).
 
 ## Sidebar — SB
 
-**Feature:** The sidebar shows the Search field (⌘P), **Today**, **Spaces** (Projects,
+**Feature:** The sidebar shows the Search field (⌘F), **Today**, **Spaces** (Projects,
 Library, Files), Pinned and Recents. **Files** holds the folder tree.
 **Spec:** SPECs/spaces-spec.md, SPECs/sidebar-drag-and-drop-move-spec.md
 **Code:** `src/components/sidebar/`, `src/components/chrome-tooltip.tsx`, `src/hooks/use-file-tree.ts`, `src-tauri/src/commands/fs.rs`, `src-tauri/src/watcher.rs`
@@ -61,8 +61,10 @@ Library, Files), Pinned and Recents. **Files** holds the folder tree.
 | SB-05 | Create a note outside Pensée (shell) in the vault | It appears in Files within a couple of seconds | manual     |
 | SB-06 | Drag a note onto a folder in Files                | The file moves on disk; its open tab follows   | you        |
 | SB-07 | Click the **Search** field at the top             | The command palette opens                      | auto: core |
-| SB-08 | Hover the sidebar button, top left                | A tooltip under it reads `Hide sidebar (⌘[)`   | auto: core |
+| SB-08 | Hover the sidebar button, top left                | A tooltip under it reads `Hide sidebar ⌘ [`    | auto: core |
 | SB-09 | Look at **Spaces** in the sidebar                 | Projects, Library, Files; no Inspirations      | auto: core |
+| SB-10 | Hover **Today**, then each built-in space         | A tooltip right of the row: `Go to Projects ⌘ P` (Today: `Open today's note ⌘ T`) | auto: core |
+| SB-11 | From a note, press ⌘P, ⌘L, ⌘O                     | Projects, Library, Files open in turn          | auto: core |
 
 ## Tabs and columns — TAB
 
@@ -99,18 +101,18 @@ Library item.
 
 ## Command palette and search — PAL
 
-**Feature:** ⌘P searches files and commands; ⌘O goes to a file; a pasted link
+**Feature:** ⌘F searches files and commands; a pasted link
 offers **Add to Library**; content search finds text inside notes.
 **Spec:** SPECs/fuzzy-search-grep-spec.md, SPECs/add-to-library-spec.md
 **Code:** `src/components/command-palette/`, `src-tauri/src/commands/search.rs`
 
 | ID     | Journey                                          | Expected                                          | Check      |
 | ------ | ------------------------------------------------ | ------------------------------------------------- | ---------- |
-| PAL-01 | ★ ⌘O, type part of a note's name, Enter          | That note opens                                   | auto: core |
-| PAL-02 | ⌘P, type a command name (e.g. "Toggle Calendar") | The command runs                                  | manual     |
-| PAL-03 | ⌘O, paste a URL                                  | An **Add to Library** row is on top, kind guessed | manual     |
+| PAL-01 | ★ ⌘F, type part of a note's name, Enter          | That note opens                                   | auto: core |
+| PAL-02 | ⌘F, type a command name (e.g. "Toggle Calendar") | The command runs                                  | manual     |
+| PAL-03 | ⌘F, paste a URL                                  | An **Add to Library** row is on top, kind guessed | manual     |
 | PAL-04 | Search for a word that is only inside a note     | The note is found with the matching line          | manual     |
-| PAL-05 | ⌘P, look at the field and headings               | The field reads *Search notes and commands…*; no text on screen is in all caps | auto: palette |
+| PAL-05 | ⌘F, look at the field and headings               | The field reads *Search notes and commands…*; no text on screen is in all caps | auto: palette |
 
 ## Editor — ED
 
@@ -129,13 +131,14 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ED-06 | Type `1. a`, Enter, Tab                                  | Nested numbering reads `1.1` style, like a word processor      | manual                      |
 | ED-07 | Click a task checkbox                                    | It toggles `[ ]` ↔ `[x]` in the file                           | manual                      |
 | ED-08 | ⌘⌥1 … ⌘⌥6, then ⌘⌥0                                      | The line becomes H1…H6, then plain paragraph                   | legacy: empty-heading-enter |
-| ED-09 | ⌘F, type a word, Enter; replace one, then **All**        | Matches highlight and step; replacements are written           | manual                      |
+| ED-09 | ⌘⇧F, type a word, Enter; replace one, then **All**        | Matches highlight and step; replacements are written           | manual                      |
 | ED-10 | Triple-click a paragraph; double-click a bullet's marker | Selection stops at the text's end with a ¶; marker excluded    | manual                      |
 | ED-11 | ⌘Z, ⌘⇧Z after typing                                     | Undo and redo the edit; history does not leak across files     | manual                      |
 | ED-12 | Change an open note on disk from the shell               | The editor shows the new text without losing the tab           | manual                      |
 | ED-13 | Click an unchecked task, then click it again             | Box pops, tick draws in, six dots burst once; uncheck is still | auto: editor                |
 | ED-14 | Type a nested bullet; hover its parent, then the nested one | A faint straight guide drops from the parent; hovering the parent darkens it, hovering the nested (childless) one clears it | auto: lists |
 | ED-15 | Under a nested bullet, type an unindented line, then more nested bullets | No guide crosses the line: the guide stops above it and starts again below for the bullets after it | auto: lists |
+| ED-16 | In a note, ⌘⇧F, Esc, then ⌘F                             | The note's find bar opens and closes; then search opens, with no find bar | auto: editor |
 
 ## Links — LNK
 
@@ -204,7 +207,7 @@ quarter or year creates or opens its note (`2026-10-13`, `2026-W42`, `2026-10`,
 | CAL-06 | **Today** after notes exist                             | Back on this month; days with a note show a dot             | auto: calendar |
 | CAL-07 | ⌘-click a day                                           | The note opens in a new column right of the active tab      | auto: calendar |
 | CAL-08 | In a large iCloud vault, open the panel and click a day | Dots appear at once; the note opens within a second         | you            |
-| CAL-09 | Hover the calendar button, top right                    | A tooltip under it reads `Show calendar (⌘])`               | auto: core     |
+| CAL-09 | Hover the calendar button, top right                    | A tooltip under it reads `Show calendar ⌘ ]`                | auto: core     |
 
 ## Daily note — DN
 
@@ -217,7 +220,7 @@ setting (workspace root when blank) and is reached from ⌘T, the sidebar's
 | ID    | Journey                                              | Expected                                           | Check      |
 | ----- | ---------------------------------------------------- | -------------------------------------------------- | ---------- |
 | DN-01 | ★ Click **Today** in the sidebar                     | Today's note is created if missing and opens       | auto: core |
-| DN-02 | ⌘P → **Open Today's Note** twice                     | The same note opens; its text is never overwritten | manual     |
+| DN-02 | ⌘F → **Open Today's Note** twice                     | The same note opens; its text is never overwritten | manual     |
 | DN-03 | Set Daily Note Folder to `Journal/Daily`, open today | The note is created in that folder                 | manual     |
 | DN-04 | ★ From another note, press ⌘T                        | Today's note is created if missing and opens       | auto: core |
 | DN-05 | Hover **Today** in the sidebar                       | `⌘T` shows at the row's right end                  | you        |
@@ -298,7 +301,7 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | ID    | Journey                                            | Expected                                                                                                      | Check                     |
 | ----- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | YT-01 | Open a note with a YouTube `Link:`                 | The player shows under the properties                                                                         | legacy: youtube-notes     |
-| YT-02 | Play, ⌘P on a line                                 | The line gets a pin; clicking it seeks to that moment                                                         | legacy: youtube-pin-click |
+| YT-02 | Play, ⌘S on a line                                 | The line gets a pin; clicking it seeks to that moment                                                         | legacy: youtube-pin-click |
 | YT-03 | ⌘⇧J anywhere                                       | The front note's video plays or pauses                                                                        | manual                    |
 | YT-04 | ★ Open a video note with a transcript              | A box shows the transcript a sentence a line, the first line in ink; no `<summary>` or `<p>` HTML in the note | auto: youtube             |
 | YT-05 | Click a line in the transcript box                 | That line becomes the one being said, its time (`1:00`) shows, the video plays from it; the box stays a box   | auto: youtube             |
@@ -312,25 +315,25 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-13 | ★ Open a video note in a wide pane, scroll; narrow it | Wide: the box is right of the video, as tall as it, and stays at the top with it; narrow: it is under the video | auto: youtube             |
 | YT-14 | Pick another language in the box's language menu   | The menu lists the video's caption languages, English first; the toggle is read again in it (`lang` kept), the rest of the note untouched | auto: youtube (YouTube) |
 | YT-15 | Add a video whose speech isn't English             | The transcript comes in English when the video has English captions; the menu offers the others              | you                       |
-| YT-16 | Open an older video note with no captions          | No **Transcript** button under the video, only **Pin ⌘P**                                                     | you                       |
-| YT-17 | ⌘P in a video note, then ⌘P in a plain note        | The video note's line gets a pin; in the plain note search opens                                             | auto: podcast (POD-05)    |
+| YT-16 | Open an older video note with no captions          | No **Transcript** button under the video, only **Pin ⌘S**                                                     | you                       |
+| YT-17 | ⌘S in a video note, then ⌘S in a plain note        | The video note's line gets a pin; in the plain note nothing happens                                             | auto: podcast (POD-05)    |
 | YT-18 | Paste a Coursera link into Library's **+**        | It is guessed as a Video; Library has no Courses tab, `Type: Course` notes show under Videos                  | you                       |
 
 ## Podcast notes — POD
 
 **Feature:** A podcast note plays its episode in a card under its properties
 (artwork, title and show, skips, timeline, speed, volume, Pin); adding a
-podcast opens the note, and ⌘⇧J / ⌘P play, pause and pin as on a video.
+podcast opens the note, and ⌘⇧J / ⌘S play, pause and pin as on a video.
 **Spec:** SPECs/podcast-notes-spec.md
 **Code:** `src/components/editor-area/podcast-player.tsx`, `src/components/editor-area/podcast-player.css`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
 
 | ID     | Journey                                       | Expected                                                                                                                                   | Check         |
 | ------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
 | POD-01 | Library → Podcasts → **+**, paste a link, ⌘↵  | The note opens with the player, paused                                                                                                     | auto: podcast |
-| POD-02 | ★ ⌘⇧J, ⌘P on a line, ⌘⇧J                      | It plays; the line gets a pin at that moment; it pauses                                                                                    | auto: podcast |
+| POD-02 | ★ ⌘⇧J, ⌘S on a line, ⌘⇧J                      | It plays; the line gets a pin at that moment; it pauses                                                                                    | auto: podcast |
 | POD-03 | Add an Apple Podcasts or Spotify episode link | The player finds the episode and plays the whole episode, with its artwork, title and show                                                 | you           |
 | POD-04 | Add an episode's page link; Back 15           | The card shows the page's whole artwork (blurred fill around it), title and show, and `< >` beside the speed; the playhead moves back 15 s | auto: podcast |
-| POD-05 | ⌘P in a plain note while a podcast is mounted | Search opens; no pin is written anywhere                                                                                                   | auto: podcast |
+| POD-05 | ⌘S in a plain note while a podcast is mounted | No pin is drawn or written anywhere                                                                                                        | auto: podcast |
 
 ## Agent chat — AG
 
@@ -355,7 +358,7 @@ Window zoom with ⌘= / ⌘- / ⌘0.
 
 | ID     | Journey                                                        | Expected                                                                                        | Check                       |
 | ------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------- |
-| SET-01 | ★ ⌘P → **Settings** (or ⌘,)                                    | Preferences opens in a tab                                                                      | auto: core                  |
+| SET-01 | ★ ⌘F → **Settings** (or ⌘,)                                    | Preferences opens in a tab                                                                      | auto: core                  |
 | SET-02 | Pick another **Accent**                                        | Selection, focus ring, calendar day take the colour                                             | manual                      |
 | SET-03 | Change editor font                                             | The editor text changes at once and after relaunch                                              | legacy: font-picker         |
 | SET-04 | ⌘=, ⌘-, ⌘0                                                     | The window zooms in, out, back to 100%; persists                                                | legacy: window-zoom         |

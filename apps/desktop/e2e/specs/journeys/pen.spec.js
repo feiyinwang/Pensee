@@ -13,7 +13,7 @@ async function readFile(path) {
 }
 
 async function openViaPalette(name) {
-  await pressCmd("o");
+  await pressCmd("f");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);

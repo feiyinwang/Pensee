@@ -141,7 +141,7 @@ describe("YouTube notes", function () {
     }
     await browser.execute(() =>
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "p", metaKey: true, bubbles: true, cancelable: true }),
+        new KeyboardEvent("keydown", { key: "f", metaKey: true, bubbles: true, cancelable: true }),
       ),
     );
     const input = await $("[cmdk-input]");

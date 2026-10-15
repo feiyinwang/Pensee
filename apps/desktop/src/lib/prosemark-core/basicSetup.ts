@@ -57,15 +57,18 @@ export const prosemarkBasicSetup = (): Extension => [
 ];
 
 /** CodeMirror's `defaultKeymap` with indent moved from Mod-[ / Mod-] to
- *  Mod-Shift-[ / Mod-Shift-]. Mod-[ toggles the sidebar app-wide
- *  (`useKeyboardShortcuts`), and CodeMirror only preventDefaults — it never
- *  stops propagation — so leaving indentLess on it would run both. Mod-]
- *  moves with it so the pair stays a pair. Every editor in the app (main,
+ *  Mod-Shift-[ / Mod-Shift-], and without Mod-l (select line). Mod-[ toggles
+ *  the sidebar and Mod-l opens Library app-wide (`useKeyboardShortcuts`), and
+ *  CodeMirror only preventDefaults — it never stops propagation — so leaving
+ *  them bound would run both. Mod-] moves with Mod-[ so the pair stays a
+ *  pair. Every editor in the app (main,
  *  columns, mermaid) pulls this so the keys mean one thing everywhere. */
 export const editorDefaultKeymap = [
   { key: "Mod-Shift-[", run: indentLess },
   { key: "Mod-Shift-]", run: indentMore },
-  ...defaultKeymap.filter((binding) => binding.key !== "Mod-[" && binding.key !== "Mod-]"),
+  ...defaultKeymap.filter(
+    (binding) => binding.key !== "Mod-[" && binding.key !== "Mod-]" && binding.key !== "Mod-l",
+  ),
 ];
 
 export const prosemarkBaseThemeSetup = (): Extension => [

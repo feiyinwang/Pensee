@@ -6,6 +6,7 @@ import {
   Sun03Icon,
   Target02Icon,
 } from "@hugeicons/core-free-icons";
+import { useChromeTooltip } from "@/components/chrome-tooltip";
 import { openTodaysNote } from "@/hooks/use-daily-note";
 import { openSpace, spaceLocationOf, useActiveSpaceKey, useSpaces } from "@/hooks/use-spaces";
 import type { SpaceIcon } from "@/lib/spaces";
@@ -29,41 +30,49 @@ function Row({
   label,
   spaceKey,
   active = false,
-  shortcut,
+  tooltip,
+  keys,
+  keyshortcuts,
   onClick,
 }: {
   icon: IconSvgElement;
   label: string;
   spaceKey?: string;
   active?: boolean;
-  /** The key after ⌘ that does the same, shown on hover. */
-  shortcut?: string;
+  /** What the row does, shown on hover beside its shortcut. */
+  tooltip?: string;
+  /** The shortcut's keycaps (`["⌘", "T"]`). A row without one has no tooltip. */
+  keys?: readonly string[];
+  /** The shortcut for `aria-keyshortcuts` (`Meta+T`). */
+  keyshortcuts?: string;
   onClick: () => void;
 }) {
+  const hint = useChromeTooltip(tooltip ?? label, { keys, side: "right" });
+
   return (
-    <button
-      type="button"
-      data-space-key={spaceKey}
-      className={rowClass(active)}
-      aria-current={active ? "page" : undefined}
-      onClick={onClick}
-    >
-      <span
-        className={`flex w-5 shrink-0 items-center justify-center ${active ? "" : "opacity-60 group-hover:opacity-100"}`}
+    <>
+      <button
+        type="button"
+        data-space-key={spaceKey}
+        className={rowClass(active)}
+        aria-current={active ? "page" : undefined}
+        aria-keyshortcuts={keyshortcuts}
+        onClick={onClick}
+        {...(keys ? hint.triggerProps : {})}
       >
-        <HugeiconsIcon icon={icon} size={16} color="currentColor" strokeWidth={1.75} />
-      </span>
-      <span
-        className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap ${active ? "" : "opacity-60 group-hover:opacity-100"}`}
-      >
-        {label}
-      </span>
-      {shortcut && (
-        <kbd className="pointer-events-none ml-auto shrink-0 text-caption text-[var(--text-muted)] opacity-0 group-hover:opacity-100">
-          ⌘<span className="ml-0.5">{shortcut}</span>
-        </kbd>
-      )}
-    </button>
+        <span
+          className={`flex w-5 shrink-0 items-center justify-center ${active ? "" : "opacity-60 group-hover:opacity-100"}`}
+        >
+          <HugeiconsIcon icon={icon} size={16} color="currentColor" strokeWidth={1.75} />
+        </span>
+        <span
+          className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap ${active ? "" : "opacity-60 group-hover:opacity-100"}`}
+        >
+          {label}
+        </span>
+      </button>
+      {hint.tooltip}
+    </>
   );
 }
 
@@ -83,7 +92,14 @@ export function SidebarSpaces() {
   return (
     <>
       <div className="flex flex-col gap-px">
-        <Row icon={Sun03Icon} label="Today" shortcut="T" onClick={openToday} />
+        <Row
+          icon={Sun03Icon}
+          label="Today"
+          tooltip="Open today's note"
+          keys={["⌘", "T"]}
+          keyshortcuts="Meta+T"
+          onClick={openToday}
+        />
       </div>
       <section className="flex flex-col gap-1" aria-label="Spaces">
         <div className={SIDEBAR_SECTION_LABEL_CLASS}>Spaces</div>
@@ -95,6 +111,9 @@ export function SidebarSpaces() {
               label={space.name}
               spaceKey={space.key}
               active={activeKey === space.key}
+              tooltip={`Go to ${space.name}`}
+              keys={space.shortcut ? ["⌘", space.shortcut] : undefined}
+              keyshortcuts={space.shortcut ? `Meta+${space.shortcut}` : undefined}
               onClick={() => openSpace(spaceLocationOf(space))}
             />
           ))}

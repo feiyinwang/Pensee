@@ -124,7 +124,7 @@ export function CommandPalette() {
   const createPath =
     createBaseDir && trimmedSearch ? toCreatePath(createBaseDir, trimmedSearch) : null;
 
-  // "Add to Library" for a link pasted in ⌘O (SPECs/add-to-library-spec.md);
+  // "Add to Library" for a link pasted in ⌘F (SPECs/add-to-library-spec.md);
   // everything else is added from the composer.
   const wantsLibrary =
     Boolean(root) && !isCompactFileMode && intent === "search" && parseLibraryLink(search) !== null;

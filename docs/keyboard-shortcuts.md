@@ -8,9 +8,11 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 
 | Shortcut        | Action                         |
 | --------------- | ------------------------------ |
-| Cmd+P           | File search (command palette)  |
-| Cmd+O           | Go to file                     |
+| Cmd+F           | Search files and commands      |
 | Cmd+T           | Today's note (made if missing) |
+| Cmd+P           | Go to Projects⁴                |
+| Cmd+L           | Go to Library⁴                 |
+| Cmd+O           | Go to Files⁴                   |
 | Cmd+N           | New note (the composer)        |
 | Cmd+Shift+N     | Composer, dated today          |
 | Cmd+Shift+L     | Composer, ready for Library    |
@@ -29,22 +31,22 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+-           | Zoom out                       |
 | Cmd+0           | Actual size (100%)             |
 | Cmd+J           | Toggle the agent chat          |
-| Cmd+P           | Pin the video's moment¹        |
+| Cmd+S           | Pin the video's moment¹        |
 | Cmd+Shift+J     | Play / pause the video¹        |
 | Shift+< / >     | Video slower / faster²         |
 
 In compact single-file windows, sidebar and tab-management shortcuts do not
-create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
-Cmd+9 are ignored. Cmd+P, Cmd+O, Cmd+N (the palette's create field there),
+create hidden UI state: Cmd+\\, Cmd+[, Cmd+], Cmd+J, Cmd+T, Cmd+P/L/O, Ctrl+Tab, Ctrl+Shift+Tab, and Cmd+1 ...
+Cmd+9 are ignored. Cmd+F, Cmd+N (the palette's create field there),
 and history navigation still work. The composer
 ([SPECs/composer-spec.md](../SPECs/composer-spec.md)) needs a workspace to file
 notes in, so Cmd+Shift+N, Cmd+Shift+L and Cmd+] are inert there too.
 Cmd+Shift+L replaces CodeMirror's select-all-matches binding in the editor.
 
 ¹ Only while a YouTube or podcast note's player is open; handled in
-`video-pin.ts`, not the global hook. Cmd+P pins only in a note that plays a
-video or episode, on its player, or on a board (which swallows Cmd+P anyway);
-everywhere else it is file search, and Cmd+Shift+P is search everywhere
+`video-pin.ts`, not the global hook. Cmd+S pins only in a note that plays a
+video or episode, on its player, or on a board (which swallows Cmd+S anyway);
+everywhere else it does nothing, since notes save themselves
 ([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md),
 [SPECs/podcast-notes-spec.md](../SPECs/podcast-notes-spec.md)). "Video"
 means the episode in a podcast note.
@@ -54,6 +56,11 @@ while one is open), `<` and `>` change its speed instead of typing; elsewhere
 they type.
 
 ³ Writing into a day's note (no title, a date) opens that note instead.
+
+⁴ The letter lives on the built-in space's def (`shortcut` in `lib/spaces.ts`).
+CodeMirror's Cmd+L (select line) is dropped from `editorDefaultKeymap` so the
+key means Library in a note too. Hovering Today or a built-in space in the sidebar shows a tooltip with what it
+does and its keys; spaces you add have no shortcut and no tooltip.
 
 Zoom scales the whole window (WebKit page zoom, persisted in the global
 `appearance.zoom` setting) and steps along the browser ladder 50 · 67 · 75 · 80 ·
@@ -125,7 +132,7 @@ box to type in.
 
 ## Editor (inherited from CodeMirror)
 
-Standard editing shortcuts provided by CodeMirror's basic setup. Indent is rebound from CodeMirror's Cmd+[ / Cmd+] to Cmd+Shift+[ / Cmd+Shift+] in `editorDefaultKeymap` (`basicSetup.ts`), which every editor uses, so Cmd+[ can toggle the sidebar app-wide.
+Standard editing shortcuts provided by CodeMirror's basic setup. Indent is rebound from CodeMirror's Cmd+[ / Cmd+] to Cmd+Shift+[ / Cmd+Shift+] in `editorDefaultKeymap` (`basicSetup.ts`), which every editor uses, so Cmd+[ can toggle the sidebar app-wide. Find is Cmd+Shift+F (`editor-search-extensions.ts`), since Cmd+F is search app-wide; a board's own find & replace is Cmd+Shift+F too.
 
 | Shortcut             | Action                         |
 | -------------------- | ------------------------------ |
@@ -144,7 +151,7 @@ Standard editing shortcuts provided by CodeMirror's basic setup. Indent is rebou
 | Shift+Tab            | Dedent                         |
 | Cmd+Shift+]          | Indent more                    |
 | Cmd+Shift+[          | Indent less                    |
-| Cmd+F                | Find                           |
+| Cmd+Shift+F          | Find in the note               |
 | Cmd+H                | Find and replace               |
 | Cmd+G                | Find next                      |
 | Cmd+Shift+G          | Find previous                  |

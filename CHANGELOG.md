@@ -2,6 +2,9 @@
 
 ## 2026-10-15
 
+- Search is ⌘F now, everywhere (the sidebar's **Search** field shows it). Find in the note you're writing moved to ⌘⇧F, and a board's own find too. ⌘P, ⌘L and ⌘O open Projects, Library and Files instead, so ⌘O no longer opens search.
+- Pinning the moment in a video or podcast note is ⌘S now (**Pin** shows ⌘S). Elsewhere ⌘S does nothing.
+- Every tab in the sidebar has a shortcut: ⌘P opens Projects, ⌘L Library and ⌘O Files, next to ⌘T for Today. Hovering one of them shows a tooltip beside it with what it does and its keys (_Go to Projects_ ⌘ P). The sidebar and calendar buttons' tooltips show their keys the same way.
 - Opening Pensée, the window now settles in instead of popping on: everything fades up a few pixels and comes into focus at once, in about a third of a second. You can click and type straight away. With **Reduce motion** on in macOS, it appears still, as before.
 - ⌘P pins the moment in a video or podcast note: the line you're writing gets the time playing now, and **Pin** shows ⌘P. Everywhere else ⌘P is still search, and ⌘⇧P opens search from anywhere, a video note included. ⌘⇧M no longer pins.
 - Courses are videos now: Library has no **Courses** tab, and notes with `Type: Course` show under **Videos**. A Coursera, Udemy or edX link added to Library is guessed as a video.

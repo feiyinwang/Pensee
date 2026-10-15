@@ -33,7 +33,7 @@ import "./podcast-player.css";
 /**
  * A podcast note plays its episode here, under the properties, sticky at the
  * top of the note like a YouTube note's player (SPECs/podcast-notes-spec.md).
- * It joins the same player registry, so ⌘⇧J, ⌘P, `<` / `>` and pins work
+ * It joins the same player registry, so ⌘⇧J, ⌘S, `<` / `>` and pins work
  * the same.
  */
 export function PodcastPlayer({ filePath }: { filePath: string }) {

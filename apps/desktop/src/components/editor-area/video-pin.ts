@@ -27,7 +27,7 @@ import { showEditorNotice } from "./editor-notice-store";
 import { blockEmbedHost, liveEditorsFor } from "./linked-block-sync";
 
 // Pins on a YouTube note (SPECs/youtube-notes-spec.md): the `^yt-<seconds>`
-// id drawn as a pin that plays from that moment, and ⌘P / **Pin**, which
+// id drawn as a pin that plays from that moment, and ⌘S / **Pin**, which
 // stamps the block at the caret with the video's time — or, with a board open
 // over a page, adds the moment to the board.
 
@@ -193,7 +193,7 @@ export function toggleVideo(): void {
 /**
  * Words typed into a video's note soon after it paused are a note on that
  * moment: the block they land in gets a pin a few seconds before the pause
- * (AUTO_PIN_LEAD_SECONDS), as if ⌘P had been pressed then. Waits for words,
+ * (AUTO_PIN_LEAD_SECONDS), as if ⌘S had been pressed then. Waits for words,
  * so a bullet marker alone doesn't pin, and for an IME composition to end.
  * A block that already has an id keeps it.
  */
@@ -241,7 +241,7 @@ function autoPinAtCaret(view: EditorView, notePath: string): void {
   });
 }
 
-export const PIN_SHORTCUT_LABEL = "⌘P";
+export const PIN_SHORTCUT_LABEL = "⌘S";
 
 let installed = false;
 /** Last element focused outside a player, so starting a video by clicking in
@@ -262,9 +262,9 @@ function speedKeyTarget(): VideoPlayer | null {
   return editing || boardHasFocus() ? null : currentVideoPlayer();
 }
 
-/** Whether ⌘P pins the moment here instead of opening search: in a note
- *  that plays a video or episode, on its player, or on a board while one is
- *  mounted (a board swallows ⌘P anyway). Search keeps ⌘P everywhere else. */
+/** Whether ⌘S pins the moment here: in a note that plays a video or
+ *  episode, on its player, or on a board while one is mounted (a board
+ *  swallows ⌘S anyway). Everywhere else ⌘S does nothing. */
 function pinKeyHere(): boolean {
   const focused = focusedNote();
   if (focused) return videoPlayerFor(focused.path) !== null;
@@ -273,7 +273,7 @@ function pinKeyHere(): boolean {
   return boardHasFocus() && currentVideoPlayer() !== null;
 }
 
-/** ⌘P (pin) where `pinKeyHere`, ⌘⇧J (play/pause) anywhere in the window while
+/** ⌘S (pin) where `pinKeyHere`, ⌘⇧J (play/pause) anywhere in the window while
  *  a player is mounted, `<` / `>` (speed) in a video's note, and the focus tracking
  *  `returnFocus` needs. Installed once, by the first player. */
 export function installVideoPinShortcut(): void {
@@ -299,8 +299,7 @@ export function installVideoPinShortcut(): void {
         return;
       }
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
-      // Before the global ⌘P (search), which listens on the window.
-      if (!event.shiftKey && event.key.toLowerCase() === "p") {
+      if (!event.shiftKey && event.key.toLowerCase() === "s") {
         if (!pinKeyHere()) return;
         event.preventDefault();
         event.stopPropagation();

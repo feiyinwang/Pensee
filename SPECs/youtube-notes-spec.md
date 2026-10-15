@@ -39,7 +39,7 @@ selected.
     under `writer.video-player`.
 - Scrolling over the video scrolls the note; pinching over it reaches the
   tab columns' pinch like a pinch anywhere else.
-- Under the video is one row with a **Pin** button and its shortcut (⌘P).
+- Under the video is one row with a **Pin** button and its shortcut (⌘S).
 - **`<` / `>`** (Shift+, / Shift+. on US keyboards) step the speed down or
   up YouTube's list in the video's note, and the new speed shows on the
   video for a moment. They never type there (`<` and `>` can't be typed in
@@ -70,10 +70,10 @@ selected.
   moving and copying.
 - **Removing.** Backspace right after the pin removes it as one unit, and
   undo puts it back.
-- **⌘P is the pin key** in a note that plays a video or episode, on its
-  player, and on a board while a player is mounted; search keeps ⌘P
-  everywhere else and ⌘⇧P everywhere.
-- **Pinning** (⌘P or **Pin**) uses the video's current time and acts on the
+- **⌘S is the pin key** in a note that plays a video or episode, on its
+  player, and on a board while a player is mounted; elsewhere ⌘S does
+  nothing (notes save themselves). It was ⌘P until ⌘P became Projects.
+- **Pinning** (⌘S or **Pin**) uses the video's current time and acts on the
   note's caret:
   - On an empty line, the line becomes `- ` plus the pin.
   - On an empty bullet, the bullet gets the pin.
@@ -87,7 +87,7 @@ selected.
 - **Pin by writing.** Pause the video (any way but buffering or the end)
   and start writing in its note within 15 seconds: once the caret's line
   has words (not a bare `-` or `1.`), its block gets a pin 5 seconds before
-  the pause, as if ⌘P had been pressed then. Playing again cancels it. A
+  the pause, as if ⌘S had been pressed then. Playing again cancels it. A
   block that already has an id, or one that can't carry one (code, table),
   is left alone. It waits for an IME composition to end. Paste doesn't
   count; only typing does.

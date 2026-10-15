@@ -7,7 +7,7 @@ import { useChromeTooltip } from "@/components/chrome-tooltip";
 export function CalendarToggleButton() {
   const isVisible = useCalendarPanelVisible();
   const label = isVisible ? "Hide calendar" : "Show calendar";
-  const { triggerProps, tooltip } = useChromeTooltip(`${label} (⌘])`);
+  const { triggerProps, tooltip } = useChromeTooltip(label, { keys: ["⌘", "]"] });
 
   return (
     <>

@@ -5,14 +5,14 @@ import { pressCmd } from "./_helpers.js";
 
 describe("Journeys: command palette", function () {
   before(async function () {
-    // ⌘P does nothing until the workspace has loaded.
+    // ⌘F does nothing until the workspace has loaded.
     await $("[data-sidebar-surface-content] [data-sidebar-search-button]").waitForExist({
       timeout: 10_000,
     });
   });
 
-  it("PAL-05 ⌘P reads 'Search notes and commands…' and nothing is in all caps", async function () {
-    await pressCmd("p");
+  it("PAL-05 ⌘F reads 'Search notes and commands…' and nothing is in all caps", async function () {
+    await pressCmd("f");
     const input = await $("[cmdk-input]");
     await input.waitForExist({ timeout: 5_000 });
     await $("[cmdk-group-heading]").waitForExist({ timeout: 5_000 });

@@ -15,11 +15,13 @@ export async function invoke(command, args) {
   );
 }
 
-/** A Cmd+key shortcut, dispatched to the document like the global hook expects. */
-export async function pressCmd(key, { shift = false } = {}) {
+/** A Cmd+key shortcut, dispatched to the document like the global hook expects.
+ *  `inFocus` sends it to the focused element instead, so the editor's own
+ *  keymap sees it first, as a real press would. */
+export async function pressCmd(key, { shift = false, inFocus = false } = {}) {
   await browser.execute(
-    (pressedKey, shiftKey) => {
-      document.dispatchEvent(
+    (pressedKey, shiftKey, inFocus) => {
+      (inFocus ? (document.activeElement ?? document) : document).dispatchEvent(
         new KeyboardEvent("keydown", {
           key: pressedKey,
           metaKey: true,
@@ -31,6 +33,7 @@ export async function pressCmd(key, { shift = false } = {}) {
     },
     key,
     shift,
+    inFocus,
   );
 }
 

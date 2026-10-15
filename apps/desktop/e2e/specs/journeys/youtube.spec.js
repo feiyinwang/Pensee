@@ -67,9 +67,9 @@ async function shownButton(label) {
   throw new Error(`no ${label} button on screen in the transcript box`);
 }
 
-/** Open a note from ⌘O. */
+/** Open a note from ⌘F. */
 async function openNote(name) {
-  await pressCmd("o");
+  await pressCmd("f");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);

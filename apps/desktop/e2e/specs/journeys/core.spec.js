@@ -19,7 +19,8 @@ import {
 
 const editorText = () =>
   browser.execute(() => {
-    const editors = [...document.querySelectorAll(".cm-content")];
+    const scope = document.querySelector("[data-column-tab][data-focused]") ?? document;
+    const editors = [...scope.querySelectorAll(".cm-content")];
     const visible = editors.find((el) => el.offsetParent !== null);
     return visible ? visible.innerText : null;
   });
@@ -30,9 +31,34 @@ async function readFile(path) {
   return result.value.content;
 }
 
-/** Open a note by name through ⌘O, the way PAL-01 does. */
+/** Hover `selector` and read its chrome tooltip as "Label ⌘ P", then unhover.
+ *  The WebDriver plugin sends no pointer events: dispatch the ones React listens for. */
+async function hoverTooltip(selector) {
+  const hover = (type) =>
+    browser.execute(
+      (selector, type) =>
+        document
+          .querySelector(selector)
+          .dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse" })),
+      selector,
+      type,
+    );
+  await hover("pointerover");
+  const tip = await $("[data-chrome-tooltip]");
+  await tip.waitForExist({ timeout: 3_000 });
+  const text = await browser.execute(() => {
+    const bubble = document.querySelector("[data-chrome-tooltip]");
+    const keys = [...bubble.querySelectorAll("kbd")].map((kbd) => kbd.textContent);
+    return [bubble.firstChild.textContent, ...keys].join(" ");
+  });
+  await hover("pointerout");
+  await tip.waitForExist({ timeout: 3_000, reverse: true });
+  return text;
+}
+
+/** Open a note by name through ⌘F, the way PAL-01 does. */
 async function openViaPalette(name) {
-  await pressCmd("o");
+  await pressCmd("f");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);
@@ -65,7 +91,7 @@ describe("Journeys: core (smoke)", function () {
     const search = await $("[data-sidebar-surface-content] [data-sidebar-search-button]");
     await search.waitForExist({ timeout: 5_000 });
     strictEqual(await $("[data-sidebar-wordmark]").isExisting(), false, "no PENSÉE row");
-    strictEqual((await search.getText()).replace(/\s+/g, ""), "Search⌘P");
+    strictEqual((await search.getText()).replace(/\s+/g, ""), "Search⌘F");
     await search.click();
     await $("[cmdk-input]").waitForExist({ timeout: 5_000 });
     await browser.keys("Escape");
@@ -73,26 +99,38 @@ describe("Journeys: core (smoke)", function () {
   });
 
   it("SB-08 / CAL-09 hovering a chrome toggle shows its label and shortcut", async function () {
-    // The WebDriver plugin sends no pointer events: dispatch the hover React listens for.
-    const hover = (label, type) =>
-      browser.execute(
-        (label, type) =>
-          document
-            .querySelector(`button[aria-label="${label}"]`)
-            .dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse" })),
-        label,
-        type,
-      );
     for (const [label, text] of [
-      ["Hide sidebar", "Hide sidebar (⌘[)"],
-      ["Show calendar", "Show calendar (⌘])"],
+      ["Hide sidebar", "Hide sidebar ⌘ ["],
+      ["Show calendar", "Show calendar ⌘ ]"],
     ]) {
-      await hover(label, "pointerover");
-      const tip = await $("[data-chrome-tooltip]");
-      await tip.waitForExist({ timeout: 3_000 });
-      strictEqual(await tip.getText(), text);
-      await hover(label, "pointerout");
-      await tip.waitForExist({ timeout: 3_000, reverse: true });
+      strictEqual(await hoverTooltip(`button[aria-label="${label}"]`), text);
+    }
+  });
+
+  it("SB-10 hovering Today or a space shows what it does and its shortcut", async function () {
+    for (const [selector, text] of [
+      ['button[aria-keyshortcuts="Meta+T"]', "Open today's note ⌘ T"],
+      ['button[data-space-key="projects"]', "Go to Projects ⌘ P"],
+      ['button[data-space-key="library"]', "Go to Library ⌘ L"],
+      ['button[data-space-key="files"]', "Go to Files ⌘ O"],
+    ]) {
+      strictEqual(await hoverTooltip(selector), text);
+    }
+  });
+
+  it("SB-11 ⌘P, ⌘L and ⌘O open Projects, Library and Files, from inside a note", async function () {
+    for (const [letter, key] of [
+      ["p", "projects"],
+      ["l", "library"],
+      ["o", "files"],
+    ]) {
+      await openViaPalette("On writing");
+      await typeInEditor("");
+      await pressCmd(letter, { inFocus: true });
+      await $(`button[data-space-key="${key}"][aria-current="page"]`).waitForExist({
+        timeout: 5_000,
+        timeoutMsg: `⌘${letter.toUpperCase()} never opened ${key}`,
+      });
     }
   });
 
@@ -106,7 +144,7 @@ describe("Journeys: core (smoke)", function () {
     strictEqual(keys.join(","), "projects,library,files");
   });
 
-  it("PAL-01 ⌘O finds a note by name and opens it", async function () {
+  it("PAL-01 ⌘F finds a note by name and opens it", async function () {
     await openViaPalette("Welcome");
     ok((await editorText()).includes("A note to open first"), "Welcome's text shows");
   });
@@ -176,13 +214,6 @@ describe("Journeys: core (smoke)", function () {
     await openViaPalette("On writing");
     await pressCmd("t");
     await waitForTitle(dayStamp());
-    const hint = await browser.execute(
-      () =>
-        [...document.querySelectorAll("button")]
-          .find((button) => button.textContent.startsWith("Today"))
-          ?.querySelector("kbd")?.textContent ?? null,
-    );
-    strictEqual(hint, "⌘T", "Today carries its shortcut");
   });
 
   it("CMP-03 ⌘⇧N, text, ⌘↵ adds it to today's note and opens it", async function () {
@@ -243,7 +274,7 @@ describe("Journeys: core (smoke)", function () {
   });
 
   it("SET-01 the palette opens Preferences", async function () {
-    await pressCmd("p");
+    await pressCmd("f");
     const input = await $("[cmdk-input]");
     await input.waitForExist({ timeout: 5_000 });
     await input.setValue("Settings");

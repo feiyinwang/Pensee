@@ -32,6 +32,8 @@ export interface SpaceDef {
   tabs: SpaceTab[];
   /** The space note, for a space you added. */
   path?: string;
+  /** The letter that, with ⌘, opens a built-in space from anywhere. */
+  shortcut?: string;
 }
 
 export const SPACE_NOTE_TYPE = "Space";
@@ -52,6 +54,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     name: "Projects",
     icon: "projects",
     view: "kanban",
+    shortcut: "P",
     tabs: [tab("projects", "Projects", "project", [PROJECT_TYPE], "note")],
   },
   {
@@ -59,6 +62,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     name: "Library",
     icon: "library",
     view: "gallery",
+    shortcut: "L",
     tabs: [
       tab("books", "Books", "book", ["Book"], "book"),
       // Courses are videos too: their notes keep `Type: Course` and show here.
@@ -68,10 +72,16 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
       tab("bookmarks", "Bookmarks", "bookmark", [TWEET_TYPE], "tweet", "x"),
     ],
   },
-  { key: "files", name: "Files", icon: "files", view: "files", tabs: [] },
+  { key: "files", name: "Files", icon: "files", view: "files", tabs: [], shortcut: "O" },
 ];
 
 export const FILES_SPACE_KEY = "files";
+
+/** The built-in space whose ⌘ shortcut is `key` (`p`), if any. */
+export function spaceForShortcut(key: string): SpaceDef | undefined {
+  const letter = key.toUpperCase();
+  return BUILT_IN_SPACES.find((space) => space.shortcut === letter);
+}
 
 export function builtInSpace(key: string): SpaceDef | undefined {
   return BUILT_IN_SPACES.find((space) => space.key === key);

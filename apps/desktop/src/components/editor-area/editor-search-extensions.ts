@@ -85,7 +85,7 @@ const openOrFind = (find: (view: EditorView) => boolean) => (view: EditorView) =
 
 /** Find/replace wiring: CodeMirror's search state (with a hidden panel so its
  *  match highlighter runs), the safe-zone scroll for search navigation, and
- *  the Mod-f / Mod-g / Escape bindings that drive the React overlay.
+ *  the Mod-Shift-f / Mod-g / Escape bindings that drive the React overlay.
  *
  *  Place after `prosemarkBasicSetup()` in the extension list: the Escape
  *  binding is at default precedence so an open completion popup gets Escape
@@ -97,7 +97,8 @@ export const editorSearchExtensions: Extension = [
   Prec.highest(
     keymap.of([
       {
-        key: "Mod-f",
+        // Mod-f is search app-wide (use-keyboard-shortcuts.ts).
+        key: "Mod-Shift-f",
         run: (view) => {
           openEditorSearch(view);
           return true;

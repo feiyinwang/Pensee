@@ -1,8 +1,8 @@
 // Podcast notes (docs/qa/user-journeys.md § Podcast notes — POD): adding a
-// podcast opens its note with the player, and ⌘⇧J / ⌘P work on it as on a
+// podcast opens its note with the player, and ⌘⇧J / ⌘S work on it as on a
 // video. The episode is a silent WAV served from this process, so the
 // journeys need no network.
-import { ok } from "node:assert/strict";
+import { ok, strictEqual } from "node:assert/strict";
 import http from "node:http";
 import {
   activeTitle,
@@ -178,7 +178,7 @@ describe("Podcast notes", function () {
     ok((await audioState()).paused, "it doesn't play on its own");
   });
 
-  it("POD-02 ★ ⌘⇧J plays, ⌘P pins the moment on the line, ⌘⇧J pauses", async function () {
+  it("POD-02 ★ ⌘⇧J plays, ⌘S pins the moment on the line, ⌘⇧J pauses", async function () {
     await typeInEditor("A thought on this");
     await pressCmd("j", { shift: true });
     await browser.waitUntil(async () => (await audioState())?.time > 1.2, {
@@ -188,8 +188,8 @@ describe("Podcast notes", function () {
     const pinKeys = await browser.execute(`
       return (${FRONT_BAND.toString()})()?.querySelector(".podcast-pin kbd")?.textContent ?? null;
     `);
-    ok(pinKeys === "⌘P", `Pin shows ⌘P (${pinKeys})`);
-    await pressCmd("p");
+    ok(pinKeys === "⌘S", `Pin shows ⌘S (${pinKeys})`);
+    await pressCmd("s");
     // A look at the playing bar, when the run asks for one.
     // The hidden e2e window freezes animations: settle them first.
     if (process.env.PENSEE_QA_SHOT) {
@@ -206,7 +206,7 @@ describe("Podcast notes", function () {
         browser.execute(() =>
           [...document.querySelectorAll(".cm-video-pin")].some((pin) => pin.checkVisibility()),
         ),
-      { timeout: 5_000, timeoutMsg: "⌘P didn't pin the line" },
+      { timeout: 5_000, timeoutMsg: "⌘S didn't pin the line" },
     );
     await pressCmd("j", { shift: true });
     await browser.waitUntil(async () => (await audioState())?.paused === true, {
@@ -221,10 +221,8 @@ describe("Podcast notes", function () {
     ok(/^Play from 0:0[1-9]$/.test(pinned ?? ""), `pinned at the playing time (${pinned})`);
   });
 
-  it("POD-05 ⌘P in a plain note opens search, with a podcast mounted", async function () {
-    // POD-02's ⌘P pinned instead of opening search.
-    ok(!(await $("[cmdk-input]").isExisting()), "⌘P in the podcast note opened no search");
-    await pressCmd("o");
+  it("POD-05 ⌘S in a plain note pins nothing, with a podcast mounted", async function () {
+    await pressCmd("f");
     const input = await $("[cmdk-input]");
     await input.waitForExist({ timeout: 5_000 });
     await input.setValue("Welcome");
@@ -233,10 +231,14 @@ describe("Podcast notes", function () {
     await item.click();
     await waitForTitle("Welcome");
     await typeInEditor("");
-    await pressCmd("p");
-    await $("[cmdk-input]").waitForExist({ timeout: 5_000, timeoutMsg: "⌘P didn't open search" });
-    await browser.keys("Escape");
-    await $("[cmdk-input]").waitForExist({ timeout: 5_000, reverse: true });
+    await pressCmd("s");
+    await browser.pause(500);
+    const pins = await browser.execute(
+      () =>
+        [...document.querySelectorAll(".cm-video-pin")].filter((pin) => pin.checkVisibility())
+          .length,
+    );
+    strictEqual(pins, 0, "⌘S drew no pin in the plain note");
     const welcome = await invoke("read_file", { path: `${root}/Welcome.md` });
     ok(welcome.ok && !/\^yt-/.test(welcome.value.content), "no pin went into the plain note");
   });

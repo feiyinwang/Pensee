@@ -145,7 +145,7 @@ describe("status bar and sidebar visibility settings", function () {
   it("renders visibility toggles and the Default Terminal preference", async function () {
     await browser.execute(() => {
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "p", metaKey: true, bubbles: true, cancelable: true }),
+        new KeyboardEvent("keydown", { key: "f", metaKey: true, bubbles: true, cancelable: true }),
       );
     });
     const settingsCommand = await $('[cmdk-item][data-value="open-settings"]');

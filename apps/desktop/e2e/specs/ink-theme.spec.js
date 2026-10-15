@@ -114,7 +114,7 @@ describe("Ink theme on a fresh install", function () {
   });
 
   it("opens the seeded note", async function () {
-    await pressCmd("o");
+    await pressCmd("f");
     const input = await $("[cmdk-input]");
     await input.waitForExist({ timeout: 5_000 });
     await input.addValue(FILE_STEM);
@@ -154,7 +154,7 @@ describe("Ink theme on a fresh install", function () {
   }
 
   it("offers no theme picker and no accent colour in Settings", async function () {
-    await pressCmd("p");
+    await pressCmd("f");
     const settingsCommand = await $('[cmdk-item][data-value="open-settings"]');
     await settingsCommand.waitForExist({ timeout: 5_000 });
     await settingsCommand.click();

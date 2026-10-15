@@ -6,7 +6,7 @@ import { useChromeTooltip } from "@/components/chrome-tooltip";
 export function SidebarToggleButton() {
   const { isSidebarVisible, toggleSidebar } = useSidebar();
   const label = isSidebarVisible ? "Hide sidebar" : "Show sidebar";
-  const { triggerProps, tooltip } = useChromeTooltip(`${label} (⌘[)`);
+  const { triggerProps, tooltip } = useChromeTooltip(label, { keys: ["⌘", "["] });
 
   // Styled as one of the tab chrome's history arrows: same height, width,
   // radius and muted-to-secondary hover, since it sits right beside them.

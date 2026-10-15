@@ -1,11 +1,11 @@
 // Editor journeys (ED in docs/qa/user-journeys.md) beyond the smoke set.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { ok, strictEqual } from "node:assert/strict";
-import { mouseClick, pressCmd, waitForTitle, workspaceRoot } from "./_helpers.js";
+import { mouseClick, pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
 
-/** Open a note by name through ⌘O, the way PAL-01 does. */
+/** Open a note by name through ⌘F, the way PAL-01 does. */
 async function openViaPalette(name) {
-  await pressCmd("o");
+  await pressCmd("f");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);
@@ -141,5 +141,21 @@ describe("Journeys: editor", function () {
     const unchecked = await taskState();
     strictEqual(unchecked.checked, false, "a second click unchecks it");
     strictEqual(unchecked.dots, 0, "unchecking plays no burst");
+  });
+
+  it("ED-16 ⌘⇧F opens find in the note; ⌘F opens search", async function () {
+    await openViaPalette("Welcome");
+    await typeInEditor("");
+    await pressCmd("f", { shift: true, inFocus: true });
+    await $("[data-search-overlay]").waitForExist({ timeout: 5_000 });
+    ok(!(await $("[cmdk-input]").isExisting()), "⌘⇧F opened no search");
+    await browser.keys("Escape");
+    await $("[data-search-overlay]").waitForExist({ timeout: 5_000, reverse: true });
+    await typeInEditor("");
+    await pressCmd("f", { inFocus: true });
+    await $("[cmdk-input]").waitForExist({ timeout: 5_000 });
+    ok(!(await $("[data-search-overlay]").isExisting()), "⌘F opened no find bar");
+    await browser.keys("Escape");
+    await $("[cmdk-input]").waitForExist({ timeout: 5_000, reverse: true });
   });
 });

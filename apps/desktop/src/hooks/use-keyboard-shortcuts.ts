@@ -8,7 +8,9 @@ import { toggleCalendarPanel } from "@/hooks/use-calendar-panel";
 import { openComposer } from "@/hooks/use-composer";
 import { openTodaysNote } from "@/hooks/use-daily-note";
 import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
+import { openSpace, spaceLocationOf } from "@/hooks/use-spaces";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
+import { spaceForShortcut } from "@/lib/spaces";
 
 function isEditableTargetFocused(): boolean {
   const active = document.activeElement;
@@ -48,6 +50,19 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Cmd+P / Cmd+L / Cmd+O — open a built-in space, as its sidebar row
+      // does (the letter lives on the space's def). A video note's ⌘S pin and
+      // the editor's own keys run before this, on the document.
+      if (mod && !e.altKey && !e.shiftKey) {
+        const space = spaceForShortcut(e.key);
+        if (space) {
+          e.preventDefault();
+          if (isCompactFileMode || !root) return;
+          openSpace(spaceLocationOf(space));
+          return;
+        }
+      }
+
       // Cmd+= / Cmd++, Cmd+- and Cmd+0 — window zoom. The board canvas binds
       // the same keys to its own viewport and only calls preventDefault, so
       // yield to it when it already handled the event.
@@ -69,10 +84,11 @@ export function useKeyboardShortcuts() {
         }
       }
 
-      // Cmd+P / Cmd+Shift+P — unified search (files + commands)
-      if (mod && (e.key === "p" || e.key === "P")) {
+      // Cmd+F — unified search (files + commands). Find in the note is
+      // Cmd+Shift+F, in the editor's own keymap.
+      if (mod && !e.shiftKey && e.key === "f") {
         e.preventDefault();
-        if (e.shiftKey || root) openCommandPalette("search");
+        if (root) openCommandPalette("search");
         return;
       }
 
@@ -125,13 +141,6 @@ export function useKeyboardShortcuts() {
         if (!root) return;
         if (isCompactFileMode) openCommandPalette("create-file");
         else openComposer();
-        return;
-      }
-
-      // Cmd+O — go to file
-      if (mod && e.key === "o") {
-        e.preventDefault();
-        if (root) openCommandPalette("search");
         return;
       }
 
