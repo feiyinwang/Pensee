@@ -74,7 +74,12 @@ import {
   unsealedLine,
   videoPassages,
 } from "@/lib/second-pen";
-import { type PenConversation, penConversation, warmPen } from "@/lib/second-pen-agent";
+import {
+  type PenConversation,
+  organizeModel,
+  penConversation,
+  warmPen,
+} from "@/lib/second-pen-agent";
 import { findLinesMentioning, searchPapers } from "@/lib/tauri";
 import { formatVideoTime, isBlankLine, videoIdOf } from "@/lib/video-pins";
 import { videoPlayerFor } from "@/lib/video-players";
@@ -100,6 +105,9 @@ import "./second-pen.css";
  *  line is reads before what it says. A check's label is the pen's own
  *  pick (`SIDE_LABEL_AT_START_RE`). */
 const ECHO_LABEL_RE = new RegExp(`^(?:${ECHO_LABELS.join("|")}):`);
+
+/** From this many lines, a flat Organize is asked once more for a pyramid. */
+const FLAT_RETRY_LINES = 4;
 
 /** Lines from the line's own words that make Connect skip asking the pen
  *  for more words: enough for it to pick up to three from. */
@@ -755,7 +763,7 @@ class PenPlugin {
       ranges.push(Decoration.widget({ widget: new SealWidget(), side: 1 }).range(from + end));
       return;
     }
-    if (kind === "e" || kind === "p" || kind === "n") {
+    if (kind === "e" || kind === "p" || kind === "n" || kind === "g") {
       const label = (kind === "e" ? ECHO_LABEL_RE : SIDE_LABEL_AT_START_RE).exec(
         text.slice(start, end),
       );
@@ -1102,8 +1110,8 @@ class PenPlugin {
 
   /** A request starts: its conversation, and its progress shown where its
    *  line will land (`at`), or under the line it reads. */
-  private start(label: string, at: Placement): PenConversation {
-    this.conversation = penConversation();
+  private start(label: string, at: Placement, model?: string): PenConversation {
+    this.conversation = penConversation(model);
     this.busyLabel = label;
     this.message = null;
     this.placement = at;
@@ -1241,10 +1249,11 @@ class PenPlugin {
     }
   }
 
-  /** `#`: the selected lines regrouped into a short MECE outline, as deep as
-   *  their meaning goes, in their place until Enter keeps it or Esc puts your
-   *  lines back. Each point is your words, cut short; the groups it names are
-   *  its. */
+  /** `#`: the selected lines built into a pyramid of ideas, MECE at every
+   *  level and as deep as their meaning goes, each point under a key phrase
+   *  (`Principle: …`), in their place until Enter keeps it or Esc puts your
+   *  lines back. Your lines are your words cut short; the ideas above them
+   *  are the pen's. */
   private async organize(direction = ""): Promise<void> {
     const { state } = this.view;
     const lines = docLines(state);
@@ -1264,21 +1273,34 @@ class PenPlugin {
       .reduce((a, b) => (b.length < a.length ? b : a));
     const from = state.doc.line(first + 1).from;
     const to = state.doc.line(last + 1).to;
-    const conversation = this.start("Organizing your lines…", {
-      mode: "under",
-      pos: state.doc.line(last + 1).from,
-    });
+    const conversation = this.start(
+      "Organizing your lines…",
+      { mode: "under", pos: state.doc.line(last + 1).from },
+      organizeModel(),
+    );
     this.placement = null;
     try {
-      const reply = await conversation.send(
-        penPrompt({
-          ...this.promptBase(lines, withText, direction),
-          source: null,
-          ask: { task: "organize", lines: yours },
-        }),
+      let points = organizeReply(
+        await conversation.send(
+          penPrompt({
+            ...this.promptBase(lines, withText, direction),
+            source: null,
+            ask: { task: "organize", lines: yours },
+          }),
+        ),
+        yours,
       );
+      // A flat list isn't a pyramid: ask once more, in the same conversation.
+      if (points && yours.length >= FLAT_RETRY_LINES && outlineDepth(points) < 2) {
+        points =
+          organizeReply(
+            await conversation.send(
+              "That came back one level deep. Group the lines by what they mean under ideas that sum them up, MECE at every level, as many levels deep as the meaning goes. Same JSON, every line once.",
+            ),
+            yours,
+          ) ?? points;
+      }
       this.finish(conversation);
-      const points = organizeReply(reply, yours);
       if (!points) {
         this.say("Couldn't organize these lines. Try again.");
         return;

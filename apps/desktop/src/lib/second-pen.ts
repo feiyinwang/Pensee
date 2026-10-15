@@ -15,8 +15,8 @@ import type { Paper } from "./tauri";
  *  of its points once combined with your take), its comparison with your take
  *  (`v`, written by the earlier Answer), the two lines of a check, labelled
  *  for what the line asks (`p`, then `n`, which your call waits under), or
- *  an echo of an earlier note (`e`), or the name Organize gave a group of
- *  your lines (`g`). The earlier pen's lines (a quiz question
+ *  an echo of an earlier note (`e`), or an idea Organize added above your
+ *  lines (`g`). The earlier pen's lines (a quiz question
  *  `q`, a question `a`, a hint `h`, a check `c`, a fact `f`, a mix `m`) keep
  *  their ink. */
 export type PenKind = "s" | "r" | "v" | "p" | "n" | "e" | "g" | "q" | "a" | "h" | "c" | "f" | "m";
@@ -484,13 +484,13 @@ function taskText(input: PenPromptInput): string {
       return [
         "The writer's lines to organize, numbered, with their own indentation:",
         `<lines>\n${ask.lines.map((line, k) => `<line n="${k + 1}">${line}</line>`).join("\n")}\n</lines>`,
-        "Organize them into one short tree the writer can think through point by point. It must be MECE at every level: the points side by side (at the top, or under one point) are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A point that is a part, step, example, reason or result of another goes under it. There is no limit on depth: go as many levels deep as the meaning goes.",
-        "The writer's indentation says what belongs to what: a line they indented under another stays under it, unless it plainly belongs elsewhere. A line indented further than the line above it allows (two levels in under a top line) goes under the line it belongs to.",
-        "Never flatten: every level the writer made stays a level, and you add levels wherever the meaning needs them.",
-        "Make it shorter. Each point is one of the writer's lines cut to one short line, at most 12 words: their own words with the filler, hedges and repetition cut. You may adjust a word or two so it reads (a joining word, a tense, the order), never more, and never add an idea or drop one. Keep every [[link]] and [text](link) as it is.",
-        "Where points side by side need a name to read as one kind of thing, put them in a group: a name of your own, 1 to 4 words, no colon, no end punctuation, with those points under it. Groups may sit inside groups. Only where a name helps: never a group of one point, never a name that only says a point again.",
-        'Every line goes in exactly once, as its own point, by its number in "line". A point\'s "line" is that one line only, never the lines under it: those are points of their own in its "under".',
-        'Reply with JSON only: {"points": [{"line": 1, "text": "…", "under": [{"line": 2, "text": "…", "under": [...]}]}, {"group": "…", "under": [...]}]}',
+        "This task is the exception to writing one line: you write the whole outline, and the ideas you add above the writer's lines are yours to write.",
+        "Build a pyramid of ideas from what the lines mean, not from the order they were written in. At the top, the fewest ideas that sum up everything (one if one can). Under each idea, the ideas or lines that support it, explain it or are part of it, and under those theirs, as many levels deep as the meaning goes: often three or four, more when the lines need it. Never leave the lines as one flat list when they can be grouped.",
+        "MECE at every level and across the whole pyramid: the points side by side are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A line the writer indented under another stays under it, unless it plainly belongs elsewhere.",
+        'Every point starts with a key phrase that says what it is: 1 to 3 words, like "Principle", "Framework", "Cause", "Effect", "Example", "Step", "Benefit", "Risk", "Evidence", "Question", "Definition". Put it in "key", not in "text".',
+        'Every line goes in exactly once, as its own point, by its number in "line" (never the lines under it: those are points of their own). Its "text" is that line cut short: one sentence at most, the writer\'s own words with filler, hedges and repetition cut, a word or two adjusted at most. Never add an idea or drop one. Keep every [[link]] and [text](link) as it is.',
+        'An idea you add above the lines has no "line": its "text" is one short sentence (at most 15 words) that sums up the points under it, in the writer\'s words where they fit. Only where it sums up two or more points.',
+        'Reply with JSON only: {"points": [{"key": "Principle", "text": "…", "under": [{"key": "Example", "line": 3, "text": "…", "under": [...]}]}]}',
       ].join("\n");
   }
 }
@@ -900,16 +900,21 @@ export function sourcePartStart(text: string): number | null {
 
 /* ------------------------------------------------------------- organize */
 
-/** A point of an organized outline: one of your lines (its index in the
- *  lines sent; with a word-for-word repeat of it, both) in `text`, shortened
- *  in your words, or a group the pen named, with the points under it. */
+/** A point of an organized outline, under its key phrase (`Principle`,
+ *  `Example`…): one of your lines (its index in the lines sent; with a
+ *  word-for-word repeat of it, both) in `text`, cut short in your words, or
+ *  an idea the pen added that sums up the points under it. */
 export type OrganizedPoint =
-  | { lines: number[]; text: string; under: OrganizedPoint[] }
-  | { group: string; under: OrganizedPoint[] };
+  | { key: string | null; lines: number[]; text: string; under: OrganizedPoint[] }
+  | { key: string | null; idea: string; under: OrganizedPoint[] };
 
 const LINKS_RE = /\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)/g;
 const boxOf = (line: string) => ITEM_RE.exec(line)?.[4] ?? "";
 const blockIdOf = (line: string) => BLOCK_ID_AT_END_RE.exec(line)?.[1] ?? null;
+/** A key phrase: one to three words, no colon. */
+const KEY_RE = /^\p{L}[\p{L}'’-]*(?: [\p{L}'’-]+){0,2}$/u;
+/** An idea the pen adds is one short sentence. */
+const IDEA_MAX_WORDS = 20;
 
 /** Whether `text` says `lines` in their own words, shorter: no more words
  *  than they had, every link of theirs kept, and at most a word or two that
@@ -925,17 +930,18 @@ export function inTheirWords(text: string, lines: readonly string[]): boolean {
 }
 
 /** An `organize` reply, held to its word: every one of `lines` exactly once,
- *  else null. A point is one line of yours, its text that line cut short in
- *  your words (or the line as written, when the text strays). Lines a point
- *  lists past its own that nothing else places (a model may list a whole
- *  branch on its top point) go under it as you nested them, never folded
- *  into its text; one that only repeats the point word for word goes. A
- *  group with fewer than two points gives way to them. No depth limit. */
+ *  else null. A point is one line of yours under its key phrase, its text
+ *  that line cut short in your words (or the line as written, when the text
+ *  strays). Lines a point lists past its own that nothing else places go
+ *  under it as you nested them, never folded into its text; one that only
+ *  repeats the point word for word goes. An idea the pen added sums up two
+ *  or more points (with one, that point takes its place). No depth limit. */
 export function organizeReply(reply: string, lines: readonly string[]): OrganizedPoint[] | null {
   const value = jsonIn(reply) as { points?: unknown } | null;
   if (!Array.isArray(value?.points)) return null;
   const seen = new Set<number>();
   const asWritten = (k: number): OrganizedPoint => ({
+    key: null,
     lines: [k],
     text: itemText(lines[k]!),
     under: [],
@@ -957,9 +963,25 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
     const kids = item?.under ?? item?.children ?? item?.points ?? item?.items;
     return Array.isArray(kids) ? kids : [];
   };
+  const keyOf = (raw: unknown): string | null => {
+    if (typeof raw !== "string") return null;
+    const key = raw.replace(/[[\]*:：]/gu, "").trim();
+    return KEY_RE.test(key) ? key : null;
+  };
+  /** The text without a key phrase it repeats, or any `Key:` the model left in. */
+  const bodyOf = (raw: unknown, key: string | null): string => {
+    if (typeof raw !== "string") return "";
+    let text = raw.replace(BLOCK_ID_AT_END_RE, "").replace(/\s+/g, " ").trim();
+    text = text.replace(/^\[(.+)\]$/u, "$1");
+    if (key && text.toLowerCase().startsWith(`${key.toLowerCase()}:`)) {
+      text = text.slice(key.length + 1).trim();
+    }
+    return text;
+  };
   const read = (raw: unknown): OrganizedPoint[] => {
     const item = (typeof raw === "object" ? raw : null) as Record<string, unknown> | null;
     const under = kidsOf(item).flatMap(read);
+    const key = keyOf(item?.key ?? item?.label);
     const asked = Array.isArray(item?.lines)
       ? item.lines
       : item?.line !== undefined
@@ -978,42 +1000,41 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
       const extra = rest.filter(
         (k) => squash(itemText(lines[k]!)) !== said || blockIdOf(lines[k]!) !== null,
       );
-      const text =
-        typeof item?.text === "string"
-          ? item.text.replace(BLOCK_ID_AT_END_RE, "").replace(/\s+/g, " ").trim()
-          : "";
+      const text = bodyOf(item?.text, key);
       return [
         {
+          key,
           lines: [own],
           text: inTheirWords(text, [lines[own]!]) ? text : itemText(lines[own]!),
           under: [...nested(extra), ...under],
         },
       ];
     }
-    const group = typeof item?.group === "string" ? replyLine(item.group) : null;
-    if (!group || under.length < 2) return under;
-    return [{ group: endPunct(group.replace(/[:：]\s*$/u, "")), under }];
+    const idea = replyLine(bodyOf(item?.text ?? item?.idea ?? item?.group, key));
+    if (!idea || under.length < 2 || wordCount(idea) > IDEA_MAX_WORDS) return under;
+    return [{ key, idea, under }];
   };
   const points = value.points.flatMap(read);
   return seen.size === lines.length ? points : null;
 }
 
 /** An organized outline as Markdown lines at `indent`, each level two spaces
- *  further in. Your point keeps its lines' task box and block id; a group's
- *  name is the pen's, named by `id`. */
+ *  further in, each point `Key: text`. Your point keeps its line's task box
+ *  and block id; an idea the pen added is its line, named by `id`. */
 export function organizedLines(
   points: readonly OrganizedPoint[],
   lines: readonly string[],
   indent: string,
   id: () => string,
 ): string[] {
+  const keyed = (p: OrganizedPoint, text: string) => (p.key ? `${p.key}: ${text}` : text);
   const yours = (p: { lines: number[]; text: string }) => {
     const originals = p.lines.map((k) => lines[k]!);
     const block = originals.map(blockIdOf).find(Boolean);
-    return `${boxOf(originals[0]!)}${p.text}${block ? ` ^${block}` : ""}`;
+    return `${boxOf(originals[0]!)}${keyed(p as OrganizedPoint, p.text)}${block ? ` ^${block}` : ""}`;
   };
   const write = (p: OrganizedPoint, at: string): string[] => [
-    "group" in p ? `${at}- ${p.group} ^${id()}` : `${at}- ${yours(p)}`,
+    "idea" in p ? `${at}- ${keyed(p, p.idea)} ^${id()}` : `${at}- ${yours(p)}`,
     ...p.under.flatMap((k) => write(k, `${at}  `)),
   ];
   return points.flatMap((p) => write(p, indent));

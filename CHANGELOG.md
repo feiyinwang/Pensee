@@ -2,6 +2,7 @@
 
 ## 2026-10-15
 
+- **# Organize** builds a pyramid of ideas now. It groups your lines by what they mean, not the order you wrote them, under short ideas of the pen's that sum them up, MECE at every level and as deep as it takes, even from a flat list. Every point starts with a key phrase (*Principle:*, *Example:*, *Cause:*…), your lines stay in your own words cut short, and the pen's ideas are in its blue ink. Organize uses Sonnet when your pen is set to Haiku, so it takes a few seconds longer; if a reply still comes back flat, the pen is asked once more.
 - Fixed: **# Organize** could fold a whole branch into one line and come out one level deep (blueberry › its benefit › its types › biomechanical became just "blueberry", the rest gone). Every level you write now stays a level, as deep as it goes, and each of your lines stays a point of its own. Lines that only mean the same thing are no longer merged; an exact repeat still goes.
 - **# Organize** now makes your list shorter as it structures it. Each point becomes one short line in your own words: filler and repetition cut, a word or two adjusted at most, and lines that say the same thing merged into one. There's still no limit on how deep the outline goes. Under the outline it tells you how much shorter it got (*Organized in 4 levels, 118 → 64 words*). A point that strays from your words, drops a link or gets longer is put back as you wrote it.
 - **− Shorten** is gone from the pen's box: Organize does the cutting now.

@@ -245,37 +245,37 @@ one by one, and only when you ask.
 
 ### Organize
 
-- With two or more lines selected, the pen regroups them into one short tree
-  you can think through point by point, MECE at every level: the points side
-  by side are the same kind of thing at the same level of detail, no two
-  overlap, and together they cover what they sit under. A point that is a
-  part, step, example, reason or result of another goes under it. No depth
-  limit: as many levels as the meaning goes.
-- Your indentation says what belongs to what: a line you indented under
-  another stays under it unless it plainly belongs elsewhere, and a line you
-  indented too far (straight to level 3 under a top line) goes under the line
-  it belongs to.
-- **Never flattened.** Every level you wrote stays a level; the pen adds
-  levels where the meaning needs them. Each point is one of your lines: a
-  line the pen lists on a point past its own (a whole branch on its top
-  point, as Haiku does) that nothing else places goes under that point as you
-  nested it, never folded into its text (2026-10-15: `blueberry › benefit ›
-  types › biomechanical` came out as one line, "blueberry").
-- **Shorter, in your words.** Each point is your line cut to one short line
-  (at most about 12 words): filler, hedges and repetition cut, a word or two
-  adjusted at most so it reads. Checked in code: a point with more words than
-  your line, a link of yours missing, or more than one word in four that
-  isn't yours is your line as you wrote it. A line that repeats a point word
-  for word (and has no block id of its own) goes. A task's box and a block
-  id stay on their point.
-- Where points side by side need a name, it adds a group, a name of its own
-  (1 to 4 words) with those points under it, written in its ink (a hidden
-  `^ai-g-…`). Never a group of one point. Enter on a group's name doesn't ask
-  the pen for a reply: it's a heading for your lines.
+- With two or more lines selected, the pen builds them into a **pyramid of
+  ideas** from what they mean, not the order they were written in: at the
+  top the fewest ideas that sum up everything (one if one can), under each
+  the ideas or lines that support it, explain it or are part of it, and so
+  on down, as many levels as the meaning goes. MECE at every level and
+  across the pyramid. A flat list is never left flat when it can be grouped.
+- **A key phrase on every point**: `Principle: …`, `Example: …`, `Cause: …`
+  (one to three words, the pen's choice), then the point.
+- **Your lines, in your words, short.** Each of your lines is a point of its
+  own, cut to one sentence: filler, hedges and repetition cut, a word or two
+  adjusted at most. Checked in code: a point with more words than your line,
+  a link of yours missing, or more than one word in four that isn't yours is
+  your line as you wrote it. A task's box and a block id stay on their point.
+  A line you indented under another stays under it unless it plainly belongs
+  elsewhere; a line the pen lists on a point past its own (a whole branch on
+  its top point) that nothing else places goes under it as you nested it,
+  never folded into its text.
+- **The ideas above your lines are the pen's**: one short sentence each (at
+  most 15 words asked, 20 accepted), in your words where they fit, written in
+  its ink (a hidden `^ai-g-…`, key phrase in bold). Each sums up two or more
+  points; one over a single point gives way to it. Enter on one doesn't ask
+  the pen for a reply. This task is the one exception to the pen's "one line,
+  never your conclusion": the prompt says so.
+- **Model**: Organize asks Sonnet when the pen is on Haiku (Haiku hands back
+  a flat list); Opus stays Opus. Slower than the other pills, a few seconds
+  more. A reply that comes back one level deep from four lines or more is
+  asked once more, in the same conversation, for a pyramid.
 - A reply that leaves out one of your lines isn't shown: *Couldn't organize
   these lines. Try again.*
 - The outline replaces your lines, tinted, and the text waits: *Organized in
-  4 levels, 118 → 64 words, in your words.* **Enter** keeps it, **Esc** puts
+  4 levels, 118 → 96 words, in your words.* **Enter** keeps it, **Esc** puts
   your lines back exactly as they were.
 - There is no Shorten of its own any more (2026-10-15): Organize does the
   cutting, so the `−` pill is gone.

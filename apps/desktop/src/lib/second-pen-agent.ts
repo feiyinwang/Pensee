@@ -68,6 +68,13 @@ function model(): string {
   return agentModel(useSettingsStore.getState().getSetting("agent.model")).id;
 }
 
+/** Organize builds a pyramid of ideas from what the lines mean: Haiku hands
+ *  back a flat list, so it asks Sonnet at least. */
+export function organizeModel(): string {
+  const id = model();
+  return id === "haiku" ? "sonnet" : id;
+}
+
 /** Start the pen's Claude now, so the next request doesn't wait for it. */
 export function warmPen(): void {
   if (!useWorkspaceStore.getState().root) return;
@@ -83,15 +90,16 @@ export function warmPen(): void {
   });
 }
 
-/** One conversation for one request. `send` takes a turn and resolves with
- *  the reply's text; `end` throws the process away and warms the next. */
+/** One conversation for one request, on `modelId` (else the chosen model).
+ *  `send` takes a turn and resolves with the reply's text; `end` throws the
+ *  process away and warms the next. */
 export interface PenConversation {
   send: (prompt: string) => Promise<string>;
   cancel: () => void;
   end: () => void;
 }
 
-export function penConversation(): PenConversation {
+export function penConversation(modelId?: string): PenConversation {
   ensureListeners();
   let current: string | null = null;
   let ended = false;
@@ -122,7 +130,7 @@ export function penConversation(): PenConversation {
           prompt,
           sessionId: null,
           instructions: PEN_INSTRUCTIONS,
-          model: model(),
+          model: modelId ?? model(),
           channel: CHANNEL,
         }).catch((error: unknown) => {
           const request = waiting.get(requestId);

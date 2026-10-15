@@ -506,27 +506,35 @@ describe("organize", () => {
   const reply = JSON.stringify({
     points: [
       {
-        group: "Why I stall:",
+        key: "Principle",
+        text: "Projects die from how I start them and how they feel",
         under: [
           {
-            group: "How I set it up",
+            key: "Cause",
+            text: "I set them up to drift",
             under: [
-              { line: 1, text: "I start too many things at once" },
-              { line: 2, text: "no deadline, it drifts", under: [{ line: 3 }] },
+              { key: "Habit", line: 1, text: "I start too many things at once" },
+              {
+                key: "Cause",
+                line: 2,
+                text: "Cause: no deadline, it drifts",
+                under: [{ key: "Example", line: 3 }],
+              },
             ],
           },
           {
+            key: "Feeling",
             line: 4,
             text: "excitement fades after a week",
-            under: [{ line: 5, text: "the boring middle, see [[Auth notes]]" }],
+            under: [{ key: "[Example]", line: 5, text: "the boring middle, see [[Auth notes]]" }],
           },
         ],
       },
-      { lines: [6, 7], text: "small scope worked" },
+      { key: "What worked", lines: [6, 7], text: "small scope worked" },
     ],
   });
 
-  test("the prompt numbers your lines with their indentation and asks for no depth limit", () => {
+  test("the prompt asks for a pyramid of ideas, MECE, with key phrases and no depth limit", () => {
     const prompt = penPrompt({
       title: "T",
       note: "",
@@ -535,26 +543,57 @@ describe("organize", () => {
       ask: { task: "organize", lines: yours },
     });
     expect(prompt).toContain('<line n="3">      - the habit app, then nothing</line>');
+    expect(prompt).toContain("pyramid of ideas");
     expect(prompt).toContain("MECE at every level");
-    expect(prompt).toContain("no limit on depth");
-    expect(prompt).toContain("Never flatten");
+    expect(prompt).toContain("key phrase");
+    expect(prompt).toContain("Never leave the lines as one flat list");
   });
 
-  test("a short tree in your words, as deep as its meaning, every line once", () => {
+  test("a pyramid in your words, every point under its key phrase, as deep as it goes", () => {
     const points = organizeReply(reply, yours)!;
     expect(outlineDepth(points)).toBe(4);
     let n = 0;
     expect(organizedLines(points, yours, "", () => `ai-g-000${n++}`)).toEqual([
-      "- Why I stall ^ai-g-0000",
-      "  - How I set it up ^ai-g-0001",
-      "    - I start too many things at once",
-      "    - no deadline, it drifts",
-      "      - the habit app, then nothing",
-      "  - excitement fades after a week",
-      "    - [ ] the boring middle, see [[Auth notes]] ^yt-540",
+      "- Principle: Projects die from how I start them and how they feel ^ai-g-0000",
+      "  - Cause: I set them up to drift ^ai-g-0001",
+      "    - Habit: I start too many things at once",
+      // A key phrase the text repeats is said once.
+      "    - Cause: no deadline, it drifts",
+      "      - Example: the habit app, then nothing",
+      "  - Feeling: excitement fades after a week",
+      "    - [ ] Example: the boring middle, see [[Auth notes]] ^yt-540",
       // A word-for-word repeat goes.
-      "- small scope worked",
+      "- What worked: small scope worked",
     ]);
+  });
+
+  test("an idea over one point, or a sentence too long, gives way to what is under it", () => {
+    const points = organizeReply(
+      JSON.stringify({
+        points: [
+          { key: "Theme", text: "Alone", under: [{ line: 1 }] },
+          {
+            key: "Theme",
+            text: "a very long idea that goes on and on and on, far past one short sentence of fifteen or even twenty words or so",
+            under: [{ line: 2 }, { line: 3 }],
+          },
+        ],
+      }),
+      ["- a", "- b", "- c"],
+    )!;
+    expect(organizedLines(points, ["- a", "- b", "- c"], "", () => "x")).toEqual([
+      "- a",
+      "- b",
+      "- c",
+    ]);
+  });
+
+  test("a key phrase is one to three words, else none", () => {
+    const points = organizeReply(
+      '{"points": [{"key": "A whole sentence as a key", "line": 1}, {"key": "Step", "line": 2}]}',
+      ["- a", "- b"],
+    )!;
+    expect(organizedLines(points, ["- a", "- b"], "", () => "x")).toEqual(["- a", "- Step: b"]);
   });
 
   // The writer's example (2026-10-15): Organize came out one level deep.
@@ -567,15 +606,6 @@ describe("organize", () => {
     "      * Types of benefits",
     "         * Biomechnical functionalities",
   ];
-  const fruitTree = [
-    "- fruit",
-    "  - apple",
-    "  - banana",
-    "  - blueberry",
-    "    - benefits of eating blueberry",
-    "      - types of benefits",
-    "        - biomechanical functionalities",
-  ];
 
   test("a branch's lines listed on its top point stay nested under it, never folded in", () => {
     // Its children under a key the prompt didn't ask for.
@@ -584,26 +614,12 @@ describe("organize", () => {
         points: [
           {
             line: 1,
-            text: "fruit",
             children: [
-              { line: 2, text: "apple" },
-              { line: 3, text: "banana" },
+              { line: 2 },
+              { line: 3 },
               {
                 lines: [4, 5, 6, 7],
-                text: "blueberry",
-                children: [
-                  {
-                    line: 5,
-                    text: "benefits of eating blueberry",
-                    children: [
-                      {
-                        lines: [6, 7],
-                        text: "types of benefits",
-                        children: [{ line: 7, text: "biomechanical functionalities" }],
-                      },
-                    ],
-                  },
-                ],
+                children: [{ line: 5, children: [{ lines: [6, 7], children: [{ line: 7 }] }] }],
               },
             ],
           },
@@ -612,22 +628,7 @@ describe("organize", () => {
       fruit,
     )!;
     expect(outlineDepth(points)).toBe(5);
-    expect(organizedLines(points, fruit, "", () => "x")).toEqual(fruitTree);
-  });
-
-  test("lines a point lists that nothing else places go under it as you nested them", () => {
-    const points = organizeReply(
-      JSON.stringify({
-        points: [
-          {
-            line: 1,
-            under: [{ line: 2 }, { line: 3 }, { lines: [4, 5, 6, 7], text: "blueberry" }],
-          },
-        ],
-      }),
-      fruit,
-    )!;
-    expect(organizedLines(points, fruit, "", () => "x")).toEqual([
+    const tree = [
       "- fruit",
       "  - apple",
       "  - banana",
@@ -635,7 +636,14 @@ describe("organize", () => {
       "    - benefit of eating blueberry",
       "      - Types of benefits",
       "        - Biomechnical functionalities",
-    ]);
+    ];
+    expect(organizedLines(points, fruit, "", () => "x")).toEqual(tree);
+    // Listed on the top point and nowhere else: under it, as you nested them.
+    const listed = organizeReply(
+      '{"points": [{"line": 1, "under": [{"line": 2}, {"line": 3}, {"lines": [4, 5, 6, 7], "text": "blueberry"}]}]}',
+      fruit,
+    )!;
+    expect(organizedLines(listed, fruit, "", () => "x")).toEqual(tree);
   });
 
   test("a point that isn't your words, shorter, is your line as written", () => {
@@ -687,14 +695,6 @@ describe("organize", () => {
       "- b",
     ])!;
     expect(organizedLines(points, ["- a", "- b"], "  ", () => "x")).toEqual(["  - a", "  - b"]);
-  });
-
-  test("a group of one gives way to its point", () => {
-    const points = organizeReply(
-      '{"points": [{"group": "Alone", "under": [{"line": 1}]}, {"line": 2}]}',
-      ["- a", "- b"],
-    )!;
-    expect(organizedLines(points, ["- a", "- b"], "", () => "x")).toEqual(["- a", "- b"]);
   });
 
   test("not JSON is no outline", () => {

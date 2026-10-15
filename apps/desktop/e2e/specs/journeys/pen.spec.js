@@ -796,7 +796,7 @@ describe("Journeys: second pen", function () {
     );
   });
 
-  it("PEN-30 Organize builds a short, deep MECE outline in your words, group names in the pen's ink", async function () {
+  it("PEN-30 Organize turns a flat list into a pyramid of ideas, each point under a key phrase, in your words", async function () {
     const path = `${root}/Notes/Side projects.md`;
     const before = await readFile(path);
     await openViaPalette("Side projects");
@@ -807,29 +807,34 @@ describe("Journeys: second pen", function () {
     await pick("#", { shift: true });
     await browser.waitUntil(
       () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
-      { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
+      { timeout: AI_TIMEOUT * 2, timeoutMsg: `no organized outline: ${await barText()}` },
     );
     await key("Enter");
     const text = await waitForDisk(path, (t) => t !== before, "expected an outline");
     const lines = text.split("\n").filter((l) => l.trim());
-    const words = (t) => t.toLowerCase().match(/[a-z0-9']+/g) ?? [];
-    const yours = new Set(words(before));
-    const groups = lines.filter((l) => / \^ai-g-[a-z0-9]{4}$/.test(l));
-    const points = lines.filter((l) => !groups.includes(l));
-    // Shorter: no more words of yours than you wrote.
-    const count = points.flatMap((l) => words(l.replace(/^\s*- /, ""))).length;
-    ok(count <= words(before).length, `longer than what you wrote:\n${text}`);
-    // Your words: at most one in four of a point's words isn't yours.
-    for (const l of points) {
-      const w = words(l.replace(/^\s*- /, ""));
-      const added = w.filter((x) => !yours.has(x)).length;
-      ok(added <= Math.max(1, Math.ceil(w.length / 4)), `not in your words: "${l}"\n${text}`);
-    }
-    // No level skipped.
     const indent = (l) => /^ */.exec(l)[0].length;
+    // A pyramid, not the flat list it was: three levels at least.
+    const depth = Math.max(...lines.map((l) => indent(l) / 2 + 1));
+    ok(depth >= 3, `${depth} levels deep:\n${text}`);
     lines.forEach((l, k) =>
       ok(k === 0 || indent(l) <= indent(lines[k - 1]) + 2, `skipped a level:\n${text}`),
     );
+    // Every point under a key phrase: "Principle: …".
+    const keyed = /^\s*- (?:\[[ xX]\] )?[\p{L}][\p{L}'’ -]{0,30}: \S/u;
+    for (const l of lines) ok(keyed.test(l), `no key phrase: "${l}"\n${text}`);
+    // Your points in your words: at most one word in four after the key isn't yours.
+    const words = (t) => t.toLowerCase().match(/[a-z0-9']+/g) ?? [];
+    const yours = new Set(words(before));
+    for (const l of lines.filter((x) => !/ \^ai-g-[a-z0-9]{4}$/.test(x))) {
+      const w = words(l.replace(/^\s*- [^:]+: /, ""));
+      const added = w.filter((x) => !yours.has(x)).length;
+      ok(added <= Math.max(1, Math.ceil(w.length / 4)), `not in your words: "${l}"\n${text}`);
+    }
+    // The pen's ideas sum up what's under them: never a leaf.
+    lines.forEach((l, k) => {
+      if (!/ \^ai-g-[a-z0-9]{4}$/.test(l)) return;
+      ok(indent(lines[k + 1] ?? "") > indent(l), `an idea with nothing under it: "${l}"\n${text}`);
+    });
   });
 
   it("PEN-31 Organize keeps every level you wrote: blueberry, its benefit, its types, five levels deep", async function () {
