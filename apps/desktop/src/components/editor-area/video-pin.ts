@@ -68,7 +68,9 @@ export class VideoPinWidget extends WidgetType {
       event.stopPropagation();
       const notePath = this.getFilePath();
       if (!seekVideo(notePath, this.seconds)) {
-        showEditorNotice("This note's video isn't loaded. Check its link in the properties.");
+        showEditorNotice(
+          "This note's video or episode isn't loaded. Check its link in the properties.",
+        );
       }
     });
     return pin;
@@ -157,7 +159,7 @@ export function pinMoment(prefer?: VideoPlayer): void {
   const own = focused ? videoPlayerFor(focused.path) : null;
   const player = prefer ?? own ?? currentVideoPlayer();
   if (!player) {
-    showEditorNotice("Play a video in a note with a YouTube link to pin a moment.");
+    showEditorNotice("Play a video or podcast in a note to pin a moment.");
     return;
   }
   markVideoUsed(player.notePath);
@@ -182,7 +184,7 @@ export function toggleVideo(): void {
   const focused = focusedNote();
   const player = (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
   if (!player) {
-    showEditorNotice("Open a note with a YouTube link to play its video.");
+    showEditorNotice("Open a note with a YouTube or podcast link to play it.");
     return;
   }
   player.toggle();

@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import { ProseMarkEditor } from "./prosemark-editor";
 import { BookCard } from "./book-card";
+import { PodcastPlayer } from "./podcast-player";
 import { VideoPlayer } from "./video-player";
 import { PageHeader } from "./page-header";
 import { EditorScrollContainer } from "./editor-scroll-container";
@@ -72,6 +73,7 @@ export const EditorPane = memo(function EditorPane({
           <BookCard filePath={path} />
         </div>
         <VideoPlayer filePath={path} />
+        <PodcastPlayer filePath={path} />
         <ProseMarkEditor
           filePath={path}
           getScrollContainer={getScrollContainer}

@@ -49,7 +49,9 @@ tab (SPECs/spaces-spec.md).
 - Written at the vault root with properties only, no heading:
   `Type` (`YouTube` for YouTube links, `Video` for other videos, else the
   kind) and `Link` (the key the vault's video and course notes use). It
-  opens at once; covers come from Library's Get cover.
+  opens at once; covers come from Library's Get cover. A podcast's note
+  opens even from the composer's ⌘↵, with its player
+  ([podcast-notes-spec.md](podcast-notes-spec.md)).
 
 ## A dropped PDF: book or paper
 

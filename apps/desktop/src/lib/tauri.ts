@@ -80,6 +80,11 @@ export function videoPlayerOrigin(): Promise<string> {
 }
 
 /** A YouTube video's chapters, read from its watch page; empty without. */
+/** The audio file a podcast link stands for (SPECs/podcast-notes-spec.md). */
+export function podcastAudio(url: string): Promise<string> {
+  return invoke("podcast_audio", { url });
+}
+
 export function youtubeChapters(videoId: string): Promise<{ start: number; title: string }[]> {
   return invoke("youtube_chapters", { videoId });
 }

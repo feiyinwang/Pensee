@@ -7,6 +7,7 @@ pub mod fs;
 pub mod images;
 pub mod link_preview;
 pub mod papers;
+pub mod podcasts;
 pub mod recents;
 pub mod search;
 pub mod settings;

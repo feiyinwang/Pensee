@@ -34,6 +34,7 @@ percent-encoding = "2"
 # already in Cargo.lock; deflate reads compressed EPUB entries.
 zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
 roxmltree = "0.20"
+regex-lite = "0.1"
 tokio = { version = "1", features = ["fs", "macros", "sync"] }
 parking_lot = "0.12"
 thiserror = "2"
@@ -60,7 +61,6 @@ e2e = ["dep:tauri-plugin-webdriver"]
 
 [dev-dependencies]
 tempfile = "3"
-regex-lite = "0.1"
 
 [profile.release]
 strip = true

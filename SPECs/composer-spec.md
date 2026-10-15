@@ -65,7 +65,9 @@ inert there and ⌘N keeps the palette's create field.
   It shows **⌘↵** inside it.
 - **⌘↵** (or the button) makes it and stays on the page: the box closes and
   an "Added …" notice offers **Open**. **⌘⇧↵** makes it and opens it. Open
-  today (nothing typed) and Open note (a link already in Library) open.
+  today (nothing typed), Open note (a link already in Library) and a podcast
+  link open: a podcast's note is where it plays
+  ([podcast-notes-spec.md](podcast-notes-spec.md)).
 - Esc closes the box and keeps the draft for the next ⌘T.
 
 A plain note with text but no title is `Untitled` (`Untitled 2`…). A title

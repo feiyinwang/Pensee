@@ -292,6 +292,19 @@ pins moments to lines and fetches the transcript.
 | YT-02 | Play, ⌘⇧M on a line                | The line gets a pin; clicking it seeks to that moment | legacy: youtube-pin-click |
 | YT-03 | ⌘⇧J anywhere                       | The front note's video plays or pauses                | manual                    |
 
+## Podcast notes — POD
+
+**Feature:** A podcast note plays its episode under its properties; adding a
+podcast opens the note, and ⌘⇧J / ⌘⇧M play, pause and pin as on a video.
+**Spec:** SPECs/podcast-notes-spec.md
+**Code:** `src/components/editor-area/podcast-player.tsx`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
+
+| ID     | Journey                                       | Expected                                                 | Check         |
+| ------ | --------------------------------------------- | -------------------------------------------------------- | ------------- |
+| POD-01 | Library → Podcasts → **+**, paste a link, ⌘↵  | The note opens with the player, paused                   | auto: podcast |
+| POD-02 | ★ ⌘⇧J, ⌘⇧M on a line, ⌘⇧J                     | It plays; the line gets a pin at that moment; it pauses  | auto: podcast |
+| POD-03 | Add an Apple Podcasts or Spotify episode link | The player finds the episode and plays the whole episode | you           |
+
 ## Agent chat — AG
 
 **Feature:** ⌘J opens a Claude chat bottom right that reads the open tabs and

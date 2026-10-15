@@ -89,6 +89,12 @@ export function parseLibraryLink(query: string): LibraryLink | null {
   return { url: address, host, guess };
 }
 
+/** Kinds whose note opens as soon as it is added, wherever it was added
+ *  from: the note is where a podcast plays (SPECs/podcast-notes-spec.md). */
+export function opensWhenAdded(kind: LibraryKind | null): boolean {
+  return kind === "podcast";
+}
+
 /** The `Type` a new note of `kind` gets: YouTube links keep the vault's
  *  `YouTube` type, other videos `Video`. */
 export function libraryNoteType(kind: LibraryKind, host: string | null): string {

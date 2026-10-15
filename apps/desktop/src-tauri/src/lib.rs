@@ -616,6 +616,7 @@ pub fn run() {
             commands::link_preview::fetch_link_preview,
             commands::papers::search_papers,
             commands::covers::save_web_cover,
+            commands::podcasts::podcast_audio,
             commands::x_bookmarks::x_account,
             commands::x_bookmarks::x_connect,
             commands::x_bookmarks::x_disconnect,

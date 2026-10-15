@@ -40,11 +40,15 @@ and history navigation still work. The composer
 notes in, so Cmd+T, Cmd+Shift+N, Cmd+Shift+L and Cmd+] are inert there too.
 Cmd+Shift+L replaces CodeMirror's select-all-matches binding in the editor.
 
-¹ Only while a YouTube note's player is open; handled in `video-pin.ts`, not
-the global hook ([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md)).
+¹ Only while a YouTube or podcast note's player is open; handled in
+`video-pin.ts`, not the global hook
+([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md),
+[SPECs/podcast-notes-spec.md](../SPECs/podcast-notes-spec.md)). "Video"
+means the episode in a podcast note.
 
-² In a note that plays a video (or with nothing editable focused while one
-is open), `<` and `>` change its speed instead of typing; elsewhere they type.
+² In a note that plays a video or episode (or with nothing editable focused
+while one is open), `<` and `>` change its speed instead of typing; elsewhere
+they type.
 
 Zoom scales the whole window (WebKit page zoom, persisted in the global
 `appearance.zoom` setting) and steps along the browser ladder 50 · 67 · 75 · 80 ·

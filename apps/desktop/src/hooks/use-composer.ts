@@ -15,7 +15,7 @@ import {
   type ComposerTarget,
 } from "@/lib/composer";
 import { formatDailyNoteDate, resolveDailyNoteFile } from "@/lib/daily-note";
-import type { LibraryKind } from "@/lib/library-add";
+import { type LibraryKind, opensWhenAdded } from "@/lib/library-add";
 import { getFileStem } from "@/lib/paths";
 import { spaceFileStem } from "@/lib/spaces";
 import * as tauri from "@/lib/tauri";
@@ -237,9 +237,11 @@ export async function submitComposer(target: ComposerTarget, open = false): Prom
   // The box lets go now; the add reports its own progress and failures.
   await finish(null, "", false);
   const { addLinkToLibrary, addTitleToLibrary } = await import("@/hooks/use-library-add");
+  // A podcast's note is its player: it opens, ready for ⌘⇧J.
+  const opens = open || (target.kind === "link" && opensWhenAdded(target.library));
   let path: string | null = null;
   if (target.kind === "link") {
-    path = await addLinkToLibrary(target.link, target.library, { body: draft.body, open });
+    path = await addLinkToLibrary(target.link, target.library, { body: draft.body, open: opens });
   } else if (target.kind === "title") {
     path = await addTitleToLibrary(target.title, target.library, { body: draft.body, open });
   } else {
@@ -250,7 +252,7 @@ export async function submitComposer(target: ComposerTarget, open = false): Prom
     await stampDate(path, draft);
     await linkIntoDay(draft.day, path);
   }
-  if (!open) {
+  if (!opens) {
     showEditorNotice(`Added ${getFileStem(path)}`, {
       label: "Open",
       run: () => void useEditorStore.getState().openFile(path),
