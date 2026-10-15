@@ -830,6 +830,31 @@ describe("Journeys: second pen", function () {
       const added = w.filter((x) => !yours.has(x)).length;
       ok(added <= Math.max(1, Math.ceil(w.length / 4)), `not in your words: "${l}"\n${text}`);
     }
+    // Problems and solutions never sit under one point (the top level may hold both).
+    const side = (l) => {
+      const key = (/^\s*- (?:\[[ xX]\] )?([^:]+):/.exec(l)?.[1] ?? "").toLowerCase();
+      if (
+        /\b(problems?|causes?|root|obstacles?|risks?|issues?|challenges?|barriers?|blockers?|pain|symptoms?|failure|mistakes?|traps?|pitfalls?|weakness|limitation|drawback|downside|friction|costs?|failed|fails)\b/.test(
+          key,
+        )
+      )
+        return "problem";
+      if (
+        /\b(solutions?|fix(es)?|remedy|strateg(y|ies)|actions?|steps?|next|approach|tactics?|practices?|method|recommendation|tools?|plan|workaround|mitigation|levers?|intervention|worked|works|helps|helped)\b/.test(
+          key,
+        )
+      )
+        return "solution";
+      return null;
+    };
+    lines.forEach((l, k) => {
+      const kids = [];
+      for (let j = k + 1; j < lines.length && indent(lines[j]) > indent(l); j++) {
+        if (indent(lines[j]) === indent(l) + 2) kids.push(lines[j]);
+      }
+      const sides = new Set(kids.map(side).filter(Boolean));
+      ok(sides.size < 2, `problems and solutions under "${l.trim()}":\n${text}`);
+    });
     // The pen's ideas sum up what's under them: never a leaf.
     lines.forEach((l, k) => {
       if (!/ \^ai-g-[a-z0-9]{4}$/.test(l)) return;

@@ -253,6 +253,15 @@ one by one, and only when you ask.
   across the pyramid. A flat list is never left flat when it can be grouped.
 - **A key phrase on every point**: `Principle: …`, `Example: …`, `Cause: …`
   (one to three words, the pen's choice), then the point.
+- **Problems and solutions never sit under one point.** They are different
+  kinds: a problem branch and a solution branch go side by side, at the top.
+  The pen keys a problem's points as problems (Problem, Cause, Obstacle,
+  Risk…) and a solution's as solutions (Solution, Strategy, Step, What
+  worked…), and code reads the side from those words. A reply with both under
+  one point is asked once more, naming the point; if it still has both, code
+  moves the side that isn't the point's own (for a point of neither side, the
+  smaller; solutions on a tie) out, right after it, a level up, until the
+  top. An idea of the pen's left over one point gives way to it.
 - **Your lines, in your words, short.** Each of your lines is a point of its
   own, cut to one sentence: filler, hedges and repetition cut, a word or two
   adjusted at most. Checked in code: a point with more words than your line,
@@ -270,8 +279,9 @@ one by one, and only when you ask.
   never your conclusion": the prompt says so.
 - **Model**: Organize asks Sonnet when the pen is on Haiku (Haiku hands back
   a flat list); Opus stays Opus. Slower than the other pills, a few seconds
-  more. A reply that comes back one level deep from four lines or more is
-  asked once more, in the same conversation, for a pyramid.
+  more. A reply that comes back one level deep from four lines or more, or
+  with a problem and a solution under one point, is asked once more, in the
+  same conversation, saying what's wrong.
 - A reply that leaves out one of your lines isn't shown: *Couldn't organize
   these lines. Try again.*
 - The outline replaces your lines, tinted, and the text waits: *Organized in

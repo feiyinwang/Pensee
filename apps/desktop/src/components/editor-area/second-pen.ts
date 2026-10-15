@@ -51,7 +51,10 @@ import {
   isPenParagraph,
   organizedLines,
   organizeReply,
+  mixedSides,
+  type OrganizedPoint,
   outlineDepth,
+  separateSides,
   wordCount,
   itemText,
   newPenId,
@@ -106,7 +109,8 @@ import "./second-pen.css";
  *  pick (`SIDE_LABEL_AT_START_RE`). */
 const ECHO_LABEL_RE = new RegExp(`^(?:${ECHO_LABELS.join("|")}):`);
 
-/** From this many lines, a flat Organize is asked once more for a pyramid. */
+/** From this many lines, a flat Organize is asked once more for a pyramid
+ *  (a problem and a solution under one point always is). */
 const FLAT_RETRY_LINES = 4;
 
 /** Lines from the line's own words that make Connect skip asking the pen
@@ -1290,12 +1294,25 @@ class PenPlugin {
         ),
         yours,
       );
-      // A flat list isn't a pyramid: ask once more, in the same conversation.
-      if (points && yours.length >= FLAT_RETRY_LINES && outlineDepth(points) < 2) {
+      // A flat list, or problems and solutions under one point: ask once
+      // more, in the same conversation, saying what's wrong.
+      const wrong = (ps: OrganizedPoint[]) => [
+        ...(yours.length >= FLAT_RETRY_LINES && outlineDepth(ps) < 2
+          ? [
+              "It came back one level deep: group the lines by what they mean under ideas that sum them up, as many levels deep as the meaning goes.",
+            ]
+          : []),
+        ...mixedSides(ps, yours).map(
+          (at) =>
+            `Under "${at}", problems and solutions sit side by side: they are different kinds. Move them into separate branches, a problem branch and a solution branch, side by side.`,
+        ),
+      ];
+      const asked = points ? wrong(points) : [];
+      if (points && asked.length) {
         points =
           organizeReply(
             await conversation.send(
-              "That came back one level deep. Group the lines by what they mean under ideas that sum them up, MECE at every level, as many levels deep as the meaning goes. Same JSON, every line once.",
+              [...asked, "MECE at every level. Same JSON, every line once."].join("\n"),
             ),
             yours,
           ) ?? points;
@@ -1305,6 +1322,8 @@ class PenPlugin {
         this.say("Couldn't organize these lines. Try again.");
         return;
       }
+      // Still both under one point: the other side moves out, a level up.
+      points = separateSides(points);
       if (this.view.state.doc.sliceString(from, to) !== block) {
         this.say("The lines changed while the pen read them. Try again.");
         return;

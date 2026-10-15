@@ -487,7 +487,8 @@ function taskText(input: PenPromptInput): string {
         "This task is the exception to writing one line: you write the whole outline, and the ideas you add above the writer's lines are yours to write.",
         "Build a pyramid of ideas from what the lines mean, not from the order they were written in. At the top, the fewest ideas that sum up everything (one if one can). Under each idea, the ideas or lines that support it, explain it or are part of it, and under those theirs, as many levels deep as the meaning goes: often three or four, more when the lines need it. Never leave the lines as one flat list when they can be grouped.",
         "MECE at every level and across the whole pyramid: the points side by side are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A line the writer indented under another stays under it, unless it plainly belongs elsewhere.",
-        'Every point starts with a key phrase that says what it is: 1 to 3 words, like "Principle", "Framework", "Cause", "Effect", "Example", "Step", "Benefit", "Risk", "Evidence", "Question", "Definition". Put it in "key", not in "text".',
+        "Problems (causes, obstacles, risks) and solutions (fixes, strategies, steps, what worked) are different kinds: they never sit under the same point. Build them as separate branches side by side, a problem branch and a solution branch, at the top.",
+        'Every point starts with a key phrase that says what it is: 1 to 3 words, like "Principle", "Framework", "Problem", "Cause", "Obstacle", "Risk", "Solution", "Strategy", "Step", "What worked", "Example", "Benefit", "Evidence", "Question", "Definition". A problem\'s points are keyed as problems (Problem, Cause, Obstacle, Risk), a solution\'s as solutions (Solution, Strategy, Step, What worked). Put it in "key", not in "text".',
         'Every line goes in exactly once, as its own point, by its number in "line" (never the lines under it: those are points of their own). Its "text" is that line cut short: one sentence at most, the writer\'s own words with filler, hedges and repetition cut, a word or two adjusted at most. Never add an idea or drop one. Keep every [[link]] and [text](link) as it is.',
         'An idea you add above the lines has no "line": its "text" is one short sentence (at most 15 words) that sums up the points under it, in the writer\'s words where they fit. Only where it sums up two or more points.',
         'Reply with JSON only: {"points": [{"key": "Principle", "text": "…", "under": [{"key": "Example", "line": 3, "text": "…", "under": [...]}]}]}',
@@ -1043,6 +1044,70 @@ export function organizedLines(
 /** How many levels deep an outline goes. */
 export function outlineDepth(points: readonly OrganizedPoint[]): number {
   return points.reduce((most, p) => Math.max(most, 1 + outlineDepth(p.under)), 0);
+}
+
+/** Which side of a problem a key phrase is on. Problems and solutions are
+ *  different kinds: they never sit under one point. */
+export type PointSide = "problem" | "solution" | null;
+
+const PROBLEM_KEYS = new Set(
+  "problem problems cause causes root obstacle obstacles risk risks issue issues challenge challenges barrier barriers blocker blockers pain symptom symptoms failure mistake mistakes trap pitfall pitfalls weakness limitation drawback downside friction cost costs failed fails".split(
+    " ",
+  ),
+);
+const SOLUTION_KEYS = new Set(
+  "solution solutions fix fixes remedy strategy strategies action actions step steps next approach tactic tactics practice practices method recommendation tool tools plan workaround mitigation lever levers intervention worked works helps helped".split(
+    " ",
+  ),
+);
+
+/** A key phrase's side, by its words ("Root cause", "What worked"). */
+export function sideOf(key: string | null): PointSide {
+  const words = (key ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.some((w) => PROBLEM_KEYS.has(w))) return "problem";
+  if (words.some((w) => SOLUTION_KEYS.has(w))) return "solution";
+  return null;
+}
+
+const pointText = (p: OrganizedPoint, lines: readonly string[]) =>
+  "idea" in p ? p.idea : (p.text ?? itemText(lines[p.lines[0]!] ?? ""));
+
+/** The points with problems and solutions side by side under them, as
+ *  `Key: text`. The top level has no point over it: both sides may sit there. */
+export function mixedSides(points: readonly OrganizedPoint[], lines: readonly string[]): string[] {
+  return points.flatMap((p) => {
+    const sides = new Set(p.under.map((k) => sideOf(k.key)).filter(Boolean));
+    const here = sides.size > 1 ? [`${p.key ? `${p.key}: ` : ""}${pointText(p, lines)}`] : [];
+    return [...here, ...mixedSides(p.under, lines)];
+  });
+}
+
+/** The outline with problems and solutions never under one point: where a
+ *  point holds both, the side that isn't its own (or, for a point of
+ *  neither side, the smaller one; solutions on a tie) moves out, to sit
+ *  right after it, a level up, until the top. An idea of the pen's left over
+ *  fewer than two points gives way to them. */
+export function separateSides(points: readonly OrganizedPoint[]): OrganizedPoint[] {
+  return points.flatMap((p) => {
+    const kids = separateSides(p.under);
+    const problems = kids.filter((k) => sideOf(k.key) === "problem");
+    const solutions = kids.filter((k) => sideOf(k.key) === "solution");
+    if (!problems.length || !solutions.length) return [{ ...p, under: kids }];
+    const own = sideOf(p.key);
+    const move: PointSide =
+      own === "problem"
+        ? "solution"
+        : own === "solution"
+          ? "problem"
+          : problems.length < solutions.length
+            ? "problem"
+            : "solution";
+    const staying = kids.filter((k) => sideOf(k.key) !== move);
+    const moving = kids.filter((k) => sideOf(k.key) === move);
+    const kept: OrganizedPoint[] =
+      "idea" in p && staying.length < 2 ? staying : [{ ...p, under: staying }];
+    return [...kept, ...moving];
+  });
 }
 
 export function wordCount(text: string): number {

@@ -17,7 +17,10 @@ import {
   itemText,
   newPenId,
   noteForPen,
+  mixedSides,
   organizeReply,
+  separateSides,
+  sideOf,
   inTheirWords,
   organizedLines,
   outlineDepth,
@@ -699,5 +702,117 @@ describe("organize", () => {
 
   test("not JSON is no outline", () => {
     expect(organizeReply("- a\n- b", ["- a", "- b"])).toBeNull();
+  });
+
+  test("a key phrase says which side of a problem a point is on", () => {
+    expect(sideOf("Cause")).toBe("problem");
+    expect(sideOf("Root cause")).toBe("problem");
+    expect(sideOf("What failed")).toBe("problem");
+    expect(sideOf("Solution")).toBe("solution");
+    expect(sideOf("What worked")).toBe("solution");
+    expect(sideOf("Example")).toBeNull();
+    expect(sideOf(null)).toBeNull();
+  });
+
+  // What the real app returned on 2026-10-15: a Solution beside three Causes.
+  const dump = [
+    "- I start too many things at once",
+    "- no deadline so it drifts",
+    "- I don't tell anyone, so no one asks how it's going",
+    "- when I pair with a friend I finish",
+    "- small scope worked: the CLI I shipped in a weekend",
+  ];
+  const mixed = organizeReply(
+    JSON.stringify({
+      points: [
+        {
+          key: "Pattern",
+          text: "side projects stall without structure or accountability",
+          under: [
+            {
+              key: "Cause",
+              text: "lack of constraints lets projects drift",
+              under: [
+                { key: "Example", line: 1 },
+                { key: "Example", line: 2 },
+              ],
+            },
+            { key: "Cause", line: 3 },
+            {
+              key: "Solution",
+              text: "external structure creates completion",
+              under: [
+                { key: "Example", line: 4 },
+                { key: "Example", line: 5, text: "small scope worked: CLI I shipped in a weekend" },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+    dump,
+  )!;
+
+  test("a point with problems and solutions under it is named", () => {
+    expect(mixedSides(mixed, dump)).toEqual([
+      "Pattern: side projects stall without structure or accountability",
+    ]);
+  });
+
+  test("problems and solutions never stay under one point: the smaller side moves up", () => {
+    const fixed = separateSides(mixed);
+    expect(mixedSides(fixed, dump)).toEqual([]);
+    let n = 0;
+    expect(organizedLines(fixed, dump, "", () => `ai-g-${n++}`)).toEqual(
+      [
+        "- Pattern: side projects stall without structure or accountability ^ai-g-0",
+        "  - Cause: lack of constraints lets projects drift ^ai-g-1",
+        "    - Example: I start too many things at once",
+        "    - Example: no deadline so it drifts",
+        "  - Cause: I don't tell anyone, so no one asks how it's going",
+        "- Solution: external structure creates completion ^ai-g-2",
+        "    - Example: when I pair with a friend I finish",
+        "    - Example: small scope worked: CLI I shipped in a weekend",
+      ].map((l) => l.replace(/^ {4}- Example: (when|small)/, "  - Example: $1")),
+    );
+  });
+
+  test("a point keeps its own side; the other moves out, up to the top", () => {
+    const points = separateSides(
+      organizeReply(
+        JSON.stringify({
+          points: [
+            {
+              key: "Theme",
+              text: "finishing projects",
+              under: [
+                {
+                  key: "Problem",
+                  text: "I drift",
+                  under: [
+                    { key: "Cause", line: 1 },
+                    { key: "Fix", line: 2 },
+                    { key: "Fix", line: 3 },
+                  ],
+                },
+                { key: "Strategy", line: 4 },
+              ],
+            },
+          ],
+        }),
+        ["- a", "- b", "- c", "- d"],
+      )!,
+    );
+    expect(mixedSides(points, ["- a", "- b", "- c", "- d"])).toEqual([]);
+    expect(organizedLines(points, ["- a", "- b", "- c", "- d"], "", () => "x")).toEqual([
+      // The problem kept its cause and lost its fixes: left over one point, the
+      // cause stands in for it. Then, under the theme, the lone problem is the
+      // smaller side: it moves out, beside the theme.
+      "- Theme: finishing projects ^x",
+      "  - Fix: b",
+      "  - Fix: c",
+      "  - Strategy: d",
+      "- Cause: a",
+    ]);
   });
 });
