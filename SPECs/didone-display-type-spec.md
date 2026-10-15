@@ -25,13 +25,12 @@ tool, not a writing room.
 - The page title no longer takes the editor's letter-spacing setting; that
   setting is for body text.
 - H3–H6, body text and every control stay SF Pro.
-- **Labels are tracked capitals in the UI face.** `label-mono` is replaced by
-  `label-caps`: `--ui-font`, uppercase, 0.1em tracking. Command-palette group
-  headings use the same voice. This matches the byline on a Library book
-  cover (`.bookByline`), the in-app reference for the look.
+- **Labels are sentence case in the UI face.** `label-mono` is replaced by
+  `label-ui`: `--ui-font`, no case transform, no tracking. Command-palette
+  group headings use the same voice. (Amended 2026-10-15: labels were tracked
+  capitals; the app now never sets text in all caps, cover artwork included.)
 - Monospace stays for code, math errors, number columns (the document footer's
-  counts, tweet numbers) and inputs that hold codes. Library cover artwork
-  (`.eyebrow`, `.paperVenue`) imitates printed objects and is not chrome.
+  counts, tweet numbers) and inputs that hold codes.
 
 ## Wordmark in the sidebar
 

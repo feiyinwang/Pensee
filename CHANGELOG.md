@@ -2,6 +2,7 @@
 
 ## 2026-10-15
 
+- Nothing in the app is set in all caps any more: sidebar and command-palette headings, the welcome buttons, backlink titles, Library cover bylines and code-block language labels now read in sentence case or as you wrote them. The command palette's search field says *Search notes and commands…*.
 - Fixed: **# Organize** could cut a line down to its first idea and drop the rest ("the boring middle part" for a line that also listed auth, settings and edge cases). It now only cuts filler and hedges ("I think", "basically", "really"). A line that holds two points becomes two points, one under the other, and if a shortened point would lose anything, your line stays as you wrote it.
 - **# Organize** never puts problems and solutions under the same point. Causes, obstacles and risks go in one branch, solutions, strategies and what worked in another, side by side. If the pen mixes them anyway, it's asked once more, and if it still does, the other side is moved out to sit beside that point.
 - **# Organize** builds a pyramid of ideas now. It groups your lines by what they mean, not the order you wrote them, under short ideas of the pen's that sum them up, MECE at every level and as deep as it takes, even from a flat list. Every point starts with a key phrase (*Principle:*, *Example:*, *Cause:*…), your lines stay in your own words cut short, and the pen's ideas are in its blue ink. Organize uses Sonnet when your pen is set to Haiku, so it takes a few seconds longer; if a reply still comes back flat, the pen is asked once more.

@@ -79,14 +79,12 @@
   }
 }
 
-/* Label voice: the UI face in tracked capitals, like the byline on a Library
-   book cover. Used for section headings and primary buttons so chrome text
-   reads as labels, distinct from the prose the editor holds. Never monospace:
-   that reads as a terminal, not a writing room (SPECs/didone-display-type-spec.md). */
-@utility label-caps {
+/* Label voice: the UI face, sentence case. Used for section headings and
+   primary buttons so chrome text reads as labels, distinct from the prose the
+   editor holds. Never all caps, never monospace: that reads as a terminal, not
+   a writing room (SPECs/didone-display-type-spec.md). */
+@utility label-ui {
   font-family: var(--font-ui);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
 }
 
 @utility scrollbar-none {
@@ -592,10 +590,8 @@ body.tree-dragging [data-tree-path] {
 
 [cmdk-group-heading] {
   padding: 6px 10px;
-  /* The label-caps voice (see the utility above). */
+  /* The label-ui voice (see the utility above). */
   font-family: var(--ui-font);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   font-size: var(--text-caption);
   color: var(--text-muted);
   user-select: none;

@@ -407,7 +407,7 @@ export function CommandPalette() {
     ? "Create a new note..."
     : isMoveIntent
       ? "Move selection to page…"
-      : "这是我的版本...";
+      : "Search notes and commands…";
 
   return (
     <CommandDialog

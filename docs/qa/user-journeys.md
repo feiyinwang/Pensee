@@ -40,7 +40,7 @@ file in a compact window.
 | ----- | ---------------------------------------------------- | --------------------------------------------------------- | ---------- |
 | WS-01 | ★ Launch the app                                     | The last workspace opens, with the sidebar and its Spaces | auto: core |
 | WS-02 | Quit with two notes open, relaunch                   | Both tabs come back, the same one in front                | manual     |
-| WS-03 | With no workspace, click **Add Folder** and pick one | The folder opens as the workspace                         | you        |
+| WS-03 | With no workspace, click **Add folder** and pick one | The folder opens as the workspace                         | you        |
 | WS-04 | Open a single `.md` file from Finder                 | A compact window opens on it: no sidebar, no tab strip    | you        |
 
 ## Sidebar — SB
@@ -105,6 +105,7 @@ offers **Add to Library**; content search finds text inside notes.
 | PAL-02 | ⌘P, type a command name (e.g. "Toggle Calendar") | The command runs                                  | manual     |
 | PAL-03 | ⌘O, paste a URL                                  | An **Add to Library** row is on top, kind guessed | manual     |
 | PAL-04 | Search for a word that is only inside a note     | The note is found with the matching line          | manual     |
+| PAL-05 | ⌘P, look at the field and headings               | The field reads *Search notes and commands…*; no text on screen is in all caps | auto: palette |
 
 ## Editor — ED
 

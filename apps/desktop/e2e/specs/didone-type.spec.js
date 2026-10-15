@@ -126,9 +126,9 @@ describe("Didone display type", function () {
     await browser.saveScreenshot(join(SHOTS, "didone-note.png"));
   });
 
-  it("sets sidebar labels in tracked capitals, not monospace", async function () {
+  it("sets sidebar labels in sentence case, not monospace", async function () {
     const labels = await browser.execute(() =>
-      [...document.querySelectorAll("[data-sidebar-surface] .label-caps")].map((el) => {
+      [...document.querySelectorAll("[data-sidebar-surface] .label-ui")].map((el) => {
         const cs = getComputedStyle(el);
         return { text: el.textContent, family: cs.fontFamily, transform: cs.textTransform };
       }),
@@ -136,7 +136,7 @@ describe("Didone display type", function () {
     ok(labels.length > 0, "sidebar has section labels");
     for (const label of labels) {
       ok(!/mono|menlo|courier/i.test(label.family), `${label.text}: ${label.family}`);
-      strictEqual(label.transform, "uppercase", label.text);
+      strictEqual(label.transform, "none", label.text);
     }
   });
 
@@ -152,7 +152,7 @@ describe("Didone display type", function () {
     await browser.saveScreenshot(join(SHOTS, "didone-projects.png"));
   });
 
-  it("sets command-palette group headings in tracked capitals, not monospace", async function () {
+  it("sets command-palette group headings in sentence case, not monospace", async function () {
     await browser.execute(() => {
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: "p", metaKey: true, bubbles: true, cancelable: true }),
@@ -166,7 +166,7 @@ describe("Didone display type", function () {
       return { family: cs.fontFamily, transform: cs.textTransform };
     });
     ok(!/mono|menlo|courier/i.test(type.family), `palette heading: ${type.family}`);
-    strictEqual(type.transform, "uppercase");
+    strictEqual(type.transform, "none");
     await browser.saveScreenshot(join(SHOTS, "didone-palette.png"));
     await browser.keys("Escape");
   });

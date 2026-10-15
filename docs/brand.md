@@ -135,8 +135,9 @@ the muted grey and italic.
 - **Text and controls:** SF Pro (`--ui-font`, `--editor-font`). H3 and below
   stay in SF Pro.
 - **Labels:** section headings like Spaces and Recents, command-palette group
-  headings, and label-style buttons are SF Pro in tracked capitals (the
-  `label-caps` utility, 0.1em). Not monospace; monospace is for code and
+  headings, and label-style buttons are SF Pro in sentence case (the
+  `label-ui` utility). Never all caps anywhere in the app UI; the `PENSÉE`
+  wordmark is the one exception. Not monospace; monospace is for code and
   numbers in columns only.
 - **No wordmark in the sidebar:** the sidebar opens with the Search field
   under the window buttons; `PENSÉE` is not shown there.

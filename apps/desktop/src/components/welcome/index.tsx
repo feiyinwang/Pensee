@@ -31,16 +31,16 @@ export function WelcomeScreen() {
           <button
             type="button"
             onClick={() => void handleAddLocation()}
-            className="flex items-center gap-2 label-caps rounded-[var(--radius-button)] bg-[var(--text-primary)] px-4 py-2 text-label whitespace-nowrap font-medium text-[var(--surface-primary)] transition-opacity hover:opacity-90"
+            className="flex items-center gap-2 label-ui rounded-[var(--radius-button)] bg-[var(--text-primary)] px-4 py-2 text-label whitespace-nowrap font-medium text-[var(--surface-primary)] transition-opacity hover:opacity-90"
           >
-            Add Folder
+            Add folder
           </button>
           <button
             type="button"
             onClick={() => void handleOpenFile()}
-            className="flex items-center gap-2 label-caps rounded-md border border-[var(--line-subtle)] px-4 py-2 text-label whitespace-nowrap font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-subtle)]"
+            className="flex items-center gap-2 label-ui rounded-md border border-[var(--line-subtle)] px-4 py-2 text-label whitespace-nowrap font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-subtle)]"
           >
-            Open File
+            Open file
           </button>
         </div>
       </div>

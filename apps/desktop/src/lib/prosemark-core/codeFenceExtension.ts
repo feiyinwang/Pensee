@@ -41,7 +41,7 @@ const codeBlockDecorations = (view: EditorView) => {
           } else {
             const codeInfoNode = node.node.getChild("CodeInfo");
             if (codeInfoNode) {
-              lang = view.state.doc.sliceString(codeInfoNode.from, codeInfoNode.to).toUpperCase();
+              lang = view.state.doc.sliceString(codeInfoNode.from, codeInfoNode.to);
             }
             const firstLine = view.state.doc.lineAt(node.from);
             const codeStart = firstLine.to + 1;

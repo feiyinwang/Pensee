@@ -4,7 +4,7 @@ import { parser as yamlParser } from "@lezer/yaml";
 
 const FRONTMATTER_DELIMITER = "---";
 const FRONTMATTER_DELIMITER_LENGTH = FRONTMATTER_DELIMITER.length;
-export const FRONTMATTER_LANGUAGE_LABEL = "YAML (FRONTMATTER)";
+export const FRONTMATTER_LANGUAGE_LABEL = "YAML frontmatter";
 
 const isFrontmatterDelimiterLine = (line: Line): boolean => {
   if (line.pos !== 0) return false;
