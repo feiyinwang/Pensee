@@ -144,10 +144,18 @@ open into raw `<details>` source when clicked).
   focused. Every message to the Agent says where each open note's video is
   and carries the transcript from 90 s before to 10 s after that moment, so
   "what did he just say?" works; the full transcript is in the note.
-- Clicks, scrolling and selection inside the box stay in it. The caret
-  at its edge (where it lands when the note opens, since the transcript is
-  the first thing in the body) leaves it a box; only a selection inside its
-  source, such as a find match, opens the source.
+- Clicks, scrolling and selection inside the box stay in it. A caret at
+  its edge leaves it a box; only a selection inside its source, such as a
+  find match, opens the source.
+- **Typing around it** (`transcript-edges.ts`). The transcript is the first
+  thing in the body, so a note opened at the top would put the caret at the
+  block's start, drawn under the box. It goes on the line under the box
+  instead, where it is drawn. Words typed against the block never touch it:
+  before `<details>` they go on a line of their own above, with a blank line
+  between; after `</details>`, or on the empty line right under the box,
+  they go below a blank line, which other Markdown apps need to end the
+  HTML block. Enter, arrow keys and clicks are left alone, so the caret can
+  still reach the start of the note.
 
 ### Pins on a board
 

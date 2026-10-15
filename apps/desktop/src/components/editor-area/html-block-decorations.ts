@@ -10,6 +10,7 @@ import { hasTranscript } from "@/lib/video-transcript";
 import type { BlockParser, BlockContext, Line, MarkdownConfig } from "@lezer/markdown";
 import DOMPurify from "dompurify";
 import { dragFrozenSelectionField, rangesTouchInclusive } from "./drag-selection-gate";
+import { transcriptEdges } from "./transcript-edges";
 
 const ALLOWED_TAGS = [
   "div",
@@ -420,5 +421,5 @@ export const htmlBlockParserExtension: MarkdownConfig = {
 };
 
 export function htmlBlockDecorations() {
-  return [htmlBlockFoldExtension, htmlBlockTheme, htmlBlockSelectOnMouseDown];
+  return [htmlBlockFoldExtension, htmlBlockTheme, htmlBlockSelectOnMouseDown, transcriptEdges];
 }

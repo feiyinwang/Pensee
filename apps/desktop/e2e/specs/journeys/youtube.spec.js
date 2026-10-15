@@ -5,7 +5,7 @@
 // these journeys don't wait on YouTube.
 import { equal, ok } from "node:assert/strict";
 import { execSync } from "node:child_process";
-import { pressCmd, waitForTitle, workspaceRoot } from "./_helpers.js";
+import { invoke, pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
 
 /** Seeded by qa/seed-vault.mjs: four timed paragraphs, two sentences each. */
 const NOTE = "Speech talk";
@@ -28,17 +28,69 @@ async function boxState() {
   });
 }
 
+/** Open a note from ⌘O. */
+async function openNote(name) {
+  await pressCmd("o");
+  const input = await $("[cmdk-input]");
+  await input.waitForExist({ timeout: 5_000 });
+  await input.setValue(name);
+  const item = await $(`//*[@cmdk-item][contains(., "${name}")]`);
+  await item.waitForExist({ timeout: 10_000 });
+  await item.click();
+  await waitForTitle(name);
+}
+
+describe("YouTube notes: typing in a video note", function () {
+  before(async function () {
+    const root = await workspaceRoot();
+    this.path = `${root}/${NOTE}.md`;
+    // Opened afresh from another note, the way a user comes to it. First in
+    // the file: YT-08 leaves the Agent open, holding focus.
+    await openNote("Welcome");
+    await openNote(NOTE);
+    await $(".transcript-box").waitForExist({ timeout: 15_000 });
+  });
+
+  it("YT-10 ★ typing right after opening never breaks the transcript", async function () {
+    await browser.waitUntil(
+      () =>
+        browser.execute(() => document.activeElement?.classList.contains("cm-content") === true),
+      { timeout: 3_000, timeoutMsg: "opening the note didn't put the caret in it" },
+    );
+    // Where the note put the caret: the editor already has focus.
+    await typeInEditor("Hello", { atEnd: false });
+    const path = this.path;
+    let body = "";
+    await browser.waitUntil(
+      async () => {
+        const note = await invoke("read_file", { path });
+        body = note.ok ? note.value.content : "";
+        return body.includes("Hello");
+      },
+      { timeout: 5_000, timeoutMsg: `the typed word wasn't saved:\n${body}` },
+    );
+    const lines = body.split("\n");
+    const open = lines.indexOf("<details>");
+    const close = lines.indexOf("</details>");
+    ok(open >= 0 && close > open, `the <details> lines broke:\n${body}`);
+    const typed = lines.findIndex((line) => line.includes("Hello"));
+    equal(lines[typed], "Hello", `the word joined another line:\n${body}`);
+    ok(typed < open - 1 || typed > close + 1, `the word sits against the transcript:\n${body}`);
+    const shown = await browser.execute(() =>
+      [...document.querySelectorAll(".cm-line")].some((line) => line.textContent === "Hello"),
+    );
+    ok(shown, "the typed word doesn't show as a line of the note");
+    const state = await boxState();
+    ok(state.lines.length >= 8, "the transcript box went away");
+    ok(!state.editorText.includes("<summary>"), "the raw <summary> shows in the note");
+    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-10-typed.png`);
+  });
+});
+
 describe("YouTube notes: transcript box", function () {
   before(async function () {
     await workspaceRoot();
-    await pressCmd("o");
-    const input = await $("[cmdk-input]");
-    await input.waitForExist({ timeout: 5_000 });
-    await input.setValue(NOTE);
-    const item = await $(`//*[@cmdk-item][contains(., "${NOTE}")]`);
-    await item.waitForExist({ timeout: 10_000 });
-    await item.click();
-    await waitForTitle(NOTE);
+    await openNote(NOTE);
     await $(".transcript-box").waitForExist({ timeout: 15_000 });
   });
 

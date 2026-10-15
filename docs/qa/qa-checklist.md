@@ -169,3 +169,4 @@ Learned the hard way; each one cost a failed run.
   `e2e/qa/seed-vault.mjs` instead.
 - `navigator.clipboard.readText()` is refused in the e2e webview: read what
   a Copy button wrote with `execSync("pbpaste")` in the spec (YT-07).
+- With the Agent panel open, a note opened from ⌘O leaves focus on `<body>`, not in the editor: a journey that types right after opening a note runs before any journey that opens the Agent in its file (YT-10 before YT-08).

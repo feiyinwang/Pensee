@@ -288,7 +288,7 @@ bullets; text size and reading place persist.
 pins moments to lines and fetches the transcript, which shows as a
 teleprompter box that follows the video, seeks, copies and asks the Agent.
 **Spec:** SPECs/youtube-notes-spec.md
-**Code:** `src/components/editor-area/` (video-player.tsx, video-pin.ts, video-transcript.ts, transcript-box.tsx, transcript-box.css, html-block-decorations.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/text-reveal/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
+**Code:** `src/components/editor-area/` (video-player.tsx, video-pin.ts, video-transcript.ts, transcript-box.tsx, transcript-box.css, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/text-reveal/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
 
 | ID    | Journey                                            | Expected                                                                                                      | Check                     |
 | ----- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -301,6 +301,7 @@ teleprompter box that follows the video, seeks, copies and asks the Agent.
 | YT-07 | **Copy** in the transcript box                     | It reads **Copied**; the clipboard holds every paragraph after its time (`0:00 …`, blank line, `1:00 …`)      | auto: youtube             |
 | YT-08 | **Ask** in the transcript box                      | The Agent panel opens with its input focused                                                                  | auto: youtube             |
 | YT-09 | Play, then ask the Agent "what did they just say?" | The answer is about the lines around the video's time                                                         | you                       |
+| YT-10 | ★ Open a video note and type straight away         | The words show on a line of their own under the box, after a blank line; the `<details>` lines stay intact    | auto: youtube             |
 
 ## Podcast notes — POD
 
