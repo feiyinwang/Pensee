@@ -1,7 +1,6 @@
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   Folder01Icon,
-  Idea01Icon,
   Layers01Icon,
   LibraryIcon,
   Sun03Icon,
@@ -15,7 +14,6 @@ import { SIDEBAR_SECTION_LABEL_CLASS } from "./sidebar-section";
 const ICONS: Record<SpaceIcon, IconSvgElement> = {
   projects: Target02Icon,
   library: LibraryIcon,
-  inspirations: Idea01Icon,
   files: Folder01Icon,
   space: Layers01Icon,
 };

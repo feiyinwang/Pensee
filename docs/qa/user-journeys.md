@@ -48,7 +48,7 @@ file in a compact window.
 **Feature:** The sidebar shows the Search field (⌘P), **Today**, **Spaces** (Projects,
 Library, Inspirations, Files), Pinned and Recents. **Files** holds the folder tree.
 **Spec:** SPECs/spaces-spec.md, SPECs/sidebar-drag-and-drop-move-spec.md
-**Code:** `src/components/sidebar/`, `src/hooks/use-file-tree.ts`, `src-tauri/src/commands/fs.rs`, `src-tauri/src/watcher.rs`
+**Code:** `src/components/sidebar/`, `src/components/chrome-tooltip.tsx`, `src/hooks/use-file-tree.ts`, `src-tauri/src/commands/fs.rs`, `src-tauri/src/watcher.rs`
 
 | ID    | Journey                                           | Expected                                       | Check      |
 | ----- | ------------------------------------------------- | ---------------------------------------------- | ---------- |
@@ -59,6 +59,7 @@ Library, Inspirations, Files), Pinned and Recents. **Files** holds the folder tr
 | SB-05 | Create a note outside Pensée (shell) in the vault | It appears in Files within a couple of seconds | manual     |
 | SB-06 | Drag a note onto a folder in Files                | The file moves on disk; its open tab follows   | you        |
 | SB-07 | Click the **Search** field at the top             | The command palette opens                      | auto: core |
+| SB-08 | Hover the sidebar button, top left                | A tooltip under it reads `Hide sidebar (⌘[)`   | auto: core |
 
 ## Tabs and columns — TAB
 
@@ -187,7 +188,7 @@ in place; LaTeX math and Mermaid diagrams render.
 quarter or year creates or opens its note (`2026-10-13`, `2026-W42`, `2026-10`,
 `2026-Q4`, `2026`) in the daily-note folder; a dot marks notes that exist.
 **Spec:** SPECs/calendar-panel-spec.md
-**Code:** `src/components/calendar-panel/`, `src/components/arc/calendar/`, `src/lib/periodic-notes.ts`, `src/lib/daily-note.ts`, `src/hooks/use-daily-note.ts`, `src/hooks/use-calendar-panel.ts`, `src-tauri/src/commands/fs.rs` (list_markdown_stems, create_file_if_missing)
+**Code:** `src/components/calendar-panel/`, `src/components/chrome-tooltip.tsx`, `src/components/arc/calendar/`, `src/lib/periodic-notes.ts`, `src/lib/daily-note.ts`, `src/hooks/use-daily-note.ts`, `src/hooks/use-calendar-panel.ts`, `src-tauri/src/commands/fs.rs` (list_markdown_stems, create_file_if_missing)
 
 | ID     | Journey                                                 | Expected                                                    | Check          |
 | ------ | ------------------------------------------------------- | ----------------------------------------------------------- | -------------- |
@@ -199,6 +200,7 @@ quarter or year creates or opens its note (`2026-10-13`, `2026-W42`, `2026-10`,
 | CAL-06 | **Today** after notes exist                             | Back on this month; days with a note show a dot             | auto: calendar |
 | CAL-07 | ⌘-click a day                                           | The note opens in a new column right of the active tab      | auto: calendar |
 | CAL-08 | In a large iCloud vault, open the panel and click a day | Dots appear at once; the note opens within a second         | you            |
+| CAL-09 | Hover the calendar button, top right                    | A tooltip under it reads `Show calendar (⌘])`               | auto: core     |
 
 ## Daily note — DN
 

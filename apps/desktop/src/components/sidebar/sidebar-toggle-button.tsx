@@ -1,23 +1,29 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { useChromeTooltip } from "@/components/chrome-tooltip";
 
 export function SidebarToggleButton() {
   const { isSidebarVisible, toggleSidebar } = useSidebar();
   const label = isSidebarVisible ? "Hide sidebar" : "Show sidebar";
+  const { triggerProps, tooltip } = useChromeTooltip(`${label} (⌘[)`);
 
   // Styled as one of the tab chrome's history arrows: same height, width,
   // radius and muted-to-secondary hover, since it sits right beside them.
   return (
-    <button
-      type="button"
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={toggleSidebar}
-      aria-label={label}
-      title={`${label} (⌘[)`}
-      className="flex h-[var(--chrome-control-height)] w-7 items-center justify-center rounded-lg text-[var(--text-icon-muted)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--text-secondary)]"
-    >
-      <HugeiconsIcon icon={SidebarLeftIcon} size={18} color="currentColor" strokeWidth={2} />
-    </button>
+    <>
+      <button
+        type="button"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={toggleSidebar}
+        aria-label={label}
+        aria-keyshortcuts="Meta+["
+        {...triggerProps}
+        className="flex h-[var(--chrome-control-height)] w-7 items-center justify-center rounded-lg text-[var(--text-icon-muted)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--text-secondary)]"
+      >
+        <HugeiconsIcon icon={SidebarLeftIcon} size={18} color="currentColor" strokeWidth={2} />
+      </button>
+      {tooltip}
+    </>
   );
 }

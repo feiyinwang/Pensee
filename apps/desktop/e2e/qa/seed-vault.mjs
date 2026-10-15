@@ -17,7 +17,6 @@ const NOTES = {
     "---\nType: Project\nStatus: Ongoing\nDeadline: 2026-12-01\n---\n\nShip the site.\n",
   "Projects/Old idea.md": "---\nType: Project\nStatus: Done\n---\n\nFinished.\n",
   "Library/A book.md": "---\nType: Book\nAuthor: Someone\n---\n\n## Highlights\n",
-  "Inspirations/Quote.md": "---\nType: Inspiration\n---\n\nLess, but better.\n",
   // The second pen (PEN journeys): its own lines already in a note (two
   // echoes, a sealed answer with an empty take), a note for Connect to find,
   // and a video note with a transcript to answer from.

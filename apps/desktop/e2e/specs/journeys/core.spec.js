@@ -72,6 +72,30 @@ describe("Journeys: core (smoke)", function () {
     await $("[cmdk-input]").waitForExist({ timeout: 5_000, reverse: true });
   });
 
+  it("SB-08 / CAL-09 hovering a chrome toggle shows its label and shortcut", async function () {
+    // The WebDriver plugin sends no pointer events: dispatch the hover React listens for.
+    const hover = (label, type) =>
+      browser.execute(
+        (label, type) =>
+          document
+            .querySelector(`button[aria-label="${label}"]`)
+            .dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse" })),
+        label,
+        type,
+      );
+    for (const [label, text] of [
+      ["Hide sidebar", "Hide sidebar (⌘[)"],
+      ["Show calendar", "Show calendar (⌘])"],
+    ]) {
+      await hover(label, "pointerover");
+      const tip = await $("[data-chrome-tooltip]");
+      await tip.waitForExist({ timeout: 3_000 });
+      strictEqual(await tip.getText(), text);
+      await hover(label, "pointerout");
+      await tip.waitForExist({ timeout: 3_000, reverse: true });
+    }
+  });
+
   it("PAL-01 ⌘O finds a note by name and opens it", async function () {
     await openViaPalette("Welcome");
     ok((await editorText()).includes("A note to open first"), "Welcome's text shows");

@@ -8,7 +8,7 @@ import type { TypedNote } from "./tauri";
 
 export type SpaceView = "gallery" | "list" | "cards" | "files" | "kanban";
 export type CoverKind = "book" | "video" | "course" | "podcast" | "paper" | "tweet" | "note";
-export type SpaceIcon = "projects" | "library" | "inspirations" | "files" | "space";
+export type SpaceIcon = "projects" | "library" | "files" | "space";
 
 /** One tab of a space: which types it shows and how its covers look. */
 export interface SpaceTab {
@@ -67,13 +67,6 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
       tab("papers", "Papers", "paper", ["Paper"], "paper"),
       tab("bookmarks", "Bookmarks", "bookmark", [TWEET_TYPE], "tweet", "x"),
     ],
-  },
-  {
-    key: "inspirations",
-    name: "Inspirations",
-    icon: "inspirations",
-    view: "cards",
-    tabs: [tab("inspirations", "Inspirations", "inspiration", ["Inspiration"], "note")],
   },
   { key: "files", name: "Files", icon: "files", view: "files", tabs: [] },
 ];
