@@ -36,7 +36,7 @@ describe("parseLibraryLink", () => {
     ["https://arxiv.org/abs/1706.03762", "arxiv.org", "paper"],
     ["https://doi.org/10.1145/3290605.3300233", "doi.org", "paper"],
     ["https://dl.acm.org/doi/10.1145/3290605.3300233", "dl.acm.org", "paper"],
-    ["https://www.coursera.org/learn/machine-learning", "coursera.org", "course"],
+    ["https://www.coursera.org/learn/machine-learning", "coursera.org", "video"],
     ["https://www.goodreads.com/book/show/11468377", "goodreads.com", "book"],
     ["https://www.amazon.com/dp/0374533555", "amazon.com", "book"],
     ["youtube.com/watch?v=dQw4w9WgXcQ", "youtube.com", "video"],

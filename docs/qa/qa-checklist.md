@@ -170,3 +170,4 @@ Learned the hard way; each one cost a failed run.
 - `navigator.clipboard.readText()` is refused in the e2e webview: read what
   a Copy button wrote with `execSync("pbpaste")` in the spec (YT-07).
 - With the Agent panel open, a note opened from ⌘O leaves focus on `<body>`, not in the editor: a journey that types right after opening a note runs before any journey that opens the Agent in its file (YT-10 before YT-08).
+- Two `run.sh` runs at once (another session's) share the driver port 4444: the second's specs fail with `UND_ERR_SOCKET` / `ECONNREFUSED` on `/session` before any journey runs. Wait until `pgrep -f e2e/qa/run.sh` is empty, then rerun with `--no-build`.

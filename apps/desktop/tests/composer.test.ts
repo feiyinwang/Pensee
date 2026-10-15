@@ -45,8 +45,8 @@ describe("effectiveKind", () => {
 
   test("a kind the user picked wins over the link", () => {
     expect(
-      effectiveKind(draft({ title: "https://youtu.be/x", kind: "course", kindPicked: true })),
-    ).toBe("course");
+      effectiveKind(draft({ title: "https://youtu.be/x", kind: "podcast", kindPicked: true })),
+    ).toBe("podcast");
   });
 
   test("a date leaves the kind alone", () => {

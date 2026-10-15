@@ -7,7 +7,7 @@ import type { TypedNote } from "./tauri";
 // `Type: Space`, read back through `spaceFromNote`.
 
 export type SpaceView = "gallery" | "list" | "cards" | "files" | "kanban";
-export type CoverKind = "book" | "video" | "course" | "podcast" | "paper" | "tweet" | "note";
+export type CoverKind = "book" | "video" | "podcast" | "paper" | "tweet" | "note";
 export type SpaceIcon = "projects" | "library" | "files" | "space";
 
 /** One tab of a space: which types it shows and how its covers look. */
@@ -61,8 +61,8 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     view: "gallery",
     tabs: [
       tab("books", "Books", "book", ["Book"], "book"),
-      tab("videos", "Videos", "video", ["YouTube", "Video"], "video"),
-      tab("courses", "Courses", "course", ["Course"], "course"),
+      // Courses are videos too: their notes keep `Type: Course` and show here.
+      tab("videos", "Videos", "video", ["YouTube", "Video", "Course"], "video"),
       tab("podcasts", "Podcasts", "podcast", ["Podcast"], "podcast"),
       tab("papers", "Papers", "paper", ["Paper"], "paper"),
       tab("bookmarks", "Bookmarks", "bookmark", [TWEET_TYPE], "tweet", "x"),
@@ -85,7 +85,7 @@ const COVER_BY_TYPE: Record<string, CoverKind> = {
   book: "book",
   youtube: "video",
   video: "video",
-  course: "course",
+  course: "video",
   podcast: "podcast",
   paper: "paper",
   tweet: "tweet",

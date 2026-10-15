@@ -2,6 +2,9 @@
 
 ## 2026-10-15
 
+- ⌘P pins the moment in a video or podcast note: the line you're writing gets the time playing now, and **Pin** shows ⌘P. Everywhere else ⌘P is still search, and ⌘⇧P opens search from anywhere, a video note included. ⌘⇧M no longer pins.
+- Courses are videos now: Library has no **Courses** tab, and notes with `Type: Course` show under **Videos**. A Coursera, Udemy or edX link added to Library is guessed as a video.
+- A video note shows **Transcript** only when YouTube lists captions for the video. A video without captions, or one that couldn't be checked, has no **Transcript** button, and pasting its link no longer pops up "This video has no transcript".
 - A video note's transcript now sits to the right of the video when the window has room, as tall as the video and pinned at the top with it while you scroll; in a narrower window it stays under the video. The line being said is highlighted instead of revealed word by word. Fold the box from its header (it remembers), and when the video has captions in more than one language, a menu next to **Transcript** reads it again in another. New transcripts come in English when the video has English captions.
 - **# Organize** works on a single paragraph too: select one line, or as many as you like, and its points become the outline. Picking a pill keeps the pen's box as wide as its row of pills, with no empty space after the last one; its hint now reads _Add a direction, or just press Enter_, since the lit pill already names it.
 - When Claude is signed out (an expired or revoked sign-in), the pen and the Agent now say _Claude is signed out. Run `claude` in Terminal, type /login, then try again._ instead of the raw API error.

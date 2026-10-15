@@ -29,7 +29,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+-           | Zoom out                       |
 | Cmd+0           | Actual size (100%)             |
 | Cmd+J           | Toggle the agent chat          |
-| Cmd+Shift+M     | Pin the video's moment¹        |
+| Cmd+P           | Pin the video's moment¹        |
 | Cmd+Shift+J     | Play / pause the video¹        |
 | Shift+< / >     | Video slower / faster²         |
 
@@ -42,7 +42,9 @@ notes in, so Cmd+Shift+N, Cmd+Shift+L and Cmd+] are inert there too.
 Cmd+Shift+L replaces CodeMirror's select-all-matches binding in the editor.
 
 ¹ Only while a YouTube or podcast note's player is open; handled in
-`video-pin.ts`, not the global hook
+`video-pin.ts`, not the global hook. Cmd+P pins only in a note that plays a
+video or episode, on its player, or on a board (which swallows Cmd+P anyway);
+everywhere else it is file search, and Cmd+Shift+P is search everywhere
 ([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md),
 [SPECs/podcast-notes-spec.md](../SPECs/podcast-notes-spec.md)). "Video"
 means the episode in a podcast note.

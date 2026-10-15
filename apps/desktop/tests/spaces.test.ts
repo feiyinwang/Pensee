@@ -32,12 +32,13 @@ describe("built-in spaces", () => {
     expect(library.tabs.map((t) => t.label)).toEqual([
       "Books",
       "Videos",
-      "Courses",
       "Podcasts",
       "Papers",
       "Bookmarks",
     ]);
     expect(allTypes(library)).toContain("YouTube");
+    // Courses are videos: their notes show on the Videos tab.
+    expect(library.tabs.find((t) => t.id === "videos")?.types).toContain("Course");
     expect(library.tabs.at(-1)).toMatchObject({ types: ["Tweet"], cover: "tweet", source: "x" });
   });
 

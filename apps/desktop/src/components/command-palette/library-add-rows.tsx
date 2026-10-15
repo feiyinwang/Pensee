@@ -1,12 +1,5 @@
 import { CommandGroup, CommandItem } from "cmdk";
-import {
-  BookOpen,
-  Clapperboard,
-  FileText,
-  GraduationCap,
-  Mic,
-  type LucideIcon,
-} from "lucide-react";
+import { BookOpen, Clapperboard, FileText, Mic, type LucideIcon } from "lucide-react";
 import {
   LIBRARY_KINDS,
   LIBRARY_KIND_LABELS,
@@ -25,7 +18,6 @@ const KIND_ICONS: Record<LibraryKind, LucideIcon> = {
   book: BookOpen,
   video: Clapperboard,
   podcast: Mic,
-  course: GraduationCap,
   paper: FileText,
 };
 

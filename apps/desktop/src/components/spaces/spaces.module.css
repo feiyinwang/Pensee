@@ -136,9 +136,6 @@
 .gallery[data-cover="podcast"] {
   --cover-min: 140px;
 }
-.gallery[data-cover="course"] {
-  --cover-min: 190px;
-}
 .gallery[data-cover="video"] {
   --cover-min: 220px;
 }
@@ -316,10 +313,6 @@
 }
 .cover[data-kind="podcast"] {
   aspect-ratio: 1 / 1;
-  border-radius: var(--radius-field);
-}
-.cover[data-kind="course"] {
-  aspect-ratio: 4 / 3;
   border-radius: var(--radius-field);
 }
 .cover[data-kind="video"] {
@@ -537,22 +530,6 @@
   justify-content: center;
   background: var(--cover-fg);
   color: var(--cover-bg);
-}
-
-.eyebrow {
-  padding: 12px 14px 0;
-  font-family: var(--mono-font);
-  font-size: var(--font-size-cover-fine);
-  opacity: 0.75;
-}
-
-.courseTitle {
-  margin-top: auto;
-  padding: 0 14px 14px;
-  font-size: var(--font-size-cover-title);
-  line-height: 1.15;
-  font-weight: 600;
-  overflow-wrap: anywhere;
 }
 
 .podcastMark {

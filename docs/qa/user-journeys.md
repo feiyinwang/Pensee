@@ -255,7 +255,7 @@ Opened full screen or **Edit here** over a note.
 
 ## Library — LIB
 
-**Feature:** Books, videos, courses, podcasts, papers and X bookmarks as a
+**Feature:** Books, videos (courses among them), podcasts, papers and X bookmarks as a
 cover gallery with type tabs; items are added from a link, a file or a title.
 **Spec:** SPECs/add-to-library-spec.md, SPECs/spaces-spec.md
 **Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/components/spaces/space-cover.tsx`, `src/lib/covers.ts`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`, `src-tauri/src/commands/covers.rs`
@@ -296,7 +296,7 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | ID    | Journey                                            | Expected                                                                                                      | Check                     |
 | ----- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | YT-01 | Open a note with a YouTube `Link:`                 | The player shows under the properties                                                                         | legacy: youtube-notes     |
-| YT-02 | Play, ⌘⇧M on a line                                | The line gets a pin; clicking it seeks to that moment                                                         | legacy: youtube-pin-click |
+| YT-02 | Play, ⌘P on a line                                 | The line gets a pin; clicking it seeks to that moment                                                         | legacy: youtube-pin-click |
 | YT-03 | ⌘⇧J anywhere                                       | The front note's video plays or pauses                                                                        | manual                    |
 | YT-04 | ★ Open a video note with a transcript              | A box shows the transcript a sentence a line, the first line in ink; no `<summary>` or `<p>` HTML in the note | auto: youtube             |
 | YT-05 | Click a line in the transcript box                 | That line becomes the one being said, its time (`1:00`) shows, the video plays from it; the box stays a box   | auto: youtube             |
@@ -310,21 +310,25 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-13 | ★ Open a video note in a wide pane, scroll; narrow it | Wide: the box is right of the video, as tall as it, and stays at the top with it; narrow: it is under the video | auto: youtube             |
 | YT-14 | Pick another language in the box's language menu   | The menu lists the video's caption languages, English first; the toggle is read again in it (`lang` kept), the rest of the note untouched | auto: youtube (YouTube) |
 | YT-15 | Add a video whose speech isn't English             | The transcript comes in English when the video has English captions; the menu offers the others              | you                       |
+| YT-16 | Open an older video note with no captions          | No **Transcript** button under the video, only **Pin ⌘P**                                                     | you                       |
+| YT-17 | ⌘P in a video note, then ⌘P in a plain note        | The video note's line gets a pin; in the plain note search opens                                             | auto: podcast (POD-05)    |
+| YT-18 | Paste a Coursera link into Library's **+**        | It is guessed as a Video; Library has no Courses tab, `Type: Course` notes show under Videos                  | you                       |
 
 ## Podcast notes — POD
 
 **Feature:** A podcast note plays its episode in a card under its properties
 (artwork, title and show, skips, timeline, speed, volume, Pin); adding a
-podcast opens the note, and ⌘⇧J / ⌘⇧M play, pause and pin as on a video.
+podcast opens the note, and ⌘⇧J / ⌘P play, pause and pin as on a video.
 **Spec:** SPECs/podcast-notes-spec.md
 **Code:** `src/components/editor-area/podcast-player.tsx`, `src/components/editor-area/podcast-player.css`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
 
 | ID     | Journey                                       | Expected                                                                                                                                   | Check         |
 | ------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
 | POD-01 | Library → Podcasts → **+**, paste a link, ⌘↵  | The note opens with the player, paused                                                                                                     | auto: podcast |
-| POD-02 | ★ ⌘⇧J, ⌘⇧M on a line, ⌘⇧J                     | It plays; the line gets a pin at that moment; it pauses                                                                                    | auto: podcast |
+| POD-02 | ★ ⌘⇧J, ⌘P on a line, ⌘⇧J                      | It plays; the line gets a pin at that moment; it pauses                                                                                    | auto: podcast |
 | POD-03 | Add an Apple Podcasts or Spotify episode link | The player finds the episode and plays the whole episode, with its artwork, title and show                                                 | you           |
 | POD-04 | Add an episode's page link; Back 15           | The card shows the page's whole artwork (blurred fill around it), title and show, and `< >` beside the speed; the playhead moves back 15 s | auto: podcast |
+| POD-05 | ⌘P in a plain note while a podcast is mounted | Search opens; no pin is written anywhere                                                                                                   | auto: podcast |
 
 ## Agent chat — AG
 

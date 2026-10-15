@@ -28,7 +28,7 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 | Space | Shows | View |
 |---|---|---|
 | Projects | `Type: Project` | kanban ([project-views-spec.md](project-views-spec.md)) |
-| Library | tabs: Books (`Book`), Videos (`YouTube`, `Video`), Courses (`Course`), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab |
+| Library | tabs: Books (`Book`), Videos (`YouTube`, `Video`, `Course`: courses are videos), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab |
 | Files | every file | the folder tree (moved here from the sidebar's Everything section) |
 
 Library opens on Books. Its tabs are an Arc segmented control with the count of each tab. A gallery space (Library, or one you add with `View: gallery`) has no reading-width cap: its cover grid fills the width its tab has, adding a column for every cover's width of room.
@@ -43,7 +43,6 @@ A book whose `Book:` is an EPUB shows the cover inside that file first (see belo
 |---|---|---|
 | Book | 2:3 | spine edge, serif title, author; three layouts picked by the hash |
 | Video | 16:9 | title in a thumbnail frame with a play mark |
-| Course | 4:3 | "Course" eyebrow over the title |
 | Podcast | 1:1 | show name set large with a microphone mark |
 | Paper | 3:4 | a typeset title page: venue and year, serif title, authors, text lines |
 
@@ -81,6 +80,6 @@ Covers come from the note's own link (`url`, `link` or `source`, first non-blank
 
 ## Not in this pass
 
-- Covers for other video hosts (Vimeo, Bilibili), for courses and papers, and the first page of a PDF book.
+- Covers for other video hosts (Vimeo, Bilibili), for papers, and the first page of a PDF book.
 - A `+ New` button inside a space.
 - Writing the matching notes into the space note as `[[links]]`.

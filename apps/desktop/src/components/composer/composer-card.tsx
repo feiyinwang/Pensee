@@ -6,7 +6,6 @@ import {
   File,
   FileText,
   Folder,
-  GraduationCap,
   Mic,
   Paperclip,
   X,
@@ -59,7 +58,6 @@ const KIND_ICONS: Record<ComposerKind, LucideIcon> = {
   book: BookOpen,
   video: Clapperboard,
   podcast: Mic,
-  course: GraduationCap,
   paper: FileText,
 };
 

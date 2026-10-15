@@ -22,7 +22,7 @@ import {
   returnFocusFrom,
 } from "./video-pin";
 import { useTranscriptView } from "./transcript-view";
-import { bringInTranscript } from "./video-transcript";
+import { bringInTranscript, captionLanguagesOf } from "./video-transcript";
 import "./video-player.css";
 
 // The box brings in Arc and `motion`: only notes with a transcript load it
@@ -87,9 +87,40 @@ function useTranscriptForNewLinks(filePath: string, videoId: string | null): voi
       seen.current = { filePath, videoId };
       return;
     }
-    if (videoId && videoId !== seen.current.videoId) void bringInTranscript(filePath, videoId);
+    if (videoId && videoId !== seen.current.videoId) {
+      // Only a video with captions: one without them gets no transcript and
+      // no notice saying so.
+      captionLanguagesOf(videoId).then(
+        (languages) => {
+          if (languages.length) void bringInTranscript(filePath, videoId);
+        },
+        (error: unknown) => console.warn("[video] Couldn't read the caption languages:", error),
+      );
+    }
     seen.current.videoId = videoId;
   }, [filePath, loading, videoId]);
+}
+
+/**
+ * Whether YouTube says `videoId` has captions. False until it answers, and
+ * when it can't be asked: **Transcript** is offered only for a transcript
+ * known to exist.
+ */
+function useHasCaptions(videoId: string): boolean {
+  const [has, setHas] = useState<{ videoId: string; has: boolean }>();
+  useEffect(() => {
+    let current = true;
+    captionLanguagesOf(videoId).then(
+      (languages) => {
+        if (current) setHas({ videoId, has: languages.length > 0 });
+      },
+      (error: unknown) => console.warn("[video] Couldn't read the caption languages:", error),
+    );
+    return () => {
+      current = false;
+    };
+  }, [videoId]);
+  return has?.videoId === videoId && has.has;
 }
 
 /** YouTube's `PlayerState.PAUSED`. */
@@ -161,6 +192,7 @@ function VideoBand({
     transcriptSourceIn(s.openFiles.get(filePath)?.content ?? ""),
   );
   const transcribed = transcript !== null;
+  const hasCaptions = useHasCaptions(videoId);
   // Beside the video when the pane is wide enough (video-player.css): the
   // note's own box hides while this one shows. Folded, it goes back under.
   const collapsed = useTranscriptView((s) => s.collapsed);
@@ -367,7 +399,7 @@ function VideoBand({
         </div>
         {error === null && (
           <div className="video-band-row">
-            {!transcribed && (
+            {!transcribed && hasCaptions && (
               <button
                 type="button"
                 className="video-pin-button"

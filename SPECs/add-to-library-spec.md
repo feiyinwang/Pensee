@@ -2,7 +2,7 @@
 
 ## Summary
 
-One way to put a book, video, podcast, course or paper into Library from a
+One way to put a book, video (courses included), podcast or paper into Library from a
 link, a title or a file. Since 2026-10-12 it happens in the composer
 (SPECs/composer-spec.md): its type chip is the Library kind, and a pasted link
 sets it. A link pasted in ⌘O still offers rows there. The result is an ordinary note whose `Type:` puts it in its Library
@@ -27,7 +27,8 @@ tab (SPECs/spaces-spec.md).
   "Guessed from the link". Hosts: YouTube, Vimeo → Video; Spotify episodes
   and shows, Apple Podcasts, Overcast, Pocket Casts → Podcast; arXiv, DOI,
   ACM, IEEE, OpenReview, Semantic Scholar, bioRxiv, SSRN → Paper; Coursera,
-  Udemy, edX, Maven, Skillshare, Khan Academy, Teachable, Domestika → Course;
+  Udemy, edX, Maven, Skillshare, Khan Academy, Teachable, Domestika → Video
+  (courses are videos; there is no Course kind);
   Goodreads, Open Library, Google Books, Bookshop, Amazon product pages →
   Book. Another site has no guess and lists Book first.
 - **A link already in Library:** a single **Already in your Library** row

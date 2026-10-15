@@ -14,7 +14,6 @@ const THUMB_BOX: Record<CoverKind, readonly [number, number]> = {
   book: [360, 540],
   paper: [400, 533],
   podcast: [400, 400],
-  course: [560, 420],
   video: [640, 360],
   tweet: [600, 375],
   note: [400, 400],
@@ -163,13 +162,6 @@ function DefaultCover({
           <div className={styles.videoPlay}>
             <Play size={13} fill="currentColor" strokeWidth={0} />
           </div>
-        </>
-      );
-    case "course":
-      return (
-        <>
-          <div className={styles.eyebrow}>Course</div>
-          <div className={styles.courseTitle}>{title}</div>
         </>
       );
     case "podcast":

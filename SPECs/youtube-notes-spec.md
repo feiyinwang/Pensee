@@ -39,7 +39,7 @@ selected.
     under `writer.video-player`.
 - Scrolling over the video scrolls the note; pinching over it reaches the
   tab columns' pinch like a pinch anywhere else.
-- Under the video is one row with a **Pin** button and its shortcut (⌘⇧M).
+- Under the video is one row with a **Pin** button and its shortcut (⌘P).
 - **`<` / `>`** (Shift+, / Shift+. on US keyboards) step the speed down or
   up YouTube's list in the video's note, and the new speed shows on the
   video for a moment. They never type there (`<` and `>` can't be typed in
@@ -70,7 +70,10 @@ selected.
   moving and copying.
 - **Removing.** Backspace right after the pin removes it as one unit, and
   undo puts it back.
-- **Pinning** (⌘⇧M or **Pin**) uses the video's current time and acts on the
+- **⌘P is the pin key** in a note that plays a video or episode, on its
+  player, and on a board while a player is mounted; search keeps ⌘P
+  everywhere else and ⌘⇧P everywhere.
+- **Pinning** (⌘P or **Pin**) uses the video's current time and acts on the
   note's caret:
   - On an empty line, the line becomes `- ` plus the pin.
   - On an empty bullet, the bullet gets the pin.
@@ -84,7 +87,7 @@ selected.
 - **Pin by writing.** Pause the video (any way but buffering or the end)
   and start writing in its note within 15 seconds: once the caret's line
   has words (not a bare `-` or `1.`), its block gets a pin 5 seconds before
-  the pause, as if ⌘⇧M had been pressed then. Playing again cancels it. A
+  the pause, as if ⌘P had been pressed then. Playing again cancels it. A
   block that already has an id, or one that can't carry one (code, table),
   is left alone. It waits for an IME composition to end. Paste doesn't
   count; only typing does.
@@ -100,7 +103,10 @@ selected.
   note that already had its link never changes it.
 - For any other video note (an older one, or one whose transcript failed),
   **Transcript** sits next to **Pin** under the video while the note has
-  none; it reads as **Getting transcript…** while it works.
+  none; it reads as **Getting transcript…** while it works. It is offered
+  only once YouTube has listed captions for the video: a video with none, or
+  one whose captions couldn't be checked, shows no **Transcript** button, and
+  a link brought in for such a video adds no transcript and no notice.
 - The transcript is in English: the creator's English captions, else
   YouTube's automatic English ones. A video with no English captions gets
   the language spoken (the creator's captions in it, else the automatic

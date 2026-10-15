@@ -8,26 +8,20 @@ import type { TypedNote } from "./tauri";
 // already holds it, and the frontmatter a new Library note starts with.
 
 /** The Library tabs one can add to by hand (Bookmarks come from X sync). */
-export type LibraryKind = "book" | "video" | "podcast" | "course" | "paper";
+export type LibraryKind = "book" | "video" | "podcast" | "paper";
 
-export const LIBRARY_KINDS: readonly LibraryKind[] = [
-  "book",
-  "video",
-  "podcast",
-  "course",
-  "paper",
-];
+export const LIBRARY_KINDS: readonly LibraryKind[] = ["book", "video", "podcast", "paper"];
 
 /** What a row calls the kind: the singular of its Library tab. */
 export const LIBRARY_KIND_LABELS: Record<LibraryKind, string> = {
   book: "Book",
   video: "Video",
   podcast: "Podcast",
-  course: "Course",
   paper: "Paper",
 };
 
-/** Every `Type` a Library note may have, for finding one already added. */
+/** Every `Type` a Library note may have, for finding one already added.
+ *  `Course` notes from before courses joined Videos still count. */
 export const LIBRARY_NOTE_TYPES = ["Book", "YouTube", "Video", "Podcast", "Course", "Paper"];
 
 /** A Library tab's kind from its id, so the tab's Add button puts it first. */
@@ -48,7 +42,7 @@ const HOST_KINDS: [RegExp, LibraryKind][] = [
   ],
   [
     /(^|\.)(coursera\.org|udemy\.com|edx\.org|maven\.com|skillshare\.com|khanacademy\.org|teachable\.com|domestika\.org)$/,
-    "course",
+    "video",
   ],
   [/(^|\.)(goodreads\.com|openlibrary\.org|books\.google\.com|bookshop\.org)$/, "book"],
 ];

@@ -85,7 +85,7 @@ player.
 - **Timeline** under them: the time, the track, the length. The track fills
   to the playhead; its knob shows on hover or keyboard focus. Dragging or
   clicking seeks.
-- **Speed `< >`, volume, Pin ⌘⇧M** along the bottom, each with its keys
+- **Speed `< >`, volume, Pin ⌘P** along the bottom, each with its keys
   beside it where it has some. Speed: a click cycles 1× →
   1.25× → 1.5× → 1.75× → 2× → 1×; **`<` / `>`** step through 0.5×–3× (0.5,
   0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3) the same way they step a video's.
@@ -111,7 +111,7 @@ so everything the YouTube spec says about players holds for it:
 
 - **⌘⇧J** plays or pauses the focused note's episode, else the one on screen,
   else the last one used.
-- **⌘⇧M** / **Pin** stamps the block at the caret with the moment playing
+- **⌘P** / **Pin** stamps the block at the caret with the moment playing
   (`^yt-<seconds>`, the same id as a video pin); clicking the pin plays from
   there. With a board open it adds the moment to the board.
 - Words typed soon after a pause pin a little before the pause.
