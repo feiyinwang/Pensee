@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { parseAgentLine, type AgentStreamEvent } from "@/lib/agent-stream";
+import { agentErrorText, parseAgentLine, type AgentStreamEvent } from "@/lib/agent-stream";
 import {
   buildAgentInstructions,
   buildAgentMessage,
@@ -135,7 +135,7 @@ function ensureListeners() {
         }
         // Still running means no `result` came: the process died mid-reply.
         const reason =
-          lastLine(payload.stderr) ||
+          agentErrorText(lastLine(payload.stderr)) ||
           (payload.code === 0
             ? "Claude stopped before finishing its reply."
             : `Claude exited with code ${payload.code ?? "?"}.`);

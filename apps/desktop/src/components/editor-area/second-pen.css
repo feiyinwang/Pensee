@@ -223,6 +223,11 @@
   font-size: var(--text-sm);
 }
 
+/* A picked pill's placeholder and key hint need the room: wider, not cut. */
+.pen-box[data-mode] {
+  min-width: 460px;
+}
+
 .pen-box-field {
   display: flex;
   align-items: center;

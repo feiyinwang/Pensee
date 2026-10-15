@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { describeToolCall, parseAgentLine } from "../src/lib/agent-stream";
+import { describeToolCall, parseAgentLine, SIGNED_OUT_TEXT } from "../src/lib/agent-stream";
 import {
   buildAgentInstructions,
   buildAgentMessage,
@@ -57,6 +57,20 @@ describe("parseAgentLine", () => {
     expect(events).toEqual([{ kind: "tool", label: "Edited Draft.md" }]);
   });
 
+  test("a revoked sign-in says how to sign in, not the API's JSON", () => {
+    const result = (text: string) =>
+      parseAgentLine(line({ type: "result", subtype: "success", is_error: true, result: text }));
+    expect(
+      result(
+        'Failed to authenticate. API Error: 401 {"type":"error","error":{"type":"authentication_error","message":"OAuth access token has been revoked."}}',
+      ),
+    ).toEqual([{ kind: "result", isError: true, text: SIGNED_OUT_TEXT, sessionId: null }]);
+    // Other errors stay as they are.
+    expect(result("Overloaded")).toEqual([
+      { kind: "result", isError: true, text: "Overloaded", sessionId: null },
+    ]);
+  });
+
   test("reports results, success and error", () => {
     expect(
       parseAgentLine(
@@ -73,7 +87,7 @@ describe("parseAgentLine", () => {
       parseAgentLine(
         line({ type: "result", subtype: "success", is_error: true, result: "Not logged in" }),
       ),
-    ).toEqual([{ kind: "result", isError: true, text: "Not logged in", sessionId: null }]);
+    ).toEqual([{ kind: "result", isError: true, text: SIGNED_OUT_TEXT, sessionId: null }]);
     expect(
       parseAgentLine(line({ type: "result", subtype: "error_during_execution", errors: ["boom"] })),
     ).toEqual([{ kind: "result", isError: true, text: "boom", sessionId: null }]);

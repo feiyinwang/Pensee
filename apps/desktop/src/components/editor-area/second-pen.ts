@@ -927,16 +927,12 @@ class PenPlugin {
         title: "The evidence for and against the line. You make the call.",
       },
       { key: "[[", label: "Connect", title: "What you wrote before, in other notes, on this." },
-      // Only with several lines selected: there's something to regroup.
-      ...(withText.length > 1
-        ? [
-            {
-              key: "#",
-              label: "Organize",
-              title: "Regroups the selected lines into a short outline, in your words.",
-            },
-          ]
-        : []),
+      // One paragraph too: its points become the outline.
+      {
+        key: "#",
+        label: "Organize",
+        title: "Regroups the selected lines into a short outline, in your words.",
+      },
     ];
   }
 
@@ -1263,7 +1259,7 @@ class PenPlugin {
     const lines = docLines(state);
     const targets = targetIndexes(state);
     const withText = targets.filter((i) => itemText(lines[i]!));
-    if (withText.length < 2) {
+    if (!withText.length) {
       this.say("Select the lines to organize first.");
       return;
     }

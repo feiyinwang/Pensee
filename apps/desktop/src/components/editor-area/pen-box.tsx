@@ -109,7 +109,7 @@ function PenBox({ pills, onChoose, onClose }: PenBoxProps) {
   };
 
   return (
-    <div className="pen-box">
+    <div className="pen-box" data-mode={mode ?? undefined}>
       <FloatingButtonGroup
         label="What the pen can do"
         size="sm"

@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { agentModel } from "./agent-models";
-import { parseAgentLine } from "./agent-stream";
+import { agentErrorText, parseAgentLine } from "./agent-stream";
 import { PEN_INSTRUCTIONS } from "./second-pen";
 
 // The second pen's Claude (SPECs/second-pen-spec.md#implementation): the
@@ -58,7 +58,9 @@ function ensureListeners(): void {
       if (!request) return;
       waiting.delete(payload.requestId);
       request.reject(
-        new Error(lastLine(payload.stderr) || "Claude stopped before the pen finished."),
+        new Error(
+          agentErrorText(lastLine(payload.stderr)) || "Claude stopped before the pen finished.",
+        ),
       );
     },
   );

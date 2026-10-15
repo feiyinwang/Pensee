@@ -44,9 +44,12 @@ notes are gone. The look is unchanged from the first Second pen
   | `!` **Answer** | writes an answer, sealed, with a line under it for your take. It opens once you've written yours |
   | `@` **Check** | the evidence for and against the line, each with a paper (or *no paper*), then a line for your call. No verdict |
   | `[[` **Connect** | up to three short points from what you wrote in other notes, each saying what it is (Supports, Example…) and linked to its note |
-  | `#` **Organize** | only with several lines selected: regroups them into a short outline in your own words |
+  | `#` **Organize** | regroups the selected lines into a short outline in your own words; one paragraph works too, its points become the outline |
 
   On an empty line: **Answer** only (to what you type).
+- **Picking a pill widens the box** a little, so its placeholder
+  (_Organize: add a direction, or just press Enter_) and its key hint fit
+  without being cut.
 - **Nothing runs until Enter.** Clicking a pill selects it (it lights up);
   so does typing its key, `! @ [ #` or an input method's full-width
   `！＠［【＃`, at the start of the box or after a space, and the key isn't

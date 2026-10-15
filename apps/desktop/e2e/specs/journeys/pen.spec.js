@@ -770,10 +770,29 @@ describe("Journeys: second pen", function () {
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
   });
 
-  it("PEN-22 # Organize is offered only with several lines selected", async function () {
+  it("PEN-22 # Organize is offered for one line too, and picking it widens the box to fit", async function () {
     await armOn("naps help you remember");
     await waitForBox();
-    ok(!(await pop()).pills.some((p) => p.includes("Organize")), "one line: no Organize");
+    ok((await pop()).pills.some((p) => p.includes("Organize")), "one line: Organize");
+    // Picked, not run: the placeholder and the key hint fit uncut.
+    await key("#", { shift: true });
+    const fit = await browser.execute(() => {
+      const box = document.querySelector(".pen-box");
+      const input = document.querySelector(".pen-box-input");
+      const ctx = document.createElement("canvas").getContext("2d");
+      const style = getComputedStyle(input);
+      ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const pad = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      return {
+        mode: box?.dataset.mode ?? null,
+        width: box?.getBoundingClientRect().width ?? 0,
+        need: ctx.measureText(input.placeholder).width,
+        room: input.clientWidth - pad,
+        placeholder: input.placeholder,
+      };
+    });
+    ok(fit.mode === "#", `Organize picked: ${JSON.stringify(fit)}`);
+    ok(fit.need <= fit.room, `placeholder cut: ${JSON.stringify(fit)}`);
     await key("Escape");
     // A line Organize (PEN-17) leaves as it was.
     await caretAfter("drafts get better overnight");

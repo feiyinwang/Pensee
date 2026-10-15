@@ -2,6 +2,8 @@
 
 ## 2026-10-15
 
+- **# Organize** works on a single paragraph too: select one line, or as many as you like, and its points become the outline. Picking a pill in the pen's box widens it a little, so _Organize: add a direction, or just press Enter_ shows in full.
+- When Claude is signed out (an expired or revoked sign-in), the pen and the Agent now say _Claude is signed out. Run `claude` in Terminal, type /login, then try again._ instead of the raw API error.
 - A podcast's artwork now shows whole in its player instead of cropped to a square. When the picture isn't square, a blurred copy of it fills the space around it. The speed button shows its keys (`< >`) next to it, like **Pin ⌘⇧M**, and hovering play shows _Play ⌘ ⇧ J_.
 - Fixed: words typed right after opening a video note went straight under the transcript's closing tag, where other Markdown apps read them as part of the transcript. They now go on a line of their own under the box, after a blank line, and typing at the transcript's edges never breaks it.
 - A video note's transcript is now a teleprompter instead of a toggle that opened into HTML. The line being said rises in, word by word, as the video reaches it, and the box scrolls along with the video. Scroll it to read back or ahead (**Back to now** returns), click a line to play from there, select text to copy it or press **Copy** for the whole transcript with its times, and press **Ask** to ask the Agent about it. The Agent now knows where the video is, so "what did he just say?" works. Older video notes show the box too; the file keeps the same plain toggle other Markdown apps read.

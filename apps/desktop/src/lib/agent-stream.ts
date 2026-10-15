@@ -28,6 +28,17 @@ function fileName(path: unknown): string | null {
   return value.split(/[\\/]/).pop() || value;
 }
 
+/** Claude Code's sign-in failed (expired, revoked or missing): the raw API
+ *  error is JSON, so say what to do instead. */
+const SIGNED_OUT_RE = /\bauthenticat|\b401\b|oauth|not logged in|\/login\b/i;
+export const SIGNED_OUT_TEXT =
+  "Claude is signed out. Run `claude` in Terminal, type /login, then try again.";
+
+/** An error from Claude Code, readable: a sign-in failure says how to fix it. */
+export function agentErrorText(text: string): string {
+  return SIGNED_OUT_RE.test(text) ? SIGNED_OUT_TEXT : text;
+}
+
 /** One past-tense line per tool call. `null` hides bookkeeping tools. */
 export function describeToolCall(name: string, input: Json): string | null {
   switch (name) {
@@ -101,7 +112,14 @@ export function parseAgentLine(line: string): AgentStreamEvent[] {
       const text =
         str(message.result) ??
         (Array.isArray(message.errors) ? message.errors.filter(str).join("\n") : "");
-      return [{ kind: "result", isError, text, sessionId: str(message.session_id) }];
+      return [
+        {
+          kind: "result",
+          isError,
+          text: isError ? agentErrorText(text) : text,
+          sessionId: str(message.session_id),
+        },
+      ];
     }
     default:
       return [];
