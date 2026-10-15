@@ -634,6 +634,7 @@ pub fn run() {
             commands::video_player::video_player_origin,
             commands::video_player::youtube_chapters,
             commands::video_player::youtube_transcript,
+            commands::video_player::youtube_caption_languages,
             commands::settings::get_settings,
             commands::settings::get_setting,
             commands::settings::set_setting,

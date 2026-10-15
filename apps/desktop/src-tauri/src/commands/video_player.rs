@@ -72,17 +72,72 @@ pub struct Cue {
     pub text: String,
 }
 
-/// The video's transcript, from its captions: the creator's in the spoken
-/// language, else YouTube's automatic ones. Empty when it has none.
+/// A caption language the video offers: its YouTube code and its name.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+pub struct CaptionLanguage {
+    pub code: String,
+    pub name: String,
+}
+
+/// A video's transcript in one language: the code read and its lines.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+pub struct Transcript {
+    pub language: String,
+    pub cues: Vec<Cue>,
+}
+
+/// The language a transcript is read in when none is asked for.
+const DEFAULT_LANGUAGE: &str = "en";
+
+/// The video's transcript in `language` (English when `None`), from its
+/// captions: the creator's track, else YouTube's automatic one; when the
+/// video has neither, the spoken language's. Empty cues when the video has
+/// no captions. Only the video's own tracks: YouTube answers its translated
+/// captions with 429 on these links.
 ///
 /// The caption links on the watch page need a proof-of-origin token since
 /// 2025 and come back empty without one. The player API asked as the
 /// Android app hands out links that work without it.
 #[tauri::command]
-pub async fn youtube_transcript(video_id: String) -> Result<Vec<Cue>, AppError> {
+pub async fn youtube_transcript(
+    video_id: String,
+    language: Option<String>,
+) -> Result<Transcript, AppError> {
     check_video_id(&video_id)?;
-    let client = crate::commands::link_preview::client()?;
-    let player: serde_json::Value = client
+    let language = language.unwrap_or_else(|| DEFAULT_LANGUAGE.to_string());
+    let player = player_response(&video_id).await?;
+    let Some((url, read)) = caption_track(&player, &language) else {
+        return Ok(Transcript {
+            language,
+            cues: Vec::new(),
+        });
+    };
+    let captions = crate::commands::link_preview::client()?
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| AppError::Network(e.to_string()))?
+        .error_for_status()
+        .map_err(|e| AppError::Network(e.to_string()))?
+        .text()
+        .await
+        .map_err(|e| AppError::Network(e.to_string()))?;
+    Ok(Transcript {
+        language: read,
+        cues: cues_in(&captions),
+    })
+}
+
+/// The caption languages the video offers (its own tracks, once each), for
+/// the transcript box's language menu, English first.
+#[tauri::command]
+pub async fn youtube_caption_languages(video_id: String) -> Result<Vec<CaptionLanguage>, AppError> {
+    check_video_id(&video_id)?;
+    Ok(caption_languages(&player_response(&video_id).await?))
+}
+
+async fn player_response(video_id: &str) -> Result<serde_json::Value, AppError> {
+    crate::commands::link_preview::client()?
         .post("https://www.youtube.com/youtubei/v1/player?prettyPrint=false")
         .json(&serde_json::json!({
             "context": { "client": { "clientName": "ANDROID", "clientVersion": "20.10.38" } },
@@ -95,52 +150,113 @@ pub async fn youtube_transcript(video_id: String) -> Result<Vec<Cue>, AppError> 
         .map_err(|e| AppError::Network(e.to_string()))?
         .json()
         .await
-        .map_err(|e| AppError::Network(e.to_string()))?;
-    let Some(url) = caption_track_url(&player) else {
-        return Ok(Vec::new());
-    };
-    let captions = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| AppError::Network(e.to_string()))?
-        .error_for_status()
-        .map_err(|e| AppError::Network(e.to_string()))?
-        .text()
-        .await
-        .map_err(|e| AppError::Network(e.to_string()))?;
-    Ok(cues_in(&captions))
+        .map_err(|e| AppError::Network(e.to_string()))
 }
 
-/// The caption track to read from a player response: the creator's track
-/// in the language spoken (the automatic track's), else the automatic one;
-/// with no automatic track, an English one, else the first.
-fn caption_track_url(player: &serde_json::Value) -> Option<String> {
-    let tracks = player
-        .pointer("/captions/playerCaptionsTracklistRenderer/captionTracks")?
-        .as_array()?;
-    let lang = |track: &serde_json::Value| {
-        track["languageCode"]
-            .as_str()
-            .unwrap_or("")
-            .split('-')
-            .next()
-            .unwrap_or("")
-            .to_string()
-    };
-    let is_auto = |track: &serde_json::Value| track["kind"].as_str() == Some("asr");
-    let auto = tracks.iter().find(|track| is_auto(track));
-    let pick = match auto {
+fn caption_tracks(player: &serde_json::Value) -> &[serde_json::Value] {
+    player
+        .pointer("/captions/playerCaptionsTracklistRenderer/captionTracks")
+        .and_then(|tracks| tracks.as_array())
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+}
+
+fn track_code(track: &serde_json::Value) -> &str {
+    track["languageCode"].as_str().unwrap_or("")
+}
+
+/// "en" of "en-GB": tracks of one language with different regions match.
+fn base_language(code: &str) -> &str {
+    code.split('-').next().unwrap_or("")
+}
+
+fn is_auto(track: &serde_json::Value) -> bool {
+    track["kind"].as_str() == Some("asr")
+}
+
+/// A track's name as YouTube shows it ("English (auto-generated)").
+fn track_name(track: &serde_json::Value) -> String {
+    track["name"]["simpleText"]
+        .as_str()
+        .map(str::to_string)
+        .or_else(|| {
+            let runs = track["name"]["runs"].as_array()?;
+            Some(runs.iter().filter_map(|run| run["text"].as_str()).collect())
+        })
+        .filter(|name: &String| !name.is_empty())
+        .unwrap_or_else(|| track_code(track).to_string())
+}
+
+/// The track in the spoken language: the creator's track in the automatic
+/// track's language, else the automatic one, else the first.
+fn spoken_track(tracks: &[serde_json::Value]) -> Option<&serde_json::Value> {
+    match tracks.iter().find(|track| is_auto(track)) {
         Some(auto) => tracks
             .iter()
-            .find(|track| !is_auto(track) && lang(track) == lang(auto))
-            .unwrap_or(auto),
-        None => tracks
-            .iter()
-            .find(|track| lang(track) == "en")
-            .or_else(|| tracks.first())?,
-    };
-    pick["baseUrl"].as_str().map(str::to_string)
+            .find(|track| {
+                !is_auto(track)
+                    && base_language(track_code(track)) == base_language(track_code(auto))
+            })
+            .or(Some(auto)),
+        None => tracks.first(),
+    }
+}
+
+/// The caption link to read for `language` and the language it reads in:
+/// the creator's track in that language (the exact region first), else the
+/// automatic one, else the spoken track.
+fn caption_track(player: &serde_json::Value, language: &str) -> Option<(String, String)> {
+    let tracks = caption_tracks(player);
+    let url = |track: &serde_json::Value| track["baseUrl"].as_str().map(str::to_string);
+    let base = base_language(language);
+    let own = tracks
+        .iter()
+        .find(|track| !is_auto(track) && track_code(track) == language)
+        .or_else(|| {
+            tracks
+                .iter()
+                .find(|track| !is_auto(track) && base_language(track_code(track)) == base)
+        })
+        .or_else(|| {
+            tracks
+                .iter()
+                .find(|track| is_auto(track) && base_language(track_code(track)) == base)
+        });
+    if let Some(track) = own {
+        return Some((url(track)?, track_code(track).to_string()));
+    }
+    let spoken = spoken_track(tracks)?;
+    Some((url(spoken)?, track_code(spoken).to_string()))
+}
+
+/// The video's caption languages, once each (the creator's name over the
+/// automatic one's), English first.
+fn caption_languages(player: &serde_json::Value) -> Vec<CaptionLanguage> {
+    let tracks = caption_tracks(player);
+    let mut languages: Vec<CaptionLanguage> = Vec::new();
+    let mut ordered: Vec<&serde_json::Value> = tracks.iter().filter(|t| !is_auto(t)).collect();
+    ordered.extend(tracks.iter().filter(|t| is_auto(t)));
+    for track in ordered {
+        let code = track_code(track);
+        if code.is_empty() || languages.iter().any(|language| language.code == code) {
+            continue;
+        }
+        // An automatic track adds nothing next to the creator's in its language.
+        if is_auto(track)
+            && languages
+                .iter()
+                .any(|language| base_language(&language.code) == base_language(code))
+        {
+            continue;
+        }
+        languages.push(CaptionLanguage {
+            code: code.to_string(),
+            name: track_name(track),
+        });
+    }
+    // English first, the rest in YouTube's order.
+    languages.sort_by_key(|language| base_language(&language.code) != DEFAULT_LANGUAGE);
+    languages
 }
 
 /// Every non-empty `<p t="ms">` of a `srv3` caption file, its word spans
@@ -407,42 +523,97 @@ and so do I ♪</p>
         assert!(cues_in("<timedtext></timedtext>").is_empty());
     }
 
+    fn player(tracks: serde_json::Value) -> serde_json::Value {
+        serde_json::json!({ "captions": { "playerCaptionsTracklistRenderer": { "captionTracks": tracks } } })
+    }
+
+    fn picked(tracks: serde_json::Value, language: &str) -> Option<(String, String)> {
+        caption_track(&player(tracks), language)
+    }
+
     #[test]
-    fn picks_the_creators_track_in_the_spoken_language() {
-        let player = |tracks: serde_json::Value| serde_json::json!({ "captions": { "playerCaptionsTracklistRenderer": { "captionTracks": tracks } } });
+    fn picks_the_track_in_the_language_asked() {
         let tracks = serde_json::json!([
-            { "baseUrl": "en", "languageCode": "en" },
             { "baseUrl": "fr-auto", "languageCode": "fr", "kind": "asr" },
-            { "baseUrl": "fr-CA", "languageCode": "fr-CA" },
-        ]);
-        assert_eq!(caption_track_url(&player(tracks)).as_deref(), Some("fr-CA"));
-        let auto_only = serde_json::json!([
-            { "baseUrl": "en", "languageCode": "en" },
-            { "baseUrl": "de-auto", "languageCode": "de", "kind": "asr" },
-        ]);
-        assert_eq!(
-            caption_track_url(&player(auto_only)).as_deref(),
-            Some("de-auto")
-        );
-        let no_auto = serde_json::json!([
-            { "baseUrl": "ja", "languageCode": "ja" },
             { "baseUrl": "en-GB", "languageCode": "en-GB" },
+            { "baseUrl": "fr-CA", "languageCode": "fr-CA" },
+            { "baseUrl": "fr", "languageCode": "fr" },
         ]);
+        let pick = |language| picked(tracks.clone(), language);
+        assert_eq!(pick("en"), Some(("en-GB".into(), "en-GB".into())));
+        assert_eq!(pick("fr"), Some(("fr".into(), "fr".into())));
+        assert_eq!(pick("fr-CA"), Some(("fr-CA".into(), "fr-CA".into())));
+        // Not offered: the spoken track (the creator's, in the automatic
+        // track's language).
+        assert_eq!(pick("de"), Some(("fr-CA".into(), "fr-CA".into())));
+    }
+
+    #[test]
+    fn english_falls_back_to_the_automatic_track_then_the_spoken_one() {
+        let auto_en = serde_json::json!([
+            { "baseUrl": "ar", "languageCode": "ar" },
+            { "baseUrl": "en-auto", "languageCode": "en", "kind": "asr" },
+        ]);
+        assert_eq!(picked(auto_en, "en"), Some(("en-auto".into(), "en".into())));
+        let no_english = serde_json::json!([{ "baseUrl": "ja", "languageCode": "ja" }]);
+        assert_eq!(picked(no_english, "en"), Some(("ja".into(), "ja".into())));
+        assert_eq!(caption_track(&serde_json::json!({}), "en"), None);
+    }
+
+    #[test]
+    fn lists_each_language_once_english_first() {
+        let tracks = serde_json::json!([
+            { "baseUrl": "ar", "languageCode": "ar", "name": { "runs": [{ "text": "Arabic" }] } },
+            { "baseUrl": "es", "languageCode": "es", "name": { "simpleText": "Spanish" } },
+            { "baseUrl": "es-auto", "languageCode": "es", "kind": "asr", "name": { "simpleText": "Spanish (auto-generated)" } },
+            { "baseUrl": "en-auto", "languageCode": "en", "kind": "asr", "name": { "simpleText": "English (auto-generated)" } },
+        ]);
+        let names: Vec<_> = caption_languages(&player(tracks))
+            .into_iter()
+            .map(|language| (language.code, language.name))
+            .collect();
         assert_eq!(
-            caption_track_url(&player(no_auto)).as_deref(),
-            Some("en-GB")
+            names,
+            vec![
+                ("en".to_string(), "English (auto-generated)".to_string()),
+                ("ar".to_string(), "Arabic".to_string()),
+                ("es".to_string(), "Spanish".to_string()),
+            ]
         );
-        assert_eq!(caption_track_url(&serde_json::json!({})), None);
+        assert!(caption_languages(&serde_json::json!({})).is_empty());
     }
 
     /// Against YouTube itself: `cargo test -- --ignored live_transcript`.
     #[test]
     #[ignore]
     fn live_transcript() {
-        let cues =
-            tauri::async_runtime::block_on(youtube_transcript("dQw4w9WgXcQ".into())).unwrap();
-        assert!(cues.len() > 20, "got {} cues", cues.len());
-        assert!(cues.iter().any(|cue| cue.text.contains("give you up")));
+        let english =
+            tauri::async_runtime::block_on(youtube_transcript("dQw4w9WgXcQ".into(), None)).unwrap();
+        assert!(english.cues.len() > 20, "got {} cues", english.cues.len());
+        assert!(english
+            .cues
+            .iter()
+            .any(|cue| cue.text.contains("give you up")));
+        let languages =
+            tauri::async_runtime::block_on(youtube_caption_languages("dQw4w9WgXcQ".into()))
+                .unwrap();
+        assert_eq!(base_language(&languages[0].code), "en", "{languages:?}");
+        let other = languages
+            .iter()
+            .find(|l| base_language(&l.code) != "en")
+            .expect("a second language");
+        let read = tauri::async_runtime::block_on(youtube_transcript(
+            "dQw4w9WgXcQ".into(),
+            Some(other.code.clone()),
+        ))
+        .unwrap();
+        assert_eq!(read.language, other.code);
+        assert!(
+            read.cues.len() > 20,
+            "got {} {} cues",
+            read.cues.len(),
+            other.code
+        );
     }
 
     #[test]

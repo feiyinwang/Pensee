@@ -1,6 +1,13 @@
 /* A YouTube note's player (video-player.tsx, SPECs/youtube-notes-spec.md).
    Sticky at the top of the note's scroller, the pane's full width; the notes
-   scroll beneath it. */
+   scroll beneath it. In a wide pane the transcript sits beside the video,
+   pinned with it. */
+
+/* The beside layout follows the pane's width, not the window's: the
+   sidebar and split columns take their share. */
+[data-pane] {
+  container: pane / inline-size;
+}
 
 .video-band-sentinel {
   height: 1px;
@@ -40,6 +47,30 @@
   box-shadow:
     0 0 0 1px var(--line-subtle),
     var(--shadow-overlay);
+}
+
+/* Beside the video only with room for both: the video keeps most of the
+   width, the transcript at least 320px. Under that the note's own box shows
+   under the video, scrolling with the note. */
+.video-band-transcript {
+  display: none;
+}
+
+@container pane (min-width: 900px) {
+  .video-band[data-beside] .video-band-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 36%);
+    gap: 8px;
+  }
+
+  .video-band[data-beside] .video-band-transcript {
+    position: relative;
+    display: block;
+  }
+
+  [data-pane]:has(.video-band[data-beside]) .cm-transcript-widget {
+    display: none;
+  }
 }
 
 .video-frame iframe {
@@ -141,6 +172,14 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   visibility: visible;
+}
+
+[data-pane]:has(> .wr-board-inline) .video-band .video-band-main {
+  display: block;
+}
+
+[data-pane]:has(> .wr-board-inline) .video-band .video-band-transcript {
+  display: none;
 }
 
 [data-pane]:has(> .wr-board-inline) .video-band-row {

@@ -113,9 +113,10 @@ export function seedVault() {
 
   mkdirSync(APP_DATA, { recursive: true });
   writeFileSync(join(APP_DATA, "recent_workspaces.json"), JSON.stringify([VAULT], null, 2));
-  // Open tabs and global settings (`config`, e.g. calendar-visible) left by an
-  // earlier run would make journeys depend on run order.
-  for (const file of ["sessions.json", "recent_files.json", "config"]) {
+  // Open tabs, global settings (`config`, e.g. calendar-visible) and
+  // preferences (e.g. a folded transcript box) left by an earlier run would
+  // make journeys depend on run order.
+  for (const file of ["sessions.json", "recent_files.json", "config", "preferences.json"]) {
     rmSync(join(APP_DATA, file), { force: true });
   }
 }

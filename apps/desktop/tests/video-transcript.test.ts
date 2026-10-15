@@ -4,6 +4,8 @@ import {
   lineAt,
   linesAround,
   transcriptBlock,
+  transcriptLanguageIn,
+  transcriptRange,
   transcriptLines,
   transcriptParagraphs,
   transcriptText,
@@ -36,13 +38,16 @@ describe("transcriptParagraphs", () => {
 
 describe("transcriptBlock", () => {
   test("a closed toggle with timed, escaped paragraphs and no blank line", () => {
-    const block = transcriptBlock([
-      { start: 18.8, text: "We're <no> strangers & friends." },
-      { start: 3725, text: "An hour in." },
-    ]);
+    const block = transcriptBlock(
+      [
+        { start: 18.8, text: "We're <no> strangers & friends." },
+        { start: 3725, text: "An hour in." },
+      ],
+      "en",
+    );
     expect(block).toBe(
       [
-        "<details>",
+        '<details lang="en">',
         "<summary>Transcript</summary>",
         "<p><small>0:18</small> We're &lt;no&gt; strangers &amp; friends.</p>",
         "<p><small>1:02:05</small> An hour in.</p>",
@@ -54,7 +59,26 @@ describe("transcriptBlock", () => {
   });
 
   test("a closing details tag in the captions can't end the toggle", () => {
-    expect(transcriptBlock([{ start: 0, text: "</details>" }])).toContain("&lt;/details&gt;");
+    expect(transcriptBlock([{ start: 0, text: "</details>" }], "en")).toContain("&lt;/details&gt;");
+  });
+});
+
+describe("transcript language and range", () => {
+  test("the block keeps its caption language; an older one has none", () => {
+    expect(transcriptLanguageIn(transcriptBlock([{ start: 0, text: "Hola." }], "es-419"))).toBe(
+      "es-419",
+    );
+    expect(transcriptLanguageIn("<details>\n<summary>Transcript</summary>\n</details>")).toBe(null);
+  });
+
+  test("finds the whole toggle, with or without a language, and nothing else", () => {
+    const block = transcriptBlock([{ start: 0, text: "Hi." }], "en");
+    const body = `<details>\n<summary>Notes</summary>\n</details>\n\n${block}\n\n- after`;
+    const range = transcriptRange(body)!;
+    expect(body.slice(range.from, range.to)).toBe(block);
+    const older = "<details>\n<summary>Transcript</summary>\n<p>x</p>\n</details>\n- after";
+    expect(transcriptRange(older)).toEqual({ from: 0, to: older.indexOf("\n- after") });
+    expect(transcriptRange("- nothing")).toBe(null);
   });
 });
 

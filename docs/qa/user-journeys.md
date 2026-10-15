@@ -286,10 +286,12 @@ bullets; text size and reading place persist.
 ## YouTube notes — YT
 
 **Feature:** A note with a YouTube link plays the video under its properties,
-pins moments to lines and fetches the transcript, which shows as a
-teleprompter box that follows the video, seeks, copies and asks the Agent.
+pins moments to lines and fetches the transcript (English by default, other
+caption languages from a menu), which shows as a teleprompter box that
+highlights the line being said, seeks, copies, folds and asks the Agent:
+beside the video and pinned with it in a wide pane, under it in a narrow one.
 **Spec:** SPECs/youtube-notes-spec.md
-**Code:** `src/components/editor-area/` (video-player.tsx, video-pin.ts, video-transcript.ts, transcript-box.tsx, transcript-box.css, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/text-reveal/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
+**Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
 
 | ID    | Journey                                            | Expected                                                                                                      | Check                     |
 | ----- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -303,6 +305,11 @@ teleprompter box that follows the video, seeks, copies and asks the Agent.
 | YT-08 | **Ask** in the transcript box                      | The Agent panel opens with its input focused                                                                  | auto: youtube             |
 | YT-09 | Play, then ask the Agent "what did they just say?" | The answer is about the lines around the video's time                                                         | you                       |
 | YT-10 | ★ Open a video note and type straight away         | The words show on a line of their own under the box, after a blank line; the `<details>` lines stay intact    | auto: youtube             |
+| YT-11 | Watch the transcript box follow the video          | The line being said is highlighted (a soft band, full ink), its words shown at once, not revealed word by word | auto: youtube             |
+| YT-12 | Fold the box from its header, reopen the note      | Only the header stays, under the video; the note opens folded again; unfolding in a wide pane puts it beside  | auto: youtube             |
+| YT-13 | ★ Open a video note in a wide pane, scroll; narrow it | Wide: the box is right of the video, as tall as it, and stays at the top with it; narrow: it is under the video | auto: youtube             |
+| YT-14 | Pick another language in the box's language menu   | The menu lists the video's caption languages, English first; the toggle is read again in it (`lang` kept), the rest of the note untouched | auto: youtube (YouTube) |
+| YT-15 | Add a video whose speech isn't English             | The transcript comes in English when the video has English captions; the menu offers the others              | you                       |
 
 ## Podcast notes — POD
 

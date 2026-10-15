@@ -100,9 +100,21 @@ export function youtubeChapters(videoId: string): Promise<{ start: number; title
   return invoke("youtube_chapters", { videoId });
 }
 
-/** A video's transcript from its captions; empty when it has none. */
-export function youtubeTranscript(videoId: string): Promise<{ start: number; text: string }[]> {
-  return invoke("youtube_transcript", { videoId });
+/** A video's transcript from its captions in `language` (English when left
+ *  out, the spoken language when the video has no track in it), and the
+ *  language it came in. No cues when the video has no captions. */
+export function youtubeTranscript(
+  videoId: string,
+  language?: string,
+): Promise<{ language: string; cues: { start: number; text: string }[] }> {
+  return invoke("youtube_transcript", { videoId, language: language ?? null });
+}
+
+/** The caption languages a YouTube video offers, English first. */
+export function youtubeCaptionLanguages(
+  videoId: string,
+): Promise<{ code: string; name: string }[]> {
+  return invoke("youtube_caption_languages", { videoId });
 }
 
 export function fileExists(path: string): Promise<boolean> {

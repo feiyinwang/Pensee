@@ -228,7 +228,11 @@ class TranscriptWidget extends WidgetType {
         if (transcriptUnmounts.has(host) || host.dataset.destroyed) return;
         transcriptUnmounts.set(
           host,
-          mountTranscriptBox(host, { source: this.source, notePath: () => editorPath(view) }),
+          mountTranscriptBox(host, {
+            source: this.source,
+            notePath: () => editorPath(view),
+            placement: "note",
+          }),
         );
         view.requestMeasure();
       },

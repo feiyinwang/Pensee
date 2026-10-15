@@ -11,16 +11,51 @@
 
 .transcript-box-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 6px 0 14px;
+  gap: 0 8px;
+  padding: 6px 6px 0 6px;
   font-family: var(--ui-font);
 }
 
-.transcript-box-title {
+.transcript-box[data-collapsed] .transcript-box-head {
+  padding-bottom: 6px;
+}
+
+.transcript-box-lead {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The title folds the box: the whole label is the target, the chevron says so. */
+.transcript-box-fold {
+  display: inline-flex;
+  min-height: var(--control-height-sm);
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
   color: var(--color-text-muted);
+  transition:
+    color var(--motion-hover) var(--ease-hover),
+    background-color var(--motion-hover) var(--ease-hover);
+}
+
+.transcript-box-chevron {
+  flex: none;
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.transcript-box[data-collapsed] .transcript-box-chevron {
+  transform: rotate(-90deg);
+}
+
+.transcript-box-title {
   font-size: var(--text-label);
+  white-space: nowrap;
 }
 
 .transcript-box-actions {
@@ -45,6 +80,25 @@
 
 .transcript-box-button:active {
   transform: scale(0.97);
+}
+
+/* Folding closes the rows over the lines; the lines keep their height so
+   nothing inside reflows while it moves. */
+.transcript-box-body {
+  display: grid;
+  /* minmax(0, …): the lines have a fixed height, which a plain 0fr row
+     would keep open. */
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+  transition: grid-template-rows var(--motion-fast) var(--ease-out);
+}
+
+.transcript-box[data-collapsed] .transcript-box-body {
+  grid-template-rows: minmax(0, 0fr);
+}
+
+.transcript-box-body > .transcript-box-lines {
+  min-height: 0;
 }
 
 /* About six lines tall; the edges fade so lines slide in and out of view
@@ -78,15 +132,14 @@
   margin: 0;
 }
 
-.transcript-box-line[data-state="now"] {
-  color: var(--color-text-primary);
+.transcript-box-line p {
+  text-wrap: pretty;
 }
 
-/* Arc's reveal is made for headlines: here it is a line of the note. */
-.transcript-box-line .transcript-box-reveal {
-  max-width: none;
-  color: inherit;
-  text-wrap: pretty;
+/* The line being said: full ink on a soft band, the rest dimmed. */
+.transcript-box-line[data-state="now"] {
+  color: var(--color-text-primary);
+  background-color: var(--surface-subtle-strong);
 }
 
 /* The time is there to aim a click; it shows on the line under the pointer
@@ -105,13 +158,46 @@
   opacity: 1;
 }
 
+/* Beside the video (video-player.css): the box takes the video's height,
+   not its own, and the lines fill what the header leaves. */
+.transcript-box[data-placement="beside"] {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-radius: var(--radius-menu);
+  background: var(--surface-card);
+}
+
+.transcript-box[data-placement="beside"] .transcript-box-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.transcript-box[data-placement="beside"] .transcript-box-lines {
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transcript-box-body,
+  .transcript-box-chevron {
+    transition: none;
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
+  .transcript-box-fold:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-hover);
+  }
+
   .transcript-box-button:hover {
     color: var(--color-text-primary);
     background-color: var(--color-bg-hover);
   }
 
-  .transcript-box-line:hover {
+  .transcript-box-line:not([data-state="now"]):hover {
     background-color: var(--color-bg-hover);
   }
 

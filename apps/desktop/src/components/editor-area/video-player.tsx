@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { MapPin, ScrollText } from "lucide-react";
 
 import { videoIdOf } from "@/lib/video-pins";
-import { hasTranscript } from "@/lib/video-transcript";
+import { transcriptSourceIn } from "@/lib/video-transcript";
 import {
   type VideoPlayer as VideoPlayerHandle,
   armAutoPin,
@@ -21,8 +21,18 @@ import {
   pinMoment,
   returnFocusFrom,
 } from "./video-pin";
+import { useTranscriptView } from "./transcript-view";
 import { bringInTranscript } from "./video-transcript";
 import "./video-player.css";
+
+// The box brings in Arc and `motion`: only notes with a transcript load it
+// (docs/arc.md).
+const TranscriptBox = lazy(() =>
+  import("./transcript-box").then((module) => {
+    module.prepareTranscriptBox();
+    return { default: module.TranscriptBox };
+  }),
+);
 
 /**
  * A note whose properties link to a YouTube video plays it here, under the
@@ -147,9 +157,13 @@ function VideoBand({
   const playerRef = useRef<VideoPlayerHandle | null>(null);
   const [error, setError] = useState<number | null>(null);
   const [stuck, setStuck] = useState(false);
-  const transcribed = useEditorStore((s) =>
-    hasTranscript(s.openFiles.get(filePath)?.content ?? ""),
+  const transcript = useEditorStore((s) =>
+    transcriptSourceIn(s.openFiles.get(filePath)?.content ?? ""),
   );
+  const transcribed = transcript !== null;
+  // Beside the video when the pane is wide enough (video-player.css): the
+  // note's own box hides while this one shows. Folded, it goes back under.
+  const collapsed = useTranscriptView((s) => s.collapsed);
   const [reading, setReading] = useState(false);
   // Read once per video: the page takes them in its address, so a change
   // must not reload the frame.
@@ -302,6 +316,8 @@ function VideoBand({
     return () => observer.disconnect();
   }, []);
 
+  const notePath = useMemo(() => () => filePath, [filePath]);
+
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const openOnYouTube = () => {
     openUrl(watchUrl).catch((reason: unknown) => {
@@ -313,26 +329,39 @@ function VideoBand({
   return (
     <>
       <div ref={sentinelRef} className="video-band-sentinel" aria-hidden />
-      <div className="video-band" data-stuck={stuck || undefined}>
-        <div className="video-frame">
-          {error === null ? (
-            <iframe
-              ref={frameRef}
-              src={src}
-              title="YouTube video"
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
-            />
-          ) : (
-            <div className="video-error">
-              <p>
-                {error === 100
-                  ? "This video is private or was removed."
-                  : "This video can't play inside Pensée."}
-              </p>
-              <button type="button" onClick={openOnYouTube}>
-                Open on YouTube
-              </button>
+      <div
+        className="video-band"
+        data-stuck={stuck || undefined}
+        data-beside={(transcribed && !collapsed) || undefined}
+      >
+        <div className="video-band-main">
+          <div className="video-frame">
+            {error === null ? (
+              <iframe
+                ref={frameRef}
+                src={src}
+                title="YouTube video"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+              />
+            ) : (
+              <div className="video-error">
+                <p>
+                  {error === 100
+                    ? "This video is private or was removed."
+                    : "This video can't play inside Pensée."}
+                </p>
+                <button type="button" onClick={openOnYouTube}>
+                  Open on YouTube
+                </button>
+              </div>
+            )}
+          </div>
+          {transcript !== null && !collapsed && (
+            <div className="video-band-transcript">
+              <Suspense fallback={null}>
+                <TranscriptBox source={transcript} notePath={notePath} placement="beside" />
+              </Suspense>
             </div>
           )}
         </div>

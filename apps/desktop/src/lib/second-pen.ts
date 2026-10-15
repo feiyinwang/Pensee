@@ -1,5 +1,6 @@
 import { BLOCK_ID_AT_END_RE } from "./block-refs";
 import { formatVideoTime, parseVideoPinId } from "./video-pins";
+import { TRANSCRIPT_BLOCK } from "./video-transcript";
 import type { Paper } from "./tauri";
 
 // The second pen (SPECs/second-pen-spec.md): an AI that writes one line at a
@@ -313,11 +314,14 @@ export function pinnedSecond(lines: readonly string[], i: number): number | null
   return null;
 }
 
+/** A video note's transcript toggle and the blank lines after it. */
+const TRANSCRIPT_IN_NOTE = new RegExp(`${TRANSCRIPT_BLOCK.source}\\n*`, "i");
+
 /** The note as the pen reads it: no transcript (it comes as the source), pins
  *  as their time, the pen's own lines marked. */
 export function noteForPen(body: string): string {
   const text = body
-    .replace(/<details>\s*<summary>\s*Transcript\s*<\/summary>[\s\S]*?<\/details>\n*/i, "")
+    .replace(TRANSCRIPT_IN_NOTE, "")
     .split("\n")
     .map((line) => {
       const id = BLOCK_ID_AT_END_RE.exec(line);

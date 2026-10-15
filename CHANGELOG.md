@@ -2,6 +2,7 @@
 
 ## 2026-10-15
 
+- A video note's transcript now sits to the right of the video when the window has room, as tall as the video and pinned at the top with it while you scroll; in a narrower window it stays under the video. The line being said is highlighted instead of revealed word by word. Fold the box from its header (it remembers), and when the video has captions in more than one language, a menu next to **Transcript** reads it again in another. New transcripts come in English when the video has English captions.
 - **# Organize** works on a single paragraph too: select one line, or as many as you like, and its points become the outline. Picking a pill keeps the pen's box as wide as its row of pills, with no empty space after the last one; its hint now reads _Add a direction, or just press Enter_, since the lit pill already names it.
 - When Claude is signed out (an expired or revoked sign-in), the pen and the Agent now say _Claude is signed out. Run `claude` in Terminal, type /login, then try again._ instead of the raw API error.
 - A podcast's artwork now shows whole in its player instead of cropped to a square. When the picture isn't square, a blurred copy of it fills the space around it. The speed button shows its keys (`< >`) next to it, like **Pin ⌘⇧M**, and hovering play shows _Play ⌘ ⇧ J_.

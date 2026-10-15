@@ -18,6 +18,10 @@ const PARAGRAPH_MAX_SECONDS = 90;
 
 const SENTENCE_END = /[.!?…]["'”’)\]]*$/;
 const TRANSCRIPT_SUMMARY = /<summary>\s*Transcript\s*<\/summary>/i;
+/** The whole toggle, `<details …>` to `</details>`. */
+export const TRANSCRIPT_BLOCK =
+  /<details(?:\s[^>]*)?>\s*<summary>\s*Transcript\s*<\/summary>[\s\S]*?<\/details\s*>/i;
+const BLOCK_LANGUAGE = /^<details\s[^>]*\blang="([^"]*)"/i;
 
 /** Whether a note's body already holds a transcript toggle. */
 export function hasTranscript(body: string): boolean {
@@ -51,13 +55,32 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** The closed toggle holding the transcript. No blank line inside, so other
- *  Markdown apps read it as one HTML block too. */
-export function transcriptBlock(cues: readonly TranscriptCue[]): string {
+/** The closed toggle holding the transcript, its caption language as the
+ *  HTML `lang`. No blank line inside, so other Markdown apps read it as one
+ *  HTML block too. */
+export function transcriptBlock(cues: readonly TranscriptCue[], language: string): string {
   const lines = transcriptParagraphs(cues).map(
     ({ start, text }) => `<p><small>${formatVideoTime(start)}</small> ${escapeHtml(text)}</p>`,
   );
-  return ["<details>", "<summary>Transcript</summary>", ...lines, "</details>"].join("\n");
+  const open = `<details lang="${escapeHtml(language).replace(/"/g, "&quot;")}">`;
+  return [open, "<summary>Transcript</summary>", ...lines, "</details>"].join("\n");
+}
+
+/** The transcript toggle's source in a note's body, or null. */
+export function transcriptSourceIn(body: string): string | null {
+  return TRANSCRIPT_BLOCK.exec(body)?.[0] ?? null;
+}
+
+/** Where the transcript toggle sits in a note's body, or null. */
+export function transcriptRange(body: string): { from: number; to: number } | null {
+  const match = TRANSCRIPT_BLOCK.exec(body);
+  return match ? { from: match.index, to: match.index + match[0].length } : null;
+}
+
+/** The caption language of a transcript toggle (its source), or null for
+ *  one written before the language was kept. */
+export function transcriptLanguageIn(block: string): string | null {
+  return BLOCK_LANGUAGE.exec(block.trimStart())?.[1] ?? null;
 }
 
 const TRANSCRIPT_PARAGRAPH = /<p><small>(\d+(?::\d{2}){1,2})<\/small>\s?(.*?)<\/p>/g;

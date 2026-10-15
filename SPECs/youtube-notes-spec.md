@@ -101,17 +101,22 @@ selected.
 - For any other video note (an older one, or one whose transcript failed),
   **Transcript** sits next to **Pin** under the video while the note has
   none; it reads as **Getting transcript…** while it works.
-- The transcript is the creator's captions in the language spoken, else
-  YouTube's automatic ones. Paragraphs are about a minute long (closed at a
-  sentence end from 45s, at 90s regardless), each starting with its time
-  (`12:34`).
+- The transcript is in English: the creator's English captions, else
+  YouTube's automatic English ones. A video with no English captions gets
+  the language spoken (the creator's captions in it, else the automatic
+  ones). YouTube's translated captions can't be read (they answer 429), so
+  only the video's own tracks are used. Paragraphs are about a minute long
+  (closed at a sentence end from 45s, at 90s regardless), each starting
+  with its time (`12:34`).
 - A video with no captions says so in a notice; a failed read says it
   couldn't get the transcript. A note keeps one transcript: with one there,
   nothing is added, even for a new link.
 - Stored as plain HTML, so other Markdown apps show the same toggle:
-  `<details>`, `<summary>Transcript</summary>`, then one
-  `<p><small>m:ss</small> text</p>` per paragraph, with no blank line
-  inside and the text escaped.
+  `<details lang="en">` (the captions' language code), then
+  `<summary>Transcript</summary>`, then one `<p><small>m:ss</small> text</p>`
+  per paragraph, with no blank line inside and the text escaped. A toggle
+  written before the language was kept is a bare `<details>`; it reads the
+  same.
 
 ### Transcript box
 
@@ -119,12 +124,30 @@ The transcript toggle shows as a teleprompter, never as its HTML (it used to
 open into raw `<details>` source when clicked).
 
 - A box with a **Transcript** header and about six lines of text, the edges
-  fading. Each line is a sentence; a long one (automatic captions have no
+  fading.
+- **Where it shows.** In a pane at least 900px wide it sits to the right of
+  the video, as tall as the video (at least 320px wide, about a third of the
+  pane), and stays pinned at the top with it while the note scrolls. In a
+  narrower pane it sits in the note, under the video, and scrolls with the
+  note. The pane's width counts, not the window's, so opening the sidebar
+  or splitting columns can move it under. With a board open over the note
+  (mini player) it isn't shown.
+- **Folding.** The chevron and **Transcript** in the header fold the box to
+  its header and unfold it. Folded, it is under the video (beside it there
+  would be an empty column), and unfolding in a wide pane puts it back
+  beside. One setting for every video note, kept across launches.
+- **Language.** When the video has captions in more than one language, a
+  menu next to the title names the transcript's language (**English**) and
+  lists the video's caption languages, English first, as YouTube names
+  them. Picking one reads the transcript again in that language and puts
+  it in place of the note's toggle (the button reads **Spanish…** while it
+  works); the rest of the note is untouched. A toggle written before the
+  language was kept shows **Language**. With one caption language, no menu. Each line is a sentence; a long one (automatic captions have no
   full stops) is cut into even slices of up to 24 words, and a line under
   4 words joins the next.
-- **Following the video.** The line being said is in the note's ink, its
-  words rising in with Arc's text reveal as the video reaches it; the other
-  lines are muted. The box scrolls on its own to keep it a third of the way
+- **Following the video.** The line being said is highlighted: the note's
+  ink on a soft band, shown whole at once (no word-by-word reveal); the
+  other lines are muted. The box scrolls on its own to keep it a third of the way
   down. Before the video plays, the first line is the one being said.
 - **Line times.** The note keeps only each paragraph's start, so a line's
   time is where its first letter falls in the paragraph, spread over the
@@ -235,11 +258,27 @@ open into raw `<details>` source when clicked).
   lies strictly inside it (`ignoreEvent` true,
   so CodeMirror leaves its clicks, keys and selection alone; the drag gate
   skips `.cm-transcript-widget`). The widget lazy-loads
-  `transcript-box.tsx` (Arc `text-reveal` and `copy-button`), which reads
+  `transcript-box.tsx` (Arc `dropdown-menu` and `copy-button`), which reads
   the note's player from `lib/video-players.ts` every 250 ms while the box
   is on screen. Lines, their times and the clipboard text are pure
   (`transcriptLines`, `lineAt`, `transcriptText` in `lib/video-transcript.ts`).
   The Agent's moment is `videoMoments` in `agent-store.ts`.
+- **Beside the video.** `video-player.tsx` renders a second box
+  (`placement="beside"`) in the band from the toggle in the note's content
+  (`transcriptSourceIn`), whenever the note has one and the box isn't
+  folded, and marks the band `data-beside`. CSS alone picks which box shows:
+  `[data-pane]` is the `pane` size container; at 900px or more the band
+  becomes a two-column grid and the note's `.cm-transcript-widget` hides.
+  The hidden box doesn't tick (its IntersectionObserver sees it off
+  screen). The fold is `transcript-view.ts` (a zustand store kept in
+  preferences), shared by both boxes.
+- **Languages.** `youtube_caption_languages` lists the player response's
+  caption tracks once per language (the creator's name over the automatic
+  one's), English first; `youtube_transcript(videoId, language)` reads the
+  track for a language (exact code, then same base language, then the
+  automatic track, else the spoken track) and returns the code it read.
+  `changeTranscriptLanguage` in `editor-area/video-transcript.ts` replaces
+  the toggle's range (`transcriptRange`) in the live editor.
 - **Pure text (`lib/video-pins.ts`).** Pin ids, parsing, time formatting,
   the insert plan for a pin at a caret, and the note's video id from
   frontmatter.

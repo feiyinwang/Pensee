@@ -170,10 +170,13 @@ describe("answer flow", () => {
 
 describe("source", () => {
   test("the transcript comes back from the note", () => {
-    const block = transcriptBlock([
-      { start: 0, text: "Hello & welcome." },
-      { start: 50, text: "Rereading feels like knowing." },
-    ]);
+    const block = transcriptBlock(
+      [
+        { start: 0, text: "Hello & welcome." },
+        { start: 50, text: "Rereading feels like knowing." },
+      ],
+      "en",
+    );
     expect(transcriptIn(`Intro\n\n${block}\n\n- note`)).toEqual([
       { start: 0, text: "Hello & welcome." },
       { start: 50, text: "Rereading feels like knowing." },
@@ -193,7 +196,7 @@ describe("source", () => {
   });
 
   test("the note the pen reads: no transcript, pins as times, its lines marked", () => {
-    const body = `${transcriptBlock([{ start: 0, text: "x" }])}\n\n- note ^yt-540\n  - Q? ^ai-q-aaaa`;
+    const body = `${transcriptBlock([{ start: 0, text: "x" }], "en")}\n\n- note ^yt-540\n  - Q? ^ai-q-aaaa`;
     expect(noteForPen(body)).toBe("- note [at 9:00]\n  - [pen] Q?");
   });
 });
