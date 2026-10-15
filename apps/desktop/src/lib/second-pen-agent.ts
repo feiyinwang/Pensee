@@ -39,6 +39,8 @@ function lastLine(text: string): string {
 function ensureListeners(): void {
   if (listening) return;
   listening = true;
+  // Signing in ended every Claude: start the pen's again, as it was.
+  void listen("agent:ended", () => warmPen());
   // The chat listens to the same events and keeps only its own request ids,
   // as this does.
   void listen<{ requestId: string; line: string }>("agent:line", ({ payload }) => {

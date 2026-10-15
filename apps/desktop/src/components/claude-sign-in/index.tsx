@@ -12,8 +12,9 @@ import "./claude-sign-in.css";
 // The "Sign in to Claude" popup (SPECs/claude-sign-in-spec.md), opened when a
 // pen or Agent request fails because Claude Code is signed out.
 //
-// A click on the backdrop does nothing: coming back from the browser, the
-// first click on the window must not cancel the sign-in it is waiting for.
+// It floats over the window without a backdrop, so the app stays usable behind
+// it. A click outside it goes to the app and leaves it open: coming back from
+// the browser, the first click on the window must not cancel the sign-in.
 export function ClaudeSignIn() {
   const open = useClaudeSignInStore((s) => s.open);
   if (!open) return null;
@@ -63,14 +64,13 @@ function SignInCard() {
         : "Organize, the pen and the Agent use Claude Code on this Mac. Sign in to use them again.";
 
   return (
-    <div className="claude-sign-in-backdrop modal-backdrop">
+    <div className="claude-sign-in-layer">
       <div
         ref={cardRef}
         role="dialog"
-        aria-modal="true"
         aria-labelledby="claude-sign-in-title"
         tabIndex={-1}
-        className="claude-sign-in surface-card surface-card-opaque"
+        className="claude-sign-in surface-card surface-card-opaque popover-outline"
         onKeyDown={onKeyDown}
       >
         <h2 id="claude-sign-in-title" className="claude-sign-in-title">

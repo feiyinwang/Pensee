@@ -116,6 +116,9 @@ function ensureListeners() {
   if (listening) return;
   listening = true;
 
+  // Signing in ended every Claude: start this window's again, as it was.
+  void listen("agent:ended", () => useAgentStore.getState().warm());
+
   void listen<{ requestId: string; line: string }>("agent:line", ({ payload }) => {
     const { run } = useAgentStore.getState();
     if (!run || run.requestId !== payload.requestId) return;

@@ -1,7 +1,8 @@
-/* "Sign in to Claude" (SPECs/claude-sign-in-spec.md). The opaque modal card
-   on the modal backdrop: it asks for a decision, so nothing shows through. */
+/* "Sign in to Claude" (SPECs/claude-sign-in-spec.md). An opaque card floating
+   over the window with no backdrop: the app behind it stays visible and
+   clickable, and only the card itself takes clicks. */
 
-.claude-sign-in-backdrop {
+.claude-sign-in-layer {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -9,6 +10,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 22vh 16px 16px;
+  pointer-events: none;
 }
 
 .claude-sign-in {
@@ -18,6 +20,7 @@
   padding: 20px;
   border-radius: var(--radius-card);
   outline: none;
+  pointer-events: auto;
   /* It opens after a failed request, not from a key: a short fade and lift
      says where it came from. No exit: closing is the writer's own move. */
   transition:
@@ -30,17 +33,8 @@
   }
 }
 
-.claude-sign-in-backdrop {
-  transition: opacity var(--motion-base) var(--ease-out);
-
-  @starting-style {
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .claude-sign-in,
-  .claude-sign-in-backdrop {
+  .claude-sign-in {
     transition: none;
   }
 }

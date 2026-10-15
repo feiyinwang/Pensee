@@ -30,7 +30,9 @@ async function askAgent(text) {
   await browser.execute(() => {
     document
       .querySelector('[aria-label="Agent"] textarea[aria-label="Message"]')
-      .dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+      .dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+      );
   });
 }
 
@@ -61,6 +63,11 @@ describe("Journeys: Claude sign-in", function () {
       shown.rect.left >= 16 && shown.rect.right <= shown.viewport.width - 16,
       `card inside the window: ${JSON.stringify(shown.rect)}`,
     );
+    const behind = await browser.execute(() => {
+      const el = document.elementFromPoint(8, window.innerHeight - 8);
+      return el ? !el.closest(".claude-sign-in-layer") : false;
+    });
+    ok(behind, "no backdrop: the app behind the popup takes clicks");
     const chat = await browser.execute(
       () => document.querySelector('[aria-label="Agent"]')?.textContent ?? "",
     );
@@ -70,7 +77,9 @@ describe("Journeys: Claude sign-in", function () {
     await browser.execute(() =>
       document
         .querySelector(".claude-sign-in")
-        .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+        .dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        ),
     );
     await browser.waitUntil(async () => (await popup()) === null, {
       timeout: 2_000,
@@ -109,8 +118,7 @@ describe("Journeys: Claude sign-in", function () {
     );
     // Claude Code prints the sign-in page for when the browser didn't open.
     await browser.waitUntil(
-      async () =>
-        (await popup())?.buttons.some((b) => b === "Open the sign-in page again"),
+      async () => (await popup())?.buttons.some((b) => b === "Open the sign-in page again"),
       { timeout: 15_000, timeoutMsg: "no link to the sign-in page" },
     );
     await browser.execute(() =>

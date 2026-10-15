@@ -30,7 +30,8 @@ When a pen or Agent request ends with a signed-out error (401, "OAuth",
 _Claude is signed out. Sign in, then try again._ and the sign-in popup opens
 over the window, unless it is already open.
 
-The popup is a centred opaque card on the modal backdrop. Its title names the
+The popup is an opaque card floating over the window, centred near the top,
+with no backdrop: the app behind it stays visible and usable. Its title names the
 situation, not the button ("Claude is signed out"; "Signed in" when done).
 
 | State   | Text                                                                                     | Actions                                    |
@@ -40,8 +41,9 @@ situation, not the button ("Claude is signed out"; "Signed in" when done).
 | Failed  | The idle text, then the reason in plain words                                            | Not now `Esc` · Try again `↵`              |
 | Done    | Run it again.                                                                            | Done `↵`; closes by itself after 1.5s      |
 
-A click on the backdrop does nothing: coming back from the browser, the first
-click on the window must not cancel the sign-in it is waiting for.
+A click outside the card goes to the app and leaves the card open: coming back
+from the browser, the first click on the window must not cancel the sign-in it
+is waiting for.
 
 - **Sign in** runs `claude auth login --claudeai` from the app. Claude Code opens
   the browser itself; when the writer approves, it exits and the popup moves to
@@ -52,8 +54,10 @@ click on the window must not cancel the sign-in it is waiting for.
 - **Cancel**, Esc or closing the window ends the login process.
 - Success is checked with `claude auth status`, never assumed from the exit
   code.
-- After signing in, the window's running Claude processes (pen and chat) are
-  ended so the next request starts with the new sign-in.
+- After signing in, every window's running Claude processes (pen and chat) are
+  ended so the next request starts with the new sign-in, and each window starts
+  again the ones it had (`agent:ended`), so that request doesn't wait for Claude
+  to start.
 - Claude Code without `auth login` (older than 2.1.x): the popup fails with
   "This version of Claude Code can't sign in from Pensée. Run `claude update` in
   Terminal, then try again."

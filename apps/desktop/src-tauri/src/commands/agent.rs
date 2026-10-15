@@ -488,7 +488,9 @@ fn kill_session(app: &tauri::AppHandle, key: &str) {
 }
 
 /// Kill every window's processes, so the next request starts a fresh Claude
-/// (after signing in: a running one keeps the sign-in it started with).
+/// (after signing in: a running one keeps the sign-in it started with). Every
+/// window is told with `agent:ended`, so what it had warm is warmed again and
+/// the first request after signing in doesn't wait for Claude to start.
 pub(crate) fn end_all_sessions(app: &tauri::AppHandle) {
     let sessions: Vec<_> = app
         .state::<AgentState>()
@@ -499,6 +501,9 @@ pub(crate) fn end_all_sessions(app: &tauri::AppHandle) {
         .collect();
     for session in sessions {
         let _ = session.child.lock().kill();
+    }
+    if let Err(error) = app.emit("agent:ended", ()) {
+        eprintln!("[agent] Couldn't tell the windows their Claude ended: {error}");
     }
 }
 
