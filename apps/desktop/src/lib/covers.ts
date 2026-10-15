@@ -4,7 +4,8 @@ import type { TypedNote } from "./tauri";
 
 // Covers from the web for Library notes (SPECs/spaces-spec.md, "Covers from
 // the web"). A YouTube note with no `Cover:` shows its thumbnail straight from
-// its link; "Get cover" downloads it (or a podcast page's Open Graph image)
+// its link (a podcast on YouTube too); "Get cover" downloads it (or a podcast
+// page's Open Graph image)
 // into the note's assets folder and writes `Cover:`, so it stays markdown.
 
 /** Frontmatter keys a note keeps its web address under, in order of trust. */
@@ -72,21 +73,22 @@ export function hasCoverProperty(note: TypedNote): boolean {
   return !isBlank(note.properties.cover);
 }
 
-/** The thumbnail a video note shows before it has a `Cover:` of its own. */
+/** The thumbnail a video or podcast note with a YouTube link shows before it
+ *  has a `Cover:` of its own. */
 export function liveCoverSrc(note: TypedNote, kind: CoverKind): string | null {
-  if (kind !== "video") return null;
+  if (kind !== "video" && kind !== "podcast") return null;
   const link = noteLink(note);
   const id = link ? youtubeVideoId(link) : null;
   return id ? youtubeThumbnail(id) : null;
 }
 
-/** What "Get cover" downloads for a note without a `Cover:`: a video's
- *  YouTube thumbnail, or the page of a podcast (whose Open Graph image is its
+/** What "Get cover" downloads for a note without a `Cover:`: a YouTube
+ *  thumbnail, or the page of a podcast (whose Open Graph image is its
  *  artwork). Null when there is nothing to get. */
 export function coverToGet(note: TypedNote, kind: CoverKind): string | null {
   if (hasCoverProperty(note)) return null;
   if (kind === "video") return liveCoverSrc(note, kind);
-  if (kind === "podcast") return noteLink(note);
+  if (kind === "podcast") return liveCoverSrc(note, kind) ?? noteLink(note);
   return null;
 }
 

@@ -1,12 +1,13 @@
 /* A podcast note's player (podcast-player.tsx, SPECs/podcast-notes-spec.md).
    It shares the video band's sticky and board-mini-player rules
-   (video-player.css); this is the bar inside it, on the text column. */
+   (video-player.css); this is the card inside it, on the text column:
+   artwork on the left; title, show and transport; the timeline; then speed,
+   volume and Pin. */
 
 .podcast-band audio {
   display: none;
 }
 
-/* The bar sits on the text column, a card of its own. */
 .podcast-column {
   max-width: var(--pensee-editor-outer-width);
   margin-inline: auto;
@@ -14,35 +15,164 @@
   box-sizing: border-box;
 }
 
-.podcast-bar {
+.podcast-card {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 6px 0 8px;
-  border-radius: var(--radius-menu);
+  gap: 14px;
+  padding: 10px;
+  border-radius: var(--radius-card);
   background: var(--surface-card);
   box-shadow: 0 0 0 1px var(--line-subtle);
   font-family: var(--ui-font);
-  font-size: var(--text-label);
   color: var(--text-muted);
 }
 
+/* Square, as podcast artwork is drawn; the tile under it shows while the
+   picture loads, and stays when there is none. */
+.podcast-artwork {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 104px;
+  overflow: hidden;
+  border-radius: var(--radius-8);
+  background: var(--surface-subtle);
+  box-shadow: inset 0 0 0 1px var(--line-subtler);
+  color: var(--text-icon-muted);
+}
+
+.podcast-artwork img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+
+/* Scaled past the edges so the blur has no faded rim. */
+.podcast-artwork img.podcast-artwork-backdrop {
+  object-fit: cover;
+  filter: blur(14px) saturate(1.3) brightness(0.8);
+  transform: scale(1.3);
+}
+
+.podcast-artwork img[data-loaded] {
+  opacity: 1;
+}
+
+/* Artwork with see-through parts must not show the tile's mark. */
+.podcast-artwork:has(img[data-loaded]) .podcast-artwork-mark {
+  visibility: hidden;
+}
+
+.podcast-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.podcast-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.podcast-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.podcast-title,
+.podcast-show,
+.podcast-message {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podcast-title {
+  color: var(--text-primary);
+  font-size: var(--text-ui);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.podcast-show,
+.podcast-message {
+  font-size: var(--text-label);
+  line-height: 1.4;
+}
+
+.podcast-transport {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.podcast-skip,
 .podcast-play {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
   border-radius: var(--radius-round);
-  background: var(--text-primary);
-  color: var(--bg-base);
-  transition: opacity var(--motion-hover) var(--ease-hover);
+  transition:
+    color var(--motion-hover) var(--ease-hover),
+    background-color var(--motion-hover) var(--ease-hover),
+    opacity var(--motion-hover) var(--ease-hover);
 }
 
+.podcast-skip {
+  width: 30px;
+  height: 30px;
+  color: var(--text-secondary);
+}
+
+.podcast-play {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  background: var(--text-primary);
+  color: var(--bg-base);
+}
+
+.podcast-skip:disabled,
 .podcast-play:disabled {
   opacity: 0.4;
+}
+
+/* Play and pause swap in place: one fades and shrinks as the other grows. */
+.podcast-play-icon {
+  position: absolute;
+  fill: currentColor;
+  transition:
+    opacity var(--motion-fast) var(--ease-out),
+    scale var(--motion-fast) var(--ease-out);
+}
+
+.podcast-play-icon[data-icon="play"] {
+  translate: 1px 0;
+}
+
+.podcast-play[data-playing] .podcast-play-icon[data-icon="play"],
+.podcast-play:not([data-playing]) .podcast-play-icon[data-icon="pause"] {
+  opacity: 0;
+  scale: 0.6;
+}
+
+.podcast-timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .podcast-time {
@@ -52,19 +182,47 @@
   font-variant-numeric: tabular-nums;
 }
 
-.podcast-message {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.podcast-time:last-child {
+  text-align: right;
 }
 
-/* The track: a thin line filled to the playhead, the knob only on hover. */
-.podcast-track {
-  flex: 1;
-  min-width: 60px;
+/* The ghost buttons' padding hangs outside the column, so their labels
+   start and end on the title's and timeline's edges. */
+.podcast-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline: -7px;
+}
+
+.podcast-pin {
+  margin-left: auto;
+}
+
+/* Wide enough for "1.75×", so the keys after it and the volume never shift. */
+.podcast-speed-value {
+  min-width: 38px;
+  font-variant-numeric: tabular-nums;
+}
+
+.podcast-volume {
+  display: flex;
+  align-items: center;
+}
+
+.podcast-mute {
+  width: 24px;
+  padding: 0;
+  justify-content: center;
+}
+
+.podcast-volume-range {
+  width: 72px;
+}
+
+/* Both sliders: a thin line filled to the value, the knob only on hover or
+   keyboard focus. */
+.podcast-range {
   height: 16px;
   margin: 0;
   background: transparent;
@@ -73,17 +231,22 @@
   -webkit-appearance: none;
 }
 
-.podcast-track::-webkit-slider-runnable-track {
+.podcast-track {
+  flex: 1;
+  min-width: 60px;
+}
+
+.podcast-range::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: var(--radius-round);
   background: linear-gradient(
     to right,
-    var(--text-primary) var(--progress, 0%),
-    var(--surface-subtle-strong) var(--progress, 0%)
+    var(--text-primary) var(--fill, 0%),
+    var(--surface-subtle-strong) var(--fill, 0%)
   );
 }
 
-.podcast-track::-webkit-slider-thumb {
+.podcast-range::-webkit-slider-thumb {
   width: 11px;
   height: 11px;
   margin-top: -4px;
@@ -94,24 +257,18 @@
   -webkit-appearance: none;
 }
 
-.podcast-track:focus-visible {
+.podcast-range:focus-visible {
   outline: none;
 }
 
-.podcast-track:focus-visible::-webkit-slider-thumb {
+.podcast-range:focus-visible::-webkit-slider-thumb {
   opacity: 1;
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
-.podcast-track:disabled {
+.podcast-range:disabled {
   cursor: default;
-}
-
-.podcast-speed {
-  min-width: 44px;
-  justify-content: center;
-  font-variant-numeric: tabular-nums;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -119,18 +276,48 @@
     opacity: 0.85;
   }
 
-  .podcast-track:not(:disabled):hover::-webkit-slider-thumb {
+  .podcast-skip:not(:disabled):hover {
+    color: var(--text-primary);
+    background-color: var(--surface-subtle);
+  }
+
+  .podcast-range:not(:disabled):hover::-webkit-slider-thumb {
     opacity: 1;
   }
 }
 
-.podcast-play:focus-visible {
+.podcast-play:focus-visible,
+.podcast-skip:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Over a board, the band is the 320px mini player: the card fills it. */
+@media (prefers-reduced-motion: reduce) {
+  .podcast-artwork img,
+  .podcast-play-icon {
+    transition: none;
+  }
+}
+
+/* Over a board, the band is the 320px mini player: the card fills it, with
+   smaller artwork and the volume down to its mute button. */
 [data-pane]:has(> .wr-board-inline) .podcast-column {
   max-width: none;
   padding: 0;
+}
+
+[data-pane]:has(> .wr-board-inline) .podcast-card {
+  gap: 10px;
+  padding: 8px;
+}
+
+[data-pane]:has(> .wr-board-inline) .podcast-artwork {
+  width: 64px;
+  height: 64px;
+}
+
+[data-pane]:has(> .wr-board-inline) .podcast-show,
+[data-pane]:has(> .wr-board-inline) .podcast-skip,
+[data-pane]:has(> .wr-board-inline) .podcast-volume-range {
+  display: none;
 }

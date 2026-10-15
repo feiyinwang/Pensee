@@ -1,14 +1,19 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { MapPin, Pause, Play } from "lucide-react";
+import { MapPin, Mic, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 
+import { pageProperty } from "@/lib/book-highlights";
+import { getFileStem } from "@/lib/paths";
 import {
+  SKIP_AHEAD_SECONDS,
+  SKIP_BACK_SECONDS,
   formatSpeed,
   nextPodcastPreset,
   podcastLinkOf,
+  podcastSourceLabel,
   stepPodcastSpeed,
 } from "@/lib/podcast-player";
-import { podcastAudio } from "@/lib/tauri";
+import { type PodcastEpisode, podcastEpisode } from "@/lib/tauri";
 import { formatVideoTime } from "@/lib/video-pins";
 import {
   type VideoPlayer as PlayerHandle,
@@ -18,6 +23,8 @@ import {
   registerVideoPlayer,
 } from "@/lib/video-players";
 import { useEditorStore } from "@/stores/editor-store";
+import { useChromeTooltip } from "../chrome-tooltip";
+import { coverValueSrc } from "../spaces/space-cover";
 import { showEditorNotice } from "./editor-notice-store";
 import { PIN_SHORTCUT_LABEL, installVideoPinShortcut, pinMoment } from "./video-pin";
 import "./video-player.css";
@@ -39,64 +46,100 @@ export function PodcastPlayer({ filePath }: { filePath: string }) {
         : null,
     [frontmatter],
   );
+  // The note's own `Cover:` wins over the episode's artwork.
+  const cover = useMemo(
+    () =>
+      link && /^cover\s*:/im.test(frontmatter ?? "")
+        ? coverValueSrc(filePath, pageProperty(frontmatter, "cover") ?? undefined, "podcast")
+        : null,
+    [link, frontmatter, filePath],
+  );
   if (!link) return null;
-  return <PodcastBand key={link} filePath={filePath} link={link} />;
+  return <PodcastBand key={link} filePath={filePath} link={link} cover={cover} />;
 }
 
-/** Each link's audio, found once per launch (a Spotify link takes a few
+/** Each link's episode, found once per launch (a Spotify link takes a few
  *  requests). A failed find is forgotten, so reopening the note tries again. */
-const audioFinds = new Map<string, Promise<string>>();
+const episodeFinds = new Map<string, Promise<PodcastEpisode>>();
 
-function findAudio(link: string): Promise<string> {
-  let find = audioFinds.get(link);
+function findEpisode(link: string): Promise<PodcastEpisode> {
+  let find = episodeFinds.get(link);
   if (!find) {
-    find = podcastAudio(link);
-    find.catch(() => audioFinds.delete(link));
-    audioFinds.set(link, find);
+    find = podcastEpisode(link);
+    find.catch(() => episodeFinds.delete(link));
+    episodeFinds.set(link, find);
   }
   return find;
 }
 
-// The speed carries over between episodes and launches.
+// The speed and volume carry over between episodes and launches.
 const PREFS_KEY = "writer.podcast-player";
 
-function readRate(): number {
+interface Prefs {
+  rate: number;
+  volume: number;
+}
+
+function readPrefs(): Prefs {
   try {
-    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { rate?: unknown };
-    return Number(saved.rate) || 1;
+    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as Record<string, unknown>;
+    const volume = Number(saved.volume);
+    return {
+      rate: Number(saved.rate) || 1,
+      volume: Number.isFinite(volume) && volume >= 0 && volume <= 1 ? volume : 1,
+    };
   } catch {
-    return 1;
+    return { rate: 1, volume: 1 };
   }
 }
 
-function saveRate(rate: number): void {
+function savePrefs(prefs: Prefs): void {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ rate }));
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
   } catch (error) {
-    console.warn("[podcast] Couldn't save the player's speed:", error);
+    console.warn("[podcast] Couldn't save the player's speed and volume:", error);
   }
 }
 
-type Found = { audio: string } | { error: string } | null;
+/** The episode once found, or why it couldn't be reached at all. */
+type Found = { episode: PodcastEpisode } | { error: string } | null;
 
-function PodcastBand({ filePath, link }: { filePath: string; link: string }) {
+/** Clicking the card's buttons leaves focus in the note, where typing and
+ *  pins go. */
+const keepFocus = (event: React.MouseEvent) => event.preventDefault();
+
+function PodcastBand({
+  filePath,
+  link,
+  cover,
+}: {
+  filePath: string;
+  link: string;
+  cover: string | null;
+}) {
   const bandRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playerRef = useRef<PlayerHandle | null>(null);
   const [found, setFound] = useState<Found>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [stuck, setStuck] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [rate, setRate] = useState(readRate);
+  const [prefs, setPrefs] = useState(readPrefs);
+  // The volume to go back to when unmuted.
+  const [unmuted, setUnmuted] = useState(() => prefs.volume || 1);
+  // The webview never shows a native `title`, so the play button's
+  // shortcut needs a tooltip of its own.
+  const playTip = useChromeTooltip(playing ? "Pause" : "Play", { keys: ["⌘", "⇧", "J"] });
 
   useEffect(() => {
     let current = true;
-    findAudio(link).then(
-      (audio) => current && setFound({ audio }),
+    findEpisode(link).then(
+      (episode) => current && setFound({ episode }),
       (reason: unknown) => {
-        console.error(`[podcast] Couldn't find the audio of ${link}:`, reason);
+        console.error(`[podcast] Couldn't find the episode of ${link}:`, reason);
         const message = String(reason);
         // Offline, or the page refused: the backend's wording is not for the user.
         const shown = /^(Network error|Invalid URL)/.test(message)
@@ -149,7 +192,7 @@ function PodcastBand({ filePath, link }: { filePath: string; link: string }) {
       },
       speed: (step) => {
         markVideoUsed(filePath);
-        setRate((value) => stepPodcastSpeed(value, step));
+        setPrefs((value) => ({ ...value, rate: stepPodcastSpeed(value.rate, step) }));
       },
       rect: () => bandRef.current?.getBoundingClientRect() ?? new DOMRect(),
       shown: () => bandRef.current?.checkVisibility({ visibilityProperty: true }) ?? false,
@@ -175,9 +218,13 @@ function PodcastBand({ filePath, link }: { filePath: string; link: string }) {
   }, [filePath]);
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.playbackRate = rate;
-    saveRate(rate);
-  }, [rate]);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.playbackRate = prefs.rate;
+      audio.volume = prefs.volume;
+    }
+    savePrefs(prefs);
+  }, [prefs]);
 
   // Stuck once the properties above have scrolled away: only then does the
   // band need a backdrop of its own.
@@ -199,9 +246,30 @@ function PodcastBand({ filePath, link }: { filePath: string; link: string }) {
     });
   };
 
-  const audioSrc = found && "audio" in found ? found.audio : undefined;
-  const error = found && "error" in found ? found.error : null;
+  const skip = (seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    audio.currentTime = Math.max(0, Math.min(duration, audio.currentTime + seconds));
+    setTime(audio.currentTime);
+  };
+
+  const setVolume = (volume: number) => {
+    if (volume > 0) setUnmuted(volume);
+    setPrefs((value) => ({ ...value, volume }));
+  };
+
+  const episode = found && "episode" in found ? found.episode : null;
+  const audioSrc = episode?.audio ?? undefined;
+  const problem = loadFailed
+    ? "This episode's audio wouldn't load."
+    : found && "error" in found
+      ? found.error
+      : (episode?.problem ?? null);
+  const ready = Boolean(audioSrc) && duration > 0;
   const progress = duration > 0 ? Math.min(1, time / duration) : 0;
+  const title = episode?.title ?? getFileStem(filePath);
+  const show = episode?.show ?? podcastSourceLabel(link);
+  const muted = prefs.volume === 0;
 
   return (
     <>
@@ -225,85 +293,218 @@ function PodcastBand({ filePath, link }: { filePath: string; link: string }) {
           onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
           onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
           onLoadedMetadata={(event) => {
-            event.currentTarget.playbackRate = rate;
+            event.currentTarget.playbackRate = prefs.rate;
+            event.currentTarget.volume = prefs.volume;
           }}
-          onError={() => setFound({ error: "This episode's audio wouldn't load." })}
+          onError={() => setLoadFailed(true)}
         />
         <div className="podcast-column">
-          <div className="podcast-bar">
-            {error !== null ? (
-              <>
-                <p className="podcast-message">{error}</p>
-                <button type="button" className="video-pin-button" onClick={openLink}>
-                  Open link
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="podcast-play"
-                  aria-label={playing ? "Pause" : "Play"}
-                  title={playing ? "Pause (⌘⇧J)" : "Play (⌘⇧J)"}
-                  disabled={!audioSrc}
-                  // Focus stays in the note, where typing and pins go.
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => playerRef.current?.toggle()}
-                >
-                  {playing ? <Pause size={14} aria-hidden /> : <Play size={14} aria-hidden />}
-                </button>
-                {audioSrc ? (
-                  <>
-                    <span className="podcast-time">{formatVideoTime(time)}</span>
-                    <input
-                      type="range"
-                      className="podcast-track"
-                      aria-label="Position"
-                      min={0}
-                      max={duration || 0}
-                      step={1}
-                      value={Math.min(time, duration || 0)}
-                      disabled={!duration}
-                      style={{ "--progress": `${progress * 100}%` } as CSSProperties}
-                      onChange={(event) => {
-                        const audio = audioRef.current;
-                        if (!audio) return;
-                        audio.currentTime = Number(event.currentTarget.value);
-                        setTime(audio.currentTime);
-                      }}
-                      onPointerUp={(event) => event.currentTarget.blur()}
-                    />
-                    <span className="podcast-time">
-                      {duration ? formatVideoTime(duration) : "–:––"}
-                    </span>
-                  </>
-                ) : (
-                  <p className="podcast-message">Finding the episode…</p>
+          <section className="podcast-card" aria-label="Podcast player">
+            <PodcastArtwork sources={[cover, episode?.artwork ?? null]} />
+            <div className="podcast-main">
+              <div className="podcast-now">
+                <div className="podcast-heading">
+                  <p className="podcast-title" title={title}>
+                    {title}
+                  </p>
+                  <p className="podcast-show" title={show}>
+                    {show}
+                  </p>
+                </div>
+                {problem === null && (
+                  <div className="podcast-transport">
+                    <button
+                      type="button"
+                      className="podcast-skip"
+                      aria-label={`Back ${SKIP_BACK_SECONDS} seconds`}
+                      title={`Back ${SKIP_BACK_SECONDS} s`}
+                      disabled={!ready}
+                      onMouseDown={keepFocus}
+                      onClick={() => skip(-SKIP_BACK_SECONDS)}
+                    >
+                      <RotateCcw size={16} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="podcast-play"
+                      data-playing={playing || undefined}
+                      aria-label={playing ? "Pause" : "Play"}
+                      aria-keyshortcuts="Meta+Shift+J"
+                      disabled={!audioSrc}
+                      {...playTip.triggerProps}
+                      onMouseDown={keepFocus}
+                      onClick={() => playerRef.current?.toggle()}
+                    >
+                      <Play className="podcast-play-icon" data-icon="play" size={16} aria-hidden />
+                      <Pause
+                        className="podcast-play-icon"
+                        data-icon="pause"
+                        size={16}
+                        aria-hidden
+                      />
+                    </button>
+                    {playTip.tooltip}
+                    <button
+                      type="button"
+                      className="podcast-skip"
+                      aria-label={`Ahead ${SKIP_AHEAD_SECONDS} seconds`}
+                      title={`Ahead ${SKIP_AHEAD_SECONDS} s`}
+                      disabled={!ready}
+                      onMouseDown={keepFocus}
+                      onClick={() => skip(SKIP_AHEAD_SECONDS)}
+                    >
+                      <RotateCw size={16} aria-hidden />
+                    </button>
+                  </div>
                 )}
-                <button
-                  type="button"
-                  className="video-pin-button podcast-speed"
-                  title="Speed (< / >)"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => setRate((value) => nextPodcastPreset(value))}
-                >
-                  {formatSpeed(rate)}
-                </button>
-                <button
-                  type="button"
-                  className="video-pin-button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => pinMoment(playerRef.current ?? undefined)}
-                >
-                  <MapPin size={13} aria-hidden />
-                  Pin
-                  <kbd>{PIN_SHORTCUT_LABEL}</kbd>
-                </button>
-              </>
-            )}
-          </div>
+              </div>
+
+              {problem !== null ? (
+                <>
+                  <p className="podcast-message">{problem}</p>
+                  <div className="podcast-tools">
+                    <button type="button" className="video-pin-button" onClick={openLink}>
+                      Open link
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {audioSrc ? (
+                    <div className="podcast-timeline">
+                      <span className="podcast-time">{formatVideoTime(time)}</span>
+                      <input
+                        type="range"
+                        className="podcast-range podcast-track"
+                        aria-label="Position"
+                        aria-valuetext={`${formatVideoTime(time)} of ${formatVideoTime(duration)}`}
+                        min={0}
+                        max={duration || 0}
+                        step={1}
+                        value={Math.min(time, duration || 0)}
+                        disabled={!duration}
+                        style={{ "--fill": `${progress * 100}%` } as CSSProperties}
+                        onChange={(event) => {
+                          const audio = audioRef.current;
+                          if (!audio) return;
+                          audio.currentTime = Number(event.currentTarget.value);
+                          setTime(audio.currentTime);
+                        }}
+                        onPointerUp={(event) => event.currentTarget.blur()}
+                      />
+                      <span className="podcast-time">
+                        {duration ? formatVideoTime(duration) : "–:––"}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="podcast-message">Finding the episode…</p>
+                  )}
+                  <div className="podcast-tools">
+                    <button
+                      type="button"
+                      className="video-pin-button podcast-speed"
+                      aria-label={`Speed ${formatSpeed(prefs.rate)}`}
+                      aria-keyshortcuts="< >"
+                      onMouseDown={keepFocus}
+                      onClick={() =>
+                        setPrefs((value) => ({ ...value, rate: nextPodcastPreset(value.rate) }))
+                      }
+                    >
+                      <span className="podcast-speed-value">{formatSpeed(prefs.rate)}</span>
+                      <kbd>&lt; &gt;</kbd>
+                    </button>
+                    <div className="podcast-volume">
+                      <button
+                        type="button"
+                        className="video-pin-button podcast-mute"
+                        aria-label={muted ? "Unmute" : "Mute"}
+                        title={muted ? "Unmute" : "Mute"}
+                        onMouseDown={keepFocus}
+                        onClick={() => setVolume(muted ? unmuted : 0)}
+                      >
+                        {muted ? (
+                          <VolumeX size={14} aria-hidden />
+                        ) : (
+                          <Volume2 size={14} aria-hidden />
+                        )}
+                      </button>
+                      <input
+                        type="range"
+                        className="podcast-range podcast-volume-range"
+                        aria-label="Volume"
+                        aria-valuetext={`${Math.round(prefs.volume * 100)}%`}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={prefs.volume}
+                        style={{ "--fill": `${prefs.volume * 100}%` } as CSSProperties}
+                        onChange={(event) => setVolume(Number(event.currentTarget.value))}
+                        onPointerUp={(event) => event.currentTarget.blur()}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="video-pin-button podcast-pin"
+                      onMouseDown={keepFocus}
+                      onClick={() => pinMoment(playerRef.current ?? undefined)}
+                    >
+                      <MapPin size={13} aria-hidden />
+                      Pin
+                      <kbd>{PIN_SHORTCUT_LABEL}</kbd>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
         </div>
       </div>
     </>
+  );
+}
+
+/** The episode's picture: the first of `sources` that loads, faded in over
+ *  a plain tile with a microphone, which also stands in when none does. */
+function PodcastArtwork({ sources }: { sources: readonly (string | null)[] }) {
+  const [failed, setFailed] = useState<readonly string[]>([]);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const src = sources.find((s): s is string => s !== null && !failed.includes(s)) ?? null;
+  return (
+    <div className="podcast-artwork">
+      <Mic className="podcast-artwork-mark" size={22} aria-hidden />
+      {/* The whole picture shows; a blurred copy fills the square around a
+          picture that isn't one. */}
+      {src && (
+        <img
+          key={`backdrop:${src}`}
+          className="podcast-artwork-backdrop"
+          src={src}
+          alt=""
+          aria-hidden
+          draggable={false}
+          data-loaded={loaded === src || undefined}
+        />
+      )}
+      {src && (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          decoding="async"
+          draggable={false}
+          data-loaded={loaded === src || undefined}
+          // A picture already in the cache can finish before React listens
+          // for its load: check on mount as well.
+          ref={(img) => {
+            if (img?.complete && img.naturalWidth > 0) setLoaded(src);
+          }}
+          onLoad={() => setLoaded(src)}
+          onError={() => {
+            console.warn(`[podcast] Couldn't load the artwork ${src}`);
+            setFailed((list) => [...list, src]);
+          }}
+        />
+      )}
+    </div>
   );
 }

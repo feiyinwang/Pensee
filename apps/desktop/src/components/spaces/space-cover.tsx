@@ -22,7 +22,7 @@ const THUMB_BOX: Record<CoverKind, readonly [number, number]> = {
 
 /** A frontmatter value (optionally in `[[ ]]`) as a web address, or a vault
  *  path resolved from the note's folder. */
-function noteFile(note: TypedNote, raw: string | undefined): string | null {
+function noteFile(notePath: string, raw: string | undefined): string | null {
   const value = raw
     ?.trim()
     .replace(/^!?\[\[/, "")
@@ -31,7 +31,7 @@ function noteFile(note: TypedNote, raw: string | undefined): string | null {
     ?.trim();
   if (!value) return null;
   if (/^https?:\/\//i.test(value)) return value;
-  return value.startsWith("/") ? value : `${getParentDir(note.path)}/${value}`;
+  return value.startsWith("/") ? value : `${getParentDir(notePath)}/${value}`;
 }
 
 /** `path` scaled down to `kind`'s box by the `thumb` protocol
@@ -43,7 +43,16 @@ function thumbSrc(path: string, kind: CoverKind): string {
 
 /** `Cover:` as an image URL: a web address as is, a vault path as a thumbnail. */
 export function coverSrc(note: TypedNote, kind: CoverKind): string | null {
-  const file = noteFile(note, note.properties.cover);
+  return coverValueSrc(note.path, note.properties.cover, kind);
+}
+
+/** A `Cover:` value of the note at `notePath` as an image URL. */
+export function coverValueSrc(
+  notePath: string,
+  value: string | undefined,
+  kind: CoverKind,
+): string | null {
+  const file = noteFile(notePath, value);
   if (!file) return null;
   return /^https?:\/\//i.test(file) ? file : thumbSrc(file, kind);
 }
@@ -52,7 +61,7 @@ export function coverSrc(note: TypedNote, kind: CoverKind): string | null {
  *  out of the zip by the `thumb` protocol. A PDF's first page would need a
  *  renderer there, so a PDF book keeps its `Cover:`. */
 function bookFileSrc(note: TypedNote, kind: CoverKind): string | null {
-  const file = noteFile(note, note.properties.book);
+  const file = noteFile(note.path, note.properties.book);
   if (!file || !/\.epub$/i.test(file) || /^https?:\/\//i.test(file)) return null;
   return thumbSrc(file, kind);
 }

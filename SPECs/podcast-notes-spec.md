@@ -27,11 +27,13 @@ pauses, one pins the moment on the line you're writing.
   `.m4a`, `.aac`, `.ogg`, `.opus`, `.wav`, `.flac`).
 - A YouTube link is always the video player's.
 
-### Finding the audio
+### Finding the episode
 
-The player plays the episode's audio file in a plain `<audio>` element, so it
-is found from the link once per launch (`podcast_audio`,
-`src-tauri/src/commands/podcasts.rs`):
+The player plays the episode's audio file in a plain `<audio>` element and
+shows its artwork, title and show, all found from the link once per launch
+(`podcast_episode`, `src-tauri/src/commands/podcasts.rs`). The artwork is
+found even when the audio isn't, so a Spotify-only episode still shows whose
+it is. The audio:
 
 - an audio file is played as it is;
 - an Apple Podcasts episode (`…/id<show>?i=<episode>`) is looked up by its
@@ -49,25 +51,58 @@ is found from the link once per launch (`podcast_audio`,
 A show's link (no episode) says so: "This links to a show. Link one of its
 episodes to play it."
 
+The artwork, title and show:
+
+- Apple: the episode's entry in Apple's directory (`artworkUrl600`, else the
+  show's), its `trackName` and `collectionName`; a show link, the show's;
+- Spotify: the page's `og:image` (the episode's artwork), with the title and
+  show read for the audio;
+- any other page: `og:image`, `og:title`, and `og:site_name` as the show
+  unless it names a podcast app (Apple Podcasts, Overcast, Pocket Casts…);
+- an audio file has none: the card shows the note's name and the link's host.
+
+A YouTube link is the video player's, so its "thumbnail" is the video itself.
+In Library a Podcast note with a YouTube link shows the video's thumbnail as
+its cover, and **Get cover** saves it, the same as a video's.
+
 ### The player
 
-- Under the properties, on the text column: a card with play/pause, the
-  time, the track, the length, the speed and **Pin ⌘⇧M**. Sticky at the top
-  of the note once the properties scroll away, on the same frosted band as
-  the video player. Over a board it is the same 320px mini player in the
-  top-right corner.
-- No title or cover in the bar: the page's own title and properties show
-  them.
-- While the audio is found, the bar says "Finding the episode…" and play is
-  dimmed; ⌘⇧J pressed meanwhile plays it once found. If it can't be found or
-  won't load, the bar says why and offers **Open link**.
-- The track fills to the playhead; its knob shows on hover or keyboard
-  focus. Dragging or clicking seeks.
-- Speed: a click cycles 1× → 1.25× → 1.5× → 1.75× → 2× → 1×. **`<` / `>`**
-  step through 0.5×–3× (0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3) the same
-  way they step a video's. The speed is remembered across episodes and
-  launches (`localStorage` `writer.podcast-player`).
-- Clicking the bar's buttons never takes focus from the note.
+Under the properties, on the text column: a card, laid out like a music
+player.
+
+- **Artwork** on the left, 104px square: the note's own `Cover:` if it has
+  one, else the episode's artwork. A plain tile with a microphone shows while
+  it loads (the picture fades in) and stays when there is none. The whole
+  picture always shows, never cropped: artwork that isn't square sits over a
+  blurred, dimmed copy of itself that fills the rest of the square.
+- **Title and show** beside it, one line each, cut with an ellipsis (the
+  whole text on hover). Until the episode is found: the note's name and where
+  the link points ("Spotify", "Apple Podcasts", or the host).
+- **Transport** to the right of the title: back 15 s, play/pause, ahead 30 s,
+  the skips podcast apps use (re-hear a line; jump an ad). Play and pause
+  swap in place with a short fade; hovering play shows _Play_ / _Pause_ and
+  its keys, ⌘ ⇧ J.
+- **Timeline** under them: the time, the track, the length. The track fills
+  to the playhead; its knob shows on hover or keyboard focus. Dragging or
+  clicking seeks.
+- **Speed `< >`, volume, Pin ⌘⇧M** along the bottom, each with its keys
+  beside it where it has some. Speed: a click cycles 1× →
+  1.25× → 1.5× → 1.75× → 2× → 1×; **`<` / `>`** step through 0.5×–3× (0.5,
+  0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3) the same way they step a video's.
+  Volume: the speaker mutes and unmutes (back to the last volume), the slider
+  sets it. Speed and volume are remembered across episodes and launches
+  (`localStorage` `writer.podcast-player`).
+- One episode per note, so there is no playlist (the reference player's
+  queue): the note's pins are its list of moments.
+- Sticky at the top of the note once the properties scroll away, on the same
+  frosted band as the video player, at the same size (nothing jumps). Over a
+  board it is the 320px mini player in the top-right corner: 64px artwork,
+  no show line, no skips, volume down to its mute button.
+- While the episode is found, the timeline says "Finding the episode…" and
+  play is dimmed; ⌘⇧J pressed meanwhile plays it once found. If it can't be
+  found or won't load, the timeline's place says why, the transport goes,
+  and **Open link** takes the place of the bottom row.
+- Clicking the card's buttons never takes focus from the note.
 
 ### Shortcuts and pins
 

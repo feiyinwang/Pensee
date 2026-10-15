@@ -114,6 +114,12 @@ describe("liveCoverSrc and coverToGet", () => {
     expect(coverToGet(podcast, "podcast")).toBe("https://podcasts.example/show/42");
   });
 
+  test("a podcast on YouTube shows the video's thumbnail", () => {
+    const podcast = note({ url: "https://youtu.be/k4dVgbuxBAw" }, "Podcast");
+    expect(liveCoverSrc(podcast, "podcast")).toBe(youtubeThumbnail("k4dVgbuxBAw"));
+    expect(coverToGet(podcast, "podcast")).toBe(youtubeThumbnail("k4dVgbuxBAw"));
+  });
+
   test("a non-YouTube video and other kinds have nothing to get", () => {
     expect(coverToGet(note({ link: "https://vimeo.com/1" }), "video")).toBeNull();
     expect(coverToGet(note({ link: "https://a.example" }, "Book"), "book")).toBeNull();

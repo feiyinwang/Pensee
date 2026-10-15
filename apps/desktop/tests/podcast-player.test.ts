@@ -3,6 +3,7 @@ import {
   formatSpeed,
   nextPodcastPreset,
   podcastLinkOf,
+  podcastSourceLabel,
   stepPodcastSpeed,
 } from "../src/lib/podcast-player";
 import { opensWhenAdded } from "../src/lib/library-add";
@@ -61,4 +62,14 @@ test("a podcast opens when added; other kinds don't", () => {
   expect(opensWhenAdded("podcast")).toBe(true);
   expect(opensWhenAdded("video")).toBe(false);
   expect(opensWhenAdded(null)).toBe(false);
+});
+
+describe("podcastSourceLabel", () => {
+  test("names the podcast apps, else the host", () => {
+    expect(podcastSourceLabel("https://podcasts.apple.com/us/podcast/x/id1?i=2")).toBe(
+      "Apple Podcasts",
+    );
+    expect(podcastSourceLabel("https://open.spotify.com/episode/abc")).toBe("Spotify");
+    expect(podcastSourceLabel("https://www.example.com/ep/12")).toBe("example.com");
+  });
 });

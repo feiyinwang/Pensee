@@ -11,17 +11,21 @@ const EDGE = 8;
 let lastClosedAt = 0;
 
 /**
- * A tooltip under a window-chrome button. The webview never shows a native
- * `title`, so the chrome draws its own. Plain DOM, no Arc: the chrome mounts at
- * startup and Arc stays behind a dynamic import (docs/arc.md). Spread
- * `triggerProps` on the button and render `tooltip` beside it.
+ * A tooltip for window chrome: under a button, or right of a sidebar row. The
+ * webview never shows a native `title`, so the chrome draws its own. Plain DOM,
+ * no Arc: the chrome mounts at startup and Arc stays behind a dynamic import
+ * (docs/arc.md). `keys` is the shortcut, one keycap each (`["⌥", "⌘", "P"]`).
+ * Spread `triggerProps` on the trigger and render `tooltip` beside it.
  */
-export function useChromeTooltip(text: string) {
+export function useChromeTooltip(
+  text: string,
+  { keys = [], side = "bottom" }: { keys?: readonly string[]; side?: "bottom" | "right" } = {},
+) {
   const triggerRef = useRef<HTMLElement | null>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const timer = useRef(0);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
-  const [left, setLeft] = useState(0);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
 
   const show = useCallback(() => {
     window.clearTimeout(timer.current);
@@ -42,14 +46,26 @@ export function useChromeTooltip(text: string) {
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  // Centre under the trigger, then clamp inside the window once the width is known.
+  // Centre on the trigger's side, then clamp inside the window once the size is known.
+  const keyLabel = keys.join(" ");
   useLayoutEffect(() => {
     const bubble = bubbleRef.current;
     if (!anchor || !bubble) return;
-    const width = bubble.offsetWidth;
-    const centred = anchor.left + anchor.width / 2 - width / 2;
-    setLeft(Math.min(Math.max(EDGE, centred), window.innerWidth - width - EDGE));
-  }, [anchor, text]);
+    const { offsetWidth: width, offsetHeight: height } = bubble;
+    const clamp = (value: number, size: number, room: number) =>
+      Math.min(Math.max(EDGE, value), room - size - EDGE);
+    setPosition(
+      side === "right"
+        ? {
+            top: clamp(anchor.top + anchor.height / 2 - height / 2, height, window.innerHeight),
+            left: anchor.right + GAP,
+          }
+        : {
+            top: anchor.bottom + GAP,
+            left: clamp(anchor.left + anchor.width / 2 - width / 2, width, window.innerWidth),
+          },
+    );
+  }, [anchor, text, keyLabel, side]);
 
   const triggerProps = {
     ref: (node: HTMLElement | null) => {
@@ -72,10 +88,22 @@ export function useChromeTooltip(text: string) {
           ref={bubbleRef}
           aria-hidden
           data-chrome-tooltip
-          style={{ top: anchor.bottom + GAP, left }}
-          className="pointer-events-none fixed z-[1000] whitespace-nowrap rounded-[var(--radius-chip)] bg-[var(--color-bg-inverse)] px-2 py-1 text-caption text-[var(--color-text-inverse)] shadow-[var(--shadow-popover)]"
+          style={position}
+          className="pointer-events-none fixed z-[1000] flex items-center gap-2 whitespace-nowrap rounded-[var(--radius-chip)] bg-[var(--color-bg-inverse)] px-2 py-1 text-caption text-[var(--color-text-inverse)] shadow-[var(--shadow-popover)]"
         >
           {text}
+          {keys.length > 0 && (
+            <span className="flex items-center gap-0.5">
+              {keys.map((key) => (
+                <kbd
+                  key={key}
+                  className="flex h-[18px] min-w-[18px] items-center justify-center rounded-[var(--radius-button)] border border-[color-mix(in_oklch,var(--color-text-inverse)_20%,transparent)] px-1 font-[inherit] opacity-70"
+                >
+                  {key}
+                </kbd>
+              ))}
+            </span>
+          )}
         </div>,
         document.body,
       )

@@ -1,5 +1,6 @@
-//! The audio behind a podcast note's link (SPECs/podcast-notes-spec.md), so
-//! the note can play it in a plain `<audio>` element.
+//! The episode behind a podcast note's link (SPECs/podcast-notes-spec.md):
+//! its audio, so the note can play it in a plain `<audio>` element, and its
+//! title, show and artwork for the player's card.
 //!
 //! A link is an audio file already, or a page that names one (Apple Podcasts'
 //! `streamUrl`, Overcast's `<audio>`, a host's `og:audio`). Apple's directory
@@ -7,7 +8,7 @@
 //! the same episode is looked up by its show and title in Apple's directory,
 //! which holds every public feed.
 
-use super::link_preview::{client, decode_entities};
+use super::link_preview::{client, decode_entities, parse_preview};
 use crate::error::AppError;
 use reqwest::Url;
 use std::sync::OnceLock;
@@ -19,9 +20,26 @@ const MAX_FEED_BYTES: usize = 24 * 1024 * 1024;
 
 const AUDIO_EXTENSIONS: [&str; 8] = ["mp3", "m4a", "aac", "ogg", "oga", "opus", "wav", "flac"];
 
-/// The address of the audio file `url` stands for.
+/// What a podcast note's player shows and plays for its link.
+#[derive(Debug, Default, serde::Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PodcastEpisode {
+    /// The audio file to play; None when it can't be found, and `problem`
+    /// says why in words for the user.
+    pub audio: Option<String>,
+    pub problem: Option<String>,
+    pub title: Option<String>,
+    pub show: Option<String>,
+    /// The episode's artwork, else its show's. Found even when the audio
+    /// isn't (a Spotify-only show), so the player still shows whose it is.
+    pub artwork: Option<String>,
+}
+
+const SHOW_LINK: &str = "This links to a show. Link one of its episodes to play it.";
+
+/// The episode `url` stands for: its audio, title, show and artwork.
 #[tauri::command]
-pub async fn podcast_audio(url: String) -> Result<String, AppError> {
+pub async fn podcast_episode(url: String) -> Result<PodcastEpisode, AppError> {
     let parsed = Url::parse(url.trim()).map_err(|e| AppError::InvalidUrl(e.to_string()))?;
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err(AppError::InvalidUrl(format!(
@@ -30,7 +48,10 @@ pub async fn podcast_audio(url: String) -> Result<String, AppError> {
         )));
     }
     if is_audio_file(&parsed) {
-        return Ok(parsed.to_string());
+        return Ok(PodcastEpisode {
+            audio: Some(parsed.to_string()),
+            ..Default::default()
+        });
     }
     let host = parsed
         .host_str()
@@ -39,43 +60,88 @@ pub async fn podcast_audio(url: String) -> Result<String, AppError> {
         .to_ascii_lowercase();
 
     if host == "podcasts.apple.com" || host == "itunes.apple.com" {
-        if let Some((show, episode)) = apple_ids(&parsed) {
-            match apple_episode_by_id(show, episode).await {
-                Ok(Some(audio)) => return Ok(audio),
+        match apple_ids(&parsed) {
+            Some((show, Some(episode))) => match apple_episode_by_id(show, episode).await {
+                Ok(Some(found)) => return Ok(found),
+                // Older than the directory's latest 200: the page names it.
                 Ok(None) => {}
                 Err(error) => eprintln!("[podcast] Apple lookup failed for {parsed}: {error}"),
+            },
+            Some((show, None)) => {
+                let found = apple_show(show)
+                    .await
+                    .map_err(|e| eprintln!("[podcast] Apple lookup failed for {parsed}: {e}"))
+                    .ok()
+                    .flatten();
+                return Ok(PodcastEpisode {
+                    problem: Some(SHOW_LINK.into()),
+                    show: found.as_ref().and_then(|r| r.collection_name.clone()),
+                    artwork: found.and_then(LookupResult::artwork),
+                    ..Default::default()
+                });
             }
-        } else {
-            return Err(AppError::User(
-                "This links to a show. Link one of its episodes to play it.".into(),
-            ));
+            None => {}
         }
     }
+
+    let page = fetch_text(parsed.clone(), "text/html", MAX_PAGE_BYTES).await?;
+    let preview = parse_preview(&page, &parsed);
 
     // Spotify's own `og:audio` is a 30-second preview, never the episode.
     if host == "open.spotify.com" {
         if !parsed.path().starts_with("/episode/") {
-            return Err(AppError::User(
-                "This links to a show. Link one of its episodes to play it.".into(),
-            ));
+            return Ok(PodcastEpisode {
+                problem: Some(SHOW_LINK.into()),
+                show: preview.title,
+                artwork: preview.image,
+                ..Default::default()
+            });
         }
-        let page = fetch_text(parsed.clone(), "text/html", MAX_PAGE_BYTES).await?;
-        let (title, show) = spotify_episode(&page).ok_or_else(|| {
-            AppError::User("Couldn't read the episode's name from Spotify.".into())
-        })?;
-        return match episode_in_directory(&show, &title).await? {
-            Some(audio) => Ok(audio),
-            None => Err(AppError::User("This episode only plays on Spotify.".into())),
+        let Some((title, show)) = spotify_episode(&page) else {
+            return Ok(PodcastEpisode {
+                problem: Some("Couldn't read the episode's name from Spotify.".into()),
+                title: preview.title,
+                artwork: preview.image,
+                ..Default::default()
+            });
         };
+        let audio = episode_in_directory(&show, &title).await?;
+        return Ok(PodcastEpisode {
+            problem: audio
+                .is_none()
+                .then(|| "This episode only plays on Spotify.".into()),
+            audio,
+            title: Some(title),
+            show: Some(show),
+            artwork: preview.image,
+        });
     }
 
-    let page = fetch_text(parsed.clone(), "text/html", MAX_PAGE_BYTES).await?;
-    if let Some(audio) = audio_in_page(&page, &parsed) {
-        return Ok(audio);
-    }
-    Err(AppError::User(
-        "Couldn't find this episode's audio on its page.".into(),
-    ))
+    let audio = audio_in_page(&page, &parsed);
+    Ok(PodcastEpisode {
+        problem: audio
+            .is_none()
+            .then(|| "Couldn't find this episode's audio on its page.".into()),
+        audio,
+        title: preview.title,
+        show: preview.site_name.filter(|name| !is_app_name(name)),
+        artwork: preview.image,
+    })
+}
+
+/// A podcast app's own name, which a page gives as its site name: not the
+/// show's.
+fn is_app_name(name: &str) -> bool {
+    [
+        "Apple Podcasts",
+        "Overcast",
+        "Pocket Casts",
+        "Spotify",
+        "Castro",
+        "Podcast Addict",
+    ]
+    .iter()
+    .any(|app| app.eq_ignore_ascii_case(name.trim()))
 }
 
 fn is_audio_file(url: &Url) -> bool {
@@ -85,15 +151,15 @@ fn is_audio_file(url: &Url) -> bool {
 }
 
 /// The show id (`/id1434243584`) and episode id (`?i=1000786117598`) in an
-/// Apple Podcasts link; None for a show's own page.
-fn apple_ids(url: &Url) -> Option<(u64, u64)> {
+/// Apple Podcasts link; no episode for a show's own page.
+fn apple_ids(url: &Url) -> Option<(u64, Option<u64>)> {
     let show = url
         .path_segments()?
         .find_map(|segment| segment.strip_prefix("id")?.parse().ok())?;
     let episode = url
         .query_pairs()
         .find(|(key, _)| key == "i")
-        .and_then(|(_, value)| value.parse().ok())?;
+        .and_then(|(_, value)| value.parse().ok());
     Some((show, episode))
 }
 
@@ -113,6 +179,14 @@ struct LookupResult {
     track_name: Option<String>,
     episode_url: Option<String>,
     feed_url: Option<String>,
+    artwork_url600: Option<String>,
+    artwork_url160: Option<String>,
+}
+
+impl LookupResult {
+    fn artwork(self) -> Option<String> {
+        self.artwork_url600.or(self.artwork_url160)
+    }
 }
 
 async fn itunes(url: &str) -> Result<Lookup, AppError> {
@@ -128,28 +202,42 @@ async fn itunes(url: &str) -> Result<Lookup, AppError> {
         .map_err(|e| AppError::Network(e.to_string()))
 }
 
-/// A show's latest episodes (Apple's directory lists at most 200) and its
-/// feed.
-async fn show_episodes(show: u64) -> Result<(Vec<LookupResult>, Option<String>), AppError> {
-    let lookup = itunes(&format!(
-        "https://itunes.apple.com/lookup?id={show}&entity=podcastEpisode&limit=200"
-    ))
-    .await?;
-    let feed = lookup.results.iter().find_map(|r| r.feed_url.clone());
-    let episodes = lookup
-        .results
-        .into_iter()
-        .filter(|r| r.kind.as_deref() == Some("podcast-episode"))
-        .collect();
-    Ok((episodes, feed))
+/// A show's entry in Apple's directory.
+async fn apple_show(show: u64) -> Result<Option<LookupResult>, AppError> {
+    let lookup = itunes(&format!("https://itunes.apple.com/lookup?id={show}")).await?;
+    Ok(lookup.results.into_iter().next())
 }
 
-async fn apple_episode_by_id(show: u64, episode: u64) -> Result<Option<String>, AppError> {
-    let (episodes, _) = show_episodes(show).await?;
-    Ok(episodes
-        .into_iter()
-        .find(|r| r.track_id == Some(episode))
-        .and_then(|r| r.episode_url))
+/// A show's latest episodes (Apple's directory lists at most 200), and the
+/// show's own entry, which names its feed and artwork.
+async fn show_episodes(show: u64) -> Result<(Vec<LookupResult>, Option<LookupResult>), AppError> {
+    let (episodes, rest) = itunes(&format!(
+        "https://itunes.apple.com/lookup?id={show}&entity=podcastEpisode&limit=200"
+    ))
+    .await?
+    .results
+    .into_iter()
+    .partition(|r| r.kind.as_deref() == Some("podcast-episode"));
+    Ok((episodes, rest.into_iter().next()))
+}
+
+async fn apple_episode_by_id(show: u64, episode: u64) -> Result<Option<PodcastEpisode>, AppError> {
+    let (episodes, entry) = show_episodes(show).await?;
+    let Some(found) = episodes.into_iter().find(|r| r.track_id == Some(episode)) else {
+        return Ok(None);
+    };
+    let Some(audio) = found.episode_url.clone() else {
+        return Ok(None);
+    };
+    Ok(Some(PodcastEpisode {
+        audio: Some(audio),
+        problem: None,
+        title: found.track_name.clone(),
+        show: found.collection_name.clone(),
+        artwork: found
+            .artwork()
+            .or_else(|| entry.and_then(LookupResult::artwork)),
+    }))
 }
 
 /// `title` of the show named `show`, through Apple's directory: its latest
@@ -175,7 +263,8 @@ async fn episode_in_directory(show: &str, title: &str) -> Result<Option<String>,
     let Some(show_id) = found.collection_id else {
         return Ok(None);
     };
-    let (episodes, feed) = show_episodes(show_id).await?;
+    let (episodes, entry) = show_episodes(show_id).await?;
+    let feed = entry.and_then(|e| e.feed_url);
     if let Some(audio) = episodes
         .iter()
         .find(|r| {
@@ -403,13 +492,13 @@ mod tests {
             apple_ids(&url(
                 "https://podcasts.apple.com/us/podcast/name/id1434243584?i=1000786117598"
             )),
-            Some((1434243584, 1000786117598))
+            Some((1434243584, Some(1000786117598)))
         );
         assert_eq!(
             apple_ids(&url(
                 "https://podcasts.apple.com/us/podcast/name/id1434243584"
             )),
-            None
+            Some((1434243584, None))
         );
     }
 
@@ -480,15 +569,25 @@ mod tests {
     #[ignore]
     fn podcast_live() {
         let run = tauri::async_runtime::block_on;
-        let apple = run(podcast_audio(
+        let apple = run(podcast_episode(
             "https://podcasts.apple.com/us/podcast/x/id1434243584?i=1000786117598".into(),
         ))
         .unwrap();
-        assert!(apple.contains("dhh"), "{apple}");
-        let spotify = run(podcast_audio(
+        assert!(apple.audio.as_deref().unwrap().contains("dhh"), "{apple:?}");
+        assert!(apple.artwork.is_some(), "{apple:?}");
+        let spotify = run(podcast_episode(
             "https://open.spotify.com/episode/082a1V6nazH9ZZqskV1vfz".into(),
         ))
         .unwrap();
-        assert!(spotify.contains("scull"), "{spotify}");
+        assert!(
+            spotify.audio.as_deref().unwrap().contains("scull"),
+            "{spotify:?}"
+        );
+        assert!(spotify.artwork.is_some(), "{spotify:?}");
+        let show = run(podcast_episode(
+            "https://podcasts.apple.com/us/podcast/x/id1434243584".into(),
+        ))
+        .unwrap();
+        assert!(show.problem.is_some() && show.artwork.is_some(), "{show:?}");
     }
 }

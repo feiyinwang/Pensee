@@ -79,12 +79,23 @@ export function videoPlayerOrigin(): Promise<string> {
   return invoke("video_player_origin");
 }
 
-/** A YouTube video's chapters, read from its watch page; empty without. */
-/** The audio file a podcast link stands for (SPECs/podcast-notes-spec.md). */
-export function podcastAudio(url: string): Promise<string> {
-  return invoke("podcast_audio", { url });
+/** What a podcast note's player shows and plays (SPECs/podcast-notes-spec.md).
+ *  `audio` is null when it can't be found, and `problem` says why. */
+export interface PodcastEpisode {
+  audio: string | null;
+  problem: string | null;
+  title: string | null;
+  show: string | null;
+  /** The episode's artwork, else its show's; found even without the audio. */
+  artwork: string | null;
 }
 
+/** The episode a podcast link stands for: its audio, title, show and artwork. */
+export function podcastEpisode(url: string): Promise<PodcastEpisode> {
+  return invoke("podcast_episode", { url });
+}
+
+/** A YouTube video's chapters, read from its watch page; empty without. */
 export function youtubeChapters(videoId: string): Promise<{ start: number; title: string }[]> {
   return invoke("youtube_chapters", { videoId });
 }

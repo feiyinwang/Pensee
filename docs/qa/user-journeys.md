@@ -258,15 +258,16 @@ Opened full screen or **Edit here** over a note.
 **Feature:** Books, videos, courses, podcasts, papers and X bookmarks as a
 cover gallery with type tabs; items are added from a link, a file or a title.
 **Spec:** SPECs/add-to-library-spec.md, SPECs/spaces-spec.md
-**Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`, `src-tauri/src/commands/covers.rs`
+**Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/components/spaces/space-cover.tsx`, `src/lib/covers.ts`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`, `src-tauri/src/commands/covers.rs`
 
-| ID     | Journey                                | Expected                                                   | Check                     |
-| ------ | -------------------------------------- | ---------------------------------------------------------- | ------------------------- |
-| LIB-01 | ★ Click **Library**                    | The seeded book shows under Books                          | auto: core                |
-| LIB-05 | Switch Library tabs (Books, Videos, …) | Covers show; switching is instant                          | legacy: library-covers    |
-| LIB-02 | Click a book cover                     | Its note opens (beside its book file when there is one)    | manual                    |
-| LIB-03 | **+** at the top, paste a YouTube link | A video note named after the video is created and opens    | you                       |
-| LIB-04 | Library → **Bookmarks**                | Bookmark cards show; **Sync now** / **Connect X** is there | legacy: library-bookmarks |
+| ID     | Journey                                           | Expected                                                   | Check                     |
+| ------ | ------------------------------------------------- | ---------------------------------------------------------- | ------------------------- |
+| LIB-01 | ★ Click **Library**                               | The seeded book shows under Books                          | auto: core                |
+| LIB-05 | Switch Library tabs (Books, Videos, …)            | Covers show; switching is instant                          | legacy: library-covers    |
+| LIB-02 | Click a book cover                                | Its note opens (beside its book file when there is one)    | manual                    |
+| LIB-03 | **+** at the top, paste a YouTube link            | A video note named after the video is created and opens    | you                       |
+| LIB-04 | Library → **Bookmarks**                           | Bookmark cards show; **Sync now** / **Connect X** is there | legacy: library-bookmarks |
+| LIB-06 | Library → Podcasts, a podcast with a YouTube link | Its cover is the video's thumbnail                         | you                       |
 
 ## Book reader — BK
 
@@ -305,16 +306,18 @@ teleprompter box that follows the video, seeks, copies and asks the Agent.
 
 ## Podcast notes — POD
 
-**Feature:** A podcast note plays its episode under its properties; adding a
+**Feature:** A podcast note plays its episode in a card under its properties
+(artwork, title and show, skips, timeline, speed, volume, Pin); adding a
 podcast opens the note, and ⌘⇧J / ⌘⇧M play, pause and pin as on a video.
 **Spec:** SPECs/podcast-notes-spec.md
-**Code:** `src/components/editor-area/podcast-player.tsx`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
+**Code:** `src/components/editor-area/podcast-player.tsx`, `src/components/editor-area/podcast-player.css`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
 
-| ID     | Journey                                       | Expected                                                 | Check         |
-| ------ | --------------------------------------------- | -------------------------------------------------------- | ------------- |
-| POD-01 | Library → Podcasts → **+**, paste a link, ⌘↵  | The note opens with the player, paused                   | auto: podcast |
-| POD-02 | ★ ⌘⇧J, ⌘⇧M on a line, ⌘⇧J                     | It plays; the line gets a pin at that moment; it pauses  | auto: podcast |
-| POD-03 | Add an Apple Podcasts or Spotify episode link | The player finds the episode and plays the whole episode | you           |
+| ID     | Journey                                       | Expected                                                                                                                                   | Check         |
+| ------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| POD-01 | Library → Podcasts → **+**, paste a link, ⌘↵  | The note opens with the player, paused                                                                                                     | auto: podcast |
+| POD-02 | ★ ⌘⇧J, ⌘⇧M on a line, ⌘⇧J                     | It plays; the line gets a pin at that moment; it pauses                                                                                    | auto: podcast |
+| POD-03 | Add an Apple Podcasts or Spotify episode link | The player finds the episode and plays the whole episode, with its artwork, title and show                                                 | you           |
+| POD-04 | Add an episode's page link; Back 15           | The card shows the page's whole artwork (blurred fill around it), title and show, and `< >` beside the speed; the playhead moves back 15 s | auto: podcast |
 
 ## Agent chat — AG
 

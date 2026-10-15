@@ -8,6 +8,7 @@ import {
   activeTitle,
   fillField,
   invoke,
+  mouseClick,
   pressCmd,
   typeInEditor,
   workspaceRoot,
@@ -34,8 +35,31 @@ function silentWav(seconds) {
 
 const EPISODE = silentWav(30);
 
-/** Serves the episode with byte ranges, which WebKit's media loader needs. */
+/** A 1×1 PNG: the episode page's artwork. */
+const ARTWORK = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** An episode's own page, naming its audio, title, show and artwork. */
+const PAGE = `<!doctype html><html><head>
+<meta property="og:title" content="Episode 12: Quiet rooms">
+<meta property="og:site_name" content="The Silence Show">
+<meta property="og:image" content="/art.png">
+<meta property="og:audio" content="/episode.wav">
+</head><body></body></html>`;
+
+/** Serves the episode with byte ranges, which WebKit's media loader needs,
+ *  and the page and artwork that name it. */
 function serve(req, res) {
+  if (req.url.startsWith("/page")) {
+    res.writeHead(200, { "Content-Type": "text/html" }).end(PAGE);
+    return;
+  }
+  if (req.url.startsWith("/art.png")) {
+    res.writeHead(200, { "Content-Type": "image/png" }).end(ARTWORK);
+    return;
+  }
   if (!req.url.startsWith("/episode.wav")) {
     res.writeHead(404).end();
     return;
@@ -61,26 +85,81 @@ function serve(req, res) {
   res.end(EPISODE.subarray(start, end + 1));
 }
 
-/** The front pane's audio element, as numbers WebDriver can return. */
+/** The player of the note in front: the focused column's when tabs show as
+ *  columns (another podcast note may sit beside it). Runs in the page. */
+const FRONT_BAND = () => {
+  const scope = document.querySelector("[data-column-tab][data-focused]") ?? document;
+  return [...scope.querySelectorAll(".podcast-band")].find((el) => el.checkVisibility()) ?? null;
+};
+
+/** The front player's audio element, as numbers WebDriver can return. */
 const audioState = () =>
-  browser.execute(() => {
-    const audio = [...document.querySelectorAll(".podcast-band audio")].find((el) =>
-      el.closest(".podcast-band")?.checkVisibility(),
-    );
+  browser.execute(`
+    const audio = (${FRONT_BAND.toString()})()?.querySelector("audio");
     return audio
       ? { paused: audio.paused, time: audio.currentTime, ready: audio.readyState }
       : null;
+  `);
+
+/** Add `address` from Library → Podcasts → +, with ⌘↵. */
+async function addPodcast(address) {
+  await $('button[data-space-key="library"]').click();
+  const tab = await $(
+    '//*[@aria-label="Library types"]//*[normalize-space(.)="Podcasts" or starts-with(normalize-space(.), "Podcasts")]',
+  );
+  await tab.waitForExist({ timeout: 10_000 });
+  await tab.click();
+  const add = await $('button[aria-label="Add podcast"]');
+  await add.waitForClickable({ timeout: 5_000 });
+  await add.click();
+  const title = '[role="dialog"] input[aria-label="Title"]';
+  await $(title).waitForExist({ timeout: 5_000 });
+  await fillField(title, address);
+  // ⌘↵ alone: other kinds stay on the page; a podcast opens.
+  await browser.execute((sel) => {
+    document.querySelector(sel).dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        metaKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, title);
+  await browser.waitUntil(async () => (await audioState())?.ready >= 1, {
+    timeout: 20_000,
+    timeoutMsg: "the podcast note never opened with a loaded player",
   });
+}
+
+/** The front player's card, as WebDriver can return it. */
+const cardState = () =>
+  browser.execute(`
+    const card = (${FRONT_BAND.toString()})()?.querySelector(".podcast-card");
+    if (!card) return null;
+    const art = card.querySelector(".podcast-artwork img:not(.podcast-artwork-backdrop)");
+    return {
+      title: card.querySelector(".podcast-title")?.textContent ?? null,
+      show: card.querySelector(".podcast-show")?.textContent ?? null,
+      artwork: art?.hasAttribute("data-loaded") ? art.getAttribute("src") : null,
+      // The whole picture shows, over a blurred copy of itself.
+      artworkFit: art ? getComputedStyle(art).objectFit : null,
+      backdrop: card.querySelector(".podcast-artwork-backdrop")?.getAttribute("src") ?? null,
+      speedKeys: card.querySelector(".podcast-speed kbd")?.textContent ?? null,
+    };
+  `);
 
 describe("Podcast notes", function () {
   let server;
   let link;
+  let origin;
   let root;
 
   before(async function () {
     server = http.createServer(serve);
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-    link = `http://127.0.0.1:${server.address().port}/episode.wav`;
+    origin = `http://127.0.0.1:${server.address().port}`;
+    link = `${origin}/episode.wav`;
     root = await workspaceRoot();
   });
 
@@ -89,33 +168,7 @@ describe("Podcast notes", function () {
   });
 
   it("POD-01 Library → Podcasts → +, a link, ⌘↵ opens the note with its player", async function () {
-    await $('button[data-space-key="library"]').click();
-    const tab = await $(
-      '//*[@aria-label="Library types"]//*[normalize-space(.)="Podcasts" or starts-with(normalize-space(.), "Podcasts")]',
-    );
-    await tab.waitForExist({ timeout: 10_000 });
-    await tab.click();
-    const add = await $('button[aria-label="Add podcast"]');
-    await add.waitForClickable({ timeout: 5_000 });
-    await add.click();
-    const title = '[role="dialog"] input[aria-label="Title"]';
-    await $(title).waitForExist({ timeout: 5_000 });
-    await fillField(title, link);
-    // ⌘↵ alone: other kinds stay on the page; a podcast opens.
-    await browser.execute((sel) => {
-      document.querySelector(sel).dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Enter",
-          metaKey: true,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-    }, title);
-    await browser.waitUntil(async () => (await audioState())?.ready >= 1, {
-      timeout: 20_000,
-      timeoutMsg: "the podcast note never opened with a loaded player",
-    });
+    await addPodcast(link);
     // The link has no page title, so the note is named from it.
     const name = await activeTitle();
     ok(name?.startsWith("127.0.0.1"), `the new note is in front (got "${name}")`);
@@ -161,5 +214,68 @@ describe("Podcast notes", function () {
           ?.title ?? null,
     );
     ok(/^Play from 0:0[1-9]$/.test(pinned ?? ""), `pinned at the playing time (${pinned})`);
+  });
+
+  it("POD-04 An episode's page: the card shows its artwork, title and show; skip moves the playhead", async function () {
+    await addPodcast(`${origin}/page`);
+    await browser.waitUntil(async () => (await cardState())?.artwork, {
+      timeout: 10_000,
+      timeoutMsg: "the episode's artwork never showed",
+    });
+    const card = await cardState();
+    ok(card.artwork === `${origin}/art.png`, `the page's artwork (${card.artwork})`);
+    ok(card.title === "Episode 12: Quiet rooms", `the episode's title (${card.title})`);
+    ok(card.show === "The Silence Show", `the show (${card.show})`);
+    ok(card.artworkFit === "contain", `the artwork isn't cropped (${card.artworkFit})`);
+    ok(card.backdrop === card.artwork, `a blurred copy fills the square (${card.backdrop})`);
+    ok(card.speedKeys === "< >", `the speed shows its keys (${card.speedKeys})`);
+    // A look at the card, when the run asks for one.
+    if (process.env.PENSEE_QA_SHOT) {
+      await browser.execute(() => {
+        const style = document.createElement("style");
+        style.textContent = "*{transition:none!important}";
+        document.head.append(style);
+      });
+      await browser.saveScreenshot(process.env.PENSEE_QA_SHOT.replace(/(\.png)?$/, "-card.png"));
+      console.log(
+        "[qa] card boxes",
+        JSON.stringify(
+          await browser.execute(`
+            const card = (${FRONT_BAND.toString()})()?.querySelector(".podcast-card");
+            if (!card) return null;
+            const box = (sel) => {
+              const r = card.querySelector(sel)?.getBoundingClientRect();
+              return r && [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)];
+            };
+            return Object.fromEntries(
+              [".podcast-card", ".podcast-artwork", ".podcast-title", ".podcast-show",
+               ".podcast-transport", ".podcast-timeline", ".podcast-tools", ".podcast-speed",
+               ".podcast-mute", ".podcast-pin"].map((s) => [s, box(s)]),
+            );
+          `),
+        ),
+      );
+    }
+
+    await browser.execute(`
+      const band = (${FRONT_BAND.toString()})();
+      band.querySelector("audio").currentTime = 20;
+      document.querySelectorAll("[data-qa-back]").forEach((el) => el.removeAttribute("data-qa-back"));
+      band.querySelector('button[aria-label="Back 15 seconds"]').setAttribute("data-qa-back", "");
+    `);
+    await browser.waitUntil(async () => (await audioState())?.time >= 19.5, { timeout: 3_000 });
+    const back = await $("[data-qa-back]");
+    await browser.waitUntil(async () => !(await back.getProperty("disabled")), {
+      timeout: 3_000,
+      timeoutMsg: "Back 15 stayed disabled with the episode loaded",
+    });
+    await mouseClick(back);
+    await browser.waitUntil(
+      async () => {
+        const time = (await audioState())?.time ?? 0;
+        return time >= 4.5 && time <= 6;
+      },
+      { timeout: 3_000, timeoutMsg: "Back 15 didn't move the playhead to 0:05" },
+    );
   });
 });

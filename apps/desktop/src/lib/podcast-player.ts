@@ -53,3 +53,27 @@ export function nextPodcastPreset(rate: number): number {
 export function formatSpeed(rate: number): string {
   return `${Number(rate.toFixed(2))}×`;
 }
+
+/** What the player's skip buttons jump, the way podcast apps do: back a
+ *  little to re-hear, ahead further past an ad. */
+export const SKIP_BACK_SECONDS = 15;
+export const SKIP_AHEAD_SECONDS = 30;
+
+const SOURCES: readonly [RegExp, string][] = [
+  [/(^|\.)apple\.com$/, "Apple Podcasts"],
+  [/(^|\.)spotify\.com$/, "Spotify"],
+  [/(^|\.)overcast\.fm$/, "Overcast"],
+  [/(^|\.)pocketcasts\.com$|^pca\.st$/, "Pocket Casts"],
+];
+
+/** Where an episode link points, for the player's second line until the
+ *  show's own name is found: "Spotify", or the bare host. */
+export function podcastSourceLabel(link: string): string {
+  let host: string;
+  try {
+    host = new URL(link).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return link;
+  }
+  return SOURCES.find(([pattern]) => pattern.test(host))?.[1] ?? host;
+}
