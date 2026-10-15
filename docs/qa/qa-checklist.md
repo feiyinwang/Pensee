@@ -171,3 +171,4 @@ Learned the hard way; each one cost a failed run.
   a Copy button wrote with `execSync("pbpaste")` in the spec (YT-07).
 - With the Agent panel open, a note opened from ⌘O leaves focus on `<body>`, not in the editor: a journey that types right after opening a note runs before any journey that opens the Agent in its file (YT-10 before YT-08).
 - Two `run.sh` runs at once (another session's) share the driver port 4444: the second's specs fail with `UND_ERR_SOCKET` / `ECONNREFUSED` on `/session` before any journey runs. Wait until `pgrep -f e2e/qa/run.sh` is empty, then rerun with `--no-build`.
+- The shell's entrance (`.app-enter`) never runs in the hidden e2e window; `ENTRANCE_GUARD_MS` in `app-layout.tsx` finishes it after 1s. Until then the whole window is at opacity 0 and WebDriver reports every element as not clickable: a journey that clicks in the first second of a spec waits for `.app-enter` to reach opacity 1 (WS-05).

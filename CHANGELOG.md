@@ -2,6 +2,7 @@
 
 ## 2026-10-15
 
+- Opening Pensée, the window now settles in instead of popping on: everything fades up a few pixels and comes into focus at once, in about a third of a second. You can click and type straight away. With **Reduce motion** on in macOS, it appears still, as before.
 - ⌘P pins the moment in a video or podcast note: the line you're writing gets the time playing now, and **Pin** shows ⌘P. Everywhere else ⌘P is still search, and ⌘⇧P opens search from anywhere, a video note included. ⌘⇧M no longer pins.
 - Courses are videos now: Library has no **Courses** tab, and notes with `Type: Course` show under **Videos**. A Coursera, Udemy or edX link added to Library is guessed as a video.
 - A video note shows **Transcript** only when YouTube lists captions for the video. A video without captions, or one that couldn't be checked, has no **Transcript** button, and pasting its link no longer pops up "This video has no transcript".

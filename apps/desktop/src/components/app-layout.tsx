@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sidebar } from "./sidebar";
 import { EditorArea } from "./editor-area";
 import { EditorTabs } from "./editor-area/editor-tabs";
@@ -26,6 +26,27 @@ const SIDEBAR_EDGE_INSET = 12;
 const EDITOR_PANEL_MARGIN = 8;
 /** Matches the button's `w-7`. */
 const TOGGLE_WIDTH = 28;
+
+/** Past this, the entrance (`.app-enter`, 360ms) is finished outright. The
+ *  window mounts hidden and is shown once startup resolves, and WebKit holds a
+ *  hidden window's animation clock at the first frame: a window that stays
+ *  hidden would otherwise keep the shell at opacity 0 (SPECs/app-entrance-spec.md). */
+const ENTRANCE_GUARD_MS = 1000;
+
+function useEntranceGuard() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      for (const animation of ref.current?.getAnimations() ?? []) {
+        if (animation instanceof CSSAnimation && animation.animationName === "app-enter") {
+          animation.finish();
+        }
+      }
+    }, ENTRANCE_GUARD_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return ref;
+}
 
 function clampSidebarWidth(width: number, maxSidebarWidth: number) {
   return Math.max(220, Math.min(maxSidebarWidth, Math.round(width)));
@@ -55,6 +76,7 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
       : EDITOR_PANEL_MARGIN + SIDEBAR_EDGE_INSET;
   const viewportWidth = typeof window === "undefined" ? 1200 : window.innerWidth;
   const maxSidebarWidth = Math.max(280, Math.min(420, Math.floor(viewportWidth * 0.35)));
+  const entranceRef = useEntranceGuard();
   const draggingRef = useRef(false);
   const [isSidebarDragging, setIsSidebarDragging] = useState(false);
   const [draftSidebarWidth, setDraftSidebarWidth] = useState(() =>
@@ -151,7 +173,8 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
 
   return (
     <div
-      className="relative h-screen w-screen overflow-hidden bg-transparent text-[var(--color-text-primary)]"
+      ref={entranceRef}
+      className="app-enter relative h-screen w-screen overflow-hidden bg-transparent text-[var(--color-text-primary)]"
       // Document footers keep their counts clear of the agent launcher, and the
       // launcher stays in the editor's corner when the calendar is open.
       style={{

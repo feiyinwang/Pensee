@@ -113,6 +113,12 @@
   --motion-hover: 50ms;
   --ease-hover: ease;
   --ease-spring: var(--ease-out);
+  /* The app's entrance when a window first paints (.app-enter): the whole
+     shell settles in as one piece. Longer than --motion-settle on purpose; it
+     plays once per window and nothing waits on it. */
+  --motion-enter: 360ms;
+  --enter-travel: 6px;
+  --enter-blur: 4px;
 
   /* Derived background — applied once on body. Editor and settings pages
      don't add their own bg layer; doing so would multiply opacity and break
@@ -382,6 +388,30 @@ body.tree-dragging [data-tree-path] {
   }
   80% {
     transform: translateX(2px);
+  }
+}
+
+/* App entrance ("Settle", SPECs/app-entrance-spec.md): when a window first
+   paints, the whole shell rises a few pixels, fades in and sharpens, as one
+   piece. Only `from` is declared so the rest state is the shell's own, and
+   the fill is `backwards` so the filter and translate stop applying the moment
+   it ends: neither is left behind to make the shell a containing block for
+   fixed-position popovers. Clicks and typing work throughout. */
+@keyframes app-enter {
+  from {
+    opacity: 0;
+    translate: 0 var(--enter-travel);
+    filter: blur(var(--enter-blur));
+  }
+}
+
+.app-enter {
+  animation: app-enter var(--motion-enter) var(--ease-out) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-enter {
+    animation: none;
   }
 }
 
