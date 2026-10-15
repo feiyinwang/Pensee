@@ -245,12 +245,37 @@ one by one, and only when you ask.
 
 ### Organize
 
-- With two or more lines selected, the pen regroups them into an outline:
-  related lines together, details nested under their point, in order. It
-  keeps your own words: it only reorders, regroups, indents, merges exact
-  repeats and adds a few short group labels. Block ids stay on their lines.
-- The outline replaces your lines, tinted, and the text waits: **Enter**
-  keeps it, **Esc** puts your lines back exactly as they were.
+- With two or more lines selected, the pen regroups them into one tree you
+  can think through point by point, MECE at every level: the points side by
+  side are the same kind of thing at the same level of detail, no two
+  overlap, and together they cover what they sit under. A line that is a
+  part, step, example, reason or result of another goes under it, as many
+  levels deep as that takes. No depth limit.
+- Your indentation says what belongs to what: a line you indented under
+  another stays under it unless it plainly belongs elsewhere, and a line you
+  indented too far (straight to level 3 under a top line) goes under the line
+  it belongs to.
+- Your lines keep their words: the pen picks them by number, so it can only
+  reorder and nest them (a task's box and a block id stay on their line).
+  Where lines side by side need a name, it adds a group, a short name of its
+  own with those lines under it, written in its ink (a hidden `^ai-g-…`).
+  Never a group of one line. Enter on a group's name doesn't ask the pen for
+  a reply: it's a heading for your lines.
+- A reply that leaves out one of your lines isn't shown: *Couldn't organize
+  these lines. Try again.*
+- The outline replaces your lines, tinted, and the text waits: *Organized in
+  4 levels, in your words.* **Enter** keeps it, **Esc** puts your lines back
+  exactly as they were.
+
+Decided from `apps/desktop/proto/organize-depth` (2026-10-15):
+
+- Direction: **Deep tree**: the pen decides the depth, MECE at every level,
+  pen-ink names only where siblings need one, your indents kept.
+- Rejected: one layer of names with every line flat under it (the old
+  Organize: it threw away the nesting you wrote); **your lines only**, no
+  names (problems and fixes end up side by side at the top, harder to keep
+  MECE); a **depth dial** (2 / 3 / All, Tab deeper): one more choice on
+  every Organize, when the pen should get the depth right itself.
 
 ### Shorten
 

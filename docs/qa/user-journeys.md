@@ -344,7 +344,8 @@ labelled for what the line asks: **For** and **Against** on a claim, **How** and
 **Caveat** on a how-to, and so on, and leaves the call to you. `[` brings
 back short points from your **other notes** on the same idea (`Supports: … — [[Note]]`).
 `−` proposes cuts and asks before deleting them; `#` regroups several lines
-in your own words.
+into a MECE outline as deep as their meaning goes, your lines word for word
+(your indents kept), with group names in the pen's ink (`^ai-g-…`).
 **Spec:** SPECs/second-pen-spec.md
 **Code:** `src/components/editor-area/second-pen.ts`, `src/components/editor-area/pen-box.tsx`, `src/components/arc/floating-button-group/`, `src/components/editor-area/second-pen.css`, `src/components/editor-area/pen-hint-store.ts`, `src/components/editor-area/document-footer.tsx`, `src/components/editor-area/editor-extensions.ts`, `src/lib/second-pen.ts`, `src/lib/second-pen-agent.ts`, `src/lib/video-transcript.ts`, `src/lib/tauri.ts`, `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/papers.rs`, `src-tauri/src/commands/search.rs`, `src-tauri/src/file_cache.rs`
 
@@ -379,6 +380,7 @@ in your own words.
 | PEN-27 | After Combine, click another line with the last line empty                  | The empty line under the list goes                                                                                                                                                                                                                                                                                                                                                     | auto: pen |
 | PEN-28 | In a big iCloud vault, open it, then ⌘. `[` Enter on a line                 | Echoes land in a few seconds (well under 30s), the first Connect after opening included                                                                                                                                                                                                                                                                                                | you       |
 | PEN-29 | Combine when the pen only echoes your take | Your points once in your ink; the pen's are its answer's own points, never your words | manual (logic in second-pen.test.ts) |
+| PEN-30 | Select a list with a line typed straight to level 3, ⌘., `#` Enter, then Enter | A nested outline, as deep as it needs: each of your lines once, word for word; no level skipped; a line you nested stays under its point; every other line is a group name in the pen's ink (`^ai-g-…`) | auto: pen |
 
 ---
 

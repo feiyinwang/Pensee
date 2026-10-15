@@ -52,7 +52,9 @@ import {
   echoesReply,
   isItem,
   isPenParagraph,
-  organizedReply,
+  organizedLines,
+  organizeReply,
+  outlineDepth,
   itemText,
   newPenId,
   noteForPen,
@@ -890,7 +892,8 @@ class PenPlugin {
       if (combineAt(lines, i)) return { parts: COMBINE };
       if (sealedAbove(lines, i) >= 0) return { parts: itemText(lines[i]!) ? TAKE : TAKE_EMPTY };
       const kind = penKindOf(lines[i]!);
-      if (kind && kind !== "s") return { parts: [{ key: "↵" }, { text: "reply under it" }] };
+      if (kind && kind !== "s" && kind !== "g")
+        return { parts: [{ key: "↵" }, { text: "reply under it" }] };
     }
     if (this.after && now < this.after.until) return { parts: this.after.parts };
     return this.caretInNote() ? { parts: REST, resting: true } : null;
@@ -1108,7 +1111,8 @@ class PenPlugin {
     }
     if (alt) return false;
     const kind = penKindOf(lines[i]!);
-    if (kind && kind !== "s") {
+    // A group's name is a heading for your lines, not a line to answer.
+    if (kind && kind !== "s" && kind !== "g") {
       this.answerUnder(i);
       return true;
     }
@@ -1382,8 +1386,9 @@ class PenPlugin {
     }
   }
 
-  /** `#`: the selected lines regrouped into an outline in your own words, in
-   *  their place, until Enter keeps it or Esc puts your lines back. */
+  /** `#`: the selected lines regrouped into a MECE outline, as deep as
+   *  their meaning goes, in their place until Enter keeps it or Esc puts your
+   *  lines back. Your lines keep their words; the groups it names are its. */
   private async organize(direction = ""): Promise<void> {
     const { state } = this.view;
     const lines = docLines(state);
@@ -1396,6 +1401,11 @@ class PenPlugin {
     const first = targets[0]!;
     const last = targets[targets.length - 1]!;
     const block = lines.slice(first, last + 1).join("\n");
+    const yours = withText.map((i) => lines[i]!);
+    // The outline starts at the shallowest of your lines.
+    const indent = yours
+      .map((line) => /^[ \t]*/.exec(line)![0])
+      .reduce((a, b) => (b.length < a.length ? b : a));
     const from = state.doc.line(first + 1).from;
     const to = state.doc.line(last + 1).to;
     const conversation = this.start("Organizing your lines…", {
@@ -1408,12 +1418,12 @@ class PenPlugin {
         penPrompt({
           ...this.promptBase(lines, withText, direction),
           source: null,
-          ask: { task: "organize", block },
+          ask: { task: "organize", lines: yours },
         }),
       );
       this.finish(conversation);
-      const organized = organizedReply(reply);
-      if (!organized) {
+      const points = organizeReply(reply, yours.length);
+      if (!points) {
         this.say("Couldn't organize these lines. Try again.");
         return;
       }
@@ -1421,6 +1431,13 @@ class PenPlugin {
         this.say("The lines changed while the pen read them. Try again.");
         return;
       }
+      const taken = new Set(blockIdsInText(this.view.state.doc.toString()));
+      const organized = organizedLines(points, yours, indent, () => {
+        const id = newPenId("g", taken);
+        taken.add(id);
+        return id;
+      }).join("\n");
+      const depth = outlineDepth(points);
       this.spot = null;
       this.organizing = { from, to: from + organized.length, original: block };
       this.view.dispatch({
@@ -1434,7 +1451,10 @@ class PenPlugin {
             // Lined up with the outline's words: past the bullets' slot.
             depth: isItem(organized.split("\n")[0] ?? "") ? 1 : 0,
             bullet: false,
-            text: "Organized, in your words.",
+            text:
+              depth > 1
+                ? `Organized in ${depth} levels, in your words.`
+                : "Organized, in your words.",
             busy: false,
             keys: [
               ["↵", "keep"],

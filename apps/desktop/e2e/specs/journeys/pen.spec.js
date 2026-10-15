@@ -824,4 +824,43 @@ describe("Journeys: second pen", function () {
       AI_TIMEOUT,
     );
   });
+
+  it("PEN-30 Organize builds a deep MECE outline: your lines once each, the pen's group names in its ink", async function () {
+    const path = `${root}/Notes/Side projects.md`;
+    const yours = (await readFile(path)).split("\n").filter((l) => l.trim());
+    await openViaPalette("Side projects");
+    await caretAfter("too many things at once");
+    await selectTo("the CLI I shipped in a weekend");
+    await key(".", { meta: true });
+    await waitForBox();
+    await pick("#", { shift: true });
+    await browser.waitUntil(
+      () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
+      { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
+    );
+    await key("Enter");
+    const text = await waitForDisk(path, (t) => /\^ai-g-|^ {2}/m.test(t), "expected an outline");
+    const lines = text.split("\n").filter((l) => l.trim());
+    const words = (l) => l.replace(/^\s*- /, "").trim();
+    // Every line of yours once, in your words; every other line is the pen's group name.
+    for (const line of yours) {
+      const count = lines.filter((l) => words(l) === words(line)).length;
+      ok(count === 1, `"${words(line)}" should be there once:\n${text}`);
+    }
+    const mine = new Set(yours.map(words));
+    for (const line of lines.filter((l) => !mine.has(words(l)))) {
+      ok(/ \^ai-g-[a-z0-9]{4}$/.test(line), `a line that isn't yours is the pen's group:\n${text}`);
+    }
+    // No level skipped; the line you nested under the boring middle stays under it.
+    const indent = (l) => /^ */.exec(l)[0].length;
+    lines.forEach((l, k) =>
+      ok(k === 0 || indent(l) <= indent(lines[k - 1]) + 2, `skipped a level:\n${text}`),
+    );
+    const middle = lines.findIndex((l) => l.includes("the boring middle part"));
+    const stall = lines.findIndex((l) => l.includes("I always stall at settings pages"));
+    ok(
+      stall > middle && indent(lines[stall]) > indent(lines[middle]),
+      `settings stall left its point:\n${text}`,
+    );
+  });
 });

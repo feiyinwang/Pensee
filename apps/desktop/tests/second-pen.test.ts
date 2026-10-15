@@ -19,6 +19,9 @@ import {
   itemText,
   newPenId,
   noteForPen,
+  organizeReply,
+  organizedLines,
+  outlineDepth,
   parentOf,
   childrenOf,
   penIdKind,
@@ -59,6 +62,7 @@ describe("ids", () => {
     expect(penIdKind(id)).toBe("q");
     expect(penIdKind("yt-540")).toBeNull();
     expect(penIdKind("ai-r-ab12")).toBe("r");
+    expect(penIdKind("ai-g-ab12")).toBe("g");
     expect(penKindOf("  - Why? ^ai-m-ab12")).toBe("m");
     expect(penKindOf("- my note ^yt-540")).toBeNull();
   });
@@ -525,5 +529,77 @@ describe("shorten", () => {
       [2, 24],
       [27, 32],
     ]);
+  });
+});
+
+describe("organize", () => {
+  const yours = [
+    "- I start too many things at once",
+    "- no deadline so it drifts",
+    "      - the habit app, then nothing",
+    "- excitement fades after a week",
+    "  - [ ] the boring middle ^yt-540",
+    "- small scope worked",
+  ];
+  const reply = JSON.stringify({
+    points: [
+      {
+        group: "Why I stall:",
+        under: [
+          {
+            group: "How I set it up",
+            under: [{ line: 1 }, { line: 2, under: [{ line: 3 }] }],
+          },
+          { line: 4, under: [{ line: 5 }] },
+        ],
+      },
+      { line: 6 },
+    ],
+  });
+
+  test("the prompt numbers your lines with their indentation", () => {
+    const prompt = penPrompt({
+      title: "T",
+      note: "",
+      lines: [],
+      source: null,
+      ask: { task: "organize", lines: yours },
+    });
+    expect(prompt).toContain('<line n="3">      - the habit app, then nothing</line>');
+    expect(prompt).toContain("MECE at every level");
+  });
+
+  test("a tree as deep as its meaning, every line once", () => {
+    const points = organizeReply(reply, yours.length)!;
+    expect(outlineDepth(points)).toBe(4);
+    let n = 0;
+    expect(organizedLines(points, yours, "", () => `ai-g-000${n++}`)).toEqual([
+      "- Why I stall ^ai-g-0000",
+      "  - How I set it up ^ai-g-0001",
+      "    - I start too many things at once",
+      "    - no deadline so it drifts",
+      "      - the habit app, then nothing",
+      "  - excitement fades after a week",
+      "    - [ ] the boring middle ^yt-540",
+      "- small scope worked",
+    ]);
+  });
+
+  test("a missing line fails; a repeat is dropped", () => {
+    expect(organizeReply('{"points": [{"line": 1}, {"line": 2}]}', 3)).toBeNull();
+    const points = organizeReply('{"points": [{"line": 1}, {"line": 2}, {"line": 1}]}', 2)!;
+    expect(organizedLines(points, ["- a", "- b"], "  ", () => "x")).toEqual(["  - a", "  - b"]);
+  });
+
+  test("a group of one gives way to its line", () => {
+    const points = organizeReply(
+      '{"points": [{"group": "Alone", "under": [{"line": 1}]}, {"line": 2}]}',
+      2,
+    )!;
+    expect(organizedLines(points, ["- a", "- b"], "", () => "x")).toEqual(["- a", "- b"]);
+  });
+
+  test("not JSON is no outline", () => {
+    expect(organizeReply("- a\n- b", 2)).toBeNull();
   });
 });

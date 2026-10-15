@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15
+
+- **# Organize** builds a real outline now, as many levels deep as your lines need, not one layer of headings with everything flat under it. Lines side by side are the same kind of thing; a reason, step or example goes under its point. What you indented stays under the line you put it under, and a line you indented too far lands under the line it belongs to. Your lines keep their exact words; the short group names the pen adds are written in its blue ink, and Enter on one doesn't ask the pen for a reply.
+
 ## 2026-10-14
 
 - Fixed: a list's guide lines ran through text under a nested bullet that isn't itself a bullet (a line you typed without a dash). A guide now stops above such a line and picks up again below it.

@@ -36,6 +36,20 @@ const NOTES = {
     "- how to make a new habit stick",
     "",
   ].join("\n"),
+  // Organize's deep outline (PEN-30): brain-dump lines at mixed depths, one
+  // typed straight to level 3 under a top line.
+  "Notes/Side projects.md": [
+    "- I start too many things at once",
+    "- no deadline so it drifts",
+    "    - the habit app I worked on for 3 weeks, then nothing",
+    "- excitement fades after the first week",
+    "  - the boring middle part: auth, settings, edge cases",
+    "    - I always stall at settings pages",
+    "- I don't tell anyone, so no one asks how it's going",
+    "- when I pair with a friend I finish",
+    "- small scope worked: the CLI I shipped in a weekend",
+    "",
+  ].join("\n"),
   "Notes/Sleep log.md": [
     "- Slept eight hours before the exam and remembered far more of the reading.",
     "- After a short nap the second half of the essay finally made sense.",

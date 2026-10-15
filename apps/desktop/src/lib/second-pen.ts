@@ -15,12 +15,13 @@ import type { Paper } from "./tauri";
  *  of its points once combined with your take), its comparison with your take
  *  (`v`, written by the earlier Answer), the two lines of a check, labelled
  *  for what the line asks (`p`, then `n`, which your call waits under), or
- *  an echo of an earlier note (`e`). The earlier pen's lines (a quiz question
+ *  an echo of an earlier note (`e`), or the name Organize gave a group of
+ *  your lines (`g`). The earlier pen's lines (a quiz question
  *  `q`, a question `a`, a hint `h`, a check `c`, a fact `f`, a mix `m`) keep
  *  their ink. */
-export type PenKind = "s" | "r" | "v" | "p" | "n" | "e" | "q" | "a" | "h" | "c" | "f" | "m";
+export type PenKind = "s" | "r" | "v" | "p" | "n" | "e" | "g" | "q" | "a" | "h" | "c" | "f" | "m";
 
-const PEN_ID_RE = /^ai-([srvpneqahcfm])-[a-z0-9]{4}$/;
+const PEN_ID_RE = /^ai-([srvpnegqahcfm])-[a-z0-9]{4}$/;
 
 export function penIdKind(id: string): PenKind | null {
   const match = PEN_ID_RE.exec(id);
@@ -351,7 +352,7 @@ export type PenAsk =
   | { task: "connectQuery" }
   | { task: "connectPick"; candidates: Array<{ note: string; text: string }> }
   | { task: "shorten" }
-  | { task: "organize"; block: string };
+  | { task: "organize"; lines: readonly string[] };
 
 export interface PenPromptInput {
   title: string;
@@ -482,11 +483,13 @@ function taskText(input: PenPromptInput): string {
       ].join("\n");
     case "organize":
       return [
-        "Reorganize the writer's lines below into a clearer structure: group related lines, put them in order, and nest each detail under the point it belongs to.",
-        "Use their own words. Keep their phrases exactly as they wrote them; you may only reorder, regroup, indent, merge exact repeats, and add a few short group labels where a group needs a name. Never add an idea or drop one.",
-        "A line may end with an id like ^yt-540 or ^ai-r-ab12: keep it at the end of the line whose words it ends.",
-        "Reply with the Markdown lines only (bullets, nested bullets), no code fence, nothing else.",
-        `<lines>\n${ask.block}\n</lines>`,
+        "The writer's lines to organize, numbered, with their own indentation:",
+        `<lines>\n${ask.lines.map((line, k) => `<line n="${k + 1}">${line}</line>`).join("\n")}\n</lines>`,
+        "Organize them into one tree the writer can think through point by point. It must be MECE at every level: the points side by side (at the top, or under one point) are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A line that is a part, step, example, reason or result of another goes under it, as many levels deep as that takes. A line that is not the same kind or level as the lines beside it never stays beside them.",
+        "The writer's indentation says what belongs to what: a line they indented under another stays under it, unless it plainly belongs elsewhere. A line indented further than the line above it allows (two levels in under a top line) goes under the line it belongs to.",
+        "Where lines side by side need a name to read as one kind of thing, put them in a group: a short name of your own (2 to 5 words, no colon, no end punctuation) with those lines under it. Groups may sit inside groups. Only where a name helps: never a group of one line, never a name that only says a line again.",
+        "Use every line exactly once, by its number. Never write a line's words yourself.",
+        'Reply with JSON only: {"points": [{"line": 1, "under": [...]}, {"group": "…", "under": [...]}]}',
       ].join("\n");
     case "shorten":
       return [
@@ -942,14 +945,64 @@ export function cutsFromReply(reply: string, texts: readonly string[]): Cut[][] 
   });
 }
 
-/** The outline an `organize` reply proposes: its Markdown, without a fence
- *  or blank lines at its ends. Null when there's nothing. */
-export function organizedReply(reply: string): string | null {
-  const text = reply
-    .replace(/^\s*```[a-z]*\n/i, "")
-    .replace(/\n```\s*$/, "")
-    .replace(/^\n+|\s+$/g, "");
-  return text.trim() ? text : null;
+/* ------------------------------------------------------------- organize */
+
+/** A point of an organized outline: one of your lines (its index in the
+ *  lines sent), or a group the pen named, with the points under it. */
+export type OrganizedPoint =
+  | { line: number; under: OrganizedPoint[] }
+  | { group: string; under: OrganizedPoint[] };
+
+/** An `organize` reply, held to its word: every one of your `count` lines
+ *  exactly once (a repeat after the first is dropped), else null. A group
+ *  with nothing under it is dropped; one with a single point gives way to
+ *  that point. No depth limit: as deep as the meaning goes. */
+export function organizeReply(reply: string, count: number): OrganizedPoint[] | null {
+  const value = jsonIn(reply) as { points?: unknown } | null;
+  if (!Array.isArray(value?.points)) return null;
+  const seen = new Set<number>();
+  const read = (raw: unknown): OrganizedPoint[] => {
+    const item = raw as { line?: unknown; group?: unknown; under?: unknown } | null;
+    const under = Array.isArray(item?.under) ? item.under.flatMap(read) : [];
+    if (typeof item?.line === "number") {
+      const line = item.line - 1;
+      if (!Number.isInteger(line) || line < 0 || line >= count || seen.has(line)) return under;
+      seen.add(line);
+      return [{ line, under }];
+    }
+    const group = typeof item?.group === "string" ? replyLine(item.group) : null;
+    if (!group || under.length < 2) return under;
+    return [{ group: endPunct(group.replace(/[:：]\s*$/u, "")), under }];
+  };
+  const points = value.points.flatMap(read);
+  return seen.size === count ? points : null;
+}
+
+/** An organized outline as Markdown lines at `indent`, each level two spaces
+ *  further in. Your lines keep everything but their marker and indent (a
+ *  task's box and a block id stay); a group's name is the pen's, named by
+ *  `id`. */
+export function organizedLines(
+  points: readonly OrganizedPoint[],
+  lines: readonly string[],
+  indent: string,
+  id: () => string,
+): string[] {
+  const own = (line: string) =>
+    line
+      .replace(/^[ \t]*([-*+]|\d+[.)])([ \t]+|$)/, "")
+      .replace(/^[ \t]+/, "")
+      .trimEnd();
+  const write = (p: OrganizedPoint, at: string): string[] => [
+    "line" in p ? `${at}- ${own(lines[p.line]!)}` : `${at}- ${p.group} ^${id()}`,
+    ...p.under.flatMap((k) => write(k, `${at}  `)),
+  ];
+  return points.flatMap((p) => write(p, indent));
+}
+
+/** How many levels deep an outline goes. */
+export function outlineDepth(points: readonly OrganizedPoint[]): number {
+  return points.reduce((most, p) => Math.max(most, 1 + outlineDepth(p.under)), 0);
 }
 
 /** `text` without `cuts`, its spacing tidied where words left. */
