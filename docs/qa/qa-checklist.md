@@ -164,3 +164,8 @@ Learned the hard way; each one cost a failed run.
 - Reading or typing into "the visible editor" with `.find((el) => el.offsetParent)` picks the leftmost column when a session restores several; scope it to `[data-column-tab][data-focused]` (as `typeInEditor` and `frontTitle` do).
 - The e2e window is hidden (`document.visibilityState` is `hidden`): WebKit freezes its animation clock and runs measure frames late. Wait for an animation to start (`waitUntil`), and to check what happens when one ends, `finish()` it from the spec (ED-13). `getAnimations()` leaves out `::before`/`::after` animations; pass `{ subtree: true }`.
 - The e2e window is hidden, so WebKit does not run CSS transitions in it: `getComputedStyle` and screenshots show colours frozen at the start of a transition (an `oklab(…)` value is the tell). Before checking a colour or taking a screenshot of a state change, inject `*{transition:none!important}`.
+- A note written with `write_file` after launch doesn't show in the ⌘O
+  palette (its index is built at startup): seed the note in
+  `e2e/qa/seed-vault.mjs` instead.
+- `navigator.clipboard.readText()` is refused in the e2e webview: read what
+  a Copy button wrote with `execSync("pbpaste")` in the spec (YT-07).

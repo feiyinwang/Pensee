@@ -29,6 +29,16 @@ export interface AgentBookPassage {
   text: string;
 }
 
+/** Where an open note's video is playing, with its transcript around then
+ *  (SPECs/youtube-notes-spec.md#transcript). */
+export interface AgentVideoMoment {
+  notePath: string;
+  /** The video's time, `m:ss`. */
+  at: string;
+  /** The transcript lines around `at`, each after its time. */
+  text: string;
+}
+
 export interface AgentContext {
   openFiles: AgentOpenFile[];
   focusedPath: string | null;
@@ -38,6 +48,8 @@ export interface AgentContext {
   focusedBook?: string | null;
   /** Broadest first. Only notes that exist. */
   periodNotes?: AgentPeriodNote[];
+  /** Every open note with a video player and a transcript. */
+  videos?: AgentVideoMoment[];
 }
 
 /** Every token in the prompt is read before the first word of a reply, so
@@ -115,6 +127,7 @@ export function buildScreenContext({
   periodNotes = [],
   books = [],
   focusedBook = null,
+  videos = [],
 }: AgentContext): string {
   const lines: string[] = [];
 
@@ -163,6 +176,17 @@ export function buildScreenContext({
       ...books.map(
         (book) =>
           `<book_passage book="${book.bookPath}" where="${book.where}"${book.notePath ? ` note="${book.notePath}"` : ""}>\n${book.text}\n</book_passage>`,
+      ),
+    );
+  }
+
+  if (videos.length > 0) {
+    lines.push(
+      "",
+      'A video plays in these notes. "Now", "just now" and "what they said" mean the moment `at`; each block is the transcript around it, and the full transcript is in the note.',
+      ...videos.map(
+        (video) =>
+          `<video_moment note="${video.notePath}" at="${video.at}">\n${video.text}\n</video_moment>`,
       ),
     );
   }

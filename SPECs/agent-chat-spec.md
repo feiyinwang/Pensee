@@ -42,6 +42,7 @@ The fixed instructions (workspace root, how to work, reply style) are the proces
   - A question can be about any open tab; Claude is told to work out which from the question and to read the files before saying something isn't there.
 - Boards: a `.board.svg` open as a tab, or embedded in an open page as an image link, is sent as its scene (one JSON line per node, with its text). The SVG itself can carry inlined pictures, so it is never sent raw.
 - Caps: 12,000 characters for one page's on-screen part, 40,000 in total, focused tab first; anything cut is marked truncated and anything left out is listed by path.
+- Videos: for each open note with a YouTube player and a transcript, the video's time and the transcript lines from 90 s before to 10 s after it (`<video_moment note=… at="12:04">`), so "now" and "what they just said" mean that moment (SPECs/youtube-notes-spec.md#transcript-box).
 - Period notes (year … day) follow the same rule: up to 6,000 characters whole, a longer one by path (`long="true"`).
 - The focused file's path, with the rule that "this", "here", "this page" and "it" mean that file and it breaks ties. It is not the only page that matters.
 - Replies are short, concise and simple: 1-3 sentences unless asked for more, no headings, no preamble, no recap of edits beyond one line.

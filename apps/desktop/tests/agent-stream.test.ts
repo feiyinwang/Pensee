@@ -121,6 +121,17 @@ describe("buildAgentMessage", () => {
 });
 
 describe("buildScreenContext", () => {
+  test("says where an open note's video is and what was said around then", () => {
+    const prompt = buildScreenContext({
+      openFiles: [],
+      focusedPath: null,
+      videos: [{ notePath: "/w/Talk.md", at: "12:04", text: "11:58 Speech is motor." }],
+    });
+    expect(prompt).toContain(
+      '<video_moment note="/w/Talk.md" at="12:04">\n11:58 Speech is motor.\n</video_moment>',
+    );
+  });
+
   test("includes every open tab's text and names the focused one", () => {
     const prompt = buildScreenContext({
       openFiles: [

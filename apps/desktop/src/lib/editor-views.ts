@@ -21,6 +21,11 @@ export function registerEditorView(
   return () => views.delete(view);
 }
 
+/** The note `view` shows now, or null for an editor that isn't a note's. */
+export function editorPath(view: EditorView): string | null {
+  return views.get(view)?.path() ?? null;
+}
+
 /** The part of a note's body on screen: whole lines, 0-based, end exclusive. */
 export interface VisibleLines {
   fromLine: number;

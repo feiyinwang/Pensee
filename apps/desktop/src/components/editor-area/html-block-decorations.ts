@@ -5,6 +5,8 @@ import {
   selectAllDecorationsOnSelectExtension,
 } from "@/lib/prosemark-core/main";
 import { LruCache } from "@/lib/lru";
+import { editorPath } from "@/lib/editor-views";
+import { hasTranscript } from "@/lib/video-transcript";
 import type { BlockParser, BlockContext, Line, MarkdownConfig } from "@lezer/markdown";
 import DOMPurify from "dompurify";
 import { dragFrozenSelectionField, rangesTouchInclusive } from "./drag-selection-gate";
@@ -192,6 +194,59 @@ class HtmlBlockWidget extends WidgetType {
   }
 }
 
+/** Each mounted transcript box's unmount, by its host. */
+const transcriptUnmounts = new WeakMap<HTMLElement, () => void>();
+
+/**
+ * A video note's transcript toggle, shown as the transcript box
+ * (transcript-box.tsx). The note keeps the plain `<details>` other Markdown
+ * apps read; only the view changes. The box owns its clicks, scrolling and
+ * text selection, so a click inside never opens the source.
+ */
+class TranscriptWidget extends WidgetType {
+  constructor(readonly source: string) {
+    super();
+  }
+
+  eq(other: TranscriptWidget): boolean {
+    return this.source === other.source;
+  }
+
+  get estimatedHeight(): number {
+    return 260;
+  }
+
+  toDOM(view: EditorView): HTMLElement {
+    const host = document.createElement("div");
+    host.className = "cm-transcript-widget";
+    host.contentEditable = "false";
+    // The box brings in Arc and `motion`: only notes with a transcript pay
+    // for them (docs/arc.md).
+    import("./transcript-box").then(
+      ({ mountTranscriptBox }) => {
+        if (transcriptUnmounts.has(host) || host.dataset.destroyed) return;
+        transcriptUnmounts.set(
+          host,
+          mountTranscriptBox(host, { source: this.source, notePath: () => editorPath(view) }),
+        );
+        view.requestMeasure();
+      },
+      (error: unknown) => console.error("[video] Couldn't load the transcript box:", error),
+    );
+    return host;
+  }
+
+  destroy(dom: HTMLElement): void {
+    dom.dataset.destroyed = "true";
+    transcriptUnmounts.get(dom)?.();
+    transcriptUnmounts.delete(dom);
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+}
+
 function isInteractiveHtmlTarget(target: Element) {
   return (
     target.closest("a,button,input,select,textarea,summary,video,audio,label,[role='button']") !==
@@ -209,10 +264,26 @@ const htmlBlockFoldExtension = foldableSyntaxFacet.of({
   keepDecorationOnUnfold: true,
   buildDecorations: (state, node, selectionTouchesRange) => {
     const frozen = state.field(dragFrozenSelectionField, false);
+    const text = state.doc.sliceString(node.from, node.to);
+
+    // The transcript sits at the very top of a video note, where the caret
+    // lands when the note opens: only a selection inside it (a find match)
+    // opens its source, never one at its edges.
+    // Its summary is on the second line: no need to scan a long block.
+    if (hasTranscript(text.slice(0, 200))) {
+      const inside = (frozen ?? state.selection.ranges).some(
+        (range) => range.from > node.from && range.to < node.to,
+      );
+      if (inside) return undefined;
+      return Decoration.replace({
+        widget: new TranscriptWidget(text),
+        block: true,
+        inclusiveStart: true,
+      }).range(node.from, node.to);
+    }
+
     const touches = frozen ? rangesTouchInclusive(frozen, node) : selectionTouchesRange;
     if (touches) return undefined;
-
-    const text = state.doc.sliceString(node.from, node.to);
 
     const trimmed = text.trimStart();
     if (/^<(?:script|style)[\s>]/i.test(trimmed)) return undefined;

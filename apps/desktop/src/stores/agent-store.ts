@@ -4,11 +4,18 @@ import { listen } from "@tauri-apps/api/event";
 import { useEditorStore } from "@/stores/editor-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { parseAgentLine, type AgentStreamEvent } from "@/lib/agent-stream";
-import { buildAgentInstructions, buildAgentMessage } from "@/lib/agent-context";
+import {
+  buildAgentInstructions,
+  buildAgentMessage,
+  type AgentVideoMoment,
+} from "@/lib/agent-context";
 import { useSettingsStore } from "@/stores/settings-store";
 import { collectAgentOpenFiles, collectAgentPeriodNotes } from "@/lib/agent-open-files";
 import { openBookPassages } from "@/lib/book-readers";
 import { flushSave } from "@/lib/save";
+import { videoPlayerFor } from "@/lib/video-players";
+import { formatVideoTime } from "@/lib/video-pins";
+import { linesAround, transcriptIn, transcriptLines } from "@/lib/video-transcript";
 import { agentModel, type AgentModelId } from "@/lib/agent-models";
 
 /** One row in the chat. `tool` and `status` rows are muted one-liners. */
@@ -30,8 +37,12 @@ interface AgentState {
   items: AgentItem[];
   sessionId: string | null;
   run: AgentRun | null;
+  /** Bumped by `open`, so an open panel still takes focus again. */
+  focusRequest: number;
 
   toggle: () => void;
+  /** Open the panel (if closed) with its input focused. */
+  open: () => void;
   close: () => void;
   send: (text: string) => Promise<void>;
   stop: () => void;
@@ -141,6 +152,29 @@ async function flushOpenFiles() {
   await Promise.all(dirty.map((path) => flushSave(path)));
 }
 
+/** Each open note's video moment: where its player is, and what was said
+ *  around then. */
+function videoMoments(
+  paths: readonly string[],
+  openFiles: ReturnType<typeof useEditorStore.getState>["openFiles"],
+): AgentVideoMoment[] {
+  return paths.flatMap((notePath) => {
+    const player = videoPlayerFor(notePath);
+    const body = openFiles.get(notePath)?.content;
+    if (!player || !body) return [];
+    const seconds = player.time();
+    const around = linesAround(transcriptLines(transcriptIn(body)), seconds);
+    if (!around.length) return [];
+    return [
+      {
+        notePath,
+        at: formatVideoTime(seconds),
+        text: around.map((line) => `${formatVideoTime(line.start)} ${line.text}`).join("\n"),
+      },
+    ];
+  });
+}
+
 async function currentContext(root: string) {
   const { tabs, activeTabId, activeFilePath, openFiles } = useEditorStore.getState();
   const paths = [
@@ -155,6 +189,7 @@ async function currentContext(root: string) {
   ]);
   return {
     openFiles: files,
+    videos: videoMoments(paths, openFiles),
     focusedPath: activeFilePath,
     periodNotes,
     books,
@@ -171,10 +206,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   items: [],
   sessionId: null,
   run: null,
+  focusRequest: 0,
 
   toggle: () => {
     set((state) => ({ isOpen: !state.isOpen }));
     if (get().isOpen) get().warm();
+  },
+  open: () => {
+    const wasOpen = get().isOpen;
+    set((state) => ({ isOpen: true, focusRequest: state.focusRequest + 1 }));
+    if (!wasOpen) get().warm();
   },
   close: () => set({ isOpen: false }),
 

@@ -81,6 +81,23 @@ const NOTES = {
     "- what did the 2006 study compare?",
     "",
   ].join("\n"),
+  // The transcript box (YT-04…08): four paragraphs, two sentences each.
+  "Speech talk.md": [
+    "---",
+    "Type: Video",
+    "Url: https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    "---",
+    "<details>",
+    "<summary>Transcript</summary>",
+    "<p><small>0:00</small> Welcome to the show about speech. Today we talk about how the brain makes words.</p>",
+    "<p><small>1:00</small> Speech is a motor act, like playing the piano. Every syllable is a movement.</p>",
+    "<p><small>2:00</small> Children learn languages by listening first. Then they babble and copy sounds.</p>",
+    "<p><small>3:00</small> Thanks for listening to this episode. See you next time.</p>",
+    "</details>",
+    "",
+    "My first note",
+    "",
+  ].join("\n"),
 };
 
 /** Rebuild the vault and reset the e2e app's state. Called before every

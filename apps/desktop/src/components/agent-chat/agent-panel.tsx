@@ -26,13 +26,14 @@ export default function AgentPanel() {
   const isRunning = useAgentStore((s) => s.run !== null);
   const close = useAgentStore((s) => s.close);
   const newChat = useAgentStore((s) => s.newChat);
+  const focusRequest = useAgentStore((s) => s.focusRequest);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const title = items.find((item) => item.role === "user")?.text ?? "New chat";
 
   useEffect(() => {
     if (isOpen) inputRef.current?.focus();
-  }, [isOpen]);
+  }, [isOpen, focusRequest]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {

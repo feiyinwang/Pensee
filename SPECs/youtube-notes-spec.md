@@ -91,10 +91,10 @@ selected.
 
 ### Transcript
 
-- A video brought into a note gets its transcript, in one closed toggle
-  (**Transcript**) at the top of the note's text, right under the
-  properties and the player. Open it to read; it is ordinary text for
-  search.
+- A video brought into a note gets its transcript at the top of the note's
+  text, right under the properties and the player. Pensée shows it as the
+  transcript box (below); in the file it is a closed toggle
+  (**Transcript**), ordinary text for search.
 - "Brought in" means: added to Library from a YouTube link, or a YouTube
   link typed, pasted or changed in an open note's properties. Opening a
   note that already had its link never changes it.
@@ -112,6 +112,42 @@ selected.
   `<details>`, `<summary>Transcript</summary>`, then one
   `<p><small>m:ss</small> text</p>` per paragraph, with no blank line
   inside and the text escaped.
+
+### Transcript box
+
+The transcript toggle shows as a teleprompter, never as its HTML (it used to
+open into raw `<details>` source when clicked).
+
+- A box with a **Transcript** header and about six lines of text, the edges
+  fading. Each line is a sentence; a long one (automatic captions have no
+  full stops) is cut into even slices of up to 24 words, and a line under
+  4 words joins the next.
+- **Following the video.** The line being said is in the note's ink, its
+  words rising in with Arc's text reveal as the video reaches it; the other
+  lines are muted. The box scrolls on its own to keep it a third of the way
+  down. Before the video plays, the first line is the one being said.
+- **Line times.** The note keeps only each paragraph's start, so a line's
+  time is where its first letter falls in the paragraph, spread over the
+  time until the next paragraph (the last one assumes about 160 words a
+  minute). Speech is near even within a minute, so a line lands within a
+  few seconds of when it is said.
+- A line's time shows in a gutter on the line being said and on the line
+  under the pointer. Clicking a line plays the video from it.
+- **Reading more.** Scrolling the box stops it following; **Back to now**
+  appears in the header and brings it back. Clicking a line also brings it
+  back.
+- **Copying.** Text in the box selects like any text (⌘C copies it); a
+  drag that selects words doesn't seek. **Copy** in the header copies the
+  whole transcript, a paragraph per block after its time (`1:15 …`), and
+  reads **Copied**.
+- **Asking.** **Ask** opens the Agent (bottom right) with its input
+  focused. Every message to the Agent says where each open note's video is
+  and carries the transcript from 90 s before to 10 s after that moment, so
+  "what did he just say?" works; the full transcript is in the note.
+- Clicks, scrolling and selection inside the box stay in it. The caret
+  at its edge (where it lands when the note opens, since the transcript is
+  the first thing in the body) leaves it a box; only a selection inside its
+  source, such as a find match, opens the source.
 
 ### Pins on a board
 
@@ -186,6 +222,16 @@ selected.
   editor area inserts it at the top of the live editor (one read per note
   at a time) after checking the link is still the same. The player's
   `useTranscriptForNewLinks` and Library add (`use-library-add.ts`) call it.
+- **Transcript box.** `html-block-decorations.ts` replaces a `<details>`
+  block holding the transcript with `TranscriptWidget` unless a selection
+  lies strictly inside it (`ignoreEvent` true,
+  so CodeMirror leaves its clicks, keys and selection alone; the drag gate
+  skips `.cm-transcript-widget`). The widget lazy-loads
+  `transcript-box.tsx` (Arc `text-reveal` and `copy-button`), which reads
+  the note's player from `lib/video-players.ts` every 250 ms while the box
+  is on screen. Lines, their times and the clipboard text are pure
+  (`transcriptLines`, `lineAt`, `transcriptText` in `lib/video-transcript.ts`).
+  The Agent's moment is `videoMoments` in `agent-store.ts`.
 - **Pure text (`lib/video-pins.ts`).** Pin ids, parsing, time formatting,
   the insert plan for a pin at a caret, and the note's video id from
   frontmatter.

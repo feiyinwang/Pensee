@@ -79,3 +79,108 @@ export function transcriptIn(body: string): TranscriptCue[] {
     text: unescapeHtml(match[2]!),
   }));
 }
+
+/** One line of the transcript box: a sentence, or a slice of a long one,
+ *  with the stretch of the video it covers. */
+export interface TranscriptLine {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/** A line shorter than this joins the next one… */
+const LINE_MIN_WORDS = 4;
+/** …and one longer is cut into even slices (automatic captions have no
+ *  sentence ends at all). */
+const LINE_MAX_WORDS = 24;
+/** Speaking rate guessed for the last paragraph, which has no next start to
+ *  end it. About 160 words a minute. */
+const CHARS_PER_SECOND = 15;
+
+const SENTENCE_BREAK = /(?<=[.!?…]["'”’)\]]*)\s+/;
+
+function linesOfParagraph(text: string): string[] {
+  const sentences: string[] = [];
+  for (const sentence of text.split(SENTENCE_BREAK)) {
+    const words = sentence.split(/\s+/).filter(Boolean);
+    if (!words.length) continue;
+    const slices = Math.ceil(words.length / LINE_MAX_WORDS);
+    const size = Math.ceil(words.length / slices);
+    for (let i = 0; i < words.length; i += size) sentences.push(words.slice(i, i + size).join(" "));
+  }
+  const lines: string[] = [];
+  let carry = "";
+  for (const sentence of sentences) {
+    const line = carry ? `${carry} ${sentence}` : sentence;
+    if (line.split(" ").length < LINE_MIN_WORDS) carry = line;
+    else {
+      lines.push(line);
+      carry = "";
+    }
+  }
+  if (carry) {
+    if (lines.length) lines[lines.length - 1] += ` ${carry}`;
+    else lines.push(carry);
+  }
+  return lines;
+}
+
+/**
+ * The paragraphs cut into lines a teleprompter can follow. The note keeps
+ * only each paragraph's start, so a line's time is where its first letter
+ * falls in the paragraph, spread over the time until the next one: speech
+ * runs at a near even pace within a minute, so this lands within a few
+ * seconds.
+ */
+export function transcriptLines(paragraphs: readonly TranscriptCue[]): TranscriptLine[] {
+  const lines: TranscriptLine[] = [];
+  paragraphs.forEach((paragraph, index) => {
+    const parts = linesOfParagraph(paragraph.text);
+    const chars = parts.reduce((total, part) => total + part.length, 0);
+    const next = paragraphs[index + 1]?.start;
+    const length =
+      next !== undefined && next > paragraph.start
+        ? next - paragraph.start
+        : chars / CHARS_PER_SECOND;
+    let before = 0;
+    for (const part of parts) {
+      lines.push({ start: paragraph.start + (length * before) / chars, end: 0, text: part });
+      before += part.length;
+    }
+    // The paragraph's end is the next one's start (or the guess above).
+    if (lines.length) lines[lines.length - 1]!.end = paragraph.start + length;
+  });
+  for (let i = 0; i < lines.length - 1; i++) lines[i]!.end = lines[i + 1]!.start;
+  return lines;
+}
+
+/** The line being spoken at `seconds`: the last one started by then, the
+ *  first before the video starts, -1 for no lines. */
+export function lineAt(lines: readonly TranscriptLine[], seconds: number): number {
+  if (!lines.length) return -1;
+  let low = 0;
+  let high = lines.length - 1;
+  while (low < high) {
+    const mid = (low + high + 1) >> 1;
+    if (lines[mid]!.start <= seconds) low = mid;
+    else high = mid - 1;
+  }
+  return low;
+}
+
+/** The transcript as plain text for the clipboard: one paragraph per block,
+ *  each after its time. */
+export function transcriptText(paragraphs: readonly TranscriptCue[]): string {
+  return paragraphs.map(({ start, text }) => `${formatVideoTime(start)} ${text}`).join("\n\n");
+}
+
+/** The lines heard in the `before` seconds up to `seconds` and the next
+ *  `after`, for telling the agent what "just now" means. */
+export function linesAround(
+  lines: readonly TranscriptLine[],
+  seconds: number,
+  before = 90,
+  after = 10,
+): TranscriptLine[] {
+  return lines.filter((line) => line.end > seconds - before && line.start <= seconds + after);
+}

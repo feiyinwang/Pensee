@@ -2,6 +2,7 @@
 
 ## 2026-10-15
 
+- A video note's transcript is now a teleprompter instead of a toggle that opened into HTML. The line being said rises in, word by word, as the video reaches it, and the box scrolls along with the video. Scroll it to read back or ahead (**Back to now** returns), click a line to play from there, select text to copy it or press **Copy** for the whole transcript with its times, and press **Ask** to ask the Agent about it. The Agent now knows where the video is, so "what did he just say?" works. Older video notes show the box too; the file keeps the same plain toggle other Markdown apps read.
 - ⌘T opens today's note, made if missing, wherever you are; the sidebar's **Today** shows `⌘T` on hover. ⌘N is the new-note box.
 - In the new-note box, ⌘↵ into today's note (no title) now opens today's note after adding your text, so you land where you wrote.
 - Podcasts play in their note. Adding a podcast to Library opens its note with a player under the properties: play/pause, a track to seek, the speed (click to cycle, `<` / `>` to step) and **Pin**. ⌘⇧J plays and pauses and ⌘⇧M pins the moment on the line you're writing, the same keys as a YouTube note. Apple Podcasts, Spotify, Overcast and Pocket Casts episode links, a podcast's own page and plain audio files all work; a Spotify episode is played from the show's public feed, so a Spotify-only show says so instead.

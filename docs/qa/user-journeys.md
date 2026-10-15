@@ -285,15 +285,22 @@ bullets; text size and reading place persist.
 ## YouTube notes — YT
 
 **Feature:** A note with a YouTube link plays the video under its properties,
-pins moments to lines and fetches the transcript.
+pins moments to lines and fetches the transcript, which shows as a
+teleprompter box that follows the video, seeks, copies and asks the Agent.
 **Spec:** SPECs/youtube-notes-spec.md
-**Code:** `src/components/editor-area/` (video-player.tsx, video-pin.ts, video-transcript.ts), `src-tauri/src/commands/video_player.rs`
+**Code:** `src/components/editor-area/` (video-player.tsx, video-pin.ts, video-transcript.ts, transcript-box.tsx, transcript-box.css, html-block-decorations.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/text-reveal/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
 
-| ID    | Journey                            | Expected                                              | Check                     |
-| ----- | ---------------------------------- | ----------------------------------------------------- | ------------------------- |
-| YT-01 | Open a note with a YouTube `Link:` | The player shows under the properties                 | legacy: youtube-notes     |
-| YT-02 | Play, ⌘⇧M on a line                | The line gets a pin; clicking it seeks to that moment | legacy: youtube-pin-click |
-| YT-03 | ⌘⇧J anywhere                       | The front note's video plays or pauses                | manual                    |
+| ID    | Journey                                            | Expected                                                                                                      | Check                     |
+| ----- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| YT-01 | Open a note with a YouTube `Link:`                 | The player shows under the properties                                                                         | legacy: youtube-notes     |
+| YT-02 | Play, ⌘⇧M on a line                                | The line gets a pin; clicking it seeks to that moment                                                         | legacy: youtube-pin-click |
+| YT-03 | ⌘⇧J anywhere                                       | The front note's video plays or pauses                                                                        | manual                    |
+| YT-04 | ★ Open a video note with a transcript              | A box shows the transcript a sentence a line, the first line in ink; no `<summary>` or `<p>` HTML in the note | auto: youtube             |
+| YT-05 | Click a line in the transcript box                 | That line becomes the one being said, its time (`1:00`) shows, the video plays from it; the box stays a box   | auto: youtube             |
+| YT-06 | Scroll the transcript box                          | **Back to now** appears; clicking it hides it and the box follows the video again                             | auto: youtube             |
+| YT-07 | **Copy** in the transcript box                     | It reads **Copied**; the clipboard holds every paragraph after its time (`0:00 …`, blank line, `1:00 …`)      | auto: youtube             |
+| YT-08 | **Ask** in the transcript box                      | The Agent panel opens with its input focused                                                                  | auto: youtube             |
+| YT-09 | Play, then ask the Agent "what did they just say?" | The answer is about the lines around the video's time                                                         | you                       |
 
 ## Podcast notes — POD
 
