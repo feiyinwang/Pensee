@@ -262,11 +262,16 @@ one by one, and only when you ask.
   moves the side that isn't the point's own (for a point of neither side, the
   smaller; solutions on a tie) out, right after it, a level up, until the
   top. An idea of the pen's left over one point gives way to it.
-- **Your lines, in your words, short.** Each of your lines is a point of its
-  own, cut to one sentence: filler, hedges and repetition cut, a word or two
-  adjusted at most. Checked in code: a point with more words than your line,
-  a link of yours missing, or more than one word in four that isn't yours is
-  your line as you wrote it. A task's box and a block id stay on their point.
+- **Your lines, in your words, shorter, nothing lost.** Each of your lines is
+  a point of its own, one or two short sentences: only filler, hedges and
+  repeated words cut ("I think", "basically", "really", "the"), a word or two
+  adjusted at most. A line that holds several points keeps the first and
+  puts each other one under it as a point of its own (`parts`, keyed), so
+  none is dropped. Checked in code (`inTheirWords`): the point and its parts
+  together must keep every word the line says but filler (one in six may
+  change), add at most one word in four, not be longer, and keep every link;
+  else the point is your line as you wrote it, whole. A task's box and a
+  block id stay on their point.
   A line you indented under another stays under it unless it plainly belongs
   elsewhere; a line the pen lists on a point past its own (a whole branch on
   its top point) that nothing else places goes under it as you nested it,

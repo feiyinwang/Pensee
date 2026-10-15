@@ -489,9 +489,10 @@ function taskText(input: PenPromptInput): string {
         "MECE at every level and across the whole pyramid: the points side by side are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A line the writer indented under another stays under it, unless it plainly belongs elsewhere.",
         "Problems (causes, obstacles, risks) and solutions (fixes, strategies, steps, what worked) are different kinds: they never sit under the same point. Build them as separate branches side by side, a problem branch and a solution branch, at the top.",
         'Every point starts with a key phrase that says what it is: 1 to 3 words, like "Principle", "Framework", "Problem", "Cause", "Obstacle", "Risk", "Solution", "Strategy", "Step", "What worked", "Example", "Benefit", "Evidence", "Question", "Definition". A problem\'s points are keyed as problems (Problem, Cause, Obstacle, Risk), a solution\'s as solutions (Solution, Strategy, Step, What worked). Put it in "key", not in "text".',
-        'Every line goes in exactly once, as its own point, by its number in "line" (never the lines under it: those are points of their own). Its "text" is that line cut short: one sentence at most, the writer\'s own words with filler, hedges and repetition cut, a word or two adjusted at most. Never add an idea or drop one. Keep every [[link]] and [text](link) as it is.',
+        'Every line goes in exactly once, as its own point, by its number in "line" (never the lines under it: those are points of their own).',
+        'Shorter, nothing lost: every point and every detail of every line stays. Its "text" is that line with only the filler, hedges and repeated words cut ("I think", "basically", "really"), a word or two adjusted at most: one or two short sentences. A line that holds several points keeps the first in "text" and puts each other one in "parts", with its own key; they go under it. Never add an idea, never drop one. Keep every [[link]] and [text](link) as it is.',
         'An idea you add above the lines has no "line": its "text" is one short sentence (at most 15 words) that sums up the points under it, in the writer\'s words where they fit. Only where it sums up two or more points.',
-        'Reply with JSON only: {"points": [{"key": "Principle", "text": "…", "under": [{"key": "Example", "line": 3, "text": "…", "under": [...]}]}]}',
+        'Reply with JSON only: {"points": [{"key": "Principle", "text": "…", "under": [{"key": "Example", "line": 3, "text": "…", "parts": [{"key": "Detail", "text": "…"}], "under": [...]}]}]}',
       ].join("\n");
   }
 }
@@ -903,10 +904,13 @@ export function sourcePartStart(text: string): number | null {
 
 /** A point of an organized outline, under its key phrase (`Principle`,
  *  `Example`…): one of your lines (its index in the lines sent; with a
- *  word-for-word repeat of it, both) in `text`, cut short in your words, or
- *  an idea the pen added that sums up the points under it. */
+ *  word-for-word repeat of it, both) in `text`, cut short in your words; a
+ *  further point of that line (`part`), when it held several; or an idea the
+ *  pen added that sums up the points under it. */
 export type OrganizedPoint =
   | { key: string | null; lines: number[]; text: string; under: OrganizedPoint[] }
+  /** Another point of the same line of yours, in your words, under it. */
+  | { key: string | null; part: string; under: OrganizedPoint[] }
   | { key: string | null; idea: string; under: OrganizedPoint[] };
 
 const LINKS_RE = /\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)/g;
@@ -917,9 +921,21 @@ const KEY_RE = /^\p{L}[\p{L}'’-]*(?: [\p{L}'’-]+){0,2}$/u;
 /** An idea the pen adds is one short sentence. */
 const IDEA_MAX_WORDS = 20;
 
-/** Whether `text` says `lines` in their own words, shorter: no more words
- *  than they had, every link of theirs kept, and at most a word or two that
- *  isn't theirs (one in four). */
+/** What a shortened line may lose: short function words and hedges. */
+const FILLER = new Set(
+  "a an the of to in on at by for as or if is are was were be am it its we us our so do did does done can get got go goes think guess basically actually really just maybe probably kind sort like literally honestly simply quite pretty somehow totally definitely anyway stuff things thing well also still even".split(
+    " ",
+  ),
+);
+
+/** The words a line says that must survive its shortening. */
+const keptWords = (text: string) =>
+  meaningWords(text).filter((w) => !FILLER.has(w) && !FILLER.has(`${w}s`));
+
+/** Whether `text` says `lines` in their own words, shorter and whole: no more
+ *  words than they had, every link of theirs kept, at most a word or two
+ *  that isn't theirs (one in four), and every word they say kept but filler
+ *  and hedges (one in six may change). */
 export function inTheirWords(text: string, lines: readonly string[]): boolean {
   const theirs = lines.map(itemText).join(" ");
   if (!text || wordCount(text) > wordCount(theirs)) return false;
@@ -927,7 +943,11 @@ export function inTheirWords(text: string, lines: readonly string[]): boolean {
   const known = new Set(meaningWords(theirs));
   const words = meaningWords(text);
   const added = words.filter((w) => !known.has(w)).length;
-  return added <= Math.max(1, Math.ceil(words.length / 4));
+  if (added > Math.max(1, Math.ceil(words.length / 4))) return false;
+  const said = new Set(words);
+  const needed = [...new Set(keptWords(theirs))];
+  const lost = needed.filter((w) => !said.has(w)).length;
+  return lost <= Math.floor(needed.length / 6);
 }
 
 /** An `organize` reply, held to its word: every one of `lines` exactly once,
@@ -1002,12 +1022,24 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
         (k) => squash(itemText(lines[k]!)) !== said || blockIdOf(lines[k]!) !== null,
       );
       const text = bodyOf(item?.text, key);
+      // A line that held several points: the rest, each under its key.
+      const parts = (Array.isArray(item?.parts) ? item.parts : []).flatMap((raw) => {
+        const part = (typeof raw === "object" ? raw : { text: raw }) as Record<
+          string,
+          unknown
+        > | null;
+        const partKey = keyOf(part?.key ?? part?.label);
+        const partText = bodyOf(part?.text, partKey);
+        return partText ? [{ key: partKey, part: partText, under: [] as OrganizedPoint[] }] : [];
+      });
+      // Whole, in your words, or your line as you wrote it.
+      const whole = inTheirWords([text, ...parts.map((p) => p.part)].join(" "), [lines[own]!]);
       return [
         {
           key,
           lines: [own],
-          text: inTheirWords(text, [lines[own]!]) ? text : itemText(lines[own]!),
-          under: [...nested(extra), ...under],
+          text: whole ? text : itemText(lines[own]!),
+          under: [...(whole ? parts : []), ...nested(extra), ...under],
         },
       ];
     }
@@ -1035,7 +1067,11 @@ export function organizedLines(
     return `${boxOf(originals[0]!)}${keyed(p as OrganizedPoint, p.text)}${block ? ` ^${block}` : ""}`;
   };
   const write = (p: OrganizedPoint, at: string): string[] => [
-    "idea" in p ? `${at}- ${keyed(p, p.idea)} ^${id()}` : `${at}- ${yours(p)}`,
+    "idea" in p
+      ? `${at}- ${keyed(p, p.idea)} ^${id()}`
+      : "part" in p
+        ? `${at}- ${keyed(p, p.part)}`
+        : `${at}- ${yours(p)}`,
     ...p.under.flatMap((k) => write(k, `${at}  `)),
   ];
   return points.flatMap((p) => write(p, indent));
@@ -1070,7 +1106,7 @@ export function sideOf(key: string | null): PointSide {
 }
 
 const pointText = (p: OrganizedPoint, lines: readonly string[]) =>
-  "idea" in p ? p.idea : (p.text ?? itemText(lines[p.lines[0]!] ?? ""));
+  "idea" in p ? p.idea : "part" in p ? p.part : p.text || itemText(lines[p.lines[0]!] ?? "");
 
 /** The points with problems and solutions side by side under them, as
  *  `Key: text`. The top level has no point over it: both sides may sit there. */

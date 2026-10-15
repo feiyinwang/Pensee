@@ -41,8 +41,8 @@ const NOTES = {
     "- I start too many things at once",
     "- no deadline so it drifts",
     "- the habit app I worked on for 3 weeks, then nothing",
-    "- excitement fades after the first week",
-    "- the boring middle part: auth, settings, edge cases",
+    // Two points in one line: Organize splits it, losing neither.
+    "- I think excitement basically fades after the first week, and then the boring middle part (auth, settings, edge cases) really drags",
     "- I always stall at settings pages",
     "- I don't tell anyone, so no one asks how it's going",
     "- when I pair with a friend I finish",

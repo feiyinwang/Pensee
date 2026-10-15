@@ -733,9 +733,11 @@ describe("Journeys: second pen", function () {
     await key(".", { meta: true });
     await waitForBox();
     await pick("#", { shift: true });
+    const started = Date.now();
     await browser.waitUntil(
       () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
-      { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
+      // Organize asks Sonnet, and once more when the reply is flat or mixed.
+      { timeout: AI_TIMEOUT * 2, timeoutMsg: `no organized outline: ${await barText()}` },
     );
     await key("Escape");
     await waitForDisk(path, (t) => t === before, "Esc should put the lines back exactly");
@@ -747,9 +749,11 @@ describe("Journeys: second pen", function () {
     await selectTo("why does sleep help memory?");
     await key(".", { meta: true });
     await pick("#", { shift: true });
+    const started = Date.now();
     await browser.waitUntil(
       () => browser.execute(() => document.querySelectorAll(".cm-pen-organized").length > 0),
-      { timeout: AI_TIMEOUT, timeoutMsg: `no organized outline: ${await barText()}` },
+      // Organize asks Sonnet, and once more when the reply is flat or mixed.
+      { timeout: AI_TIMEOUT * 2, timeoutMsg: `no organized outline: ${await barText()}` },
     );
     // Under the outline, where the pen wrote it.
     const said = await browser.execute(
@@ -855,6 +859,18 @@ describe("Journeys: second pen", function () {
       const sides = new Set(kids.map(side).filter(Boolean));
       ok(sides.size < 2, `problems and solutions under "${l.trim()}":\n${text}`);
     });
+    // Shorter, nothing lost: the words your lines say are still there, filler aside.
+    const filler = new Set(
+      "about after also basically because been from have just really that then there they this what when where which while with would think guess maybe probably kind sort like things thing".split(
+        " ",
+      ),
+    );
+    const said = new Set(words(text));
+    const needed = [...new Set(words(before))].filter((w) => w.length >= 4 && !filler.has(w));
+    const lost = needed.filter(
+      (w) => !said.has(w) && !said.has(w.replace(/s$/, "")) && !said.has(`${w}s`),
+    );
+    ok(lost.length <= Math.floor(needed.length / 10), `points lost (${lost.join(", ")}):\n${text}`);
     // The pen's ideas sum up what's under them: never a leaf.
     lines.forEach((l, k) => {
       if (!/ \^ai-g-[a-z0-9]{4}$/.test(l)) return;

@@ -674,10 +674,51 @@ describe("organize", () => {
     ]);
   });
 
-  test("your words: a word or two may change, never the idea", () => {
-    expect(inTheirWords("start too many things", ["- I start too many things at once"])).toBe(true);
+  test("your words: only filler goes, a word or two may change, never the idea", () => {
+    expect(
+      inTheirWords("start too many things at once", [
+        "- I think I basically start too many things at once",
+      ]),
+    ).toBe(true);
     expect(inTheirWords("no deadline, so it drifts", ["- no deadline so it drifts"])).toBe(true);
     expect(inTheirWords("procrastination ruins focus", ["- I start too many things"])).toBe(false);
+  });
+
+  test("shorter, nothing lost: a point that drops one of the line's points is the line as written", () => {
+    const line = "- the boring middle part: auth, settings, edge cases, and I always stall there";
+    expect(inTheirWords("the boring middle part", [line])).toBe(false);
+    expect(
+      inTheirWords("boring middle: auth, settings, edge cases; I always stall there", [line]),
+    ).toBe(true);
+    const points = organizeReply(
+      JSON.stringify({ points: [{ key: "Obstacle", line: 1, text: "the boring middle part" }] }),
+      [line],
+    )!;
+    expect(organizedLines(points, [line], "", () => "x")).toEqual([
+      "- Obstacle: the boring middle part: auth, settings, edge cases, and I always stall there",
+    ]);
+  });
+
+  test("a line with several points splits into parts under it, every point kept", () => {
+    const line =
+      "- excitement fades after the first week, and the boring middle (auth, settings) stalls me";
+    const reply = (parts: unknown[]) =>
+      JSON.stringify({
+        points: [{ key: "Cause", line: 1, text: "excitement fades after the first week", parts }],
+      });
+    const split = organizeReply(
+      reply([{ key: "Obstacle", text: "the boring middle (auth, settings) stalls me" }]),
+      [line],
+    )!;
+    expect(organizedLines(split, [line], "", () => "x")).toEqual([
+      "- Cause: excitement fades after the first week",
+      "  - Obstacle: the boring middle (auth, settings) stalls me",
+    ]);
+    // Parts that still drop a point: the line as written, no parts.
+    const short = organizeReply(reply([{ key: "Obstacle", text: "the boring middle" }]), [line])!;
+    expect(organizedLines(short, [line], "", () => "x")).toEqual([
+      "- Cause: excitement fades after the first week, and the boring middle (auth, settings) stalls me",
+    ]);
   });
 
   test("a repeat with its own block id is kept", () => {
