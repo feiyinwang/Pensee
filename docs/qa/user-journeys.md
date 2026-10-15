@@ -428,6 +428,21 @@ your lines in your own words cut short, the ideas above them in the pen's ink
 | PEN-30 | Select a flat list (every line at one level), ⌘., `#` Enter, then Enter | A pyramid of ideas at least 3 levels deep, no level skipped: every point starts with a key phrase (`Principle: …`); your points in your words (a word or two adjusted at most); the pen's ideas (`^ai-g-…`, its ink) each sum up points under them; problems (Cause, Obstacle…) and solutions (Solution, What worked…) never sit under one point; shorter but nothing lost: every word your lines say is still there, filler aside, and a line holding two points becomes two | auto: pen |
 | PEN-31 | Organize `fruit` / apple, banana, blueberry › benefit › types › biomechanical (your example), then Enter | Every level you wrote stays: blueberry under fruit, then its benefit, its types and biomechanical each a level deeper; nothing folded into one line | auto: pen |
 
+## Claude sign-in — AUTH
+
+**Feature:** When the pen (Organize and the rest) or the Agent fails because
+Claude Code is signed out, a popup offers **Sign in**: Claude Code opens the
+browser, and once the writer approves there the popup says Signed in.
+**Spec:** SPECs/claude-sign-in-spec.md
+**Code:** `src/components/claude-sign-in/`, `src/stores/claude-sign-in-store.ts`, `src/lib/agent-stream.ts` (SIGNED_OUT_TEXT), `src/lib/second-pen-agent.ts`, `src/stores/agent-store.ts`, `src-tauri/src/commands/claude_auth.rs`, `src-tauri/src/commands/agent.rs` (claude_command)
+
+| ID      | Journey                                                       | Expected                                                                                                                                  | Check      |
+| ------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| AUTH-01 | ★ Signed out, send the Agent a message; Esc                   | The chat says _Claude is signed out. Sign in, then try again._ (no raw 401 JSON); the popup opens with **Not now `Esc`** · **Sign in `↵`**, keys in it; Esc closes it | auto: auth |
+| AUTH-02 | Signed out, **Sign in**, then **Cancel**                      | The browser opens Claude's sign-in page; the popup says _Finish signing in in your browser…_, same size, buttons in place, with the code field and **Open the sign-in page again**; Cancel closes it and nothing stays signing in | auto: auth |
+| AUTH-03 | Signed out, ⌘. on a line, `#` Enter, **Sign in**, approve in the browser, run Organize again | The popup says _Signed in_ and closes by itself; Organize then works                                                                   | you        |
+| AUTH-04 | Browser shows a code instead of returning: paste it, Continue | Signing in finishes as in AUTH-03                                                                                                           | you        |
+
 ---
 
 ## Template for a new feature

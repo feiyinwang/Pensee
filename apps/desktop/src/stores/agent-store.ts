@@ -10,6 +10,7 @@ import {
   type AgentVideoMoment,
 } from "@/lib/agent-context";
 import { useSettingsStore } from "@/stores/settings-store";
+import { offerClaudeSignIn } from "@/stores/claude-sign-in-store";
 import { collectAgentOpenFiles, collectAgentPeriodNotes } from "@/lib/agent-open-files";
 import { openBookPassages } from "@/lib/book-readers";
 import { flushSave } from "@/lib/save";
@@ -120,12 +121,17 @@ function ensureListeners() {
     if (!run || run.requestId !== payload.requestId) return;
     for (const event of parseAgentLine(payload.line)) {
       useAgentStore.setState((state) => applyEvent(state, event));
+      if (event.kind === "result" && event.isError) offerClaudeSignIn(event.text);
     }
   });
 
   void listen<{ requestId: string; code: number | null; stderr: string }>(
     "agent:exit",
     ({ payload }) => {
+      const { run } = useAgentStore.getState();
+      if (run?.requestId === payload.requestId && !run.cancelled) {
+        offerClaudeSignIn(agentErrorText(lastLine(payload.stderr)));
+      }
       useAgentStore.setState((state) => {
         if (!state.run || state.run.requestId !== payload.requestId) return {};
         if (state.run.cancelled) {

@@ -90,6 +90,23 @@ fn claude_env() -> &'static ClaudeEnv {
     })
 }
 
+/// A `claude` command with the login shell's PATH, or the error to show when
+/// Claude Code isn't installed. The chat, the pen and sign-in all start here.
+pub(crate) fn claude_command() -> Result<Command, AppError> {
+    let env = claude_env();
+    let binary = env.binary.as_ref().ok_or_else(|| {
+        AppError::User(
+            "Claude Code isn't installed. Install it from claude.com/code, then try again."
+                .to_owned(),
+        )
+    })?;
+    let mut command = Command::new(binary);
+    if let Some(path) = &env.path {
+        command.env("PATH", path);
+    }
+    Ok(command)
+}
+
 fn probe_login_path() -> Option<OsString> {
     let shell = std::env::var_os("SHELL").unwrap_or_else(|| "/bin/zsh".into());
     let mut child = Command::new(shell)
@@ -246,14 +263,7 @@ fn ensure_session(
         let _ = existing.child.lock().kill();
     }
 
-    let env = claude_env();
-    let binary = env.binary.as_ref().ok_or_else(|| {
-        AppError::User(
-            "Claude Code isn't installed. Install it from claude.com/code, then try again."
-                .to_owned(),
-        )
-    })?;
-    let mut command = Command::new(binary);
+    let mut command = claude_command()?;
     command
         .args(build_args(
             session_id,
@@ -265,9 +275,6 @@ fn ensure_session(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let Some(path) = &env.path {
-        command.env("PATH", path);
-    }
     let mut child = command.spawn()?;
     let stdin = child
         .stdin
@@ -476,6 +483,21 @@ pub fn agent_reset(
 fn kill_session(app: &tauri::AppHandle, key: &str) {
     let session = app.state::<AgentState>().sessions.lock().remove(key);
     if let Some(session) = session {
+        let _ = session.child.lock().kill();
+    }
+}
+
+/// Kill every window's processes, so the next request starts a fresh Claude
+/// (after signing in: a running one keeps the sign-in it started with).
+pub(crate) fn end_all_sessions(app: &tauri::AppHandle) {
+    let sessions: Vec<_> = app
+        .state::<AgentState>()
+        .sessions
+        .lock()
+        .drain()
+        .map(|(_, session)| session)
+        .collect();
+    for session in sessions {
         let _ = session.child.lock().kill();
     }
 }

@@ -100,6 +100,7 @@ fn attach_window_handlers(app: &tauri::AppHandle, window: &WebviewWindow) {
             // drops on the last `Arc` release, unregistering FSEvents/inotify.
             handle.state::<AppState>().remove(&label);
             commands::agent::close_window_session(&handle, &label);
+            commands::claude_auth::close_window_sign_in(&handle, &label);
         }
         _ => {}
     });
@@ -536,6 +537,7 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol(thumbs::SCHEME, thumbs::handle)
         .manage(AppState::new())
         .manage(commands::agent::AgentState::default())
+        .manage(commands::claude_auth::ClaudeSignInState::default())
         .setup(|app| {
             // Initialize the main window's per-window state (settings layer,
             // pending-open queue). `get_or_create` lazily builds the
@@ -628,6 +630,10 @@ pub fn run() {
             commands::agent::agent_cancel,
             commands::agent::agent_warm,
             commands::agent::agent_reset,
+            commands::claude_auth::claude_auth_status,
+            commands::claude_auth::claude_sign_in,
+            commands::claude_auth::claude_sign_in_code,
+            commands::claude_auth::claude_sign_in_cancel,
             commands::apple_books::read_apple_books_highlights,
             commands::apple_books::save_apple_books_cover,
             commands::books::import_book,

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { offerClaudeSignIn } from "@/stores/claude-sign-in-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { agentModel } from "./agent-models";
@@ -47,8 +48,10 @@ function ensureListeners(): void {
       if (event.kind === "text") request.text += event.text;
       if (event.kind !== "result") continue;
       waiting.delete(payload.requestId);
-      if (event.isError) request.reject(new Error(event.text || "The pen stopped with an error."));
-      else request.resolve(event.text || request.text);
+      if (event.isError) {
+        offerClaudeSignIn(event.text);
+        request.reject(new Error(event.text || "The pen stopped with an error."));
+      } else request.resolve(event.text || request.text);
     }
   });
   void listen<{ requestId: string; code: number | null; stderr: string }>(
@@ -57,11 +60,9 @@ function ensureListeners(): void {
       const request = waiting.get(payload.requestId);
       if (!request) return;
       waiting.delete(payload.requestId);
-      request.reject(
-        new Error(
-          agentErrorText(lastLine(payload.stderr)) || "Claude stopped before the pen finished.",
-        ),
-      );
+      const reason = agentErrorText(lastLine(payload.stderr));
+      offerClaudeSignIn(reason);
+      request.reject(new Error(reason || "Claude stopped before the pen finished."));
     },
   );
 }

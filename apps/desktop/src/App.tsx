@@ -1,4 +1,5 @@
 import { AppLayout } from "./components/app-layout";
+import { ClaudeSignIn } from "./components/claude-sign-in";
 import { CommandPalette } from "./components/command-palette";
 import { Composer } from "./components/composer";
 import { WindowTitle } from "./components/window-title";
@@ -38,6 +39,7 @@ function App() {
       <AppLayout />
       <CommandPalette />
       <Composer />
+      <ClaudeSignIn />
     </>
   );
 }

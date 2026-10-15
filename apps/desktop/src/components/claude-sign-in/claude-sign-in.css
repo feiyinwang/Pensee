@@ -1,0 +1,159 @@
+/* "Sign in to Claude" (SPECs/claude-sign-in-spec.md). The opaque modal card
+   on the modal backdrop: it asks for a decision, so nothing shows through. */
+
+.claude-sign-in-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 22vh 16px 16px;
+}
+
+.claude-sign-in {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  padding: 20px;
+  border-radius: var(--radius-card);
+  outline: none;
+  /* It opens after a failed request, not from a key: a short fade and lift
+     says where it came from. No exit: closing is the writer's own move. */
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    scale var(--motion-base) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+.claude-sign-in-backdrop {
+  transition: opacity var(--motion-base) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .claude-sign-in,
+  .claude-sign-in-backdrop {
+    transition: none;
+  }
+}
+
+.claude-sign-in-title {
+  margin: 0;
+  font-size: var(--font-size-heading-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Two lines in every state, so a one-line message doesn't shrink the card. */
+.claude-sign-in-body {
+  min-height: 2lh;
+  margin: 6px 0 0;
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.claude-sign-in-error {
+  color: var(--text-error);
+}
+
+.claude-sign-in-code {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  visibility: hidden;
+}
+
+.claude-sign-in-code[data-shown] {
+  visibility: visible;
+}
+
+.claude-sign-in-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-field);
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.claude-sign-in-input::placeholder {
+  color: var(--text-muted);
+}
+
+.claude-sign-in-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.claude-sign-in-spacer {
+  flex: 1;
+}
+
+.claude-sign-in-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  border-radius: var(--radius-button);
+  font-size: var(--text-label);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  transition: background-color var(--motion-hover) var(--ease-hover);
+}
+
+.claude-sign-in-button:hover:not(:disabled) {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.claude-sign-in-button:disabled {
+  color: var(--text-muted);
+}
+
+.claude-sign-in-button--primary,
+.claude-sign-in-button--primary:hover:not(:disabled) {
+  background: var(--text-primary);
+  color: var(--surface-primary);
+}
+
+/* The shortcut inside the button: smaller than its label, in the label's own
+   colour (as the composer's ⌘↵). */
+.claude-sign-in-kbd {
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.claude-sign-in-link {
+  padding: 0;
+  font-size: var(--text-label);
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.claude-sign-in-link:hover {
+  color: var(--text-primary);
+}

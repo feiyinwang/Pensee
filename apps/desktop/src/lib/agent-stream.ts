@@ -29,12 +29,12 @@ function fileName(path: unknown): string | null {
 }
 
 /** Claude Code's sign-in failed (expired, revoked or missing): the raw API
- *  error is JSON, so say what to do instead. */
+ *  error is JSON, so say so plainly. This exact text is also what opens the
+ *  sign-in popup (`offerClaudeSignIn`). */
 const SIGNED_OUT_RE = /\bauthenticat|\b401\b|oauth|not logged in|\/login\b/i;
-export const SIGNED_OUT_TEXT =
-  "Claude is signed out. Run `claude` in Terminal, type /login, then try again.";
+export const SIGNED_OUT_TEXT = "Claude is signed out. Sign in, then try again.";
 
-/** An error from Claude Code, readable: a sign-in failure says how to fix it. */
+/** An error from Claude Code, readable: a sign-in failure says so. */
 export function agentErrorText(text: string): string {
   return SIGNED_OUT_RE.test(text) ? SIGNED_OUT_TEXT : text;
 }
