@@ -32,9 +32,9 @@ ones a change can reach, and any that fails is fixed before the work is done.
 
 **Feature:** Pensée opens on the last workspace (a folder of markdown files),
 restores its tabs, and can open more workspaces in their own windows or a single
-file in a compact window. When a workspace window first paints, the brand ¶
-is written on a splash with `PENSÉE` under it, then the splash dissolves into
-the app.
+file in a compact window. When a workspace window first paints, the app icon
+settles in on a splash, its ¶ and `PENSÉE` are written, then the splash
+dissolves into the app; a click or a key skips to the dissolve.
 **Spec:** SPECs/multi-window-spec.md, SPECs/compact-window-spec.md, SPECs/app-entrance-spec.md
 **Code:** `src-tauri/src/commands/workspace.rs`, `src-tauri/src/state.rs`, `src/stores/workspace-store.ts`, `src/components/welcome/`, `src/components/compact-file-layout.tsx`, `src/components/app-layout.tsx`, `src/components/app-splash.tsx`, `src/App.css`
 
@@ -44,7 +44,8 @@ the app.
 | WS-02 | Quit with two notes open, relaunch                   | Both tabs come back, the same one in front                | manual     |
 | WS-03 | With no workspace, click **Add folder** and pick one | The folder opens as the workspace                         | you        |
 | WS-04 | Open a single `.md` file from Finder                 | A compact window opens on it: no sidebar, no tab strip    | you        |
-| WS-05 | Launch the app (Reduce motion off)                   | The ¶ and `PENSÉE` are written, then the splash is gone and nothing stays applied | auto: workspace |
+| WS-05 | Launch the app (Reduce motion off)                   | The icon, its ¶ and `PENSÉE` come in, then the splash is gone and nothing stays applied | auto: workspace |
+| WS-06 | Press a key while the splash is writing              | The writing jumps to its end and the splash starts fading at once | auto: workspace |
 
 ## Sidebar — SB
 

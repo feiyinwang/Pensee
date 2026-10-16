@@ -113,17 +113,22 @@
   --motion-hover: 50ms;
   --ease-hover: ease;
   --ease-spring: var(--ease-out);
-  /* The launch entrance ("Stroke", SPECs/app-entrance-spec.md): the ¶ is
-     written left to right, the wordmark after it, both hold, then the splash
-     dissolves into the app. Longer than --motion-settle on purpose; it plays
-     once per window and nothing waits on it. */
-  --enter-mark-size: 84px;
-  --motion-enter-write: 560ms;
-  --enter-word-delay: 200ms;
-  --enter-hold: 360ms;
-  --motion-enter-reveal: 380ms;
-  /* In-out: the stroke is drawn at a pen's pace, not thrown. */
-  --ease-enter: cubic-bezier(0.65, 0, 0.35, 1);
+  /* The launch entrance ("Icon, written", SPECs/app-entrance-spec.md): the
+     app icon settles in, its ¶ is written, PENSÉE is written under it, a
+     short hold, then the splash fades into the app (1.28s in all). Longer
+     than --motion-settle on purpose: it plays once per window, and a click or
+     a key skips straight to the reveal. */
+  --enter-icon-size: 128px;
+  --motion-enter-icon: 240ms;
+  --enter-mark-delay: 160ms;
+  --motion-enter-write: 480ms;
+  --enter-word-delay: 320ms;
+  --enter-hold: 200ms;
+  --motion-enter-reveal: 280ms;
+  /* Writing is in-out, at a pen's pace; the reveal is the app entering, so
+     it eases out and runs faster than the writing. */
+  --ease-enter-write: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-enter-reveal: cubic-bezier(0.165, 0.84, 0.44, 1);
   --enter-reveal-at: calc(var(--enter-word-delay) + var(--motion-enter-write) + var(--enter-hold));
 
   /* Derived background — applied once on body. Editor and settings pages
@@ -397,13 +402,14 @@ body.tree-dragging [data-tree-path] {
   }
 }
 
-/* App entrance ("Stroke", SPECs/app-entrance-spec.md). The splash
-   (`AppSplash`) covers the window on the canvas ground: the ¶ is written left
-   to right, then the wordmark under it, and at --enter-reveal-at the splash
-   fades out while the shell (.app-enter) settles from 98.5% to full size.
-   The splash ignores the pointer, so clicks reach the app throughout. The
-   shell's fill is `backwards`, so no transform stays on it afterwards (one
-   would make it the containing block for fixed-position popovers). */
+/* App entrance ("Icon, written", SPECs/app-entrance-spec.md). The splash
+   (`AppSplash`) covers the window on the canvas ground: the app icon settles
+   in, its ¶ is written left to right, then the wordmark under it, and at
+   --enter-reveal-at the splash fades out while the shell (.app-enter) settles
+   from 98.5% to full size. The splash ignores the pointer, so clicks reach
+   the app throughout. The shell's fill is `backwards`, so no transform stays
+   on it afterwards (one would make it the containing block for
+   fixed-position popovers). */
 .app-splash {
   position: fixed;
   inset: 0;
@@ -415,34 +421,66 @@ body.tree-dragging [data-tree-path] {
   color: var(--color-brand-mark);
   pointer-events: none;
   user-select: none;
-  animation: app-splash-out var(--motion-enter-reveal) var(--ease-enter) var(--enter-reveal-at) both;
+  animation: app-splash-out var(--motion-enter-reveal) var(--ease-enter-reveal)
+    var(--enter-reveal-at) both;
 }
 
-/* The stacked lockup (docs/brand.md): mark over wordmark, which scales with it. */
+/* The icon over the wordmark, which scales with it. */
 .app-splash-lockup {
   display: grid;
   justify-items: center;
-  gap: calc(var(--enter-mark-size) * 0.36);
+  gap: calc(var(--enter-icon-size) * 0.3);
 }
 
-/* Display cut: the splash draws it well above 48px. */
+/* The app icon as the Dock shows it (assets/brand/app-icon.svg): an Ink
+   squircle (rx 185 on its 824 body) falling off from the top, the small-cut
+   ¶ in Cream at 64.1% of its width. Its colours are the icon's in both
+   themes. */
+.app-splash-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--enter-icon-size);
+  aspect-ratio: 1;
+}
+
+.app-splash-tile {
+  position: absolute;
+  inset: 0;
+  border-radius: 22.45%;
+  background: linear-gradient(var(--color-app-icon-ground-top), var(--color-app-icon-ground));
+  box-shadow: var(--shadow-app-icon);
+  animation: app-splash-pop var(--motion-enter-icon) var(--ease-out) both;
+}
+
 .app-splash-mark {
-  width: var(--enter-mark-size);
+  position: relative;
+  width: 64.1%;
   height: auto;
-  animation: app-splash-write var(--motion-enter-write) var(--ease-enter) both;
+  color: var(--color-app-icon-mark);
+  animation: app-splash-write var(--motion-enter-write) var(--ease-enter-write)
+    var(--enter-mark-delay) both;
 }
 
 /* `PENSÉE`, the one place the app sets capitals (docs/brand.md). The
    negative margin cancels the tracking after the last letter so the word
-   centres under the mark. */
+   centres under the icon. */
 .app-splash-wordmark {
   font-family: var(--font-title);
   font-optical-sizing: auto;
-  font-size: calc(var(--enter-mark-size) * 0.34);
+  font-size: calc(var(--enter-icon-size) * 0.2);
   letter-spacing: 0.2em;
   margin-right: -0.2em;
-  animation: app-splash-write var(--motion-enter-write) var(--ease-enter) var(--enter-word-delay)
-    both;
+  animation: app-splash-write var(--motion-enter-write) var(--ease-enter-write)
+    var(--enter-word-delay) both;
+}
+
+@keyframes app-splash-pop {
+  from {
+    opacity: 0;
+    scale: 0.96;
+    filter: blur(2px);
+  }
 }
 
 @keyframes app-splash-write {
@@ -468,7 +506,8 @@ body.tree-dragging [data-tree-path] {
 }
 
 .app-enter {
-  animation: app-enter var(--motion-enter-reveal) var(--ease-enter) var(--enter-reveal-at) backwards;
+  animation: app-enter var(--motion-enter-reveal) var(--ease-enter-reveal) var(--enter-reveal-at)
+    backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

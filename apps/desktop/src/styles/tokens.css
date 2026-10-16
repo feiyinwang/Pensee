@@ -57,6 +57,8 @@
   /* The brand's two colours (docs/brand.md): the ¶ and the wordmark only. */
   --brand-ink: #0b0b0b;
   --brand-cream: #ece7dc;
+  /* The app icon's Ink body falls off from this at the top (docs/brand.md). */
+  --brand-ink-raised: #1e1e1e;
 
   /* Library cover art: a paper stock and ten printed tones (bg / fg). They
      are a picture of a book, not chrome, so they do not follow the theme. */
@@ -138,6 +140,7 @@
   --shadow-lift-lg: 0 24px 48px -16px rgb(0 0 0 / 35%);
   --shadow-sheet: 0 2px 8px -4px rgb(0 0 0 / 20%);
   --shadow-cover: 0 1px 2px rgb(0 0 0 / 12%), 0 6px 16px -6px rgb(0 0 0 / 25%);
+  --shadow-tile: 0 0 0 1px rgb(0 0 0 / 6%), 0 5px 13px rgb(0 0 0 / 18%);
   --shadow-cover-paper:
     0 0 0 1px rgb(0 0 0 / 6%), 0 1px 2px rgb(0 0 0 / 10%), 0 6px 16px -6px rgb(0 0 0 / 20%);
   --shadow-paper-lift: 0 1px 2px rgb(0 0 0 / 18%), 0 18px 40px -12px rgb(0 0 0 / 45%);
@@ -206,6 +209,11 @@
   /* The brand mark where the app draws it (the launch splash): Cream on dark
      grounds, Ink on light ones. Never the accent (docs/brand.md). */
   --color-brand-mark: var(--brand-cream);
+  /* The app icon drawn in the window: its own colours in both themes, as in
+     the Dock (assets/brand/app-icon.svg). */
+  --color-app-icon-ground: var(--brand-ink);
+  --color-app-icon-ground-top: var(--brand-ink-raised);
+  --color-app-icon-mark: var(--brand-cream);
 
   /* Text. Ratios are WCAG on the ground / the raised grey. */
   --color-text-primary: var(--fg-base);
@@ -343,6 +351,8 @@
 
   /* Shadows, by role. */
   --shadow-card: var(--shadow-1);
+  /* The app icon drawn in the window (the launch splash). */
+  --shadow-app-icon: var(--shadow-tile);
   --shadow-popover: var(--shadow-2);
   --shadow-overlay: var(--shadow-3);
   --shadow-surface: var(--shadow-4);

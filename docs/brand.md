@@ -183,7 +183,10 @@ See [`SPECs/type-scale-spec.md`](../SPECs/type-scale-spec.md).
 - the small cut in Cream, centred, about 56% of the body's height.
 
 Every platform icon in `apps/desktop/src-tauri/icons/` and the website favicon
-are generated from the PNG. The desktop app has no favicon: its webview never
+are generated from the PNG. The app also draws the icon itself, in CSS, on
+the launch splash (`.app-splash-icon` in `App.css`,
+[SPECs/app-entrance-spec.md](../SPECs/app-entrance-spec.md)): change the
+icon's geometry or colours there too. The desktop app has no favicon: its webview never
 shows one, and the Dock and window take the platform icons. To change the icon:
 
 ```bash

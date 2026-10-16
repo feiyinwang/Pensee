@@ -4,7 +4,7 @@
 
 - **# Organize** now builds understanding instead of handing your writing back. It splits what you selected into topics, and under each writes a one-sentence **Theory** (what you can now believe, beyond this one case), **How it works**, **Rules** for next time and **Open** questions, in the pen's ink. Your own words stay exactly as you wrote them under **Evidence**. At the top of a note each topic is a heading; inside a list it is a bold item.
 - Settings → Agent now has a **Claude** row that says whether Claude is signed in, so you no longer find out only when Organize or the Agent fails. Signed out, **Sign in** opens the sign-in popup and your browser, as after a failed request. Signed in, **Sign out** signs Claude Code out on this Mac (Terminal too), and the next pen or Agent request offers to sign in again. The row checks again each time Settings opens and after you sign in.
-- Opening Pensée now writes its ¶ on the page, stroke by stroke, with PENSÉE under it, then the page dissolves into your notes, in about a second and a half. Clicks already reach your notes while it plays. With **Reduce motion** on in macOS, the window appears still. This replaces yesterday's quick fade.
+- Opening Pensée now shows its app icon, the one in your Dock, on the page: the icon settles in, its ¶ is written in, PENSÉE is written under it, and the page dissolves into your notes, in about a second and a quarter. Click or press any key and it goes straight to your notes. With **Reduce motion** on in macOS, the window appears still.
 
 ## 2026-10-15
 
