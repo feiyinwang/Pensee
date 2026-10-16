@@ -2,6 +2,7 @@
 
 ## 2026-10-16
 
+- Board sections: double-click a section's name to rename it right there, and press Enter when done. Select a section and pick **Section colour** in the bar above it to tint it; the name and edge take the colour too. Dragging a section by its name now carries everything inside it, including cards you made before drawing the section around them.
 - With **Import Highlights** on in Settings → Apple Books, Pensée no longer makes macOS ask "access data from other apps" at every launch. macOS never keeps that answer, so Pensée now checks Apple Books by itself only once it has Full Disk Access (System Settings → Privacy & Security), which macOS does keep. Until then it waits and says so once, with **Open Settings**; **Import Apple Books Highlights** in the command palette still works any time.
 - Boards no longer have the **Sticky note** and **Mind map** tools, and N and M no longer pick them. Sticky notes and mind maps already on your boards stay and still edit as before.
 - Pensée built on this Mac now keeps your answers to macOS privacy prompts, like "access data from other apps" for Apple Books highlights. Allow once and an update no longer asks again on first launch. Each Mac signs its builds with its own signing identity, made once in your Library; no key or password is in the repo or the app.

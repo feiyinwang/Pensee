@@ -30,8 +30,11 @@ export interface SelectionSummary {
   count: number;
   /** Shape kind switcher — shapes only. */
   shapeKind?: ShapeKind;
-  /** Fill — shapes. */
+  /** Fill — shapes; a section's tint when no shape is selected. */
   fill?: ColorToken;
+  /** Every selected element that takes a fill is a section: the control is
+   *  named for it. */
+  sectionFill?: true;
   /** Paper colour — sticky notes. */
   sticky?: StickyColor;
   /** Border / line — shapes and connectors. */
@@ -62,9 +65,13 @@ export function summarizeSelection(els: BoardEl[], scene?: BoardScene): Selectio
   if (scene && isMind(topic)) summary.branch = branchColor(scene, topic);
 
   const shape = els.find(isShape);
+  const section = els.find((el) => el.t === "frame");
   if (shape) {
     summary.shapeKind = shape.t;
     summary.fill = shape.st.f;
+  } else if (section?.t === "frame") {
+    summary.fill = section.c ?? "none";
+    summary.sectionFill = true;
   }
 
   const sticky = els.find((el) => el.t === "sticky");
@@ -110,6 +117,15 @@ export function applyBranchColor(scene: BoardScene, el: BoardEl, c: ColorToken):
     node = parent;
   }
   node.c = c;
+}
+
+/** Shapes take it as their fill, sections as their tint ("none" is plain grey). */
+export function applyFill(el: BoardEl, c: ColorToken): void {
+  if (isShape(el)) el.st.f = c;
+  else if (el.t === "frame") {
+    if (c === "none") delete el.c;
+    else el.c = c;
+  }
 }
 
 export function applyTextColor(el: BoardEl, c: ColorToken): void {

@@ -10,15 +10,6 @@
 
 import { type BoardEl, type BoardScene, setTextOf, textOf } from "./board-model";
 
-export function searchableText(el: BoardEl): string {
-  return el.t === "frame" ? el.name : textOf(el);
-}
-
-function setSearchableText(el: BoardEl, text: string): void {
-  if (el.t === "frame") el.name = text || "Section";
-  else setTextOf(el, text);
-}
-
 function literal(query: string): RegExp {
   return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
 }
@@ -32,17 +23,17 @@ export function countIn(text: string, query: string): number {
 export function findMatches(scene: BoardScene, query: string): string[] {
   if (!query.trim()) return [];
   return scene.els
-    .filter((el) => countIn(searchableText(el), query) > 0)
+    .filter((el) => countIn(textOf(el), query) > 0)
     .sort((a, b) => a.y - b.y || a.x - b.x)
     .map((el) => el.id);
 }
 
 /** Replaces every occurrence in one element. Returns how many it replaced. */
 export function replaceInElement(el: BoardEl, query: string, replacement: string): number {
-  const text = searchableText(el);
+  const text = textOf(el);
   const n = countIn(text, query);
   if (n)
-    setSearchableText(
+    setTextOf(
       el,
       text.replace(literal(query), () => replacement),
     );

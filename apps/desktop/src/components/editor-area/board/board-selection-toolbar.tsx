@@ -284,7 +284,13 @@ function Toolbar({
     groups.push(
       <Menu
         key="fill"
-        label={s.sticky && s.fill === undefined ? "Note colour" : "Fill"}
+        label={
+          s.sticky && s.fill === undefined
+            ? "Note colour"
+            : s.sectionFill
+              ? "Section colour"
+              : "Fill"
+        }
         icon={
           <span
             className={styles.fillDot}
@@ -296,7 +302,7 @@ function Toolbar({
         width={236}
       >
         {s.fill !== undefined && (
-          <Section title="Fill">
+          <Section title={s.sectionFill ? "Section colour" : "Fill"}>
             <PaletteSwatches kind="fill" value={s.fill} onPick={actions.setFill} />
           </Section>
         )}

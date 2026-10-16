@@ -2,12 +2,18 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vite-plus/test";
 import {
   applyAlign,
+  applyFill,
   applyFontSize,
   applyTextColor,
   summarizeSelection,
 } from "../src/components/editor-area/board/board-selection";
 import { arcTokenNames, scopeArcFoundation } from "../src/components/editor-area/board/arc-tokens";
-import { parseBoard, serializeBoard } from "../src/components/editor-area/board/board-model";
+import {
+  parseBoard,
+  serializeBoard,
+  setTextOf,
+  textOf,
+} from "../src/components/editor-area/board/board-model";
 
 const HEADER = '{"v":1,"vp":{"x":0,"y":0,"zoom":1}}';
 const els = (...lines: string[]) => parseBoard([HEADER, ...lines].join("\n")).scene.els;
@@ -92,5 +98,44 @@ describe("scopeArcFoundation", () => {
 
   test("finds the token names Arc defines", () => {
     expect(arcTokenNames(css)).toEqual(expect.arrayContaining(["--accent", "--surface-raised"]));
+  });
+});
+
+const SECTION = '{"id":"f1","t":"frame","x":0,"y":0,"w":400,"h":300,"name":"Plan"}';
+
+describe("sections", () => {
+  test("a section offers its colour, named for it, and starts plain", () => {
+    const s = summarizeSelection(els(SECTION))!;
+    expect(s.fill).toBe("none");
+    expect(s.sectionFill).toBe(true);
+  });
+
+  test("with a shape selected too, the control is the shape's fill", () => {
+    const s = summarizeSelection(els(SECTION, SHAPE))!;
+    expect(s.fill).toBe("blue");
+    expect(s.sectionFill).toBeUndefined();
+  });
+
+  test("a section's colour is kept in the file; none clears it", () => {
+    const { scene } = parseBoard([HEADER, SECTION].join("\n"));
+    applyFill(scene.els[0], "green-soft");
+    const [back] = parseBoard(serializeBoard(scene)).scene.els;
+    expect(back.t === "frame" && back.c).toBe("green-soft");
+    applyFill(back, "none");
+    expect(back.t === "frame" && "c" in back).toBe(false);
+  });
+
+  test("an unknown colour in the file is dropped", () => {
+    const [section] = els(SECTION.replace('"name"', '"c":"url(x)","name"'));
+    expect(section.t === "frame" && section.c).toBeUndefined();
+  });
+
+  test("a section's name is its text; an empty name falls back to Section", () => {
+    const [section] = els(SECTION);
+    expect(textOf(section)).toBe("Plan");
+    setTextOf(section, "  Launch  ");
+    expect(textOf(section)).toBe("Launch");
+    setTextOf(section, "   ");
+    expect(textOf(section)).toBe("Section");
   });
 });

@@ -14,6 +14,7 @@ import {
   type BoardScene,
   type ColorToken,
   type DrawEl,
+  type FrameEl,
   type LinkerEl,
   type MindEl,
   type ShapeEl,
@@ -742,15 +743,29 @@ function renderImage(
   g.append(img);
 }
 
-function renderFrame(g: SVGGElement, el: BoardEl & { name: string }): void {
+/** A tinted section is its hue thinned over the canvas, so the dot grid still
+ *  shows through as it does through the plain grey one. A fill swatch is the
+ *  `-soft` token; the tint is worked from its full hue. */
+function frameHue(el: FrameEl): string | null {
+  if (!el.c) return null;
+  return colorVar(el.c.endsWith("-soft") ? (el.c.slice(0, -5) as ColorToken) : el.c);
+}
+
+/** The section name's colour, shared with the field that renames it. */
+export function frameTitleColor(el: FrameEl): string {
+  return frameHue(el) ?? "var(--wr-board-muted)";
+}
+
+function renderFrame(g: SVGGElement, el: FrameEl): void {
+  const hue = frameHue(el);
   g.append(
     svgEl("rect", {
       x: 0,
       y: 0,
       width: Math.max(el.w, 0),
       height: Math.max(el.h, 0),
-      fill: "var(--wr-board-frame-bg)",
-      stroke: "var(--wr-board-frame-edge)",
+      fill: hue ? `color-mix(in srgb, ${hue} 8%, transparent)` : "var(--wr-board-frame-bg)",
+      stroke: hue ? `color-mix(in srgb, ${hue} 45%, transparent)` : "var(--wr-board-frame-edge)",
       "stroke-width": 1,
     }),
   );
@@ -759,7 +774,7 @@ function renderFrame(g: SVGGElement, el: BoardEl & { name: string }): void {
     y: -6,
     "font-size": 14,
     "font-family": BOARD_FONT,
-    fill: "var(--wr-board-muted)",
+    fill: frameTitleColor(el),
     "dominant-baseline": "auto",
   });
   label.textContent = el.name;
@@ -877,7 +892,7 @@ export function renderElement(el: BoardEl, ctx: RenderContext): SVGGElement {
   else if (el.t === "sticky") renderSticky(g, el as never);
   else if (el.t === "text") renderText(g, el as never);
   else if (el.t === "image") renderImage(g, el as never, ctx);
-  else if (el.t === "frame") renderFrame(g, el as never);
+  else if (el.t === "frame") renderFrame(g, el);
   else if (el.t === "mind") renderMind(g, el, ctx);
   else if (el.t === "draw") renderDraw(g, el);
   else if (isShape(el)) renderShape(g, el);

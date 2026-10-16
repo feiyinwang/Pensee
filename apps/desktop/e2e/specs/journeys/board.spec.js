@@ -65,29 +65,87 @@ function installBoardDrag() {
 }
 
 async function openDockBoard() {
-  await openNote("Dock board");
-  const card = await $(".wr-board-card");
+  await openBoard("Dock board", "a1", "b1");
+}
+
+/** Opens `note`'s board full screen and waits for it to settle; `last` is an
+ *  element that shows once the scene is drawn, `still` one that stops moving
+ *  once the board has fitted itself to the window. */
+async function openBoard(note, still, last) {
+  // A board left open full screen covers the note: close it first (Escape
+  // clears a selection, then closes the board).
+  await browser.execute(() => {
+    const host = document.querySelector(".wr-board-fullscreen .wr-board-host");
+    for (let i = 0; i < 3 && host?.isConnected; i++) {
+      host.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    }
+  });
+  await $(".wr-board-fullscreen").waitForExist({ timeout: 5_000, reverse: true });
+  await openNote(note);
+  // A board not yet opened previews as its fence (a card to click); once
+  // opened it is a `.board.svg` image with an **Open board** button.
+  const card = await $(".wr-board-card, .wr-board-image");
   await card.waitForExist({ timeout: 10_000 });
-  await card.click();
-  await $('.wr-board-fullscreen [data-el="b1"]').waitForExist({ timeout: 10_000 });
+  if ((await card.getAttribute("class")).includes("wr-board-image")) {
+    await browser.execute(() => {
+      const open = [...document.querySelectorAll(".wr-board-image-open")].find(
+        (b) => b.textContent === "Open board",
+      );
+      open.click();
+    });
+  } else await card.click();
+  await $(`.wr-board-fullscreen [data-el="${last}"]`).waitForExist({ timeout: 10_000 });
   // The board fits itself to the window as it opens (its is-open class waits
   // on an animation frame, which the hidden window doesn't run): wait until
   // the cards stop moving.
   let fitted = "";
   await browser.waitUntil(
     async () => {
-      const now = await browser.execute(() =>
-        JSON.stringify(
-          document.querySelector('.wr-board-fullscreen [data-el="a1"]').getBoundingClientRect(),
-        ),
+      const now = await browser.execute(
+        (id) =>
+          JSON.stringify(
+            document
+              .querySelector(`.wr-board-fullscreen [data-el="${id}"]`)
+              .getBoundingClientRect(),
+          ),
+        still,
       );
-      const still = now === fitted;
+      const settled = now === fitted;
       fitted = now;
-      return still;
+      return settled;
     },
     { timeout: 10_000, interval: 250, timeoutMsg: "the board never settled after opening" },
   );
   await browser.execute(installBoardDrag);
+}
+
+/** The board file behind a note's board line, with its scene unescaped. */
+async function boardFile(root, note) {
+  const text = await invoke("read_file", { path: `${root}/Notes/${note}.md` });
+  // A path with spaces is written in <…>.
+  const rel = /\]\(<?([^)>]+\.board\.svg)>?\)/.exec(text.value?.content ?? "")?.[1];
+  if (!rel) return "";
+  const file = await invoke("read_file", { path: `${root}/Notes/${decodeURI(rel)}` });
+  return (file.value?.content ?? "").replaceAll("&quot;", '"');
+}
+
+/** Where the section's title strip is on screen: just above its box. */
+function sectionTitlePoint(id) {
+  const box = document
+    .querySelector(`.wr-board-fullscreen [data-el="${id}"] rect`)
+    .getBoundingClientRect();
+  return { x: box.left + 12, y: box.top - 8 };
+}
+
+async function openSectionBoard() {
+  await openBoard("Section board", "s1", "f1");
+  await browser.execute(() => {
+    const svg = document.querySelector(".wr-board-fullscreen svg.wr-board-svg");
+    svg.setPointerCapture = () => {};
+    svg.releasePointerCapture = () => {};
+  });
 }
 
 describe("Journeys: boards", function () {
@@ -196,5 +254,150 @@ describe("Journeys: boards", function () {
     });
     ok(tools.t === "text", `T picked ${tools.t}, not Text`);
     ok(tools.n === "select" && tools.m === "select", `N and M picked ${tools.n} and ${tools.m}`);
+  });
+
+  it("BRD-09 double-clicking a section's name renames it in place", async function () {
+    await openSectionBoard();
+    const field = await browser.execute(
+      (p) => {
+        document
+          .querySelector(".wr-board-fullscreen svg.wr-board-svg")
+          .dispatchEvent(
+            new MouseEvent("dblclick", { bubbles: true, clientX: p.x, clientY: p.y, detail: 2 }),
+          );
+        const area = document.querySelector(".wr-board-fullscreen .wr-board-text-editor");
+        return area ? { value: area.value, top: area.getBoundingClientRect().top } : null;
+      },
+      await browser.execute(sectionTitlePoint, "f1"),
+    );
+    ok(field, "no field opened on the section's name");
+    ok(field.value === "Plan", `the field holds "${field.value}", not the name`);
+
+    const title = await browser.execute(() => {
+      const area = document.querySelector(".wr-board-fullscreen .wr-board-text-editor");
+      area.value = "Launch";
+      area.dispatchEvent(new Event("input", { bubbles: true }));
+      area.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+      );
+      return {
+        open: !!document.querySelector(".wr-board-fullscreen .wr-board-text-editor"),
+        text: document.querySelector('.wr-board-fullscreen [data-el="f1"] [data-frame-title]')
+          ?.textContent,
+      };
+    });
+    ok(!title.open, "Enter left the field open");
+    ok(title.text === "Launch", `the section reads "${title.text}"`);
+    await browser.waitUntil(
+      async () => /"id":"f1"[^}]*"name":"Launch"/.test(await boardFile(root, "Section board")),
+      {
+        timeout: 10_000,
+        timeoutMsg: "the new name never reached the board file",
+      },
+    );
+  });
+
+  it("BRD-10 a selected section takes a colour from the toolbar", async function () {
+    if (!(await $('.wr-board-fullscreen [data-el="f1"]').isExisting())) await openSectionBoard();
+    await browser.execute(
+      (p) => {
+        const svg = document.querySelector(".wr-board-fullscreen svg.wr-board-svg");
+        for (const type of ["pointerdown", "pointerup"]) {
+          svg.dispatchEvent(
+            new PointerEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 1,
+              pointerType: "mouse",
+              isPrimary: true,
+              button: 0,
+              buttons: type === "pointerup" ? 0 : 1,
+              clientX: p.x,
+              clientY: p.y,
+            }),
+          );
+        }
+      },
+      await browser.execute(sectionTitlePoint, "f1"),
+    );
+    const trigger = await $('.wr-board-fullscreen button[aria-label="Section colour"]');
+    await trigger.waitForExist({ timeout: 5_000 });
+    // Radix's popover (unlike its menus) opens on click.
+    await browser.execute(() =>
+      document.querySelector('.wr-board-fullscreen button[aria-label="Section colour"]').click(),
+    );
+    const green = await $('[aria-label="Fill: Green"]');
+    await green.waitForExist({ timeout: 5_000 });
+    await green.click();
+    const fill = await browser.execute(
+      () =>
+        document.querySelector('.wr-board-fullscreen [data-el="f1"] rect')?.getAttribute("fill") ??
+        "",
+    );
+    ok(/wr-board-green/.test(fill), `the section is filled with ${fill}, not green`);
+    // Close the colour popover (Radix listens for Escape on the document).
+    await browser.execute(() =>
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+    );
+    await browser.waitUntil(
+      async () => /"id":"f1"[^}]*"c":"green-soft"/.test(await boardFile(root, "Section board")),
+      {
+        timeout: 10_000,
+        timeoutMsg: "the section's colour never reached the board file",
+      },
+    );
+  });
+
+  it("BRD-11 dragging a section by its name carries everything inside it", async function () {
+    await openSectionBoard();
+    const moved = await browser.execute(
+      (p) => {
+        const svg = document.querySelector(".wr-board-fullscreen svg.wr-board-svg");
+        const where = (id) =>
+          document.querySelector(`.wr-board-fullscreen [data-el="${id}"]`).getBoundingClientRect();
+        const before = Object.fromEntries(["f1", "s1", "s2", "out"].map((id) => [id, where(id)]));
+        const send = (type, x, y) =>
+          svg.dispatchEvent(
+            new PointerEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 1,
+              pointerType: "mouse",
+              isPrimary: true,
+              button: 0,
+              buttons: type === "pointerup" ? 0 : 1,
+              clientX: x,
+              clientY: y,
+            }),
+          );
+        send("pointerdown", p.x, p.y);
+        send("pointermove", p.x + 120, p.y + 90);
+        send("pointerup", p.x + 120, p.y + 90);
+        const shift = (id) => {
+          const now = where(id);
+          return [Math.round(now.left - before[id].left), Math.round(now.top - before[id].top)];
+        };
+        return { f1: shift("f1"), s1: shift("s1"), s2: shift("s2"), out: shift("out") };
+      },
+      await browser.execute(sectionTitlePoint, "f1"),
+    );
+    ok(moved.f1[0] !== 0 || moved.f1[1] !== 0, "the section did not move");
+    for (const id of ["s1", "s2"]) {
+      ok(
+        Math.abs(moved[id][0] - moved.f1[0]) <= 1 && Math.abs(moved[id][1] - moved.f1[1]) <= 1,
+        `${id} moved ${moved[id]} while the section moved ${moved.f1}`,
+      );
+    }
+    ok(moved.out[0] === 0 && moved.out[1] === 0, `the card outside moved ${moved.out}`);
+    await browser.waitUntil(
+      async () => {
+        const svg = await boardFile(root, "Section board");
+        return (
+          /"id":"s1"[^}]*"fr":"f1"/.test(svg) &&
+          !/"id":"s1","t":"roundRect","x":60,"y":100/.test(svg)
+        );
+      },
+      { timeout: 10_000, timeoutMsg: "the moved cards never reached the board file" },
+    );
   });
 });

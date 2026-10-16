@@ -113,6 +113,22 @@ NOTES["Notes/Dock board.md"] = [
   "",
 ].join("\n");
 
+// A section ("Plan", f1) drawn around two joined cards after they were made,
+// so the cards carry no `fr`, plus a card outside it (BRD-09..11).
+NOTES["Notes/Section board.md"] = [
+  "# Section board",
+  "",
+  "```board",
+  '{"v":1,"vp":{"x":0,"y":0,"zoom":1}}',
+  '{"id":"s1","t":"roundRect","x":60,"y":100,"w":180,"h":90,"st":{"s":"blue","f":"blue-soft"},"lb":{"tx":"Idea"}}',
+  '{"id":"s2","t":"roundRect","x":400,"y":100,"w":180,"h":90,"st":{"s":"blue","f":"blue-soft"},"lb":{"tx":"Draft"}}',
+  '{"id":"l1","t":"arrow","x":240,"y":145,"w":160,"h":0,"pts":[[0,0],[160,0]],"b1":{"el":"s1","fx":0,"gap":0},"b2":{"el":"s2","fx":0,"gap":0}}',
+  '{"id":"out","t":"roundRect","x":900,"y":100,"w":180,"h":90,"st":{"s":"blue","f":"blue-soft"},"lb":{"tx":"Elsewhere"}}',
+  '{"id":"f1","t":"frame","x":0,"y":0,"w":700,"h":300,"name":"Plan"}',
+  "```",
+  "",
+].join("\n");
+
 // A note as long as a real working draft (about 2,000 lines of headings,
 // prose, lists, tasks and links), so the speed journeys (PERF in
 // docs/qa/performance.md) time typing and opening on a note that can be slow,

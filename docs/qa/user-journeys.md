@@ -230,8 +230,10 @@ setting (workspace root when blank) and is reached from ⌘T, the sidebar's
 ## Boards — BRD
 
 **Feature:** `.board.svg` whiteboards shown in notes: shapes, connectors, pen,
-flowcharts, find, present, PNG export. Sticky notes and mind maps already on a
-board still show and edit; new ones can no longer be added.
+flowcharts, find, present, PNG export. Sections group cards: their name is
+renamed in place, they take a colour, and dragging one carries what sits in it.
+Sticky notes and mind maps already on a board still show and edit; new ones
+can no longer be added.
 Opened full screen or **Edit here** over a note.
 **Spec:** SPECs/board-lark-parity-spec.md, SPECs/board-rich-text-spec.md, SPECs/board-color-palette-spec.md, SPECs/board-docking-glow-spec.md
 **Code:** `src/components/editor-area/board/`
@@ -246,6 +248,9 @@ Opened full screen or **Edit here** over a note.
 | BRD-06 | Export PNG; **Present**                        | A PNG is saved; present mode steps through frames       | manual                  |
 | BRD-07 | Drag a card near another, hold, let go         | Held: the card's imprint in its slot after the other, the arrow it will get lit, the other card glowing with a port; dropped: the card sits in that slot, joined by an arrow that is in the file | auto: board             |
 | BRD-08 | Look over a board's tools; press N, then M     | No Sticky note or Mind map tool; N and M pick nothing (T still picks Text) | auto: board |
+| BRD-09 | Double-click a section's name, type, Enter     | A field opens on the name, holding it; Enter closes it, the section reads the new name and the file has it | auto: board |
+| BRD-10 | Select a section → **Section colour** → Green  | The section turns a thin green with a green edge and name; the file has `"c":"green-soft"` on it | auto: board |
+| BRD-11 | ★ Drag a section by its name                   | Everything inside it moves with it, cards made before the section too; a card outside stays put; the file has the cards' new places | auto: board |
 
 ## Projects — PRJ
 

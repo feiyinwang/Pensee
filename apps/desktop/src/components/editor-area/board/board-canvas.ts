@@ -55,8 +55,10 @@ import {
   nearestSide,
   elementAt,
   elementBounds,
+  FRAME_TITLE_H,
   frameAt,
   handlePositions,
+  pointInBox,
   resizeBox,
   rotate,
   polylineMidpoint,
@@ -72,6 +74,7 @@ import {
   STICKY_FONT_MIN,
   SceneRenderer,
   fitFontSize,
+  frameTitleColor,
   hitShapeCaret,
   measureText,
   shapeFitHeight,
@@ -103,6 +106,7 @@ import { type ToolId, type ToolState, type Toolbar, buildToolbar } from "./board
 import {
   applyAlign,
   applyBranchColor,
+  applyFill,
   applyFontSize,
   applyTextColor,
   summarizeSelection,
@@ -1195,7 +1199,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   const selectionActions: SelectionToolbarActions = {
     setShapeKind: (kind) => mutateSelection((el) => isShape(el) && (el.t = kind)),
-    setFill: (c) => mutateSelection((el) => isShape(el) && (el.st.f = c)),
+    setFill: (c) => mutateSelection((el) => applyFill(el, c)),
     setSticky: (c) => mutateSelection((el) => el.t === "sticky" && (el.c = c)),
     setStroke: (c) => mutateSelection((el) => hasStyle(el) && (el.st.s = c)),
     setWidth: (w) => mutateSelection((el) => hasStyle(el) && (el.st.w = w)),
@@ -1617,6 +1621,18 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     else delete el.fr;
   }
 
+  /** A section owns what sits in it, however it got there: drawn around
+   *  cards, grown over them, or the cards made first. Re-files everything it
+   *  covers or claimed, so what it owns is what it shows. */
+  function adoptInto(frame: BoardEl): void {
+    for (const el of scene.els) {
+      if (el.t === "frame") continue;
+      if (el.fr === frame.id || pointInBox({ x: el.x + el.w / 2, y: el.y + el.h / 2 }, frame)) {
+        assignFrame(el);
+      }
+    }
+  }
+
   /* ------------------------------------------------------- emphasis */
 
   /** Cmd+B / Cmd+I (Ctrl elsewhere), nothing else held. */
@@ -1630,7 +1646,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   function toggleSelectionEmphasis(kind: Emphasis): void {
     const targets = [...selection]
       .map((id) => findEl(scene, id))
-      .filter((el): el is BoardEl => Boolean(el && textOf(el).trim()));
+      .filter((el): el is BoardEl => Boolean(el && el.t !== "frame" && textOf(el).trim()));
     if (!targets.length) return;
     pushHistory();
     const minds = new Set<string>();
@@ -1694,9 +1710,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     area.spellcheck = false;
     // A connector label edits in a box centred on the line's midpoint.
     const mid = isLinker(el) ? polylineMidpoint(routeLinker(scene, el)) : null;
+    // A section's name edits where it is drawn: on the strip above the box.
     const frame = mid
       ? { x: mid.x - 90, y: mid.y - 24, w: 180, h: 48 }
-      : { x: el.x, y: el.y, w: el.w, h: el.h };
+      : el.t === "frame"
+        ? { x: el.x, y: el.y - FRAME_TITLE_H, w: el.w, h: FRAME_TITLE_H }
+        : { x: el.x, y: el.y, w: el.w, h: el.h };
     const mind = isMind(el) ? mindDepth(scene, el) : -1;
     const centred = el.t === "sticky" || isShape(el) || Boolean(mid) || mind >= 0;
     const pad = el.t === "sticky" ? 16 : isShape(el) ? 10 : mind >= 0 ? MIND.padY : 0;
@@ -1733,9 +1752,11 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     area.style.color =
       el.t === "sticky"
         ? "var(--wr-board-sticky-ink)"
-        : mind === 0
-          ? "var(--wr-board-surface)" // the root is light text on a dark pill
-          : "";
+        : el.t === "frame"
+          ? frameTitleColor(el)
+          : mind === 0
+            ? "var(--wr-board-surface)" // the root is light text on a dark pill
+            : "";
     if (mind >= 0) area.style.fontWeight = mind === 0 ? "600" : mind === 1 ? "500" : "400";
 
     /** Shapes and notes edit centred, like they render: the field is only as
@@ -1805,7 +1826,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         e.preventDefault();
         commit();
       }
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      // A section's name is one line: Enter is done.
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey || el.t === "frame")) {
         e.preventDefault();
         commit();
       }
@@ -2510,6 +2532,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           if (findEl(scene, id)?.t === "frame") frameIds.add(id);
         }
         if (frameIds.size > 0) {
+          for (const id of frameIds) adoptInto(findEl(scene, id)!);
           for (const kid of scene.els) if (kid.fr && frameIds.has(kid.fr)) ids.add(kid.id);
         }
         // Dragging any topic carries its whole map; the layout owns relative positions.
@@ -2931,7 +2954,12 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
       case "resize":
       case "rotate": {
-        restoreAndCommit(current.startEls);
+        restoreAndCommit(current.startEls, () => {
+          for (const id of current.startEls.keys()) {
+            const el = findEl(scene, id);
+            if (el?.t === "frame") adoptInto(el);
+          }
+        });
         break;
       }
       case "relink": {
@@ -3105,16 +3133,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       startTextEdit(el);
       return;
     }
-    if (hit.t === "frame") {
-      const name = window.prompt("Section name", (hit as { name: string }).name);
-      if (name !== null) {
-        pushHistory();
-        (hit as { name: string }).name = name || "Section";
-        draw();
-        markDirty();
-      }
-      return;
-    }
     if (hit.t === "image") return;
     selection = new Set([hit.id]);
     draw();
@@ -3175,7 +3193,13 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
    *  has pushed the undo step. */
   function addPlaced(el: BoardEl, from: BoardEl | null, side: Side | null): void {
     assignFrame(el);
-    scene.els.push(el);
+    if (el.t === "frame") {
+      // Behind every card, above the sections already there: a section drawn
+      // around cards must not tint or cover them.
+      const firstCard = scene.els.findIndex((o) => o.t !== "frame");
+      scene.els.splice(firstCard < 0 ? scene.els.length : firstCard, 0, el);
+      adoptInto(el);
+    } else scene.els.push(el);
     if (from) scene.els.push(connectorBetween(from, el, side));
     selection = new Set([el.id]);
     ghost = null;

@@ -185,6 +185,7 @@ export interface FrameEl extends Base {
   t: "frame";
   name: string;
   preset: FramePreset;
+  /** tint; absent is the plain grey section */ c?: ColorToken;
 }
 
 export interface ImageEl extends Base {
@@ -434,6 +435,7 @@ function parseElement(raw: unknown): BoardEl | null {
       t,
       name: str(o.name, "Section"),
       preset: str(o.preset, "custom") as FramePreset,
+      ...(isColor(o.c) && o.c !== "none" ? { c: o.c } : {}),
     };
   }
   if (t === "image") {
@@ -581,6 +583,7 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
     case "frame": {
       o.name = el.name;
       if (el.preset !== "custom") o.preset = el.preset;
+      if (el.c) o.c = el.c;
       break;
     }
     case "image": {
@@ -707,6 +710,7 @@ export function childrenOf(scene: BoardScene, frameId: string): BoardEl[] {
 
 export function textOf(el: BoardEl): string {
   if (el.t === "text" || el.t === "sticky" || el.t === "mind") return el.tx;
+  if (el.t === "frame") return el.name;
   if (isLinker(el)) return el.lb?.tx ?? "";
   if (isShape(el)) return el.lb?.tx ?? "";
   return "";
@@ -714,6 +718,7 @@ export function textOf(el: BoardEl): string {
 
 export function setTextOf(el: BoardEl, text: string): void {
   if (el.t === "text" || el.t === "sticky" || el.t === "mind") el.tx = text;
+  else if (el.t === "frame") el.name = text.trim() || "Section";
   else if (isLinker(el)) {
     if (text) el.lb = { tx: text, sz: el.lb?.sz ?? 13 };
     else delete el.lb;
