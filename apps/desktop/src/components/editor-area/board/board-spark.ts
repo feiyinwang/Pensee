@@ -1,63 +1,47 @@
 /**
- * Docking spark: the electric feedback when dragged cards dock onto another.
+ * Docking glow: the feedback when dragged cards dock onto another
+ * (SPECs/board-docking-glow-spec.md).
  *
- * While the drag is in reach, the target card is *charged*: a crackling
- * outline round its real shape, a lit bar and soft glow spilling inward on the
- * edge facing the dragged card, a port ring at the contact point, and a bolt
- * arcing from there to each dragged head. On drop, *current flows*: a pulse
- * runs down each new arrow into its card, splits at the entry edge, races
- * round the outline to the far side while a wash of light sweeps across the
- * card, then everything fades.
+ * While the drag is in reach, each dragged card's *imprint* sits where it will
+ * land and the arrow it will get is previewed, lit in the target card's
+ * colour. The target and the imprints carry a soft halo that breathes once a
+ * beat, and at each peak a ring goes out from the port where the arrow
+ * leaves. On drop the cards glide into their imprints, a dot runs the new
+ * arrow, and the light is handed to the card it arrives at: its halo flares,
+ * one ring plays, everything settles away.
  *
- * Colour is the target card's own outline colour (blue for notes and
- * outline-less shapes), so the effect follows the user's palette. Everything
+ * Colour is the target card's own outline colour (the foreground for notes and
+ * outline-less shapes), so the light follows the user's palette. Everything
  * here draws into scene-space groups the canvas owns; widths are passed in
- * screen pixels via `px` so the glow reads the same at any zoom.
+ * screen pixels via `px` so the light reads the same at any zoom.
  */
 
 import type { BoardEl, ShapeEl, StickyEl } from "./board-model";
-import { type Box, type Point, elementBounds, svgOutlinePath } from "./board-geometry";
-import { colorVar, svgEl } from "./board-render";
+import { type Box, type Point, headAngle, svgOutlinePath } from "./board-geometry";
+import { arrowHead, colorVar, svgEl } from "./board-render";
 import type { Side } from "./board-flow";
 
 type Card = ShapeEl | StickyEl;
 
-/** How often a held charge re-crackles. Not a transition: an ambient flicker
- *  that only runs while a dock is offered (see docs/motion.md). */
-export const CRACKLE_MS = 70;
-/** The flow on drop: arrow pulse, then the trace round the card, then fade. */
-const PULSE_MS = 220;
-const TRACE_MS = 460;
-const FADE_MS = 260;
-
-let uid = 0;
+/** One breath of the halo; the port rings at each peak. Not a transition: an
+ *  ambient pulse that only runs while a dock is offered (docs/motion.md). */
+export const BEAT_MS = 1600;
+/** How long each ring takes to go out (it ends before the next one). */
+const RING_MS = BEAT_MS * 0.6;
+const RING_PX = 14;
+/** The halo's strength; it breathes between 0.65 and 1 of it. */
+const GLOW = 0.6;
+/** The new arrow's opacity before it is made: the faint preview it firms up from. */
+const PREVIEW_OPACITY = 0.4;
+/** Matches --motion-settle; --ease-out is --ease-spring's fallback curve. */
+export const GLIDE_MS = 180;
+/** On drop: the dot runs the arrow, the card's halo flares then settles, one ring. */
+const RUN_MS = 220;
+const FLARE_MS = 120;
+const SETTLE_MS = 480;
+const LAND_RING_MS = 380;
 
 /* ---------------------------------------------------------------- pure */
-
-/** A jagged line from `a` to `b`: `segments` steps, each interior point
- *  pushed sideways by up to `amp`, tapered so both ends stay pinned. */
-export function boltPoints(
-  a: Point,
-  b: Point,
-  amp: number,
-  segments: number,
-  rnd: () => number = Math.random,
-): Point[] {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
-  const n = Math.max(2, Math.round(segments));
-  const pts: Point[] = [a];
-  for (let i = 1; i < n; i += 1) {
-    const t = i / n;
-    const off = (rnd() * 2 - 1) * amp * Math.sin(Math.PI * t);
-    pts.push({ x: a.x + dx * t + nx * off, y: a.y + dy * t + ny * off });
-  }
-  pts.push(b);
-  return pts;
-}
 
 /** Which side of `box` the point `p` (on or near its edge) lies on. */
 export function sideOf(box: Box, p: Point): Side {
@@ -78,11 +62,65 @@ export function edgePoint(box: Box, toward: Point): Point {
   return { x: c.x + dx * Math.min(t, 1), y: c.y + dy * Math.min(t, 1) };
 }
 
-function pathD(pts: Point[], closed = false): string {
-  return (
-    pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(2)} ${q.y.toFixed(2)}`).join(" ") +
-    (closed ? " Z" : "")
-  );
+/** Where the beat is at `ms` since the dock was offered: the halo's breath
+ *  (0 to 1, peaking mid-beat) and the ring's progress since the last peak
+ *  (null while none is out). Not finite (reduced motion): full, no ring. */
+export function beatAt(ms: number): { breath: number; ring: number | null } {
+  if (!Number.isFinite(ms)) return { breath: 1, ring: null };
+  const breath = 0.5 + 0.5 * Math.sin((2 * Math.PI * ms) / BEAT_MS - Math.PI / 2);
+  const sincePeak = ms - BEAT_MS / 2;
+  if (sincePeak < 0) return { breath, ring: null };
+  const ring = (sincePeak % BEAT_MS) / RING_MS;
+  return { breath, ring: ring < 1 ? ring : null };
+}
+
+/** The point `d` along a polyline. */
+export function pointAlong(pts: Point[], d: number): Point {
+  let left = d;
+  for (let i = 1; i < pts.length; i += 1) {
+    const seg = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    if (left <= seg || i === pts.length - 1) {
+      const t = seg ? Math.min(1, Math.max(0, left / seg)) : 0;
+      return {
+        x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t,
+        y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t,
+      };
+    }
+    left -= seg;
+  }
+  return pts[0];
+}
+
+/** --ease-out, cubic-bezier(0.16, 1, 0.3, 1), as a function of time. */
+export function easeOut(t: number): number {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const x1 = 0.16,
+    y1 = 1,
+    x2 = 0.3,
+    y2 = 1;
+  const cx = 3 * x1,
+    bx = 3 * (x2 - x1) - cx,
+    ax = 1 - cx - bx;
+  const cy = 3 * y1,
+    by = 3 * (y2 - y1) - cy,
+    ay = 1 - cy - by;
+  let lo = 0;
+  let hi = 1;
+  let u = t;
+  for (let i = 0; i < 20; i += 1) {
+    u = (lo + hi) / 2;
+    if (((ax * u + bx) * u + cx) * u < t) lo = u;
+    else hi = u;
+  }
+  return ((ay * u + by) * u + cy) * u;
+}
+
+const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+function pathD(pts: Point[]): string {
+  return pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(2)} ${q.y.toFixed(2)}`).join(" ");
 }
 
 function polyLength(pts: Point[]): number {
@@ -119,22 +157,6 @@ function cardTransform(el: BoardEl): string {
   return `${t} rotate(${deg} ${(el.w / 2).toFixed(1)} ${(el.h / 2).toFixed(1)})`;
 }
 
-/** The card's outline sampled every `step` (local space). Needs the path in
- *  the document to measure it, so it is measured inside `g`. */
-function outlineSamples(g: SVGGElement, d: string, step: number): Point[] {
-  const probe = svgEl("path", { d, fill: "none", stroke: "none" });
-  g.append(probe);
-  const len = probe.getTotalLength();
-  const n = Math.max(12, Math.min(160, Math.round(len / step)));
-  const pts: Point[] = [];
-  for (let i = 0; i < n; i += 1) {
-    const q = probe.getPointAtLength((len * i) / n);
-    pts.push({ x: q.x, y: q.y });
-  }
-  probe.remove();
-  return pts;
-}
-
 /** The ink the card glows in: its outline, or the foreground when it has none. */
 export function sparkColor(el: Card): string {
   if (el.t === "sticky") return "var(--wr-board-ink)";
@@ -143,201 +165,111 @@ export function sparkColor(el: Card): string {
   return colorVar(s);
 }
 
-/** Glow, body and white-hot core: the three strokes every lit line is. */
-function litStroke(
-  parent: SVGElement,
-  d: string,
-  px: (n: number) => number,
-  scale = 1,
-): SVGPathElement[] {
-  const layers: [string, number][] = [
-    ["wr-board-spark-glow", 7 * scale],
-    ["wr-board-spark-body", 2.6 * scale],
-    ["wr-board-spark-core", 1.1 * scale],
-  ];
-  return layers.map(([cls, w]) => {
-    const node = svgEl("path", { d, class: cls, "stroke-width": px(w) });
-    parent.append(node);
-    return node;
+/** A soft halo round `card`'s outline, at opacity 0 until set. */
+function halo(parent: SVGElement, card: Card, px: (n: number) => number): SVGPathElement {
+  const g = svgEl("g", { transform: cardTransform(card) });
+  const node = svgEl("path", {
+    d: outlineD(card),
+    class: "wr-board-glow-halo",
+    "stroke-width": px(8),
   });
+  g.append(node);
+  parent.append(g);
+  return node;
 }
 
-/** A lit bar along `side` of `box`, centred on `at`, `frac` of the side long. */
-function edgeBar(box: Box, side: Side, at: Point, frac: number): [Point, Point] {
-  if (side === "e" || side === "w") {
-    const half = (box.h * frac) / 2;
-    const cy = Math.min(Math.max(at.y, box.y + half), box.y + box.h - half);
-    const x = side === "e" ? box.x + box.w : box.x;
-    return [
-      { x, y: cy - half },
-      { x, y: cy + half },
-    ];
-  }
-  const half = (box.w * frac) / 2;
-  const cx = Math.min(Math.max(at.x, box.x + half), box.x + box.w - half);
-  const y = side === "s" ? box.y + box.h : box.y;
-  return [
-    { x: cx - half, y },
-    { x: cx + half, y },
-  ];
-}
-
-/** A linear gradient fading from `side` inward; returns its url. */
-function inwardGradient(parent: SVGElement, side: Side, peak: number): string {
-  const id = `wr-spark-grad-${(uid += 1)}`;
-  const [x1, y1, x2, y2] =
-    side === "w"
-      ? [0, 0, 1, 0]
-      : side === "e"
-        ? [1, 0, 0, 0]
-        : side === "n"
-          ? [0, 0, 0, 1]
-          : [0, 1, 0, 0];
-  const grad = svgEl("linearGradient", { id, x1, y1, x2, y2 });
-  grad.append(
-    svgEl("stop", { offset: 0, class: "wr-board-spark-stop", "stop-opacity": peak }),
-    svgEl("stop", { offset: 0.55, class: "wr-board-spark-stop", "stop-opacity": peak * 0.25 }),
-    svgEl("stop", { offset: 1, class: "wr-board-spark-stop", "stop-opacity": 0 }),
+/** A lit line along `route` with the board's arrowhead: a thin core over a
+ *  soft blurred under-stroke. Returns the under-stroke, whose strength
+ *  follows the beat. */
+function litArrow(parent: SVGElement, route: Point[], px: (n: number) => number): SVGPathElement {
+  const d = pathD(route);
+  const under = svgEl("path", { d, class: "wr-board-glow-under", "stroke-width": px(5.25) });
+  parent.append(under, svgEl("path", { d, class: "wr-board-glow-line", "stroke-width": 1.5 }));
+  parent.append(
+    arrowHead("triangle", route[route.length - 1], headAngle(route, "e"), "var(--wr-glow)", 1.5),
   );
-  parent.append(grad);
-  return `url(#${id})`;
+  return under;
 }
 
 /* ---------------------------------------------------------------- charge */
 
 export interface Charge {
+  /** The card the dragged ones dock after, where it will sit (it may move
+   *  to sit level with its next steps). */
   target: Card;
-  /** Where the target's box now sits (it may be moving to sit level with
-   *  its next steps); the live dragged heads are measured as they are. */
-  targetBox: Box;
-  heads: Card[];
+  /** Whether `target` is moving there, so its new spot is drawn as an imprint. */
+  targetMoves: boolean;
+  /** Each dragged card where it will land. */
+  landings: Card[];
+  /** The arrow each head will get, routed as the board will route it. */
+  routes: Point[][];
 }
 
-/**
- * Draws the charged target into `layer` (replacing what was there). Called
- * on every drag frame and again every `CRACKLE_MS` while the pointer rests,
- * so the bolt and outline re-randomise and crackle.
- */
-export function drawCharge(layer: SVGGElement, charge: Charge, px: (n: number) => number): void {
+export interface ChargeView {
+  /** Sets the breath and ring for `ms` since the dock was offered; updates
+   *  attributes only, so it is cheap to call every frame. */
+  beat: (ms: number) => void;
+}
+
+/** Draws the offered dock into `layer` (replacing what was there). */
+export function drawCharge(
+  layer: SVGGElement,
+  charge: Charge,
+  px: (n: number) => number,
+): ChargeView {
   layer.replaceChildren();
-  const { target, targetBox: box, heads } = charge;
-  layer.setAttribute("style", `--wr-spark: ${sparkColor(target)}`);
-  const local = svgEl("g", {
-    // `box` is the target's bounds where it will sit; shift its own frame
-    // by the same amount (bounds and frame differ when it is rotated).
-    transform: cardTransform({
-      ...target,
-      x: target.x + box.x - elementBounds(target).x,
-      y: target.y + box.y - elementBounds(target).y,
-    }),
-  });
-  layer.append(local);
-  const d = outlineD(target);
+  const { target, targetMoves, landings, routes } = charge;
+  layer.setAttribute("style", `--wr-glow: ${sparkColor(target)}`);
 
-  // A soft halo, then the outline itself, lit.
-  local.append(svgEl("path", { d, class: "wr-board-spark-halo", "stroke-width": px(14) }));
-  litStroke(local, d, px, 0.8);
-
-  // The crackle: two strands jittered off the outline, away from the centre.
-  const c = { x: target.w / 2, y: target.h / 2 };
-  const samples = outlineSamples(local, d, px(10));
-  for (const [amp, cls] of [
-    [px(3), "wr-board-spark-strand"],
-    [px(2), "wr-board-spark-strand is-faint"],
-  ] as const) {
-    const jag = samples.map((q) => {
-      const ox = q.x - c.x;
-      const oy = q.y - c.y;
-      const l = Math.hypot(ox, oy) || 1;
-      const off = (Math.random() * 2 - 0.6) * amp;
-      return { x: q.x + (ox / l) * off, y: q.y + (oy / l) * off };
-    });
-    local.append(svgEl("path", { d: pathD(jag, true), class: cls, "stroke-width": px(1.2) }));
+  // Halos first so the imprints' hairlines sit on top of them.
+  const halos: { node: SVGPathElement; peak: number }[] = [
+    { node: halo(layer, target, px), peak: 0.4 },
+  ];
+  const spots = targetMoves ? [target, ...landings] : landings;
+  for (const card of landings) halos.push({ node: halo(layer, card, px), peak: 0.22 });
+  for (const card of spots) {
+    const g = svgEl("g", { transform: cardTransform(card) });
+    g.append(
+      svgEl("path", { d: outlineD(card), class: "wr-board-imprint", "stroke-width": px(1) }),
+    );
+    layer.append(g);
   }
 
-  const tc = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
-  for (const head of heads) {
-    const hb = elementBounds(head);
-    const hc = { x: hb.x + hb.w / 2, y: hb.y + hb.h / 2 };
-    const contact = edgePoint(box, hc);
-    const side = sideOf(box, contact);
+  const unders: SVGPathElement[] = [];
+  const preview = svgEl("g", { class: "wr-board-glow-preview" });
+  layer.append(preview);
+  for (const route of routes) if (route.length > 1) unders.push(litArrow(preview, route, px));
 
-    // The edge that faces the dragged card lights up and spills inward.
-    const clipId = `wr-spark-clip-${(uid += 1)}`;
-    const clip = svgEl("clipPath", { id: clipId });
-    clip.append(svgEl("path", { d }));
-    local.append(clip);
-    const depth = 0.5;
-    const spill = svgEl("rect", {
-      x: side === "e" ? target.w * (1 - depth) : 0,
-      y: side === "s" ? target.h * (1 - depth) : 0,
-      width: side === "e" || side === "w" ? target.w * depth : target.w,
-      height: side === "n" || side === "s" ? target.h * depth : target.h,
-      fill: inwardGradient(local, side, 0.38),
-      "clip-path": `url(#${clipId})`,
-      class: "wr-board-spark-spill",
-    });
-    local.append(spill);
-    // A soft cloud of light straddling the edge, long along it.
-    const along = side === "e" || side === "w";
-    const reach = (along ? box.h : box.w) * 0.42;
-    layer.append(
-      svgEl("ellipse", {
-        cx: contact.x,
-        cy: contact.y,
-        rx: along ? px(22) : reach,
-        ry: along ? reach : px(22),
-        class: "wr-board-spark-cloud",
-      }),
-    );
-    const [b0, b1] = edgeBar(box, side, contact, 0.5);
-    litStroke(layer, pathD([b0, b1]), px, 1.6);
-
-    // The bolt, from the contact port to the dragged card's near edge. When
-    // they touch there is nothing to arc across, so the port alone shows.
-    const tip = edgePoint(hb, tc);
-    const gap = Math.hypot(tip.x - contact.x, tip.y - contact.y);
-    if (
-      gap > px(14) &&
-      !(hb.x < box.x + box.w && hb.x + hb.w > box.x && hb.y < box.y + box.h && hb.y + hb.h > box.y)
-    ) {
-      const segs = Math.min(18, Math.max(4, gap / px(11)));
-      const bolt = boltPoints(contact, tip, px(7), segs);
-      litStroke(layer, pathD(bolt), px, 0.9);
-      // A short fork off the bolt, the way real arcs branch.
-      const at = bolt[1 + Math.floor(Math.random() * Math.max(1, bolt.length - 2))];
-      const ang = Math.atan2(tip.y - contact.y, tip.x - contact.x) + (Math.random() - 0.5) * 1.8;
-      const reach = Math.min(gap * 0.3, px(26));
-      const fork = boltPoints(
-        at,
-        { x: at.x + Math.cos(ang) * reach, y: at.y + Math.sin(ang) * reach },
-        px(3),
-        3,
-      );
-      layer.append(
-        svgEl("path", {
-          d: pathD(fork),
-          class: "wr-board-spark-body is-fork",
-          "stroke-width": px(1.2),
-        }),
-      );
-      layer.append(
-        svgEl("circle", { cx: tip.x, cy: tip.y, r: px(3), class: "wr-board-spark-dot" }),
-      );
-    }
-
-    // The port: a ring with a hot centre.
-    layer.append(
-      svgEl("circle", {
-        cx: contact.x,
-        cy: contact.y,
-        r: px(9),
-        class: "wr-board-spark-ring",
-        "stroke-width": px(1.5),
-      }),
-      svgEl("circle", { cx: contact.x, cy: contact.y, r: px(4), class: "wr-board-spark-dot" }),
-    );
+  // One port per place an arrow leaves (heads docked together share it).
+  const ports = new Map<string, Point>();
+  for (const route of routes) {
+    if (route.length) ports.set(`${Math.round(route[0].x)},${Math.round(route[0].y)}`, route[0]);
   }
+  const rings: SVGCircleElement[] = [];
+  for (const p of ports.values()) {
+    const ring = svgEl("circle", {
+      cx: p.x,
+      cy: p.y,
+      r: px(3),
+      class: "wr-board-glow-ring",
+      "stroke-width": px(1),
+    });
+    rings.push(ring);
+    layer.append(ring, svgEl("circle", { cx: p.x, cy: p.y, r: px(3), class: "wr-board-glow-dot" }));
+  }
+
+  return {
+    beat(ms) {
+      const { breath, ring } = beatAt(ms);
+      const a = GLOW * (0.65 + 0.35 * breath);
+      for (const h of halos) h.node.setAttribute("stroke-opacity", (h.peak * a).toFixed(3));
+      for (const u of unders) u.setAttribute("stroke-opacity", (0.35 * a).toFixed(3));
+      for (const r of rings) {
+        r.setAttribute("r", String(lerp(px(3), px(RING_PX), easeOut(ring ?? 0))));
+        r.setAttribute("stroke-opacity", ring === null ? "0" : (0.6 * (1 - ring)).toFixed(3));
+      }
+    },
+  };
 }
 
 /* ---------------------------------------------------------------- flow */
@@ -347,144 +279,73 @@ export interface Flow {
   /** The new arrow's route, scene space, from `from` into `card`. */
   route: Point[];
   card: Card;
-  /** The side of `card` the arrow enters. */
-  entry: Side;
 }
 
-/** Quick off the mark but still visibly travelling (a cubic got the trace
- *  most of the way round in its first few frames). */
-const easeOut = (t: number) => 1 - (1 - t) ** 2;
-const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
-
 /**
- * Plays current flowing from each `from` down its arrow and through its
- * card: in at the entry edge, round both halves of the outline to the far
- * side, with a wash of light sweeping across. Returns a cancel function;
- * the layer is emptied when it ends or is cancelled.
+ * Plays the hand-over on each docked arrow: the dot runs it from `from`, the
+ * card it arrives at flares and settles, one ring at its port; `from`'s halo,
+ * the lit line and the imprint (at `card`) fade meanwhile. Returns a cancel
+ * function; the layer is emptied when it ends or is cancelled.
  */
 export function playFlow(layer: SVGGElement, flows: Flow[], px: (n: number) => number): () => void {
   layer.replaceChildren();
   const frames: ((ms: number) => void)[] = [];
 
   for (const f of flows) {
-    const g = svgEl("g", { class: "wr-board-spark", style: `--wr-spark: ${sparkColor(f.from)}` });
+    const g = svgEl("g", { class: "wr-board-glow", style: `--wr-glow: ${sparkColor(f.from)}` });
     layer.append(g);
-
-    // 1. A bright pulse rides the arrow.
-    const routeLen = polyLength(f.route);
-    const seg = Math.min(routeLen * 0.45, px(60));
-    const pulse = litStroke(g, pathD(f.route), px, 1);
-    for (const p of pulse) {
-      p.setAttribute("stroke-dasharray", `${seg} ${routeLen + seg}`);
-      p.setAttribute("stroke-linecap", "round");
-    }
-
-    // 2. Through the card, in its own space.
-    const card = f.card;
-    const local = svgEl("g", { transform: cardTransform(card) });
-    g.append(local);
-    const d = outlineD(card);
-    const clipId = `wr-spark-clip-${(uid += 1)}`;
-    const clip = svgEl("clipPath", { id: clipId });
-    clip.append(svgEl("path", { d }));
-    local.append(clip);
-
-    const horizontal = f.entry === "w" || f.entry === "e";
-    // The band runs away from the entry, its bright edge leading.
-    const backwards = f.entry === "e" || f.entry === "s";
-    const span = horizontal ? card.w : card.h;
-    const band = span * 0.8;
-    const washGrad = `wr-spark-wash-${(uid += 1)}`;
-    const grad = svgEl("linearGradient", {
-      id: washGrad,
-      x1: backwards && horizontal ? 1 : 0,
-      y1: backwards && !horizontal ? 1 : 0,
-      x2: horizontal && !backwards ? 1 : 0,
-      y2: !horizontal && !backwards ? 1 : 0,
-    });
-    grad.append(
-      svgEl("stop", { offset: 0, class: "wr-board-spark-stop", "stop-opacity": 0 }),
-      svgEl("stop", { offset: 0.7, class: "wr-board-spark-stop", "stop-opacity": 0.45 }),
-      svgEl("stop", { offset: 1, class: "wr-board-spark-stop", "stop-opacity": 0 }),
+    const imprint = svgEl("g", { transform: cardTransform(f.card) });
+    imprint.append(
+      svgEl("path", { d: outlineD(f.card), class: "wr-board-imprint", "stroke-width": px(1) }),
     );
-    local.append(grad);
-    const wash = svgEl("rect", {
-      width: horizontal ? band : card.w,
-      height: horizontal ? card.h : band,
-      fill: `url(#${washGrad})`,
-      "clip-path": `url(#${clipId})`,
-      class: "wr-board-spark-spill",
+    g.append(imprint);
+    const fromHalo = halo(g, f.from, px);
+    const cardHalo = halo(g, f.card, px);
+    const line = svgEl("g", { class: "wr-board-glow-preview" });
+    g.append(line);
+    litArrow(line, f.route, px).setAttribute("stroke-opacity", String(0.35 * GLOW));
+    const marks = svgEl("g");
+    g.append(marks);
+    const len = polyLength(f.route);
+    const end = f.route[f.route.length - 1];
+    const dot = svgEl("circle", { r: px(3), class: "wr-board-glow-dot" });
+    const ring = svgEl("circle", {
+      cx: end.x,
+      cy: end.y,
+      class: "wr-board-glow-ring",
+      "stroke-width": px(1),
     });
-    local.append(wash);
-
-    // Both halves of the outline, from the entry point to the far side.
-    const samples = outlineSamples(local, d, px(4));
-    const entryAt: Point =
-      f.entry === "w"
-        ? { x: 0, y: card.h / 2 }
-        : f.entry === "e"
-          ? { x: card.w, y: card.h / 2 }
-          : f.entry === "n"
-            ? { x: card.w / 2, y: 0 }
-            : { x: card.w / 2, y: card.h };
-    const farAt = { x: card.w - entryAt.x, y: card.h - entryAt.y };
-    const nearest = (p: Point) =>
-      samples.reduce(
-        (best, q, i) => {
-          const dd = Math.hypot(q.x - p.x, q.y - p.y);
-          return dd < best.d ? { i, d: dd } : best;
-        },
-        { i: 0, d: Infinity },
-      ).i;
-    const i0 = nearest(entryAt);
-    const i1 = nearest(farAt);
-    const n = samples.length;
-    const walk = (dir: 1 | -1): Point[] => {
-      const out: Point[] = [samples[i0]];
-      for (let i = i0; i !== i1; ) {
-        i = (i + dir + n) % n;
-        out.push(samples[i]);
-      }
-      return out;
-    };
-    const halves = [walk(1), walk(-1)].map((pts) => {
-      const len = polyLength(pts);
-      const strokes = litStroke(local, pathD(pts), px, 1);
-      for (const s of strokes) s.setAttribute("stroke-dasharray", `0 ${len + 1}`);
-      return { len, strokes };
-    });
-    const entryFlash = litStroke(local, "", px, 1.3);
-    const [e0, e1] = edgeBar({ x: 0, y: 0, w: card.w, h: card.h }, f.entry, entryAt, 0.6);
-    for (const s of entryFlash) s.setAttribute("d", pathD([e0, e1]));
+    marks.append(ring, dot);
 
     frames.push((ms) => {
-      // Pulse: 0 → PULSE_MS.
-      const pt = clamp01(ms / PULSE_MS);
-      const head = easeOut(pt) * (routeLen + seg);
-      for (const p of pulse) {
-        p.setAttribute("stroke-dashoffset", String(seg - head));
-        p.style.opacity = String(1 - clamp01((ms - PULSE_MS) / 120));
+      imprint.style.opacity = String(1 - easeOut(clamp01(ms / GLIDE_MS)));
+      fromHalo.setAttribute(
+        "stroke-opacity",
+        String(0.4 * GLOW * (1 - easeOut(clamp01(ms / 220)))),
+      );
+      line.style.opacity = String(1 - easeOut(clamp01(ms / 460)));
+      // The light arrives with the dot: flare, then settle away.
+      const up = easeOut(clamp01((ms - RUN_MS + 40) / FLARE_MS));
+      const down = easeOut(clamp01((ms - RUN_MS - 80) / SETTLE_MS));
+      cardHalo.setAttribute("stroke-opacity", String(0.5 * GLOW * up * (1 - down)));
+      const run = easeOut(clamp01(ms / RUN_MS));
+      if (run < 1) {
+        const p = pointAlong(f.route, run * len);
+        dot.setAttribute("cx", String(p.x));
+        dot.setAttribute("cy", String(p.y));
+        ring.setAttribute("stroke-opacity", "0");
+      } else {
+        const ph = clamp01((ms - RUN_MS) / LAND_RING_MS);
+        dot.setAttribute("cx", String(end.x));
+        dot.setAttribute("cy", String(end.y));
+        dot.style.opacity = String(1 - easeOut(ph));
+        ring.setAttribute("r", String(lerp(px(3), px(RING_PX + 2), easeOut(ph))));
+        ring.setAttribute("stroke-opacity", String(0.7 * (1 - ph)));
       }
-      // Trace and wash: PULSE_MS * 0.7 → + TRACE_MS.
-      const tt = clamp01((ms - PULSE_MS * 0.7) / TRACE_MS);
-      const te = easeOut(tt);
-      const fade = 1 - clamp01((ms - PULSE_MS * 0.7 - TRACE_MS) / FADE_MS);
-      for (const h of halves) {
-        for (const s of h.strokes) {
-          s.setAttribute("stroke-dasharray", `${h.len * te} ${h.len + 1}`);
-          s.style.opacity = String(fade);
-        }
-      }
-      // The wash's bright edge (70% into the band) keeps pace with the trace.
-      const x = te * span - band * 0.7;
-      wash.setAttribute(horizontal ? "x" : "y", String(backwards ? span - band - x : x));
-      wash.style.opacity = String(tt > 0 ? fade : 0);
-      const flash = tt > 0 ? (1 - te) * fade : 0;
-      for (const s of entryFlash) s.style.opacity = String(flash);
     });
   }
 
-  const total = PULSE_MS * 0.7 + TRACE_MS + FADE_MS;
+  const total = RUN_MS + 80 + SETTLE_MS;
   const start = performance.now();
   let raf = 0;
   const tick = (now: number) => {
@@ -498,5 +359,56 @@ export function playFlow(layer: SVGGElement, flows: Flow[], px: (n: number) => n
   return () => {
     cancelAnimationFrame(raf);
     layer.replaceChildren();
+  };
+}
+
+/* ---------------------------------------------------------------- glide */
+
+export interface Glide {
+  /** An element's rendered node, already at its new place. */
+  node: SVGGElement;
+  /** Where it was let go, relative to that place. */
+  dx: number;
+  dy: number;
+}
+
+/**
+ * Glides each docked card from where it was let go into its place, and firms
+ * each new arrow (`arrows`) up from its preview opacity. The scene is already
+ * final; this only offsets the nodes' transforms. Returns a cancel function
+ * that puts every node at rest.
+ */
+export function glideInto(moves: Glide[], arrows: SVGGElement[]): () => void {
+  const bases = moves.map((m) => m.node.getAttribute("transform"));
+  const settle = () => {
+    moves.forEach((m, i) => {
+      const base = bases[i];
+      if (base === null) m.node.removeAttribute("transform");
+      else m.node.setAttribute("transform", base);
+    });
+    for (const a of arrows) a.style.opacity = "";
+  };
+  const frame = (t: number) => {
+    const e = easeOut(t);
+    moves.forEach((m, i) => {
+      const ox = (m.dx * (1 - e)).toFixed(2);
+      const oy = (m.dy * (1 - e)).toFixed(2);
+      m.node.setAttribute("transform", `translate(${ox} ${oy}) ${bases[i] ?? ""}`.trim());
+    });
+    for (const a of arrows) a.style.opacity = String(lerp(PREVIEW_OPACITY, 1, e));
+  };
+  const start = performance.now();
+  let raf = 0;
+  const tick = (now: number) => {
+    const t = clamp01((now - start) / GLIDE_MS);
+    frame(t);
+    if (t < 1) raf = requestAnimationFrame(tick);
+    else settle();
+  };
+  frame(0);
+  raf = requestAnimationFrame(tick);
+  return () => {
+    cancelAnimationFrame(raf);
+    settle();
   };
 }

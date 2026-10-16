@@ -100,6 +100,19 @@ const NOTES = {
   ].join("\n"),
 };
 
+// A board with two cards far apart, for docking one after the other (BRD-07,
+// PERF-07). A legacy ```board fence: opening it writes the .board.svg.
+NOTES["Notes/Dock board.md"] = [
+  "# Dock board",
+  "",
+  "```board",
+  '{"v":1,"vp":{"x":0,"y":0,"zoom":1}}',
+  '{"id":"a1","t":"roundRect","x":0,"y":0,"w":180,"h":90,"st":{"s":"blue","f":"blue-soft"},"lb":{"tx":"Thinking"}}',
+  '{"id":"b1","t":"roundRect","x":620,"y":320,"w":180,"h":90,"st":{"s":"blue","f":"blue-soft"},"lb":{"tx":"Writing"}}',
+  "```",
+  "",
+].join("\n");
+
 // A note as long as a real working draft (about 2,000 lines of headings,
 // prose, lists, tasks and links), so the speed journeys (PERF in
 // docs/qa/performance.md) time typing and opening on a note that can be slow,

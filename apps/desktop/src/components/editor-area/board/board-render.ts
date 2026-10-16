@@ -813,7 +813,7 @@ function renderLinker(g: SVGGElement, el: LinkerEl, ctx: RenderContext): void {
   }
 }
 
-function arrowHead(
+export function arrowHead(
   kind: string,
   at: Point,
   angle: number,

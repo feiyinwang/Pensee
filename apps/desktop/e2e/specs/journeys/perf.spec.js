@@ -344,4 +344,106 @@ describe("Journeys: speed", function () {
     );
     judge("PERF-06", "go", samples);
   });
+
+  it("PERF-07 a drag step on a board while a dock is offered", async function () {
+    await openNote("Dock board");
+    const card = await $(".wr-board-card");
+    await card.waitForExist({ timeout: 10_000 });
+    await card.click();
+    await $('.wr-board-fullscreen [data-el="b1"]').waitForExist({ timeout: 10_000 });
+    // The board fits itself to the window as it opens (its is-open class waits
+    // on an animation frame, which the hidden window doesn't run): wait until
+    // the cards stop moving.
+    let fitted = "";
+    await browser.waitUntil(
+      async () => {
+        const now = await browser.execute(() =>
+          JSON.stringify(
+            document.querySelector('.wr-board-fullscreen [data-el="a1"]').getBoundingClientRect(),
+          ),
+        );
+        const still = now === fitted;
+        fitted = now;
+        return still;
+      },
+      { timeout: 10_000, interval: 250, timeoutMsg: "the board never settled after opening" },
+    );
+    // Each sample is its own gesture: press on Writing (untimed), then time
+    // one move that brings it within reach of Thinking. The first move of a
+    // gesture is handled at once; later ones wait for animation frames, which
+    // the hidden window barely runs. A gesture ends with ⌥ held, so nothing
+    // docks and the next press finds the same board. Synthetic pointers
+    // can't be captured, so capture is stubbed on the board's svg.
+    await browser.execute(() => {
+      const svg = document.querySelector(".wr-board-fullscreen svg.wr-board-svg");
+      svg.setPointerCapture = () => {};
+      svg.releasePointerCapture = () => {};
+      const rect = (id) =>
+        document.querySelector(`.wr-board-fullscreen [data-el="${id}"]`).getBoundingClientRect();
+      const send = (type, p, altKey = false) =>
+        svg.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            pointerId: 1,
+            pointerType: "mouse",
+            isPrimary: true,
+            button: 0,
+            buttons: type === "pointerup" ? 0 : 1,
+            clientX: p.x,
+            clientY: p.y,
+            altKey,
+          }),
+        );
+      let last = null;
+      window.__perfBoard = {
+        release() {
+          if (!last) return;
+          send("pointermove", last, true);
+          send("pointerup", last, true);
+          last = null;
+        },
+        press() {
+          this.release();
+          const b = rect("b1");
+          last = { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+          send("pointerdown", last);
+        },
+        /** Where Writing rests 60 under Thinking, 30 left or right: far enough
+         *  from where the last sample left it (it may have snapped) that the
+         *  move always starts a drag. */
+        near(n) {
+          const a = rect("a1");
+          const b = rect("b1");
+          return {
+            x: a.left + a.width / 2 + ((n % 2 ? 30 : -30) * a.width) / 180,
+            y: a.bottom + (60 * a.width) / 180 + b.height / 2,
+          };
+        },
+        move(p) {
+          last = p;
+          send("pointermove", p);
+        },
+      };
+    });
+    const samples = await sample(
+      () => browser.execute(() => window.__perfBoard.press()),
+      (i) =>
+        browser.executeAsync((n, done) => {
+          const offered = () => document.querySelector(".wr-board-glow.is-offer, .wr-board-spark");
+          const p = window.__perfBoard.near(n);
+          window
+            .__perfTime(
+              () => window.__perfBoard.move(p),
+              () => offered(),
+            )
+            .then(
+              (ms) => done({ ms }),
+              (error) => done({ error: String(error) }),
+            );
+        }, i),
+    );
+    await browser.execute(() => window.__perfBoard.release());
+    judge("PERF-07", "type", samples);
+  });
 });

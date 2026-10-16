@@ -304,77 +304,47 @@
   pointer-events: none;
 }
 
-/* Docking spark (board-spark.ts). Each group sets --wr-spark to the target
-   card's outline ink, or the foreground when it has none. Lit lines are three strokes: a wide soft glow, the
-   coloured body, and a near-white core, which is what makes them read as
-   light rather than paint. */
-.wr-board-spark {
+/* Docking glow (board-spark.ts, SPECs/board-docking-glow-spec.md). Each group
+   sets --wr-glow to the lit card's outline ink, or the foreground when it has
+   none. The halo, the lit arrow's under-stroke and the ring get their
+   strength from the beat: a stroke-opacity attribute set per frame, so no
+   rule here may set stroke-opacity on them (CSS would win). */
+.wr-board-glow {
   pointer-events: none;
 }
 
-.wr-board-spark-glow,
-.wr-board-spark-body,
-.wr-board-spark-core,
-.wr-board-spark-strand,
-.wr-board-spark-halo,
-.wr-board-spark-ring {
+.wr-board-glow-halo,
+.wr-board-glow-under,
+.wr-board-glow-line,
+.wr-board-glow-ring {
   fill: none;
+  stroke: var(--wr-glow);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.wr-board-spark-glow {
-  stroke: var(--wr-spark);
-  stroke-opacity: 0.28;
-  filter: drop-shadow(0 0 6px var(--wr-spark));
-}
-
-.wr-board-spark-body {
-  stroke: var(--wr-spark);
-}
-
-.wr-board-spark-body.is-fork {
-  stroke-opacity: 0.7;
-}
-
-.wr-board-spark-core {
-  stroke: color-mix(in oklch, var(--wr-spark) 30%, var(--color-highlight));
-}
-
-.wr-board-spark-halo {
-  stroke: var(--wr-spark);
-  stroke-opacity: 0.12;
+.wr-board-glow-halo {
   filter: blur(4px);
 }
 
-.wr-board-spark-strand {
-  stroke: color-mix(in oklch, var(--wr-spark) 55%, var(--color-highlight));
-  stroke-opacity: 0.85;
-  filter: drop-shadow(0 0 3px var(--wr-spark));
+.wr-board-glow-under {
+  filter: blur(3px);
 }
 
-.wr-board-spark-strand.is-faint {
-  stroke-opacity: 0.4;
+.wr-board-glow-preview {
+  opacity: 0.55;
 }
 
-.wr-board-spark-ring {
-  stroke: var(--wr-spark);
-  filter: drop-shadow(0 0 4px var(--wr-spark));
+.wr-board-glow-dot {
+  fill: var(--wr-glow);
 }
 
-.wr-board-spark-dot {
-  fill: color-mix(in oklch, var(--wr-spark) 25%, var(--color-highlight));
-  filter: drop-shadow(0 0 5px var(--wr-spark));
-}
-
-.wr-board-spark-cloud {
-  fill: var(--wr-spark);
-  opacity: 0.32;
-  filter: blur(14px);
-}
-
-.wr-board-spark-stop {
-  stop-color: var(--wr-spark);
+/* Where a dragged card will land: its own outline, a faint fill and an ink
+   hairline. */
+.wr-board-imprint {
+  fill: color-mix(in srgb, var(--fg-base) 5%, transparent);
+  stroke: var(--wr-board-ink);
+  stroke-opacity: 0.32;
 }
 
 /* ------------------------------------------------------------ fullscreen */

@@ -63,6 +63,7 @@ doesn't break them.
 | PERF-04 | Enter on a result opens the long note            | `go`   | `src/components/editor-area/`, `src/stores/editor-store.ts`, `src-tauri/src/commands/fs.rs` |
 | PERF-05 | Hiding and showing the sidebar                   | `show` | `src/components/sidebar/`, `src/components/app-layout.tsx`                                  |
 | PERF-06 | Clicking Projects, Library, Files in the sidebar | `go`   | `src/components/sidebar/`, `src/components/spaces/`, `src-tauri/src/commands/spaces.rs`     |
+| PERF-07 | A drag step on a board while a dock is offered   | `type` | `src/components/editor-area/board/` (board-canvas.ts, board-spark.ts, board-render.ts)      |
 
 The long note is `Notes/Long essay.md` in the QA vault
 (`e2e/qa/seed-vault.mjs`): headings, prose, nested lists, tasks, quotes and
@@ -75,7 +76,7 @@ headroom in the shipped app.
 
 First baseline (2026-10-16): typing 4ms, Search opens 13ms, search narrows
 3ms, opening the long note 32ms, sidebar 4ms, spaces 3ms. Everything is
-well inside its budget; the rules below keep it there.
+well inside its budget; the rules below keep it there. PERF-07 (a board drag step with a dock offered) joined the same day at 1ms; the docking spark it replaced took 2–3ms.
 
 Paint isn't timed (the hidden e2e window doesn't paint on schedule), and the
 QA vault is small. Neither replaces trying the app: when it feels slow in the

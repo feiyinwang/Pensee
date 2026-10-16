@@ -127,7 +127,7 @@ import {
 } from "./board-flow";
 import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
 import type { ToolDockHandle } from "./board-dock";
-import { CRACKLE_MS, type Charge, drawCharge, playFlow, sideOf } from "./board-spark";
+import { type Charge, type ChargeView, drawCharge, glideInto, playFlow } from "./board-spark";
 
 /* -------------------------------------------------------------- constants */
 
@@ -758,30 +758,29 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
   }
 
-  /** The charged dock target being drawn, and the layer it is in. */
-  let charge: { layer: SVGGElement; charge: Charge } | null = null;
-  let crackleFrame = 0;
-  let crackleAt = 0;
+  /** The offered dock being drawn: its layer and view, the card it docks
+   *  after, and when that was first offered (the beat counts from then, so
+   *  redrawing on every pointer move keeps the rhythm). */
+  let charge: { layer: SVGGElement; view: ChargeView; targetId: string; since: number } | null =
+    null;
+  let beatFrame = 0;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  /** Re-crackles the charge every `CRACKLE_MS` while it is shown and the
-   *  pointer rests (moving redraws it anyway). */
-  function crackle(): void {
-    if (crackleFrame || reduceMotion.matches) return;
-    crackleAt = performance.now();
+  /** Runs the beat (the halo's breath, the port's ring) every frame while a
+   *  dock is offered; only attributes change, nothing is rebuilt. */
+  function beat(): void {
+    if (beatFrame || reduceMotion.matches) return;
     const tick = (now: number) => {
-      crackleFrame = 0;
+      beatFrame = 0;
       if (disposed || !charge || !charge.layer.isConnected) return;
-      if (now - crackleAt >= CRACKLE_MS) {
-        crackleAt = now;
-        drawCharge(charge.layer, charge.charge, (n) => n / vp().zoom);
-      }
-      crackleFrame = requestAnimationFrame(tick);
+      charge.view.beat(now - charge.since);
+      beatFrame = requestAnimationFrame(tick);
     };
-    crackleFrame = requestAnimationFrame(tick);
+    beatFrame = requestAnimationFrame(tick);
   }
 
   let stopFlow: (() => void) | null = null;
+  let stopGlide: (() => void) | null = null;
 
   function drawOverlay(): void {
     overlay.replaceChildren();
@@ -810,57 +809,34 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       );
     }
 
+    const offered = charge;
     charge = null;
     if (interaction.kind === "drag" && interaction.dock) {
-      // The dragged cards dock after the lit one: where each will land is
-      // outlined, and the lit card is charged, arcing to each dragged head.
-      const { from, shift, heads, fromY } = interaction.dock;
-      const fromBox = fromY === null ? elementBounds(from) : { ...elementBounds(from), y: fromY };
-      if (fromY !== null) {
-        // The lit card's own new spot, level with its next steps.
-        overlay.append(
-          svgEl("rect", {
-            x: fromBox.x,
-            y: fromBox.y,
-            width: fromBox.w,
-            height: fromBox.h,
-            rx: 8,
-            class: "wr-board-ghost",
-            "stroke-width": px(1.5),
-            "stroke-dasharray": `${px(5)} ${px(4)}`,
-          }),
-        );
-      }
+      // The dragged cards dock after the lit one: each one's imprint sits
+      // where it will land, the arrow it will get is previewed, and the lit
+      // card glows on a beat (SPECs/board-docking-glow-spec.md).
+      const { from, shift, heads, fromY, side } = interaction.dock;
+      const target = (fromY === null ? from : { ...from, y: fromY }) as Charge["target"];
+      const landings: Charge["landings"] = [];
       for (const id of interaction.startEls.keys()) {
         const el = findEl(scene, id);
-        if (!el || isLinker(el)) continue;
-        const b = elementBounds(el);
-        const g = { x: b.x + shift.x, y: b.y + shift.y, w: b.w, h: b.h };
-        overlay.append(
-          svgEl("rect", {
-            x: g.x,
-            y: g.y,
-            width: g.w,
-            height: g.h,
-            rx: 8,
-            class: "wr-board-ghost",
-            "stroke-width": px(1.5),
-            "stroke-dasharray": `${px(5)} ${px(4)}`,
-          }),
-        );
+        if (!canQuickConnect(el)) continue;
+        landings.push({ ...el, x: el.x + shift.x, y: el.y + shift.y });
       }
-      const layer = svgEl("g", { class: "wr-board-spark" });
+      // Routed on a scratch scene of the moved cards, so the preview is the
+      // very arrow the drop makes.
+      const scratch: BoardScene = { ...scene, els: [target, ...landings] };
+      const routes = heads.flatMap((h) => {
+        const head = landings.find((l) => l.id === h.id);
+        return head ? [routeLinker(scratch, connectorBetween(target, head, side))] : [];
+      });
+      const layer = svgEl("g", { class: "wr-board-glow is-offer" });
       overlay.append(layer);
-      charge = {
-        layer,
-        charge: {
-          target: from,
-          targetBox: fromBox,
-          heads: heads.map((h) => findEl(scene, h.id) ?? h) as Charge["heads"],
-        },
-      };
-      drawCharge(layer, charge.charge, px);
-      crackle();
+      const since = offered?.targetId === from.id ? offered.since : performance.now();
+      const view = drawCharge(layer, { target, targetMoves: fromY !== null, landings, routes }, px);
+      view.beat(reduceMotion.matches ? Infinity : performance.now() - since);
+      charge = { layer, view, targetId: from.id, since };
+      beat();
     }
 
     /** Rings `f` (what a card will connect to) and runs a dashed line from
@@ -2450,6 +2426,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function onPointerDown(e: PointerEvent): void {
     cachedStageRect = null;
+    // A glide still settling hands its cards back at rest before anything
+    // else can move them.
+    stopGlide?.();
+    stopGlide = null;
     pressedLink = null;
     cancelLinkClick();
     if (presenting) {
@@ -2931,6 +2911,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         if (current.moved) {
           const dock = current.dock;
           const docked: LinkerEl[] = [];
+          // Where each card was let go, so it can glide into its slot.
+          const release = new Map<string, Point>();
+          if (dock) {
+            for (const id of current.startEls.keys()) {
+              const el = findEl(scene, id);
+              if (el && !isLinker(el)) release.set(id, { x: el.x, y: el.y });
+            }
+          }
           restoreAndCommit(current.startEls, () => {
             const ids = current.startEls;
             for (const id of ids.keys()) {
@@ -2965,7 +2953,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
               }
             }
           });
-          if (docked.length) flowCurrent(docked);
+          if (docked.length) settleDock(docked, release);
         } else {
           // A click: redraw so the overlay is the resting one (with the
           // quick-connect dots), whatever the gesture drew.
@@ -3096,17 +3084,30 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   /** Rewinds to the pre-drag state, pushes that onto history, then re-applies —
    *  so one gesture is one undo step rather than one per pointermove. */
-  /** Current flows down each just-docked arrow and through its card. */
-  function flowCurrent(links: LinkerEl[]): void {
+  /** Just docked: the cards glide from where they were let go into their
+   *  slots, the new arrows firm up, and the light is handed down each arrow
+   *  to its card. The scene is already final; this only decorates it. */
+  function settleDock(links: LinkerEl[], release: Map<string, Point>): void {
     stopFlow?.();
     stopFlow = null;
+    stopGlide?.();
+    stopGlide = null;
     if (reduceMotion.matches) return;
+    const moves = [...release].flatMap(([id, p]) => {
+      const el = findEl(scene, id);
+      const node = renderer.nodeFor(id);
+      return el && node ? [{ node, dx: p.x - el.x, dy: p.y - el.y }] : [];
+    });
+    const arrows = links.flatMap((link) => {
+      const node = renderer.nodeFor(link.id);
+      return node ? [node] : [];
+    });
+    stopGlide = glideInto(moves, arrows);
     const flows = links.flatMap((link) => {
       const from = findEl(scene, link.b1?.el ?? "");
       const card = findEl(scene, link.b2?.el ?? "");
       if (!canQuickConnect(from) || !canQuickConnect(card)) return [];
-      const route = routeLinker(scene, link);
-      return [{ from, card, route, entry: sideOf(elementBounds(card), route[route.length - 1]) }];
+      return [{ from, card, route: routeLinker(scene, link) }];
     });
     if (flows.length) stopFlow = playFlow(flowLayer, flows, (n) => n / vp().zoom);
   }
@@ -3608,8 +3609,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       svg.removeEventListener("pointermove", onPointerMoveRaw);
       if (moveFrame) cancelAnimationFrame(moveFrame);
       if (recullFrame) cancelAnimationFrame(recullFrame);
-      if (crackleFrame) cancelAnimationFrame(crackleFrame);
+      if (beatFrame) cancelAnimationFrame(beatFrame);
       stopFlow?.();
+      stopGlide?.();
       svg.removeEventListener("pointerup", onPointerUp);
       svg.removeEventListener("pointercancel", onPointerUp);
       svg.removeEventListener("dblclick", onDoubleClick);

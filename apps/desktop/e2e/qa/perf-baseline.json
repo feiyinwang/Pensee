@@ -22,5 +22,9 @@
   "PERF-06": {
     "median": 3,
     "kind": "go"
+  },
+  "PERF-07": {
+    "median": 1,
+    "kind": "type"
   }
 }

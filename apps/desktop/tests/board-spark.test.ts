@@ -1,18 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
-import { boltPoints, edgePoint, sideOf } from "../src/components/editor-area/board/board-spark";
+import {
+  BEAT_MS,
+  beatAt,
+  easeOut,
+  edgePoint,
+  pointAlong,
+  sideOf,
+} from "../src/components/editor-area/board/board-spark";
 
-describe("docking spark geometry", () => {
-  test("a bolt keeps both ends pinned and stays within its amplitude", () => {
-    let i = 0;
-    const rnd = () => [0, 1, 0.25, 0.9][i++ % 4];
-    const pts = boltPoints({ x: 0, y: 0 }, { x: 100, y: 0 }, 8, 5, rnd);
-    expect(pts).toHaveLength(6);
-    expect(pts[0]).toEqual({ x: 0, y: 0 });
-    expect(pts.at(-1)).toEqual({ x: 100, y: 0 });
-    for (const q of pts) expect(Math.abs(q.y)).toBeLessThanOrEqual(8);
-    expect(pts.slice(1, -1).map((q) => q.x)).toEqual([20, 40, 60, 80]);
-  });
-
+describe("docking glow geometry", () => {
   test("the contact point is where the centre line leaves the box", () => {
     const box = { x: 0, y: 0, w: 200, h: 100 };
     expect(edgePoint(box, { x: 400, y: 50 })).toEqual({ x: 200, y: 50 });
@@ -25,5 +21,43 @@ describe("docking spark geometry", () => {
     expect(sideOf(box, { x: 0, y: 60 })).toBe("w");
     expect(sideOf(box, { x: 120, y: 0 })).toBe("n");
     expect(sideOf(box, { x: 80, y: 100 })).toBe("s");
+  });
+
+  test("pointAlong walks an elbow route by distance", () => {
+    const route = [
+      { x: 0, y: 0 },
+      { x: 40, y: 0 },
+      { x: 40, y: 100 },
+    ];
+    expect(pointAlong(route, 20)).toEqual({ x: 20, y: 0 });
+    expect(pointAlong(route, 90)).toEqual({ x: 40, y: 50 });
+    expect(pointAlong(route, 500)).toEqual({ x: 40, y: 100 });
+  });
+});
+
+describe("docking glow beat", () => {
+  test("the halo is dimmest as the dock is offered and brightest mid-beat", () => {
+    expect(beatAt(0).breath).toBeCloseTo(0);
+    expect(beatAt(BEAT_MS / 2).breath).toBeCloseTo(1);
+    expect(beatAt(BEAT_MS).breath).toBeCloseTo(0);
+  });
+
+  test("a ring goes out at each peak and is gone before the next", () => {
+    expect(beatAt(BEAT_MS / 4).ring).toBeNull();
+    expect(beatAt(BEAT_MS / 2).ring).toBeCloseTo(0);
+    expect(beatAt(BEAT_MS / 2 + BEAT_MS * 0.3).ring).toBeCloseTo(0.5);
+    expect(beatAt(BEAT_MS / 2 + BEAT_MS * 0.7).ring).toBeNull();
+    expect(beatAt(BEAT_MS * 1.5).ring).toBeCloseTo(0);
+  });
+
+  test("reduced motion: full glow, no ring", () => {
+    expect(beatAt(Infinity)).toEqual({ breath: 1, ring: null });
+  });
+
+  test("easeOut is --ease-out: pinned ends, fast start", () => {
+    expect(easeOut(0)).toBe(0);
+    expect(easeOut(1)).toBe(1);
+    expect(easeOut(0.25)).toBeGreaterThan(0.7);
+    expect(easeOut(0.5)).toBeLessThanOrEqual(1);
   });
 });

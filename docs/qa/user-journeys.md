@@ -232,7 +232,7 @@ setting (workspace root when blank) and is reached from ⌘T, the sidebar's
 **Feature:** `.board.svg` whiteboards shown in notes: shapes, stickies,
 connectors, pen, mind maps, flowcharts, templates, find, present, PNG export.
 Opened full screen or **Edit here** over a note.
-**Spec:** SPECs/board-lark-parity-spec.md, SPECs/board-rich-text-spec.md, SPECs/board-color-palette-spec.md
+**Spec:** SPECs/board-lark-parity-spec.md, SPECs/board-rich-text-spec.md, SPECs/board-color-palette-spec.md, SPECs/board-docking-glow-spec.md
 **Code:** `src/components/editor-area/board/`
 
 | ID     | Journey                                        | Expected                                                | Check                   |
@@ -243,6 +243,7 @@ Opened full screen or **Edit here** over a note.
 | BRD-04 | ⌘Z, ⌘⇧Z on the board                           | Undo and redo work on the board, not the note behind it | manual                  |
 | BRD-05 | Hover the board in a note → **Edit here**, Esc | Opens over that note's column only; Esc returns to it   | manual                  |
 | BRD-06 | Export PNG; **Present**                        | A PNG is saved; present mode steps through frames       | manual                  |
+| BRD-07 | Drag a card near another, hold, let go         | Held: the card's imprint in its slot after the other, the arrow it will get lit, the other card glowing with a port; dropped: the card sits in that slot, joined by an arrow that is in the file | auto: board             |
 
 ## Projects — PRJ
 
