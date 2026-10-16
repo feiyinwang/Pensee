@@ -4,10 +4,8 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.vite-plus/bin:/opt/homebre
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="${PENSEE_APP_NAME:-Pensée}"
-SIGN_IDENTITY="${PENSEE_SIGN_IDENTITY:--}"
 DEST="/Applications/${APP_NAME}.app"
 LOCAL_CONF="$ROOT_DIR/apps/desktop/src-tauri/tauri.local.conf.json"
-ENTITLEMENTS="$ROOT_DIR/apps/desktop/src-tauri/Entitlements.plist"
 BUNDLE_DIR="$ROOT_DIR/apps/desktop/src-tauri/target/release/bundle/macos"
 LOCK_DIR="/tmp/pensee-ship-local.lock"
 
@@ -37,16 +35,20 @@ fi
 SRC="$BUNDLE_DIR/${APP_NAME}.app"
 [ -d "$SRC" ] || { echo "[ship-local] bundle not found: $SRC"; ls -1 "$BUNDLE_DIR" || true; exit 1; }
 
-codesign --force --deep --options runtime \
-  --entitlements "$ENTITLEMENTS" \
-  --sign "$SIGN_IDENTITY" "$SRC" >/dev/null 2>&1 || { echo "[ship-local] codesign failed"; exit 1; }
+# Same identity every build, so macOS keeps the user's privacy answers.
+"$ROOT_DIR/scripts/sign-local.sh" "$SRC" || { echo "[ship-local] codesign failed"; exit 1; }
+
+# By bundle id: a path match misses the running app, whose path macOS spells
+# with a decomposed "é".
+BUNDLE_ID=$(sed -n 's/.*"identifier": *"\([^"]*\)".*/\1/p' "$LOCAL_CONF")
+is_running() { [ "$(osascript -e "application id \"$BUNDLE_ID\" is running" 2>/dev/null)" = "true" ]; }
 
 WAS_RUNNING=0
-if pgrep -f "${DEST}/Contents/MacOS/" >/dev/null 2>&1; then
+if is_running; then
   WAS_RUNNING=1
-  osascript -e "quit app \"$APP_NAME\"" >/dev/null 2>&1 || true
+  osascript -e "tell application id \"$BUNDLE_ID\" to quit" >/dev/null 2>&1 || true
   for _ in $(seq 1 30); do
-    pgrep -f "${DEST}/Contents/MacOS/" >/dev/null 2>&1 || break
+    is_running || break
     sleep 0.5
   done
 fi

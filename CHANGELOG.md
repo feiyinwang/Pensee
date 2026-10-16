@@ -2,6 +2,7 @@
 
 ## 2026-10-16
 
+- Pensée built on this Mac now keeps your answers to macOS privacy prompts, like "access data from other apps" for Apple Books highlights. Allow once and an update no longer asks again on first launch. Each Mac signs its builds with its own signing identity, made once in your Library; no key or password is in the repo or the app.
 - The row under a video now shows all its keys, not just **Pin ⌘S**: **Play ⌘⇧J** (it reads **Pause** while the video plays, and clicking it plays or pauses without taking you out of your note) and **Speed < >**.
 - A podcast's player now looks like a video's: a dark card with the same rounded corners and soft shadow, in light and dark mode, instead of a pale outlined box.
 - Docking a card on a board is calmer now. Drag a card near another and a faint imprint of it shows where it will land, with the arrow it will get already drawn, lit in the card's colour; the card it joins glows softly and breathes, and a small ring goes out from where the arrow leaves. Let go and the card glides into its spot, a dot runs down the new arrow and the glow passes to the card it reaches. It replaces the lightning bolt. With **Reduce motion** on, the imprint, arrow and glow show still and nothing plays on drop.
