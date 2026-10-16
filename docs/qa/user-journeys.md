@@ -146,6 +146,7 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ED-22 | Narrow the room on the right (smaller window, wider page, side by side)       | The list folds back into ticks; hovering them still opens the heading list                                                  | auto: outline               |
 | ED-23 | Scroll with the trackpad while the pointer is over **On this page**           | The note scrolls, as over the empty margin; the list follows the mark                                                       | auto: outline               |
 | ED-24 | Scroll through a long note with **On this page** showing; click a far heading | The mark slides to the heading you're reading, and lands on the clicked one                                                 | you                         |
+| ED-25 | Open a video note with headings, room on the right; scroll it | **On this page** starts under the video and its transcript, beside the text, and rides up with them as they pin to the top; it never covers the transcript, which still scrolls | auto: outline |
 
 ## Links — LNK
 

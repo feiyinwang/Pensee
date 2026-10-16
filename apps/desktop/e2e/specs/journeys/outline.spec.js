@@ -3,7 +3,7 @@
 // an "On this page" list instead of ticks behind a hover.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { ok, strictEqual } from "node:assert/strict";
-import { waitForTitle, workspaceRoot } from "./_helpers.js";
+import { invoke, waitForTitle, workspaceRoot } from "./_helpers.js";
 
 /** Open a note through the sidebar's Search field (SB-07), the way PERF does,
  *  so the journey doesn't hang on which key opens search. */
@@ -135,5 +135,60 @@ describe("Journeys: outline", function () {
     });
     const state = await outlineState();
     strictEqual(state.ticks, 8, "one tick per heading");
+  });
+
+  it("ED-25 in a video note, On this page starts under the video, beside the text", async function () {
+    // The seeded video note, given headings before it opens (a fresh vault per
+    // spec file, so no other journey sees them).
+    const root = await workspaceRoot();
+    const path = `${root}/Speech talk.md`;
+    const read = await invoke("read_file", { path });
+    ok(read.ok, `read_file failed: ${read.error}`);
+    const text = typeof read.value === "string" ? read.value : read.value.content;
+    const wrote = await invoke("write_file", {
+      path,
+      content: `${text}\n## Motor act\n\nSyllables.\n\n## Listening first\n\nBabble.\n`,
+    });
+    ok(wrote.ok, `write_file failed: ${wrote.error}`);
+    await openViaSearch("Speech talk");
+    await setPageWidth("280px");
+    const place = () =>
+      browser.execute(() => {
+        const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
+        const nav = pane?.querySelector('nav[aria-label="On this page"]');
+        const band = pane?.querySelector(".video-band");
+        if (!nav || !band) return null;
+        const n = nav.getBoundingClientRect();
+        const b = band.getBoundingClientRect();
+        const scroller = band.parentElement;
+        return {
+          navTop: n.top,
+          navBottom: n.bottom,
+          bandBottom: b.bottom,
+          scroller: scroller.scrollTop,
+        };
+      });
+    await browser.waitUntil(async () => (await place()) !== null, {
+      timeout: 15_000,
+      timeoutMsg: "no outline beside the video note",
+    });
+    let state = await place();
+    ok(
+      state.navTop >= state.bandBottom,
+      `the outline starts under the video (${state.navTop} < ${state.bandBottom})`,
+    );
+    // Scrolled to the bottom, the band sticks at the top and the outline sits
+    // under it still.
+    await browser.execute(() => {
+      const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
+      const scroller = pane.querySelector(".video-band").parentElement;
+      scroller.scrollTop = scroller.scrollHeight;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    state = await place();
+    ok(
+      state.navTop >= state.bandBottom,
+      `stuck band: the outline starts under it (${state.navTop} < ${state.bandBottom})`,
+    );
   });
 });

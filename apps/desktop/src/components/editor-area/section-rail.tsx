@@ -308,6 +308,58 @@ interface SectionOutlineProps {
 const OUTLINE_BOTTOM_INSET = 48;
 const OUTLINE_ROW_INSET = 14;
 const OUTLINE_LIST_FADE = 20;
+const OUTLINE_BAND_GAP = 24;
+
+// A video note's band (video-player.tsx) is sticky over the note's top, with
+// the transcript beside the video. The outline starts under it, next to the
+// text, so it never covers the video or takes the transcript's wheel; as the
+// band scrolls up to stick, the outline rides up with it. Written to the
+// node's style, not state: it follows every scroll frame.
+function useOutlineTop(
+  navRef: RefObject<HTMLElement | null>,
+  scrollContainerRef: RefObject<HTMLDivElement | null>,
+  top: number,
+) {
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const scroller = scrollContainerRef.current;
+    const pane = nav?.offsetParent;
+    if (!nav || !scroller || !pane) return;
+    let band: Element | null = null;
+    let applied = -1;
+    const place = () => {
+      const bandBottom = band
+        ? band.getBoundingClientRect().bottom - pane.getBoundingClientRect().top + OUTLINE_BAND_GAP
+        : 0;
+      const next = Math.round(Math.max(top, bandBottom));
+      if (next === applied) return;
+      applied = next;
+      nav.style.top = `${next}px`;
+      nav.style.maxHeight = `calc(100% - ${next + OUTLINE_BOTTOM_INSET}px)`;
+    };
+    const resize = new ResizeObserver(place);
+    // The band mounts once its player page answers, and goes with the link.
+    const findBand = () => {
+      const found = scroller.querySelector(":scope > .video-band");
+      if (found === band) return;
+      if (band) resize.unobserve(band);
+      band = found;
+      if (band) resize.observe(band);
+      place();
+    };
+    const children = new MutationObserver(findBand);
+    children.observe(scroller, { childList: true });
+    resize.observe(scroller);
+    scroller.addEventListener("scroll", place, { passive: true });
+    findBand();
+    place();
+    return () => {
+      children.disconnect();
+      resize.disconnect();
+      scroller.removeEventListener("scroll", place);
+    };
+  }, [navRef, scrollContainerRef, top]);
+}
 
 // The rail opened up: every heading readable at rest, the one in view marked on
 // a hairline. Rows wrap to two lines rather than truncate — a standing outline
@@ -322,6 +374,7 @@ function SectionOutline({
   scrollContainerRef,
   onPick,
 }: SectionOutlineProps) {
+  const navRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const [marker, setMarker] = useState<{ top: number; height: number } | null>(null);
@@ -368,6 +421,8 @@ function SectionOutline({
     });
   };
 
+  useOutlineTop(navRef, scrollContainerRef, top);
+
   useEffect(() => {
     setAnimateMarker(false);
     let inner = 0;
@@ -382,13 +437,12 @@ function SectionOutline({
 
   return (
     <nav
+      ref={navRef}
       className="section-outline absolute z-20 flex flex-col"
       aria-label="On this page"
       style={{
-        top,
         right: `calc(${EDITOR_SCROLLBAR_GUTTER} + ${OUTLINE_EDGE_INSET}px)`,
         width,
-        maxHeight: `calc(100% - ${top + OUTLINE_BOTTOM_INSET}px)`,
       }}
       onWheel={handleWheel}
     >

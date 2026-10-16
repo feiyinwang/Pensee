@@ -132,7 +132,11 @@ table of contents on component docs sites (uiarc's Button page).
   back to the ticks, each without a breakpoint table.
 - **Where.** Top-aligned with the page header (96px, 40px in a column), fixed
   while the note scrolls; the list scrolls inside itself when it is taller
-  than the pane and keeps the marked row in view.
+  than the pane and keeps the marked row in view. In a video note it starts
+  24px under the video band instead (the video and the transcript beside it),
+  next to the text: it rides up as the band scrolls to stick and stays under
+  it once stuck, so it never covers the transcript or takes its wheel
+  (`useOutlineTop` in `section-rail.tsx`).
 - **Look.** A **On this page** label (label size, medium, primary), then one
   row per heading hanging off a 1px hairline (`--line-subtle`), indented by
   depth with the same sliding three-level window as the popover. Rows are
