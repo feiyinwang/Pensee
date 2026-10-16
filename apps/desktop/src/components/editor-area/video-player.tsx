@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { MapPin, ScrollText } from "lucide-react";
+import { MapPin, Pause, Play, ScrollText } from "lucide-react";
 
 import { videoIdOf } from "@/lib/video-pins";
 import { transcriptSourceIn } from "@/lib/video-transcript";
@@ -17,6 +17,8 @@ import { useEditorStore } from "@/stores/editor-store";
 import { showEditorNotice } from "./editor-notice-store";
 import {
   PIN_SHORTCUT_LABEL,
+  PLAY_SHORTCUT_LABEL,
+  SPEED_SHORTCUT_LABEL,
   installVideoPinShortcut,
   pinMoment,
   returnFocusFrom,
@@ -188,6 +190,8 @@ function VideoBand({
   const playerRef = useRef<VideoPlayerHandle | null>(null);
   const [error, setError] = useState<number | null>(null);
   const [stuck, setStuck] = useState(false);
+  // For the footer's Play / Pause label; the page reports it with every state.
+  const [playing, setPlaying] = useState(false);
   const transcript = useEditorStore((s) =>
     transcriptSourceIn(s.openFiles.get(filePath)?.content ?? ""),
   );
@@ -305,6 +309,7 @@ function VideoBand({
         disarmAutoPin();
       }
       report = { t, playing, at: performance.now() };
+      setPlaying(playing);
     };
     // A scroll or pinch over the video happens in the page's frame, out of
     // the note's reach: the page sends it here. A scroll moves the note; a
@@ -417,6 +422,24 @@ function VideoBand({
             <button
               type="button"
               className="video-pin-button"
+              aria-keyshortcuts="Meta+Shift+J"
+              // Focus stays in the note, where typing goes.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => playerRef.current?.toggle()}
+            >
+              {playing ? <Pause size={13} aria-hidden /> : <Play size={13} aria-hidden />}
+              {playing ? "Pause" : "Play"}
+              <kbd>{PLAY_SHORTCUT_LABEL}</kbd>
+            </button>
+            {/* The page's own bar sets the speed; this only names the keys. */}
+            <span className="video-key-hint">
+              Speed
+              <kbd>{SPEED_SHORTCUT_LABEL}</kbd>
+            </span>
+            <button
+              type="button"
+              className="video-pin-button"
+              aria-keyshortcuts="Meta+S"
               // Focus stays in the note or board, where the pin goes.
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pinMoment(playerRef.current ?? undefined)}

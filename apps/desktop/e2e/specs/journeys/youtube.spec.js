@@ -247,6 +247,18 @@ describe("YouTube notes: where the transcript shows", function () {
     );
   });
 
+  it("YT-19 the row under the video names play, speed and pin keys", async function () {
+    const row = await browser.execute(() =>
+      [...document.querySelectorAll(".video-band-row > *")].map((el) =>
+        el.textContent.replace(/\s+/g, " ").trim(),
+      ),
+    );
+    ok(row.includes("Play⌘⇧J") || row.includes("Pause⌘⇧J"), `no Play ⌘⇧J under the video (${row})`);
+    ok(row.includes("Speed< >"), `no Speed < > under the video (${row})`);
+    ok(row.includes("Pin⌘S"), `no Pin ⌘S under the video (${row})`);
+    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-19-keys.png`);
+  });
+
   it("YT-13 ★ beside the video in a wide pane, pinned with it; under it in a narrow one", async function () {
     await setPaneWidth(BESIDE_MIN_WIDTH + 200);
     await browser.waitUntil(async () => (await boxState()).placement === "beside", {

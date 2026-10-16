@@ -136,7 +136,19 @@
   opacity: 0.6;
 }
 
-.video-pin-button kbd {
+.video-key-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding-inline: 7px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: var(--text-label);
+}
+
+.video-pin-button kbd,
+.video-key-hint kbd {
   color: var(--text-muted);
   font-family: var(--ui-font);
   font-size: var(--text-caption);

@@ -242,6 +242,8 @@ function autoPinAtCaret(view: EditorView, notePath: string): void {
 }
 
 export const PIN_SHORTCUT_LABEL = "⌘S";
+export const PLAY_SHORTCUT_LABEL = "⌘⇧J";
+export const SPEED_SHORTCUT_LABEL = "< >";
 
 let installed = false;
 /** Last element focused outside a player, so starting a video by clicking in

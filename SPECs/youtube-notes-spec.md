@@ -39,7 +39,10 @@ selected.
     under `writer.video-player`.
 - Scrolling over the video scrolls the note; pinching over it reaches the
   tab columns' pinch like a pinch anywhere else.
-- Under the video is one row with a **Pin** button and its shortcut (⌘S).
+- Under the video is one row that names every key the video takes:
+  **Play ⌘⇧J** (**Pause** while it plays; clicking it plays or pauses and
+  leaves typing in the note), **Speed < >** (a label: the player's own bar
+  sets the speed) and **Pin ⌘S**.
 - **`<` / `>`** (Shift+, / Shift+. on US keyboards) step the speed down or
   up YouTube's list in the video's note, and the new speed shows on the
   video for a moment. They never type there (`<` and `>` can't be typed in

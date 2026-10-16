@@ -318,9 +318,10 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-13 | ★ Open a video note in a wide pane, scroll; narrow it | Wide: the box is right of the video, as tall as it, and stays at the top with it; narrow: it is under the video | auto: youtube             |
 | YT-14 | Pick another language in the box's language menu   | The menu lists the video's caption languages, English first; the toggle is read again in it (`lang` kept), the rest of the note untouched | auto: youtube (YouTube) |
 | YT-15 | Add a video whose speech isn't English             | The transcript comes in English when the video has English captions; the menu offers the others              | you                       |
-| YT-16 | Open an older video note with no captions          | No **Transcript** button under the video, only **Pin ⌘S**                                                     | you                       |
+| YT-16 | Open an older video note with no captions          | No **Transcript** button under the video, only the keys row                                                   | you                       |
 | YT-17 | ⌘S in a video note, then ⌘S in a plain note        | The video note's line gets a pin; in the plain note nothing happens                                             | auto: podcast (POD-05)    |
 | YT-18 | Paste a Coursera link into Library's **+**        | It is guessed as a Video; Library has no Courses tab, `Type: Course` notes show under Videos                  | you                       |
+| YT-19 | Look at the row under the video; click **Play**   | It names every video key (**Play ⌘⇧J**, **Speed < >**, **Pin ⌘S**); **Play** plays it, typing stays put       | auto: youtube             |
 
 ## Podcast notes — POD
 
