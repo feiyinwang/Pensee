@@ -137,3 +137,7 @@ Hovering a board's preview shows **Present**, **Edit here** and **Open board**. 
 
 - Collaborative editing.
 - Embedding the scene in the markdown file itself.
+
+## Removed tools (2026-10-16)
+
+The **Sticky note** and **Mind map** tools are gone at the user's request: no Dock group or rail button, and N and M no longer pick a tool. Boards keep every sticky note and mind map they already hold: they render, export and edit as before (text, colour, Tab / Enter to grow a map), and a pasted Mermaid `mindmap` still imports.

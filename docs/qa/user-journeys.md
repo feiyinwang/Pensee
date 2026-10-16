@@ -229,8 +229,9 @@ setting (workspace root when blank) and is reached from ⌘T, the sidebar's
 
 ## Boards — BRD
 
-**Feature:** `.board.svg` whiteboards shown in notes: shapes, stickies,
-connectors, pen, mind maps, flowcharts, templates, find, present, PNG export.
+**Feature:** `.board.svg` whiteboards shown in notes: shapes, connectors, pen,
+flowcharts, find, present, PNG export. Sticky notes and mind maps already on a
+board still show and edit; new ones can no longer be added.
 Opened full screen or **Edit here** over a note.
 **Spec:** SPECs/board-lark-parity-spec.md, SPECs/board-rich-text-spec.md, SPECs/board-color-palette-spec.md, SPECs/board-docking-glow-spec.md
 **Code:** `src/components/editor-area/board/`
@@ -238,12 +239,13 @@ Opened full screen or **Edit here** over a note.
 | ID     | Journey                                        | Expected                                                | Check                   |
 | ------ | ---------------------------------------------- | ------------------------------------------------------- | ----------------------- |
 | BRD-01 | `/board` in a note, pick Blank                 | A `.board.svg` is created next to the note and opens    | legacy: board-file      |
-| BRD-02 | Add a sticky, type, Esc; close the board       | The preview in the note shows the sticky                | legacy: board-file      |
+| BRD-02 | Open a board holding a sticky note, close it   | The preview in the note shows the sticky                | legacy: board-file      |
 | BRD-03 | Select a shape, click its blue dot             | A connected shape is added with an arrow                | legacy: board-flowchart |
 | BRD-04 | ⌘Z, ⌘⇧Z on the board                           | Undo and redo work on the board, not the note behind it | manual                  |
 | BRD-05 | Hover the board in a note → **Edit here**, Esc | Opens over that note's column only; Esc returns to it   | manual                  |
 | BRD-06 | Export PNG; **Present**                        | A PNG is saved; present mode steps through frames       | manual                  |
 | BRD-07 | Drag a card near another, hold, let go         | Held: the card's imprint in its slot after the other, the arrow it will get lit, the other card glowing with a port; dropped: the card sits in that slot, joined by an arrow that is in the file | auto: board             |
+| BRD-08 | Look over a board's tools; press N, then M     | No Sticky note or Mind map tool; N and M pick nothing (T still picks Text) | auto: board |
 
 ## Projects — PRJ
 

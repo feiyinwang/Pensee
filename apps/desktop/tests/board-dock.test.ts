@@ -8,7 +8,7 @@ describe("board tool dock", () => {
 
   test("a tray one item too wide is caught", () => {
     const tooWide = DOCK_SPEC.map((s) =>
-      s.id === "stickies" ? { ...s, items: [...(s.items ?? []), ...(s.items ?? [])] } : s,
+      s.id === "shapes" ? { ...s, items: [...(s.items ?? []), ...(s.items ?? [])] } : s,
     );
     expect(trayFits(tooWide)).toBe(false);
   });

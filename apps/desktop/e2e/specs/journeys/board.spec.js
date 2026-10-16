@@ -156,4 +156,45 @@ describe("Journeys: boards", function () {
       { timeout: 10_000, timeoutMsg: "the docked card and its arrow never reached the board file" },
     );
   });
+
+  it("BRD-08 a board offers no sticky note or mind map tool, and N and M do nothing", async function () {
+    if (!(await $(".wr-board-fullscreen").isExisting())) await openDockBoard();
+    // The tools' labels, from the Dock (or the plain rail while it loads).
+    const labels = () =>
+      browser.execute(() =>
+        [
+          ...document.querySelectorAll(
+            ".wr-board-fullscreen [aria-label], .wr-board-fullscreen [title]",
+          ),
+        ]
+          .map((el) => el.getAttribute("aria-label") ?? el.getAttribute("title"))
+          .filter(Boolean),
+      );
+    await browser.waitUntil(async () => (await labels()).some((l) => /^Pen\b/.test(l)), {
+      timeout: 10_000,
+      timeoutMsg: "the board's tools never showed",
+    });
+    const offered = (await labels()).filter((l) => /sticky|mind map/i.test(l));
+    ok(offered.length === 0, `still offered: ${offered.join("; ")}`);
+
+    // T still picks Text (the keys are live); N and M pick nothing. With a
+    // card selected, a letter types into it instead, so clear the selection
+    // first (Escape clears it; with nothing selected it would close the board).
+    const tools = await browser.execute(() => {
+      const host = document.querySelector(".wr-board-fullscreen .wr-board-host");
+      for (let i = 0; i < 2 && host.querySelector(".wr-board-selbox"); i++) {
+        host.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        );
+      }
+      const press = (key) => {
+        host.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+        return host.dataset.tool;
+      };
+      const out = { t: press("t"), v: press("v"), n: press("n"), m: press("m") };
+      return out;
+    });
+    ok(tools.t === "text", `T picked ${tools.t}, not Text`);
+    ok(tools.n === "select" && tools.m === "select", `N and M picked ${tools.n} and ${tools.m}`);
+  });
 });

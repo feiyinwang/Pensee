@@ -25,11 +25,9 @@ import {
   type MindEl,
   type ShapeEl,
   type ShapeKind,
-  type StickyColor,
   type TextEl,
   type Viewport,
   FRAME_PRESETS,
-  STICKY_SIZE,
   clampCoord,
   boundGestureZoom,
   clampZoom,
@@ -100,7 +98,6 @@ import {
   mindFontSize,
   mindRoot,
   mindSubtree,
-  newMindRoot,
 } from "./board-mind";
 import { type ToolId, type ToolState, type Toolbar, buildToolbar } from "./board-tools";
 import {
@@ -288,7 +285,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   const tools: ToolState = {
     tool: "select",
     shape: SHAPE_DEFAULT_KIND,
-    sticky: "yellow",
     linker: { kind: "arrow", shape: "straight" },
     frame: "custom",
   };
@@ -327,10 +323,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     onShape: (kind) => {
       tools.shape = kind;
       setTool("shape");
-    },
-    onSticky: (color) => {
-      tools.sticky = color;
-      setTool("sticky");
     },
     onLinker: (kind, shape) => {
       tools.linker = { kind, shape };
@@ -801,7 +793,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           y: g.y,
           width: w,
           height: h,
-          rx: tools.tool === "sticky" ? px(2) : 8,
+          rx: 8,
           class: "wr-board-ghost",
           "stroke-width": px(1.5),
           "stroke-dasharray": `${px(5)} ${px(4)}`,
@@ -1273,8 +1265,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     switch (tools.tool) {
       case "shape":
         return `shape:${tools.shape}`;
-      case "sticky":
-        return `sticky:${tools.sticky}`;
       case "linker":
         return `linker:${tools.linker.kind}:${tools.linker.shape}`;
       case "frame":
@@ -1298,7 +1288,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       return;
     }
     if (kind === "shape") tools.shape = a as ShapeKind;
-    else if (kind === "sticky") tools.sticky = a as StickyColor;
     else if (kind === "linker") tools.linker = { kind: a as LinkerKind, shape: b as LinkerShape };
     else if (kind === "frame") tools.frame = a as FramePreset;
     setTool(kind as ToolId);
@@ -1331,7 +1320,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   function setTool(tool: ToolId): void {
     tools.tool = tool;
-    if (tool !== "shape" && tool !== "sticky") ghost = null;
+    if (tool !== "shape") ghost = null;
     toolbar.setTool(tool);
     toolDock?.setValue(toolValue());
     host.dataset.tool = tool;
@@ -1473,19 +1462,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
           op: 1,
           st: newShapeStyle(),
         } as ShapeEl;
-      case "sticky":
-        return {
-          id,
-          t: "sticky",
-          x: at.x - STICKY_SIZE / 2,
-          y: at.y - STICKY_SIZE / 2,
-          w: STICKY_SIZE,
-          h: STICKY_SIZE,
-          a: 0,
-          op: 1,
-          c: tools.sticky,
-          tx: "",
-        };
       case "text":
         return {
           id,
@@ -2568,19 +2544,6 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       return;
     }
 
-    if (tools.tool === "mind") {
-      pushHistory();
-      const root = newMindRoot(p);
-      scene.els.push(root);
-      layoutMind(scene, root.id, measureText);
-      selection = new Set([root.id]);
-      setTool("select");
-      draw();
-      markDirty();
-      startTextEdit(root);
-      return;
-    }
-
     const el = makeElement(tools.tool, p);
     if (!el) return;
     if (isLinker(el)) {
@@ -2791,10 +2754,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       case "create": {
         const el = interaction.el;
         const box = normalizeBox(interaction.origin, p);
-        if (el.t === "sticky") {
-          el.x = p.x - STICKY_SIZE / 2;
-          el.y = p.y - STICKY_SIZE / 2;
-        } else if (el.t === "frame" && FRAME_PRESETS[(el as { preset: FramePreset }).preset]) {
+        if (el.t === "frame" && FRAME_PRESETS[(el as { preset: FramePreset }).preset]) {
           el.x = box.x;
           el.y = box.y;
         } else {
@@ -3007,9 +2967,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       }
       case "create": {
         const el = current.el;
-        const tooSmall =
-          el.t !== "sticky" &&
-          (el.w < SCREEN.minDrag / vp().zoom || el.h < SCREEN.minDrag / vp().zoom);
+        const tooSmall = el.w < SCREEN.minDrag / vp().zoom || el.h < SCREEN.minDrag / vp().zoom;
         if (tooSmall && el.t !== "text") {
           // Treat a click-without-drag as "place a default-sized element",
           // except for shapes drawn to nothing, which are discarded.
@@ -3021,13 +2979,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             el.h = SHAPE_DEFAULT.h;
           }
         }
-        // A click (not a drag) with the shape or note tool drops the item at
-        // the cursor — beside a shape it is near, connected to it.
-        const clicked =
-          el.t === "sticky"
-            ? Math.hypot(p.x - current.origin.x, p.y - current.origin.y) <
-              SCREEN.minDrag / vp().zoom
-            : tooSmall && isShape(el);
+        // A click (not a drag) with the shape tool drops the shape at the
+        // cursor — beside a shape it is near, connected to it.
+        const clicked = tooSmall && isShape(el);
         const spot = clicked ? placeNear(scene, current.origin, el.w, el.h, el.id) : null;
         if (spot) {
           el.x = spot.box.x;
@@ -3233,10 +3187,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   function updateGhost(): void {
     const kind = tools.tool;
     const next =
-      pointerScene && interaction.kind === "none" && (kind === "shape" || kind === "sticky")
-        ? kind === "shape"
-          ? placeNear(scene, pointerScene, SHAPE_DEFAULT.w, SHAPE_DEFAULT.h)
-          : placeNear(scene, pointerScene, STICKY_SIZE, STICKY_SIZE)
+      pointerScene && interaction.kind === "none" && kind === "shape"
+        ? placeNear(scene, pointerScene, SHAPE_DEFAULT.w, SHAPE_DEFAULT.h)
         : null;
     if (!next && !ghost) return;
     ghost = next;
@@ -3294,11 +3246,9 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
 
   const TOOL_KEYS: Record<string, () => void> = {
     v: () => setTool("select"),
-    m: () => setTool("mind"),
     p: () => setTool("pen"),
     h: () => setTool("hand"),
     t: () => setTool("text"),
-    n: () => setTool("sticky"),
     l: () => {
       tools.linker = { kind: "line", shape: "straight" };
       setTool("linker");

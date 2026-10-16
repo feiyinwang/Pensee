@@ -21,7 +21,6 @@ import {
   Minus,
   MousePointer2,
   MoveUpRight,
-  Network,
   Pencil,
   Spline,
   Square,
@@ -52,21 +51,6 @@ const SHAPE_ICONS: Partial<Record<ShapeKind, ReactNode>> = {
   bubble: <MessageSquare />,
 };
 
-function swatch(colour: string): ReactNode {
-  return (
-    <span
-      style={{
-        display: "block",
-        width: 18,
-        height: 18,
-        borderRadius: "var(--radius-button)",
-        background: `var(--wr-board-sticky-${colour})`,
-        boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--fg-base) 12%, transparent)",
-      }}
-    />
-  );
-}
-
 const LINKER_ICONS: Record<string, ReactNode> = {
   "linker:arrow:straight": <MoveUpRight />,
   "linker:line:straight": <Minus />,
@@ -79,10 +63,8 @@ const TOP_ICONS: Record<string, ReactNode> = {
   hand: <Hand />,
   shapes: <Squircle />,
   text: <Type />,
-  stickies: swatch("yellow"),
   linkers: <MoveUpRight />,
   pen: <Pencil />,
-  mind: <Network />,
   frames: <Frame />,
   image: <ImageIcon />,
   tidy: <WandSparkles />,
@@ -91,7 +73,6 @@ const TOP_ICONS: Record<string, ReactNode> = {
 function iconFor(id: string): ReactNode {
   const [kind, rest] = id.split(":");
   if (kind === "shape") return SHAPE_ICONS[rest as ShapeKind];
-  if (kind === "sticky") return swatch(rest);
   if (kind === "linker") return LINKER_ICONS[id];
   if (kind === "frame") return <Frame />;
   return TOP_ICONS[id];

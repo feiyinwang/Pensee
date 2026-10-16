@@ -497,8 +497,7 @@
 .wr-board-host[data-tool="shape"] .wr-board-svg,
 .wr-board-host[data-tool="frame"] .wr-board-svg,
 .wr-board-host[data-tool="linker"] .wr-board-svg,
-.wr-board-host[data-tool="text"] .wr-board-svg,
-.wr-board-host[data-tool="sticky"] .wr-board-svg {
+.wr-board-host[data-tool="text"] .wr-board-svg {
   cursor: crosshair;
 }
 

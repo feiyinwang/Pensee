@@ -8,31 +8,13 @@
  * asset dependency and stays a single `currentColor` knob.
  */
 
-import {
-  type FramePreset,
-  type LinkerShape,
-  type ShapeKind,
-  type StickyColor,
-  SHAPE_KINDS,
-  STICKY_COLORS,
-} from "./board-model";
+import { type FramePreset, type LinkerShape, type ShapeKind, SHAPE_KINDS } from "./board-model";
 
-export type ToolId =
-  | "select"
-  | "hand"
-  | "shape"
-  | "text"
-  | "sticky"
-  | "linker"
-  | "pen"
-  | "mind"
-  | "frame"
-  | "image";
+export type ToolId = "select" | "hand" | "shape" | "text" | "linker" | "pen" | "frame" | "image";
 
 export interface ToolState {
   tool: ToolId;
   shape: ShapeKind;
-  sticky: StickyColor;
   linker: { kind: "line" | "arrow"; shape: LinkerShape };
   frame: FramePreset;
 }
@@ -40,7 +22,6 @@ export interface ToolState {
 export interface ToolbarCallbacks {
   onTool: (tool: ToolId) => void;
   onShape: (kind: ShapeKind) => void;
-  onSticky: (color: StickyColor) => void;
   onLinker: (kind: "line" | "arrow", shape: LinkerShape) => void;
   onFrame: (preset: FramePreset) => void;
   onImage: () => void;
@@ -86,10 +67,8 @@ const ICON = {
     "M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v11a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 17.5z",
   ],
   text: ["M5 6h14", "M12 6v13", "M9 19h6"],
-  sticky: ["M5 4h14v10l-5 6H5z", "M19 14h-5v6"],
   linker: ["M4 18c6 0 4-12 10-12", "M14 6h4v4"],
   frame: ["M4 8h16", "M8 4v16", "M4 4h16v16H4z"],
-  mind: ["M9 12h3", "M12 12c2 0 2-5 4-5h1", "M12 12c2 0 2 5 4 5h1", "M3 10h6v4H3z"],
   image: [
     "M4 5h16v14H4z",
     "M4 16l4.5-4.5 3 3L15 11l5 5",
@@ -260,9 +239,7 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
     { id: "hand", title: "Hand", hint: "H", paths: ICON.hand },
     { id: "shape", title: "Shape", hint: "R", paths: ICON.shape, flyout: shapeFlyout },
     { id: "text", title: "Text", hint: "T", paths: ICON.text },
-    { id: "sticky", title: "Sticky note", hint: "N", paths: ICON.sticky, flyout: stickyFlyout },
     { id: "linker", title: "Connector", hint: "A", paths: ICON.linker, flyout: linkerFlyout },
-    { id: "mind", title: "Mind map", hint: "M", paths: ICON.mind },
     { id: "frame", title: "Section", hint: "⇧S", paths: ICON.frame, flyout: frameFlyout },
     { id: "image", title: "Image", hint: "", paths: ICON.image },
   ];
@@ -308,27 +285,6 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
         close();
       });
       if (kind === state.shape) tile.classList.add("is-active");
-      grid.append(tile);
-    }
-    panel.append(grid);
-    return panel;
-  }
-
-  function stickyFlyout(close: () => void): HTMLElement {
-    const panel = flyout("Sticky note", "N");
-    const grid = document.createElement("div");
-    grid.className = "wr-board-grid wr-board-grid-3";
-    for (const color of STICKY_COLORS) {
-      const tile = document.createElement("button");
-      tile.type = "button";
-      tile.className = "wr-board-swatch";
-      tile.title = color;
-      tile.setAttribute("aria-label", `${color} sticky note`);
-      tile.style.background = `var(--wr-board-sticky-${color})`;
-      tile.addEventListener("click", () => {
-        cb.onSticky(color);
-        close();
-      });
       grid.append(tile);
     }
     panel.append(grid);

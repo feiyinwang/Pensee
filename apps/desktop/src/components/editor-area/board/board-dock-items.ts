@@ -2,11 +2,11 @@
  * The tools Dock's items as data — ids, labels and shortcuts, no icons — so
  * the layout rules are testable without JSX. `board-dock.tsx` adds the icons.
  *
- * Ids: "select" | "hand" | "text" | "pen" | "mind" | "image" | "tidy" (an action)
- *      "shape:<kind>" | "sticky:<colour>" | "linker:<kind>:<route>" | "frame:<preset>"
+ * Ids: "select" | "hand" | "text" | "pen" | "image" | "tidy" (an action)
+ *      "shape:<kind>" | "linker:<kind>:<route>" | "frame:<preset>"
  */
 
-import { FRAME_PRESETS, type FramePreset, STICKY_COLORS, type ShapeKind } from "./board-model";
+import { FRAME_PRESETS, type FramePreset, type ShapeKind } from "./board-model";
 
 export interface DockSpec {
   id: string;
@@ -56,15 +56,6 @@ export const DOCK_SPEC: DockSpec[] = [
   },
   { id: "text", label: "Text", shortcut: "T" },
   {
-    id: "stickies",
-    label: "Sticky note",
-    items: STICKY_COLORS.map((c) => ({
-      id: `sticky:${c}`,
-      label: `${c[0].toUpperCase()}${c.slice(1)} note`,
-      shortcut: c === "yellow" ? "N" : undefined,
-    })),
-  },
-  {
     id: "linkers",
     label: "Connector",
     items: [
@@ -75,7 +66,6 @@ export const DOCK_SPEC: DockSpec[] = [
     ],
   },
   { id: "pen", label: "Pen", shortcut: "P" },
-  { id: "mind", label: "Mind map", shortcut: "M" },
   {
     id: "frames",
     label: "Section",

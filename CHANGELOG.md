@@ -2,6 +2,7 @@
 
 ## 2026-10-16
 
+- Boards no longer have the **Sticky note** and **Mind map** tools, and N and M no longer pick them. Sticky notes and mind maps already on your boards stay and still edit as before.
 - Pensée built on this Mac now keeps your answers to macOS privacy prompts, like "access data from other apps" for Apple Books highlights. Allow once and an update no longer asks again on first launch. Each Mac signs its builds with its own signing identity, made once in your Library; no key or password is in the repo or the app.
 - The row under a video now shows all its keys, not just **Pin ⌘S**: **Play ⌘⇧J** (it reads **Pause** while the video plays, and clicking it plays or pauses without taking you out of your note) and **Speed < >**.
 - A podcast's player now looks like a video's: a dark card with the same rounded corners and soft shadow, in light and dark mode, instead of a pale outlined box.
