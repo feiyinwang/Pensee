@@ -9,6 +9,7 @@ import {
   markFullDiskAccessGranted,
   useFullDiskAccessStore,
 } from "@/stores/full-disk-access-store";
+import settingsShot from "./full-disk-access-settings.webp";
 import "./full-disk-access-guide.css";
 
 // The Full Disk Access guide (SPECs/apple-books-highlights-spec.md). macOS asks
@@ -96,12 +97,12 @@ function GuideCard() {
         <ol className="fda-guide-steps">
           <li className="fda-guide-step" data-step="1">
             <span>
-              Click <b>+</b> under the list (skip if Pensée is there).
+              Click <b>+</b> under the list.
             </span>
           </li>
           <li className="fda-guide-step" data-step="2">
             <span>
-              Choose <b>Pensée</b> in Applications, then click <b>Open</b>.
+              Choose <b>Pensée</b> in Applications and click <b>Open</b>. It joins the list.
             </span>
           </li>
           <li className="fda-guide-step" data-step="3">
@@ -137,97 +138,37 @@ function GuideCard() {
   );
 }
 
-/** The sidebar of System Settings, as macOS shows it: a coloured tile per
- *  pane, with gaps between its groups. */
-const SIDEBAR: { label: string; tint: string; gapBefore?: boolean; selected?: boolean }[] = [
-  { label: "Wi-Fi", tint: "blue" },
-  { label: "Bluetooth", tint: "blue" },
-  { label: "Network", tint: "blue" },
-  { label: "Notifications", tint: "red", gapBefore: true },
-  { label: "Sound", tint: "red" },
-  { label: "Focus", tint: "purple" },
-  { label: "General", tint: "gray", gapBefore: true },
-  { label: "Appearance", tint: "dark" },
-  { label: "Privacy & Security", tint: "blue", selected: true },
-  { label: "Desktop & Dock", tint: "dark" },
-];
-
-/** System Settings → Privacy & Security → Full Disk Access, drawn as macOS
- *  shows it. A cursor clicks +, Pensée joins the list in its alphabetical
- *  place (the rows below it slide down), the cursor turns it on; markers 1–3
- *  land with each click. The resting styles are the last frame, so Reduce
- *  motion (no animation) shows every marker at once. */
+/** System Settings → Privacy & Security → Full Disk Access, a real
+ *  screenshot seen through a rounded window (which also trims its corners).
+ *  It plays the steps in order, from before Pensée is listed: the pane's
+ *  title, a scroll down to the end of the list, a click on +, Pensée joining
+ *  the list (the row after it slides down to make room), and Pensée turned
+ *  on. Markers 1–3 point at +, Pensée and its switch. The resting styles are
+ *  the last frame, so Reduce motion (no animation) shows it at once. */
 function SettingsPicture() {
   return (
     <div className="fda-figure" aria-hidden="true">
-      <div className="fda-figure-sidebar">
-        <span className="fda-figure-lights">
-          <i data-light="close" />
-          <i data-light="minimize" />
-          <i data-light="zoom" />
+      <div className="fda-shot">
+        <img className="fda-shot-image" src={settingsShot} alt="" draggable={false} />
+        {/* Before Pensée is added: its row and the one after it, cleared. */}
+        <span className="fda-shot-clear" />
+        <span className="fda-shot-slice" data-slice="pensee">
+          <img src={settingsShot} alt="" draggable={false} />
         </span>
-        <span className="fda-figure-search">Search</span>
-        <ul className="fda-figure-panes">
-          {SIDEBAR.map((pane) => (
-            <li
-              key={pane.label}
-              className="fda-figure-pane"
-              data-gap={pane.gapBefore || undefined}
-              data-selected={pane.selected || undefined}
-            >
-              <span className="fda-figure-tile" data-tint={pane.tint} />
-              {pane.label}
-            </li>
-          ))}
-        </ul>
+        <span className="fda-shot-slice" data-slice="after">
+          <img src={settingsShot} alt="" draggable={false} />
+        </span>
+        <span className="fda-figure-switch" />
+        <span className="fda-figure-marker" data-step="1">
+          1
+        </span>
+        <span className="fda-figure-marker" data-step="2">
+          2
+        </span>
+        <span className="fda-figure-marker" data-step="3">
+          3
+        </span>
       </div>
-
-      <div className="fda-figure-header">
-        <span className="fda-figure-nav">‹</span>
-        <span className="fda-figure-nav fda-figure-nav--off">›</span>
-        <span className="fda-figure-heading">Full Disk Access</span>
-      </div>
-
-      <div className="fda-figure-list">
-        <p className="fda-figure-note">
-          Allow the applications below to access data like Mail, Messages, Safari, Home, Time
-          Machine backups and certain administrative settings for all users on this Mac.
-        </p>
-        <div className="fda-figure-row fda-figure-row--pensee">
-          <span className="fda-figure-icon fda-figure-icon--pensee">
-            {/* The ¶, small cut, as on the app icon (`assets/brand/pensee-mark-small.svg`). */}
-            <svg viewBox="-30 10 87 80" fill="currentColor">
-              <path d="M-28 12H35V68A20 20 0 0 0 55 88H29V17H21V88H0V40A28 28 0 0 0 -28 12Z" />
-            </svg>
-          </span>
-          <span className="fda-figure-name">Pensée</span>
-          <span className="fda-figure-switch fda-figure-switch--pensee" data-on="" />
-        </div>
-        <div className="fda-figure-row fda-figure-row--below" data-row="2">
-          <span className="fda-figure-icon fda-figure-icon--blank" />
-          <span className="fda-figure-name">sshd-keygen-wrapper</span>
-          <span className="fda-figure-switch" />
-        </div>
-        <div className="fda-figure-row fda-figure-row--below" data-row="3">
-          <span className="fda-figure-icon fda-figure-icon--terminal">&gt;_</span>
-          <span className="fda-figure-name">Terminal</span>
-          <span className="fda-figure-switch" data-on="" />
-        </div>
-        <div className="fda-figure-footer">
-          <span className="fda-figure-plus">+</span>
-          <span className="fda-figure-minus">−</span>
-        </div>
-      </div>
-
-      <span className="fda-figure-marker" data-step="1">
-        1
-      </span>
-      <span className="fda-figure-marker" data-step="2">
-        2
-      </span>
-      <span className="fda-figure-marker" data-step="3">
-        3
-      </span>
       {/* The macOS pointer. */}
       <svg className="fda-figure-cursor" viewBox="0 0 12 18">
         <path d="M1 1v14l3.6-3.4 2.3 5.2 2.2-1-2.3-5.1H12z" />

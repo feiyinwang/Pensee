@@ -51,295 +51,107 @@
   color: var(--text-secondary);
 }
 
-/* ── The drawn System Settings window ───────────────────────────────────────
-   As macOS shows it: the sidebar with Privacy & Security selected, the Full
-   Disk Access header, and its grouped list with + and − under it. Fixed
-   size, so the cursor's stops are exact: + at (176, 247), Pensée's switch
-   at (445, 105). */
+/* ── The System Settings screenshot ─────────────────────────────────────────
+   `full-disk-access-settings.webp` (1314 × 2000) at 480px wide is 730.59px
+   tall; the window shows 300px of it. Its rounded corners trim the
+   screenshot's own. Positions inside `.fda-shot` are the screenshot's pixels
+   × 480/1314. In the screenshot: the list's rows span x 458–1298; Pensée's
+   row is y 1806–1880 (its name ends at x 662, its switch is (1212, 1831)–
+   (1279, 1861)), the row after it 1880–1952; + is at (473, 1969)–(488,
+   1983). */
 
 .fda-figure {
   position: relative;
   flex-shrink: 0;
   width: 480px;
   max-width: 100%;
-  height: 268px;
+  height: 300px;
   margin-top: 16px;
   overflow: hidden;
   border-radius: var(--radius-12);
-  background: var(--color-macos-window);
   box-shadow: 0 0 0 1px var(--color-border-default);
-  font-size: var(--font-size-figure);
-  line-height: 1.3;
-  color: var(--text-primary);
   user-select: none;
 }
 
-.fda-figure-sidebar {
+.fda-shot {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 150px;
-  background: var(--color-macos-sidebar);
-}
-
-.fda-figure-lights {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  display: flex;
-  gap: 6px;
-}
-
-.fda-figure-lights i {
-  width: 9px;
-  height: 9px;
-  border-radius: var(--radius-round);
-}
-
-.fda-figure-lights [data-light="close"] {
-  background: var(--color-macos-light-close);
-}
-
-.fda-figure-lights [data-light="minimize"] {
-  background: var(--color-macos-light-minimize);
-}
-
-.fda-figure-lights [data-light="zoom"] {
-  background: var(--color-macos-light-zoom);
-}
-
-.fda-figure-search {
-  position: absolute;
-  top: 30px;
-  left: 9px;
-  width: 132px;
-  height: 18px;
-  padding-left: 8px;
-  border-radius: var(--radius-6);
-  background: var(--color-macos-search);
-  font-size: var(--font-size-figure-note);
-  line-height: 18px;
-  color: var(--text-faint);
-}
-
-.fda-figure-panes {
-  position: absolute;
-  top: 56px;
-  left: 6px;
-  right: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.fda-figure-pane {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: var(--radius-4);
-  white-space: nowrap;
-}
-
-.fda-figure-pane[data-gap] {
-  margin-top: 7px;
-}
-
-.fda-figure-pane[data-selected] {
-  background: var(--color-macos-selected);
-  color: var(--color-macos-on-selected);
-}
-
-.fda-figure-tile {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-  border-radius: var(--radius-2);
-}
-
-.fda-figure-tile[data-tint="blue"] {
-  background: var(--color-macos-tile-blue);
-}
-
-.fda-figure-tile[data-tint="red"] {
-  background: var(--color-macos-tile-red);
-}
-
-.fda-figure-tile[data-tint="purple"] {
-  background: var(--color-macos-tile-purple);
-}
-
-.fda-figure-tile[data-tint="gray"] {
-  background: var(--color-macos-tile-gray);
-}
-
-.fda-figure-tile[data-tint="dark"] {
-  background: var(--color-macos-tile-dark);
-}
-
-/* The selected pane's tile sits on the blue: a white edge keeps it apart. */
-.fda-figure-pane[data-selected] .fda-figure-tile {
-  box-shadow: 0 0 0 1px var(--color-macos-on-selected);
-}
-
-.fda-figure-header {
-  position: absolute;
-  top: 8px;
-  left: 164px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 20px;
-}
-
-.fda-figure-nav {
-  font-size: var(--font-size-label);
-  color: var(--text-secondary);
-}
-
-.fda-figure-nav--off {
-  color: var(--text-faint);
-}
-
-.fda-figure-heading {
-  margin-left: 4px;
-  font-weight: 700;
-}
-
-.fda-figure-list {
-  position: absolute;
-  top: 36px;
-  left: 160px;
-  right: 12px;
-  bottom: 10px;
-  overflow: hidden;
-  border-radius: var(--radius-8);
-  background: var(--color-macos-list);
-  box-shadow: 0 0 0 1px var(--color-border-subtle);
-}
-
-/* Apple's own explanation at the top of the list. */
-.fda-figure-note {
-  height: 56px;
-  margin: 0;
-  padding: 7px 10px 0;
-  border-bottom: 1px solid var(--color-border-subtle);
-  font-size: var(--font-size-figure-note);
-  color: var(--text-muted);
-}
-
-.fda-figure-row {
-  position: absolute;
+  top: 0;
   left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 26px;
-  padding: 0 10px;
+  width: 480px;
+  height: 730.59px;
+  translate: 0 -430.59px;
 }
 
-/* Pensée sorts first; the rows after it carry a divider above. */
-.fda-figure-row--pensee {
-  top: 56px;
-}
-
-.fda-figure-row--below {
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.fda-figure-row[data-row="2"] {
-  top: 82px;
-}
-
-.fda-figure-row[data-row="3"] {
-  top: 108px;
-}
-
-.fda-figure-icon {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  border-radius: 22.45%;
-}
-
-.fda-figure-icon--blank {
-  background: var(--color-bg-subtle);
-}
-
-.fda-figure-icon--terminal {
-  background: var(--color-macos-tile-dark);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-cover-micro);
-  color: var(--color-macos-on-selected);
-}
-
-/* The app icon as the Dock shows it (assets/brand/app-icon.svg). */
-.fda-figure-icon--pensee {
-  background: linear-gradient(var(--color-app-icon-ground-top), var(--color-app-icon-ground));
-  color: var(--color-app-icon-mark);
-}
-
-.fda-figure-icon--pensee svg {
-  width: 64.1%;
+.fda-shot img {
+  display: block;
+  width: 480px;
+  /* Not the page's img { max-width: 100% }: a slice's copy is wider than it. */
+  max-width: none;
   height: auto;
 }
 
-.fda-figure-name {
-  flex: 1;
+/* Pensée's row and the one after it, blanked to the list's own grey. The
+   two slices below redraw them from the screenshot. */
+.fda-shot-clear {
+  position: absolute;
+  top: 659.73px;
+  left: 167.31px;
+  width: 306.85px;
+  height: 53.33px;
+  background: var(--color-macos-list);
 }
 
+.fda-shot-slice {
+  position: absolute;
+  left: 167.31px;
+  width: 306.85px;
+  overflow: hidden;
+}
+
+.fda-shot-slice img {
+  position: absolute;
+  left: -167.31px;
+}
+
+.fda-shot-slice[data-slice="pensee"] {
+  top: 659.73px;
+  height: 27.03px;
+}
+
+.fda-shot-slice[data-slice="pensee"] img {
+  top: -659.73px;
+}
+
+.fda-shot-slice[data-slice="after"] {
+  top: 686.76px;
+  height: 26.3px;
+}
+
+.fda-shot-slice[data-slice="after"] img {
+  top: -686.76px;
+}
+
+/* Pensée's switch, turned on, over the screenshot's own (off). */
 .fda-figure-switch {
-  position: relative;
-  width: 26px;
-  height: 15px;
-  flex-shrink: 0;
+  position: absolute;
+  top: 668.9px;
+  left: 442.7px;
+  width: 24.5px;
+  height: 11px;
   border-radius: var(--radius-round);
-  background: var(--color-bg-subtle-strong);
+  background: var(--color-macos-switch-on);
 }
 
 .fda-figure-switch::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 11px;
-  height: 11px;
+  top: 1px;
+  right: 1px;
+  width: 13px;
+  height: 9px;
   border-radius: var(--radius-round);
   background: var(--color-macos-knob);
   box-shadow: var(--shadow-knob-ring);
-}
-
-.fda-figure-switch[data-on] {
-  background: var(--color-macos-switch-on);
-}
-
-.fda-figure-switch[data-on]::after {
-  translate: 11px 0;
-}
-
-.fda-figure-footer {
-  position: absolute;
-  inset: auto 0 0;
-  display: flex;
-  height: 22px;
-  padding-left: 6px;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.fda-figure-plus,
-.fda-figure-minus {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  font-size: var(--font-size-label);
-  color: var(--text-secondary);
-}
-
-.fda-figure-minus {
-  color: var(--text-faint);
 }
 
 /* A numbered pin pointing at what to click; numbers match the steps below. */
@@ -362,37 +174,33 @@
   border: 4px solid transparent;
 }
 
-/* 1 sits over +, pointing down at it. */
+/* 1: +, from its left. */
 .fda-figure-marker[data-step="1"] {
-  top: 216px;
-  left: 167px;
+  top: 712.8px;
+  left: 149.4px;
 }
 
-.fda-figure-marker[data-step="1"]::after {
-  top: 100%;
-  border-top-color: var(--color-accent);
-}
-
-/* 2 sits after Pensée's name, pointing left at it. */
+/* 2: Pensée, from after its name. */
 .fda-figure-marker[data-step="2"] {
-  top: 96px;
-  left: 242px;
+  top: 664.2px;
+  left: 248.8px;
+}
+
+/* 3: Pensée's switch, from its left. */
+.fda-figure-marker[data-step="3"] {
+  top: 665.3px;
+  left: 419.7px;
+}
+
+.fda-figure-marker[data-step="1"]::after,
+.fda-figure-marker[data-step="3"]::after {
+  left: 100%;
+  border-left-color: var(--color-accent);
 }
 
 .fda-figure-marker[data-step="2"]::after {
   right: 100%;
   border-right-color: var(--color-accent);
-}
-
-/* 3 sits before Pensée's switch, pointing right at it. */
-.fda-figure-marker[data-step="3"] {
-  top: 96px;
-  left: 408px;
-}
-
-.fda-figure-marker[data-step="3"]::after {
-  left: 100%;
-  border-left-color: var(--color-accent);
 }
 
 .fda-figure-cursor {
@@ -402,9 +210,9 @@
   width: 12px;
   height: 18px;
   /* The tip is the pointer's (1, 1); it rests on Pensée's switch. */
-  translate: 444px 104px;
-  fill: var(--color-text-primary);
-  stroke: var(--color-macos-list);
+  translate: 454px 243px;
+  fill: var(--color-macos-ink);
+  stroke: var(--color-macos-knob);
   stroke-width: 1;
 }
 
@@ -507,46 +315,57 @@
 
 /* ── The walk-through, once per opening ───────────────────────────────────
    Each part starts from its first frame and rests on the last one, which is
-   its plain style above. Times are from --fda-delay: the cursor reaches + at
-   600ms and clicks, Pensée joins the list at 800ms (the rows after it slide
-   down to make room), the cursor reaches the switch at 1600ms and turns it on
-   at 1700ms. */
+   its plain style above. Times are from --fda-delay:
+     600–1500ms   the screenshot scrolls from the pane's title to the list's end
+     1500–2100ms  the cursor comes to + (marker 1 at 2100)
+     2300ms       Pensée joins the list: the row after it slides down to make
+                  room and Pensée fades in (marker 2 at 2400)
+     2500–3100ms  the cursor goes to Pensée's switch (marker 3 at 3100)
+     3200ms       the switch turns on */
+
+.fda-shot {
+  animation: fda-scroll 900ms calc(var(--fda-delay) + 600ms) var(--ease-enter-write) both;
+}
+
+@keyframes fda-scroll {
+  from {
+    translate: 0 0;
+  }
+}
 
 .fda-figure-cursor {
-  animation: fda-cursor 2000ms var(--fda-delay) both;
+  animation: fda-cursor 1600ms calc(var(--fda-delay) + 1500ms) both;
 }
 
 @keyframes fda-cursor {
   0% {
-    translate: 400px 20px;
+    opacity: 0;
+    translate: 330px 150px;
+  }
+  6% {
+    opacity: 1;
+    translate: 330px 150px;
     animation-timing-function: var(--ease-enter-write);
   }
-  30% {
-    translate: 175px 246px;
-  }
-  50% {
-    translate: 175px 246px;
+  38%,
+  62% {
+    translate: 174px 290px;
     animation-timing-function: var(--ease-enter-write);
   }
-  80%,
-  100% {
-    translate: 444px 104px;
+}
+
+.fda-shot-slice[data-slice="after"] {
+  animation: fda-make-room 240ms calc(var(--fda-delay) + 2300ms) var(--ease-enter-write) both;
+}
+
+@keyframes fda-make-room {
+  from {
+    translate: 0 -27.03px;
   }
 }
 
-.fda-figure-plus {
-  animation: fda-press 180ms calc(var(--fda-delay) + 650ms) var(--ease-out) both;
-}
-
-@keyframes fda-press {
-  50% {
-    scale: 0.8;
-    color: var(--text-primary);
-  }
-}
-
-.fda-figure-row--pensee {
-  animation: fda-row-in 220ms calc(var(--fda-delay) + 800ms) var(--ease-out) both;
+.fda-shot-slice[data-slice="pensee"] {
+  animation: fda-row-in 220ms calc(var(--fda-delay) + 2350ms) var(--ease-out) both;
 }
 
 @keyframes fda-row-in {
@@ -555,42 +374,31 @@
   }
 }
 
-/* Before Pensée is added the rows after it sit one row up, where it lands. */
-.fda-figure-row--below {
-  animation: fda-row-make-room 240ms calc(var(--fda-delay) + 760ms) var(--ease-enter-write) both;
-}
-
-@keyframes fda-row-make-room {
-  from {
-    translate: 0 -26px;
-  }
-}
-
-.fda-figure-switch--pensee,
-.fda-figure-switch--pensee::after {
+.fda-figure-switch,
+.fda-figure-switch::after {
   animation-duration: 200ms;
-  animation-delay: calc(var(--fda-delay) + 1700ms);
+  animation-delay: calc(var(--fda-delay) + 3200ms);
   animation-timing-function: var(--ease-out);
   animation-fill-mode: both;
 }
 
-.fda-figure-switch--pensee {
+.fda-figure-switch {
   animation-name: fda-switch-on;
 }
 
-.fda-figure-switch--pensee::after {
+.fda-figure-switch::after {
   animation-name: fda-knob-on;
 }
 
 @keyframes fda-switch-on {
   from {
-    background: var(--color-bg-subtle-strong);
+    opacity: 0;
   }
 }
 
 @keyframes fda-knob-on {
   from {
-    translate: 0 0;
+    translate: -9.5px 0;
   }
 }
 
@@ -602,17 +410,17 @@
 
 .fda-figure-marker[data-step="1"],
 .fda-guide-step[data-step="1"]::before {
-  animation-delay: calc(var(--fda-delay) + 600ms);
+  animation-delay: calc(var(--fda-delay) + 2100ms);
 }
 
 .fda-figure-marker[data-step="2"],
 .fda-guide-step[data-step="2"]::before {
-  animation-delay: calc(var(--fda-delay) + 850ms);
+  animation-delay: calc(var(--fda-delay) + 2400ms);
 }
 
 .fda-figure-marker[data-step="3"],
 .fda-guide-step[data-step="3"]::before {
-  animation-delay: calc(var(--fda-delay) + 1600ms);
+  animation-delay: calc(var(--fda-delay) + 3100ms);
 }
 
 @keyframes fda-mark-in {

@@ -24,15 +24,24 @@ const guideLayout = () =>
     // Cancelled, each part shows its resting style: the last frame.
     for (const animation of guide.getAnimations({ subtree: true })) animation.cancel();
     const rect = (selector) => document.querySelector(selector).getBoundingClientRect();
-    const name = document.querySelector(".fda-figure-row--pensee .fda-figure-name");
-    const range = document.createRange();
-    range.selectNodeContents(name);
-    const nameText = range.getBoundingClientRect();
-    const plus = rect(".fda-figure-plus");
-    const toggle = rect(".fda-figure-switch--pensee");
+    const figure = rect(".fda-figure");
+    // Places in the screenshot (its own pixels), where they are on screen now.
+    const image = document.querySelector(".fda-shot-image");
+    const shot = image.getBoundingClientRect();
+    const scale = shot.width / image.naturalWidth;
+    const inShot = (left, top, right, bottom) => ({
+      left: shot.left + left * scale,
+      right: shot.left + right * scale,
+      top: shot.top + top * scale,
+      bottom: shot.top + bottom * scale,
+    });
+    const shotSwitch = inShot(1212, 1831, 1278, 1860);
+    const plus = inShot(473, 1969, 488, 1983);
+    const name = inShot(535, 1828, 662, 1860);
+    const toggle = rect(".fda-figure-switch");
     const cursor = rect(".fda-figure-cursor");
     const markers = [1, 2, 3].map((n) => rect(`.fda-figure-marker[data-step="${n}"]`));
-    const style = getComputedStyle(document.querySelector(".fda-figure-switch--pensee"));
+    const style = getComputedStyle(document.querySelector(".fda-figure-switch"));
     const on = getComputedStyle(document.documentElement)
       .getPropertyValue("--color-macos-switch-on")
       .trim();
@@ -48,9 +57,14 @@ const guideLayout = () =>
       buttons: [...guide.querySelectorAll(".fda-guide-actions button")].map((b) =>
         b.textContent.trim(),
       ),
-      plus: { left: plus.left, right: plus.right, top: plus.top },
-      nameEnd: nameText.right,
-      toggle: { left: toggle.left, top: toggle.top, bottom: toggle.bottom },
+      imageLoaded: image.complete && image.naturalWidth === 1314,
+      figure: { left: figure.left, right: figure.right, top: figure.top, bottom: figure.bottom },
+      plus,
+      name,
+      shotSwitch,
+      // Pensée's row is drawn back over the screenshot once it is added.
+      penseeShown: getComputedStyle(document.querySelector('[data-slice="pensee"]')).opacity,
+      toggle: { left: toggle.left, right: toggle.right, top: toggle.top, bottom: toggle.bottom },
       cursorTip: { x: cursor.left + 1, y: cursor.top + 1 },
       markers: markers.map((m) => ({
         left: m.left,
@@ -105,33 +119,41 @@ describe("Import journeys", function () {
     ok(layout.buttons[1].startsWith("Open Settings"), `primary: ${layout.buttons[1]}`);
     ok(!layout.focusInGuide, "the guide took focus from the note");
 
+    ok(layout.imageLoaded, "the System Settings screenshot did not load");
+    const inside = (box) =>
+      box.left >= layout.figure.left &&
+      box.right <= layout.figure.right &&
+      box.top >= layout.figure.top &&
+      box.bottom <= layout.figure.bottom;
+    ok(inside(layout.shotSwitch) && inside(layout.plus), "Pensée and + are not in view");
+    // The drawn switch covers the screenshot's own, within a pixel.
+    for (const side of ["left", "right", "top", "bottom"]) {
+      ok(
+        Math.abs(layout.toggle[side] - layout.shotSwitch[side]) <= 1,
+        `the switch's ${side} is ${layout.toggle[side]}, the screenshot's ${layout.shotSwitch[side]}`,
+      );
+    }
+    ok(inside(layout.name), "Pensée's row is not in view");
+    strictEqual(layout.penseeShown, "1", "Pensée did not join the list");
     const [one, two, three] = layout.markers;
-    // 1 over +, pointing down at it.
-    ok(
-      one.midX >= layout.plus.left && one.midX <= layout.plus.right,
-      `marker 1 (${one.midX}) is not over + (${layout.plus.left}–${layout.plus.right})`,
-    );
-    ok(
-      one.bottom <= layout.plus.top && layout.plus.top - one.bottom < 12,
-      "marker 1 is not just above +",
-    );
-    // 2 just after Pensée's name.
-    ok(
-      two.left > layout.nameEnd && two.left - layout.nameEnd < 8,
-      "marker 2 is not just after Pensée",
-    );
-    // 3 just before Pensée's switch, level with it.
-    ok(
-      three.right <= layout.toggle.left && layout.toggle.left - three.right < 8,
-      "marker 3 is not just before the switch",
-    );
-    ok(
-      three.midY > layout.toggle.top && three.midY < layout.toggle.bottom,
-      "marker 3 is not level with the switch",
-    );
+    // Each marker's arrow (4px) reaches to within 3px of what it names, level with it.
+    const pointsAt = (marker, box, name, from) => {
+      const gap = from === "left" ? box.left - marker.right : marker.left - box.right;
+      ok(gap >= 4 && gap <= 7, `marker for ${name} is ${gap}px from it`);
+      ok(
+        marker.midY > box.top && marker.midY < box.bottom,
+        `marker for ${name} is not level with it`,
+      );
+    };
+    pointsAt(one, layout.plus, "+", "left");
+    pointsAt(two, layout.name, "Pensée", "right");
+    pointsAt(three, layout.toggle, "Pensée's switch", "left");
     // The cursor rests on the switch, and the switch is on.
     ok(
-      layout.cursorTip.x >= layout.toggle.left && layout.cursorTip.y >= layout.toggle.top,
+      layout.cursorTip.x >= layout.toggle.left &&
+        layout.cursorTip.x <= layout.toggle.right &&
+        layout.cursorTip.y >= layout.toggle.top &&
+        layout.cursorTip.y <= layout.toggle.bottom,
       "the cursor does not rest on Pensée's switch",
     );
     strictEqual(layout.switchColour, layout.onColour, "Pensée's switch is not on");

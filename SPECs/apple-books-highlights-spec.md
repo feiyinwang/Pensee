@@ -66,17 +66,17 @@ markdown.
   command palette always reads, so macOS may ask then.
 - **The guide** (`components/full-disk-access-guide/`, a floating card like
   "Sign in to Claude"): _Let Pensée read Apple Books_, why in two lines, a
-  drawn System Settings window as macOS shows it (sidebar with Privacy &
-  Security selected, the Full Disk Access header, Apple's explanation, app
-  rows with switches, + − under the list), three numbered steps, a line that
-  Pensée reads the highlights on this Mac and uploads nothing, **Not
-  now** (Esc) and **Open Settings** (↵, opens Privacy & Security → Full Disk
-  Access). The pane plays the clicks once per opening: a cursor clicks **+**,
-  Pensée joins the list in its alphabetical place (the rows after it slide
-  down), the cursor turns its switch on, and markers 1–3
-  point at **+**, Pensée and the switch as each step's number lands. Reduce
-  motion shows the last frame. It opens by itself, so it never takes focus
-  from the note; Esc and ↵ work once it is clicked. Coming back to the window,
+  real screenshot of System Settings → Privacy & Security → Full Disk Access
+  (`full-disk-access-settings.webp`, seen through a rounded window that trims
+  its corners; every other app's name and icon in its list is blurred), three numbered steps, a line that Pensée reads the highlights
+  on this Mac and uploads nothing, **Not now** (Esc) and **Open Settings** (↵,
+  opens Privacy & Security → Full Disk Access). The picture plays the steps once per opening,
+  in the order they're done, from before Pensée is listed: the pane's title,
+  a scroll to the end of the list, a click on **+** (marker 1), Pensée joining
+  the list (marker 2; its row is cleared from the screenshot until then and
+  the row after it slides down to make room), and a cursor turning Pensée's
+  switch on (marker 3; a switch drawn over the screenshot's own). Reduce motion shows the last frame. It opens by itself, so it never takes
+  focus from the note; Esc and ↵ work once it is clicked. Coming back to the window,
   it checks again: with access it reads _Full Disk Access is on_, the import
   runs, and the button is **Done**.
 
