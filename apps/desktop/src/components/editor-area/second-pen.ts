@@ -51,11 +51,6 @@ import {
   isPenParagraph,
   organizedLines,
   organizeReply,
-  mixedSides,
-  type OrganizedPoint,
-  outlineDepth,
-  separateSides,
-  wordCount,
   itemText,
   newPenId,
   noteForPen,
@@ -108,10 +103,6 @@ import "./second-pen.css";
  *  line is reads before what it says. A check's label is the pen's own
  *  pick (`SIDE_LABEL_AT_START_RE`). */
 const ECHO_LABEL_RE = new RegExp(`^(?:${ECHO_LABELS.join("|")}):`);
-
-/** From this many lines, a flat Organize is asked once more for a pyramid
- *  (a problem and a solution under one point always is). */
-const FLAT_RETRY_LINES = 4;
 
 /** Lines from the line's own words that make Connect skip asking the pen
  *  for more words: enough for it to pick up to three from. */
@@ -1249,11 +1240,11 @@ class PenPlugin {
     }
   }
 
-  /** `#`: the selected lines built into a pyramid of ideas, MECE at every
-   *  level and as deep as their meaning goes, each point under a key phrase
-   *  (`Principle: …`), in their place until Enter keeps it or Esc puts your
-   *  lines back. Your lines are your words cut short; the ideas above them
-   *  are the pen's. */
+  /** `#`: the selected lines turned into understanding: one topic per
+   *  subject, each with the theory it comes to, how it works, the rules that
+   *  follow and what's still open, in the pen's ink, and your own words
+   *  under Evidence, untouched. In their place until Enter keeps it or Esc
+   *  puts your lines back. */
   private async organize(direction = ""): Promise<void> {
     const { state } = this.view;
     const lines = docLines(state);
@@ -1271,6 +1262,13 @@ class PenPlugin {
     const indent = yours
       .map((line) => /^[ \t]*/.exec(line)![0])
       .reduce((a, b) => (b.length < a.length ? b : a));
+    // At the top level each topic is a heading, a level under the one above.
+    const above = lines
+      .slice(0, first)
+      .reverse()
+      .map((line) => /^(#{1,6})\s/.exec(line)?.[1].length)
+      .find(Boolean);
+    const heading = indent ? null : "#".repeat(Math.min(6, (above ?? 1) + 1));
     const from = state.doc.line(first + 1).from;
     const to = state.doc.line(last + 1).to;
     const conversation = this.start(
@@ -1280,7 +1278,7 @@ class PenPlugin {
     );
     this.placement = null;
     try {
-      let points = organizeReply(
+      let topics = organizeReply(
         await conversation.send(
           penPrompt({
             ...this.promptBase(lines, withText, direction),
@@ -1290,49 +1288,29 @@ class PenPlugin {
         ),
         yours,
       );
-      // A flat list, or problems and solutions under one point: ask once
-      // more, in the same conversation, saying what's wrong.
-      const wrong = (ps: OrganizedPoint[]) => [
-        ...(yours.length >= FLAT_RETRY_LINES && outlineDepth(ps) < 2
-          ? [
-              "It came back one level deep: group the lines by what they mean under ideas that sum them up, as many levels deep as the meaning goes.",
-            ]
-          : []),
-        ...mixedSides(ps, yours).map(
-          (at) =>
-            `Under "${at}", problems and solutions sit side by side: they are different kinds. Move them into separate branches, a problem branch and a solution branch, side by side.`,
+      // Unreadable: ask once more, in the same conversation.
+      topics ??= organizeReply(
+        await conversation.send(
+          "That reply couldn't be read. Reply with JSON only, in the shape asked: every topic with a name and a theory, every sentence in one topic's evidence.",
         ),
-      ];
-      const asked = points ? wrong(points) : [];
-      if (points && asked.length) {
-        points =
-          organizeReply(
-            await conversation.send(
-              [...asked, "MECE at every level. Same JSON, every line once."].join("\n"),
-            ),
-            yours,
-          ) ?? points;
-      }
+        yours,
+      );
       this.finish(conversation);
-      if (!points) {
+      if (!topics) {
         this.say("Couldn't organize these lines. Try again.");
         return;
       }
-      // Still both under one point: the other side moves out, a level up.
-      points = separateSides(points);
       if (this.view.state.doc.sliceString(from, to) !== block) {
         this.say("The lines changed while the pen read them. Try again.");
         return;
       }
       const taken = new Set(blockIdsInText(this.view.state.doc.toString()));
-      const organized = organizedLines(points, yours, indent, () => {
+      const organized = organizedLines(topics, yours, indent, heading, () => {
         const id = newPenId("g", taken);
         taken.add(id);
         return id;
       }).join("\n");
-      const depth = outlineDepth(points);
-      const before = wordCount(yours.map(itemText).join(" "));
-      const after = wordCount(organized.split("\n").map(itemText).join(" "));
+      const count = topics.length;
       this.spot = null;
       this.organizing = { from, to: from + organized.length, original: block };
       this.view.dispatch({
@@ -1344,9 +1322,9 @@ class PenPlugin {
           setPending.of({
             pos: from + organized.length,
             // Lined up with the outline's words: past the bullets' slot.
-            depth: isItem(organized.split("\n")[0] ?? "") ? 1 : 0,
+            depth: 1,
             bullet: false,
-            text: `Organized in ${depth} ${depth === 1 ? "level" : "levels"}, ${before} → ${after} words, in your words.`,
+            text: `${count} ${count === 1 ? "topic" : "topics"}, a theory each. Your words are under Evidence.`,
             busy: false,
             keys: [
               ["↵", "keep"],

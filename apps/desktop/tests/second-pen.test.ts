@@ -17,13 +17,8 @@ import {
   itemText,
   newPenId,
   noteForPen,
-  mixedSides,
   organizeReply,
-  separateSides,
-  sideOf,
-  inTheirWords,
   organizedLines,
-  outlineDepth,
   parentOf,
   childrenOf,
   penIdKind,
@@ -500,363 +495,161 @@ describe("prompts and replies", () => {
 });
 
 describe("organize", () => {
-  const yours = [
-    "- I think I basically start too many things at once",
-    "- no deadline so it drifts",
-    "      - the habit app, then nothing",
-    "- excitement fades after a week",
-    "  - [ ] the boring middle, see [[Auth notes]] ^yt-540",
-    "- small scope worked",
-    "- small scope worked",
+  const paragraph = [
+    "I lost the card in a dream. I was so stressed. My brain idles when too much comes in. Output beats input.",
   ];
-  const reply = JSON.stringify({
-    points: [
-      {
-        key: "Principle",
-        text: "Projects die from how I start them and how they feel",
-        under: [
-          {
-            key: "Cause",
-            text: "I set them up to drift",
-            under: [
-              { key: "Habit", line: 1, text: "I start too many things at once" },
-              {
-                key: "Cause",
-                line: 2,
-                text: "Cause: no deadline, it drifts",
-                under: [{ key: "Example", line: 3 }],
-              },
-            ],
-          },
-          {
-            key: "Feeling",
-            line: 4,
-            text: "excitement fades after a week",
-            under: [{ key: "[Example]", line: 5, text: "the boring middle, see [[Auth notes]]" }],
-          },
-        ],
-      },
-      { key: "What worked", lines: [6, 7], text: "small scope worked" },
-    ],
-  });
+  const id = () => {
+    let n = 0;
+    return () => `ai-g-${String(n++).padStart(4, "0")}`;
+  };
 
-  test("the prompt asks for a pyramid of ideas, MECE, with key phrases and no depth limit", () => {
+  test("the prompt numbers your sentences and asks for topics, a theory each, not your story back", () => {
     const prompt = penPrompt({
       title: "T",
       note: "",
       lines: [],
       source: null,
-      ask: { task: "organize", lines: yours },
+      ask: { task: "organize", lines: ["- a. b", "  - [ ] c ^yt-540"] },
     });
-    expect(prompt).toContain('<line n="3">      - the habit app, then nothing</line>');
-    expect(prompt).toContain("pyramid of ideas");
-    expect(prompt).toContain("MECE at every level");
-    expect(prompt).toContain("key phrase");
-    expect(prompt).toContain("Never leave the lines as one flat list");
+    expect(prompt).toContain('<s n="1" line="1">a.</s>');
+    expect(prompt).toContain('<s n="2" line="1">b</s>');
+    expect(prompt).toContain('<s n="3" line="2">c</s>');
+    expect(prompt).toContain("Don't hand the writer's story back");
+    expect(prompt).toContain('"theory"');
+    expect(prompt).toContain("Every sentence goes in exactly one topic's evidence");
   });
 
-  test("a pyramid in your words, every point under its key phrase, as deep as it goes", () => {
-    const points = organizeReply(reply, yours)!;
-    expect(outlineDepth(points)).toBe(4);
-    let n = 0;
-    expect(organizedLines(points, yours, "", () => `ai-g-000${n++}`)).toEqual([
-      "- Principle: Projects die from how I start them and how they feel ^ai-g-0000",
-      "  - Cause: I set them up to drift ^ai-g-0001",
-      "    - Habit: I start too many things at once",
-      // A key phrase the text repeats is said once.
-      "    - Cause: no deadline, it drifts",
-      "      - Example: the habit app, then nothing",
-      "  - Feeling: excitement fades after a week",
-      "    - [ ] Example: the boring middle, see [[Auth notes]] ^yt-540",
-      // A word-for-word repeat goes.
-      "- What worked: small scope worked",
-    ]);
-  });
-
-  test("an idea over one point, or a sentence too long, gives way to what is under it", () => {
-    const points = organizeReply(
+  test("one paragraph, two topics: each a theory, how it works, rules, open, then your sentences", () => {
+    const topics = organizeReply(
       JSON.stringify({
-        points: [
-          { key: "Theme", text: "Alone", under: [{ line: 1 }] },
+        topics: [
           {
-            key: "Theme",
-            text: "a very long idea that goes on and on and on, far past one short sentence of fifteen or even twenty words or so",
-            under: [{ line: 2 }, { line: 3 }],
-          },
-        ],
-      }),
-      ["- a", "- b", "- c"],
-    )!;
-    expect(organizedLines(points, ["- a", "- b", "- c"], "", () => "x")).toEqual([
-      "- a",
-      "- b",
-      "- c",
-    ]);
-  });
-
-  test("a key phrase is one to three words, else none", () => {
-    const points = organizeReply(
-      '{"points": [{"key": "A whole sentence as a key", "line": 1}, {"key": "Step", "line": 2}]}',
-      ["- a", "- b"],
-    )!;
-    expect(organizedLines(points, ["- a", "- b"], "", () => "x")).toEqual(["- a", "- Step: b"]);
-  });
-
-  // The writer's example (2026-10-15): Organize came out one level deep.
-  const fruit = [
-    "fruit",
-    "* apple",
-    "* banana",
-    "* blueberry",
-    "   * benefit of eating blueberry",
-    "      * Types of benefits",
-    "         * Biomechnical functionalities",
-  ];
-
-  test("a branch's lines listed on its top point stay nested under it, never folded in", () => {
-    // Its children under a key the prompt didn't ask for.
-    const points = organizeReply(
-      JSON.stringify({
-        points: [
-          {
-            line: 1,
-            children: [
-              { line: 2 },
-              { line: 3 },
-              {
-                lines: [4, 5, 6, 7],
-                children: [{ line: 5, children: [{ lines: [6, 7], children: [{ line: 7 }] }] }],
-              },
+            name: "**Stress**",
+            theory: "**Theory:** Small losses set off an old alarm.",
+            how: [
+              { key: "Trigger", text: "A small loss." },
+              { key: "far too many words for a key", text: "dropped" },
             ],
+            rules: ["Ask if it will matter in a year."],
+            open: ["History or wiring?"],
+            evidence: [1, 2],
+          },
+          {
+            name: "Information diet",
+            theory: "Understanding is made by output.",
+            rules: ["Write more than I read.", "Cherry-pick sources."],
+            open: ["Why idle?", "How much is too much?"],
+            evidence: [3],
           },
         ],
       }),
-      fruit,
+      paragraph,
     )!;
-    expect(outlineDepth(points)).toBe(5);
-    const tree = [
-      "- fruit",
-      "  - apple",
-      "  - banana",
-      "  - blueberry",
-      "    - benefit of eating blueberry",
-      "      - Types of benefits",
-      "        - Biomechnical functionalities",
-    ];
-    expect(organizedLines(points, fruit, "", () => "x")).toEqual(tree);
-    // Listed on the top point and nowhere else: under it, as you nested them.
-    const listed = organizeReply(
-      '{"points": [{"line": 1, "under": [{"line": 2}, {"line": 3}, {"lines": [4, 5, 6, 7], "text": "blueberry"}]}]}',
-      fruit,
-    )!;
-    expect(organizedLines(listed, fruit, "", () => "x")).toEqual(tree);
+    expect(topics.map((t) => t.name)).toEqual(["Stress", "Information diet"]);
+    // Sentence 4, claimed by none, goes with the one before it.
+    expect(organizedLines(topics, paragraph, "", "##", id())).toEqual([
+      "## Stress",
+      "- **Theory:** Small losses set off an old alarm. ^ai-g-0000",
+      "- **How it works:** ^ai-g-0001",
+      "  - **Trigger:** A small loss. ^ai-g-0002",
+      "- **Rules:** ^ai-g-0003",
+      "  - Ask if it will matter in a year. ^ai-g-0004",
+      "- **Open:** History or wiring? ^ai-g-0005",
+      "- **Evidence:** ^ai-g-0006",
+      "  - I lost the card in a dream. I was so stressed.",
+      "",
+      "## Information diet",
+      "- **Theory:** Understanding is made by output. ^ai-g-0007",
+      "- **Rules:** ^ai-g-0008",
+      "  - Write more than I read. ^ai-g-0009",
+      "  - Cherry-pick sources. ^ai-g-0010",
+      "- **Open:** ^ai-g-0011",
+      "  - Why idle? ^ai-g-0012",
+      "  - How much is too much? ^ai-g-0013",
+      "- **Evidence:** ^ai-g-0014",
+      "  - My brain idles when too much comes in. Output beats input.",
+    ]);
   });
 
-  test("a point that isn't your words, shorter, is your line as written", () => {
-    const points = organizeReply(
+  test("inside a list each topic is a bold item; your lines stay whole, box, block id and nesting kept", () => {
+    const yours = [
+      "  - fruit",
+      "    - [ ] blueberry ^yt-540",
+      "      - benefit",
+      "        - types",
+      "  - an aside. another thought",
+    ];
+    const topics = organizeReply(
       JSON.stringify({
-        points: [
-          { line: 1, text: "Overcommitting kills momentum" },
-          { line: 2, text: "no deadline so it drifts and drifts and drifts away" },
-          { line: 5, text: "the boring middle" },
-          { line: 3 },
-          { line: 4 },
-          { lines: [6, 7] },
+        topics: [
+          { name: "Fruit", theory: "Fruit is built for its seeds.", evidence: [1, 2, 3, 4, 5] },
+          { name: "Aside", theory: "Asides matter.", evidence: [6] },
         ],
       }),
       yours,
     )!;
-    expect(organizedLines(points, yours, "", () => "x")).toEqual([
-      "- I think I basically start too many things at once",
-      "- no deadline so it drifts",
-      // A link of yours never goes.
-      "- [ ] the boring middle, see [[Auth notes]] ^yt-540",
-      "- the habit app, then nothing",
-      "- excitement fades after a week",
-      "- small scope worked",
+    expect(organizedLines(topics, yours, "  ", null, () => "x")).toEqual([
+      "  - **Fruit** ^x",
+      "    - **Theory:** Fruit is built for its seeds. ^x",
+      "    - **Evidence:** ^x",
+      "      - fruit",
+      "        - [ ] blueberry ^yt-540",
+      "          - benefit",
+      "            - types",
+      // Split across topics: each run of sentences goes to its own.
+      "      - an aside.",
+      "  - **Aside** ^x",
+      "    - **Theory:** Asides matter. ^x",
+      "    - **Evidence:** ^x",
+      "      - another thought",
     ]);
   });
 
-  test("your words: only filler goes, a word or two may change, never the idea", () => {
-    expect(
-      inTheirWords("start too many things at once", [
-        "- I think I basically start too many things at once",
-      ]),
-    ).toBe(true);
-    expect(inTheirWords("no deadline, so it drifts", ["- no deadline so it drifts"])).toBe(true);
-    expect(inTheirWords("procrastination ruins focus", ["- I start too many things"])).toBe(false);
-  });
-
-  test("shorter, nothing lost: a point that drops one of the line's points is the line as written", () => {
-    const line = "- the boring middle part: auth, settings, edge cases, and I always stall there";
-    expect(inTheirWords("the boring middle part", [line])).toBe(false);
-    expect(
-      inTheirWords("boring middle: auth, settings, edge cases; I always stall there", [line]),
-    ).toBe(true);
-    const points = organizeReply(
-      JSON.stringify({ points: [{ key: "Obstacle", line: 1, text: "the boring middle part" }] }),
-      [line],
-    )!;
-    expect(organizedLines(points, [line], "", () => "x")).toEqual([
-      "- Obstacle: the boring middle part: auth, settings, edge cases, and I always stall there",
-    ]);
-  });
-
-  test("a line with several points splits into parts under it, every point kept", () => {
-    const line =
-      "- excitement fades after the first week, and the boring middle (auth, settings) stalls me";
-    const reply = (parts: unknown[]) =>
+  test("a line you indented under another goes with it, whatever topic the pen gave it", () => {
+    const yours = ["- top", "  - child", "    - grandchild", "- next"];
+    const topics = organizeReply(
       JSON.stringify({
-        points: [{ key: "Cause", line: 1, text: "excitement fades after the first week", parts }],
-      });
-    const split = organizeReply(
-      reply([{ key: "Obstacle", text: "the boring middle (auth, settings) stalls me" }]),
-      [line],
+        topics: [
+          { name: "A", theory: "One.", evidence: [1] },
+          { name: "B", theory: "Two.", evidence: [3, 4] },
+        ],
+      }),
+      yours,
     )!;
-    expect(organizedLines(split, [line], "", () => "x")).toEqual([
-      "- Cause: excitement fades after the first week",
-      "  - Obstacle: the boring middle (auth, settings) stalls me",
-    ]);
-    // Parts that still drop a point: the line as written, no parts.
-    const short = organizeReply(reply([{ key: "Obstacle", text: "the boring middle" }]), [line])!;
-    expect(organizedLines(short, [line], "", () => "x")).toEqual([
-      "- Cause: excitement fades after the first week, and the boring middle (auth, settings) stalls me",
-    ]);
-  });
-
-  test("a repeat with its own block id is kept", () => {
-    const lines = ["- a idea ^one-1", "- a idea ^two-2"];
-    const points = organizeReply('{"points": [{"lines": [1, 2], "text": "a idea"}]}', lines)!;
-    expect(organizedLines(points, lines, "", () => "x")).toEqual([
-      "- a idea ^one-1",
-      "  - a idea ^two-2",
-    ]);
-  });
-
-  test("a missing line fails; a repeat is dropped", () => {
     expect(
-      organizeReply('{"points": [{"line": 1}, {"line": 2}]}', ["- a", "- b", "- c"]),
-    ).toBeNull();
-    const points = organizeReply('{"points": [{"line": 1}, {"line": 2}, {"line": 1}]}', [
-      "- a",
-      "- b",
-    ])!;
-    expect(organizedLines(points, ["- a", "- b"], "  ", () => "x")).toEqual(["  - a", "  - b"]);
+      organizedLines(topics, yours, "", "###", () => "x").filter((l) => !l.endsWith("^x")),
+    ).toEqual(["### A", "  - top", "    - child", "      - grandchild", "", "### B", "  - next"]);
   });
 
-  test("not JSON is no outline", () => {
-    expect(organizeReply("- a\n- b", ["- a", "- b"])).toBeNull();
+  test("a split line's box and block id go with its first sentence", () => {
+    const yours = ["- [ ] one. two ^yt-1"];
+    const topics = organizeReply(
+      JSON.stringify({
+        topics: [
+          { name: "A", theory: "One.", evidence: [2] },
+          { name: "B", theory: "Two.", evidence: [1] },
+        ],
+      }),
+      yours,
+    )!;
+    const written = organizedLines(topics, yours, "", "##", () => "x");
+    expect(written).toContain("  - two");
+    expect(written).toContain("  - [ ] one. ^yt-1");
   });
 
-  test("a key phrase says which side of a problem a point is on", () => {
-    expect(sideOf("Cause")).toBe("problem");
-    expect(sideOf("Root cause")).toBe("problem");
-    expect(sideOf("What failed")).toBe("problem");
-    expect(sideOf("Solution")).toBe("solution");
-    expect(sideOf("What worked")).toBe("solution");
-    expect(sideOf("Example")).toBeNull();
-    expect(sideOf(null)).toBeNull();
-  });
-
-  // What the real app returned on 2026-10-15: a Solution beside three Causes.
-  const dump = [
-    "- I start too many things at once",
-    "- no deadline so it drifts",
-    "- I don't tell anyone, so no one asks how it's going",
-    "- when I pair with a friend I finish",
-    "- small scope worked: the CLI I shipped in a weekend",
-  ];
-  const mixed = organizeReply(
-    JSON.stringify({
-      points: [
-        {
-          key: "Pattern",
-          text: "side projects stall without structure or accountability",
-          under: [
-            {
-              key: "Cause",
-              text: "lack of constraints lets projects drift",
-              under: [
-                { key: "Example", line: 1 },
-                { key: "Example", line: 2 },
-              ],
-            },
-            { key: "Cause", line: 3 },
-            {
-              key: "Solution",
-              text: "external structure creates completion",
-              under: [
-                { key: "Example", line: 4 },
-                { key: "Example", line: 5, text: "small scope worked: CLI I shipped in a weekend" },
-              ],
-            },
-          ],
-        },
-      ],
-    }),
-    dump,
-  )!;
-
-  test("a point with problems and solutions under it is named", () => {
-    expect(mixedSides(mixed, dump)).toEqual([
-      "Pattern: side projects stall without structure or accountability",
-    ]);
-  });
-
-  test("problems and solutions never stay under one point: the smaller side moves up", () => {
-    const fixed = separateSides(mixed);
-    expect(mixedSides(fixed, dump)).toEqual([]);
-    let n = 0;
-    expect(organizedLines(fixed, dump, "", () => `ai-g-${n++}`)).toEqual(
-      [
-        "- Pattern: side projects stall without structure or accountability ^ai-g-0",
-        "  - Cause: lack of constraints lets projects drift ^ai-g-1",
-        "    - Example: I start too many things at once",
-        "    - Example: no deadline so it drifts",
-        "  - Cause: I don't tell anyone, so no one asks how it's going",
-        "- Solution: external structure creates completion ^ai-g-2",
-        "    - Example: when I pair with a friend I finish",
-        "    - Example: small scope worked: CLI I shipped in a weekend",
-      ].map((l) => l.replace(/^ {4}- Example: (when|small)/, "  - Example: $1")),
-    );
-  });
-
-  test("a point keeps its own side; the other moves out, up to the top", () => {
-    const points = separateSides(
-      organizeReply(
-        JSON.stringify({
-          points: [
-            {
-              key: "Theme",
-              text: "finishing projects",
-              under: [
-                {
-                  key: "Problem",
-                  text: "I drift",
-                  under: [
-                    { key: "Cause", line: 1 },
-                    { key: "Fix", line: 2 },
-                    { key: "Fix", line: 3 },
-                  ],
-                },
-                { key: "Strategy", line: 4 },
-              ],
-            },
-          ],
-        }),
-        ["- a", "- b", "- c", "- d"],
-      )!,
-    );
-    expect(mixedSides(points, ["- a", "- b", "- c", "- d"])).toEqual([]);
-    expect(organizedLines(points, ["- a", "- b", "- c", "- d"], "", () => "x")).toEqual([
-      // The problem kept its cause and lost its fixes: left over one point, the
-      // cause stands in for it. Then, under the theme, the lone problem is the
-      // smaller side: it moves out, beside the theme.
-      "- Theme: finishing projects ^x",
-      "  - Fix: b",
-      "  - Fix: c",
-      "  - Strategy: d",
-      "- Cause: a",
-    ]);
+  test("no name or theory, no topic; a topic with no sentences goes; nothing usable is null", () => {
+    expect(organizeReply("not json", paragraph)).toBeNull();
+    expect(organizeReply('{"points": []}', paragraph)).toBeNull();
+    expect(organizeReply('{"topics": [{"name": "A", "evidence": [1]}]}', paragraph)).toBeNull();
+    const topics = organizeReply(
+      JSON.stringify({
+        topics: [
+          { name: "A", theory: "One.", evidence: [1, 2, 3, 4] },
+          { name: "B", theory: "Two.", evidence: [1] },
+        ],
+      }),
+      paragraph,
+    )!;
+    expect(topics.map((t) => t.name)).toEqual(["A"]);
   });
 });

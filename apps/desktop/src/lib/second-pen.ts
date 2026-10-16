@@ -16,8 +16,8 @@ import type { Paper } from "./tauri";
  *  of its points once combined with your take), its comparison with your take
  *  (`v`, written by the earlier Answer), the two lines of a check, labelled
  *  for what the line asks (`p`, then `n`, which your call waits under), or
- *  an echo of an earlier note (`e`), or an idea Organize added above your
- *  lines (`g`). The earlier pen's lines (a quiz question
+ *  an echo of an earlier note (`e`), or a line Organize wrote: a topic's
+ *  theory, how it works, its rules (`g`). The earlier pen's lines (a quiz question
  *  `q`, a question `a`, a hint `h`, a check `c`, a fact `f`, a mix `m`) keep
  *  their ink. */
 export type PenKind = "s" | "r" | "v" | "p" | "n" | "e" | "g" | "q" | "a" | "h" | "c" | "f" | "m";
@@ -484,20 +484,25 @@ function taskText(input: PenPromptInput): string {
         "And write its point: what the writer found or thought there, as it bears on the target lines, in one short sentence of at most 20 words (two only if one can't carry it), addressed as you, in the note's language. Never copy the whole line: the link to the note keeps the original.",
         'Reply with JSON only: [{"n": N, "label": "…", "point": "…"}], best first. [] only when no line is about the same subject.',
       ].join("\n");
-    case "organize":
+    case "organize": {
+      const sentences = organizeSentences(ask.lines);
       return [
-        "The writer's lines to organize, numbered, with their own indentation:",
-        `<lines>\n${ask.lines.map((line, k) => `<line n="${k + 1}">${line}</line>`).join("\n")}\n</lines>`,
-        "This task is the exception to writing one line: you write the whole outline, and the ideas you add above the writer's lines are yours to write.",
-        "Build a pyramid of ideas from what the lines mean, not from the order they were written in. At the top, the fewest ideas that sum up everything (one if one can). Under each idea, the ideas or lines that support it, explain it or are part of it, and under those theirs, as many levels deep as the meaning goes: often three or four, more when the lines need it. Never leave the lines as one flat list when they can be grouped.",
-        "MECE at every level and across the whole pyramid: the points side by side are the same kind of thing at the same level of detail, no two overlap, and together they cover what they sit under. A line the writer indented under another stays under it, unless it plainly belongs elsewhere.",
-        "Problems (causes, obstacles, risks) and solutions (fixes, strategies, steps, what worked) are different kinds: they never sit under the same point. Build them as separate branches side by side, a problem branch and a solution branch, at the top.",
-        'Every point starts with a key phrase that says what it is: 1 to 3 words, like "Principle", "Framework", "Problem", "Cause", "Obstacle", "Risk", "Solution", "Strategy", "Step", "What worked", "Example", "Benefit", "Evidence", "Question", "Definition". A problem\'s points are keyed as problems (Problem, Cause, Obstacle, Risk), a solution\'s as solutions (Solution, Strategy, Step, What worked). Put it in "key", not in "text".',
-        'Every line goes in exactly once, as its own point, by its number in "line" (never the lines under it: those are points of their own).',
-        'Shorter, nothing lost: every point and every detail of every line stays. Its "text" is that line with only the filler, hedges and repeated words cut ("I think", "basically", "really"), a word or two adjusted at most: one or two short sentences. A line that holds several points keeps the first in "text" and puts each other one in "parts", with its own key; they go under it. Never add an idea, never drop one. Keep every [[link]] and [text](link) as it is.',
-        'An idea you add above the lines has no "line": its "text" is one short sentence (at most 15 words) that sums up the points under it, in the writer\'s words where they fit. Only where it sums up two or more points.',
-        'Reply with JSON only: {"points": [{"key": "Principle", "text": "…", "under": [{"key": "Example", "line": 3, "text": "…", "parts": [{"key": "Detail", "text": "…"}], "under": [...]}]}]}',
+        "The writer's text to organize, sentence by sentence, numbered (line says which of their lines it is from):",
+        `<text>\n${sentences.map((s, k) => `<s n="${k + 1}" line="${s.line + 1}">${s.text}</s>`).join("\n")}\n</text>`,
+        "This task is the exception to writing one line: you write the whole outline, and the ideas in it are yours.",
+        "Don't hand the writer's story back to them. Build understanding from it: what it shows, as a theory they can apply again. Their own words stay as they are, as evidence under it: you never rewrite them.",
+        "First split the text into topics: each separate subject is its own topic, one if it is all one subject. A topic's name: 1 to 4 words.",
+        "For each topic:",
+        '- "theory": exactly one sentence, at most 30 words: what the writer can now believe about this, a general claim that reaches past this one case. Never a summary of what happened.',
+        '- "how": how it works, the mechanism behind the theory: 2 to 5 steps or parts, each a "key" of 1 to 3 words ("Trigger", "Cause", "Loop") and a "text" of one short sentence. Only how it happens, never what to do about it: that goes in rules. Side by side they are the same kind of thing, none overlap, and together they explain the theory. Empty when the text gives no mechanism.',
+        '- "rules": what follows for next time: 1 to 4 rules the writer can apply, each one short sentence (at most 20 words) saying what to do. None overlap. Empty when nothing follows.',
+        '- "open": what is still unknown or unresolved, as questions: 0 to 3, one short sentence each. Name the other topic when a question leads to it.',
+        '- "evidence": the numbers of the sentences this topic comes from.',
+        "Every sentence goes in exactly one topic's evidence. A line the writer indented under another always goes in the same topic as it. Never claim what the text doesn't support; never drop a topic it raises.",
+        "Write in the language of the text, plainly, as the writer would write it (I, my).",
+        'Reply with JSON only: {"topics": [{"name": "…", "theory": "…", "how": [{"key": "…", "text": "…"}], "rules": ["…"], "open": ["…"], "evidence": [1, 2]}]}',
       ].join("\n");
+    }
   }
 }
 
@@ -906,247 +911,211 @@ export function sourcePartStart(text: string): number | null {
 
 /* ------------------------------------------------------------- organize */
 
-/** A point of an organized outline, under its key phrase (`Principle`,
- *  `Example`…): one of your lines (its index in the lines sent; with a
- *  word-for-word repeat of it, both) in `text`, cut short in your words; a
- *  further point of that line (`part`), when it held several; or an idea the
- *  pen added that sums up the points under it. */
-export type OrganizedPoint =
-  | { key: string | null; lines: number[]; text: string; under: OrganizedPoint[] }
-  /** Another point of the same line of yours, in your words, under it. */
-  | { key: string | null; part: string; under: OrganizedPoint[] }
-  | { key: string | null; idea: string; under: OrganizedPoint[] };
+/** A topic of an organized text: its name, the theory it comes to (what you
+ *  can now believe, past this one case), how it works (keyed steps), the
+ *  rules that follow, what's still open, and your own words under Evidence. */
+export interface OrganizedTopic {
+  name: string;
+  theory: string;
+  how: { key: string; text: string }[];
+  rules: string[];
+  open: string[];
+  /** Your words, in order. */
+  evidence: EvidencePiece[];
+}
 
-const LINKS_RE = /\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)/g;
-const boxOf = (line: string) => ITEM_RE.exec(line)?.[4] ?? "";
-const blockIdOf = (line: string) => BLOCK_ID_AT_END_RE.exec(line)?.[1] ?? null;
+/** Your writing under Evidence: a whole line of yours as you wrote it
+ *  (`sentences` null), or some of its sentences when the rest went to
+ *  another topic (their indexes in `organizeSentences`). */
+export interface EvidencePiece {
+  line: number;
+  sentences: number[] | null;
+}
+
+/** The sentences Organize numbers for the pen: each line's, in order. */
+export function organizeSentences(lines: readonly string[]): { line: number; text: string }[] {
+  return lines.flatMap((line, k) => {
+    const text = bodyOf(line);
+    const said = sentencesOf(text);
+    return (said.length ? said : [text]).map((s) => ({ line: k, text: s }));
+  });
+}
+
 /** A key phrase: one to three words, no colon. */
 const KEY_RE = /^\p{L}[\p{L}'’-]*(?: [\p{L}'’-]+){0,2}$/u;
-/** An idea the pen adds is one short sentence. */
-const IDEA_MAX_WORDS = 20;
+/** What a reply may say, a little past what the prompt asks. */
+const NAME_MAX_WORDS = 6;
+const THEORY_MAX_WORDS = 45;
+const POINT_MAX_WORDS = 32;
 
-/** What a shortened line may lose: short function words and hedges. */
-const FILLER = new Set(
-  "a an the of to in on at by for as or if is are was were be am it its we us our so do did does done can get got go goes think guess basically actually really just maybe probably kind sort like literally honestly simply quite pretty somehow totally definitely anyway stuff things thing well also still even".split(
-    " ",
-  ),
-);
-
-/** The words a line says that must survive its shortening. */
-const keptWords = (text: string) =>
-  meaningWords(text).filter((w) => !FILLER.has(w) && !FILLER.has(`${w}s`));
-
-/** Whether `text` says `lines` in their own words, shorter and whole: no more
- *  words than they had, every link of theirs kept, at most a word or two
- *  that isn't theirs (one in four), and every word they say kept but filler
- *  and hedges (one in six may change). */
-export function inTheirWords(text: string, lines: readonly string[]): boolean {
-  const theirs = lines.map(itemText).join(" ");
-  if (!text || wordCount(text) > wordCount(theirs)) return false;
-  if ((theirs.match(LINKS_RE) ?? []).some((link) => !text.includes(link))) return false;
-  const known = new Set(meaningWords(theirs));
-  const words = meaningWords(text);
-  const added = words.filter((w) => !known.has(w)).length;
-  if (added > Math.max(1, Math.ceil(words.length / 4))) return false;
-  const said = new Set(words);
-  const needed = [...new Set(keptWords(theirs))];
-  const lost = needed.filter((w) => !said.has(w)).length;
-  return lost <= Math.floor(needed.length / 6);
+/** A text's sentences: split after . ! ? (a link's dots have no space after). */
+export function sentencesOf(text: string): string[] {
+  return text
+    .split(/(?<=[.!?。！？])\s+/u)
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
-/** An `organize` reply, held to its word: every one of `lines` exactly once,
- *  else null. A point is one line of yours under its key phrase, its text
- *  that line cut short in your words (or the line as written, when the text
- *  strays). Lines a point lists past its own that nothing else places go
- *  under it as you nested them, never folded into its text; one that only
- *  repeats the point word for word goes. An idea the pen added sums up two
- *  or more points (with one, that point takes its place). No depth limit. */
-export function organizeReply(reply: string, lines: readonly string[]): OrganizedPoint[] | null {
-  const value = jsonIn(reply) as { points?: unknown } | null;
-  if (!Array.isArray(value?.points)) return null;
-  const seen = new Set<number>();
-  const asWritten = (k: number): OrganizedPoint => ({
-    key: null,
-    lines: [k],
-    text: itemText(lines[k]!),
-    under: [],
-  });
-  // Lines as you nested them, by their indentation.
-  const nested = (ks: readonly number[]): OrganizedPoint[] => {
-    const top: OrganizedPoint[] = [];
-    const stack: { width: number; point: OrganizedPoint }[] = [];
-    for (const k of ks) {
-      const point = asWritten(k);
-      const width = indentWidth(lines[k]!);
-      while (stack.length && stack[stack.length - 1]!.width >= width) stack.pop();
-      (stack.length ? stack[stack.length - 1]!.point.under : top).push(point);
-      stack.push({ width, point });
-    }
-    return top;
-  };
-  const kidsOf = (item: Record<string, unknown> | null): unknown[] => {
-    const kids = item?.under ?? item?.children ?? item?.points ?? item?.items;
-    return Array.isArray(kids) ? kids : [];
-  };
-  const keyOf = (raw: unknown): string | null => {
-    if (typeof raw !== "string") return null;
-    const key = raw.replace(/[[\]*:：]/gu, "").trim();
-    return KEY_RE.test(key) ? key : null;
-  };
-  /** The text without a key phrase it repeats, or any `Key:` the model left in. */
-  const bodyOf = (raw: unknown, key: string | null): string => {
+/** A line's words: no list marker, task box, heading marks or block id. */
+const bodyOf = (line: string) => itemText(line).replace(/^#{1,6}\s+/, "");
+const boxOf = (line: string) => ITEM_RE.exec(line)?.[4] ?? "";
+const blockIdOf = (line: string) => BLOCK_ID_AT_END_RE.exec(line)?.[1] ?? null;
+
+/** An `organize` reply, held to its word: topics with a name and a theory,
+ *  every sentence of yours under exactly one topic's Evidence. A sentence no
+ *  topic claimed goes with the one before it (the first, with the next one
+ *  claimed), and a line you indented under another goes with it; a topic
+ *  left with none goes. A line whose sentences all went to one topic stays
+ *  whole, as you wrote it. Null when nothing usable came
+ *  back. */
+export function organizeReply(reply: string, lines: readonly string[]): OrganizedTopic[] | null {
+  const value = jsonIn(reply) as { topics?: unknown } | null;
+  if (!Array.isArray(value?.topics)) return null;
+  const sentences = organizeSentences(lines);
+  const owner: number[] = sentences.map(() => -1);
+  const textOf = (raw: unknown, max: number): string => {
     if (typeof raw !== "string") return "";
-    let text = raw.replace(BLOCK_ID_AT_END_RE, "").replace(/\s+/g, " ").trim();
-    text = text.replace(/^\[(.+)\]$/u, "$1");
-    if (key && text.toLowerCase().startsWith(`${key.toLowerCase()}:`)) {
-      text = text.slice(key.length + 1).trim();
-    }
-    return text;
+    const text = raw
+      .replace(/\s+/g, " ")
+      .replace(/^\*{0,2}[^*:：]{1,30}[:：]\*{2}\s*/u, "")
+      .trim();
+    return text && wordCount(text) <= max ? text : "";
   };
-  const read = (raw: unknown): OrganizedPoint[] => {
+  const textsOf = (raw: unknown): string[] =>
+    (Array.isArray(raw) ? raw : []).map((r) => textOf(r, POINT_MAX_WORDS)).filter(Boolean);
+  const found: Omit<OrganizedTopic, "evidence">[] = [];
+  for (const raw of value.topics) {
     const item = (typeof raw === "object" ? raw : null) as Record<string, unknown> | null;
-    const under = kidsOf(item).flatMap(read);
-    const key = keyOf(item?.key ?? item?.label);
-    const asked = Array.isArray(item?.lines)
-      ? item.lines
-      : item?.line !== undefined
-        ? [item.line]
-        : null;
-    if (asked) {
-      const mine = asked
-        .map((n) => (typeof n === "number" && Number.isInteger(n) ? n - 1 : -1))
-        .filter((k) => k >= 0 && k < lines.length && !seen.has(k))
-        .filter((k, at, all) => all.indexOf(k) === at)
-        .sort((a, b) => a - b);
-      if (!mine.length) return under;
-      mine.forEach((k) => seen.add(k));
-      const [own, ...rest] = mine as [number, ...number[]];
-      const said = squash(itemText(lines[own]!));
-      const extra = rest.filter(
-        (k) => squash(itemText(lines[k]!)) !== said || blockIdOf(lines[k]!) !== null,
-      );
-      const text = bodyOf(item?.text, key);
-      // A line that held several points: the rest, each under its key.
-      const parts = (Array.isArray(item?.parts) ? item.parts : []).flatMap((raw) => {
-        const part = (typeof raw === "object" ? raw : { text: raw }) as Record<
-          string,
-          unknown
-        > | null;
-        const partKey = keyOf(part?.key ?? part?.label);
-        const partText = bodyOf(part?.text, partKey);
-        return partText ? [{ key: partKey, part: partText, under: [] as OrganizedPoint[] }] : [];
-      });
-      // Whole, in your words, or your line as you wrote it.
-      const whole = inTheirWords([text, ...parts.map((p) => p.part)].join(" "), [lines[own]!]);
-      return [
-        {
-          key,
-          lines: [own],
-          text: whole ? text : itemText(lines[own]!),
-          under: [...(whole ? parts : []), ...nested(extra), ...under],
-        },
-      ];
+    const name = textOf(item?.name ?? item?.topic, NAME_MAX_WORDS)
+      .replace(/[#*:：]/gu, "")
+      .trim();
+    const theory = textOf(item?.theory, THEORY_MAX_WORDS);
+    if (!name || !theory) continue;
+    const t = found.length;
+    for (const n of Array.isArray(item?.evidence) ? item.evidence : []) {
+      const k = typeof n === "number" && Number.isInteger(n) ? n - 1 : -1;
+      if (k >= 0 && k < owner.length && owner[k] === -1) owner[k] = t;
     }
-    const idea = replyLine(bodyOf(item?.text ?? item?.idea ?? item?.group, key));
-    if (!idea || under.length < 2 || wordCount(idea) > IDEA_MAX_WORDS) return under;
-    return [{ key, idea, under }];
-  };
-  const points = value.points.flatMap(read);
-  return seen.size === lines.length ? points : null;
+    const how = (Array.isArray(item?.how) ? item.how : []).flatMap((h) => {
+      const step = (typeof h === "object" ? h : null) as Record<string, unknown> | null;
+      const key = typeof step?.key === "string" ? step.key.replace(/[*:：]/gu, "").trim() : "";
+      const text = textOf(step?.text, POINT_MAX_WORDS);
+      return KEY_RE.test(key) && text ? [{ key, text }] : [];
+    });
+    found.push({ name, theory, how, rules: textsOf(item?.rules), open: textsOf(item?.open) });
+  }
+  const first = owner.find((t) => t >= 0);
+  if (first === undefined) return null;
+  let last = first;
+  for (let k = 0; k < owner.length; k++) {
+    if (owner[k] === -1) owner[k] = last;
+    last = owner[k]!;
+  }
+  // A line you indented under another goes with it: the nesting you wrote
+  // never splits across topics.
+  const stack: { width: number; line: number }[] = [];
+  lines.forEach((line, k) => {
+    const width = indentWidth(line);
+    while (stack.length && stack[stack.length - 1]!.width >= width) stack.pop();
+    const parent = stack[stack.length - 1]?.line;
+    if (parent !== undefined) {
+      let at = sentences.length - 1;
+      while (sentences[at]!.line !== parent) at--;
+      const topic = owner[at]!;
+      sentences.forEach((s, j) => {
+        if (s.line === k) owner[j] = topic;
+      });
+    }
+    stack.push({ width, line: k });
+  });
+  const evidence: EvidencePiece[][] = found.map(() => []);
+  for (let line = 0; line < lines.length; line++) {
+    const mine = sentences.flatMap((s, k) => (s.line === line ? [k] : []));
+    if (mine.every((k) => owner[k] === owner[mine[0]!])) {
+      evidence[owner[mine[0]!]!]!.push({ line, sentences: null });
+      continue;
+    }
+    // Split across topics: each run of sentences goes to its own.
+    for (const k of mine) {
+      const pieces = evidence[owner[k]!]!;
+      const run = pieces[pieces.length - 1];
+      if (run?.line === line && run.sentences?.[run.sentences.length - 1] === k - 1) {
+        run.sentences.push(k);
+      } else {
+        pieces.push({ line, sentences: [k] });
+      }
+    }
+  }
+  return found.flatMap((t, k) => (evidence[k]!.length ? [{ ...t, evidence: evidence[k]! }] : []));
 }
 
-/** An organized outline as Markdown lines at `indent`, each level two spaces
- *  further in, each point `Key: text`. Your point keeps its line's task box
- *  and block id; an idea the pen added is its line, named by `id`. */
+/** Organized topics as Markdown lines. With `heading` (`##`…) each topic is a
+ *  heading, its parts a list under it; without, a bold item at `indent` with
+ *  its parts a level in. The pen's lines carry an id (`id`, its ink); your
+ *  words under Evidence keep their task box and block id, and the nesting
+ *  you wrote among them, never more than a level deeper than the line
+ *  before. */
 export function organizedLines(
-  points: readonly OrganizedPoint[],
+  topics: readonly OrganizedTopic[],
   lines: readonly string[],
   indent: string,
+  heading: string | null,
   id: () => string,
 ): string[] {
-  const keyed = (p: OrganizedPoint, text: string) => (p.key ? `${p.key}: ${text}` : text);
-  const yours = (p: { lines: number[]; text: string }) => {
-    const originals = p.lines.map((k) => lines[k]!);
-    const block = originals.map(blockIdOf).find(Boolean);
-    return `${boxOf(originals[0]!)}${keyed(p as OrganizedPoint, p.text)}${block ? ` ^${block}` : ""}`;
+  const sentences = organizeSentences(lines);
+  // How deep each line of yours sits among the others.
+  const levels: number[] = [];
+  const stack: number[] = [];
+  for (const line of lines) {
+    const width = indentWidth(line);
+    while (stack.length && stack[stack.length - 1]! >= width) stack.pop();
+    levels.push(stack.length);
+    stack.push(width);
+  }
+  const pen = (at: string, text: string) => `${at}- ${text} ^${id()}`;
+  const yours = (piece: EvidencePiece, at: string): string => {
+    const line = lines[piece.line]!;
+    if (!piece.sentences) {
+      const body = line.replace(/^[ \t]+/, "");
+      return `${at}${ITEM_RE.test(line) ? body : `- ${body.replace(/^#{1,6}\s+/, "")}`}`;
+    }
+    const text = piece.sentences.map((k) => sentences[k]!.text).join(" ");
+    // The line's box and block id go with its first sentence.
+    const opens = sentences[piece.sentences[0]! - 1]?.line !== piece.line;
+    const block = opens ? blockIdOf(line) : null;
+    return `${at}- ${opens ? boxOf(line) : ""}${text}${block ? ` ^${block}` : ""}`;
   };
-  const write = (p: OrganizedPoint, at: string): string[] => [
-    "idea" in p
-      ? `${at}- ${keyed(p, p.idea)} ^${id()}`
-      : "part" in p
-        ? `${at}- ${keyed(p, p.part)}`
-        : `${at}- ${yours(p)}`,
-    ...p.under.flatMap((k) => write(k, `${at}  `)),
-  ];
-  return points.flatMap((p) => write(p, indent));
-}
-
-/** How many levels deep an outline goes. */
-export function outlineDepth(points: readonly OrganizedPoint[]): number {
-  return points.reduce((most, p) => Math.max(most, 1 + outlineDepth(p.under)), 0);
-}
-
-/** Which side of a problem a key phrase is on. Problems and solutions are
- *  different kinds: they never sit under one point. */
-export type PointSide = "problem" | "solution" | null;
-
-const PROBLEM_KEYS = new Set(
-  "problem problems cause causes root obstacle obstacles risk risks issue issues challenge challenges barrier barriers blocker blockers pain symptom symptoms failure mistake mistakes trap pitfall pitfalls weakness limitation drawback downside friction cost costs failed fails".split(
-    " ",
-  ),
-);
-const SOLUTION_KEYS = new Set(
-  "solution solutions fix fixes remedy strategy strategies action actions step steps next approach tactic tactics practice practices method recommendation tool tools plan workaround mitigation lever levers intervention worked works helps helped".split(
-    " ",
-  ),
-);
-
-/** A key phrase's side, by its words ("Root cause", "What worked"). */
-export function sideOf(key: string | null): PointSide {
-  const words = (key ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.some((w) => PROBLEM_KEYS.has(w))) return "problem";
-  if (words.some((w) => SOLUTION_KEYS.has(w))) return "solution";
-  return null;
-}
-
-const pointText = (p: OrganizedPoint, lines: readonly string[]) =>
-  "idea" in p ? p.idea : "part" in p ? p.part : p.text || itemText(lines[p.lines[0]!] ?? "");
-
-/** The points with problems and solutions side by side under them, as
- *  `Key: text`. The top level has no point over it: both sides may sit there. */
-export function mixedSides(points: readonly OrganizedPoint[], lines: readonly string[]): string[] {
-  return points.flatMap((p) => {
-    const sides = new Set(p.under.map((k) => sideOf(k.key)).filter(Boolean));
-    const here = sides.size > 1 ? [`${p.key ? `${p.key}: ` : ""}${pointText(p, lines)}`] : [];
-    return [...here, ...mixedSides(p.under, lines)];
-  });
-}
-
-/** The outline with problems and solutions never under one point: where a
- *  point holds both, the side that isn't its own (or, for a point of
- *  neither side, the smaller one; solutions on a tie) moves out, to sit
- *  right after it, a level up, until the top. An idea of the pen's left over
- *  fewer than two points gives way to them. */
-export function separateSides(points: readonly OrganizedPoint[]): OrganizedPoint[] {
-  return points.flatMap((p) => {
-    const kids = separateSides(p.under);
-    const problems = kids.filter((k) => sideOf(k.key) === "problem");
-    const solutions = kids.filter((k) => sideOf(k.key) === "solution");
-    if (!problems.length || !solutions.length) return [{ ...p, under: kids }];
-    const own = sideOf(p.key);
-    const move: PointSide =
-      own === "problem"
-        ? "solution"
-        : own === "solution"
-          ? "problem"
-          : problems.length < solutions.length
-            ? "problem"
-            : "solution";
-    const staying = kids.filter((k) => sideOf(k.key) !== move);
-    const moving = kids.filter((k) => sideOf(k.key) === move);
-    const kept: OrganizedPoint[] =
-      "idea" in p && staying.length < 2 ? staying : [{ ...p, under: staying }];
-    return [...kept, ...moving];
+  return topics.flatMap((topic, n) => {
+    const head = heading
+      ? [...(n ? [""] : []), `${heading} ${topic.name}`]
+      : [pen(indent, `**${topic.name}**`)];
+    const at = heading ? indent : `${indent}  `;
+    const under = `${at}  `;
+    let depth = -1;
+    const evidence = topic.evidence.map((piece) => {
+      depth = Math.min(levels[piece.line]!, depth + 1);
+      return yours(piece, under + "  ".repeat(depth));
+    });
+    return [
+      ...head,
+      pen(at, `**Theory:** ${topic.theory}`),
+      ...(topic.how.length
+        ? [
+            pen(at, "**How it works:**"),
+            ...topic.how.map((h) => pen(under, `**${h.key}:** ${h.text}`)),
+          ]
+        : []),
+      ...(topic.rules.length
+        ? [pen(at, "**Rules:**"), ...topic.rules.map((r) => pen(under, r))]
+        : []),
+      ...(topic.open.length === 1
+        ? [pen(at, `**Open:** ${topic.open[0]}`)]
+        : topic.open.length
+          ? [pen(at, "**Open:**"), ...topic.open.map((q) => pen(under, q))]
+          : []),
+      pen(at, "**Evidence:**"),
+      ...evidence,
+    ];
   });
 }
 

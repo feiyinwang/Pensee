@@ -12,8 +12,8 @@ own ink, right under the line you're on. It never writes your conclusion:
   make the call;
 - it **connects** a line to what you wrote before in other notes, and you
   write how they connect;
-- it **organizes** your lines into a short outline in your own words,
-  nothing added.
+- it **organizes** your lines into topics, each a theory with your words
+  as its evidence.
 
 Decided from the prototype `apps/desktop/proto/thinking-pen` (2026-10-13):
 Answer → *Sealed*, Check → *Both sides*, Connect → *Inline*. Rejected there:
@@ -44,7 +44,7 @@ notes are gone. The look is unchanged from the first Second pen
   | `!` **Answer** | writes an answer, sealed, with a line under it for your take. It opens once you've written yours |
   | `@` **Check** | the evidence for and against the line, each with a paper (or *no paper*), then a line for your call. No verdict |
   | `[[` **Connect** | up to three short points from what you wrote in other notes, each saying what it is (Supports, Example…) and linked to its note |
-  | `#` **Organize** | regroups the selected lines into a short outline in your own words; one paragraph works too, its points become the outline |
+  | `#` **Organize** | splits the selected lines (one paragraph works too) into topics, each with a theory, how it works, rules and open questions; your words stay under Evidence |
 
   On an empty line: **Answer** only (to what you type).
 - **Picking a pill keeps the box's width**: it stays as wide as its row
@@ -248,65 +248,63 @@ one by one, and only when you ask.
 
 ### Organize
 
-- With two or more lines selected, the pen builds them into a **pyramid of
-  ideas** from what they mean, not the order they were written in: at the
-  top the fewest ideas that sum up everything (one if one can), under each
-  the ideas or lines that support it, explain it or are part of it, and so
-  on down, as many levels as the meaning goes. MECE at every level and
-  across the pyramid. A flat list is never left flat when it can be grouped.
-- **A key phrase on every point**: `Principle: …`, `Example: …`, `Cause: …`
-  (one to three words, the pen's choice), then the point.
-- **Problems and solutions never sit under one point.** They are different
-  kinds: a problem branch and a solution branch go side by side, at the top.
-  The pen keys a problem's points as problems (Problem, Cause, Obstacle,
-  Risk…) and a solution's as solutions (Solution, Strategy, Step, What
-  worked…), and code reads the side from those words. A reply with both under
-  one point is asked once more, naming the point; if it still has both, code
-  moves the side that isn't the point's own (for a point of neither side, the
-  smaller; solutions on a tie) out, right after it, a level up, until the
-  top. An idea of the pen's left over one point gives way to it.
-- **Your lines, in your words, shorter, nothing lost.** Each of your lines is
-  a point of its own, one or two short sentences: only filler, hedges and
-  repeated words cut ("I think", "basically", "really", "the"), a word or two
-  adjusted at most. A line that holds several points keeps the first and
-  puts each other one under it as a point of its own (`parts`, keyed), so
-  none is dropped. Checked in code (`inTheirWords`): the point and its parts
-  together must keep every word the line says but filler (one in six may
-  change), add at most one word in four, not be longer, and keep every link;
-  else the point is your line as you wrote it, whole. A task's box and a
-  block id stay on their point.
-  A line you indented under another stays under it unless it plainly belongs
-  elsewhere; a line the pen lists on a point past its own (a whole branch on
-  its top point) that nothing else places goes under it as you nested it,
-  never folded into its text.
-- **The ideas above your lines are the pen's**: one short sentence each (at
-  most 15 words asked, 20 accepted), in your words where they fit, written in
-  its ink (a hidden `^ai-g-…`, key phrase in bold). Each sums up two or more
-  points; one over a single point gives way to it. Enter on one doesn't ask
-  the pen for a reply. This task is the one exception to the pen's "one line,
-  never your conclusion": the prompt says so.
-- **Model**: Organize asks Sonnet when the pen is on Haiku (Haiku hands back
-  a flat list); Opus stays Opus. Slower than the other pills, a few seconds
-  more. A reply that comes back one level deep from four lines or more, or
-  with a problem and a solution under one point, is asked once more, in the
-  same conversation, saying what's wrong.
-- A reply that leaves out one of your lines isn't shown: *Couldn't organize
-  these lines. Try again.*
-- The outline replaces your lines, tinted, and the text waits: *Organized in
-  4 levels, 118 → 96 words, in your words.* **Enter** keeps it, **Esc** puts
-  your lines back exactly as they were.
-- There is no Shorten of its own any more (2026-10-15): Organize does the
-  cutting, so the `−` pill is gone.
+Organize builds **understanding**, not a tidier copy of what you wrote: it
+splits your text into topics and abstracts each into a small theory you can
+apply again. Your own words stay, untouched, as the evidence under it.
 
-Decided from `apps/desktop/proto/organize-depth` (2026-10-15):
+- **Topics first.** Each separate subject is its own topic (one if it is all
+  one subject), named in 1 to 4 words. At the top level of the note a topic
+  is a heading, one level under the heading above your lines (`##` when there
+  is none); inside a list it is a bold item (`- **Stress**`) with its parts a
+  level in.
+- **Each topic, in the pen's ink** (a hidden `^ai-g-…` on every line it
+  writes, key phrases in bold):
+  - `**Theory:**` exactly one sentence (at most 30 words asked, 45
+    accepted): what you can now believe, a general claim that reaches past
+    this one case. Never a summary of what happened.
+  - `**How it works:**` the mechanism: 2 to 5 keyed steps or parts
+    (`**Trigger:** …`), only how it happens, never what to do. Left out when
+    the text gives no mechanism.
+  - `**Rules:**` 1 to 4 things to do next time, one short sentence each.
+    Left out when nothing follows.
+  - `**Open:**` 0 to 3 questions still unresolved, naming another topic when
+    one leads there; inline when there is one.
+  - `**Evidence:**` your writing, as you wrote it.
+    At each level the parts are distinct kinds (why it is so, what to do,
+    what is unknown, what it rests on), so they don't overlap.
+- **Your words are never rewritten.** The pen gets your text numbered
+  sentence by sentence and says which sentences each topic comes from. Code
+  puts them under that topic's Evidence: a line whose sentences all went to
+  one topic stays whole, with its task box, block id and the nesting you
+  wrote (never more than a level deeper than the line before it); a line
+  split across topics goes in as runs of its sentences, its box and block id
+  with the first. A sentence no topic claimed goes with the one before it;
+  a topic with no sentences goes. A line you indented under another is asked
+  to stay in its topic.
+- **Model**: Organize asks Sonnet when the pen is on Haiku; Opus stays Opus.
+  A reply that can't be read is asked once more, in the same conversation;
+  still unreadable: _Couldn't organize these lines. Try again._
+- The outline replaces your lines, tinted, and the text waits: _4 topics, a
+  theory each. Your words are under Evidence._ **Enter** keeps it, **Esc**
+  puts your lines back exactly as they were.
+- This task is the one exception to the pen's "one line, never your
+  conclusion": the prompt says so.
 
-- Direction: **Deep tree**: the pen decides the depth, MECE at every level,
-  pen-ink names only where siblings need one, your indents kept.
-- Rejected: one layer of names with every line flat under it (the old
-  Organize: it threw away the nesting you wrote); **your lines only**, no
-  names (problems and fixes end up side by side at the top, harder to keep
-  MECE); a **depth dial** (2 / 3 / All, Tab deeper): one more choice on
-  every Organize, when the pen should get the depth right itself.
+Decided from a picker prototype (2026-10-16), run on the writer's own
+journal paragraph:
+
+- Direction: **Theory**: topic → one-sentence theory → how it works · rules
+  · open → your words as evidence.
+- Rejected: **the old pyramid** (every line kept as a point in your words,
+  keyed Example / Detail: it handed the story back, one long tree with no
+  topics); **Rulebook** (topic → rule → when / do / because: only actions,
+  the theory shrinks to one line); **Lab notebook** (observations → pattern
+  → hypothesis with confidence → test → rule: the longest, and it asks you
+  to run a test); **Adaptive** (one spine, branches picked per kind of
+  writing: images and tension for dreams, reasons and objections for
+  essays: more general, kept as the next step if Theory feels too narrow for
+  dream logs or fiction).
+- Not yet: Evidence can't be folded; the editor has no list folding.
 
 ### What it knows
 

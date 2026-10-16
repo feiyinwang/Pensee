@@ -726,6 +726,7 @@ describe("Journeys: second pen", function () {
   });
 
   it("PEN-16 Organize on several lines, then Esc puts your lines back exactly", async function () {
+    await openViaPalette("Pen");
     const path = `${root}/Notes/Pen.md`;
     const before = await readFile(path);
     await caretAfter("sleep on it");
@@ -743,7 +744,8 @@ describe("Journeys: second pen", function () {
     await waitForDisk(path, (t) => t === before, "Esc should put the lines back exactly");
   });
 
-  it("PEN-17 Organize, then Enter keeps it, shorter, in your own words", async function () {
+  it("PEN-17 Organize, then Enter keeps it: topics with a theory each, your words under Evidence", async function () {
+    await openViaPalette("Pen");
     const path = `${root}/Notes/Pen.md`;
     await caretAfter("sleep on it");
     await selectTo("why does sleep help memory?");
@@ -759,21 +761,31 @@ describe("Journeys: second pen", function () {
     const said = await browser.execute(
       () => document.querySelector(".cm-pen-pending-text")?.textContent ?? "",
     );
-    ok(/Organized in \d+ levels?, \d+ → \d+ words/.test(said), `under the outline: ${said}`);
+    ok(
+      /\d+ topics?, a theory each\. Your words are under Evidence\./.test(said),
+      `under the outline: ${said}`,
+    );
     await key("Enter");
     const text = await waitForDisk(
       path,
-      // Case aside: a shortened line may start with a capital.
-      (t) => /sleep help\w* memory/i.test(t) && /sleep on it/i.test(t),
-      "the outline should keep your own words",
+      // Your words stay as you wrote them, under Evidence.
+      (t) =>
+        t.includes("why does sleep help memory?") &&
+        t.includes("sleep on it") &&
+        /\*\*Theory:\*\* /.test(t),
+      "the outline should have a theory and keep your own words",
     );
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
   });
 
   it("PEN-22 # Organize is offered for one line too, and picking it keeps the box's width", async function () {
+    await openViaPalette("Pen");
     await armOn("naps help you remember");
     await waitForBox();
-    ok((await pop()).pills.some((p) => p.includes("Organize")), "one line: Organize");
+    ok(
+      (await pop()).pills.some((p) => p.includes("Organize")),
+      "one line: Organize",
+    );
     const before = await browser.execute(
       () => document.querySelector(".pen-box")?.getBoundingClientRect().width ?? 0,
     );
@@ -823,7 +835,7 @@ describe("Journeys: second pen", function () {
     );
   });
 
-  it("PEN-30 Organize turns a flat list into a pyramid of ideas, each point under a key phrase, in your words", async function () {
+  it("PEN-30 Organize turns a list into topics, a theory each, your lines untouched under Evidence", async function () {
     const path = `${root}/Notes/Side projects.md`;
     const before = await readFile(path);
     await openViaPalette("Side projects");
@@ -838,70 +850,45 @@ describe("Journeys: second pen", function () {
     );
     await key("Enter");
     const text = await waitForDisk(path, (t) => t !== before, "expected an outline");
-    const lines = text.split("\n").filter((l) => l.trim());
-    const indent = (l) => /^ */.exec(l)[0].length;
-    // A pyramid, not the flat list it was: three levels at least.
-    const depth = Math.max(...lines.map((l) => indent(l) / 2 + 1));
-    ok(depth >= 3, `${depth} levels deep:\n${text}`);
-    lines.forEach((l, k) =>
-      ok(k === 0 || indent(l) <= indent(lines[k - 1]) + 2, `skipped a level:\n${text}`),
-    );
-    // Every point under a key phrase: "Principle: …".
-    const keyed = /^\s*- (?:\[[ xX]\] )?[\p{L}][\p{L}'’ -]{0,30}: \S/u;
-    for (const l of lines) ok(keyed.test(l), `no key phrase: "${l}"\n${text}`);
-    // Your points in your words: at most one word in four after the key isn't yours.
-    const words = (t) => t.toLowerCase().match(/[a-z0-9']+/g) ?? [];
-    const yours = new Set(words(before));
-    for (const l of lines.filter((x) => !/ \^ai-g-[a-z0-9]{4}$/.test(x))) {
-      const w = words(l.replace(/^\s*- [^:]+: /, ""));
-      const added = w.filter((x) => !yours.has(x)).length;
-      ok(added <= Math.max(1, Math.ceil(w.length / 4)), `not in your words: "${l}"\n${text}`);
+    console.log(`DEBUG PEN-30\n${text}`);
+    const lines = text.split("\n");
+    // Each topic a heading, with its theory in the pen's ink and its Evidence.
+    const topics = lines.filter((l) => /^#{2,6} \S/.test(l));
+    ok(topics.length >= 1, `no topic heading:\n${text}`);
+    const theories = lines.filter((l) => /^- \*\*Theory:\*\* \S.* \^ai-g-[a-z0-9]{4}$/.test(l));
+    ok(theories.length === topics.length, `a theory per topic:\n${text}`);
+    const evidence = lines.filter((l) => /^- \*\*Evidence:\*\* \^ai-g-[a-z0-9]{4}$/.test(l));
+    ok(evidence.length === topics.length, `Evidence per topic:\n${text}`);
+    // A theory is one claim, not your story back: two sentences at most.
+    for (const l of theories) {
+      const said = l.replace(/ \^ai-g-[a-z0-9]{4}$/, "").replace(/^- \*\*Theory:\*\* /, "");
+      ok(said.split(/(?<=[.!?])\s+/).filter(Boolean).length <= 2, `too long: "${l}"\n${text}`);
     }
-    // Problems and solutions never sit under one point (the top level may hold both).
-    const side = (l) => {
-      const key = (/^\s*- (?:\[[ xX]\] )?([^:]+):/.exec(l)?.[1] ?? "").toLowerCase();
-      if (
-        /\b(problems?|causes?|root|obstacles?|risks?|issues?|challenges?|barriers?|blockers?|pain|symptoms?|failure|mistakes?|traps?|pitfalls?|weakness|limitation|drawback|downside|friction|costs?|failed|fails)\b/.test(
-          key,
-        )
-      )
-        return "problem";
-      if (
-        /\b(solutions?|fix(es)?|remedy|strateg(y|ies)|actions?|steps?|next|approach|tactics?|practices?|method|recommendation|tools?|plan|workaround|mitigation|levers?|intervention|worked|works|helps|helped)\b/.test(
-          key,
-        )
-      )
-        return "solution";
-      return null;
-    };
-    lines.forEach((l, k) => {
-      const kids = [];
-      for (let j = k + 1; j < lines.length && indent(lines[j]) > indent(l); j++) {
-        if (indent(lines[j]) === indent(l) + 2) kids.push(lines[j]);
+    // Your words untouched: every line you selected is there, as you wrote it.
+    const yours = before
+      .split("\n")
+      .map((l) => l.replace(/^- /, ""))
+      .filter(Boolean);
+    for (const mine of yours) ok(text.includes(mine), `lost or rewritten: "${mine}"\n${text}`);
+    // On screen the key is bold, its ** markers out of sight.
+    const bold = await browser.execute(() => {
+      const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+      const line = [...(editor?.querySelectorAll(".cm-line") ?? [])].find((l) =>
+        // The bullet's "- " sits in its own prefix span, still in textContent.
+        /^-?\s*Theory: /.test(l.textContent ?? ""),
+      );
+      if (!line) return null;
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.data.includes("Theory")) continue;
+        return Number(getComputedStyle(node.parentElement).fontWeight);
       }
-      const sides = new Set(kids.map(side).filter(Boolean));
-      ok(sides.size < 2, `problems and solutions under "${l.trim()}":\n${text}`);
+      return null;
     });
-    // Shorter, nothing lost: the words your lines say are still there, filler aside.
-    const filler = new Set(
-      "about after also basically because been from have just really that then there they this what when where which while with would think guess maybe probably kind sort like things thing".split(
-        " ",
-      ),
-    );
-    const said = new Set(words(text));
-    const needed = [...new Set(words(before))].filter((w) => w.length >= 4 && !filler.has(w));
-    const lost = needed.filter(
-      (w) => !said.has(w) && !said.has(w.replace(/s$/, "")) && !said.has(`${w}s`),
-    );
-    ok(lost.length <= Math.floor(needed.length / 10), `points lost (${lost.join(", ")}):\n${text}`);
-    // The pen's ideas sum up what's under them: never a leaf.
-    lines.forEach((l, k) => {
-      if (!/ \^ai-g-[a-z0-9]{4}$/.test(l)) return;
-      ok(indent(lines[k + 1] ?? "") > indent(l), `an idea with nothing under it: "${l}"\n${text}`);
-    });
+    ok(bold !== null && bold >= 600, `the key phrase isn't bold on screen (weight ${bold})`);
   });
 
-  it("PEN-31 Organize keeps every level you wrote: blueberry, its benefit, its types, five levels deep", async function () {
+  it("PEN-31 Organize keeps every level you wrote under Evidence: blueberry, its benefit, its types", async function () {
     const path = `${root}/Notes/Fruit.md`;
     const before = await readFile(path);
     await openViaPalette("Fruit");
@@ -918,8 +905,12 @@ describe("Journeys: second pen", function () {
     const text = await waitForDisk(path, (t) => t !== before, "expected an outline");
     const lines = text.split("\n");
     const indent = (l) => /^ */.exec(l)[0].length;
+    // Your lines only: a topic's heading and the pen's own lines (its
+    // ink, `^ai-g-…`) may use the same words.
+    ok(/\*\*Evidence:\*\*/.test(text), `no Evidence:\n${text}`);
+    const yours = (l) => !/^#/.test(l) && !/ \^ai-g-[a-z0-9]{4}$/.test(l);
     const at = (re) => {
-      const k = lines.findIndex((l) => re.test(l));
+      const k = lines.findIndex((l) => yours(l) && re.test(l));
       ok(k >= 0, `${re} is gone:\n${text}`);
       return k;
     };

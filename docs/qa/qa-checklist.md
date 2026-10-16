@@ -148,6 +148,13 @@ Learned the hard way; each one cost a failed run.
 - React-controlled inputs: `fillField(selector, text)`. CodeMirror text:
   `typeInEditor(text)`. `browser.keys` does not reach either.
 - `waitForClickable` fails on visible elements; use `waitForExist`.
+- A CodeMirror list line's `textContent` starts with its bullet (`- ` sits in
+  a `cm-list-prefix` span) and a heading's with its hidden `## `: match
+  `/^-?\s*Key: /`, and read a style off the text node holding the words, not
+  the first text node.
+- When another session is mid-edit in the same checkout, `run.sh` builds its
+  half-done code too: run the journeys from a clean `git worktree` holding
+  HEAD plus only this task's files.
 - `browser.execute(async () => …)` returns `null`; use `executeAsync(done)`.
 - A rejected `invoke` throws a WebDriverError instead of resolving
   `{ ok: false }`: check `fileExists` before deleting.
