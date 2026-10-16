@@ -58,6 +58,13 @@
      in System Settings). Never a Pensée colour. */
   --macos-blue: #0a84ff;
   --macos-blue-light: #007aff;
+  --macos-red: #ff3b30;
+  --macos-purple: #5e5ce6;
+  --macos-gray: #8e8e93;
+  --macos-graphite: #3a3a3c;
+  --macos-light-close: #ff5f57;
+  --macos-light-minimize: #febc2e;
+  --macos-light-zoom: #28c840;
 
   /* The brand's two colours (docs/brand.md): the ¶ and the wordmark only. */
   --brand-ink: #0b0b0b;
@@ -109,6 +116,7 @@
   /* Type sizes (SPECs/type-scale-spec.md). */
   --font-size-8: 8px;
   --font-size-9: 9px;
+  --font-size-10: 10px;
   --font-size-11: 11px;
   --font-size-13: 13px;
   --font-size-14: 14px;
@@ -223,10 +231,22 @@
 
   /* A drawn picture of macOS System Settings (the Full Disk Access guide):
      its window, its grouped list, a switch that is on. */
-  --color-macos-window: var(--color-bg-raised);
-  --color-macos-list: var(--color-bg-ground);
+  --color-macos-window: var(--gray-850);
+  --color-macos-sidebar: var(--gray-700);
+  --color-macos-list: var(--gray-800);
+  --color-macos-search: color-mix(in srgb, var(--fg-base) 8%, transparent);
+  --color-macos-selected: var(--macos-blue);
+  --color-macos-on-selected: var(--white);
   --color-macos-switch-on: var(--macos-blue);
   --color-macos-knob: var(--white);
+  --color-macos-tile-blue: var(--macos-blue);
+  --color-macos-tile-red: var(--macos-red);
+  --color-macos-tile-purple: var(--macos-purple);
+  --color-macos-tile-gray: var(--macos-gray);
+  --color-macos-tile-dark: var(--gray-900);
+  --color-macos-light-close: var(--macos-light-close);
+  --color-macos-light-minimize: var(--macos-light-minimize);
+  --color-macos-light-zoom: var(--macos-light-zoom);
 
   /* Text. Ratios are WCAG on the ground / the raised grey. */
   --color-text-primary: var(--fg-base);
@@ -344,6 +364,7 @@
   --font-size-cover-micro: var(--font-size-8);
   /* Labels inside a drawn picture of macOS (the Full Disk Access guide). */
   --font-size-figure: var(--font-size-11);
+  --font-size-figure-note: var(--font-size-10);
   --font-size-cover-fine: var(--font-size-9);
   --font-size-cover-small: var(--font-size-13);
   --font-size-cover-text: var(--font-size-14);
@@ -387,9 +408,14 @@
 
 [data-theme="light"] {
   --color-brand-mark: var(--brand-ink);
-  --color-macos-window: var(--gray-100);
+  --color-macos-window: var(--gray-50);
+  --color-macos-sidebar: var(--gray-100);
   --color-macos-list: var(--white);
+  --color-macos-search: color-mix(in srgb, var(--fg-base) 7%, transparent);
+  --color-macos-selected: var(--macos-blue-light);
   --color-macos-switch-on: var(--macos-blue-light);
+  --color-macos-tile-blue: var(--macos-blue-light);
+  --color-macos-tile-dark: var(--macos-graphite);
   --color-bg-app: var(--gray-100);
   --color-bg-canvas: var(--color-bg-ground);
   --color-bg-raised: var(--gray-100);

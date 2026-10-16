@@ -9,7 +9,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 14vh 16px 16px;
+  padding: 10vh 16px 16px;
   pointer-events: none;
 }
 
@@ -19,7 +19,7 @@
 
   display: flex;
   flex-direction: column;
-  width: min(460px, 100%);
+  width: min(520px, 100%);
   padding: 20px;
   border-radius: var(--radius-card);
   outline: none;
@@ -51,85 +51,181 @@
   color: var(--text-secondary);
 }
 
-/* ── The drawn System Settings pane ─────────────────────────────────────────
-   Fixed size, so the cursor's stops are exact: + at (30, 162), Pensée's
-   switch at (383, 107). */
+/* ── The drawn System Settings window ───────────────────────────────────────
+   As macOS shows it: the sidebar with Privacy & Security selected, the Full
+   Disk Access header, and its grouped list with + and − under it. Fixed
+   size, so the cursor's stops are exact: + at (176, 247), Pensée's switch
+   at (445, 105). */
 
 .fda-figure {
   position: relative;
   flex-shrink: 0;
-  width: 420px;
+  width: 480px;
   max-width: 100%;
-  height: 188px;
+  height: 268px;
   margin-top: 16px;
   overflow: hidden;
-  border-radius: var(--radius-10);
+  border-radius: var(--radius-12);
   background: var(--color-macos-window);
   box-shadow: 0 0 0 1px var(--color-border-default);
   font-size: var(--font-size-figure);
+  line-height: 1.3;
   color: var(--text-primary);
   user-select: none;
 }
 
-.fda-figure-toolbar {
+.fda-figure-sidebar {
   position: absolute;
-  inset: 0 0 auto;
-  display: flex;
-  align-items: center;
-  height: 28px;
-  padding-left: 10px;
+  inset: 0 auto 0 0;
+  width: 150px;
+  background: var(--color-macos-sidebar);
 }
 
 .fda-figure-lights {
+  position: absolute;
+  top: 12px;
+  left: 12px;
   display: flex;
   gap: 6px;
 }
 
 .fda-figure-lights i {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: var(--radius-round);
-  background: var(--color-bg-subtle-strong);
+}
+
+.fda-figure-lights [data-light="close"] {
+  background: var(--color-macos-light-close);
+}
+
+.fda-figure-lights [data-light="minimize"] {
+  background: var(--color-macos-light-minimize);
+}
+
+.fda-figure-lights [data-light="zoom"] {
+  background: var(--color-macos-light-zoom);
+}
+
+.fda-figure-search {
+  position: absolute;
+  top: 30px;
+  left: 9px;
+  width: 132px;
+  height: 18px;
+  padding-left: 8px;
+  border-radius: var(--radius-6);
+  background: var(--color-macos-search);
+  font-size: var(--font-size-figure-note);
+  line-height: 18px;
+  color: var(--text-faint);
+}
+
+.fda-figure-panes {
+  position: absolute;
+  top: 56px;
+  left: 6px;
+  right: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fda-figure-pane {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-4);
+  white-space: nowrap;
+}
+
+.fda-figure-pane[data-gap] {
+  margin-top: 7px;
+}
+
+.fda-figure-pane[data-selected] {
+  background: var(--color-macos-selected);
+  color: var(--color-macos-on-selected);
+}
+
+.fda-figure-tile {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: var(--radius-2);
+}
+
+.fda-figure-tile[data-tint="blue"] {
+  background: var(--color-macos-tile-blue);
+}
+
+.fda-figure-tile[data-tint="red"] {
+  background: var(--color-macos-tile-red);
+}
+
+.fda-figure-tile[data-tint="purple"] {
+  background: var(--color-macos-tile-purple);
+}
+
+.fda-figure-tile[data-tint="gray"] {
+  background: var(--color-macos-tile-gray);
+}
+
+.fda-figure-tile[data-tint="dark"] {
+  background: var(--color-macos-tile-dark);
+}
+
+/* The selected pane's tile sits on the blue: a white edge keeps it apart. */
+.fda-figure-pane[data-selected] .fda-figure-tile {
+  box-shadow: 0 0 0 1px var(--color-macos-on-selected);
+}
+
+.fda-figure-header {
+  position: absolute;
+  top: 8px;
+  left: 164px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 20px;
 }
 
 .fda-figure-nav {
-  margin-left: 16px;
-  color: var(--text-muted);
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+}
+
+.fda-figure-nav--off {
+  color: var(--text-faint);
 }
 
 .fda-figure-heading {
-  margin-left: 14px;
-  font-weight: 600;
-}
-
-/* The pane's explanation, as grey lines: the eye goes to the list. */
-.fda-figure-line {
-  position: absolute;
-  left: 14px;
-  height: 5px;
-  border-radius: var(--radius-round);
-  background: var(--color-bg-subtle);
-}
-
-.fda-figure-line--long {
-  top: 38px;
-  width: 300px;
-}
-
-.fda-figure-line--short {
-  top: 48px;
-  width: 220px;
+  margin-left: 4px;
+  font-weight: 700;
 }
 
 .fda-figure-list {
   position: absolute;
-  top: 62px;
-  left: 14px;
-  right: 14px;
-  height: 112px;
+  top: 36px;
+  left: 160px;
+  right: 12px;
+  bottom: 10px;
+  overflow: hidden;
   border-radius: var(--radius-8);
   background: var(--color-macos-list);
-  box-shadow: 0 0 0 1px var(--color-border-default);
+  box-shadow: 0 0 0 1px var(--color-border-subtle);
+}
+
+/* Apple's own explanation at the top of the list. */
+.fda-figure-note {
+  height: 56px;
+  margin: 0;
+  padding: 7px 10px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-figure-note);
+  color: var(--text-muted);
 }
 
 .fda-figure-row {
@@ -138,18 +234,26 @@
   right: 0;
   display: flex;
   align-items: center;
-  height: 30px;
-  padding: 0 10px;
   gap: 8px;
+  height: 26px;
+  padding: 0 10px;
 }
 
-.fda-figure-row[data-row="other"] {
-  top: 0;
-}
-
+/* Pensée sorts first; the rows after it carry a divider above. */
 .fda-figure-row--pensee {
-  top: 30px;
+  top: 56px;
+}
+
+.fda-figure-row--below {
   border-top: 1px solid var(--color-border-subtle);
+}
+
+.fda-figure-row[data-row="2"] {
+  top: 82px;
+}
+
+.fda-figure-row[data-row="3"] {
+  top: 108px;
 }
 
 .fda-figure-icon {
@@ -161,11 +265,15 @@
   border-radius: 22.45%;
 }
 
-.fda-figure-icon--other {
-  background: var(--color-bg-subtle-strong);
+.fda-figure-icon--blank {
+  background: var(--color-bg-subtle);
+}
+
+.fda-figure-icon--terminal {
+  background: var(--color-macos-tile-dark);
   font-family: var(--font-mono);
   font-size: var(--font-size-cover-micro);
-  color: var(--text-primary);
+  color: var(--color-macos-on-selected);
 }
 
 /* The app icon as the Dock shows it (assets/brand/app-icon.svg). */
@@ -216,7 +324,7 @@
   position: absolute;
   inset: auto 0 0;
   display: flex;
-  height: 24px;
+  height: 22px;
   padding-left: 6px;
   border-top: 1px solid var(--color-border-subtle);
 }
@@ -256,8 +364,8 @@
 
 /* 1 sits over +, pointing down at it. */
 .fda-figure-marker[data-step="1"] {
-  top: 128px;
-  left: 21px;
+  top: 216px;
+  left: 167px;
 }
 
 .fda-figure-marker[data-step="1"]::after {
@@ -267,8 +375,8 @@
 
 /* 2 sits after Pensée's name, pointing left at it. */
 .fda-figure-marker[data-step="2"] {
-  top: 98px;
-  left: 94px;
+  top: 96px;
+  left: 242px;
 }
 
 .fda-figure-marker[data-step="2"]::after {
@@ -278,8 +386,8 @@
 
 /* 3 sits before Pensée's switch, pointing right at it. */
 .fda-figure-marker[data-step="3"] {
-  top: 98px;
-  left: 345px;
+  top: 96px;
+  left: 408px;
 }
 
 .fda-figure-marker[data-step="3"]::after {
@@ -294,7 +402,7 @@
   width: 12px;
   height: 18px;
   /* The tip is the pointer's (1, 1); it rests on Pensée's switch. */
-  translate: 382px 106px;
+  translate: 444px 104px;
   fill: var(--color-text-primary);
   stroke: var(--color-macos-list);
   stroke-width: 1;
@@ -340,13 +448,29 @@
   color: var(--color-on-accent);
 }
 
-/* ── Actions (as "Sign in to Claude") ─────────────────────────────────── */
+/* ── What Pensée does with access, then the actions (as "Sign in to Claude") */
 
 .fda-guide-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 16px;
+}
+
+.fda-guide-private {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.fda-guide-private-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .fda-guide-button {
@@ -384,8 +508,9 @@
 /* ── The walk-through, once per opening ───────────────────────────────────
    Each part starts from its first frame and rests on the last one, which is
    its plain style above. Times are from --fda-delay: the cursor reaches + at
-   600ms and clicks, Pensée joins the list at 800ms, the cursor reaches the
-   switch at 1600ms and turns it on at 1700ms. */
+   600ms and clicks, Pensée joins the list at 800ms (the rows after it slide
+   down to make room), the cursor reaches the switch at 1600ms and turns it on
+   at 1700ms. */
 
 .fda-figure-cursor {
   animation: fda-cursor 2000ms var(--fda-delay) both;
@@ -393,19 +518,19 @@
 
 @keyframes fda-cursor {
   0% {
-    translate: 250px 40px;
+    translate: 400px 20px;
     animation-timing-function: var(--ease-enter-write);
   }
   30% {
-    translate: 29px 161px;
+    translate: 175px 246px;
   }
   50% {
-    translate: 29px 161px;
+    translate: 175px 246px;
     animation-timing-function: var(--ease-enter-write);
   }
   80%,
   100% {
-    translate: 382px 106px;
+    translate: 444px 104px;
   }
 }
 
@@ -427,7 +552,17 @@
 @keyframes fda-row-in {
   from {
     opacity: 0;
-    translate: 0 -4px;
+  }
+}
+
+/* Before Pensée is added the rows after it sit one row up, where it lands. */
+.fda-figure-row--below {
+  animation: fda-row-make-room 240ms calc(var(--fda-delay) + 760ms) var(--ease-enter-write) both;
+}
+
+@keyframes fda-row-make-room {
+  from {
+    translate: 0 -26px;
   }
 }
 

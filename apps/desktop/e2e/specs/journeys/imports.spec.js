@@ -1,5 +1,6 @@
 // Import journeys (IMP in docs/qa/user-journeys.md).
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
+import { execSync } from "node:child_process";
 import { ok, strictEqual } from "node:assert/strict";
 import { invoke, workspaceRoot } from "./_helpers.js";
 
@@ -42,6 +43,7 @@ const guideLayout = () =>
     probe.remove();
     return {
       title: guide.querySelector("h2").textContent,
+      private: guide.querySelector(".fda-guide-private").textContent,
       steps: [...guide.querySelectorAll(".fda-guide-step")].map((li) => li.textContent),
       buttons: [...guide.querySelectorAll(".fda-guide-actions button")].map((b) =>
         b.textContent.trim(),
@@ -97,6 +99,7 @@ describe("Import journeys", function () {
     console.log("DEBUG IMP-03", JSON.stringify(layout));
 
     strictEqual(layout.title, "Let Pensée read Apple Books");
+    ok(layout.private.includes("uploads nothing"), `privacy line: ${layout.private}`);
     strictEqual(layout.steps.length, 3);
     ok(layout.buttons[0].startsWith("Not now"), `first button: ${layout.buttons[0]}`);
     ok(layout.buttons[1].startsWith("Open Settings"), `primary: ${layout.buttons[1]}`);
@@ -134,6 +137,27 @@ describe("Import journeys", function () {
     strictEqual(layout.switchColour, layout.onColour, "Pensée's switch is not on");
 
     if (SCREENSHOT) await browser.saveScreenshot(SCREENSHOT);
+
+    // Opt-in, since it brings System Settings to the front: Open Settings
+    // really opens it (the opener allows the x-apple.systempreferences link).
+    if (process.env.PENSEE_QA_OPEN_SETTINGS) {
+      const running = () => {
+        try {
+          execSync('pgrep -x "System Settings"');
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      const wasRunning = running();
+      const primary = await $(".fda-guide-button--primary");
+      await primary.click();
+      await browser.waitUntil(async () => running(), {
+        timeout: 10_000,
+        timeoutMsg: "Open Settings did not open System Settings",
+      });
+      if (!wasRunning) execSync('pkill -x "System Settings"');
+    }
 
     // Esc closes it once it has focus.
     await browser.execute(() => {

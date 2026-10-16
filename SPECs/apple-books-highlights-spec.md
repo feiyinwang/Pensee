@@ -66,10 +66,14 @@ markdown.
   command palette always reads, so macOS may ask then.
 - **The guide** (`components/full-disk-access-guide/`, a floating card like
   "Sign in to Claude"): _Let Pensée read Apple Books_, why in two lines, a
-  drawn System Settings → Full Disk Access pane, three numbered steps, **Not
+  drawn System Settings window as macOS shows it (sidebar with Privacy &
+  Security selected, the Full Disk Access header, Apple's explanation, app
+  rows with switches, + − under the list), three numbered steps, a line that
+  Pensée reads the highlights on this Mac and uploads nothing, **Not
   now** (Esc) and **Open Settings** (↵, opens Privacy & Security → Full Disk
   Access). The pane plays the clicks once per opening: a cursor clicks **+**,
-  Pensée joins the list, the cursor turns its switch on, and markers 1–3
+  Pensée joins the list in its alphabetical place (the rows after it slide
+  down), the cursor turns its switch on, and markers 1–3
   point at **+**, Pensée and the switch as each step's number lands. Reduce
   motion shows the last frame. It opens by itself, so it never takes focus
   from the note; Esc and ↵ work once it is clicked. Coming back to the window,

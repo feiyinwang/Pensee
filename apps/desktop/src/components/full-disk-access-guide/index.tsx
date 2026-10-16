@@ -1,6 +1,7 @@
 import { useEffect, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { Lock } from "lucide-react";
 import { syncAppleBooksNow } from "@/hooks/use-apple-books-sync";
 import * as tauri from "@/lib/tauri";
 import {
@@ -110,6 +111,11 @@ function GuideCard() {
           </li>
         </ol>
 
+        <p className="fda-guide-private">
+          <Lock className="fda-guide-private-icon" aria-hidden="true" />
+          Private: Pensée reads your highlights on this Mac and uploads nothing.
+        </p>
+
         <div className="fda-guide-actions">
           {granted ? null : (
             <button type="button" className="fda-guide-button" onClick={closeFullDiskAccessGuide}>
@@ -131,30 +137,62 @@ function GuideCard() {
   );
 }
 
-/** System Settings → Privacy & Security → Full Disk Access, drawn. A cursor
- *  clicks +, Pensée joins the list, the cursor turns it on; markers 1–3 land
- *  with each click. The resting styles are the last frame, so Reduce motion
- *  (no animation) shows every marker at once. */
+/** The sidebar of System Settings, as macOS shows it: a coloured tile per
+ *  pane, with gaps between its groups. */
+const SIDEBAR: { label: string; tint: string; gapBefore?: boolean; selected?: boolean }[] = [
+  { label: "Wi-Fi", tint: "blue" },
+  { label: "Bluetooth", tint: "blue" },
+  { label: "Network", tint: "blue" },
+  { label: "Notifications", tint: "red", gapBefore: true },
+  { label: "Sound", tint: "red" },
+  { label: "Focus", tint: "purple" },
+  { label: "General", tint: "gray", gapBefore: true },
+  { label: "Appearance", tint: "dark" },
+  { label: "Privacy & Security", tint: "blue", selected: true },
+  { label: "Desktop & Dock", tint: "dark" },
+];
+
+/** System Settings → Privacy & Security → Full Disk Access, drawn as macOS
+ *  shows it. A cursor clicks +, Pensée joins the list in its alphabetical
+ *  place (the rows below it slide down), the cursor turns it on; markers 1–3
+ *  land with each click. The resting styles are the last frame, so Reduce
+ *  motion (no animation) shows every marker at once. */
 function SettingsPicture() {
   return (
     <div className="fda-figure" aria-hidden="true">
-      <div className="fda-figure-toolbar">
+      <div className="fda-figure-sidebar">
         <span className="fda-figure-lights">
-          <i />
-          <i />
-          <i />
+          <i data-light="close" />
+          <i data-light="minimize" />
+          <i data-light="zoom" />
         </span>
-        <span className="fda-figure-nav">‹ ›</span>
+        <span className="fda-figure-search">Search</span>
+        <ul className="fda-figure-panes">
+          {SIDEBAR.map((pane) => (
+            <li
+              key={pane.label}
+              className="fda-figure-pane"
+              data-gap={pane.gapBefore || undefined}
+              data-selected={pane.selected || undefined}
+            >
+              <span className="fda-figure-tile" data-tint={pane.tint} />
+              {pane.label}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="fda-figure-header">
+        <span className="fda-figure-nav">‹</span>
+        <span className="fda-figure-nav fda-figure-nav--off">›</span>
         <span className="fda-figure-heading">Full Disk Access</span>
       </div>
-      <span className="fda-figure-line fda-figure-line--long" />
-      <span className="fda-figure-line fda-figure-line--short" />
+
       <div className="fda-figure-list">
-        <div className="fda-figure-row" data-row="other">
-          <span className="fda-figure-icon fda-figure-icon--other">&gt;_</span>
-          <span className="fda-figure-name">Terminal</span>
-          <span className="fda-figure-switch" data-on="" />
-        </div>
+        <p className="fda-figure-note">
+          Allow the applications below to access data like Mail, Messages, Safari, Home, Time
+          Machine backups and certain administrative settings for all users on this Mac.
+        </p>
         <div className="fda-figure-row fda-figure-row--pensee">
           <span className="fda-figure-icon fda-figure-icon--pensee">
             {/* The ¶, small cut, as on the app icon (`assets/brand/pensee-mark-small.svg`). */}
@@ -165,11 +203,22 @@ function SettingsPicture() {
           <span className="fda-figure-name">Pensée</span>
           <span className="fda-figure-switch fda-figure-switch--pensee" data-on="" />
         </div>
+        <div className="fda-figure-row fda-figure-row--below" data-row="2">
+          <span className="fda-figure-icon fda-figure-icon--blank" />
+          <span className="fda-figure-name">sshd-keygen-wrapper</span>
+          <span className="fda-figure-switch" />
+        </div>
+        <div className="fda-figure-row fda-figure-row--below" data-row="3">
+          <span className="fda-figure-icon fda-figure-icon--terminal">&gt;_</span>
+          <span className="fda-figure-name">Terminal</span>
+          <span className="fda-figure-switch" data-on="" />
+        </div>
         <div className="fda-figure-footer">
           <span className="fda-figure-plus">+</span>
           <span className="fda-figure-minus">−</span>
         </div>
       </div>
+
       <span className="fda-figure-marker" data-step="1">
         1
       </span>
