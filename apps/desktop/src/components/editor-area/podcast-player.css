@@ -15,15 +15,31 @@
   box-sizing: border-box;
 }
 
+/* Dressed as the video frame is: the letterbox ground, its radius, ring
+   and shadow, in both themes. The text and wash tokens are re-pointed at
+   light-on-dark for everything inside. */
 .podcast-card {
+  --text-primary: var(--color-on-scrim);
+  --text-secondary: color-mix(in oklch, var(--color-on-scrim) 78%, transparent);
+  --text-muted: color-mix(in oklch, var(--color-on-scrim) 62%, transparent);
+  --text-icon-muted: color-mix(in oklch, var(--color-on-scrim) 45%, transparent);
+  --surface-subtle: color-mix(in oklch, var(--color-on-scrim) 12%, transparent);
+  --surface-subtle-strong: color-mix(in oklch, var(--color-on-scrim) 24%, transparent);
+  --line-subtler: color-mix(in oklch, var(--color-on-scrim) 10%, transparent);
+  --bg-base: var(--color-letterbox);
+  --accent: var(--color-on-scrim);
+
   display: flex;
   gap: 14px;
   padding: 10px;
-  border-radius: var(--radius-card);
-  background: var(--surface-card);
-  box-shadow: 0 0 0 1px var(--line-subtle);
+  border-radius: var(--radius-menu);
+  background: var(--color-letterbox);
+  box-shadow:
+    0 0 0 1px var(--line-subtle),
+    var(--shadow-overlay);
   font-family: var(--ui-font);
   color: var(--text-muted);
+  color-scheme: dark;
 }
 
 /* Square, as podcast artwork is drawn; the tile under it shows while the
@@ -320,4 +336,11 @@
 [data-pane]:has(> .wr-board-inline) .podcast-skip,
 [data-pane]:has(> .wr-board-inline) .podcast-volume-range {
   display: none;
+}
+
+/* The mini player's chip look is for the video's Pin row, which sits on the
+   board; the card's own buttons sit on the card. */
+[data-pane]:has(> .wr-board-inline) .podcast-card .video-pin-button {
+  background: none;
+  box-shadow: none;
 }
