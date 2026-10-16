@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Sidebar } from "./sidebar";
 import { EditorArea } from "./editor-area";
 import { EditorTabs } from "./editor-area/editor-tabs";
@@ -6,6 +6,7 @@ import { SidebarToggleButton } from "./sidebar/sidebar-toggle-button";
 import { CompactFileLayout } from "./compact-file-layout";
 import { WelcomeScreen } from "./welcome";
 import { AgentChat } from "./agent-chat";
+import { AppSplash } from "./app-splash";
 import { CalendarPanel } from "./calendar-panel";
 import { CalendarToggleButton } from "./calendar-panel/calendar-toggle-button";
 import {
@@ -26,27 +27,6 @@ const SIDEBAR_EDGE_INSET = 12;
 const EDITOR_PANEL_MARGIN = 8;
 /** Matches the button's `w-7`. */
 const TOGGLE_WIDTH = 28;
-
-/** Past this, the entrance (`.app-enter`, 360ms) is finished outright. The
- *  window mounts hidden and is shown once startup resolves, and WebKit holds a
- *  hidden window's animation clock at the first frame: a window that stays
- *  hidden would otherwise keep the shell at opacity 0 (SPECs/app-entrance-spec.md). */
-const ENTRANCE_GUARD_MS = 1000;
-
-function useEntranceGuard() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      for (const animation of ref.current?.getAnimations() ?? []) {
-        if (animation instanceof CSSAnimation && animation.animationName === "app-enter") {
-          animation.finish();
-        }
-      }
-    }, ENTRANCE_GUARD_MS);
-    return () => window.clearTimeout(timer);
-  }, []);
-  return ref;
-}
 
 function clampSidebarWidth(width: number, maxSidebarWidth: number) {
   return Math.max(220, Math.min(maxSidebarWidth, Math.round(width)));
@@ -76,7 +56,6 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
       : EDITOR_PANEL_MARGIN + SIDEBAR_EDGE_INSET;
   const viewportWidth = typeof window === "undefined" ? 1200 : window.innerWidth;
   const maxSidebarWidth = Math.max(280, Math.min(420, Math.floor(viewportWidth * 0.35)));
-  const entranceRef = useEntranceGuard();
   const draggingRef = useRef(false);
   const [isSidebarDragging, setIsSidebarDragging] = useState(false);
   const [draftSidebarWidth, setDraftSidebarWidth] = useState(() =>
@@ -172,99 +151,103 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
   );
 
   return (
-    <div
-      ref={entranceRef}
-      className="app-enter relative h-screen w-screen overflow-hidden bg-transparent text-[var(--color-text-primary)]"
-      // Document footers keep their counts clear of the agent launcher, and the
-      // launcher stays in the editor's corner when the calendar is open.
-      style={{
-        ["--right-panel-width" as string]: `${calendarWidth}px`,
-        ...(showWelcome ? {} : { ["--agent-launcher-clearance" as string]: "112px" }),
-      }}
-    >
+    <>
       <div
-        data-tauri-drag-region
-        className="absolute inset-x-0 top-0 z-30"
+        className="app-enter relative h-screen w-screen overflow-hidden bg-transparent text-[var(--color-text-primary)]"
+        // Document footers keep their counts clear of the agent launcher, and the
+        // launcher stays in the editor's corner when the calendar is open.
         style={{
-          height: "var(--chrome-drag-height)",
-          left: isSidebarCollapsed ? 0 : draftSidebarWidth,
-          right: calendarWidth,
-        }}
-      />
-      <div
-        className="pointer-events-none absolute top-0 z-50 flex items-center"
-        style={{
-          left: toggleLeft,
-          height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
-          paddingBlock: "var(--chrome-control-padding)",
+          ["--right-panel-width" as string]: `${calendarWidth}px`,
+          ...(showWelcome ? {} : { ["--agent-launcher-clearance" as string]: "112px" }),
         }}
       >
-        <div className="pointer-events-auto">
-          <SidebarToggleButton />
-        </div>
-      </div>
-      {!showWelcome && (
+        <div
+          data-tauri-drag-region
+          className="absolute inset-x-0 top-0 z-30"
+          style={{
+            height: "var(--chrome-drag-height)",
+            left: isSidebarCollapsed ? 0 : draftSidebarWidth,
+            right: calendarWidth,
+          }}
+        />
         <div
           className="pointer-events-none absolute top-0 z-50 flex items-center"
           style={{
-            right: calendarToggleRight,
+            left: toggleLeft,
             height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
             paddingBlock: "var(--chrome-control-padding)",
           }}
         >
           <div className="pointer-events-auto">
-            <CalendarToggleButton />
+            <SidebarToggleButton />
           </div>
         </div>
-      )}
-      {!showWelcome && (
-        <div
-          className="pointer-events-none absolute top-0 z-40"
-          style={{
-            left: tabChromeLeft,
-            right: calendarWidth > 0 ? 12 + calendarWidth : calendarToggleRight + TOGGLE_WIDTH + 4,
-          }}
-        >
-          <div className="pointer-events-auto">
-            <EditorTabs />
-          </div>
-        </div>
-      )}
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="flex min-h-0 flex-1">
+        {!showWelcome && (
           <div
-            className="shrink-0 overflow-hidden"
+            className="pointer-events-none absolute top-0 z-50 flex items-center"
             style={{
-              width: isSidebarCollapsed ? 0 : draftSidebarWidth,
+              right: calendarToggleRight,
+              height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
+              paddingBlock: "var(--chrome-control-padding)",
             }}
           >
-            <div style={{ width: draftSidebarWidth }} className="h-full">
-              <Sidebar />
+            <div className="pointer-events-auto">
+              <CalendarToggleButton />
             </div>
           </div>
-          {!isSidebarCollapsed && (
-            <div
-              role="presentation"
-              aria-hidden="true"
-              data-dragging={isSidebarDragging || undefined}
-              onPointerDown={handleSidebarResizeStart}
-              className="relative w-0 shrink-0 cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-[''] after:pointer-events-none after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-transparent after:transition-colors after:content-[''] hover:after:bg-[var(--line-subtle)] data-[dragging]:after:bg-[var(--border-color)]"
-            />
-          )}
-
+        )}
+        {!showWelcome && (
           <div
-            className={`glass-panel relative min-w-0 flex-1 ${isSidebarCollapsed ? "ml-2" : ""}`}
+            className="pointer-events-none absolute top-0 z-40"
+            style={{
+              left: tabChromeLeft,
+              right:
+                calendarWidth > 0 ? 12 + calendarWidth : calendarToggleRight + TOGGLE_WIDTH + 4,
+            }}
           >
-            {showWelcome ? <WelcomeScreen /> : <EditorArea />}
-          </div>
-          {calendarWidth > 0 && (
-            <div className="shrink-0" style={{ width: calendarWidth, marginLeft: -8 }}>
-              <CalendarPanel />
+            <div className="pointer-events-auto">
+              <EditorTabs />
             </div>
-          )}
+          </div>
+        )}
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="flex min-h-0 flex-1">
+            <div
+              className="shrink-0 overflow-hidden"
+              style={{
+                width: isSidebarCollapsed ? 0 : draftSidebarWidth,
+              }}
+            >
+              <div style={{ width: draftSidebarWidth }} className="h-full">
+                <Sidebar />
+              </div>
+            </div>
+            {!isSidebarCollapsed && (
+              <div
+                role="presentation"
+                aria-hidden="true"
+                data-dragging={isSidebarDragging || undefined}
+                onPointerDown={handleSidebarResizeStart}
+                className="relative w-0 shrink-0 cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-[''] after:pointer-events-none after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-transparent after:transition-colors after:content-[''] hover:after:bg-[var(--line-subtle)] data-[dragging]:after:bg-[var(--border-color)]"
+              />
+            )}
+
+            <div
+              className={`glass-panel relative min-w-0 flex-1 ${isSidebarCollapsed ? "ml-2" : ""}`}
+            >
+              {showWelcome ? <WelcomeScreen /> : <EditorArea />}
+            </div>
+            {calendarWidth > 0 && (
+              <div className="shrink-0" style={{ width: calendarWidth, marginLeft: -8 }}>
+                <CalendarPanel />
+              </div>
+            )}
+          </div>
         </div>
+        {!showWelcome && <AgentChat />}
       </div>
-      {!showWelcome && <AgentChat />}
-    </div>
+      {/* A sibling, not a child: the shell's entrance scale would carry it. */}
+      <AppSplash />
+    </>
   );
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-16
+
+- Opening Pensée now writes its ¶ on the page, stroke by stroke, with PENSÉE under it, then the page dissolves into your notes, in about a second and a half. Clicks already reach your notes while it plays. With **Reduce motion** on in macOS, the window appears still. This replaces yesterday's quick fade.
+
 ## 2026-10-15
 
 - Search is ⌘F now, everywhere (the sidebar's **Search** field shows it). Find in the note you're writing moved to ⌘⇧F, and a board's own find too. ⌘P, ⌘L and ⌘O open Projects, Library and Files instead, so ⌘O no longer opens search.

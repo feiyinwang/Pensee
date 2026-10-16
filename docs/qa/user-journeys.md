@@ -32,10 +32,11 @@ ones a change can reach, and any that fails is fixed before the work is done.
 
 **Feature:** Pensée opens on the last workspace (a folder of markdown files),
 restores its tabs, and can open more workspaces in their own windows or a single
-file in a compact window. A workspace window settles in once when it first
-paints (a short fade, rise and unblur, as one piece).
+file in a compact window. When a workspace window first paints, the brand ¶
+is written on a splash with `PENSÉE` under it, then the splash dissolves into
+the app.
 **Spec:** SPECs/multi-window-spec.md, SPECs/compact-window-spec.md, SPECs/app-entrance-spec.md
-**Code:** `src-tauri/src/commands/workspace.rs`, `src-tauri/src/state.rs`, `src/stores/workspace-store.ts`, `src/components/welcome/`, `src/components/compact-file-layout.tsx`, `src/components/app-layout.tsx`, `src/App.css`
+**Code:** `src-tauri/src/commands/workspace.rs`, `src-tauri/src/state.rs`, `src/stores/workspace-store.ts`, `src/components/welcome/`, `src/components/compact-file-layout.tsx`, `src/components/app-layout.tsx`, `src/components/app-splash.tsx`, `src/App.css`
 
 | ID    | Journey                                              | Expected                                                  | Check      |
 | ----- | ---------------------------------------------------- | --------------------------------------------------------- | ---------- |
@@ -43,7 +44,7 @@ paints (a short fade, rise and unblur, as one piece).
 | WS-02 | Quit with two notes open, relaunch                   | Both tabs come back, the same one in front                | manual     |
 | WS-03 | With no workspace, click **Add folder** and pick one | The folder opens as the workspace                         | you        |
 | WS-04 | Open a single `.md` file from Finder                 | A compact window opens on it: no sidebar, no tab strip    | you        |
-| WS-05 | Launch the app (Reduce motion off)                   | The window settles in once, then nothing stays applied    | auto: workspace |
+| WS-05 | Launch the app (Reduce motion off)                   | The ¶ and `PENSÉE` are written, then the splash is gone and nothing stays applied | auto: workspace |
 
 ## Sidebar — SB
 

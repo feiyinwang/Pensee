@@ -113,12 +113,18 @@
   --motion-hover: 50ms;
   --ease-hover: ease;
   --ease-spring: var(--ease-out);
-  /* The app's entrance when a window first paints (.app-enter): the whole
-     shell settles in as one piece. Longer than --motion-settle on purpose; it
-     plays once per window and nothing waits on it. */
-  --motion-enter: 360ms;
-  --enter-travel: 6px;
-  --enter-blur: 4px;
+  /* The launch entrance ("Stroke", SPECs/app-entrance-spec.md): the ¶ is
+     written left to right, the wordmark after it, both hold, then the splash
+     dissolves into the app. Longer than --motion-settle on purpose; it plays
+     once per window and nothing waits on it. */
+  --enter-mark-size: 84px;
+  --motion-enter-write: 560ms;
+  --enter-word-delay: 200ms;
+  --enter-hold: 360ms;
+  --motion-enter-reveal: 380ms;
+  /* In-out: the stroke is drawn at a pen's pace, not thrown. */
+  --ease-enter: cubic-bezier(0.65, 0, 0.35, 1);
+  --enter-reveal-at: calc(var(--enter-word-delay) + var(--motion-enter-write) + var(--enter-hold));
 
   /* Derived background — applied once on body. Editor and settings pages
      don't add their own bg layer; doing so would multiply opacity and break
@@ -391,27 +397,86 @@ body.tree-dragging [data-tree-path] {
   }
 }
 
-/* App entrance ("Settle", SPECs/app-entrance-spec.md): when a window first
-   paints, the whole shell rises a few pixels, fades in and sharpens, as one
-   piece. Only `from` is declared so the rest state is the shell's own, and
-   the fill is `backwards` so the filter and translate stop applying the moment
-   it ends: neither is left behind to make the shell a containing block for
-   fixed-position popovers. Clicks and typing work throughout. */
+/* App entrance ("Stroke", SPECs/app-entrance-spec.md). The splash
+   (`AppSplash`) covers the window on the canvas ground: the ¶ is written left
+   to right, then the wordmark under it, and at --enter-reveal-at the splash
+   fades out while the shell (.app-enter) settles from 98.5% to full size.
+   The splash ignores the pointer, so clicks reach the app throughout. The
+   shell's fill is `backwards`, so no transform stays on it afterwards (one
+   would make it the containing block for fixed-position popovers). */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  /* Above every layer the app opens at launch. */
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background: var(--color-bg-canvas);
+  color: var(--color-brand-mark);
+  pointer-events: none;
+  user-select: none;
+  animation: app-splash-out var(--motion-enter-reveal) var(--ease-enter) var(--enter-reveal-at) both;
+}
+
+/* The stacked lockup (docs/brand.md): mark over wordmark, which scales with it. */
+.app-splash-lockup {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--enter-mark-size) * 0.36);
+}
+
+/* Display cut: the splash draws it well above 48px. */
+.app-splash-mark {
+  width: var(--enter-mark-size);
+  height: auto;
+  animation: app-splash-write var(--motion-enter-write) var(--ease-enter) both;
+}
+
+/* `PENSÉE`, the one place the app sets capitals (docs/brand.md). The
+   negative margin cancels the tracking after the last letter so the word
+   centres under the mark. */
+.app-splash-wordmark {
+  font-family: var(--font-title);
+  font-optical-sizing: auto;
+  font-size: calc(var(--enter-mark-size) * 0.34);
+  letter-spacing: 0.2em;
+  margin-right: -0.2em;
+  animation: app-splash-write var(--motion-enter-write) var(--ease-enter) var(--enter-word-delay)
+    both;
+}
+
+@keyframes app-splash-write {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes app-splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
 @keyframes app-enter {
   from {
-    opacity: 0;
-    translate: 0 var(--enter-travel);
-    filter: blur(var(--enter-blur));
+    scale: 0.985;
   }
 }
 
 .app-enter {
-  animation: app-enter var(--motion-enter) var(--ease-out) backwards;
+  animation: app-enter var(--motion-enter-reveal) var(--ease-enter) var(--enter-reveal-at) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .app-enter {
     animation: none;
+  }
+  .app-splash {
+    display: none;
   }
 }
 
