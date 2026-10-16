@@ -100,6 +100,29 @@ const NOTES = {
   ].join("\n"),
 };
 
+// A note as long as a real working draft (about 2,000 lines of headings,
+// prose, lists, tasks and links), so the speed journeys (PERF in
+// docs/qa/performance.md) time typing and opening on a note that can be slow,
+// not only on the short ones above.
+NOTES["Notes/Long essay.md"] = Array.from({ length: 120 }, (_, i) =>
+  [
+    `## Part ${i + 1}`,
+    "",
+    `Paragraph ${i + 1} keeps going about how a draft grows: one idea leads to the next, and the note gets long before anyone notices. See [[Draft ideas]] for more.`,
+    "",
+    "- a first point to remember",
+    "- a second point, with **bold** and *italic* words",
+    "  - a nested detail under it",
+    "- [ ] a task still open",
+    "- [x] a task already done",
+    "",
+    "> A quoted line from something read along the way.",
+    "",
+    "Another paragraph to close the part, with `inline code` and a [link](https://example.com).",
+    "",
+  ].join("\n"),
+).join("\n");
+
 /** Rebuild the vault and reset the e2e app's state. Called before every
  *  journey spec file (wdio.conf.js beforeSession), so specs never depend on
  *  the order they run in. */

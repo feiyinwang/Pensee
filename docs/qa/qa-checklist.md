@@ -8,6 +8,8 @@ are in [user-journeys.md](./user-journeys.md); the `pensee-qa` skill
 Why it exists: unit tests and `vp check` pass while a feature the user relies
 on stops working (2026-10-13: calendar clicks went dead in an iCloud vault and
 nothing failed). Only driving the real app the way the user does catches that.
+It also asks a second one: is every action as fast as before? The PERF
+journeys and their rules are in [performance.md](./performance.md).
 
 ## 0. Does this change need the pass?
 
@@ -52,8 +54,11 @@ this change and costs minutes per pass (the user's call, 2026-10-15).
    pick every ★ journey (one per feature) plus the rows the specific edit
    reaches (a new shortcut in `use-keyboard-shortcuts.ts` → that shortcut's
    journeys), never every row of every section.
-5. Nothing picked (the change only reaches `manual`/`you` rows, or no Code
-   path at all, e.g. a dev-only script) → no run; say so in the report.
+5. Always add `PERF`, every speed journey ([performance.md](./performance.md)),
+   whatever the change touched: a slowdown often lands far from the code that
+   caused it, so speed is checked on every pass. Other than PERF, nothing
+   picked (the change only reaches `manual`/`you` rows, or no Code path at
+   all, e.g. a dev-only script) → run PERF alone.
 
 Write the picked IDs down before running anything, so the report can show what
 was and wasn't covered.
@@ -98,6 +103,9 @@ apps/desktop/e2e/qa/run.sh --only CAL-02,CAL-05,ED-01
   build: the app embeds the frontend, so a stale build tests old code.
 - No arguments runs every journey spec: only when the user asks for a full
   pass, never as the default.
+- A PERF journey fails on its budget or on its baseline: follow the failure
+  tree in [performance.md](./performance.md). Speed is the change's to fix in
+  this task, the same as a broken journey.
 
 ## 5. Fix what fails
 
@@ -127,9 +135,10 @@ QA: <n> journeys run, <n> pass, <n> fixed
 - Not checked (manual): ED-09, LNK-03
 - For you to try: CAL-08 (large iCloud vault)
 - Pre-existing failures: `vp check` type error in src/lib/library-add.ts
+Speed: PERF-01 3.4ms (was 3.2), PERF-02 18ms (was 21, baseline updated), … all within budget
 ```
 
-Put the same `QA:` line in the commit message body.
+Put the same `QA:` and `Speed:` lines in the commit message body.
 
 ## Harness notes
 
@@ -167,6 +176,7 @@ Learned the hard way; each one cost a failed run.
   against the user's vault, read-only.
 - The pen waits on empty lines of yours that show faint words (`.cm-pen-waiting`, a widget CodeMirror ignores events on): put the caret there by clicking just left of the words (`caretInWaiting` in `pen.spec.js`); to replace typed text, click after it and send Backspace keydowns (CodeMirror runs its keymap on them).
 - Only one QA run at a time per machine: `run.sh` kills any `tauri-webdriver` at start and every run uses the same port, so a second session's run kills the first mid-spec (ECONNREFUSED, "session not found"). Before running, check `pgrep -f "wdio.js run"` and wait for it to exit.
+- A wait loop that checks for other QA runs with `pgrep -f "…run\.sh…"` waits forever: every session's waiting shell has `run.sh` in its own command line (the run it is waiting to start), so the loops see each other, and themselves, as runs. Match real processes instead: `pgrep -f "^node .*[w]dio(\.js)? run"`, `pgrep -x tauri-webdriver`, `pgrep -x cargo`.
 - An e2e app left running (often from another worktree's run) keeps the app's WebDriver port 4445, and every spec then drives its old build: journeys fail on code you didn't write, and the loaded bundle (`[...document.scripts]`) isn't the one in `dist/`. `run.sh` now stops with the holder's pid; quit that app, then rerun.
 - Reading or typing into "the visible editor" with `.find((el) => el.offsetParent)` picks the leftmost column when a session restores several; scope it to `[data-column-tab][data-focused]` (as `typeInEditor` and `frontTitle` do).
 - The e2e window is hidden (`document.visibilityState` is `hidden`): WebKit freezes its animation clock and runs measure frames late. Wait for an animation to start (`waitUntil`), and to check what happens when one ends, `finish()` it from the spec (ED-13). `getAnimations()` leaves out `::before`/`::after` animations; pass `{ subtree: true }`.

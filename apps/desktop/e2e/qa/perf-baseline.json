@@ -1,0 +1,26 @@
+{
+  "PERF-01": {
+    "median": 4,
+    "kind": "type"
+  },
+  "PERF-02": {
+    "median": 13,
+    "kind": "show"
+  },
+  "PERF-03": {
+    "median": 3,
+    "kind": "show"
+  },
+  "PERF-04": {
+    "median": 32,
+    "kind": "go"
+  },
+  "PERF-05": {
+    "median": 4,
+    "kind": "show"
+  },
+  "PERF-06": {
+    "median": 3,
+    "kind": "go"
+  }
+}

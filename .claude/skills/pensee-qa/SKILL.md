@@ -1,6 +1,6 @@
 ---
 name: pensee-qa
-description: QA pass for Pensée. Run after every change to apps/desktop/ and before committing it. Picks the user journeys the change can reach (docs/qa/user-journeys.md), drives the real app through them with the e2e journey specs, fixes what fails, and reports. Also use when adding a feature, to record its journeys. Triggers on: QA, check it still works, regression, user journey, before commit, new feature, it used to work.
+description: QA pass for Pensée. Run after every change to apps/desktop/ and before committing it. Picks the user journeys the change can reach (docs/qa/user-journeys.md), drives the real app through them with the e2e journey specs, times every action against its speed budget and baseline (docs/qa/performance.md), fixes what fails or got slower, and reports. Also use when adding a feature, to record its journeys. Triggers on: QA, check it still works, regression, performance, slow, snappy, lag, user journey, before commit, new feature, it used to work.
 ---
 
 # Pensée QA
@@ -57,10 +57,15 @@ Strict points that are easy to get wrong:
 - Never weaken a spec's expectation to make it pass. If Expected is wrong
   (the behaviour changed on purpose), change the row in user-journeys.md
   first, then the spec.
+- Every pass runs all the speed journeys too (`--only <IDs>,PERF`), whatever
+  the change touched, and follows `docs/qa/performance.md`. The user's rule:
+  the app always feels instant, and a change that makes any action slower
+  than its baseline is fixed in the same task, even under budget. Never
+  raise a budget or rewrite a baseline to make a run pass.
 - Never write "pass" for a journey you didn't run. `manual` and `you` rows go
   in the report as not checked.
 - When a harness trick was needed (an event the plugin doesn't send, a
   selector trap), add one line to the checklist's Harness notes.
 
-The pass ends with the report block from checklist step 6, and the `QA:` line
-goes in the commit message.
+The pass ends with the report block from checklist step 6, and the `QA:` and
+`Speed:` lines go in the commit message.

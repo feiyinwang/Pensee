@@ -50,6 +50,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 
 - [docs/qa/user-journeys.md](./docs/qa/user-journeys.md) — every user journey that must keep working, by feature: what the feature is, the code that can break it, and how each journey is checked
 - [docs/qa/qa-checklist.md](./docs/qa/qa-checklist.md) — the QA pass the `pensee-qa` skill runs after each change: pick journeys from the changed files, drive the real app with `apps/desktop/e2e/qa/run.sh`, fix failures, report; plus the e2e harness traps
+- [docs/qa/performance.md](./docs/qa/performance.md) — speed rules: every action has a budget (16ms typing, 50ms show, 100ms go), a change never makes an action slower than its baseline, the PERF journeys every QA pass runs, and what usually makes Pensée slow
 
 **Infra**
 
@@ -72,6 +73,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - In autonomous/loop mode, complete exactly one task at a time and commit immediately. Do not batch unless the user explicitly asks.
 - When coding or reviewing, follow the Engineering Guardrails below and the guidelines in linked docs.
 - After every change to `apps/desktop/`, run the `pensee-qa` skill before committing: the journeys the change can reach must pass in the real app, and a failing one is fixed in the same task.
+- Pensée must always feel instant. Every QA pass runs the speed journeys ([`docs/qa/performance.md`](./docs/qa/performance.md)); an action over budget or slower than its baseline is fixed in the same task.
 - A new feature, or a change to what a feature does, records its user journeys and feature description in [`docs/qa/user-journeys.md`](./docs/qa/user-journeys.md) in the same commit, with journey specs in `apps/desktop/e2e/specs/journeys/`.
 
 ## Engineering Guardrails
