@@ -1,6 +1,6 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { MapPin, Mic, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
+import { Mic, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 
 import { pageProperty } from "@/lib/book-highlights";
 import { getFileStem } from "@/lib/paths";
@@ -26,14 +26,15 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useChromeTooltip } from "../chrome-tooltip";
 import { coverValueSrc } from "../spaces/space-cover";
 import { showEditorNotice } from "./editor-notice-store";
-import { PIN_SHORTCUT_LABEL, installVideoPinShortcut, pinMoment } from "./video-pin";
+import { PlayerKeys } from "./player-keys";
+import { SPEED_KEYSHORTCUTS, installVideoPinShortcut } from "./video-pin";
 import "./video-player.css";
 import "./podcast-player.css";
 
 /**
  * A podcast note plays its episode here, under the properties, sticky at the
  * top of the note like a YouTube note's player (SPECs/podcast-notes-spec.md).
- * It joins the same player registry, so ⌘⇧J, ⌘S, `<` / `>` and pins work
+ * It joins the same player registry, so ⌘S, `<` / `>` and pins work
  * the same.
  */
 export function PodcastPlayer({ filePath }: { filePath: string }) {
@@ -132,7 +133,10 @@ function PodcastBand({
   const [unmuted, setUnmuted] = useState(() => prefs.volume || 1);
   // The webview never shows a native `title`, so the play button's
   // shortcut needs a tooltip of its own.
-  const playTip = useChromeTooltip(playing ? "Pause" : "Play", { keys: ["⌘", "⇧", "J"] });
+  // ⌘S plays on while paused; while playing it pins the moment and pauses.
+  const playTip = useChromeTooltip(playing ? "Pause" : "Play", {
+    keys: playing ? [] : ["⌘", "S"],
+  });
 
   useEffect(() => {
     let current = true;
@@ -153,7 +157,7 @@ function PodcastBand({
     };
   }, [link]);
 
-  // The player is there from the start, so ⌘⇧J or a pin pressed while the
+  // The player is there from the start, so ⌘S or a pin pressed while the
   // episode is still being found plays it once it is.
   useEffect(() => {
     installVideoPinShortcut();
@@ -189,6 +193,10 @@ function PodcastBand({
         }
         if (audio.paused) play(audio);
         else audio.pause();
+      },
+      playing: () => {
+        const audio = element();
+        return audio ? !audio.paused : pending.play;
       },
       speed: (step) => {
         markVideoUsed(filePath);
@@ -329,7 +337,7 @@ function PodcastBand({
                       className="podcast-play"
                       data-playing={playing || undefined}
                       aria-label={playing ? "Pause" : "Play"}
-                      aria-keyshortcuts="Meta+Shift+J"
+                      aria-keyshortcuts={playing ? undefined : "Meta+S"}
                       disabled={!audioSrc}
                       {...playTip.triggerProps}
                       onMouseDown={keepFocus}
@@ -404,14 +412,13 @@ function PodcastBand({
                       type="button"
                       className="video-pin-button podcast-speed"
                       aria-label={`Speed ${formatSpeed(prefs.rate)}`}
-                      aria-keyshortcuts="< >"
+                      aria-keyshortcuts={SPEED_KEYSHORTCUTS}
                       onMouseDown={keepFocus}
                       onClick={() =>
                         setPrefs((value) => ({ ...value, rate: nextPodcastPreset(value.rate) }))
                       }
                     >
                       <span className="podcast-speed-value">{formatSpeed(prefs.rate)}</span>
-                      <kbd>&lt; &gt;</kbd>
                     </button>
                     <div className="podcast-volume">
                       <button
@@ -442,21 +449,13 @@ function PodcastBand({
                         onPointerUp={(event) => event.currentTarget.blur()}
                       />
                     </div>
-                    <button
-                      type="button"
-                      className="video-pin-button podcast-pin"
-                      onMouseDown={keepFocus}
-                      onClick={() => pinMoment(playerRef.current ?? undefined)}
-                    >
-                      <MapPin size={13} aria-hidden />
-                      Pin
-                      <kbd>{PIN_SHORTCUT_LABEL}</kbd>
-                    </button>
                   </div>
                 </>
               )}
             </div>
           </section>
+          {/* Under the card, not in it: ⌘S pins (there is no Pin button). */}
+          {problem === null && <PlayerKeys playing={playing} />}
         </div>
       </div>
     </>

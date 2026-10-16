@@ -67,9 +67,9 @@ async function shownButton(label) {
   throw new Error(`no ${label} button on screen in the transcript box`);
 }
 
-/** Open a note from ⌘F. */
+/** Open a note from ⌘O. */
 async function openNote(name) {
-  await pressCmd("f");
+  await pressCmd("o");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);
@@ -247,15 +247,38 @@ describe("YouTube notes: where the transcript shows", function () {
     );
   });
 
-  it("YT-19 the row under the video names play, speed and pin keys", async function () {
-    const row = await browser.execute(() =>
-      [...document.querySelectorAll(".video-band-row > *")].map((el) =>
-        el.textContent.replace(/\s+/g, " ").trim(),
-      ),
+  it("YT-19 the row under the video: the keys in full, then Transcript; no Play or Pin buttons", async function () {
+    const row = await browser.execute(() => {
+      const el = [...document.querySelectorAll(".video-band .video-band-row")].find((r) =>
+        r.checkVisibility(),
+      );
+      const line = el?.querySelector(":scope > .player-keys");
+      const buttons = [...(el?.querySelectorAll(":scope > button") ?? [])];
+      return {
+        keys: [...(line?.querySelectorAll(".player-key") ?? [])].map((k) => k.textContent.trim()),
+        first: el?.firstElementChild === line,
+        buttons: buttons.map((b) => b.textContent.trim()),
+        sameLine:
+          !!line &&
+          buttons.every(
+            (b) =>
+              Math.abs(
+                b.getBoundingClientRect().top +
+                  b.getBoundingClientRect().height / 2 -
+                  (line.getBoundingClientRect().top + line.getBoundingClientRect().height / 2),
+              ) < 3,
+          ),
+      };
+    });
+    // ⌘S plays on while paused, and pins (and pauses) while playing.
+    ok(["Play⌘S", "Pin⌘S"].includes(row.keys[0]), `⌘S isn't named for what it does (${row.keys})`);
+    equal(row.keys.slice(1).join(" · "), "Slower⇧, · Faster⇧.", "the speed keys in full");
+    ok(row.first, "the keys aren't at the start of the row");
+    ok(row.sameLine, "the keys and Transcript aren't on one line");
+    ok(
+      row.buttons.every((b) => /^(Transcript|Getting transcript…)$/.test(b)),
+      `a button other than Transcript in the row (${row.buttons})`,
     );
-    ok(row.includes("Play⌘⇧J") || row.includes("Pause⌘⇧J"), `no Play ⌘⇧J under the video (${row})`);
-    ok(row.includes("Speed< >"), `no Speed < > under the video (${row})`);
-    ok(row.includes("Pin⌘S"), `no Pin ⌘S under the video (${row})`);
     if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-19-keys.png`);
   });
 
@@ -382,7 +405,7 @@ describe("YouTube notes: where the transcript shows", function () {
     const items = await $$('[role="menuitem"]');
     if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-14-menu.png`);
     const first = (await items[0].getText()).trim();
-    ok(/^English/.test(first), `English isn't first: ${first}`);
+    ok(first.startsWith("English"), `English isn't first: ${first}`);
     await items[0].click();
     let body = "";
     await browser.waitUntil(
@@ -400,7 +423,8 @@ describe("YouTube notes: where the transcript shows", function () {
         for (const m of await $$(
           "//section[contains(@class,'transcript-box')]//button[@aria-haspopup='menu']",
         ))
-          if ((await m.isDisplayed()) && /^English/.test((await m.getText()).trim())) return true;
+          if ((await m.isDisplayed()) && (await m.getText()).trim().startsWith("English"))
+            return true;
         return false;
       },
       { timeout: 5_000, timeoutMsg: "the menu doesn't say English" },

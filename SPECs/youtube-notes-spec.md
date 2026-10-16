@@ -39,19 +39,22 @@ selected.
     under `writer.video-player`.
 - Scrolling over the video scrolls the note; pinching over it reaches the
   tab columns' pinch like a pinch anywhere else.
-- Under the video is one row that names every key the video takes:
-  **Play ⌘⇧J** (**Pause** while it plays; clicking it plays or pauses and
-  leaves typing in the note), **Speed < >** (a label: the player's own bar
-  sets the speed) and **Pin ⌘S**.
-- **`<` / `>`** (Shift+, / Shift+. on US keyboards) step the speed down or
-  up YouTube's list in the video's note, and the new speed shows on the
-  video for a moment. They never type there (`<` and `>` can't be typed in
-  a video's note); with nothing editable focused they act on the last video
-  used; anywhere else they type.
-- **⌘⇧J** plays or pauses the video anywhere in the window: the focused
-  note's, else the one on screen (the last one used when several are), else
-  the last one used in a hidden tab. A note picked in the sidebar or tab bar
-  is on screen, so ⌘⇧J plays its video before you click into the text.
+- Under the video is one row: the keys in full, each a label then its key
+  (**Play ⌘S** while paused, **Pin ⌘S** while playing, **Slower ⇧,**,
+  **Faster ⇧.**), then **Transcript** when the video has captions not yet
+  brought in. There are no Play or Pin buttons: ⌘S does both, the video's
+  own bar plays and pauses with the mouse, and its bar sets the speed.
+- **⇧, / ⇧.** step the speed down or up YouTube's list in the video's note,
+  and the new speed shows on the video for a moment. They match by
+  character (`<` `>`, their own key on some layouts) or by key with Shift,
+  so they work with an input source such as Pinyin that types 《 》 there.
+  They never type there; with nothing editable focused they act on the last
+  video used; anywhere else they type.
+- **⌘S** ("save the moment", SPECs/obsidian-shortcuts-spec.md#the-system),
+  in the video's note, on its player, or on a board: while the video plays
+  it pins the moment and pauses, so you can write about it; while paused it
+  plays on. The video is the focused note's, else the one on screen (the
+  last one used when several are). ⌘⇧J is gone: J meant nothing.
   Plain Space is never taken, so it always
   types. (Not ⌘⇧Space: it clashes with system shortcuts.)
 - The video keeps playing while you type. When you start it by clicking in

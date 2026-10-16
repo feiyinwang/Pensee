@@ -211,8 +211,11 @@
   margin-inline: -7px;
 }
 
-.podcast-pin {
-  margin-left: auto;
+/* Under the card, ending on its edge. */
+.podcast-column > .player-keys {
+  justify-content: flex-end;
+  padding-top: 6px;
+  padding-inline: 0;
 }
 
 /* Wide enough for "1.75×", so the keys after it and the volume never shift. */

@@ -1,5 +1,5 @@
 // Podcast notes (docs/qa/user-journeys.md § Podcast notes — POD): adding a
-// podcast opens its note with the player, and ⌘⇧J / ⌘S work on it as on a
+// podcast opens its note with the player, and ⌘S works on it as on a
 // video. The episode is a silent WAV served from this process, so the
 // journeys need no network.
 import { ok, strictEqual } from "node:assert/strict";
@@ -146,7 +146,14 @@ const cardState = () =>
       // The whole picture shows, over a blurred copy of itself.
       artworkFit: art ? getComputedStyle(art).objectFit : null,
       backdrop: card.querySelector(".podcast-artwork-backdrop")?.getAttribute("src") ?? null,
-      speedKeys: card.querySelector(".podcast-speed kbd")?.textContent ?? null,
+      // The keys, label then key, on their own line under the card, not in it.
+      keys: [...card.parentElement.querySelectorAll(":scope > .player-keys .player-key")].map(
+        (hint) => hint.textContent.trim(),
+      ),
+      keysUnder:
+        (card.parentElement.querySelector(":scope > .player-keys")?.getBoundingClientRect().top ??
+          -1) >= card.getBoundingClientRect().bottom,
+      pinButton: [...card.querySelectorAll("button")].some((b) => b.textContent.trim() === "Pin"),
     };
   `);
 
@@ -178,17 +185,17 @@ describe("Podcast notes", function () {
     ok((await audioState()).paused, "it doesn't play on its own");
   });
 
-  it("POD-02 ★ ⌘⇧J plays, ⌘S pins the moment on the line, ⌘⇧J pauses", async function () {
+  it("POD-02 ★ ⌘S plays; ⌘S again pins the moment on the line and pauses", async function () {
+    // The note POD-01 added, or a new one when this journey runs alone.
+    await addPodcast(link);
     await typeInEditor("A thought on this");
-    await pressCmd("j", { shift: true });
+    await pressCmd("s");
     await browser.waitUntil(async () => (await audioState())?.time > 1.2, {
       timeout: 10_000,
-      timeoutMsg: "⌘⇧J didn't play the episode",
+      timeoutMsg: "⌘S didn't play the episode",
     });
-    const pinKeys = await browser.execute(`
-      return (${FRONT_BAND.toString()})()?.querySelector(".podcast-pin kbd")?.textContent ?? null;
-    `);
-    ok(pinKeys === "⌘S", `Pin shows ⌘S (${pinKeys})`);
+    const pinKey = (await cardState())?.keys[0];
+    ok(pinKey === "Pin⌘S", `the keys name ⌘S Pin while playing (${pinKey})`);
     await pressCmd("s");
     // A look at the playing bar, when the run asks for one.
     // The hidden e2e window freezes animations: settle them first.
@@ -208,10 +215,9 @@ describe("Podcast notes", function () {
         ),
       { timeout: 5_000, timeoutMsg: "⌘S didn't pin the line" },
     );
-    await pressCmd("j", { shift: true });
     await browser.waitUntil(async () => (await audioState())?.paused === true, {
       timeout: 5_000,
-      timeoutMsg: "⌘⇧J didn't pause",
+      timeoutMsg: "⌘S didn't pause after pinning",
     });
     const pinned = await browser.execute(
       () =>
@@ -222,7 +228,7 @@ describe("Podcast notes", function () {
   });
 
   it("POD-05 ⌘S in a plain note pins nothing, with a podcast mounted", async function () {
-    await pressCmd("f");
+    await pressCmd("o");
     const input = await $("[cmdk-input]");
     await input.waitForExist({ timeout: 5_000 });
     await input.setValue("Welcome");
@@ -255,7 +261,10 @@ describe("Podcast notes", function () {
     ok(card.show === "The Silence Show", `the show (${card.show})`);
     ok(card.artworkFit === "contain", `the artwork isn't cropped (${card.artworkFit})`);
     ok(card.backdrop === card.artwork, `a blurred copy fills the square (${card.backdrop})`);
-    ok(card.speedKeys === "< >", `the speed shows its keys (${card.speedKeys})`);
+    // Paused: ⌘S plays, so it is named Play; every key in full.
+    strictEqual(card.keys.join(" · "), "Play⌘S · Slower⇧, · Faster⇧.", "the keys under the card");
+    ok(card.keysUnder, "the keys aren't under the card");
+    ok(!card.pinButton, "the card still has a Pin button");
     // A look at the card, when the run asks for one.
     if (process.env.PENSEE_QA_SHOT) {
       await browser.execute(() => {
@@ -277,7 +286,7 @@ describe("Podcast notes", function () {
             return Object.fromEntries(
               [".podcast-card", ".podcast-artwork", ".podcast-title", ".podcast-show",
                ".podcast-transport", ".podcast-timeline", ".podcast-tools", ".podcast-speed",
-               ".podcast-mute", ".podcast-pin"].map((s) => [s, box(s)]),
+               ".podcast-mute"].map((s) => [s, box(s)]),
             );
           `),
         ),
@@ -304,5 +313,47 @@ describe("Podcast notes", function () {
       },
       { timeout: 3_000, timeoutMsg: "Back 15 didn't move the playhead to 0:05" },
     );
+  });
+
+  it("POD-06 ⇧, / ⇧. in the note change the speed, also as Pinyin sends them (《 》)", async function () {
+    await addPodcast(link);
+    await typeInEditor("Speed");
+    const rate = () =>
+      browser.execute(
+        `return (${FRONT_BAND.toString()})()?.querySelector("audio")?.playbackRate ?? null;`,
+      );
+    const press = (key, code) =>
+      browser.execute(
+        (key, code) => {
+          document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key,
+              code,
+              shiftKey: true,
+              bubbles: true,
+              cancelable: true,
+            }),
+          );
+        },
+        key,
+        code,
+      );
+    const start = await rate();
+    await press(">", "Period");
+    await browser.waitUntil(async () => (await rate()) > start, {
+      timeout: 2_000,
+      timeoutMsg: "⇧. didn't speed the episode up",
+    });
+    const faster = await rate();
+    // Pinyin types 《 on ⇧, — the key still slows it down.
+    await press("《", "Comma");
+    await browser.waitUntil(async () => (await rate()) < faster, {
+      timeout: 2_000,
+      timeoutMsg: "⇧, with Pinyin (《) didn't slow the episode down",
+    });
+    const text = await browser.execute(
+      () => document.querySelector(".cm-editor .cm-content")?.textContent ?? "",
+    );
+    ok(!/[<>《》]/.test(text), `the keys typed into the note (${text})`);
   });
 });

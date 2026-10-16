@@ -16,7 +16,7 @@ pauses, one pins the moment on the line you're writing.
   tab's **+**, and ⌘F's **Add to Library** rows. The note is where the
   episode plays, so there is no "Added … Open" step in between. Other kinds
   are unchanged: ⌘↵ stays on the page and offers **Open**.
-- The episode does not start on its own. ⌘⇧J starts it.
+- The episode does not start on its own. ⌘S starts it.
 
 ### Which notes play
 
@@ -81,13 +81,16 @@ player.
 - **Transport** to the right of the title: back 15 s, play/pause, ahead 30 s,
   the skips podcast apps use (re-hear a line; jump an ad). Play and pause
   swap in place with a short fade; hovering play shows _Play_ / _Pause_ and
-  its keys, ⌘ ⇧ J.
+  its keys, ⌘ S, while paused.
 - **Timeline** under them: the time, the track, the length. The track fills
   to the playhead; its knob shows on hover or keyboard focus. Dragging or
   clicking seeks.
-- **Speed `< >`, volume, Pin ⌘S** along the bottom, each with its keys
-  beside it where it has some. Speed: a click cycles 1× →
-  1.25× → 1.5× → 1.75× → 2× → 1×; **`<` / `>`** step through 0.5×–3× (0.5,
+- **Speed and volume** along the bottom. There is no Pin button: under the
+  card, outside it and ending on its edge, a line names every key in full,
+  each a label then its key as in a YouTube note's row: **Play ⌘S** while
+  paused (**Pin ⌘S** while playing, since ⌘S pins then), **Slower ⇧,**,
+  **Faster ⇧.**. Speed: a click
+  cycles 1× → 1.25× → 1.5× → 1.75× → 2× → 1×; **⇧, / ⇧.** step through 0.5×–3× (0.5,
   0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3) the same way they step a video's.
   Volume: the speaker mutes and unmutes (back to the last volume), the slider
   sets it. Speed and volume are remembered across episodes and launches
@@ -99,7 +102,7 @@ player.
   board it is the 320px mini player in the top-right corner: 64px artwork,
   no show line, no skips, volume down to its mute button.
 - While the episode is found, the timeline says "Finding the episode…" and
-  play is dimmed; ⌘⇧J pressed meanwhile plays it once found. If it can't be
+  play is dimmed; ⌘S pressed meanwhile plays it once found. If it can't be
   found or won't load, the timeline's place says why, the transport goes,
   and **Open link** takes the place of the bottom row.
 - Clicking the card's buttons never takes focus from the note.
@@ -109,8 +112,8 @@ player.
 The podcast player joins the video players' registry (`lib/video-players.ts`),
 so everything the YouTube spec says about players holds for it:
 
-- **⌘⇧J** plays or pauses the focused note's episode, else the one on screen,
-  else the last one used.
+- **⌘S** while it is paused plays the focused note's episode, else the one
+  on screen, else the last one used; while it plays, ⌘S pins and pauses.
 - **⌘S** / **Pin** stamps the block at the caret with the moment playing
   (`^yt-<seconds>`, the same id as a video pin); clicking the pin plays from
   there. With a board open it adds the moment to the board.

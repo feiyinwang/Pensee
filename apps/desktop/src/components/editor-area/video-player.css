@@ -108,7 +108,9 @@
 /* The Pin row stays on the text column. */
 .video-band-row {
   display: flex;
+  align-items: center;
   gap: 4px;
+  min-height: 24px;
   max-width: var(--pensee-editor-outer-width);
   justify-content: flex-end;
   padding-top: 4px;
@@ -136,22 +138,28 @@
   opacity: 0.6;
 }
 
-.video-key-hint {
-  display: inline-flex;
+/* The keys, in full, each a label then its key: at the start of the row
+   under a video (Transcript after them), under a podcast's card. */
+.player-keys {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
-  height: 24px;
+  gap: 2px 12px;
   padding-inline: 7px;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: var(--text-label);
+  font-size: var(--text-caption);
 }
 
-.video-pin-button kbd,
-.video-key-hint kbd {
-  color: var(--text-muted);
+.player-key {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.player-key kbd {
   font-family: var(--ui-font);
-  font-size: var(--text-caption);
   opacity: 0.8;
 }
 

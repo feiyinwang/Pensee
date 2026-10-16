@@ -312,13 +312,13 @@ caption languages from a menu), which shows as a teleprompter box that
 highlights the line being said, seeks, copies, folds and asks the Agent:
 beside the video and pinned with it in a wide pane, under it in a narrow one.
 **Spec:** SPECs/youtube-notes-spec.md
-**Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
+**Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, player-keys.tsx, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
 
 | ID    | Journey                                               | Expected                                                                                                                                  | Check                     |
 | ----- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | YT-01 | Open a note with a YouTube `Link:`                    | The player shows under the properties                                                                                                     | legacy: youtube-notes     |
 | YT-02 | Play, ⌘S on a line                                    | The line gets a pin; clicking it seeks to that moment                                                                                     | legacy: youtube-pin-click |
-| YT-03 | ⌘⇧J anywhere                                          | The front note's video plays or pauses                                                                                                    | manual                    |
+| YT-03 | ⌘S in a video's note while it plays, then ⌘S again | The line gets a pin and the video pauses; the second ⌘S plays on | manual |
 | YT-04 | ★ Open a video note with a transcript                 | A box shows the transcript a sentence a line, the first line in ink; no `<summary>` or `<p>` HTML in the note                             | auto: youtube             |
 | YT-05 | Click a line in the transcript box                    | That line becomes the one being said, its time (`1:00`) shows, the video plays from it; the box stays a box                               | auto: youtube             |
 | YT-06 | Scroll the transcript box                             | **Back to now** appears; clicking it hides it and the box follows the video again                                                         | auto: youtube             |
@@ -334,7 +334,7 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-16 | Open an older video note with no captions             | No **Transcript** button under the video, only the keys row                                                                               | you                       |
 | YT-17 | ⌘S in a video note, then ⌘S in a plain note           | The video note's line gets a pin; in the plain note nothing happens                                                                       | auto: podcast (POD-05)    |
 | YT-18 | Paste a Coursera link into Library's **+**            | It is guessed as a Video; Library has no Courses tab, `Type: Course` notes show under Videos                                              | you                       |
-| YT-19 | Look at the row under the video; click **Play**       | It names every video key (**Play ⌘⇧J**, **Speed < >**, **Pin ⌘S**); **Play** plays it, typing stays put                                   | auto: youtube             |
+| YT-19 | Look at the row under the video | It starts with the keys in full, then **Transcript** on the same line: **Play ⌘S** while paused (**Pin ⌘S** while playing), **Slower ⇧,**, **Faster ⇧.**; there are no Play or Pin buttons | auto: youtube |
 
 ## Podcast notes — POD
 
@@ -342,15 +342,16 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 (artwork, title and show, skips, timeline, speed, volume, Pin); adding a
 podcast opens the note, and ⌘⇧J / ⌘S play, pause and pin as on a video.
 **Spec:** SPECs/podcast-notes-spec.md
-**Code:** `src/components/editor-area/podcast-player.tsx`, `src/components/editor-area/podcast-player.css`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
+**Code:** `src/components/editor-area/podcast-player.tsx`, `src/components/editor-area/podcast-player.css`, `src/components/editor-area/player-keys.tsx`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
 
 | ID     | Journey                                       | Expected                                                                                                                                   | Check         |
 | ------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
 | POD-01 | Library → Podcasts → **+**, paste a link, ⌘↵  | The note opens with the player, paused                                                                                                     | auto: podcast |
-| POD-02 | ★ ⌘⇧J, ⌘S on a line, ⌘⇧J                      | It plays; the line gets a pin at that moment; it pauses                                                                                    | auto: podcast |
+| POD-02 | ★ ⌘S on a line, then ⌘S again | It plays; the second ⌘S pins the line at that moment and pauses | auto: podcast |
 | POD-03 | Add an Apple Podcasts or Spotify episode link | The player finds the episode and plays the whole episode, with its artwork, title and show                                                 | you           |
-| POD-04 | Add an episode's page link; Back 15           | The card shows the page's whole artwork (blurred fill around it), title and show, and `< >` beside the speed; the playhead moves back 15 s | auto: podcast |
+| POD-04 | Add an episode's page link; Back 15           | The card shows the page's whole artwork (blurred fill around it), title and show, no Pin button, and under the card (outside it) the keys in full (Play ⌘S while paused, Slower ⇧,, Faster ⇧.); the playhead moves back 15 s | auto: podcast |
 | POD-05 | ⌘S in a plain note while a podcast is mounted | No pin is drawn or written anywhere                                                                                                        | auto: podcast |
+| POD-06 | ⇧. then ⇧, in the note, also with Pinyin on (《 》) | The episode speeds up, then slows down; nothing is typed into the note | auto: podcast |
 
 ## Agent chat — AG
 

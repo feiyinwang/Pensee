@@ -179,14 +179,24 @@ export function pinMoment(prefer?: VideoPlayer): void {
   pinAtCaret(view, seconds);
 }
 
-/** Plays or pauses the focused note's video, else `currentVideoPlayer`'s. */
-export function toggleVideo(): void {
+/**
+ * ⌘S, "save the moment": while the video plays, pins the moment and pauses,
+ * so you can write about it; while it is paused, plays on. One key for the
+ * listen → pin → write loop (SPECs/obsidian-shortcuts-spec.md#the-system).
+ * The video is the focused note's, else `currentVideoPlayer`'s.
+ */
+export function saveTheMoment(): void {
   const focused = focusedNote();
   const player = (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
   if (!player) {
-    showEditorNotice("Open a note with a YouTube or podcast link to play it.");
+    showEditorNotice("Play a video or podcast in a note to pin a moment.");
     return;
   }
+  if (!player.playing()) {
+    player.toggle();
+    return;
+  }
+  pinMoment(player);
   player.toggle();
 }
 
@@ -242,15 +252,26 @@ function autoPinAtCaret(view: EditorView, notePath: string): void {
 }
 
 export const PIN_SHORTCUT_LABEL = "⌘S";
-export const PLAY_SHORTCUT_LABEL = "⌘⇧J";
-export const SPEED_SHORTCUT_LABEL = "< >";
+export const SLOWER_SHORTCUT_LABEL = "⇧,";
+export const FASTER_SHORTCUT_LABEL = "⇧.";
+export const SPEED_KEYSHORTCUTS = "Shift+, Shift+.";
+
+/** -1 / 1 for slower / faster, or null for any other key. By character (`<`
+ *  `>`, their own key on some layouts) or by key with Shift (⇧, ⇧. — what an
+ *  input source such as Pinyin, which types 《 》 there, still presses). */
+function speedStep(event: KeyboardEvent): -1 | 1 | null {
+  if (event.metaKey || event.ctrlKey || event.altKey) return null;
+  if (event.key === "<" || (event.shiftKey && event.code === "Comma")) return -1;
+  if (event.key === ">" || (event.shiftKey && event.code === "Period")) return 1;
+  return null;
+}
 
 let installed = false;
 /** Last element focused outside a player, so starting a video by clicking in
  *  it can hand focus straight back (typing goes to the note, not YouTube). */
 let lastFocus: HTMLElement | null = null;
 
-/** The player `<` / `>` change the speed of: the focused note's, or with
+/** The player ⇧, / ⇧. change the speed of: the focused note's, or with
  *  nothing editable focused, `currentVideoPlayer`'s. Null while typing anywhere
  *  else (another note, a field, a board), where they type. */
 function speedKeyTarget(): VideoPlayer | null {
@@ -275,9 +296,9 @@ function pinKeyHere(): boolean {
   return boardHasFocus() && currentVideoPlayer() !== null;
 }
 
-/** ⌘S (pin) where `pinKeyHere`, ⌘⇧J (play/pause) anywhere in the window while
- *  a player is mounted, `<` / `>` (speed) in a video's note, and the focus tracking
- *  `returnFocus` needs. Installed once, by the first player. */
+/** ⌘S (pin and pause, or play on) where `pinKeyHere`, ⇧, / ⇧. (speed) in a
+ *  video's note, and the focus tracking `returnFocus` needs. Installed once,
+ *  by the first player. */
 export function installVideoPinShortcut(): void {
   if (installed) return;
   installed = true;
@@ -285,19 +306,14 @@ export function installVideoPinShortcut(): void {
     "keydown",
     (event) => {
       if (!hasVideoPlayers() || event.isComposing) return;
-      // `<` / `>`, by character: Shift+, / Shift+. on US keyboards, their own
-      // key elsewhere. In a video's note they never type.
-      if (
-        (event.key === "<" || event.key === ">") &&
-        !event.metaKey &&
-        !event.ctrlKey &&
-        !event.altKey
-      ) {
+      // In a video's note ⇧, / ⇧. never type.
+      const step = speedStep(event);
+      if (step !== null) {
         const player = speedKeyTarget();
         if (!player) return;
         event.preventDefault();
         event.stopPropagation();
-        player.speed(event.key === "<" ? -1 : 1);
+        player.speed(step);
         return;
       }
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
@@ -305,14 +321,7 @@ export function installVideoPinShortcut(): void {
         if (!pinKeyHere()) return;
         event.preventDefault();
         event.stopPropagation();
-        if (!event.repeat) pinMoment();
-        return;
-      }
-      if (!event.shiftKey) return;
-      if (event.key.toLowerCase() === "j") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!event.repeat) toggleVideo();
+        if (!event.repeat) saveTheMoment();
       }
     },
     // Capture: before the board's and the editor's own keys.
