@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 
 import { syncAppleBooks, type AppleBooksSyncResult } from "@/lib/apple-books";
 import { resolveDailyNoteFile } from "@/lib/daily-note";
@@ -10,6 +9,7 @@ import { editPage, readPageParts } from "@/components/editor-area/linked-block-s
 import { showEditorNotice } from "@/components/editor-area/editor-notice-store";
 import { tauriWikiPageDeps } from "@/components/editor-area/wiki-pages-extension";
 import { useBooleanSetting } from "@/hooks/use-settings";
+import { openFullDiskAccessGuide } from "@/stores/full-disk-access-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
@@ -22,11 +22,8 @@ const SYNC_INTERVAL_MS = 10 * 60_000;
 let running: Promise<void> | null = null;
 /** An automatic sync reports a failure once, not every ten minutes. */
 let failureShown = false;
-/** Without Full Disk Access an automatic sync says why it waits, once a session. */
-let accessNoticeShown = false;
-
-const FULL_DISK_ACCESS_PANE =
-  "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles";
+/** Without Full Disk Access the guide opens once a session, not every ten minutes. */
+let accessGuideShown = false;
 
 function summary(result: AppleBooksSyncResult): string {
   const { highlightsAdded: added, pagesCreated: created } = result;
@@ -39,20 +36,12 @@ function summary(result: AppleBooksSyncResult): string {
 async function run(root: string, manual: boolean): Promise<void> {
   // macOS asks "access data from other apps" on every read of Books' data and
   // never keeps the answer, so an automatic sync without Full Disk Access
-  // would ask at every launch. It waits instead; a manual import still reads.
+  // would ask at every launch. It waits and shows where to give Full Disk
+  // Access instead; a manual import still reads.
   if (!manual && !(await tauri.hasFullDiskAccess())) {
-    if (!accessNoticeShown) {
-      accessNoticeShown = true;
-      showEditorNotice(
-        "Apple Books highlights import by themselves once Pensée has Full Disk Access.",
-        {
-          label: "Open Settings",
-          run: () =>
-            void openUrl(FULL_DISK_ACCESS_PANE).catch((error: unknown) =>
-              console.error("[apple-books] Couldn't open Privacy settings:", error),
-            ),
-        },
-      );
+    if (!accessGuideShown) {
+      accessGuideShown = true;
+      openFullDiskAccessGuide();
     }
     return;
   }

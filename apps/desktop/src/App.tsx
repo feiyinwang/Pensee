@@ -2,6 +2,7 @@ import { AppLayout } from "./components/app-layout";
 import { ClaudeSignIn } from "./components/claude-sign-in";
 import { CommandPalette } from "./components/command-palette";
 import { Composer } from "./components/composer";
+import { FullDiskAccessGuide } from "./components/full-disk-access-guide";
 import { WindowTitle } from "./components/window-title";
 import { useIsStartupResolved } from "./hooks/use-workspace";
 import { useAppleBooksSync } from "./hooks/use-apple-books-sync";
@@ -40,6 +41,7 @@ function App() {
       <CommandPalette />
       <Composer />
       <ClaudeSignIn />
+      <FullDiskAccessGuide />
     </>
   );
 }

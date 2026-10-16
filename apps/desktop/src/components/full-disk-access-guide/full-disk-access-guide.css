@@ -1,0 +1,499 @@
+/* The Full Disk Access guide (SPECs/apple-books-highlights-spec.md). The same
+   floating card as "Sign in to Claude": opaque, no backdrop, the app behind it
+   stays usable. */
+
+.fda-guide-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 14vh 16px 16px;
+  pointer-events: none;
+}
+
+.fda-guide {
+  /* When the picture starts: after the card has settled. */
+  --fda-delay: 250ms;
+
+  display: flex;
+  flex-direction: column;
+  width: min(460px, 100%);
+  padding: 20px;
+  border-radius: var(--radius-card);
+  outline: none;
+  pointer-events: auto;
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    scale var(--motion-base) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+.fda-guide-title {
+  margin: 0;
+  font-size: var(--font-size-heading-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Two lines in both states, so the card keeps its size when access comes on. */
+.fda-guide-body {
+  min-height: 2lh;
+  margin: 6px 0 0;
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* ── The drawn System Settings pane ─────────────────────────────────────────
+   Fixed size, so the cursor's stops are exact: + at (30, 162), Pensée's
+   switch at (383, 107). */
+
+.fda-figure {
+  position: relative;
+  flex-shrink: 0;
+  width: 420px;
+  max-width: 100%;
+  height: 188px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: var(--radius-10);
+  background: var(--color-macos-window);
+  box-shadow: 0 0 0 1px var(--color-border-default);
+  font-size: var(--font-size-figure);
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.fda-figure-toolbar {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding-left: 10px;
+}
+
+.fda-figure-lights {
+  display: flex;
+  gap: 6px;
+}
+
+.fda-figure-lights i {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  background: var(--color-bg-subtle-strong);
+}
+
+.fda-figure-nav {
+  margin-left: 16px;
+  color: var(--text-muted);
+}
+
+.fda-figure-heading {
+  margin-left: 14px;
+  font-weight: 600;
+}
+
+/* The pane's explanation, as grey lines: the eye goes to the list. */
+.fda-figure-line {
+  position: absolute;
+  left: 14px;
+  height: 5px;
+  border-radius: var(--radius-round);
+  background: var(--color-bg-subtle);
+}
+
+.fda-figure-line--long {
+  top: 38px;
+  width: 300px;
+}
+
+.fda-figure-line--short {
+  top: 48px;
+  width: 220px;
+}
+
+.fda-figure-list {
+  position: absolute;
+  top: 62px;
+  left: 14px;
+  right: 14px;
+  height: 112px;
+  border-radius: var(--radius-8);
+  background: var(--color-macos-list);
+  box-shadow: 0 0 0 1px var(--color-border-default);
+}
+
+.fda-figure-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  gap: 8px;
+}
+
+.fda-figure-row[data-row="other"] {
+  top: 0;
+}
+
+.fda-figure-row--pensee {
+  top: 30px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.fda-figure-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 22.45%;
+}
+
+.fda-figure-icon--other {
+  background: var(--color-bg-subtle-strong);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-cover-micro);
+  color: var(--text-primary);
+}
+
+/* The app icon as the Dock shows it (assets/brand/app-icon.svg). */
+.fda-figure-icon--pensee {
+  background: linear-gradient(var(--color-app-icon-ground-top), var(--color-app-icon-ground));
+  color: var(--color-app-icon-mark);
+}
+
+.fda-figure-icon--pensee svg {
+  width: 64.1%;
+  height: auto;
+}
+
+.fda-figure-name {
+  flex: 1;
+}
+
+.fda-figure-switch {
+  position: relative;
+  width: 26px;
+  height: 15px;
+  flex-shrink: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-bg-subtle-strong);
+}
+
+.fda-figure-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: var(--radius-round);
+  background: var(--color-macos-knob);
+  box-shadow: var(--shadow-knob-ring);
+}
+
+.fda-figure-switch[data-on] {
+  background: var(--color-macos-switch-on);
+}
+
+.fda-figure-switch[data-on]::after {
+  translate: 11px 0;
+}
+
+.fda-figure-footer {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  height: 24px;
+  padding-left: 6px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.fda-figure-plus,
+.fda-figure-minus {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+}
+
+.fda-figure-minus {
+  color: var(--text-faint);
+}
+
+/* A numbered pin pointing at what to click; numbers match the steps below. */
+.fda-figure-marker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-round);
+  background: var(--color-accent);
+  font-size: var(--font-size-figure);
+  font-weight: 700;
+  color: var(--color-on-accent);
+}
+
+.fda-figure-marker::after {
+  content: "";
+  position: absolute;
+  border: 4px solid transparent;
+}
+
+/* 1 sits over +, pointing down at it. */
+.fda-figure-marker[data-step="1"] {
+  top: 128px;
+  left: 21px;
+}
+
+.fda-figure-marker[data-step="1"]::after {
+  top: 100%;
+  border-top-color: var(--color-accent);
+}
+
+/* 2 sits after Pensée's name, pointing left at it. */
+.fda-figure-marker[data-step="2"] {
+  top: 98px;
+  left: 94px;
+}
+
+.fda-figure-marker[data-step="2"]::after {
+  right: 100%;
+  border-right-color: var(--color-accent);
+}
+
+/* 3 sits before Pensée's switch, pointing right at it. */
+.fda-figure-marker[data-step="3"] {
+  top: 98px;
+  left: 345px;
+}
+
+.fda-figure-marker[data-step="3"]::after {
+  left: 100%;
+  border-left-color: var(--color-accent);
+}
+
+.fda-figure-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 18px;
+  /* The tip is the pointer's (1, 1); it rests on Pensée's switch. */
+  translate: 382px 106px;
+  fill: var(--color-text-primary);
+  stroke: var(--color-macos-list);
+  stroke-width: 1;
+}
+
+/* ── The steps ─────────────────────────────────────────────────────────── */
+
+.fda-guide-steps {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fda-guide-step {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.fda-guide-step b {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fda-guide-step::before {
+  content: attr(data-step);
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  translate: 0 -1px;
+  border-radius: var(--radius-round);
+  background: var(--color-accent);
+  font-size: var(--font-size-figure);
+  font-weight: 700;
+  color: var(--color-on-accent);
+}
+
+/* ── Actions (as "Sign in to Claude") ─────────────────────────────────── */
+
+.fda-guide-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.fda-guide-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  border-radius: var(--radius-button);
+  font-size: var(--text-label);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  transition: background-color var(--motion-hover) var(--ease-hover);
+}
+
+.fda-guide-button:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.fda-guide-button--primary,
+.fda-guide-button--primary:hover {
+  background: var(--text-primary);
+  color: var(--surface-primary);
+}
+
+.fda-guide-kbd {
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+/* ── The walk-through, once per opening ───────────────────────────────────
+   Each part starts from its first frame and rests on the last one, which is
+   its plain style above. Times are from --fda-delay: the cursor reaches + at
+   600ms and clicks, Pensée joins the list at 800ms, the cursor reaches the
+   switch at 1600ms and turns it on at 1700ms. */
+
+.fda-figure-cursor {
+  animation: fda-cursor 2000ms var(--fda-delay) both;
+}
+
+@keyframes fda-cursor {
+  0% {
+    translate: 250px 40px;
+    animation-timing-function: var(--ease-enter-write);
+  }
+  30% {
+    translate: 29px 161px;
+  }
+  50% {
+    translate: 29px 161px;
+    animation-timing-function: var(--ease-enter-write);
+  }
+  80%,
+  100% {
+    translate: 382px 106px;
+  }
+}
+
+.fda-figure-plus {
+  animation: fda-press 180ms calc(var(--fda-delay) + 650ms) var(--ease-out) both;
+}
+
+@keyframes fda-press {
+  50% {
+    scale: 0.8;
+    color: var(--text-primary);
+  }
+}
+
+.fda-figure-row--pensee {
+  animation: fda-row-in 220ms calc(var(--fda-delay) + 800ms) var(--ease-out) both;
+}
+
+@keyframes fda-row-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+.fda-figure-switch--pensee,
+.fda-figure-switch--pensee::after {
+  animation-duration: 200ms;
+  animation-delay: calc(var(--fda-delay) + 1700ms);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+}
+
+.fda-figure-switch--pensee {
+  animation-name: fda-switch-on;
+}
+
+.fda-figure-switch--pensee::after {
+  animation-name: fda-knob-on;
+}
+
+@keyframes fda-switch-on {
+  from {
+    background: var(--color-bg-subtle-strong);
+  }
+}
+
+@keyframes fda-knob-on {
+  from {
+    translate: 0 0;
+  }
+}
+
+/* A marker and its step's number land together, with the click they name. */
+.fda-figure-marker,
+.fda-guide-step::before {
+  animation: fda-mark-in 200ms var(--ease-out) both;
+}
+
+.fda-figure-marker[data-step="1"],
+.fda-guide-step[data-step="1"]::before {
+  animation-delay: calc(var(--fda-delay) + 600ms);
+}
+
+.fda-figure-marker[data-step="2"],
+.fda-guide-step[data-step="2"]::before {
+  animation-delay: calc(var(--fda-delay) + 850ms);
+}
+
+.fda-figure-marker[data-step="3"],
+.fda-guide-step[data-step="3"]::before {
+  animation-delay: calc(var(--fda-delay) + 1600ms);
+}
+
+@keyframes fda-mark-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+/* Reduce motion: no walk-through; the last frame shows every marker. */
+@media (prefers-reduced-motion: reduce) {
+  .fda-guide,
+  .fda-figure *,
+  .fda-figure *::after,
+  .fda-guide-step::before {
+    transition: none;
+    animation: none;
+  }
+}

@@ -54,6 +54,11 @@
   --hue-red-deep: #b23a2e;
   --hue-red-pale: #e57b6c;
 
+  /* macOS's own blue, for drawn pictures of macOS only (a switch that is on
+     in System Settings). Never a Pensée colour. */
+  --macos-blue: #0a84ff;
+  --macos-blue-light: #007aff;
+
   /* The brand's two colours (docs/brand.md): the ¶ and the wordmark only. */
   --brand-ink: #0b0b0b;
   --brand-cream: #ece7dc;
@@ -104,6 +109,7 @@
   /* Type sizes (SPECs/type-scale-spec.md). */
   --font-size-8: 8px;
   --font-size-9: 9px;
+  --font-size-11: 11px;
   --font-size-13: 13px;
   --font-size-14: 14px;
   --font-size-15: 15px;
@@ -214,6 +220,13 @@
   --color-app-icon-ground: var(--brand-ink);
   --color-app-icon-ground-top: var(--brand-ink-raised);
   --color-app-icon-mark: var(--brand-cream);
+
+  /* A drawn picture of macOS System Settings (the Full Disk Access guide):
+     its window, its grouped list, a switch that is on. */
+  --color-macos-window: var(--color-bg-raised);
+  --color-macos-list: var(--color-bg-ground);
+  --color-macos-switch-on: var(--macos-blue);
+  --color-macos-knob: var(--white);
 
   /* Text. Ratios are WCAG on the ground / the raised grey. */
   --color-text-primary: var(--fg-base);
@@ -329,6 +342,8 @@
   --font-size-glyph: var(--font-size-24);
   --font-size-title-lg: var(--font-size-26);
   --font-size-cover-micro: var(--font-size-8);
+  /* Labels inside a drawn picture of macOS (the Full Disk Access guide). */
+  --font-size-figure: var(--font-size-11);
   --font-size-cover-fine: var(--font-size-9);
   --font-size-cover-small: var(--font-size-13);
   --font-size-cover-text: var(--font-size-14);
@@ -372,6 +387,9 @@
 
 [data-theme="light"] {
   --color-brand-mark: var(--brand-ink);
+  --color-macos-window: var(--gray-100);
+  --color-macos-list: var(--white);
+  --color-macos-switch-on: var(--macos-blue-light);
   --color-bg-app: var(--gray-100);
   --color-bg-canvas: var(--color-bg-ground);
   --color-bg-raised: var(--gray-100);

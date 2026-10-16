@@ -61,9 +61,20 @@ markdown.
   of Books' container and never keeps the answer. So an automatic sync runs only
   when Pensée has Full Disk Access (`has_full_disk_access` probes the TCC
   database, which shows no prompt). Without it, the automatic sync waits and
-  says so once per session, with **Open Settings** (Privacy → Full Disk
-  Access). **Import Apple Books Highlights** in the command palette always
-  reads, so macOS may ask then.
+  opens the **Full Disk Access guide** once per session (at launch, or when
+  Import Highlights is turned on). **Import Apple Books Highlights** in the
+  command palette always reads, so macOS may ask then.
+- **The guide** (`components/full-disk-access-guide/`, a floating card like
+  "Sign in to Claude"): _Let Pensée read Apple Books_, why in two lines, a
+  drawn System Settings → Full Disk Access pane, three numbered steps, **Not
+  now** (Esc) and **Open Settings** (↵, opens Privacy & Security → Full Disk
+  Access). The pane plays the clicks once per opening: a cursor clicks **+**,
+  Pensée joins the list, the cursor turns its switch on, and markers 1–3
+  point at **+**, Pensée and the switch as each step's number lands. Reduce
+  motion shows the last frame. It opens by itself, so it never takes focus
+  from the note; Esc and ↵ work once it is clicked. Coming back to the window,
+  it checks again: with access it reads _Full Disk Access is on_, the import
+  runs, and the button is **Done**.
 
 ## Implementation
 
