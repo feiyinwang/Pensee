@@ -61,6 +61,7 @@ export const EditorPane = memo(function EditorPane({
     <div data-pane className={visibilityClass}>
       <EditorScrollContainer ref={scrollContainerRef}>
         <div
+          // pt-10 / md:pt-24 are the 40px / 96px SectionRail's outlineTop lines up with.
           className={`mx-auto w-full pb-6 ${inColumn ? "pt-10" : "pt-20 md:pt-24"}`}
           style={{
             maxWidth: "var(--pensee-editor-outer-width)",
@@ -81,7 +82,12 @@ export const EditorPane = memo(function EditorPane({
           onViewChange={setEditorView}
         />
       </EditorScrollContainer>
-      <SectionRail filePath={path} view={editorView} scrollContainerRef={scrollContainerRef} />
+      <SectionRail
+        filePath={path}
+        view={editorView}
+        scrollContainerRef={scrollContainerRef}
+        outlineTop={inColumn ? 40 : 96}
+      />
       {isActive && <EditorSearchOverview scrollContainerRef={scrollContainerRef} />}
     </div>
   );

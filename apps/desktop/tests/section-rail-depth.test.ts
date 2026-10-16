@@ -2,10 +2,15 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   DEPTH_WINDOW,
   INDENT_STEP,
+  OUTLINE_EDGE_INSET,
+  OUTLINE_MAX_WIDTH,
+  OUTLINE_MIN_WIDTH,
+  OUTLINE_TEXT_GAP,
   TICK_MAX_WIDTH,
   TICK_WIDTH_BY_DEPTH,
   indentForDepth,
   nextWindowStart,
+  outlineWidthForRoom,
   tickWidthForDepth,
 } from "../src/components/editor-area/section-rail-depth";
 
@@ -80,5 +85,23 @@ describe("tickWidthForDepth", () => {
 
   test("clamps past the end of the table instead of returning undefined", () => {
     expect(tickWidthForDepth(99)).toBe(TICK_WIDTH_BY_DEPTH[TICK_WIDTH_BY_DEPTH.length - 1]);
+  });
+});
+
+describe("outlineWidthForRoom", () => {
+  const chrome = OUTLINE_TEXT_GAP + OUTLINE_EDGE_INSET;
+
+  test("keeps the ticks when the margin cannot fit the narrowest outline", () => {
+    expect(outlineWidthForRoom(chrome + OUTLINE_MIN_WIDTH - 1)).toBeNull();
+    expect(outlineWidthForRoom(0)).toBeNull();
+  });
+
+  test("opens at the narrowest width as soon as it fits", () => {
+    expect(outlineWidthForRoom(chrome + OUTLINE_MIN_WIDTH)).toBe(OUTLINE_MIN_WIDTH);
+  });
+
+  test("grows with the margin, then stops at the widest width", () => {
+    expect(outlineWidthForRoom(chrome + 210.7)).toBe(210);
+    expect(outlineWidthForRoom(chrome + 900)).toBe(OUTLINE_MAX_WIDTH);
   });
 });

@@ -60,3 +60,76 @@
 .section-rail-popover-row.is-active {
   color: var(--accent);
 }
+
+/* ---- Standing outline: the rail opened up when the margin has room. ---- */
+
+.section-outline-title {
+  margin-bottom: 12px;
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.section-outline-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* The hairline the rows hang off; the marker rides it. */
+  box-shadow: inset 1px 0 0 var(--line-subtle);
+}
+
+.section-outline-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 1px;
+  background: var(--accent);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+.section-outline-marker[data-animate="true"] {
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+.section-outline-row {
+  display: block;
+  width: 100%;
+  padding: 4px 0 4px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  font-size: var(--text-label);
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+  transition: color var(--motion-fast) var(--ease-out);
+}
+
+.section-outline-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.section-outline-row:hover,
+.section-outline-row.is-active {
+  color: var(--text-primary);
+}
+
+.section-outline-row:hover {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-outline-marker[data-animate="true"],
+  .section-outline-row {
+    transition: none;
+  }
+}

@@ -36,3 +36,21 @@ export function nextWindowStart(current: number, activeDepth: number | null, max
   else if (activeDepth > next + (DEPTH_WINDOW - 1)) next = activeDepth - (DEPTH_WINDOW - 1);
   return Math.min(Math.max(next, 0), limit);
 }
+
+// When the margin right of the text column is wide enough, the rail opens up
+// into a standing outline ("On this page") instead of ticks behind a hover.
+// The outline keeps OUTLINE_TEXT_GAP clear of the text and OUTLINE_EDGE_INSET
+// from the pane edge, grows with the room up to OUTLINE_MAX_WIDTH, and gives
+// way to the ticks below OUTLINE_MIN_WIDTH, where headings would wrap on most
+// words.
+export const OUTLINE_MIN_WIDTH = 180;
+export const OUTLINE_MAX_WIDTH = 240;
+export const OUTLINE_TEXT_GAP = 40;
+export const OUTLINE_EDGE_INSET = 24;
+
+export function outlineWidthForRoom(room: number): number | null {
+  const width = Math.floor(
+    Math.min(OUTLINE_MAX_WIDTH, room - OUTLINE_TEXT_GAP - OUTLINE_EDGE_INSET),
+  );
+  return width >= OUTLINE_MIN_WIDTH ? width : null;
+}

@@ -17,6 +17,16 @@ const NOTES = {
     "---\nType: Project\nStatus: Ongoing\nDeadline: 2026-12-01\n---\n\nShip the site.\n",
   "Projects/Old idea.md": "---\nType: Project\nStatus: Done\n---\n\nFinished.\n",
   "Library/A book.md": "---\nType: Book\nAuthor: Someone\n---\n\n## Highlights\n",
+  // The standing outline (ED-20…23): enough headings, at three depths, and
+  // enough text under each that clicking one has to scroll the note.
+  "Notes/Outline tour.md": ["Overview", "Setup", "Daily use", "Shortcuts", "Wrapping up"]
+    .flatMap((title, i) => [
+      `## ${title}`,
+      "",
+      ...Array.from({ length: 12 }, (_, n) => `Paragraph ${n + 1} under ${title}.\n`),
+      ...(i % 2 === 0 ? [`### ${title} details`, "", "A deeper section.", ""] : []),
+    ])
+    .join("\n"),
   // The second pen (PEN journeys): its own lines already in a note (two
   // echoes, a sealed answer with an empty take), a note for Connect to find,
   // and a video note with a transcript to answer from.

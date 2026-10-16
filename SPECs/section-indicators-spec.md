@@ -117,6 +117,40 @@ Open/close behavior:
 - Default: H1-H3.
 - Configurable in settings if/when settings ships.
 
+## Standing outline (2026-10-16)
+
+When the margin right of the text column has room, the rail opens up into a
+standing outline instead of ticks behind a hover, after the "On this page"
+table of contents on component docs sites (uiarc's Button page).
+
+- **When.** The room is measured from `.cm-content` (its box minus its right
+  padding is the text column) to the pane's right edge, less the scrollbar
+  gutter. The outline keeps 40px off the text and 24px off the edge, grows
+  with the room up to 240px, and gives way to the ticks below 180px
+  (`outlineWidthForRoom` in `section-rail-depth.ts`). So a wide window shows
+  it, and a narrow window, a wide page preset or side-by-side columns fall
+  back to the ticks, each without a breakpoint table.
+- **Where.** Top-aligned with the page header (96px, 40px in a column), fixed
+  while the note scrolls; the list scrolls inside itself when it is taller
+  than the pane and keeps the marked row in view.
+- **Look.** A **On this page** label (label size, medium, primary), then one
+  row per heading hanging off a 1px hairline (`--line-subtle`), indented by
+  depth with the same sliding three-level window as the popover. Rows are
+  muted; the heading in view and a hovered row are primary. The heading in
+  view is marked by a 2px `--accent` bar on the hairline, as tall as its row.
+  Long headings wrap to two lines, then clamp; the full text is in the
+  tooltip. No row background.
+- **Motion.** The marker slides between rows (transform only, 160ms
+  ease-out); it lands without a slide when a file opens. None under reduced
+  motion. Switching between ticks and outline is instant.
+- **Same as the ticks.** Click scrolls to the heading; right-click offers
+  **Copy heading link**.
+
+- **Wheel.** A wheel or trackpad scroll over the outline scrolls the note, as
+  over the empty margin; the list never takes the wheel, it follows the mark.
+
+Journeys ED-20–24.
+
 ## Implementation Notes
 
 - Compute headings from the ProseMirror doc; subscribe to doc changes via the editor store.
