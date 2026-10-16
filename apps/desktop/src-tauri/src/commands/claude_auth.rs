@@ -1,4 +1,4 @@
-//! Signing Claude Code back in from Pensée (SPECs/claude-sign-in-spec.md).
+//! Signing Claude Code in and out from Pensée (SPECs/claude-sign-in-spec.md).
 //! `claude auth login` opens the browser itself and waits for the writer to
 //! approve; the result is checked with `claude auth status`, never assumed
 //! from the exit code.
@@ -19,6 +19,8 @@ const QUICK_TIMEOUT: Duration = Duration::from_secs(15);
 const POLL: Duration = Duration::from_millis(150);
 const TOO_OLD: &str = "This version of Claude Code can't sign in from Pensée. Run `claude update` in Terminal, then try again.";
 const NOT_FINISHED: &str = "Signing in didn't finish. Try again.";
+const STILL_SIGNED_IN: &str =
+    "Claude Code is still signed in. Run `claude auth logout` in Terminal to sign out.";
 
 /// The sign-in running now, if any. One at a time, app-wide: Claude Code has
 /// one sign-in per Mac.
@@ -200,6 +202,31 @@ fn sign_in(app: &tauri::AppHandle, label: &str) -> Result<(), AppError> {
     } else {
         format!("{NOT_FINISHED} Claude Code said: {reason}")
     }))
+}
+
+/// Sign Claude Code out (Settings → Agent → Claude), then end every window's
+/// running Claude: a running one keeps the sign-in it started with.
+#[tauri::command]
+pub async fn claude_sign_out(app: tauri::AppHandle) -> Result<(), AppError> {
+    tauri::async_runtime::spawn_blocking(move || sign_out(&app))
+        .await
+        .map_err(|error| AppError::Io(error.to_string()))?
+}
+
+fn sign_out(app: &tauri::AppHandle) -> Result<(), AppError> {
+    // Checks `auth` exists first, so an old CLI never gets `auth logout` as a prompt.
+    if !signed_in()? {
+        return Ok(());
+    }
+    let mut logout = claude_command()?;
+    logout.args(["auth", "logout"]);
+    quick_output(logout)?;
+    // A sign-in from the shell (an API key in the environment) outlives logout.
+    if signed_in()? {
+        return Err(AppError::User(STILL_SIGNED_IN.to_owned()));
+    }
+    end_all_sessions(app);
+    Ok(())
 }
 
 /// The code the browser shows when it can't hand the sign-in back by itself.

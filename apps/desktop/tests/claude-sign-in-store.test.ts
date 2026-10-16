@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 const handlers = new Map<string, (event: { payload: unknown }) => void>();
 let settle: { resolve: () => void; reject: (error: string) => void } | null = null;
-const invoke = vi.fn((command: string, ..._args: unknown[]) => {
+let signedIn = false;
+let signOutError: string | null = null;
+const invoke = vi.fn((command: string, ..._args: unknown[]): Promise<unknown> => {
+  if (command === "claude_auth_status") return Promise.resolve(signedIn);
+  if (command === "claude_sign_out") {
+    if (signOutError) return Promise.reject(signOutError);
+    signedIn = false;
+    return Promise.resolve(undefined);
+  }
   if (command !== "claude_sign_in") return Promise.resolve(undefined);
   return new Promise<void>((resolve, reject) => {
     settle = { resolve, reject };
@@ -23,6 +31,9 @@ import { SIGNED_OUT_TEXT } from "../src/lib/agent-stream";
 import {
   closeClaudeSignIn,
   offerClaudeSignIn,
+  refreshClaudeAccount,
+  signInClaudeFromSettings,
+  signOutClaude,
   startClaudeSignIn,
   useClaudeSignInStore,
 } from "../src/stores/claude-sign-in-store";
@@ -33,6 +44,9 @@ beforeEach(() => {
   closeClaudeSignIn();
   invoke.mockClear();
   settle = null;
+  signedIn = false;
+  signOutError = null;
+  useClaudeSignInStore.setState({ account: null, accountError: null });
 });
 
 describe("claude sign-in popup", () => {
@@ -74,5 +88,59 @@ describe("claude sign-in popup", () => {
     await signingIn;
     await flush();
     expect(useClaudeSignInStore.getState()).toMatchObject({ open: false, phase: "idle" });
+  });
+});
+
+describe("claude account in settings", () => {
+  test("reads the status", async () => {
+    signedIn = true;
+    await refreshClaudeAccount();
+    expect(useClaudeSignInStore.getState().account).toBe("signed-in");
+    signedIn = false;
+    await refreshClaudeAccount();
+    expect(useClaudeSignInStore.getState().account).toBe("signed-out");
+  });
+
+  test("a status that can't be read says why", async () => {
+    invoke.mockImplementationOnce(() => Promise.reject("Run `claude update`"));
+    await refreshClaudeAccount();
+    expect(useClaudeSignInStore.getState()).toMatchObject({
+      account: null,
+      accountError: "Run `claude update`",
+    });
+  });
+
+  test("sign in opens the popup already waiting, and the status follows", async () => {
+    signInClaudeFromSettings();
+    expect(useClaudeSignInStore.getState()).toMatchObject({
+      open: true,
+      phase: "waiting",
+      fromSettings: true,
+    });
+    signedIn = true;
+    settle!.resolve();
+    await flush();
+    await flush();
+    expect(useClaudeSignInStore.getState()).toMatchObject({ phase: "done", account: "signed-in" });
+  });
+
+  test("sign out ends signed out", async () => {
+    signedIn = true;
+    await refreshClaudeAccount();
+    const signingOut = signOutClaude();
+    expect(useClaudeSignInStore.getState().account).toBe("signing-out");
+    await signingOut;
+    expect(invoke).toHaveBeenCalledWith("claude_sign_out");
+    expect(useClaudeSignInStore.getState().account).toBe("signed-out");
+  });
+
+  test("a sign out that didn't take says why and stays signed in", async () => {
+    signedIn = true;
+    signOutError = "Claude Code is still signed in.";
+    await signOutClaude();
+    expect(useClaudeSignInStore.getState()).toMatchObject({
+      account: "signed-in",
+      accountError: "Claude Code is still signed in.",
+    });
   });
 });

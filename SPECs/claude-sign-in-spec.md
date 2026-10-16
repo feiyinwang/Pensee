@@ -19,6 +19,8 @@ and type `/login`. Writers who never use a terminal are stuck.
   I close it and nothing else changes.
 - As a writer with an old Claude Code that can't sign in from outside a
   terminal, I'm told exactly what to run.
+- As a writer, I can see in Settings whether Claude is signed in, and sign in
+  or out from there at any time, without waiting for a request to fail.
 
 Only a request the writer made opens the popup. A warm-up that fails in the
 background stays silent.
@@ -34,12 +36,12 @@ The popup is an opaque card floating over the window, centred near the top,
 with no backdrop: the app behind it stays visible and usable. Its title names the
 situation, not the button ("Claude is signed out"; "Signed in" when done).
 
-| State   | Text                                                                                     | Actions                                    |
-| ------- | ---------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Idle    | Organize, the pen and the Agent use Claude Code on this Mac. Sign in to use them again. | Not now `Esc` · Sign in `↵`                |
-| Waiting | Finish signing in in your browser, then come back here.                                  | Code field + Continue; Open the sign-in page again · Cancel `Esc` |
-| Failed  | The idle text, then the reason in plain words                                            | Not now `Esc` · Try again `↵`              |
-| Done    | Run it again.                                                                            | Done `↵`; closes by itself after 1.5s      |
+| State   | Text                                                                                    | Actions                                                           |
+| ------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Idle    | Organize, the pen and the Agent use Claude Code on this Mac. Sign in to use them again. | Not now `Esc` · Sign in `↵`                                       |
+| Waiting | Finish signing in in your browser, then come back here.                                 | Code field + Continue; Open the sign-in page again · Cancel `Esc` |
+| Failed  | The idle text, then the reason in plain words                                           | Not now `Esc` · Try again `↵`                                     |
+| Done    | Run it again.                                                                           | Done `↵`; closes by itself after 1.5s                             |
 
 A click outside the card goes to the app and leaves the card open: coming back
 from the browser, the first click on the window must not cancel the sign-in it
@@ -67,15 +69,43 @@ is waiting for.
 Keys: ↵ runs the primary action, Esc closes (or cancels while waiting). Each
 key shows next to its button, as every control with a shortcut does.
 
+### Settings → Agent → Claude
+
+A row under **Agent Model**, laid out like a setting, borrowing the X account
+row's look. Its state is asked from `claude auth status` each time Settings
+opens and after every finished sign-in; while the first answer is coming it
+says _Checking…_.
+
+| State             | Text                                                                    | Button              |
+| ----------------- | ----------------------------------------------------------------------- | ------------------- |
+| Signed in         | Signed in. Organize, the pen and the Agent use Claude Code on this Mac. | Sign out            |
+| Signed out        | Signed out. Sign in to use Organize, the pen and the Agent.             | Sign in (primary)   |
+| Popup waiting     | Finish signing in in your browser.                                      | Waiting… (disabled) |
+| Signing out       | Signing out…                                                            | Sign out (disabled) |
+| Status unreadable | The reason (Claude Code not installed, too old)                         | Check again         |
+
+- **Sign in** opens the popup already waiting (the same `claude auth login`
+  flow); its Done text is _Organize, the pen and the Agent are ready._, since
+  there is no request to run again.
+- **Sign out** runs `claude auth logout`, checks with `claude auth status`, and
+  ends every window's running Claude as signing in does. If Claude Code still
+  reports a sign-in (an API key from the shell), the row says so and tells the
+  writer to run `claude auth logout` in Terminal.
+- Signing out signs Claude Code out on this Mac, for Terminal too: it is one
+  sign-in per Mac.
+
 ## Not in scope
 
-- A Claude account row in Settings (sign in / sign out at any time).
 - Retrying the failed request automatically.
+- Showing which account is signed in (`claude auth status` gives the method,
+  not a name every CLI version prints).
 
 ## Code
 
 - `src-tauri/src/commands/claude_auth.rs` — `claude_auth_status`,
-  `claude_sign_in`, `claude_sign_in_code`, `claude_sign_in_cancel`.
+  `claude_sign_in`, `claude_sign_in_code`, `claude_sign_in_cancel`,
+  `claude_sign_out`.
 - `src/lib/agent-stream.ts` — `isSignedOut`, the one signed-out check.
 - `src/stores/claude-sign-in-store.ts` — popup state, owns the IPC calls.
 - `src/components/claude-sign-in/` — the popup.
+- `src/components/settings-panel/claude-account-row.tsx` — the Settings row.

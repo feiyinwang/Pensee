@@ -634,6 +634,7 @@ pub fn run() {
             commands::claude_auth::claude_sign_in,
             commands::claude_auth::claude_sign_in_code,
             commands::claude_auth::claude_sign_in_cancel,
+            commands::claude_auth::claude_sign_out,
             commands::apple_books::read_apple_books_highlights,
             commands::apple_books::save_apple_books_cover,
             commands::books::import_book,

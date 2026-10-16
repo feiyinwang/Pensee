@@ -10,7 +10,8 @@ import {
 import "./claude-sign-in.css";
 
 // The "Sign in to Claude" popup (SPECs/claude-sign-in-spec.md), opened when a
-// pen or Agent request fails because Claude Code is signed out.
+// pen or Agent request fails because Claude Code is signed out, or by Sign in
+// in Settings.
 //
 // It floats over the window without a backdrop, so the app stays usable behind
 // it. A click outside it goes to the app and leaves it open: coming back from
@@ -25,6 +26,7 @@ function SignInCard() {
   const phase = useClaudeSignInStore((s) => s.phase);
   const error = useClaudeSignInStore((s) => s.error);
   const url = useClaudeSignInStore((s) => s.url);
+  const fromSettings = useClaudeSignInStore((s) => s.fromSettings);
   const [code, setCode] = useState("");
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +60,9 @@ function SignInCard() {
   const title = phase === "done" ? "Signed in" : "Claude is signed out";
   const body =
     phase === "done"
-      ? "Run it again."
+      ? fromSettings
+        ? "Organize, the pen and the Agent are ready."
+        : "Run it again."
       : phase === "waiting"
         ? "Finish signing in in your browser, then come back here."
         : "Organize, the pen and the Agent use Claude Code on this Mac. Sign in to use them again.";

@@ -1,12 +1,17 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, type ComponentType } from "react";
 import { useAllSettings, useResetSetting, useSetSetting } from "@/hooks/use-settings";
 import { SETTINGS_SCHEMA, type SettingDef } from "@/lib/settings-schema";
 import { SettingControl } from "./setting-control";
 import { ThemesSection } from "./themes-section";
+import { ClaudeAccountRow } from "./claude-account-row";
 import { XAccountRow } from "./x-account-row";
 
-/** The X sign-in row follows the Client ID it needs. */
-const X_ACCOUNT_ROW_AFTER = "x-bookmarks.client-id";
+/** Account rows, each after the setting it belongs with: the X sign-in after
+ *  the Client ID it needs, the Claude sign-in after the model the Agent uses. */
+const ACCOUNT_ROWS_AFTER: Partial<Record<string, ComponentType<{ isShown: boolean }>>> = {
+  "x-bookmarks.client-id": XAccountRow,
+  "agent.model": ClaudeAccountRow,
+};
 import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-container";
 
 /** Section that renders above the Themes block. The schema-driven section
@@ -47,24 +52,27 @@ export function SettingsPanel({
       <section key={category} className="mb-10">
         <h2 className="mb-3 text-caption font-medium text-[var(--text-muted)]">{category}</h2>
         <div className="-mx-4 overflow-hidden rounded-2xl border border-[var(--line-subtler)] bg-[var(--surface-card)]">
-          {defs.map((def, i) => (
-            <Fragment key={def.key}>
-              <div className={i === 0 ? undefined : "border-t border-[var(--line-subtler)]"}>
-                <SettingControl
-                  def={def}
-                  value={settings[def.key]}
-                  onChange={(value) => setSetting(def.key, value)}
-                  onReset={() => void resetSetting(def.key)}
-                  isModified={isModified(def)}
-                />
-              </div>
-              {def.key === X_ACCOUNT_ROW_AFTER && (
-                <div className="border-t border-[var(--line-subtler)]">
-                  <XAccountRow />
+          {defs.map((def, i) => {
+            const AccountRow = ACCOUNT_ROWS_AFTER[def.key];
+            return (
+              <Fragment key={def.key}>
+                <div className={i === 0 ? undefined : "border-t border-[var(--line-subtler)]"}>
+                  <SettingControl
+                    def={def}
+                    value={settings[def.key]}
+                    onChange={(value) => setSetting(def.key, value)}
+                    onReset={() => void resetSetting(def.key)}
+                    isModified={isModified(def)}
+                  />
                 </div>
-              )}
-            </Fragment>
-          ))}
+                {AccountRow && (
+                  <div className="border-t border-[var(--line-subtler)]">
+                    <AccountRow isShown={isShown} />
+                  </div>
+                )}
+              </Fragment>
+            );
+          })}
         </div>
       </section>
     );
