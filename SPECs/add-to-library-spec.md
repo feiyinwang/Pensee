@@ -5,20 +5,20 @@
 One way to put a book, video (courses included), podcast or paper into Library from a
 link, a title or a file. Since 2026-10-12 it happens in the composer
 (SPECs/composer-spec.md): its type chip is the Library kind, and a pasted link
-sets it. A link pasted in ⌘O still offers rows there. The result is an ordinary note whose `Type:` puts it in its Library
+sets it. A link pasted in ⌘F still offers rows there. The result is an ordinary note whose `Type:` puts it in its Library
 tab (SPECs/spaces-spec.md).
 
 ## Ways in
 
 | Way in                                                                  | What it does                                                                     |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Paste a link in ⌘O                                                      | An **Add to Library** group goes on top of the results, the guess selected       |
-| **⌘⇧L** anywhere, or **Add to Library…** in ⌘O                         | The composer, type chip on Book until a link says otherwise                     |
+| Paste a link in ⌘F                                                      | An **Add to Library** group goes on top of the results, the guess selected       |
+| **⌘⇧L** anywhere, or **Add to Library…** in ⌘F                         | The composer, type chip on Book until a link says otherwise                     |
 | **Add <noun>** in an empty Library tab, and **+** in the Library header | The composer with that tab's kind picked; not on Bookmarks, which X sync fills  |
 | Drop a PDF or EPUB on the window                                        | As before (SPECs/book-reader-spec.md); attached to the composer when it's open |
 | Import Book…, Import Apple Books Highlights                             | Unchanged palette commands                                                       |
 
-## The palette rows (⌘O, a pasted link)
+## The palette rows (⌘F, a pasted link)
 
 - Rows come from the query alone, never the network, so they don't change
   under the cursor and work offline.
@@ -73,7 +73,7 @@ and an existing page keeps its type.
   retyping (pure, `tests/library-add.test.ts`).
 - `hooks/use-library-add.ts`: writing the note (with the composer's text and
   Keep open), and `openLibraryAdd`, which opens the composer.
-- `components/command-palette/library-add-rows.tsx`: ⌘O's link rows.
+- `components/command-palette/library-add-rows.tsx`: ⌘F's link rows.
 - `lib/book-import.ts` (`settlePdfType`), `book-reader/book-meta.ts`
   (`readPdfClues`), the editor notice's optional action.
 

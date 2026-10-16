@@ -69,8 +69,8 @@ stays relative to the body.
   picture and repeats the title and author shown at readable size under the
   cover. Raising them to 13px would wrap and break the covers.
 - **The sidebar Search button** (`sidebar/file-browser.tsx`, 13px label and an
-  11px ⌘P hint) and the sidebar wordmark (`sidebar/index.tsx`): another
-  change owns that row. The ⌘P hint should become `text-caption` there.
+  11px ⌘F hint) and the sidebar wordmark (`sidebar/index.tsx`): another
+  change owns that row. The ⌘F hint should become `text-caption` there.
 - **Unused vendored Arc sizes**: the kanban avatar face (10px; Projects has no
   assignees) and the dock's count badge (11px; the board dock shows none).
   Arc's small badge (11px) is overridden for project tags in
