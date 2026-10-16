@@ -168,7 +168,8 @@ open into raw `<details>` source when clicked).
   few seconds of when it is said.
 - A line's time shows in a gutter on the line being said and on the line
   under the pointer. Clicking a line plays the video from it.
-- **Reading more.** Scrolling the box stops it following; **Back to now**
+- **Reading more.** Scrolling the box any way (wheel, trackpad momentum,
+  dragging its scrollbar) stops it following; **Back to now**
   appears in the header and brings it back. Clicking a line also brings it
   back.
 - **Copying.** Text in the box selects like any text (⌘C copies it); a

@@ -174,6 +174,35 @@ describe("YouTube notes: transcript box", function () {
   });
 
   it("YT-06 scrolling the box stops it following until Back to now", async function () {
+    // A scroll with no wheel event first (a trackpad's momentum, a dragged
+    // scrollbar, keys): the list's own scroll stops it following. WebKit
+    // drops a scrollTop set while the box's own smooth scroll runs, so wait
+    // for it to come to rest first.
+    let last = -1;
+    await browser.waitUntil(
+      async () => {
+        const top = await browser.execute(
+          () =>
+            [...document.querySelectorAll(".transcript-box-lines")].find((el) =>
+              el.checkVisibility(),
+            ).scrollTop,
+        );
+        const still = top === last;
+        last = top;
+        return still;
+      },
+      { timeout: 5_000, interval: 300, timeoutMsg: "the box never came to rest" },
+    );
+    await browser.execute(() => {
+      const list = [...document.querySelectorAll(".transcript-box-lines")].find((el) =>
+        el.checkVisibility(),
+      );
+      list.scrollTop += 120;
+    });
+    const shown = await $("//button[normalize-space(.)='Back to now']");
+    await shown.waitForDisplayed({ timeout: 3_000 });
+    await shown.click();
+    await shown.waitForDisplayed({ timeout: 3_000, reverse: true });
     await browser.execute(() => {
       const list = [...document.querySelectorAll(".transcript-box-lines")].find((el) =>
         el.checkVisibility(),

@@ -2,6 +2,7 @@
 
 ## 2026-10-16
 
+- In a video's transcript, **Back to now** now shows for any scroll that leaves the line being said, not only a wheel, a touch or a press on the scrollbar. Click it and the transcript follows the video again.
 - The video and podcast players now show their keys in full instead of Play and Pin buttons: **Play ⌘S** while paused (**Pin ⌘S** while playing), **Slower ⇧,** and **Faster ⇧.**. Under a video they start the row, before **Transcript**; under a podcast they sit below the card. ⇧, and ⇧. also change the speed now with Pinyin or another input source that types 《 》 on those keys; before, they did nothing there.
 - In a video note, **On this page** now sits under the video and its transcript, right of your notes, and moves up with them as they pin to the top. It no longer covers the transcript, so you can scroll the transcript again.
 - When your window leaves room to the right of the page, a note's headings now stand listed there under **On this page**, indented by level, with a short bar marking the one you're reading. Click one to jump to it. When the room runs out (a narrower window, a wider page, notes side by side), it folds back into the small ticks you hover to see the list.

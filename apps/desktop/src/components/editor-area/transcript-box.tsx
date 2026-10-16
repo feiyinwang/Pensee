@@ -32,6 +32,8 @@ const TICK_MS = 250;
 /** The line being said sits this far down the box, so a few earlier lines
  *  stay in view above it. */
 const NOW_AT = 0.3;
+/** Longest the box's own smooth scroll takes to land. */
+const AIM_MS = 1000;
 
 export interface TranscriptBoxProps {
   /** The `<details>` block's Markdown source. */
@@ -95,6 +97,9 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
   // Following: the list keeps the line being said in view. Scrolling it
   // yourself stops that until "Back to now" or a click on a line.
   const [following, setFollowing] = useState(true);
+  // Where the box's own scroll is headed while it moves there: its scroll
+  // events aren't the user's.
+  const aimRef = useRef<number | null>(null);
   const collapsed = useTranscriptView((s) => s.collapsed);
   const setCollapsed = useTranscriptView((s) => s.setCollapsed);
   const { videoId, languages } = useCaptionLanguages(notePath);
@@ -131,11 +136,22 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
     const list = listRef.current;
     const line = list?.querySelector<HTMLElement>(`[data-line="${current}"]`);
     if (!following || collapsed || !list || !line) return;
+    const top = Math.round(
+      Math.min(
+        Math.max(0, line.offsetTop - list.clientHeight * NOW_AT),
+        list.scrollHeight - list.clientHeight,
+      ),
+    );
+    if (Math.abs(list.scrollTop - top) < 1) return;
+    aimRef.current = top;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    list.scrollTo({
-      top: line.offsetTop - list.clientHeight * NOW_AT,
-      behavior: reduced ? "auto" : "smooth",
-    });
+    list.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
+    // A smooth scroll that never lands (cut short, or the list resized)
+    // mustn't hide the user's next scroll.
+    const settle = window.setTimeout(() => {
+      aimRef.current = null;
+    }, AIM_MS);
+    return () => window.clearTimeout(settle);
   }, [current, following, collapsed]);
 
   const playFrom = (index: number) => {
@@ -150,9 +166,21 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
     setFollowing(true);
   };
 
-  // Only the user's own scrolling stops following; the box's smooth scroll
-  // fires scroll events too, so listen for the inputs instead.
-  const stopFollowing = () => setFollowing(false);
+  // Only the user's own scrolling stops following. A wheel, touch or press
+  // on the scrollbar says so at once; any other scroll (a trackpad's
+  // momentum, keys, a dragged scrollbar) counts once the box's own scroll
+  // isn't under way.
+  const stopFollowing = () => {
+    aimRef.current = null;
+    setFollowing(false);
+  };
+  const onScroll = () => {
+    const list = listRef.current;
+    if (!list || !following) return;
+    const aim = aimRef.current;
+    if (aim === null) setFollowing(false);
+    else if (Math.abs(list.scrollTop - aim) < 1) aimRef.current = null;
+  };
 
   const readIn = (code: string, name: string) => {
     const path = notePath();
@@ -231,6 +259,7 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
         <div
           ref={listRef}
           className="transcript-box-lines"
+          onScroll={onScroll}
           onWheel={stopFollowing}
           onTouchMove={stopFollowing}
           onPointerDown={(event) => {
