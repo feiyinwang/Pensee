@@ -382,6 +382,7 @@ background.
 | ID     | Journey                                    | Expected                                        | Check                |
 | ------ | ------------------------------------------ | ----------------------------------------------- | -------------------- |
 | IMP-01 | Settings → Apple Books → Import Highlights | Highlighted books get pages with bullets        | you                  |
+| IMP-03 | Import Highlights on, no Full Disk Access, relaunch | No macOS "data from other apps" prompt; a notice offers **Open Settings** | you |
 | IMP-02 | Bookmark a post on X, **Sync now**         | A thread note with its media lands in Bookmarks | legacy: tweet-thread |
 
 ## Second pen — PEN

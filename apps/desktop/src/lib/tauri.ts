@@ -495,6 +495,12 @@ export function saveAppleBooksCover(assetId: string, dest: string): Promise<bool
   return invoke("save_apple_books_cover", { assetId, dest });
 }
 
+/** Whether Pensée has Full Disk Access, the one grant macOS keeps for reading
+ *  Apple Books' data. Checking never shows a prompt. */
+export function hasFullDiskAccess(): Promise<boolean> {
+  return invoke("has_full_disk_access");
+}
+
 // X bookmarks (SPECs/x-bookmarks-spec.md) ------------------------------------
 
 /** The signed-in X account, or null when X isn't connected. */

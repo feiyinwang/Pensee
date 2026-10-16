@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 import { syncAppleBooks, type AppleBooksSyncResult } from "@/lib/apple-books";
 import { resolveDailyNoteFile } from "@/lib/daily-note";
@@ -21,6 +22,11 @@ const SYNC_INTERVAL_MS = 10 * 60_000;
 let running: Promise<void> | null = null;
 /** An automatic sync reports a failure once, not every ten minutes. */
 let failureShown = false;
+/** Without Full Disk Access an automatic sync says why it waits, once a session. */
+let accessNoticeShown = false;
+
+const FULL_DISK_ACCESS_PANE =
+  "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles";
 
 function summary(result: AppleBooksSyncResult): string {
   const { highlightsAdded: added, pagesCreated: created } = result;
@@ -31,6 +37,26 @@ function summary(result: AppleBooksSyncResult): string {
 }
 
 async function run(root: string, manual: boolean): Promise<void> {
+  // macOS asks "access data from other apps" on every read of Books' data and
+  // never keeps the answer, so an automatic sync without Full Disk Access
+  // would ask at every launch. It waits instead; a manual import still reads.
+  if (!manual && !(await tauri.hasFullDiskAccess())) {
+    if (!accessNoticeShown) {
+      accessNoticeShown = true;
+      showEditorNotice(
+        "Apple Books highlights import by themselves once Pensée has Full Disk Access.",
+        {
+          label: "Open Settings",
+          run: () =>
+            void openUrl(FULL_DISK_ACCESS_PANE).catch((error: unknown) =>
+              console.error("[apple-books] Couldn't open Privacy settings:", error),
+            ),
+        },
+      );
+    }
+    return;
+  }
+
   const folder = useSettingsStore.getState().getSetting("apple-books.folder") ?? "";
   // The folder rules are the daily-note folder's: blank is the root, and a
   // folder outside the workspace is refused rather than rewritten.

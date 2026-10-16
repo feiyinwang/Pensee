@@ -637,6 +637,7 @@ pub fn run() {
             commands::claude_auth::claude_sign_out,
             commands::apple_books::read_apple_books_highlights,
             commands::apple_books::save_apple_books_cover,
+            commands::apple_books::has_full_disk_access,
             commands::books::import_book,
             commands::video_player::video_player_origin,
             commands::video_player::youtube_chapters,

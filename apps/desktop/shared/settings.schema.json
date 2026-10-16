@@ -351,7 +351,7 @@
     {
       "key": "apple-books.sync",
       "label": "Import Highlights",
-      "description": "Bring Apple Books highlights and notes into this workspace, one page per book tagged Book. A page that already has the book's name gets the highlights; otherwise a new page is made. Checks again every 10 minutes. macOS may ask to let Pensée access data from other apps.",
+      "description": "Bring Apple Books highlights and notes into this workspace, one page per book tagged Book. A page that already has the book's name gets the highlights; otherwise a new page is made. Checks again every 10 minutes once Pensée has Full Disk Access (System Settings → Privacy & Security); without it, macOS would ask at every launch, so use Import Apple Books Highlights in the command palette instead.",
       "category": "Apple Books",
       "type": "boolean",
       "default": false

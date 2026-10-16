@@ -57,6 +57,13 @@ markdown.
 - Automatic syncs are quiet unless they add something; a failure (for example
   macOS denying access to Apple Books' data) shows once per session until a sync
   succeeds. One book failing does not stop the others.
+- **Full Disk Access.** macOS asks "access data from other apps" on every read
+  of Books' container and never keeps the answer. So an automatic sync runs only
+  when Pensée has Full Disk Access (`has_full_disk_access` probes the TCC
+  database, which shows no prompt). Without it, the automatic sync waits and
+  says so once per session, with **Open Settings** (Privacy → Full Disk
+  Access). **Import Apple Books Highlights** in the command palette always
+  reads, so macOS may ask then.
 
 ## Implementation
 

@@ -46,6 +46,15 @@ pub async fn save_apple_books_cover(asset_id: String, dest: String) -> Result<bo
         .map_err(|e| AppError::Io(e.to_string()))?
 }
 
+/// Whether Pensée has Full Disk Access. macOS asks "access data from other
+/// apps" each time Books' container is read and never keeps the answer; Full
+/// Disk Access is the one grant it keeps. Probed through the TCC database,
+/// which only Full Disk Access can open: a denied open shows no prompt.
+#[tauri::command]
+pub fn has_full_disk_access() -> bool {
+    imp::has_full_disk_access()
+}
+
 #[cfg(not(target_os = "macos"))]
 mod imp {
     use super::*;
@@ -61,6 +70,10 @@ mod imp {
             "Apple Books is only available on macOS".into(),
         ))
     }
+
+    pub fn has_full_disk_access() -> bool {
+        false
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -73,6 +86,14 @@ mod imp {
 
     /// Core Data stores dates as seconds since 2001-01-01 UTC.
     const CORE_DATA_EPOCH_OFFSET: f64 = 978_307_200.0;
+
+    pub fn has_full_disk_access() -> bool {
+        let Some(home) = std::env::var_os("HOME") else {
+            return false;
+        };
+        fs::File::open(PathBuf::from(home).join("Library/Application Support/com.apple.TCC/TCC.db"))
+            .is_ok()
+    }
 
     fn books_documents_dir() -> Result<PathBuf, AppError> {
         let home =
