@@ -98,7 +98,7 @@ function useOutlineWidth(
 
 export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: SectionRailProps) {
   const headings = useDocumentHeadings(filePath);
-  const { activeIndex } = useActiveHeadings(view, scrollContainerRef, headings);
+  const { activeIndex, pin } = useActiveHeadings(view, scrollContainerRef, headings);
   const outlineWidth = useOutlineWidth(view, scrollContainerRef);
   const [isOpen, setIsOpen] = useState(false);
   const { shouldRender, phase } = useMountTransition(isOpen, POPOVER_TRANSITION_MS);
@@ -157,6 +157,7 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
     const scroller = scrollContainerRef.current;
     if (!view || !scroller) return;
     scrollPosToSafeTop(view, scroller, heading.pos, "auto");
+    pin(headings.indexOf(heading));
   };
 
   if (headings.length === 0) return null;

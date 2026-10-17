@@ -1,38 +1,44 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorView } from "@codemirror/view";
 import type { DocumentHeading } from "@/hooks/use-document-headings";
-import { EDITOR_SAFE_SCROLL_MARGIN } from "./editor-scroll-container";
 
-// Match the scroll-to-heading landing y so clicking a tick / row immediately
-// activates the destination heading instead of keeping the previous one
-// active. A small fudge protects against measurement jitter at the boundary.
-const ACTIVE_OFFSET_PX = EDITOR_SAFE_SCROLL_MARGIN + 4;
+// The reading line: a heading is the one being read once it has scrolled
+// above the middle of the pane, by when its section fills most of what's in
+// view.
+const READING_LINE = 0.5;
 // Slack for a scroll that settles a fraction of a pixel short of the end.
 const AT_END_SLACK_PX = 2;
+// What the writer does to move through the note by hand. Any of them ends a
+// heading picked from the rail (see `pin`).
+const HAND_EVENTS = ["wheel", "touchmove", "keydown", "pointerdown"] as const;
 
 export interface ActiveHeadings {
   activeIndex: number | null;
+  /** Mark a heading the writer jumped to, whatever the reading line says
+   *  (a short section lands with the next heading above the line too), until
+   *  they next scroll, type or click. */
+  pin: (index: number) => void;
 }
 
-const EMPTY: ActiveHeadings = { activeIndex: null };
-
-function computeActive(
+function computeActiveIndex(
   view: EditorView,
   scroller: HTMLElement,
   headings: DocumentHeading[],
-): ActiveHeadings {
-  if (headings.length === 0) return EMPTY;
+): number | null {
+  if (headings.length === 0) return null;
   const docLen = view.state.doc.length;
   const scrollerRect = scroller.getBoundingClientRect();
-  // Headings near the end of a note can never scroll up to the threshold, so
-  // once the note is scrolled to its end the line drops to the pane's
+  // Headings near the end of a note can never scroll up to the reading line,
+  // so once the note is scrolled to its end the line drops to the pane's
   // bottom: the last heading in view is the one being read. A note too short
-  // to scroll keeps the top threshold.
+  // to scroll keeps the reading line.
   const scrollable = scroller.scrollHeight > scroller.clientHeight;
   const atEnd =
     scrollable &&
     scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - AT_END_SLACK_PX;
-  const threshold = atEnd ? scrollerRect.bottom : scrollerRect.top + ACTIVE_OFFSET_PX;
+  const threshold = atEnd
+    ? scrollerRect.bottom
+    : scrollerRect.top + scroller.clientHeight * READING_LINE;
 
   let activeIndex: number | null = null;
   for (let i = 0; i < headings.length; i++) {
@@ -46,8 +52,7 @@ function computeActive(
   // Before any heading has scrolled past the threshold we're still on the
   // first heading conceptually — fall back so the rail's first tick lights
   // up at the top of the document.
-  if (activeIndex === null) activeIndex = 0;
-  return { activeIndex };
+  return activeIndex ?? 0;
 }
 
 export function useActiveHeadings(
@@ -55,9 +60,13 @@ export function useActiveHeadings(
   scrollContainerRef: React.RefObject<HTMLElement | null>,
   headings: DocumentHeading[],
 ): ActiveHeadings {
-  const [state, setState] = useState<ActiveHeadings>(EMPTY);
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const pinnedRef = useRef<number | null>(null);
+
+  const pin = useCallback((index: number) => {
+    pinnedRef.current = index;
+    setActiveIndex(index);
+  }, []);
 
   useEffect(() => {
     const scroller = scrollContainerRef.current;
@@ -65,25 +74,36 @@ export function useActiveHeadings(
     let frame = 0;
     const update = () => {
       frame = 0;
-      const next = computeActive(view, scroller, headings);
-      if (stateRef.current.activeIndex !== next.activeIndex) setState(next);
+      setActiveIndex(pinnedRef.current ?? computeActiveIndex(view, scroller, headings));
     };
     const schedule = () => {
       if (frame) return;
       frame = requestAnimationFrame(update);
     };
+    const unpin = () => {
+      if (pinnedRef.current === null) return;
+      pinnedRef.current = null;
+      schedule();
+    };
+    pinnedRef.current = null;
     update();
     scroller.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
+    for (const type of HAND_EVENTS) {
+      window.addEventListener(type, unpin, { capture: true, passive: true });
+    }
     return () => {
       if (frame) cancelAnimationFrame(frame);
       scroller.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
+      for (const type of HAND_EVENTS) {
+        window.removeEventListener(type, unpin, { capture: true });
+      }
     };
   }, [view, scrollContainerRef, headings]);
 
   // Without a live editor there is no active heading. Resolve this during
   // render instead of via an effect so the rail never paints a stale tick
   // from a previous file while the reset effect is pending.
-  return view ? state : EMPTY;
+  return { activeIndex: view ? activeIndex : null, pin };
 }
