@@ -97,7 +97,7 @@ Run the `pensee-qa` skill ([`docs/qa/qa-checklist.md`](../qa/qa-checklist.md)): 
 2. Update [`CHANGELOG.md`](../../CHANGELOG.md) if the work is user-visible.
 3. Move the task from **In Progress** to **Done** in [`TODOS.md`](../../TODOS.md), with a shortened commit hash.
 4. Add follow-up TODOs if you found adjacent issues.
-5. Commit with a clear message — one commit per completed task. See the existing commit history for style.
+5. Commit with a clear message as soon as QA passes — one commit per completed task, holding only your own lines (other sessions share this checkout). See the existing commit history for style.
 
 Example commit message:
 

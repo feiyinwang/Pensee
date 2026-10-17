@@ -71,6 +71,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - Load only docs relevant to the current task and scope.
 - If a behavior or rule changes in practice, update the owning doc in the same task.
 - In autonomous/loop mode, complete exactly one task at a time and commit immediately. Do not batch unless the user explicitly asks.
+- Every session commits its task as soon as its QA pass is green, not only in loop mode. Never leave finished work uncommitted: other sessions edit this same checkout, and uncommitted work piles up in shared files (CHANGELOG, TODOS, docs) that the next session has to pick its own lines out of. Commit only your own lines: never `git add` a whole file that holds another session's edits, and never commit files another session staged.
 - When coding or reviewing, follow the Engineering Guardrails below and the guidelines in linked docs.
 - After every change to `apps/desktop/`, run the `pensee-qa` skill before committing: the journeys the change can reach must pass in the real app, and a failing one is fixed in the same task.
 - Pensée must always feel instant. Every QA pass runs the speed journeys ([`docs/qa/performance.md`](./docs/qa/performance.md)); an action over budget or slower than its baseline is fixed in the same task.
