@@ -400,6 +400,7 @@ pub async fn write_file(
     let write_path = PathBuf::from(&path);
     let result = blocking(move || write_file_impl(&path, &content)).await?;
     state.update_index_modified_at(&write_path, result.modified_at);
+    crate::watcher::index_written_file(&state, &write_path, result.modified_at);
     let _ = app.emit_to(label, "sidebar:metadata-changed", &result.path);
     Ok(result)
 }

@@ -22,18 +22,21 @@ const OPEN_PROJECTS = {
 
 type Outcome = "added" | "already" | "declined";
 
+/** Every project added here lands in No status: an empty `Status`, which also
+ *  clears a status the template or the note had. */
+const NO_STATUS_EDIT = { status: "" };
+
 /** Add one project: the note it names when there is one, else a new note
  *  holding the writer's sentences. */
 async function addProject(project: ProjectFromText): Promise<Outcome> {
   const found = await findNoteNamed(project.name);
   if (found === null) {
-    // No status, as the board's Add project starts one.
-    await createProjectNote(project.name, { status: "" }, project.sentences.join(" "));
+    await createProjectNote(project.name, NO_STATUS_EDIT, project.sentences.join(" "));
     return "added";
   }
   if (isProjectType(noteType((await readPageParts(found)).frontmatter))) return "already";
   const stem = getFileStem(found);
-  const adopted = await adoptProjectNote(found, {}, (type) =>
+  const adopted = await adoptProjectNote(found, NO_STATUS_EDIT, (type) =>
     window.confirm(`"${stem}" is a ${type} note. Make it a project instead?`),
   );
   return adopted ? "added" : "declined";

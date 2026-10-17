@@ -247,31 +247,16 @@ describe("buildTitleMenuItemsSpec", () => {
     expect(handlers.calls).toEqual(["rename", "reveal", "copy-path"]);
   });
 
-  test("Add to Projects shows only with its handler, after Move selection to page", () => {
+  test("Add to Projects comes first, only with its handler", () => {
     const handlers = makeBodyHandlers();
-    handlers.onMoveToPage = () => handlers.calls.push("move-to-page");
+    handlers.onMoveToPage = () => {};
     handlers.onAddToProjects = () => handlers.calls.push("add-to-projects");
-    const ids = buildEditorBodyMenuItemsSpec(handlers, false).map((e) =>
-      e.kind === "item" ? e.id : e.kind,
-    );
-    expect(ids.slice(ids.indexOf("move-to-page"), ids.indexOf("move-to-page") + 2)).toEqual([
-      "move-to-page",
-      "add-to-projects",
-    ]);
-    const alone = makeBodyHandlers();
-    alone.onAddToProjects = () => {};
-    const aloneIds = buildEditorBodyMenuItemsSpec(alone, false).map((e) =>
-      e.kind === "item" ? e.id : e.kind,
-    );
-    expect(aloneIds).toEqual([
-      "cut",
-      "copy",
-      "paste",
-      "separator",
-      "add-to-projects",
-      "separator",
-      "select-all",
-    ]);
+    const spec = buildEditorBodyMenuItemsSpec(handlers, false);
+    const ids = spec.map((e) => (e.kind === "item" ? e.id : e.kind));
+    expect(ids.slice(0, 3)).toEqual(["add-to-projects", "separator", "cut"]);
+    const first = spec[0];
+    if (first?.kind === "item") first.action();
+    expect(handlers.calls).toEqual(["add-to-projects"]);
     expect(
       buildEditorBodyMenuItemsSpec(makeBodyHandlers(), false).some(
         (e) => e.kind === "item" && e.id === "add-to-projects",

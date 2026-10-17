@@ -9,6 +9,17 @@ import { addToProjects } from "./add-to-projects";
 import { copyBlockReferenceAtCaret, pasteBlockReference } from "./block-embed";
 import { tabularPasteTransaction } from "@/lib/tabular-paste";
 
+/** The text selected in the note: the editor's selection, else text
+ *  selected inside a widget it draws (a transcript, a thread, a linked
+ *  block), which the editor's own selection doesn't hold. */
+function selectedText(view: EditorView): string {
+  const { from, to } = view.state.selection.main;
+  if (from !== to) return view.state.sliceDoc(from, to);
+  const dom = window.getSelection();
+  if (!dom || dom.isCollapsed || !dom.anchorNode || !view.dom.contains(dom.anchorNode)) return "";
+  return dom.toString().trim();
+}
+
 /** Right-click menu over the editor body: clipboard, the command submenus,
  *  and link actions when the click landed on a link. */
 export function editorBodyContextMenuExtension(
@@ -24,6 +35,7 @@ export function editorBodyContextMenuExtension(
       const hasLink = linkHref !== null;
       const filePath = getFilePath();
       const hasSelection = !view.state.selection.main.empty;
+      const selected = selectedText(view);
 
       void showNativeContextMenu(
         buildEditorBodyMenuItemsSpec(
@@ -68,10 +80,9 @@ export function editorBodyContextMenuExtension(
                   moveSelectionToPage(view, getFilePath, isDisposed);
                 }
               : undefined,
-            onAddToProjects: hasSelection
+            onAddToProjects: selected
               ? () => {
-                  const { from, to } = view.state.selection.main;
-                  void addToProjects(view.state.sliceDoc(from, to));
+                  void addToProjects(selected);
                 }
               : undefined,
             onCopyBlockReference: () => {

@@ -120,11 +120,24 @@ export function buildEditorBodyMenuItemsSpec(
   handlers: EditorBodyMenuHandlers,
   hasLink: boolean,
 ): MenuItemSpec[] {
-  const items: MenuItemSpec[] = [
+  const items: MenuItemSpec[] = [];
+  // What the selected text can become comes first, where the eye lands.
+  if (handlers.onAddToProjects) {
+    items.push(
+      {
+        kind: "item",
+        id: "add-to-projects",
+        text: "Add to Projects",
+        action: handlers.onAddToProjects,
+      },
+      { kind: "separator" },
+    );
+  }
+  items.push(
     { kind: "item", id: "cut", text: "Cut", action: handlers.onCut },
     { kind: "item", id: "copy", text: "Copy", action: handlers.onCopy },
     { kind: "item", id: "paste", text: "Paste", action: handlers.onPaste },
-  ];
+  );
 
   if (handlers.onCopyBlockReference && handlers.onPasteBlockReference) {
     items.push({ kind: "separator" });
@@ -152,16 +165,6 @@ export function buildEditorBodyMenuItemsSpec(
       text: "Move selection to page…",
       action: handlers.onMoveToPage,
       accelerator: chordToAccelerator(MOVE_SELECTION_TO_PAGE_CHORD),
-    });
-  }
-
-  if (handlers.onAddToProjects) {
-    if (!handlers.onMoveToPage) items.push({ kind: "separator" });
-    items.push({
-      kind: "item",
-      id: "add-to-projects",
-      text: "Add to Projects",
-      action: handlers.onAddToProjects,
     });
   }
 

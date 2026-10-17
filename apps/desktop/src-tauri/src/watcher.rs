@@ -370,6 +370,30 @@ fn publish_prepared_index_for_snapshot(
     }
 }
 
+/// Add a markdown note the app just wrote to the index when the index
+/// doesn't have it yet (a note made in the app: Add project, Add to
+/// Projects, a new note). The watcher skips the events of the app's own
+/// writes, the create that would add it among them, so without this the
+/// note is missing from search, spaces and the Projects board until the
+/// next full index.
+pub fn index_written_file(state: &WorkspaceState, path: &Path, modified_at: u64) {
+    let Some((root, epoch)) = state.workspace_snapshot() else {
+        return;
+    };
+    if path.extension().and_then(|e| e.to_str()) != Some("md")
+        || !path.starts_with(&root)
+        || should_ignore(path, &root)
+        || is_workspace_ignored(state, path, false)
+        || state.file_index.read().iter().any(|file| file.path == path)
+    {
+        return;
+    }
+    let found = vec![discovered_file(path, modified_at)];
+    publish_prepared_index_for_snapshot(state, &root, epoch, || {
+        prepare_subtree_merge(state, found.clone(), &root)
+    });
+}
+
 #[cfg(test)]
 fn add_subtree_to_index(state: &WorkspaceState, dir: &Path, root: &Path) {
     let prepared = prepare_subtree_merge(state, discover_subtree(dir), root);
@@ -986,6 +1010,40 @@ mod tests {
         assert!(dirs.contains(&nested));
         assert!(dirs.contains(&nested.join("deeper")));
         assert!(dirs.contains(&root), "ancestors register up to the root");
+    }
+
+    #[test]
+    fn a_note_the_app_writes_joins_the_index_once() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        let state = WorkspaceState::default();
+        *state.workspace_root.write() = Some(root.clone());
+        let note = root.join("1. Project/Trip.md");
+        std::fs::create_dir_all(note.parent().unwrap()).unwrap();
+        std::fs::write(&note, "---\nType: Project\n---\n").unwrap();
+        // The watcher drops this note's create: the app wrote it.
+        record_write(&state, &note);
+        assert!(is_self_write(&state, &note));
+
+        index_written_file(&state, &note, 5);
+        index_written_file(&state, &note, 6);
+        let index = state.file_index.read();
+        assert_eq!(index.len(), 1, "added once");
+        assert_eq!(index[0].path, note);
+        assert_eq!(index[0].relative_path, "1. Project/Trip.md");
+        drop(index);
+        assert!(state
+            .dirs_with_markdown
+            .read()
+            .contains(&root.join("1. Project")));
+
+        index_written_file(&state, &root.join("notes.txt"), 1);
+        index_written_file(&state, Path::new("/elsewhere/Other.md"), 1);
+        assert_eq!(
+            state.file_index.read().len(),
+            1,
+            "only markdown in the workspace"
+        );
     }
 
     #[test]

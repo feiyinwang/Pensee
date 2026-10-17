@@ -272,7 +272,7 @@ Opened full screen or **Edit here** over a note.
 Select sentences in any note, right-click, **Add to Projects**: Claude makes a
 project of each one that takes more than two steps, keeping names you wrote.
 **Spec:** SPECs/project-views-spec.md, SPECs/add-to-projects-spec.md
-**Code:** `src/components/spaces/project-views.tsx`, `src/components/arc/blocks/kanban-board/`, `src/lib/projects.ts`, `src/lib/project-template.ts`, `src/hooks/use-spaces.ts` (createProjectNote, adoptProjectNote, findNoteNamed), `src/lib/projects-from-text.ts`, `src/components/editor-area/add-to-projects.ts`, `src/components/editor-area/editor-context-menu.ts`, `src/components/editor-area/editor-body-menu.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`
+**Code:** `src/components/spaces/project-views.tsx`, `src/components/arc/blocks/kanban-board/`, `src/lib/projects.ts`, `src/lib/project-template.ts`, `src/hooks/use-spaces.ts` (createProjectNote, adoptProjectNote, findNoteNamed), `src/lib/projects-from-text.ts`, `src/components/editor-area/add-to-projects.ts`, `src/components/editor-area/editor-context-menu.ts`, `src/components/editor-area/editor-body-menu.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`, `src-tauri/src/commands/fs.rs` (write_file), `src-tauri/src/watcher.rs` (index_written_file)
 
 | ID     | Journey                                   | Expected                                             | Check               |
 | ------ | ----------------------------------------- | ---------------------------------------------------- | ------------------- |
@@ -282,9 +282,10 @@ project of each one that takes more than two steps, keeping names you wrote.
 | PRJ-04 | **+** on a column, type a new name, Enter | A project note is created with that Status and shows | legacy: project-add |
 | PRJ-05 | Click a card                              | Its note opens; **Back** returns to Projects         | manual              |
 | PRJ-06 | Done holds more cards than fit            | **Show N more** unfolds them, **Show fewer** folds   | manual              |
-| PRJ-07 | Select three sentences, each a plan of three steps or more, plus "Call Sam."; right-click, **Add to Projects** | **Adding to Projects…**, then a project note per plan, each holding its sentence, a name already written (`**Garden**:`, `[[Trip]]`) kept; none for "Call Sam."; the notice names them, says 1 sentence isn't a project, and offers **Open Projects** | you                 |
+| PRJ-07 | Select three sentences, each a plan of three steps or more, plus "Call Sam."; right-click | **Add to Projects** is the first item; picking it shows **Adding to Projects…**, then a project note per plan in **No status**, each holding its sentence, a name already written (`**Garden**:`, `[[Trip]]`) kept; none for "Call Sam."; the notice names them, says 1 sentence isn't a project, and offers **Open Projects** | you |
 | PRJ-08 | Select three sentences about one piece of work; **Add to Projects**                                            | One project note holding all three sentences                                                                                                                                                                                                          | you                 |
 | PRJ-09 | Right-click in a note with nothing selected                                                                    | No **Add to Projects** in the menu                                                                                                                                                                                                                    | you                 |
+| PRJ-10 | With Projects open, a project note with an empty `Status:` is written by the app (as Add to Projects writes one) | It shows on the board in **No status** within a few seconds, without a restart | auto: projects |
 
 ## Library — LIB
 
