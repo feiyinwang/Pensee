@@ -1241,10 +1241,10 @@ class PenPlugin {
   }
 
   /** `#`: the selected lines turned into understanding: one topic per
-   *  subject, each with the theory it comes to, how it works, the rules that
-   *  follow and what's still open, in the pen's ink, and your own words
-   *  under Evidence, untouched. In their place until Enter keeps it or Esc
-   *  puts your lines back. */
+   *  subject, each a tree of labelled points in the pen's ink, shaped by how
+   *  your writing hangs together, with your own words, untouched, under the
+   *  points they back. In their place until Enter keeps it or Esc puts your
+   *  lines back. */
   private async organize(direction = ""): Promise<void> {
     const { state } = this.view;
     const lines = docLines(state);
@@ -1291,7 +1291,7 @@ class PenPlugin {
       // Unreadable: ask once more, in the same conversation.
       topics ??= organizeReply(
         await conversation.send(
-          "That reply couldn't be read. Reply with JSON only, in the shape asked: every topic with a name and a theory, every sentence in one topic's evidence.",
+          "That reply couldn't be read. Reply with JSON only, in the shape asked: every topic with a name and labelled points, every sentence in one point's says.",
         ),
         yours,
       );
@@ -1324,7 +1324,7 @@ class PenPlugin {
             // Lined up with the outline's words: past the bullets' slot.
             depth: 1,
             bullet: false,
-            text: `${count} ${count === 1 ? "topic" : "topics"}, a theory each. Your words are under Evidence.`,
+            text: `${count} ${count === 1 ? "topic" : "topics"}. Your words sit under the points they back.`,
             busy: false,
             keys: [
               ["↵", "keep"],

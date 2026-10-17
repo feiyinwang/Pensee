@@ -12,8 +12,8 @@ own ink, right under the line you're on. It never writes your conclusion:
   make the call;
 - it **connects** a line to what you wrote before in other notes, and you
   write how they connect;
-- it **organizes** your lines into topics, each a theory with your words
-  as its evidence.
+- it **organizes** your lines into topics, each a tree of labelled points
+  shaped by your writing, with your words under the points they back.
 
 Decided from the prototype `apps/desktop/proto/thinking-pen` (2026-10-13):
 Answer → *Sealed*, Check → *Both sides*, Connect → *Inline*. Rejected there:
@@ -44,7 +44,7 @@ notes are gone. The look is unchanged from the first Second pen
   | `!` **Answer** | writes an answer, sealed, with a line under it for your take. It opens once you've written yours |
   | `@` **Check** | the evidence for and against the line, each with a paper (or *no paper*), then a line for your call. No verdict |
   | `[[` **Connect** | up to three short points from what you wrote in other notes, each saying what it is (Supports, Example…) and linked to its note |
-  | `#` **Organize** | splits the selected lines (one paragraph works too) into topics, each with a theory, how it works, rules and open questions; your words stay under Evidence |
+  | `#` **Organize** | splits the selected lines (one paragraph works too) into topics, each a tree of bold-labelled points whose branches and depth follow your writing; your words stay, untouched, under the points they back |
 
   On an empty line: **Answer** only (to what you type).
 - **Picking a pill keeps the box's width**: it stays as wide as its row
@@ -249,52 +249,77 @@ one by one, and only when you ask.
 ### Organize
 
 Organize builds **understanding**, not a tidier copy of what you wrote: it
-splits your text into topics and abstracts each into a small theory you can
-apply again. Your own words stay, untouched, as the evidence under it.
+splits your text into topics and grows each into a tree of short points you
+can apply again. **The tree's shape comes from your writing, not a
+template**: its branches are the relations between your sentences, and its
+depth is as deep as your own ideas nest. Your own words stay, untouched,
+under the points they back.
 
 - **Topics first.** Each separate subject is its own topic (one if it is all
   one subject), named in 1 to 4 words. At the top level of the note a topic
   is a heading, one level under the heading above your lines (`##` when there
-  is none); inside a list it is a bold item (`- **Stress**`) with its parts a
+  is none); inside a list it is a bold item (`- **Stress**`) with its points a
   level in.
-- **Each topic, in the pen's ink** (a hidden `^ai-g-…` on every line it
-  writes, key phrases in bold):
-  - `**Theory:**` exactly one sentence (at most 30 words asked, 45
-    accepted): what you can now believe, a general claim that reaches past
-    this one case. Never a summary of what happened.
-  - `**How it works:**` the mechanism: 2 to 5 keyed steps or parts
-    (`**Trigger:** …`), only how it happens, never what to do. Left out when
-    the text gives no mechanism.
-  - `**Rules:**` 1 to 4 things to do next time, one short sentence each.
-    Left out when nothing follows.
-  - `**Open:**` 0 to 3 questions still unresolved, naming another topic when
-    one leads there; inline when there is one.
-  - `**Evidence:**` your writing, as you wrote it.
-    At each level the parts are distinct kinds (why it is so, what to do,
-    what is unknown, what it rests on), so they don't overlap.
+- **Every point is a line in the pen's ink** (a hidden `^ai-g-…`), led by a
+  bold label of 1 to 3 words naming what kind of line it is, picked to fit
+  the writing: `**Reason:** …`, `**Example:** …`, `**Trigger:** …`,
+  `**Feeling:** …`, `**Objection:** …`, `**Rule:** …`. The pen's text is one
+  short sentence (at most 25 words asked, 45 accepted), or nothing when the
+  label only heads the points under it (`**Rules:**` over the rules).
+- **Helping rules, not a template** (the prompt):
+  - The first point says what the topic comes to: one sentence, a general
+    claim that reaches past this one case, never a summary of what
+    happened, labelled for what it is (Theory for a lesson from experience,
+    Claim for an argument, Pattern, Question…).
+  - A level exists only where the writing has one: a point gets points
+    under it only when the text gives two or more distinct things there;
+    with one, the point says it itself. The pen counts your own levels (the
+    lines you indented, the sentences that explain or show another) and
+    goes as deep as they do, no deeper: flat writing gives a shallow tree,
+    nested ideas a deeper one.
+  - No branch the text doesn't support: no Rules or Open questions only to
+    fill a shape.
+  - Points side by side are the same kind at the same level of detail, none
+    overlap, and together they cover what they sit under.
 - **Your words are never rewritten.** The pen gets your text numbered
-  sentence by sentence and says which sentences each topic comes from. Code
-  puts them under that topic's Evidence: a line whose sentences all went to
-  one topic stays whole, with its task box, block id and the nesting you
-  wrote (never more than a level deeper than the line before it); a line
-  split across topics goes in as runs of its sentences, its box and block id
-  with the first. A sentence no topic claimed goes with the one before it;
-  a topic with no sentences goes. A line you indented under another is asked
-  to stay in its topic.
+  sentence by sentence and says which sentences sit directly under each
+  point (`says`), each under the most specific point it backs. Code puts
+  them there, right under the point, before the points under it: a line
+  whose sentences all went under one point stays whole, with its task box,
+  block id and the nesting you wrote (never more than a level deeper than
+  the line before it); a line split across points goes in as runs of its
+  sentences, its box and block id with the first.
+- **Held to its word in code**: at most 4 levels of points (sentences under a
+  deeper point go to the one at the fourth level); a point without a valid
+  label hands its sentences to the point above and its points move up; a
+  sentence no point claimed goes with the one before it; a line you indented
+  under another goes under the same point or one beneath it, never another
+  branch; a point with no text, none of your words and nothing under it
+  goes; a topic with no point of the pen's own text goes, and so does one
+  left with none of your sentences.
 - **Model**: Organize asks Sonnet when the pen is on Haiku; Opus stays Opus.
   A reply that can't be read is asked once more, in the same conversation;
   still unreadable: _Couldn't organize these lines. Try again._
-- The outline replaces your lines, tinted, and the text waits: _4 topics, a
-  theory each. Your words are under Evidence._ **Enter** keeps it, **Esc**
+- The outline replaces your lines, tinted, and the text waits: _4 topics.
+  Your words sit under the points they back._ **Enter** keeps it, **Esc**
   puts your lines back exactly as they were.
 - This task is the one exception to the pen's "one line, never your
   conclusion": the prompt says so.
+
+Changed 2026-10-17, from the writer's feedback on the fixed Theory shape:
+every topic came out the same (Theory · How it works · Rules · Open ·
+Evidence, always three levels, your words at the bottom). Kept: the
+multi-level tree, a bold label on every line, your words untouched. Changed:
+which branches a topic has and how deep it goes now come from the writing,
+and your words sit under the point they back instead of one Evidence list.
+This is the **Adaptive** direction the picker below kept for later.
 
 Decided from a picker prototype (2026-10-16), run on the writer's own
 journal paragraph:
 
 - Direction: **Theory**: topic → one-sentence theory → how it works · rules
-  · open → your words as evidence.
+  · open → your words as evidence (replaced by the adaptive tree above,
+  2026-10-17).
 - Rejected: **the old pyramid** (every line kept as a point in your words,
   keyed Example / Detail: it handed the story back, one long tree with no
   topics); **Rulebook** (topic → rule → when / do / because: only actions,
@@ -304,7 +329,7 @@ journal paragraph:
   writing: images and tension for dreams, reasons and objections for
   essays: more general, kept as the next step if Theory feels too narrow for
   dream logs or fiction).
-- Not yet: Evidence can't be folded; the editor has no list folding.
+- Not yet: a point's words can't be folded; the editor has no list folding.
 
 ### What it knows
 

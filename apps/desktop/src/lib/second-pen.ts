@@ -490,17 +490,17 @@ function taskText(input: PenPromptInput): string {
         "The writer's text to organize, sentence by sentence, numbered (line says which of their lines it is from):",
         `<text>\n${sentences.map((s, k) => `<s n="${k + 1}" line="${s.line + 1}">${s.text}</s>`).join("\n")}\n</text>`,
         "This task is the exception to writing one line: you write the whole outline, and the ideas in it are yours.",
-        "Don't hand the writer's story back to them. Build understanding from it: what it shows, as a theory they can apply again. Their own words stay as they are, as evidence under it: you never rewrite them.",
+        "Don't hand the writer's story back to them. Build understanding from it: what it shows, as ideas they can apply again. Their own words stay as they are, under the points they back: you never rewrite them.",
         "First split the text into topics: each separate subject is its own topic, one if it is all one subject. A topic's name: 1 to 4 words.",
-        "For each topic:",
-        '- "theory": exactly one sentence, at most 30 words: what the writer can now believe about this, a general claim that reaches past this one case. Never a summary of what happened.',
-        '- "how": how it works, the mechanism behind the theory: 2 to 5 steps or parts, each a "key" of 1 to 3 words ("Trigger", "Cause", "Loop") and a "text" of one short sentence. Only how it happens, never what to do about it: that goes in rules. Side by side they are the same kind of thing, none overlap, and together they explain the theory. Empty when the text gives no mechanism.',
-        '- "rules": what follows for next time: 1 to 4 rules the writer can apply, each one short sentence (at most 20 words) saying what to do. None overlap. Empty when nothing follows.',
-        '- "open": what is still unknown or unresolved, as questions: 0 to 3, one short sentence each. Name the other topic when a question leads to it.',
-        '- "evidence": the numbers of the sentences this topic comes from.',
-        "Every sentence goes in exactly one topic's evidence. A line the writer indented under another always goes in the same topic as it. Never claim what the text doesn't support; never drop a topic it raises.",
+        "Then grow each topic's tree from the writing itself. There is no fixed template: read how the writer's ideas lean on each other (a claim, a reason for it, a case of it, a step, a cause, a feeling, an image, an objection, a question it raises, what follows for next time) and let those relations make the branches and the levels.",
+        "- The first point says what the topic comes to: one sentence, at most 30 words, a general claim that reaches past this one case, never a summary of what happened. Label it for what it is: Theory for a lesson from experience, Claim for an argument, Pattern, Question, Image…",
+        "- A level exists only where the writing has one: a point gets points under it only when the text gives two or more distinct things that belong there; with one, say it in the point itself. Count the writer's own levels (the lines they indented, the sentences that explain or show another) and go as deep as they do, no deeper: flat writing makes a shallow tree, writing whose ideas nest makes a deeper one, 4 levels at most. Never add a branch the text doesn't support, no rules or questions only to fill the shape.",
+        "- Points side by side are the same kind of thing at the same level of detail, none overlap, and together they cover what they sit under.",
+        '- Every point: a "label" of 1 to 3 words naming what kind of line it is, picked to fit this writing (Reason, Example, Step, Trigger, Feeling, Objection, Rule, Open…), and a "text" of one short sentence in your words, at most 25 words. The text may be "" only when the label heads what sits under it ("Rules" over the rules).',
+        '- "says": the numbers of the writer\'s sentences that sit directly under the point, as what backs it. Put each sentence under the most specific point it backs.',
+        "Every sentence is in exactly one point's says. A line the writer indented under another goes under the same point as it, or a point beneath that one. Never claim what the text doesn't support; never drop a topic it raises.",
         "Write in the language of the text, plainly, as the writer would write it (I, my).",
-        'Reply with JSON only: {"topics": [{"name": "…", "theory": "…", "how": [{"key": "…", "text": "…"}], "rules": ["…"], "open": ["…"], "evidence": [1, 2]}]}',
+        'Reply with JSON only: {"topics": [{"name": "…", "points": [{"label": "…", "text": "…", "says": [1, 2], "under": [same shape]}]}]}',
       ].join("\n");
     }
   }
@@ -911,22 +911,27 @@ export function sourcePartStart(text: string): number | null {
 
 /* ------------------------------------------------------------- organize */
 
-/** A topic of an organized text: its name, the theory it comes to (what you
- *  can now believe, past this one case), how it works (keyed steps), the
- *  rules that follow, what's still open, and your own words under Evidence. */
+/** A topic of an organized text: its name and its tree of points. */
 export interface OrganizedTopic {
   name: string;
-  theory: string;
-  how: { key: string; text: string }[];
-  rules: string[];
-  open: string[];
-  /** Your words, in order. */
-  evidence: EvidencePiece[];
+  points: OrganizedPoint[];
 }
 
-/** Your writing under Evidence: a whole line of yours as you wrote it
- *  (`sentences` null), or some of its sentences when the rest went to
- *  another topic (their indexes in `organizeSentences`). */
+/** A point of a topic's tree, grown from how your writing hangs together:
+ *  what kind of line it is (`label`, in bold), the pen's sentence (empty when
+ *  the label only heads what sits under it), your words that back it, and
+ *  the points under it. */
+export interface OrganizedPoint {
+  label: string;
+  text: string;
+  /** Your words, in order. */
+  evidence: EvidencePiece[];
+  under: OrganizedPoint[];
+}
+
+/** Your writing under a point: a whole line of yours as you wrote it
+ *  (`sentences` null), or some of its sentences when the rest went under
+ *  another point (their indexes in `organizeSentences`). */
 export interface EvidencePiece {
   line: number;
   sentences: number[] | null;
@@ -941,12 +946,13 @@ export function organizeSentences(lines: readonly string[]): { line: number; tex
   });
 }
 
-/** A key phrase: one to three words, no colon. */
-const KEY_RE = /^\p{L}[\p{L}'’-]*(?: [\p{L}'’-]+){0,2}$/u;
+/** A label: one to three words, no colon. */
+const KEY_RE = /^\p{L}[\p{L}'’-]*(?: [\p{L}\p{N}'’-]+){0,2}$/u;
 /** What a reply may say, a little past what the prompt asks. */
 const NAME_MAX_WORDS = 6;
-const THEORY_MAX_WORDS = 45;
-const POINT_MAX_WORDS = 32;
+const POINT_MAX_WORDS = 45;
+/** How deep a topic's points go, whatever the reply nests. */
+const MAX_LEVELS = 4;
 
 /** A text's sentences: split after . ! ? (a link's dots have no space after). */
 export function sentencesOf(text: string): string[] {
@@ -961,13 +967,16 @@ const bodyOf = (line: string) => itemText(line).replace(/^#{1,6}\s+/, "");
 const boxOf = (line: string) => ITEM_RE.exec(line)?.[4] ?? "";
 const blockIdOf = (line: string) => BLOCK_ID_AT_END_RE.exec(line)?.[1] ?? null;
 
-/** An `organize` reply, held to its word: topics with a name and a theory,
- *  every sentence of yours under exactly one topic's Evidence. A sentence no
- *  topic claimed goes with the one before it (the first, with the next one
- *  claimed), and a line you indented under another goes with it; a topic
- *  left with none goes. A line whose sentences all went to one topic stays
- *  whole, as you wrote it. Null when nothing usable came
- *  back. */
+/** An `organize` reply, held to its word: topics with a name and a tree of
+ *  labelled points, every sentence of yours under exactly one point. A point
+ *  without a label hands its sentences to the point above and its points move
+ *  up; points past the fourth level hand theirs to the one at it. A sentence
+ *  no point claimed goes with the one before it (the first, with the next one
+ *  claimed), and a line you indented under another goes under the same point
+ *  or one beneath it. A topic with no point of the pen's own goes, and so
+ *  does one left with none of your sentences. A line whose sentences all went
+ *  under one point stays whole, as you wrote it. Null when nothing usable
+ *  came back. */
 export function organizeReply(reply: string, lines: readonly string[]): OrganizedTopic[] | null {
   const value = jsonIn(reply) as { topics?: unknown } | null;
   if (!Array.isArray(value?.topics)) return null;
@@ -981,38 +990,71 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
       .trim();
     return text && wordCount(text) <= max ? text : "";
   };
-  const textsOf = (raw: unknown): string[] =>
-    (Array.isArray(raw) ? raw : []).map((r) => textOf(r, POINT_MAX_WORDS)).filter(Boolean);
-  const found: Omit<OrganizedTopic, "evidence">[] = [];
-  for (const raw of value.topics) {
-    const item = (typeof raw === "object" ? raw : null) as Record<string, unknown> | null;
+  const asObject = (raw: unknown) =>
+    (raw && typeof raw === "object" ? raw : null) as Record<string, unknown> | null;
+  const listOf = (raw: unknown): unknown[] => (Array.isArray(raw) ? raw : []);
+  const nodes: { label: string; text: string; under: number[]; parent: number }[] = [];
+  const claim = (raw: unknown, at: number) => {
+    const k = typeof raw === "number" && Number.isInteger(raw) ? raw - 1 : -1;
+    if (k >= 0 && k < owner.length && owner[k] === -1) owner[k] = at;
+  };
+  // Too deep: every sentence under it goes to the point at the last level.
+  const claimAll = (raw: unknown, at: number) => {
+    for (const item of listOf(raw).map(asObject)) {
+      for (const n of listOf(item?.says)) claim(n, at);
+      claimAll(item?.under, at);
+    }
+  };
+  const grow = (raw: unknown, parent: number, level: number, into: number[]) => {
+    for (const item of listOf(raw).map(asObject)) {
+      const label =
+        typeof item?.label === "string" ? item.label.replace(/[*:：]/gu, "").trim() : "";
+      if (!KEY_RE.test(label)) {
+        // No label: its words go to the point above, its points move up.
+        if (parent >= 0) for (const n of listOf(item?.says)) claim(n, parent);
+        grow(item?.under, parent, level, into);
+        continue;
+      }
+      const at = nodes.length;
+      nodes.push({ label, text: textOf(item?.text, POINT_MAX_WORDS), under: [], parent });
+      into.push(at);
+      for (const n of listOf(item?.says)) claim(n, at);
+      if (level < MAX_LEVELS) grow(item?.under, at, level + 1, nodes[at]!.under);
+      else claimAll(item?.under, at);
+    }
+  };
+  const found: { name: string; points: number[] }[] = [];
+  for (const item of value.topics.map(asObject)) {
     const name = textOf(item?.name ?? item?.topic, NAME_MAX_WORDS)
       .replace(/[#*:：]/gu, "")
       .trim();
-    const theory = textOf(item?.theory, THEORY_MAX_WORDS);
-    if (!name || !theory) continue;
-    const t = found.length;
-    for (const n of Array.isArray(item?.evidence) ? item.evidence : []) {
-      const k = typeof n === "number" && Number.isInteger(n) ? n - 1 : -1;
-      if (k >= 0 && k < owner.length && owner[k] === -1) owner[k] = t;
+    if (!name) continue;
+    const start = nodes.length;
+    const points: number[] = [];
+    grow(item?.points, -1, 1, points);
+    // Only your words back, no point of the pen's: not a topic.
+    if (!nodes.slice(start).some((n) => n.text)) {
+      owner.forEach((o, k) => {
+        if (o >= start) owner[k] = -1;
+      });
+      nodes.length = start;
+      continue;
     }
-    const how = (Array.isArray(item?.how) ? item.how : []).flatMap((h) => {
-      const step = (typeof h === "object" ? h : null) as Record<string, unknown> | null;
-      const key = typeof step?.key === "string" ? step.key.replace(/[*:：]/gu, "").trim() : "";
-      const text = textOf(step?.text, POINT_MAX_WORDS);
-      return KEY_RE.test(key) && text ? [{ key, text }] : [];
-    });
-    found.push({ name, theory, how, rules: textsOf(item?.rules), open: textsOf(item?.open) });
+    found.push({ name, points });
   }
-  const first = owner.find((t) => t >= 0);
+  const first = owner.find((o) => o >= 0);
   if (first === undefined) return null;
   let last = first;
   for (let k = 0; k < owner.length; k++) {
     if (owner[k] === -1) owner[k] = last;
     last = owner[k]!;
   }
-  // A line you indented under another goes with it: the nesting you wrote
-  // never splits across topics.
+  // A line you indented under another goes under its point or one beneath:
+  // the nesting you wrote never splits across branches.
+  const within = (at: number, point: number) => {
+    for (let x = at; x >= 0; x = nodes[x]!.parent) if (x === point) return true;
+    return false;
+  };
   const stack: { width: number; line: number }[] = [];
   lines.forEach((line, k) => {
     const width = indentWidth(line);
@@ -1021,21 +1063,21 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
     if (parent !== undefined) {
       let at = sentences.length - 1;
       while (sentences[at]!.line !== parent) at--;
-      const topic = owner[at]!;
+      const point = owner[at]!;
       sentences.forEach((s, j) => {
-        if (s.line === k) owner[j] = topic;
+        if (s.line === k && !within(owner[j]!, point)) owner[j] = point;
       });
     }
     stack.push({ width, line: k });
   });
-  const evidence: EvidencePiece[][] = found.map(() => []);
+  const evidence: EvidencePiece[][] = nodes.map(() => []);
   for (let line = 0; line < lines.length; line++) {
     const mine = sentences.flatMap((s, k) => (s.line === line ? [k] : []));
     if (mine.every((k) => owner[k] === owner[mine[0]!])) {
       evidence[owner[mine[0]!]!]!.push({ line, sentences: null });
       continue;
     }
-    // Split across topics: each run of sentences goes to its own.
+    // Split across points: each run of sentences goes to its own.
     for (const k of mine) {
       const pieces = evidence[owner[k]!]!;
       const run = pieces[pieces.length - 1];
@@ -1046,15 +1088,28 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
       }
     }
   }
-  return found.flatMap((t, k) => (evidence[k]!.length ? [{ ...t, evidence: evidence[k]! }] : []));
+  // A point with nothing to say and nothing under it goes.
+  const build = (at: number): OrganizedPoint[] => {
+    const node = nodes[at]!;
+    const under = node.under.flatMap(build);
+    return node.text || evidence[at]!.length || under.length
+      ? [{ label: node.label, text: node.text, evidence: evidence[at]!, under }]
+      : [];
+  };
+  const backed = (p: OrganizedPoint): boolean => p.evidence.length > 0 || p.under.some(backed);
+  return found.flatMap((t) => {
+    const points = t.points.flatMap(build);
+    return points.some(backed) ? [{ name: t.name, points }] : [];
+  });
 }
 
 /** Organized topics as Markdown lines. With `heading` (`##`…) each topic is a
- *  heading, its parts a list under it; without, a bold item at `indent` with
- *  its parts a level in. The pen's lines carry an id (`id`, its ink); your
- *  words under Evidence keep their task box and block id, and the nesting
- *  you wrote among them, never more than a level deeper than the line
- *  before. */
+ *  heading, its points a list under it; without, a bold item at `indent` with
+ *  its points a level in. Every point is a line of the pen's (an id from
+ *  `id`, its ink) led by its label in bold, the points under it a level in;
+ *  your words sit right under the point they back, keeping their task box and
+ *  block id, and the nesting you wrote among them, never more than a level
+ *  deeper than the line before. */
 export function organizedLines(
   topics: readonly OrganizedTopic[],
   lines: readonly string[],
@@ -1085,37 +1140,24 @@ export function organizedLines(
     const block = opens ? blockIdOf(line) : null;
     return `${at}- ${opens ? boxOf(line) : ""}${text}${block ? ` ^${block}` : ""}`;
   };
+  const point = (p: OrganizedPoint, at: string): string[] => {
+    const under = `${at}  `;
+    let depth = -1;
+    return [
+      pen(at, p.text ? `**${p.label}:** ${p.text}` : `**${p.label}:**`),
+      ...p.evidence.map((piece) => {
+        depth = Math.min(levels[piece.line]!, depth + 1);
+        return yours(piece, under + "  ".repeat(depth));
+      }),
+      ...p.under.flatMap((q) => point(q, under)),
+    ];
+  };
   return topics.flatMap((topic, n) => {
     const head = heading
       ? [...(n ? [""] : []), `${heading} ${topic.name}`]
       : [pen(indent, `**${topic.name}**`)];
     const at = heading ? indent : `${indent}  `;
-    const under = `${at}  `;
-    let depth = -1;
-    const evidence = topic.evidence.map((piece) => {
-      depth = Math.min(levels[piece.line]!, depth + 1);
-      return yours(piece, under + "  ".repeat(depth));
-    });
-    return [
-      ...head,
-      pen(at, `**Theory:** ${topic.theory}`),
-      ...(topic.how.length
-        ? [
-            pen(at, "**How it works:**"),
-            ...topic.how.map((h) => pen(under, `**${h.key}:** ${h.text}`)),
-          ]
-        : []),
-      ...(topic.rules.length
-        ? [pen(at, "**Rules:**"), ...topic.rules.map((r) => pen(under, r))]
-        : []),
-      ...(topic.open.length === 1
-        ? [pen(at, `**Open:** ${topic.open[0]}`)]
-        : topic.open.length
-          ? [pen(at, "**Open:**"), ...topic.open.map((q) => pen(under, q))]
-          : []),
-      pen(at, "**Evidence:**"),
-      ...evidence,
-    ];
+    return [...head, ...topic.points.flatMap((p) => point(p, at))];
   });
 }
 

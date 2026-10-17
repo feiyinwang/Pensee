@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-17
+
+- **# Organize** no longer pours every topic into the same five parts. Each topic is now a tree grown from how your writing hangs together: a reason with its examples under it, the steps of something you described, a feeling and what set it off. Flat notes give a shallow tree, ideas that nest give a deeper one (four levels at most), and parts your writing doesn't support, like Rules or Open questions, are left out. Every line the pen writes still starts with a bold label for what kind of line it is (**Theory:**, **Reason:**, **Example:**…), and your own words, unchanged, now sit right under the point they back instead of all together under **Evidence** at the end.
+
 ## 2026-10-16
 
 - In a video's transcript, **Back to now** now shows for any scroll that leaves the line being said, not only a wheel, a touch or a press on the scrollbar. Click it and the transcript follows the video again.

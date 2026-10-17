@@ -502,8 +502,10 @@ describe("organize", () => {
     let n = 0;
     return () => `ai-g-${String(n++).padStart(4, "0")}`;
   };
+  const topicsOf = (topics: unknown[], lines: readonly string[]) =>
+    organizeReply(JSON.stringify({ topics }), lines)!;
 
-  test("the prompt numbers your sentences and asks for topics, a theory each, not your story back", () => {
+  test("the prompt numbers your sentences and asks for a tree grown from your writing, not a template", () => {
     const prompt = penPrompt({
       title: "T",
       note: "",
@@ -515,59 +517,71 @@ describe("organize", () => {
     expect(prompt).toContain('<s n="2" line="1">b</s>');
     expect(prompt).toContain('<s n="3" line="2">c</s>');
     expect(prompt).toContain("Don't hand the writer's story back");
-    expect(prompt).toContain('"theory"');
-    expect(prompt).toContain("Every sentence goes in exactly one topic's evidence");
+    expect(prompt).toContain("There is no fixed template");
+    expect(prompt).toContain("go as deep as they do, no deeper");
+    expect(prompt).toContain("Every sentence is in exactly one point's says");
   });
 
-  test("one paragraph, two topics: each a theory, how it works, rules, open, then your sentences", () => {
-    const topics = organizeReply(
-      JSON.stringify({
-        topics: [
-          {
-            name: "**Stress**",
-            theory: "**Theory:** Small losses set off an old alarm.",
-            how: [
-              { key: "Trigger", text: "A small loss." },
-              { key: "far too many words for a key", text: "dropped" },
-            ],
-            rules: ["Ask if it will matter in a year."],
-            open: ["History or wiring?"],
-            evidence: [1, 2],
-          },
-          {
-            name: "Information diet",
-            theory: "Understanding is made by output.",
-            rules: ["Write more than I read.", "Cherry-pick sources."],
-            open: ["Why idle?", "How much is too much?"],
-            evidence: [3],
-          },
-        ],
-      }),
+  test("each topic keeps the shape the pen grew: labelled points, your sentences under the one they back", () => {
+    const topics = topicsOf(
+      [
+        {
+          name: "**Stress**",
+          points: [
+            {
+              label: "**Theory**",
+              text: "**Theory:** Small losses set off an old alarm.",
+              says: [2],
+              under: [{ label: "Trigger", text: "A small loss.", says: [1] }],
+            },
+          ],
+        },
+        {
+          name: "Information diet",
+          points: [
+            { label: "Claim", text: "Understanding is made by output.", says: [4] },
+            {
+              label: "Rules",
+              text: "",
+              under: [
+                { label: "Write", text: "Write more than I read." },
+                { label: "Pick", text: "Cherry-pick sources." },
+              ],
+            },
+          ],
+        },
+      ],
       paragraph,
-    )!;
+    );
     expect(topics.map((t) => t.name)).toEqual(["Stress", "Information diet"]);
-    // Sentence 4, claimed by none, goes with the one before it.
+    // Sentence 3, claimed by none, goes with the one before it.
     expect(organizedLines(topics, paragraph, "", "##", id())).toEqual([
       "## Stress",
       "- **Theory:** Small losses set off an old alarm. ^ai-g-0000",
-      "- **How it works:** ^ai-g-0001",
-      "  - **Trigger:** A small loss. ^ai-g-0002",
-      "- **Rules:** ^ai-g-0003",
-      "  - Ask if it will matter in a year. ^ai-g-0004",
-      "- **Open:** History or wiring? ^ai-g-0005",
-      "- **Evidence:** ^ai-g-0006",
-      "  - I lost the card in a dream. I was so stressed.",
+      "  - I was so stressed. My brain idles when too much comes in.",
+      "  - **Trigger:** A small loss. ^ai-g-0001",
+      "    - I lost the card in a dream.",
       "",
       "## Information diet",
-      "- **Theory:** Understanding is made by output. ^ai-g-0007",
-      "- **Rules:** ^ai-g-0008",
-      "  - Write more than I read. ^ai-g-0009",
-      "  - Cherry-pick sources. ^ai-g-0010",
-      "- **Open:** ^ai-g-0011",
-      "  - Why idle? ^ai-g-0012",
-      "  - How much is too much? ^ai-g-0013",
-      "- **Evidence:** ^ai-g-0014",
-      "  - My brain idles when too much comes in. Output beats input.",
+      "- **Claim:** Understanding is made by output. ^ai-g-0002",
+      "  - Output beats input.",
+      "- **Rules:** ^ai-g-0003",
+      "  - **Write:** Write more than I read. ^ai-g-0004",
+      "  - **Pick:** Cherry-pick sources. ^ai-g-0005",
+    ]);
+  });
+
+  test("flat writing stays flat: one point, your lines straight under it", () => {
+    const yours = ["- naps help", "- coffee helps"];
+    const topics = topicsOf(
+      [{ name: "Energy", points: [{ label: "Pattern", text: "Rest beats push.", says: [1, 2] }] }],
+      yours,
+    );
+    expect(organizedLines(topics, yours, "", "##", () => "x")).toEqual([
+      "## Energy",
+      "- **Pattern:** Rest beats push. ^x",
+      "  - naps help",
+      "  - coffee helps",
     ]);
   });
 
@@ -579,19 +593,21 @@ describe("organize", () => {
       "        - types",
       "  - an aside. another thought",
     ];
-    const topics = organizeReply(
-      JSON.stringify({
-        topics: [
-          { name: "Fruit", theory: "Fruit is built for its seeds.", evidence: [1, 2, 3, 4, 5] },
-          { name: "Aside", theory: "Asides matter.", evidence: [6] },
-        ],
-      }),
+    const topics = topicsOf(
+      [
+        {
+          name: "Fruit",
+          points: [
+            { label: "Theory", text: "Fruit is built for its seeds.", says: [1, 2, 3, 4, 5] },
+          ],
+        },
+        { name: "Aside", points: [{ label: "Open", text: "Do asides matter?", says: [6] }] },
+      ],
       yours,
-    )!;
+    );
     expect(organizedLines(topics, yours, "  ", null, () => "x")).toEqual([
       "  - **Fruit** ^x",
       "    - **Theory:** Fruit is built for its seeds. ^x",
-      "    - **Evidence:** ^x",
       "      - fruit",
       "        - [ ] blueberry ^yt-540",
       "          - benefit",
@@ -599,23 +615,30 @@ describe("organize", () => {
       // Split across topics: each run of sentences goes to its own.
       "      - an aside.",
       "  - **Aside** ^x",
-      "    - **Theory:** Asides matter. ^x",
-      "    - **Evidence:** ^x",
+      "    - **Open:** Do asides matter? ^x",
       "      - another thought",
     ]);
   });
 
-  test("a line you indented under another goes with it, whatever topic the pen gave it", () => {
+  test("a line you indented under another goes under its point or one beneath, never another branch", () => {
     const yours = ["- top", "  - child", "    - grandchild", "- next"];
-    const topics = organizeReply(
-      JSON.stringify({
-        topics: [
-          { name: "A", theory: "One.", evidence: [1] },
-          { name: "B", theory: "Two.", evidence: [3, 4] },
-        ],
-      }),
+    const topics = topicsOf(
+      [
+        {
+          name: "A",
+          points: [
+            {
+              label: "Claim",
+              text: "One.",
+              says: [1],
+              under: [{ label: "Case", text: "Deeper.", says: [2] }],
+            },
+          ],
+        },
+        { name: "B", points: [{ label: "Claim", text: "Two.", says: [3, 4] }] },
+      ],
       yours,
-    )!;
+    );
     expect(
       organizedLines(topics, yours, "", "###", () => "x").filter((l) => !l.endsWith("^x")),
     ).toEqual(["### A", "  - top", "    - child", "      - grandchild", "", "### B", "  - next"]);
@@ -623,33 +646,75 @@ describe("organize", () => {
 
   test("a split line's box and block id go with its first sentence", () => {
     const yours = ["- [ ] one. two ^yt-1"];
-    const topics = organizeReply(
-      JSON.stringify({
-        topics: [
-          { name: "A", theory: "One.", evidence: [2] },
-          { name: "B", theory: "Two.", evidence: [1] },
-        ],
-      }),
+    const topics = topicsOf(
+      [
+        { name: "A", points: [{ label: "Claim", text: "One.", says: [2] }] },
+        { name: "B", points: [{ label: "Claim", text: "Two.", says: [1] }] },
+      ],
       yours,
-    )!;
+    );
     const written = organizedLines(topics, yours, "", "##", () => "x");
     expect(written).toContain("  - two");
     expect(written).toContain("  - [ ] one. ^yt-1");
   });
 
-  test("no name or theory, no topic; a topic with no sentences goes; nothing usable is null", () => {
+  test("an unlabelled point hands its words up and its points move up; past four levels, words go to the fourth", () => {
+    const yours = ["- a", "- b", "- c"];
+    const deep = (level: number): unknown =>
+      level > 6
+        ? { label: "Leaf", text: "Leaf.", says: [3] }
+        : { label: `Level ${level}`, text: `L${level}.`, under: [deep(level + 1)] };
+    const topics = topicsOf(
+      [
+        {
+          name: "A",
+          points: [
+            {
+              label: "Claim",
+              text: "One.",
+              says: [1],
+              under: [{ label: "", text: "lost", says: [2], under: [deep(2)] }],
+            },
+          ],
+        },
+      ],
+      yours,
+    );
+    expect(organizedLines(topics, yours, "", "##", () => "x")).toEqual([
+      "## A",
+      "- **Claim:** One. ^x",
+      "  - a",
+      "  - b",
+      "  - **Level 2:** L2. ^x",
+      "    - **Level 3:** L3. ^x",
+      "      - **Level 4:** L4. ^x",
+      "        - c",
+    ]);
+  });
+
+  test("no name or no point of the pen's, no topic; a topic with no sentences goes; nothing usable is null", () => {
     expect(organizeReply("not json", paragraph)).toBeNull();
     expect(organizeReply('{"points": []}', paragraph)).toBeNull();
-    expect(organizeReply('{"topics": [{"name": "A", "evidence": [1]}]}', paragraph)).toBeNull();
-    const topics = organizeReply(
-      JSON.stringify({
-        topics: [
-          { name: "A", theory: "One.", evidence: [1, 2, 3, 4] },
-          { name: "B", theory: "Two.", evidence: [1] },
-        ],
-      }),
+    expect(
+      organizeReply(
+        '{"topics": [{"points": [{"label": "Claim", "text": "x", "says": [1]}]}]}',
+        paragraph,
+      ),
+    ).toBeNull();
+    // Labels over your words alone: nothing the pen understood.
+    expect(
+      organizeReply(
+        '{"topics": [{"name": "A", "points": [{"label": "Example", "text": "", "says": [1]}]}]}',
+        paragraph,
+      ),
+    ).toBeNull();
+    const topics = topicsOf(
+      [
+        { name: "A", points: [{ label: "Claim", text: "One.", says: [1, 2, 3, 4] }] },
+        { name: "B", points: [{ label: "Claim", text: "Two.", says: [1] }] },
+      ],
       paragraph,
-    )!;
+    );
     expect(topics.map((t) => t.name)).toEqual(["A"]);
   });
 });
