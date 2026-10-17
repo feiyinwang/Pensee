@@ -162,6 +162,11 @@ NOTES["Notes/Long essay.md"] = Array.from({ length: 120 }, (_, i) =>
   ].join("\n"),
 ).join("\n");
 
+// The pinch journey (PERF-08) opens each of these as a column beside it, so a
+// pinch has a strip of real notes to lay out, the long one among them.
+NOTES["Notes/Pinch hub.md"] =
+  "Open [[Long essay]], [[Outline tour]], [[On writing]] and [[Welcome]] beside this.\n";
+
 /** Rebuild the vault and reset the e2e app's state. Called before every
  *  journey spec file (wdio.conf.js beforeSession), so specs never depend on
  *  the order they run in. */

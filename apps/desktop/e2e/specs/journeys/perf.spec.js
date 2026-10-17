@@ -446,4 +446,84 @@ describe("Journeys: speed", function () {
     await browser.execute(() => window.__perfBoard.release());
     judge("PERF-07", "type", samples);
   });
+
+  it("PERF-08 a pinch switches between one tab and all columns", async function () {
+    // Leave the board (PERF-07), then open four notes as columns beside the
+    // hub. The driver's native click doesn't reach CodeMirror's link handler,
+    // so each link is pressed with synthetic mouse events.
+    if (await $(".wr-board-fullscreen").isExisting()) await browser.keys("Escape");
+    await closeSearch();
+    await $("[data-sidebar-surface-content] [data-sidebar-search-button]").click();
+    await $("[cmdk-input]").waitForExist({ timeout: 5_000 });
+    await browser.execute(() => {
+      const field = document.querySelector("[cmdk-input]");
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(
+        field,
+        "Pinch hub",
+      );
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await $('//*[@cmdk-item][contains(., "Pinch hub")]').click();
+    await waitForTitle("Pinch hub");
+    for (const [i, name] of ["Long essay", "Outline tour", "On writing", "Welcome"].entries()) {
+      await browser.execute((text) => {
+        const link = [...document.querySelectorAll(".cm-wiki-link")].find(
+          (el) => el.textContent === text,
+        );
+        const r = link.getBoundingClientRect();
+        const at = { bubbles: true, cancelable: true, button: 0, clientX: r.left + 4 };
+        for (const type of ["mousedown", "mouseup", "click"]) {
+          link.dispatchEvent(new MouseEvent(type, { ...at, clientY: r.top + r.height / 2 }));
+        }
+      }, name);
+      await browser.waitUntil(
+        async () =>
+          (await browser.execute(() => document.querySelectorAll(".tab-column").length)) >= i + 2,
+        { timeout: 10_000, timeoutMsg: `${name} never opened as a column` },
+      );
+      // Back to the hub, so the next link opens beside it.
+      await browser.execute(() => {
+        const hub = [...document.querySelectorAll(".tab-column")].find((el) =>
+          el.querySelector(".cm-wiki-link"),
+        );
+        hub.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      });
+    }
+    // Each sample is one pinch: a single Ctrl-wheel step past the threshold,
+    // out to one tab on even runs and back in to all columns on odd ones.
+    // Between samples the gesture ends (a quiet gap longer than its timeout).
+    const samples = await sample(
+      () => browser.pause(300),
+      (i) =>
+        browser.executeAsync((n, done) => {
+          const strip = document.querySelector(".tab-columns");
+          const wantColumns = n % 2 === 1;
+          if (strip.hasAttribute("data-columns") === wantColumns) {
+            return done({ error: "the strip is already in the layout this pinch asks for" });
+          }
+          const target = strip.querySelector(".tab-column:not([data-hidden]) .cm-content") ?? strip;
+          const box = target.getBoundingClientRect();
+          window
+            .__perfTime(
+              () =>
+                target.dispatchEvent(
+                  new WheelEvent("wheel", {
+                    bubbles: true,
+                    cancelable: true,
+                    ctrlKey: true,
+                    deltaY: wantColumns ? 60 : -60,
+                    clientX: box.left + 40,
+                    clientY: box.top + 40,
+                  }),
+                ),
+              () => strip.hasAttribute("data-columns") === wantColumns,
+            )
+            .then(
+              (ms) => done({ ms }),
+              (error) => done({ error: String(error) }),
+            );
+        }, i),
+    );
+    judge("PERF-08", "go", samples);
+  });
 });

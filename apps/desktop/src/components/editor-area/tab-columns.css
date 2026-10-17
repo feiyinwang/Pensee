@@ -84,8 +84,10 @@
      fills it instead of centring a window-sized column inside. */
   --pensee-editor-side-padding: 2rem;
   --pensee-editor-outer-width: 100%;
+  /* No border-color transition: focus moves between columns all day, and on
+     a pinch into columns the border would fade in from currentColor, a dark
+     flash round every island. Only a newly opened island slides in. */
   transition:
-    border-color var(--motion-fast) var(--ease-out),
     opacity var(--motion-base) var(--ease-out),
     translate var(--motion-base) var(--ease-out);
 }

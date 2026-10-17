@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Highlighter, Trash2 } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -62,6 +62,9 @@ export default function BookReader({
   const [textSize, setTextSize] = useState<number | null>(null);
   const reduceMotion = useReducedMotion();
   const bookName = getFileStem(location.path);
+  const isShown = isActive || inColumn;
+  const isShownRef = useRef(isShown);
+  isShownRef.current = isShown;
 
   // Define and Explain go to the agent, so have it running before they're asked.
   useEffect(() => warmAgent(), []);
@@ -79,6 +82,7 @@ export default function BookReader({
       host,
       setStatus,
     );
+    controller.setShown(isShownRef.current);
     controllerRef.current = controller;
     setTextSize(null);
     void controller.start();
@@ -89,10 +93,12 @@ export default function BookReader({
   }, [location.path, location.note]);
 
   // A hidden tab's highlights leave the page's registry (highlight-painter.ts).
-  const isShown = isActive || inColumn;
-  useEffect(() => {
+  // Before paint: a frame drawn with the tab hidden and its ranges still
+  // registered costs ~half a second, and one drawn with the tab shown but
+  // its pages still out of rendering flashes an empty column.
+  useLayoutEffect(() => {
     controllerRef.current?.setShown(isShown);
-  }, [isShown, location.path, location.note]);
+  }, [isShown]);
 
   /** Viewport point → position inside the frame, above the given rect. */
   const pillAt = useCallback((rect: DOMRect) => {

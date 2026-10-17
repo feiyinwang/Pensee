@@ -7,6 +7,8 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { flushSync } from "react-dom";
+import { EditorView } from "@codemirror/view";
 import { useActiveTabId, useOpenTabs, useResolvedDocumentTitle, type Tab } from "@/hooks/use-tabs";
 import { useEditorStore } from "@/stores/editor-store";
 import { pageKind } from "./page-kinds";
@@ -26,8 +28,9 @@ const DRAG_THRESHOLD_PX = 4;
 const AUTOSCROLL_EDGE_PX = 64;
 const AUTOSCROLL_MAX_STEP_PX = 18;
 // Pinch travel (summed wheel deltaY) before a pinch switches between one
-// tab and all columns, and the quiet gap that ends a pinch gesture.
-const PINCH_THRESHOLD = 40;
+// tab and all columns: two or three steps of a trackpad pinch, so the switch
+// lands as the fingers start to move. The quiet gap that ends a gesture.
+const PINCH_THRESHOLD = 10;
 const PINCH_END_MS = 250;
 
 /** Zooming into a book page whose book is not open opens it beside the page,
@@ -45,6 +48,24 @@ function openBookOfFocusedPage() {
   );
   if (open) return;
   void import("@/lib/book-import").then(({ openBookOfPage }) => openBookOfPage(path));
+}
+
+/** Runs an editor's measure cycle now rather than on its next frame. A
+ *  width change reaches CodeMirror through a ResizeObserver it debounces by
+ *  50ms, so what it places from measurements (heading labels, grips, list
+ *  rails) would sit at the old layout's spots for a few frames, then jump.
+ *  `measure` is internal but stable: CodeMirror calls it itself on scroll. */
+function measureEditorsNow(strip: HTMLElement) {
+  const view = strip.getBoundingClientRect();
+  for (const column of strip.querySelectorAll<HTMLElement>(
+    ":scope > .tab-column:not([data-hidden])",
+  )) {
+    const box = column.getBoundingClientRect();
+    if (box.right <= view.left || box.left >= view.right) continue;
+    for (const dom of column.querySelectorAll<HTMLElement>(".cm-editor")) {
+      (EditorView.findFromDOM(dom) as unknown as { measure?: () => void } | null)?.measure?.();
+    }
+  }
 }
 
 /** Tab ids are `tab-<sequence>`, increasing as tabs are created. */
@@ -136,6 +157,16 @@ export function TabColumns() {
     strip.scrollTo({ left: Math.max(0, target), behavior: smooth ? "smooth" : "auto" });
   }, [activeTabId, isColumns, tabs.length]);
 
+  // One tab ↔ all columns changes every shown editor's width: measure them
+  // before this frame paints.
+  const layoutKey = `${isColumns} ${pair?.join(" ") ?? ""}`;
+  const lastLayoutKeyRef = useRef(layoutKey);
+  useLayoutEffect(() => {
+    if (lastLayoutKeyRef.current === layoutKey || !stripRef.current) return;
+    lastLayoutKeyRef.current = layoutKey;
+    measureEditorsNow(stripRef.current);
+  }, [layoutKey]);
+
   // Finish a drop once the store has reordered the tabs: everything snaps to
   // its new slot, and the dropped column eases the leftover distance home.
   const orderKey = tabs.map((t) => t.id).join(" ");
@@ -151,8 +182,10 @@ export function TabColumns() {
   useEffect(() => {
     const strip = stripRef.current;
     if (!strip || !canColumn) return;
+    // Travel counts from the layout showing: pinching further the way it
+    // already went does nothing, and pinching back within the same gesture
+    // switches back.
     let travel = 0;
-    let spent = false;
     let quiet = 0;
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey || event.metaKey || event.defaultPrevented) return;
@@ -160,14 +193,13 @@ export function TabColumns() {
       window.clearTimeout(quiet);
       quiet = window.setTimeout(() => {
         travel = 0;
-        spent = false;
       }, PINCH_END_MS);
-      if (spent) return;
       travel += event.deltaY;
+      // Out (negative) shows one tab; in (positive) shows the columns.
+      travel = focusedOneRef.current ? Math.max(0, travel) : Math.min(0, travel);
       if (Math.abs(travel) < PINCH_THRESHOLD) return;
-      spent = true;
-      const focus = travel < 0;
-      if (focus === focusedOneRef.current) return;
+      travel = 0;
+      const focus = !focusedOneRef.current;
       // Zoom into the column under the pointer, not necessarily the active one.
       const hovered = (event.target as Element).closest<HTMLElement>("[data-column-tab]");
       const hoveredTab = hovered?.dataset.columnTab;
@@ -175,7 +207,8 @@ export function TabColumns() {
         useEditorStore.getState().setActiveTab(hoveredTab);
       }
       if (focus) openBookOfFocusedPage();
-      setFocusedOne(focus);
+      // Committed inside the event, so the new layout is in the next frame.
+      flushSync(() => setFocusedOne(focus));
     };
     // preventDefault stops the pinch from also zooming the page.
     // eslint-disable-next-line react-doctor/client-passive-event-listeners

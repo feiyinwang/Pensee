@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- Pinching between one tab and all your tabs side by side now switches as soon as your fingers start to move, about a quarter of the pinch it took before, and you can pinch back the other way without lifting your fingers to switch back. With a book open, each switch took about half a second; now it lands in the next frame. Nothing flashes as it switches: islands no longer fade in a dark outline, a book's column no longer shows blank for a moment, and the H1–H6 labels, block handles, list guides and **On this page** sit in their new places in the first frame instead of jumping there after it.
 - A note Pensée makes (from **Add to Projects**, **Add project** on the board, or anywhere else) now shows right away on the Projects board, in your spaces and in search. Before, it only turned up after you quit and reopened Pensée.
 
 ## 2026-10-17

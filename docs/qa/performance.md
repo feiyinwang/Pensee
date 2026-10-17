@@ -64,6 +64,7 @@ doesn't break them.
 | PERF-05 | Hiding and showing the sidebar                   | `show` | `src/components/sidebar/`, `src/components/app-layout.tsx`                                  |
 | PERF-06 | Clicking Projects, Library, Files in the sidebar | `go`   | `src/components/sidebar/`, `src/components/spaces/`, `src-tauri/src/commands/spaces.rs`     |
 | PERF-07 | A drag step on a board while a dock is offered   | `type` | `src/components/editor-area/board/` (board-canvas.ts, board-spark.ts, board-render.ts)      |
+| PERF-08 | A pinch between one tab and all columns (5 tabs) | `go`   | `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/` (editor panes)  |
 
 The long note is `Notes/Long essay.md` in the QA vault
 (`e2e/qa/seed-vault.mjs`): headings, prose, nested lists, tasks, quotes and
@@ -76,7 +77,7 @@ headroom in the shipped app.
 
 First baseline (2026-10-16): typing 4ms, Search opens 13ms, search narrows
 3ms, opening the long note 32ms, sidebar 4ms, spaces 3ms. Everything is
-well inside its budget; the rules below keep it there. PERF-07 (a board drag step with a dock offered) joined the same day at 1ms; the docking spark it replaced took 2–3ms.
+well inside its budget; the rules below keep it there. PERF-07 (a board drag step with a dock offered) joined the same day at 1ms; the docking spark it replaced took 2–3ms. PERF-08 (a pinch between one tab and five columns) joined on 2026-10-18 at 28ms. It measures the shown editors inside the switch (22ms before, when CodeMirror measured them 50ms later in a frame of its own and its labels jumped there), and it can't see the book highlights that cost the user ~half a second per switch: those run in WebKit's rendering update, which the hidden e2e window doesn't schedule, so they were found and checked with `sample`.
 
 Paint isn't timed (the hidden e2e window doesn't paint on schedule), and the
 QA vault is small. Neither replaces trying the app: when it feels slow in the

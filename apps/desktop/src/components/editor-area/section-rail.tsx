@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type RefObject,
 } from "react";
+import { flushSync } from "react-dom";
 import type { EditorView } from "@codemirror/view";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useDocumentHeadings, type DocumentHeading } from "@/hooks/use-document-headings";
@@ -86,7 +87,10 @@ function useOutlineWidth(
     const measure = () => {
       const contentRect = content.getBoundingClientRect();
       const textRight = contentRect.right - parseFloat(getComputedStyle(content).paddingRight);
-      setWidth(outlineWidthForRoom(scroller.getBoundingClientRect().right - gutter - textRight));
+      const next = outlineWidthForRoom(scroller.getBoundingClientRect().right - gutter - textRight);
+      // In this frame: a pinch between one tab and the columns resizes the
+      // pane, and the rail must not stand a frame in the old form.
+      flushSync(() => setWidth(next));
     };
     const observer = new ResizeObserver(measure);
     observer.observe(scroller);
@@ -424,7 +428,9 @@ function SectionOutline({
 
   useOutlineTop(navRef, scrollContainerRef, top);
 
-  useEffect(() => {
+  // A new width rewraps the rows under the marker: it jumps with them, before
+  // paint, instead of sliding.
+  useLayoutEffect(() => {
     setAnimateMarker(false);
     let inner = 0;
     const outer = requestAnimationFrame(() => {
@@ -434,7 +440,7 @@ function SectionOutline({
       cancelAnimationFrame(outer);
       if (inner) cancelAnimationFrame(inner);
     };
-  }, [filePath]);
+  }, [filePath, width]);
 
   return (
     <nav
