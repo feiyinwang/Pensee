@@ -11,6 +11,7 @@ import {
   cutTarget,
   deleteTarget,
   duplicateTarget,
+  followsSelection,
   insertBlock,
   moveTarget,
   type ActionTarget,
@@ -387,7 +388,10 @@ export class BlockHandleMenu {
         },
         { label: "Cut", icon: ICON.cut, run: () => this.act(() => cutTarget(view, target)) },
         { label: "Copy", icon: ICON.copy, run: () => this.act(() => copyTarget(view, target)) },
-        ...(canLinkToBlock(view, target)
+        // A link points at one block. Inside a selection of several items
+        // every other row here takes all of them, so a row that quietly took
+        // one would read as the same action; it is left out instead.
+        ...(canLinkToBlock(view, target) && !followsSelection(view, target)
           ? [
               {
                 label: "Copy link to block",

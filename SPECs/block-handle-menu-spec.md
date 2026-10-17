@@ -138,8 +138,12 @@ indices. Every action re-reads the document from that.
 ### Two rules for every action
 
 1. **One dispatch.** `Cmd+Z` returns to the state before the click, once.
+   And never fewer: CodeMirror's history joins a `delete.*` transaction to an
+   edit it touches made within 500ms, so a Delete right after typing undid the
+   typing with it. The deletes carry `isolateHistory.of("full")`.
 2. **The target, not the caret.** No action reads `state.selection`. The grip
-   can be beside a block the caret has never visited.
+   can be beside a block the caret has never visited. The one exception is a
+   list item inside a selection of several items (see List items).
 
 `block-actions.ts` is typed against `BlockEditor` — `{ state, dispatch, focus? }`
 — rather than `EditorView`, so the rules above can be tested without a DOM.
@@ -166,14 +170,19 @@ prefix, which is what the name promises and what the Text tile does.
 - No keyboard path to the menu — the grip is still `aria-hidden`.
 - Converting a nested item to a non-list shape lifts it out to a top-level
   paragraph; its own children stay where they were.
+- Dragging a list item that has nested items moves its own lines only; the
+  nested items stay behind. The menu's Move takes them.
 
 ## List items
 
 Each list item is its own target, the way each line of a paragraph is: the
-grip parks on the item under the pointer and its menu converts, moves,
-duplicates and deletes that item only. `listItemAt()` resolves the innermost
-item whose own lines contain the pointer's line; an item's extent stops before
-its nested list, so a parent never carries its children into a conversion.
+grip parks on the item under the pointer and its menu acts on that item.
+`listItemAt()` resolves the innermost item whose own lines contain the
+pointer's line; an item's extent stops before its nested list, so a parent
+never carries its children into a conversion. Every other action takes the
+item **with its subtree**: its nested items belong to it, and deleting,
+cutting or duplicating only the parent's own line orphaned them under the
+item above (or left them out of the copy).
 
 - **Type tiles.** Bullet / numbered / to-do rewrite the item's marker and
   nothing else, so a wrapped second line stays put. Numbers continue from the
@@ -188,13 +197,52 @@ its nested list, so a parent never carries its children into a conversion.
   item, nested ones included, in one undo step (`selectedListItems()`). The
   lit tile is the shape all of them share; clicking it clears all of them.
   The selection stays over the items, so a second pick converts the same set.
-  A grip outside the selection converts only its own item. Move, duplicate
-  and delete still act on the one item.
+  A grip outside the selection converts only its own item. The structural
+  actions follow the selection too; the scope table below says how.
 - **Move** swaps with a sibling in the same list only, children travelling with
   their item. Bodies swap and markers stay put, so `1. 2. 3.` keeps counting.
 - **Insert / duplicate** add a sibling (`\n` + indent + marker), never `\n\n`,
-  which would make the list loose. A to-do sibling starts unticked.
-- **Delete / drag** remove the item's line with its indentation and exactly one
-  newline. Drag sources re-resolve through `gripBlockAt()`, the same narrowing
-  the grip uses, so a dragged item or paragraph line is never checked against —
-  and removed as — its whole list or paragraph.
+  which would make the list loose, and land after the item's nested items —
+  at the end of its own line they became the new item's children. A to-do
+  sibling starts unticked. The copy drops a trailing ` ^id`: two blocks with
+  one id make every link and embed of it ambiguous.
+- **Delete** removes the item's lines, nested items and indentation included,
+  and exactly one newline. **Cut / Copy** put the same lines on the clipboard,
+  shifted left so the item starts at column 0 (a nested item pasted at the top
+  of a note would otherwise be an indented code block).
+- **Numbers are recomputed.** After an insert, duplicate or delete, every
+  ordered list the edit touched is numbered in sequence from the number it
+  started at, in the same undo step (`dispatchListEdit()`): a duplicated `2.`
+  makes the copy `3.` and pushes the rest down; deleting `1.` leaves the list
+  starting at 1. A number that gains a digit (`9.` → `10.`) shifts its nested
+  items with it. A list written as `1. 1. 1.` comes out `1. 2. 3.` once touched.
+- **Drag** sources re-resolve through `gripBlockAt()`, the same narrowing the
+  grip uses, so a dragged item or paragraph line is never checked against —
+  and removed as — its whole list or paragraph. A dragged parent still leaves
+  its nested items behind (see Known gaps).
+
+### Selection scope
+
+The grip's item counts as inside the selection when the selection touches one
+of its own lines; a selection ending at the very start of a line does not take
+that line. "Outermost" means a selected item inside another selected item's
+subtree is not taken twice: its parent's subtree already carries it.
+
+| Action                 | Grip's item inside a selection of 3                                        | Grip's item outside it | Undo steps | Selection afterwards                     |
+| ---------------------- | -------------------------------------------------------------------------- | ---------------------- | ---------- | ---------------------------------------- |
+| Turn into (type tiles) | all 3                                                                      | that item only         | 1          | the same 3                               |
+| Move up / down         | all 3 as one run, when their outermost items are siblings of one list      | that item only         | 1          | the same 3, moved                        |
+| Move up / down         | hidden, when the selection spans two depths (no single place to move to)   | —                      | —          | —                                        |
+| Insert above / below   | one new item above the first selected / below the last (after its subtree) | beside that item       | 1          | caret in the new item                    |
+| Duplicate              | all 3 copied as one run, below the last one's subtree                      | that item              | 1          | the copies (one item: caret in the copy) |
+| Cut                    | all 3 on the clipboard, then deleted                                       | that item              | 1          | caret where they were                    |
+| Copy                   | all 3 on the clipboard                                                     | that item              | 0          | unchanged                                |
+| Copy link to block     | hidden: a link names one block                                             | that item              | 0          | unchanged                                |
+| Delete                 | all 3, subtrees included                                                   | that item              | 1          | caret where they were                    |
+
+Why Copy link is hidden instead of acting on the grip's item: every other row
+in the panel takes the whole selection, so one that quietly took one item
+would read as the same action (`grill-selection-scope` rule 7).
+
+Only list items follow a selection. A selection that also covers a paragraph
+acts on the list items in it; the paragraph is left alone.

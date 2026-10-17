@@ -1,13 +1,16 @@
 import {
   EditorSelection,
+  type ChangeSet,
   type EditorState,
   type Line,
   type Text,
   type TransactionSpec,
 } from "@codemirror/state";
-import { syntaxTree } from "@codemirror/language";
+import { isolateHistory } from "@codemirror/commands";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { BLOCK_ID_AT_END_RE } from "@/lib/block-refs";
 import {
   IMAGE_BLOCK,
   parseColumns,
@@ -34,12 +37,19 @@ import { blockTypeOf, setBlockType, type BlockTypeId } from "./markdown-formatti
  *  1. **One dispatch.** `Cmd+Z` returns to the state before the menu item was
  *     clicked, once. An action that writes twice needs two undos, which reads
  *     as a bug even when the end state is right.
+ *     And never fewer: CodeMirror's history joins a `delete.*` transaction to
+ *     the edit before it when the two touch within 500ms, so a delete right
+ *     after typing would undo the typing with it. Every delete here is
+ *     {@link OWN_UNDO_STEP}.
  *  2. **The target, not the caret.** These never look at `state.selection`.
  *     The handle can be beside a block the caret has never visited. The one
- *     exception is the type grid on a list item that sits inside a selection
- *     of several items: then the selection names the blocks
- *     ({@link selectedListItems}).
+ *     exception is a list item that sits inside a selection of several items:
+ *     then the selection names the blocks ({@link selectedListItems}), and
+ *     every list-item action except "Copy link to block" takes all of them.
  */
+
+/** Keeps a transaction out of the history's grouping (see rule 1). */
+const OWN_UNDO_STEP = isolateHistory.of("full");
 
 /**
  * The slice of `EditorView` these actions actually need. Narrower than the
@@ -111,7 +121,10 @@ export function rowAfterBandRemoval(
  *
  * An item's extent stops before its nested list: the children are items of
  * their own, with their own grip, and converting a parent must not drag them
- * along.
+ * along. Moving, deleting, cutting, copying and duplicating are the other way
+ * round: the children belong to the item, so those take its whole subtree
+ * ({@link ItemSpan}`.end`) — leaving them behind orphaned them under whatever
+ * item was above.
  */
 const LIST_NODES = new Set(["BulletList", "OrderedList"]);
 
@@ -319,6 +332,7 @@ function writeTarget(
       changes: { from: target.from, to: target.to, insert: next },
       selection: EditorSelection.cursor(target.from),
       userEvent,
+      annotations: OWN_UNDO_STEP,
       scrollIntoView: true,
     });
     return true;
@@ -357,6 +371,7 @@ function writeTarget(
     changes: change,
     selection: EditorSelection.cursor(change.from),
     userEvent,
+    annotations: OWN_UNDO_STEP,
     scrollIntoView: true,
   });
   return true;
@@ -432,13 +447,195 @@ function selectedListItems(state: EditorState, target: ActionTarget): ItemSpan[]
   return items.length > 1 ? items : null;
 }
 
-/** The items the type grid converts: the selection's, or the one item. */
-function listItemsFor(state: EditorState, target: ActionTarget): ItemSpan[] | null {
-  const selected = selectedListItems(state, target);
-  if (selected) return selected;
+/** Whether the grip's item is one of several selected items, so the menu's
+ *  actions take all of them. */
+export function followsSelection(view: BlockEditor, target: ActionTarget): boolean {
+  return selectedListItems(view.state, target) != null;
+}
+
+function grippedItem(state: EditorState, target: ActionTarget): ItemSpan[] | null {
   if (!isListItem(target) || target.to > state.doc.length) return null;
   const end = listItemNode(state, target.from)?.to ?? target.to;
   return [{ from: target.from, to: target.to, end }];
+}
+
+/** The items the type grid converts: the selection's, or the one item. */
+function listItemsFor(state: EditorState, target: ActionTarget): ItemSpan[] | null {
+  return selectedListItems(state, target) ?? grippedItem(state, target);
+}
+
+/**
+ * The items a structural action (move, insert, duplicate, cut, copy, delete)
+ * works on, outermost only: a selected child is already inside its selected
+ * parent's subtree, and taking it twice would copy or delete it twice.
+ * `selected` says the set came from the selection, which decides whether the
+ * selection survives the action or the caret goes to the one item.
+ */
+function itemScope(
+  state: EditorState,
+  target: ActionTarget,
+): { items: ItemSpan[]; selected: boolean } | null {
+  const selected = selectedListItems(state, target);
+  const items = selected ?? grippedItem(state, target);
+  if (!items) return null;
+  const outer: ItemSpan[] = [];
+  for (const item of items) {
+    const parent = outer[outer.length - 1];
+    if (!parent || item.from >= parent.end) outer.push(item);
+  }
+  return { items: outer, selected: selected != null };
+}
+
+/** An item's whole lines, children included: from its line start (its
+ *  indentation) to the end of its subtree. */
+function subtreeLines(doc: Text, item: ItemSpan): Span {
+  return { from: doc.lineAt(item.from).from, to: item.end };
+}
+
+/** The markdown of several items in document order. Items of one list keep
+ *  the gap between them (a loose list stays loose); items of two different
+ *  lists get a blank line, or the copies would merge into one list. */
+function itemsText(doc: Text, items: ItemSpan[]): string {
+  let out = "";
+  items.forEach((item, i) => {
+    const { from, to } = subtreeLines(doc, item);
+    if (i > 0) {
+      const gap = doc.sliceString(items[i - 1]!.end, from);
+      out += gap.trim() ? "\n\n" : gap;
+    }
+    out += doc.sliceString(from, to);
+  });
+  return out;
+}
+
+/** A copy must not carry its original's ` ^id`: two blocks with one id make
+ *  every link and embed of it ambiguous. */
+function withoutBlockIds(md: string): string {
+  return md
+    .split("\n")
+    .map((line) => line.replace(BLOCK_ID_AT_END_RE, ""))
+    .join("\n");
+}
+
+/* ---------------------------------------------------------- list numbering */
+
+type Change = { from: number; to?: number; insert?: string };
+
+/** One prefix rewrite on an item: `old` (at `item.from`) becomes `next`. */
+interface PrefixEdit {
+  item: ItemSpan;
+  old: string;
+  next: string;
+}
+
+/** Rewrite each prefix. When one changes width (`- ` → `1. `, `9.` → `10.`),
+ *  every line under that item shifts by the difference: a child indented less
+ *  than its parent's text is no longer its child and falls out as a sibling. */
+function rewritePrefixes(doc: Text, edits: PrefixEdit[]): Change[] {
+  const shift = new Map<number, number>(); // line number → columns to add
+  const out: Change[] = [];
+  for (const { item, old, next } of edits) {
+    if (next === old) continue;
+    out.push({ from: item.from, to: item.from + old.length, insert: next });
+    const delta = next.length - old.length;
+    if (!delta) continue;
+    for (let n = doc.lineAt(item.from).number + 1; n <= doc.lineAt(item.end).number; n++) {
+      shift.set(n, (shift.get(n) ?? 0) + delta);
+    }
+  }
+  for (const [n, delta] of shift) {
+    const line = doc.line(n);
+    if (!line.text.trim()) continue;
+    if (delta > 0) {
+      out.push({ from: line.from, insert: " ".repeat(delta) });
+    } else {
+      const cut = Math.min(-delta, /^ */.exec(line.text)![0].length);
+      if (cut) out.push({ from: line.from, to: line.from + cut });
+    }
+  }
+  return out.sort((a, b) => a.from - b.from);
+}
+
+const ITEM_NUMBER = /^\d+/;
+
+/** Each ordered list `changes` touches, keyed by where it starts once they
+ *  are applied, with the number it started at before. Deleting `1.` must
+ *  leave the list starting at 1, not at the `2.` that is now first. */
+function listStarts(state: EditorState, changes: ChangeSet): Map<number, number> {
+  const starts = new Map<number, number>();
+  const tree = syntaxTree(state);
+  changes.iterChangedRanges((fromA, toA) => {
+    tree.iterate({
+      from: fromA,
+      to: toA,
+      enter: (n) => {
+        if (n.name !== "OrderedList") return;
+        const first = n.node.getChild("ListItem");
+        const num = first && ITEM_NUMBER.exec(state.doc.sliceString(first.from, first.to));
+        if (num) starts.set(changes.mapPos(n.from, -1), Number(num[0]));
+      },
+    });
+  });
+  return starts;
+}
+
+/** Number every ordered list that `changes` touched in sequence, from the
+ *  number it started at. Positions are in `state`, the document after the
+ *  changes. */
+function renumberLists(
+  state: EditorState,
+  changes: ChangeSet,
+  starts: Map<number, number>,
+): Change[] {
+  const { doc } = state;
+  const edits: PrefixEdit[] = [];
+  const seen = new Set<number>();
+  changes.iterChangedRanges((_a, _b, fromB, toB) => {
+    const tree = ensureSyntaxTree(state, toB, 50) ?? syntaxTree(state);
+    tree.iterate({
+      from: fromB,
+      to: toB,
+      enter: (n) => {
+        if (n.name !== "OrderedList" || seen.has(n.from)) return;
+        seen.add(n.from);
+        let next = starts.get(n.from);
+        for (let c = n.node.firstChild; c; c = c.nextSibling) {
+          if (c.name !== "ListItem") continue;
+          const old = ITEM_NUMBER.exec(doc.sliceString(c.from, c.to))?.[0];
+          if (!old) continue;
+          next ??= Number(old);
+          edits.push({ item: { ...itemSpan(doc, c), end: c.to }, old, next: String(next++) });
+        }
+      },
+    });
+  });
+  return rewritePrefixes(doc, edits);
+}
+
+/**
+ * Dispatch a list edit and renumber the lists it touched, as one transaction:
+ * a duplicated `2.` makes the copy `3.` and pushes the rest down, a deleted
+ * one closes the gap. `selection` is in the coordinates after `changes`
+ * (before renumbering); without one the current selection is mapped.
+ */
+function dispatchListEdit(
+  view: BlockEditor,
+  changes: Change[],
+  selection: EditorSelection | null,
+  userEvent: string,
+): void {
+  const { state } = view;
+  const set = state.changes(changes);
+  const starts = listStarts(state, set);
+  const after = state.update({ changes: set }).state;
+  const numbers = after.changes(renumberLists(after, set, starts));
+  view.dispatch({
+    changes: set.compose(numbers),
+    ...(selection && { selection: selection.map(numbers) }),
+    userEvent,
+    annotations: OWN_UNDO_STEP,
+    scrollIntoView: true,
+  });
 }
 
 function itemType(doc: Text, item: Span): BlockTypeId | null {
@@ -460,7 +657,7 @@ function applyToItems(view: BlockEditor, items: ItemSpan[], id: BlockTypeId): bo
     // selection stays over them, so the next pick converts the same items.
     ...(one && {
       selection: EditorSelection.cursor(
-        out ? changes[0]!.from + (changes[0]!.insert.startsWith("\n") ? 1 : 0) : one.from,
+        out ? changes[0]!.from + (changes[0]!.insert?.startsWith("\n") ? 1 : 0) : one.from,
       ),
       scrollIntoView: true,
     }),
@@ -484,14 +681,9 @@ const ITEM_PREFIX = /^(?:[-*+]|\d+[.)])(?:[ \t]+\[[ xX]\])?[ \t]*/;
  *    indented less than its parent's text is no longer its child: it falls out
  *    as a sibling. Every line under a re-marked item shifts by the difference.
  */
-function remarkItems(
-  doc: Text,
-  items: ItemSpan[],
-  id: BlockTypeId,
-): { from: number; to?: number; insert?: string }[] {
+function remarkItems(doc: Text, items: ItemSpan[], id: BlockTypeId): Change[] {
   const numbers = new Map<number, number>(); // line number → its new number
-  const shift = new Map<number, number>(); // line number → columns to add
-  const out: { from: number; to?: number; insert?: string }[] = [];
+  const edits: PrefixEdit[] = [];
   for (const item of items) {
     const line = doc.lineAt(item.from);
     const old = ITEM_PREFIX.exec(doc.sliceString(item.from, line.to))?.[0] ?? "";
@@ -506,25 +698,9 @@ function remarkItems(
     } else {
       marker = "- ";
     }
-    if (marker === old) continue;
-    out.push({ from: item.from, to: item.from + old.length, insert: marker });
-    const delta = marker.length - old.length;
-    if (!delta) continue;
-    for (let n = line.number + 1; n <= doc.lineAt(item.end).number; n++) {
-      shift.set(n, (shift.get(n) ?? 0) + delta);
-    }
+    edits.push({ item, old, next: marker });
   }
-  for (const [n, delta] of shift) {
-    const line = doc.line(n);
-    if (!line.text.trim()) continue;
-    if (delta > 0) {
-      out.push({ from: line.from, insert: " ".repeat(delta) });
-    } else {
-      const cut = Math.min(-delta, /^ */.exec(line.text)![0].length);
-      if (cut) out.push({ from: line.from, to: line.from + cut });
-    }
-  }
-  return out.sort((a, b) => a.from - b.from);
+  return rewritePrefixes(doc, edits);
 }
 
 /** The number the item before this one (same depth, same list) ends up with,
@@ -616,7 +792,11 @@ export function canMove(view: BlockEditor, target: ActionTarget, dir: -1 | 1): b
     const next = target.index + dir;
     return next >= 0 && next < ref.columns.length;
   }
-  const spans = isListItem(target) ? siblingItemSpans(view, target.from) : topLevelSpans(view);
+  if (isListItem(target)) {
+    const run = movableRun(view.state, target);
+    return !!run && (dir < 0 ? run.lo > 0 : run.hi < run.siblings.length - 1);
+  }
+  const spans = topLevelSpans(view);
   const i = spanIndex(spans, target.from);
   return i >= 0 && i + dir >= 0 && i + dir < spans.length;
 }
@@ -671,42 +851,68 @@ export function moveTarget(view: BlockEditor, target: ActionTarget, dir: -1 | 1)
   return true;
 }
 
-/** An item moves among its siblings only — never out to the paragraph next to
- *  the list, never into a different depth. Each sibling span covers the whole
- *  item, nested children included, so they travel with it. */
-function siblingItemSpans(view: BlockEditor, from: number): Span[] {
-  const list = listItemNode(view.state, from)?.parent;
-  const spans: Span[] = [];
-  for (let c = list?.firstChild; c; c = c.nextSibling) {
-    if (c.name === "ListItem") spans.push({ from: c.from, to: c.to });
+/**
+ * What "move" moves: the item, or the selected items as one run, among their
+ * siblings only — never out to the paragraph next to the list, never into a
+ * different depth. Each sibling span covers the whole item, nested children
+ * included, so they travel with it. A selection whose outermost items are not
+ * siblings of one list (it starts inside one item's children and ends below
+ * it) has no single place to move to: null, and the menu hides Move.
+ */
+function movableRun(
+  state: EditorState,
+  target: ActionTarget,
+): { siblings: Span[]; lo: number; hi: number; selected: boolean } | null {
+  const scope = itemScope(state, target);
+  if (!scope) return null;
+  const list = listItemNode(state, scope.items[0]!.from)?.parent;
+  if (!list) return null;
+  const siblings: Span[] = [];
+  for (let c = list.firstChild; c; c = c.nextSibling) {
+    if (c.name === "ListItem") siblings.push({ from: c.from, to: c.to });
   }
-  return spans;
+  const lo = spanIndex(siblings, scope.items[0]!.from);
+  const hi = spanIndex(siblings, scope.items[scope.items.length - 1]!.from);
+  if (lo < 0 || hi < 0 || hi - lo + 1 !== scope.items.length) return null;
+  return { siblings, lo, hi, selected: scope.selected };
 }
 
-/** Swap the bodies and leave the markers where they are: swapping `1.` and `2.`
- *  along with the text would number the list `2, 1`, which markdown renders as
- *  a list starting at 2. */
+/** Rotate the run past its neighbour, moving the bodies and leaving every
+ *  marker in its slot: carrying `1.` and `2.` along with the text would number
+ *  the list `2, 1`, which markdown renders as a list starting at 2. */
 function moveListItem(view: BlockEditor, target: ActionTarget, dir: -1 | 1): boolean {
-  if (target.kind !== "block") return false;
-  const spans = siblingItemSpans(view, target.from);
-  const i = spanIndex(spans, target.from);
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= spans.length) return false;
-  const a = spans[dir < 0 ? j : i]!;
-  const b = spans[dir < 0 ? i : j]!;
+  const run = movableRun(view.state, target);
+  if (!run) return false;
+  const { siblings, lo, hi } = run;
+  const a = dir < 0 ? lo - 1 : lo;
+  const b = dir < 0 ? hi : hi + 1;
+  if (a < 0 || b >= siblings.length) return false;
+  const runIdx = Array.from({ length: hi - lo + 1 }, (_, k) => lo + k);
+  const order = dir < 0 ? [...runIdx, lo - 1] : [hi + 1, ...runIdx];
   const doc = view.state.doc;
-  const aText = doc.sliceString(a.from, a.to);
-  const bText = doc.sliceString(b.from, b.to);
-  const aMark = ITEM_MARKER.exec(aText)?.[0] ?? "";
-  const bMark = ITEM_MARKER.exec(bText)?.[0] ?? "";
-  const aBody = aText.slice(aMark.length);
-  const bBody = bText.slice(bMark.length);
-  const gap = doc.sliceString(a.to, b.from);
-  const first = aMark + bBody;
-  const landing = dir < 0 ? a.from : a.from + first.length + gap.length;
+  const text = (s: Span) => doc.sliceString(s.from, s.to);
+  const marker = (s: Span) => ITEM_MARKER.exec(text(s))?.[0] ?? "";
+  const from = siblings[a]!.from;
+  let insert = "";
+  const slotStart: number[] = [];
+  const slotEnd: number[] = [];
+  for (let k = a; k <= b; k++) {
+    const body = siblings[order[k - a]!]!;
+    slotStart.push(from + insert.length);
+    insert += marker(siblings[k]!) + text(body).slice(marker(body).length);
+    slotEnd.push(from + insert.length);
+    if (k < b) insert += doc.sliceString(siblings[k]!.to, siblings[k + 1]!.from);
+  }
+  // The run lands in the first slots going up, the last ones going down.
+  const first = dir < 0 ? 0 : 1;
+  const last = first + hi - lo;
   view.dispatch({
-    changes: { from: a.from, to: b.to, insert: `${first}${gap}${bMark}${aBody}` },
-    selection: EditorSelection.cursor(landing),
+    changes: { from, to: siblings[b]!.to, insert },
+    // One item: the caret goes with it. A selected run stays selected, so a
+    // second "move" takes the same items further.
+    selection: run.selected
+      ? EditorSelection.single(slotStart[first]!, slotEnd[last]!)
+      : EditorSelection.cursor(slotStart[first]!),
     userEvent: "move.block",
     scrollIntoView: true,
   });
@@ -728,20 +934,25 @@ export function insertBlock(
   where: "above" | "below",
 ): boolean {
   if (target.kind !== "block") return false;
-  if (isListItem(target)) {
+  const scope = itemScope(view.state, target);
+  if (scope) {
     // A new sibling, not a blank line: `\n\n` inside a list makes it loose.
+    // Above the first selected item or below the last one; below means after
+    // its children, or they would end up under the new item.
+    const item = where === "above" ? scope.items[0]! : scope.items[scope.items.length - 1]!;
     const doc = view.state.doc;
-    const indent = doc.sliceString(doc.lineAt(target.from).from, target.from);
-    const prefix = NEW_ITEM_PREFIX.exec(doc.sliceString(target.from, target.to))?.[0] ?? "- ";
+    const indent = doc.sliceString(doc.lineAt(item.from).from, item.from);
+    const prefix = NEW_ITEM_PREFIX.exec(doc.sliceString(item.from, item.to))?.[0] ?? "- ";
     const marker = prefix.replace(/\[[xX]\]/, "[ ]");
     const insert = where === "above" ? `${marker}\n${indent}` : `\n${indent}${marker}`;
-    const at = where === "above" ? target.from : target.to;
-    view.dispatch({
-      changes: { from: at, insert },
-      selection: EditorSelection.cursor(at + (where === "above" ? marker.length : insert.length)),
-      userEvent: `input.block.insert.${where}`,
-      scrollIntoView: true,
-    });
+    const at = where === "above" ? item.from : item.end;
+    // The marker is the neighbour's (`3. `); renumbering makes it the next one.
+    dispatchListEdit(
+      view,
+      [{ from: at, insert }],
+      EditorSelection.single(at + (where === "above" ? marker.length : insert.length)),
+      `input.block.insert.${where}`,
+    );
     view.focus?.();
     return true;
   }
@@ -760,24 +971,36 @@ export function insertBlock(
 /* ---------------------------------------------------------------- duplicating */
 
 export function duplicateTarget(view: BlockEditor, target: ActionTarget): boolean {
-  const md = targetMarkdown(view, target)?.trim();
-  if (!md) return false;
-
-  if (isListItem(target)) {
+  const scope = itemScope(view.state, target);
+  if (scope) {
+    // The copies go after the last item's children, as siblings, with their
+    // own children: duplicating a parent copies what is under it. Several
+    // items copy as one run below the run, the copies selected (the way a
+    // file manager selects what it just duplicated).
     const doc = view.state.doc;
-    const indent = doc.sliceString(doc.lineAt(target.from).from, target.from);
-    view.dispatch({
-      changes: { from: target.to, insert: `\n${indent}${md}` },
-      selection: EditorSelection.cursor(target.to + 1 + indent.length),
-      userEvent: "input.block.duplicate",
-      scrollIntoView: true,
-    });
+    const { items } = scope;
+    const md = withoutBlockIds(itemsText(doc, items));
+    const at = items[items.length - 1]!.end;
+    const start = at + 1;
+    const indent = doc.sliceString(doc.lineAt(items[0]!.from).from, items[0]!.from);
+    dispatchListEdit(
+      view,
+      [{ from: at, insert: `\n${md}` }],
+      scope.selected
+        ? EditorSelection.single(start, start + md.length)
+        : EditorSelection.single(start + indent.length),
+      "input.block.duplicate",
+    );
     return true;
   }
 
+  const md = targetMarkdown(view, target)?.trim();
+  if (!md) return false;
+  const copy = withoutBlockIds(md);
+
   if (target.kind === "block") {
     view.dispatch({
-      changes: { from: target.to, insert: `\n\n${md}` },
+      changes: { from: target.to, insert: `\n\n${copy}` },
       selection: EditorSelection.cursor(target.to + 2),
       userEvent: "input.block.duplicate",
       scrollIntoView: true,
@@ -786,14 +1009,14 @@ export function duplicateTarget(view: BlockEditor, target: ActionTarget): boolea
   }
 
   if (target.kind === "band") {
-    return writeTarget(view, target, `${md}\n\n${md}`, "input.block.duplicate");
+    return writeTarget(view, target, `${md}\n\n${copy}`, "input.block.duplicate");
   }
 
   const ref = rowRefAt(view, target.rowFrom);
   const column = ref?.columns[target.index];
   if (!ref || !column) return false;
   const columns = ref.columns.slice();
-  columns.splice(target.index + 1, 0, { ...column });
+  columns.splice(target.index + 1, 0, { ...column, md: withoutBlockIds(column.md) });
   view.dispatch({
     changes: { from: ref.from, to: ref.to, insert: serializeColumns(columns) },
     selection: EditorSelection.cursor(ref.from),
@@ -809,19 +1032,30 @@ export function deleteTarget(view: BlockEditor, target: ActionTarget): boolean {
   if (target.kind !== "block") return writeTarget(view, target, "", "delete.block");
 
   const doc = view.state.doc;
-  if (isListItem(target)) {
-    // Its own line, indentation included, and one newline — eating the blank
-    // line after the last item would glue the paragraph below onto the list.
-    let from = doc.lineAt(target.from).from;
-    let to = Math.min(target.to, doc.length);
-    if (to < doc.length) to++;
-    else if (from > 0) from--;
-    view.dispatch({
-      changes: { from, to },
-      selection: EditorSelection.cursor(Math.min(from, doc.length - (to - from))),
-      userEvent: "delete.block",
-      scrollIntoView: true,
-    });
+  const scope = itemScope(view.state, target);
+  if (scope) {
+    // Each item's lines, children and indentation included, and one newline —
+    // eating the blank line after the last item would glue the paragraph
+    // below onto the list. Items separated only by blank lines go as one
+    // range, so a loose list does not leave its gaps behind.
+    const ranges: Span[] = [];
+    for (const item of scope.items) {
+      const lines = subtreeLines(doc, item);
+      const prev = ranges[ranges.length - 1];
+      if (prev && !doc.sliceString(prev.to, lines.from).trim()) prev.to = lines.to;
+      else ranges.push(lines);
+    }
+    const last = ranges[ranges.length - 1]!;
+    if (last.to < doc.length) last.to++;
+    else if (last.from > 0) last.from--;
+    for (const r of ranges.slice(0, -1)) r.to++;
+    const removed = ranges.reduce((n, r) => n + r.to - r.from, 0);
+    dispatchListEdit(
+      view,
+      ranges,
+      EditorSelection.single(Math.min(ranges[0]!.from, doc.length - removed)),
+      "delete.block",
+    );
     return true;
   }
   let from = target.from;
@@ -838,6 +1072,7 @@ export function deleteTarget(view: BlockEditor, target: ActionTarget): boolean {
     changes: { from, to },
     selection: EditorSelection.cursor(Math.max(0, anchor)),
     userEvent: "delete.block",
+    annotations: OWN_UNDO_STEP,
     scrollIntoView: true,
   });
   return true;
@@ -857,10 +1092,26 @@ export function columnBlockCount(view: BlockEditor, target: ActionTarget): numbe
 /** Markdown source, never rendered text: pasting it back has to reproduce the
  *  block exactly, pictures and math included. */
 export function copyTarget(view: BlockEditor, target: ActionTarget): boolean {
-  const md = targetMarkdown(view, target)?.trim();
+  const md = clipboardMarkdown(view, target);
   if (!md) return false;
   void writeText(md);
   return true;
+}
+
+/** What Copy and Cut put on the clipboard. List items come with their
+ *  children, every selected item when the grip is in a selection, shifted
+ *  left so the outermost one starts at column 0: a nested item pasted at the
+ *  top of a note would otherwise land as an indented code block. */
+export function clipboardMarkdown(view: BlockEditor, target: ActionTarget): string | null {
+  const scope = itemScope(view.state, target);
+  if (!scope) return targetMarkdown(view, target)?.trim() || null;
+  const doc = view.state.doc;
+  const lines = itemsText(doc, scope.items).split("\n");
+  const indent = Math.min(...scope.items.map((s) => s.from - doc.lineAt(s.from).from));
+  return lines
+    .map((line) => line.slice(Math.min(indent, /^[ \t]*/.exec(line)![0].length)))
+    .join("\n")
+    .trimEnd();
 }
 
 export function cutTarget(view: BlockEditor, target: ActionTarget): boolean {

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { EditorSelection, EditorState, type TransactionSpec } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxTree } from "@codemirror/language";
+import { history, undo } from "@codemirror/commands";
 import { GFM } from "@lezer/markdown";
 import { columnsParserExtension } from "../src/components/editor-area/columns-decorations";
 import {
@@ -9,10 +10,12 @@ import {
   applyBlockType,
   canInsert,
   canMove,
+  clipboardMarkdown,
   columnBlockCount,
   currentBlockType,
   deleteTarget,
   duplicateTarget,
+  followsSelection,
   insertBlock,
   listItemAt,
   moveTarget,
@@ -597,5 +600,193 @@ describe("selected list items", () => {
     const ed = new Fake(doc, lines(doc, 1, 2));
     expect(applyBlockType(ed, item(8, 11), "numbered")).toBe(true);
     expect(ed.doc).toBe("- a\n- b\n1. c");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Structural actions on list items: an item comes with its children, numbers
+// are recomputed, and a selection of items is acted on as a whole
+// ---------------------------------------------------------------------------
+
+describe("list item subtrees", () => {
+  /** The grip's target for the item on the line containing `needle`. */
+  const grip = (ed: Fake, needle: string): ActionTarget => {
+    const hit = listItemAt(ed.state, ed.doc.indexOf(needle));
+    if (!hit) throw new Error(`no item at ${needle}`);
+    return { kind: "block", ...hit };
+  };
+
+  test("deleting a parent takes its children with it", () => {
+    const ed = new Fake("- a\n  - b\n    - c\n- d");
+    expect(deleteTarget(ed, grip(ed, "a"))).toBe(true);
+    expect(ed.doc).toBe("- d");
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("copying a parent copies its children, shifted so the item starts at column 0", () => {
+    const ed = new Fake("- a\n  - b\n    - c\n- d");
+    expect(clipboardMarkdown(ed, grip(ed, "a"))).toBe("- a\n  - b\n    - c");
+    expect(clipboardMarkdown(ed, grip(ed, "b"))).toBe("- b\n  - c");
+  });
+
+  test("duplicating a parent copies its children and lands after them", () => {
+    const ed = new Fake("- a\n  - b\n- c");
+    expect(duplicateTarget(ed, grip(ed, "a"))).toBe(true);
+    expect(ed.doc).toBe("- a\n  - b\n- a\n  - b\n- c");
+    expect(ed.caret).toBe(10);
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("insert below a parent lands after its children, which stay its own", () => {
+    const ed = new Fake("- a\n  - b\n- c");
+    expect(insertBlock(ed, grip(ed, "a"), "below")).toBe(true);
+    expect(ed.doc).toBe("- a\n  - b\n- \n- c");
+    expect(ed.caret).toBe(12);
+  });
+
+  test("a duplicated numbered item takes the next number and pushes the rest down", () => {
+    const ed = new Fake("1. a\n2. b\n3. c");
+    expect(duplicateTarget(ed, grip(ed, "b"))).toBe(true);
+    expect(ed.doc).toBe("1. a\n2. b\n3. b\n4. c");
+    expect(ed.caret).toBe(10);
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("insert below and above a numbered item number the new one in sequence", () => {
+    const below = new Fake("1. a\n2. b");
+    insertBlock(below, grip(below, "a"), "below");
+    expect(below.doc).toBe("1. a\n2. \n3. b");
+    expect(below.caret).toBe(8);
+    const above = new Fake("1. a\n2. b");
+    insertBlock(above, grip(above, "a"), "above");
+    expect(above.doc).toBe("1. \n2. a\n3. b");
+    expect(above.caret).toBe(3);
+  });
+
+  test("deleting the first numbered item keeps the list starting where it did", () => {
+    const ed = new Fake("1. a\n2. b\n3. c");
+    deleteTarget(ed, grip(ed, "a"));
+    expect(ed.doc).toBe("1. b\n2. c");
+    const from5 = new Fake("5. a\n6. b");
+    deleteTarget(from5, grip(from5, "a"));
+    expect(from5.doc).toBe("5. b");
+  });
+
+  test("a number that grows a digit moves its children with it", () => {
+    const ed = new Fake("8. h\n9. i\n   - x");
+    duplicateTarget(ed, grip(ed, "h"));
+    expect(ed.doc).toBe("8. h\n9. h\n10. i\n    - x");
+  });
+
+  test("a copy drops the block id, so the id stays unique", () => {
+    const ed = new Fake("- a ^abc\n- b");
+    duplicateTarget(ed, grip(ed, "a"));
+    expect(ed.doc).toBe("- a ^abc\n- a\n- b");
+    const para = new Fake("one ^abc");
+    duplicateTarget(para, block(0, 8));
+    expect(para.doc).toBe("one ^abc\n\none");
+  });
+});
+
+describe("structural actions on selected list items", () => {
+  const grip = (ed: Fake, needle: string): ActionTarget => {
+    const hit = listItemAt(ed.state, ed.doc.indexOf(needle));
+    if (!hit) throw new Error(`no item at ${needle}`);
+    return { kind: "block", ...hit };
+  };
+  /** Select from the start of line `a` to the end of line `b` (1-based). */
+  const lines = (doc: string, a: number, b: number) => {
+    const all = doc.split("\n");
+    const start = all.slice(0, a - 1).join("\n").length + (a > 1 ? 1 : 0);
+    const end = all.slice(0, b).join("\n").length;
+    return { anchor: start, head: end };
+  };
+  const selected = (ed: Fake) =>
+    ed.state.sliceDoc(ed.state.selection.main.from, ed.state.selection.main.to);
+
+  test("delete takes every selected item, children included, in one undo step", () => {
+    const doc = "1. a\n2. b\n   - x\n3. c\n4. d";
+    const ed = new Fake(doc, lines(doc, 2, 4));
+    expect(followsSelection(ed, grip(ed, "b"))).toBe(true);
+    expect(deleteTarget(ed, grip(ed, "c"))).toBe(true);
+    expect(ed.doc).toBe("1. a\n2. d");
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("copy takes every selected item; a selected child is not copied twice", () => {
+    const doc = "- a\n  - x\n- b\n- c";
+    const ed = new Fake(doc, lines(doc, 1, 3));
+    expect(clipboardMarkdown(ed, grip(ed, "b"))).toBe("- a\n  - x\n- b");
+  });
+
+  test("duplicate copies the run below the run and selects the copies", () => {
+    const doc = "1. a\n2. b\n3. c";
+    const ed = new Fake(doc, lines(doc, 1, 2));
+    expect(duplicateTarget(ed, grip(ed, "a"))).toBe(true);
+    expect(ed.doc).toBe("1. a\n2. b\n3. a\n4. b\n5. c");
+    expect(selected(ed)).toBe("3. a\n4. b");
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("move takes the selected run past its neighbour and keeps it selected", () => {
+    const doc = "1. a\n2. b\n3. c";
+    const ed = new Fake(doc, lines(doc, 1, 2));
+    expect(canMove(ed, grip(ed, "b"), -1)).toBe(false);
+    expect(canMove(ed, grip(ed, "b"), 1)).toBe(true);
+    expect(moveTarget(ed, grip(ed, "b"), 1)).toBe(true);
+    expect(ed.doc).toBe("1. c\n2. a\n3. b");
+    expect(selected(ed)).toBe("2. a\n3. b");
+    expect(ed.dispatches).toBe(1);
+    // The selection still names the run, so a second move takes it back.
+    expect(moveTarget(ed, grip(ed, "a"), -1)).toBe(true);
+    expect(ed.doc).toBe("1. a\n2. b\n3. c");
+  });
+
+  test("insert goes above the first selected item or below the last one", () => {
+    const doc = "- a\n- b\n  - x\n- c";
+    const below = new Fake(doc, lines(doc, 1, 3));
+    insertBlock(below, grip(below, "a"), "below");
+    expect(below.doc).toBe("- a\n- b\n  - x\n- \n- c");
+    const above = new Fake(doc, lines(doc, 2, 4));
+    insertBlock(above, grip(above, "c"), "above");
+    expect(above.doc).toBe("- a\n- \n- b\n  - x\n- c");
+  });
+
+  test("a selection spanning two depths cannot move, but still deletes as a whole", () => {
+    const doc = "- a\n  - x\n- b\n- c";
+    const ed = new Fake(doc, lines(doc, 2, 3));
+    expect(canMove(ed, grip(ed, "b"), -1)).toBe(false);
+    expect(canMove(ed, grip(ed, "b"), 1)).toBe(false);
+    expect(deleteTarget(ed, grip(ed, "b"))).toBe(true);
+    expect(ed.doc).toBe("- a\n- c");
+  });
+
+  test("a loose list loses the gaps between deleted items too", () => {
+    const doc = "- a\n\n- b\n\n- c";
+    const ed = new Fake(doc, lines(doc, 1, 3));
+    deleteTarget(ed, grip(ed, "a"));
+    expect(ed.doc).toBe("\n- c");
+  });
+
+  test("a delete right after typing is its own undo step, never joined to the typing", () => {
+    // CodeMirror's history joins `delete.*` to an adjacent edit made within 500ms.
+    const ed = new Fake("- a\n- b");
+    ed.state = EditorState.create({
+      doc: ed.doc,
+      extensions: [markdown({ extensions: [GFM, columnsParserExtension] }), history()],
+    });
+    ed.dispatch({ changes: { from: 7, insert: "\n- c" }, userEvent: "input.type" });
+    deleteTarget(ed, grip(ed, "c"));
+    expect(ed.doc).toBe("- a\n- b");
+    undo({ state: ed.state, dispatch: (tr) => (ed.state = tr.state) });
+    expect(ed.doc).toBe("- a\n- b\n- c");
+  });
+
+  test("a grip outside the selection acts on its own item only", () => {
+    const doc = "- a\n- b\n- c";
+    const ed = new Fake(doc, lines(doc, 1, 2));
+    expect(followsSelection(ed, grip(ed, "c"))).toBe(false);
+    deleteTarget(ed, grip(ed, "c"));
+    expect(ed.doc).toBe("- a\n- b");
   });
 });

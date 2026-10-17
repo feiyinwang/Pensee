@@ -1,18 +1,17 @@
-// Block journeys (BLK-01, BLK-05 in docs/qa/user-journeys.md): the grip's handle menu.
+// Block journeys (BLK-01, BLK-02, BLK-05–BLK-07 in docs/qa/user-journeys.md): the grip's handle menu.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { strictEqual } from "node:assert/strict";
-import { invoke, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
+import { invoke, pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
 
 /** Click just before `text` (or just after it, with `end`), with Shift held
  *  to extend the selection: how a hand selects, since CodeMirror ignores a
  *  scripted DOM selection in the unfocused e2e window. */
-const clickText = (text, { end = false, shift = false } = {}) =>
+const clickText = (text, { end = false, shift = false, lastLine = false } = {}) =>
   browser.execute(
-    (needle, atEnd, withShift) => {
+    (needle, atEnd, withShift, fromEnd) => {
       const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
-      const line = [...editor.querySelectorAll(".cm-line")].find((l) =>
-        l.textContent.includes(needle),
-      );
+      const lines = [...editor.querySelectorAll(".cm-line")];
+      const line = (fromEnd ? lines.reverse() : lines).find((l) => l.textContent.includes(needle));
       if (!line) throw new Error(`no line with "${needle}"`);
       const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
       let node;
@@ -44,7 +43,22 @@ const clickText = (text, { end = false, shift = false } = {}) =>
     text,
     end,
     shift,
+    lastLine,
   );
+
+/** Put the caret at the end of the note's last line of text with a click.
+ *  `typeInEditor` types at CodeMirror's own selection (it ignores a scripted
+ *  one), and a journey before may have left several items selected. */
+async function caretAtEnd() {
+  const word = await browser.execute(() => {
+    const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+    const text = [...editor.querySelectorAll(".cm-line")]
+      .map((l) => l.textContent)
+      .filter((t) => t.trim());
+    return text[text.length - 1].trim().split(/\s+/).pop();
+  });
+  await clickText(word, { end: true, lastLine: true });
+}
 
 /** The selected text in the front editor, read from CodeMirror's state. */
 const selectedText = () =>
@@ -55,6 +69,25 @@ const selectedText = () =>
     const { from, to } = view.state.selection.main;
     return view.state.sliceDoc(from, to);
   });
+
+/** The front editor's text from `heading` on, once `done` holds for it: read
+ *  from CodeMirror's state, so a deletion does not wait on a save. */
+async function sectionWhen(heading, done, timeoutMsg) {
+  let section = "";
+  await browser.waitUntil(
+    async () => {
+      const doc = await browser.execute(() => {
+        const content = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+        return content?.cmTile?.root?.view?.state.doc.toString() ?? "";
+      });
+      const at = doc.indexOf(`${heading}\n`);
+      section = at < 0 ? "" : doc.slice(at).trimEnd();
+      return done(section);
+    },
+    { timeout: 5_000, timeoutMsg: `${timeoutMsg}; the section reads ${JSON.stringify(section)}` },
+  );
+  return section;
+}
 
 /** Point at the list line holding `text` until the grip parks beside it, then
  *  rest on the grip so its panel opens (`mouseenter` does not bubble, so it
@@ -137,6 +170,27 @@ describe("Journeys: blocks", function () {
     );
   });
 
+  it("BLK-02 move a numbered item down, then delete it, from its handle: only that item moves and goes", async function () {
+    await openWelcome();
+    await caretAtEnd();
+    await typeInEditor("\n\nMorning\n\n1. wake\n2. eat\n3. go");
+    await sectionWhen("Morning", (s) => s.endsWith("3. go"), "the list was never typed");
+
+    await openHandleMenu("wake");
+    await $(".wr-bmenu-row*=Move down").click();
+    const moved = await sectionWhen(
+      "Morning",
+      (s) => s.includes("2. wake"),
+      "the item never moved",
+    );
+    strictEqual(moved, "Morning\n\n1. eat\n2. wake\n3. go", "the item moved; numbers in order");
+
+    await openHandleMenu("wake");
+    await $(".wr-bmenu-row*=Delete").click();
+    const after = await sectionWhen("Morning", (s) => !s.includes("wake"), "the item never went");
+    strictEqual(after, "Morning\n\n1. eat\n2. go", "only that item went; numbers in order");
+  });
+
   it("BLK-05 select several bullets, pick Numbered list from one grip: all of them are numbered", async function () {
     await openWelcome();
 
@@ -160,6 +214,71 @@ describe("Journeys: blocks", function () {
       content.includes("- one\n- two\n- [ ] a task"),
       true,
       "the other list is untouched",
+    );
+  });
+
+  it("BLK-06 delete a numbered item with nested items from its handle: its children go too and the numbers close up", async function () {
+    await openWelcome();
+    await caretAtEnd();
+    await typeInEditor("\n\nPacking\n\n1. tent\n   - poles\n2. stove\n3. map");
+    await sectionWhen("Packing", (s) => s.endsWith("3. map"), "the list was never typed");
+
+    await openHandleMenu("tent");
+    await $(".wr-bmenu-row*=Delete").click();
+    const after = await sectionWhen(
+      "Packing",
+      (s) => !s.includes("tent"),
+      "the item was never deleted",
+    );
+    strictEqual(after, "Packing\n\n1. stove\n2. map", "the item and its child went; renumbered");
+
+    await pressCmd("z", { inFocus: true });
+    await sectionWhen(
+      "Packing",
+      (s) => s === "Packing\n\n1. tent\n   - poles\n2. stove\n3. map",
+      "one undo did not bring the item and its child back",
+    );
+
+    // Duplicate copies the child too, below it, and numbers the copy 2.
+    await openHandleMenu("tent");
+    await $(".wr-bmenu-row*=Duplicate").click();
+    const copied = await sectionWhen(
+      "Packing",
+      (s) => s.split("tent").length === 3,
+      "the item was never duplicated",
+    );
+    strictEqual(
+      copied,
+      "Packing\n\n1. tent\n   - poles\n2. tent\n   - poles\n3. stove\n4. map",
+      "the copy lands after the children, with the next number",
+    );
+  });
+
+  it("BLK-07 select several items, delete from one grip: all of them go, and one undo brings them back", async function () {
+    await openWelcome();
+    await caretAtEnd();
+    await typeInEditor("\n\nErrands\n\n- bank\n- post\n- shop\n- gym");
+    await sectionWhen("Errands", (s) => s.endsWith("- gym"), "the list was never typed");
+    await clickText("shop", { end: true });
+    await clickText("bank", { shift: true });
+    strictEqual(await selectedText(), "bank\n- post\n- shop", "the three items are selected");
+
+    await openHandleMenu("post");
+    // A link names one block, so it is not offered for a selection.
+    strictEqual(
+      await $(".wr-bmenu-row*=Copy link to block").isExisting(),
+      false,
+      "Copy link to block is hidden while several items are selected",
+    );
+    await $(".wr-bmenu-row*=Delete").click();
+    const after = await sectionWhen("Errands", (s) => !s.includes("bank"), "nothing was deleted");
+    strictEqual(after, "Errands\n\n- gym", "every selected item went, the one outside stayed");
+
+    await pressCmd("z", { inFocus: true });
+    await sectionWhen(
+      "Errands",
+      (s) => s === "Errands\n\n- bank\n- post\n- shop\n- gym",
+      "one undo did not bring all three back",
     );
   });
 });

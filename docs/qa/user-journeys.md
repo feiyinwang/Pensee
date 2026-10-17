@@ -171,18 +171,22 @@ link previews.
 ## Blocks — BLK
 
 **Feature:** Each block has a handle menu (turn into, move, duplicate,
-delete). With several list items selected, turn into converts all of
-them. Blocks can be linked into other notes and edited in either place.
+delete). A list item's move, duplicate, cut, copy and delete take its nested
+items with it, and numbers stay in sequence. With several list items selected,
+every action in the menu takes all of them. Blocks can be linked into other
+notes and edited in either place.
 **Spec:** SPECs/block-handle-menu-spec.md, SPECs/block-embed-spec.md
 **Code:** `src/components/editor-area/` (block-handle-menu.ts, block-actions.ts, block-embed.ts, linked-block-sync.ts, block-backlinks.ts)
 
-| ID     | Journey                                                            | Expected                                                                                | Check        |
-| ------ | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------ |
-| BLK-01 | Hover a paragraph, open its ¶ handle, choose **Heading 2**         | Only that block becomes `## `                                                           | auto: blocks |
-| BLK-02 | Handle menu on a list item → **Move down**, **Delete**             | Only that item moves / goes; numbers stay in order                                      | manual       |
-| BLK-03 | ⌘⇧C in a paragraph, ⌘⇧V in another note                            | A linked block appears; editing it changes the original note                            | manual       |
-| BLK-04 | Select text, ⌘⌥N, pick a page                                      | The text moves into that page and a link is left behind                                 | manual       |
-| BLK-05 | Select several bullets, open one item's handle → **Numbered list** | Every selected item is numbered 1, 2, 3…; items outside the selection keep their marker | auto: blocks |
+| ID     | Journey                                                                               | Expected                                                                                                                                                   | Check        |
+| ------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| BLK-01 | Hover a paragraph, open its ¶ handle, choose **Heading 2**                            | Only that block becomes `## `                                                                                                                              | auto: blocks |
+| BLK-02 | Handle menu on a list item → **Move down**, **Delete**                                | Only that item moves / goes; numbers stay in order                                                                                                         | auto: blocks |
+| BLK-03 | ⌘⇧C in a paragraph, ⌘⇧V in another note                                               | A linked block appears; editing it changes the original note                                                                                               | manual       |
+| BLK-04 | Select text, ⌘⌥N, pick a page                                                         | The text moves into that page and a link is left behind                                                                                                    | manual       |
+| BLK-05 | Select several bullets, open one item's handle → **Numbered list**                    | Every selected item is numbered 1, 2, 3…; items outside the selection keep their marker                                                                    | auto: blocks |
+| BLK-06 | Handle menu on a numbered item with nested items → **Delete**, ⌘Z, then **Duplicate** | Delete takes the item and its nested items, and the numbers close up; ⌘Z brings both back; the copy lands below the nested items, with them, numbered next | auto: blocks |
+| BLK-07 | Select three of four bullets, open one selected item's handle → **Delete**, then ⌘Z   | No **Copy link to block** row; all three go and the fourth stays; one ⌘Z brings all three back                                                             | auto: blocks |
 
 ## Rich content — MED
 
