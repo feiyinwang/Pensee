@@ -496,11 +496,12 @@ function taskText(input: PenPromptInput): string {
         "- The first point says what the topic comes to: one sentence, at most 30 words, a general claim that reaches past this one case, never a summary of what happened. Label it for what it is: Theory for a lesson from experience, Claim for an argument, Pattern, Question, Image…",
         "- A level exists only where the writing has one: a point gets points under it only when the text gives two or more distinct things that belong there; with one, say it in the point itself. Count the writer's own levels (the lines they indented, the sentences that explain or show another) and go as deep as they do, no deeper: flat writing makes a shallow tree, writing whose ideas nest makes a deeper one, 4 levels at most. Never add a branch the text doesn't support, no rules or questions only to fill the shape.",
         "- Points side by side are the same kind of thing at the same level of detail, none overlap, and together they cover what they sit under.",
-        '- Every point: a "label" of 1 to 3 words naming what kind of line it is, picked to fit this writing (Reason, Example, Step, Trigger, Feeling, Objection, Rule, Open…), and a "text" of one short sentence in your words, at most 25 words. The text may be "" only when the label heads what sits under it ("Rules" over the rules).',
-        '- "says": the numbers of the writer\'s sentences that sit directly under the point, as what backs it. Put each sentence under the most specific point it backs.',
-        "Every sentence is in exactly one point's says. A line the writer indented under another goes under the same point as it, or a point beneath that one. Never claim what the text doesn't support; never drop a topic it raises.",
+        "- Every point: a label of 1 to 3 words naming what kind of line it is, picked to fit this writing (Reason, Example, Step, Trigger, Feeling, Objection, Rule, Open…), and its text: one short sentence in your words, at most 20 words.",
+        "- A point's text only says what the writer's sentences don't: what the ones under it have in common, what they show, how they link. Never one of their sentences again in other words: a point that would only repeat the one sentence under it is left out, and that sentence goes straight under the point above. A label with no text heads two or more things of one kind: Examples over the writer's examples, Rules over the rules.",
+        "- After the text, in square brackets, the numbers of the writer's sentences that sit directly under the point, as what backs it. Put each sentence under the most specific point it backs.",
+        "Every sentence is under exactly one point. A line the writer indented under another goes under the same point as it, or a point beneath that one. Never claim what the text doesn't support; never drop a topic it raises.",
         "Write in the language of the text, plainly, as the writer would write it (I, my).",
-        'Reply with JSON only: {"topics": [{"name": "…", "points": [{"label": "…", "text": "…", "says": [1, 2], "under": [same shape]}]}]}',
+        "Reply with the outline only, no other words, no code fence: each topic a line `# name`, then its points, one per line, `- Label: text [1, 2]`, two more spaces of indent for each level down. With no text: `- Label: [3]`; with no sentences: no brackets.",
       ].join("\n");
     }
   }
@@ -967,19 +968,62 @@ const bodyOf = (line: string) => itemText(line).replace(/^#{1,6}\s+/, "");
 const boxOf = (line: string) => ITEM_RE.exec(line)?.[4] ?? "";
 const blockIdOf = (line: string) => BLOCK_ID_AT_END_RE.exec(line)?.[1] ?? null;
 
+interface OutlinePoint {
+  label: string;
+  text: string;
+  says: number[];
+  under: OutlinePoint[];
+}
+
+/** An `organize` reply's outline, as written: a `# name` line per topic,
+ *  then its points, `- Label: text [1, 2]`, nested by indent. A point with
+ *  no colon has no label; anything else (a code fence, a stray word) is
+ *  skipped. Null when no topic came back. */
+export function outlineIn(reply: string): { name: string; points: OutlinePoint[] }[] | null {
+  const topics: { name: string; points: OutlinePoint[] }[] = [];
+  let stack: { width: number; point: OutlinePoint }[] = [];
+  for (const line of reply.split("\n")) {
+    const head = /^#{1,6}\s+(.+?)\s*$/.exec(line);
+    if (head) {
+      topics.push({ name: head[1]!, points: [] });
+      stack = [];
+      continue;
+    }
+    const item = /^([ \t]*)[-*•]\s+(.*?)\s*$/.exec(line);
+    const topic = topics[topics.length - 1];
+    if (!item || !topic) continue;
+    let body = item[2]!;
+    const says = /\s*\[([\d,\s]*)\]$/.exec(body);
+    if (says) body = body.slice(0, says.index);
+    const keyed = /^\**([^*:：]{1,40}?)\**\s*[:：]\**\s*(.*)$/u.exec(body);
+    const point: OutlinePoint = {
+      label: keyed ? keyed[1]!.trim() : "",
+      text: keyed ? keyed[2]! : body,
+      says: says ? (says[1]!.match(/\d+/g) ?? []).map(Number) : [],
+      under: [],
+    };
+    const width = indentWidth(item[1]!);
+    while (stack.length && stack[stack.length - 1]!.width >= width) stack.pop();
+    (stack[stack.length - 1]?.point.under ?? topic.points).push(point);
+    stack.push({ width, point });
+  }
+  return topics.length ? topics : null;
+}
+
 /** An `organize` reply, held to its word: topics with a name and a tree of
  *  labelled points, every sentence of yours under exactly one point. A point
  *  without a label hands its sentences to the point above and its points move
  *  up; points past the fourth level hand theirs to the one at it. A sentence
  *  no point claimed goes with the one before it (the first, with the next one
  *  claimed), and a line you indented under another goes under the same point
- *  or one beneath it. A topic with no point of the pen's own goes, and so
+ *  or one beneath it. A label alone over one piece of yours goes, the piece
+ *  up to the point above. A topic with no point of the pen's own goes, and so
  *  does one left with none of your sentences. A line whose sentences all went
  *  under one point stays whole, as you wrote it. Null when nothing usable
  *  came back. */
 export function organizeReply(reply: string, lines: readonly string[]): OrganizedTopic[] | null {
-  const value = jsonIn(reply) as { topics?: unknown } | null;
-  if (!Array.isArray(value?.topics)) return null;
+  const topics = outlineIn(reply);
+  if (!topics) return null;
   const sentences = organizeSentences(lines);
   const owner: number[] = sentences.map(() => -1);
   const textOf = (raw: unknown, max: number): string => {
@@ -1024,14 +1068,14 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
     }
   };
   const found: { name: string; points: number[] }[] = [];
-  for (const item of value.topics.map(asObject)) {
-    const name = textOf(item?.name ?? item?.topic, NAME_MAX_WORDS)
+  for (const item of topics) {
+    const name = textOf(item.name, NAME_MAX_WORDS)
       .replace(/[#*:：]/gu, "")
       .trim();
     if (!name) continue;
     const start = nodes.length;
     const points: number[] = [];
-    grow(item?.points, -1, 1, points);
+    grow(item.points, -1, 1, points);
     // Only your words back, no point of the pen's: not a topic.
     if (!nodes.slice(start).some((n) => n.text)) {
       owner.forEach((o, k) => {
@@ -1088,12 +1132,19 @@ export function organizeReply(reply: string, lines: readonly string[]): Organize
       }
     }
   }
-  // A point with nothing to say and nothing under it goes.
+  // A point with nothing to say and nothing under it goes; a label alone
+  // over one piece of yours says nothing either: the piece goes up a level.
   const build = (at: number): OrganizedPoint[] => {
     const node = nodes[at]!;
-    const under = node.under.flatMap(build);
-    return node.text || evidence[at]!.length || under.length
-      ? [{ label: node.label, text: node.text, evidence: evidence[at]!, under }]
+    const mine = [...evidence[at]!];
+    const under = node.under.flatMap(build).filter((p) => {
+      const lone = !p.text && !p.under.length && p.evidence.length === 1;
+      if (lone) mine.push(p.evidence[0]!);
+      return !lone;
+    });
+    mine.sort((a, b) => a.line - b.line || (a.sentences?.[0] ?? 0) - (b.sentences?.[0] ?? 0));
+    return node.text || mine.length || under.length
+      ? [{ label: node.label, text: node.text, evidence: mine, under }]
       : [];
   };
   const backed = (p: OrganizedPoint): boolean => p.evidence.length > 0 || p.under.some(backed);

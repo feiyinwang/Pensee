@@ -131,6 +131,12 @@ const lockFilter = EditorState.transactionFilter.of((tr) =>
  *  can do, and a box under them to ask it something or steer it. */
 const setPop = StateEffect.define<{ pos: number } | null>();
 const pens = new WeakMap<EditorView, PenPlugin>();
+/** One measure per frame for the open box's place. */
+const watchPopKey = {};
+
+/** One create for every position: a box that moves stays the same box (CodeMirror
+ *  keeps a tooltip whose create is unchanged), with what you typed in it. */
+const createPop = (view: EditorView) => pens.get(view)!.popView();
 
 const popField = StateField.define<{ pos: number } | null>({
   create: () => null,
@@ -145,7 +151,11 @@ const popField = StateField.define<{ pos: number } | null>({
             pos: pop.pos,
             above: true,
             strictSide: false,
-            create: (view) => pens.get(view)!.popView(),
+            // Never hidden: `popAt` already puts it where you can see it, and
+            // CodeMirror's own check (against the editor, not the page that
+            // scrolls it) hid it at the top of a long note.
+            clip: false,
+            create: createPop,
           }
         : null,
     ),
@@ -628,6 +638,9 @@ class PenPlugin {
   update(update: ViewUpdate): void {
     if (update.docChanged) {
       this.fresh = this.fresh.map(update.changes);
+  /** While the box is open: the page scrolling under it moves it to where
+   *  you can see it. */
+  private popScroll: { scroller: HTMLElement; listener: () => void } | null = null;
       if (this.placement) {
         this.placement = { ...this.placement, pos: update.changes.mapPos(this.placement.pos) };
       }
@@ -678,6 +691,7 @@ class PenPlugin {
 
   private later(ms: number, run: () => void): void {
     const timer = window.setTimeout(() => {
+    this.unwatchPop();
       this.timers.delete(timer);
       run();
     }, ms);
@@ -875,8 +889,31 @@ class PenPlugin {
     this.armed = targetIndexes(state);
     const sel = state.selection.main;
     const line = state.doc.lineAt(sel.from);
-    const pos = sel.empty ? line.from + Math.min(bodyStart(line.text), line.length) : sel.from;
-    this.view.dispatch({ effects: [setPop.of({ pos }), refresh.of(null)] });
+    const start = sel.empty ? line.from + Math.min(bodyStart(line.text), line.length) : sel.from;
+    // The part of the page you see: the window, cut by every parent that
+    // clips the note (CodeMirror's own scroller is as tall as the note).
+    let top = 0;
+    let bottom = window.innerHeight;
+    for (let at = view.dom.parentElement; at && at !== document.body; at = at.parentElement) {
+      if (getComputedStyle(at).overflowY === "visible") continue;
+      const rect = at.getBoundingClientRect();
+      top = Math.max(top, rect.top);
+      bottom = Math.min(bottom, rect.bottom);
+    }
+    const seen = (pos: number) => {
+      const at = view.coordsAtPos(pos);
+      return !!at && at.top >= top && at.bottom <= bottom;
+    };
+    if (seen(start)) return start;
+    if (seen(sel.head)) return sel.head;
+    // Both out of sight (a whole long note selected, a paragraph taller than
+    // the page): the first of what it acts on at the top of the page.
+    const end = sel.empty ? line.to : sel.to;
+    const first = view.posAtCoords(
+      { x: view.contentDOM.getBoundingClientRect().left + 1, y: top + view.defaultLineHeight },
+      false,
+    );
+    return Math.min(Math.max(first, start), end);
   }
 
   /** Close the box. From inside an update it waits for the next tick. */
@@ -890,6 +927,60 @@ class PenPlugin {
 
   private closePop(refocus: boolean): void {
     this.armed = null;
+    this.view.dispatch({ effects: [setPop.of({ pos: this.popAt() }), refresh.of(null)] });
+    this.watchPop();
+  }
+
+  /** Keep the open box where you can see it while the page moves under it:
+   *  you scrolling, CodeMirror scrolling to the selection, a note putting
+   *  back where you last were. Once a frame, layout read first: the box
+   *  takes its new place and CodeMirror measures it again (it otherwise
+   *  keeps a place measured mid-scroll, out of sight). Also a few times in
+   *  the first half second, while the page settles. */
+  private watchPop(): void {
+    this.unwatchPop();
+    const scroller = this.scroller();
+    const listener = () =>
+      this.view.requestMeasure({
+        key: watchPopKey,
+        read: () => (this.armed ? this.popAt() : null),
+        write: (pos) => {
+          if (pos === null || !this.armed || this.destroyed) return;
+          this.view.dispatch({ effects: setPop.of({ pos }) });
+        },
+      });
+    scroller.addEventListener("scroll", listener, { passive: true });
+    this.popScroll = { scroller, listener };
+    for (const ms of [50, 200, 500]) {
+      this.later(ms, () => {
+        if (this.popScroll?.listener === listener) listener();
+      });
+    }
+  }
+
+  private unwatchPop(): void {
+    if (!this.popScroll) return;
+    this.popScroll.scroller.removeEventListener("scroll", this.popScroll.listener);
+    this.popScroll = null;
+  }
+
+  /** The element that scrolls the note: the first parent of the editor that
+   *  scrolls (CodeMirror's own scroller grows with the note here). */
+  private scroller(): HTMLElement {
+    for (let at = this.view.dom.parentElement; at; at = at.parentElement) {
+      if (/(auto|scroll)/.test(getComputedStyle(at).overflowY)) return at;
+    }
+    return this.view.scrollDOM;
+  }
+
+  /** Where the box opens, always where you can see it: above the start of
+   *  what it acts on (the line's words, or the selection), unless that is
+   *  scrolled out of sight (a long paragraph you're at the end of, lines
+   *  selected up from the bottom); then at the caret; else above the first
+   *  selected line still on screen. */
+  private popAt(): number {
+    const { view } = this;
+    const { state } = view;
     if (this.destroyed) return;
     this.view.dispatch({ effects: [setPop.of(null), refresh.of(null)] });
     if (refocus) this.view.focus();
@@ -900,6 +991,7 @@ class PenPlugin {
   }
 
   /** What the box offers for the lines it opened on. */
+    this.unwatchPop();
   private pills(): PenPill[] {
     const { state } = this.view;
     const lines = docLines(state);
@@ -907,6 +999,7 @@ class PenPlugin {
     const answer = {
       key: "!",
       label: "Answer",
+    this.unwatchPop();
       title: "The AI answers, sealed until you've written your own take.",
     };
     if (!withText.length) return [answer];
@@ -1291,7 +1384,7 @@ class PenPlugin {
       // Unreadable: ask once more, in the same conversation.
       topics ??= organizeReply(
         await conversation.send(
-          "That reply couldn't be read. Reply with JSON only, in the shape asked: every topic with a name and labelled points, every sentence in one point's says.",
+          "That reply couldn't be read. Reply with the outline only, in the shape asked: `# name` for each topic, then its points as `- Label: text [1, 2]`, every sentence under one point.",
         ),
         yours,
       );

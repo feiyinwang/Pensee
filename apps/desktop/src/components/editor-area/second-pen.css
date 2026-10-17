@@ -195,6 +195,14 @@
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+/* The entrance moves the box inside the tooltip, never the tooltip itself: in
+   WebKit, CodeMirror reads a hidden tooltip's place to tell whether it sits in
+   a transformed parent, and a tooltip still sliding in reads as one. It then
+   switches to absolute positioning, and on a scrolled page the box lands far
+   from its line, out of sight. */
+.cm-pen-pop .pen-box {
   animation: cm-pen-pop-in 150ms var(--ease-out) both;
   transform-origin: bottom left;
 }

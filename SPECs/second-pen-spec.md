@@ -34,6 +34,13 @@ notes are gone. The look is unchanged from the first Second pen
 - **⌘.** opens a small box right above the selection (every line it touches)
   or, with no selection, the line the caret is on. Those lines turn AI-blue
   while it's open. **⌘.** again or **Esc** closes it; so does clicking away.
+- **The box always opens where you can see it.** Above the start of what it
+  acts on when that is on screen; when it is scrolled out of sight (the end
+  of a long paragraph you're typing at, lines selected up from the bottom of
+  a long note), right above the caret instead; and when both are out of
+  sight, above the first selected line on screen. With no room above, it
+  opens below. (The writer, 2026-10-17: at the bottom of the page the box
+  opened at the top, almost hidden.)
 - Its look is Arc's: Arc's **floating button group** (soft pills in a quiet
   tray, one highlight gliding between them) and, under it, a field in Arc's
   input style (a hairline; no focus ring while you type).
@@ -264,8 +271,14 @@ under the points they back.
   bold label of 1 to 3 words naming what kind of line it is, picked to fit
   the writing: `**Reason:** …`, `**Example:** …`, `**Trigger:** …`,
   `**Feeling:** …`, `**Objection:** …`, `**Rule:** …`. The pen's text is one
-  short sentence (at most 25 words asked, 45 accepted), or nothing when the
-  label only heads the points under it (`**Rules:**` over the rules).
+  short sentence (at most 20 words asked, 45 accepted) that says only what
+  your sentences don't: what the ones under it share, show, or how they
+  link. It never says one of your sentences again in other words: a point
+  that would only repeat the one sentence under it is left out, and the
+  sentence sits straight under the point above. A label with no text heads
+  two or more things of one kind (`**Examples:**` over your examples,
+  `**Rules:**` over the rules); a label alone over one line of yours is
+  folded away in code, the line moved up a level.
 - **Helping rules, not a template** (the prompt):
   - The first point says what the topic comes to: one sentence, a general
     claim that reaches past this one case, never a summary of what
@@ -283,12 +296,17 @@ under the points they back.
     overlap, and together they cover what they sit under.
 - **Your words are never rewritten.** The pen gets your text numbered
   sentence by sentence and says which sentences sit directly under each
-  point (`says`), each under the most specific point it backs. Code puts
+  point, each under the most specific point it backs. Code puts
   them there, right under the point, before the points under it: a line
   whose sentences all went under one point stays whole, with its task box,
   block id and the nesting you wrote (never more than a level deeper than
   the line before it); a line split across points goes in as runs of its
   sentences, its box and block id with the first.
+- **It replies as a plain outline**, not JSON: `# name` per topic, then one
+  point per line, `- Label: text [1, 2]`, two spaces deeper per level
+  (`outlineIn`). Half the tokens of the JSON it replaced, which named
+  `says` and `under` on every point: about 2 s less on a short note, more on
+  a long one.
 - **Held to its word in code**: at most 4 levels of points (sentences under a
   deeper point go to the one at the fourth level); a point without a valid
   label hands its sentences to the point above and its points move up; a

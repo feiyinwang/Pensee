@@ -460,6 +460,8 @@ There is no Shorten pill any more.
 **Feature:** When the pen (Organize and the rest) or the Agent fails because
 Claude Code is signed out, a popup offers **Sign in**: Claude Code opens the
 browser, and once the writer approves there the popup says Signed in.
+| PEN-32 | At the end of a long paragraph whose start is scrolled above the page, ⌘.                                | The box opens on screen, just above the caret, not up at the paragraph's start                                                                                                                                                                                                                                                                                                                                                                                             | you                                  |
+| PEN-33 | Select lines up from the bottom of a long note (start scrolled away), ⌘.                                 | The box opens on screen, above the caret                                                                                                                                                                                                                                                                                                                                                                                                                                   | auto: pen                            |
 Settings → Agent → Claude shows whether Claude Code is signed in, with
 **Sign in** or **Sign out**.
 **Spec:** SPECs/claude-sign-in-spec.md

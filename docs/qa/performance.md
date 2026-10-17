@@ -189,3 +189,11 @@ against the list before running the journeys; it is cheaper to catch here.
   `visibility: hidden`. Work that walks a document (highlights, find,
   selection) skips hidden tabs.
 - **Startup.** A new feature loads when first used, not at launch.
+- **Long AI replies.** The pen waits for Claude's whole reply, so its time
+  is mostly how much Claude writes. Ask for terse formats: an outline
+  (`- Label: text [1, 2]`), not JSON with a key on every field, and nothing
+  that repeats the writer's own words. Measured 2026-10-17: Organize's JSON
+  took ~500 tokens and 7.5 s on a short note, the outline ~250 and 5 s.
+  Turning Claude's thinking off (`--effort low`, `CLAUDE_CODE_DISABLE_THINKING`)
+  was tried and dropped: it never fully stopped Haiku or Opus thinking, and
+  Organize runs on Sonnet, which wrote at once in every run measured.

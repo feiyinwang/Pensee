@@ -256,6 +256,60 @@ const pop = () =>
     };
   });
 
+/** Where the open box is, against the part of the page you can see (the
+ *  editor's scroller, inside the window) and the caret. */
+const boxOnScreen = () =>
+  browser.execute(() => {
+    const box = document.querySelector(".cm-pen-pop .pen-box")?.getBoundingClientRect();
+    const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+    let scroller = editor?.parentElement ?? null;
+    while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+      scroller = scroller.parentElement;
+    }
+    const band = scroller.getBoundingClientRect();
+    const top = Math.max(band.top, 0);
+    const bottom = Math.min(band.bottom, window.innerHeight);
+    const caret = document.querySelector(".cm-cursor")?.getBoundingClientRect().top ?? null;
+    return {
+      inside: !!box && box.height > 0 && box.top >= top && box.bottom <= bottom,
+      box: box && { top: box.top, bottom: box.bottom },
+      band: { top, bottom },
+      caret,
+    };
+  });
+
+/** The open box settles where you can see it (the page may still be
+ *  scrolling to the selection when it opens). The hidden e2e window runs no
+ *  frames, so CodeMirror never measures the box again by itself: a 1px
+ *  scroll each poll stands in for them (qa-checklist harness notes). */
+async function waitForBoxOnScreen() {
+  let seen = null;
+  let step = 1;
+  await browser
+    .waitUntil(
+      async () => {
+        await browser.execute((by) => {
+          const editor = [...document.querySelectorAll(".cm-content")].find(
+            (el) => el.offsetParent,
+          );
+          let scroller = editor.parentElement;
+          while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+            scroller = scroller.parentElement;
+          }
+          scroller.scrollTop += by;
+        }, step);
+        step = -step;
+        await browser.pause(150);
+        seen = await boxOnScreen();
+        return seen.inside;
+      },
+      { timeout: 4_000, interval: 100 },
+    )
+    .catch(() => {
+      throw new Error(`the box is out of sight: ${JSON.stringify(seen)}`);
+    });
+}
+
 const barText = () =>
   browser.execute(() => {
     const bars = [...document.querySelectorAll(".pen-hint")].filter((el) => el.offsetParent);
@@ -429,10 +483,20 @@ describe("Journeys: second pen", function () {
     await typeInEditor("sad lion sits there", { atEnd: false });
     await waitForDisk(path, (t) => t.includes("- sad lion sits there"), "the take should be typed");
     await key("Enter");
-    await browser.waitUntil(async () => (await barText()).includes("doesn't read as a take"), {
-      timeout: AI_TIMEOUT,
-      timeoutMsg: `expected the take to be turned down: ${await barText()}`,
-    });
+    let said = "";
+    await browser
+      .waitUntil(
+        async () => {
+          said = await barText();
+          return said.includes("doesn't read as a take");
+        },
+        { timeout: AI_TIMEOUT },
+      )
+      .catch(async () => {
+        throw new Error(
+          `expected the take to be turned down; the bar said: ${said}\n${await readFile(path)}`,
+        );
+      });
     const text = await readFile(path);
     ok(/help memory\?\n {2}- .+ \^ai-s-/.test(text), `the answer should stay sealed:\n${text}`);
   });
@@ -776,6 +840,21 @@ describe("Journeys: second pen", function () {
       "the outline should have a labelled point and keep your own words",
     );
     ok(!(await browser.execute(() => document.querySelectorAll(".cm-pen-organized").length)), text);
+  });
+
+  it("PEN-33 ⌘. on lines selected up from the bottom of a long note: the box opens where you see it", async function () {
+    await openViaPalette("Long essay");
+    await browser.pause(1_500);
+    await caretAfter("Paragraph 2 keeps");
+    // Shift-Page Down: the selection runs on down the note, and the page
+    // follows its end, so where it starts goes out of sight above.
+    for (let page = 0; page < 4; page++) await key("PageDown", { shift: true });
+    await browser.pause(200);
+    await key(".", { meta: true });
+    await waitForBox();
+    await browser.pause(300);
+    await waitForBoxOnScreen();
+    await key("Escape");
   });
 
   it("PEN-22 # Organize is offered for one line too, and picking it keeps the box's width", async function () {

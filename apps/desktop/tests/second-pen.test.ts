@@ -18,6 +18,7 @@ import {
   newPenId,
   noteForPen,
   organizeReply,
+  outlineIn,
   organizedLines,
   parentOf,
   childrenOf,
@@ -502,8 +503,20 @@ describe("organize", () => {
     let n = 0;
     return () => `ai-g-${String(n++).padStart(4, "0")}`;
   };
-  const topicsOf = (topics: unknown[], lines: readonly string[]) =>
-    organizeReply(JSON.stringify({ topics }), lines)!;
+  type Point = { label: string; text?: string; says?: number[]; under?: Point[] };
+  // The reply the pen writes for these topics: `# name`, then `- Label: text [1, 2]`.
+  const outline = (topics: { name: string; points: Point[] }[]) =>
+    topics
+      .flatMap((t) => {
+        const write = (p: Point, at: string): string[] => [
+          `${at}- ${p.label ? `${p.label}: ` : ""}${p.text ?? ""}${p.says?.length ? ` [${p.says.join(", ")}]` : ""}`.trimEnd(),
+          ...(p.under ?? []).flatMap((q) => write(q, `${at}  `)),
+        ];
+        return [`# ${t.name}`, ...t.points.flatMap((p) => write(p, ""))];
+      })
+      .join("\n");
+  const topicsOf = (topics: { name: string; points: Point[] }[], lines: readonly string[]) =>
+    organizeReply(outline(topics), lines)!;
 
   test("the prompt numbers your sentences and asks for a tree grown from your writing, not a template", () => {
     const prompt = penPrompt({
@@ -519,7 +532,8 @@ describe("organize", () => {
     expect(prompt).toContain("Don't hand the writer's story back");
     expect(prompt).toContain("There is no fixed template");
     expect(prompt).toContain("go as deep as they do, no deeper");
-    expect(prompt).toContain("Every sentence is in exactly one point's says");
+    expect(prompt).toContain("Every sentence is under exactly one point");
+    expect(prompt).toContain("- Label: text [1, 2]");
   });
 
   test("each topic keeps the shape the pen grew: labelled points, your sentences under the one they back", () => {
@@ -644,6 +658,36 @@ describe("organize", () => {
     ).toEqual(["### A", "  - top", "    - child", "      - grandchild", "", "### B", "  - next"]);
   });
 
+  test("a label alone over one line of yours folds away; over two it heads them", () => {
+    const yours = ["- a", "- b", "- c"];
+    const topics = topicsOf(
+      [
+        {
+          name: "A",
+          points: [
+            {
+              label: "Cause",
+              text: "One cause.",
+              under: [
+                { label: "Pattern", says: [3] },
+                { label: "Examples", says: [1, 2] },
+              ],
+            },
+          ],
+        },
+      ],
+      yours,
+    );
+    expect(organizedLines(topics, yours, "", "##", () => "x")).toEqual([
+      "## A",
+      "- **Cause:** One cause. ^x",
+      "  - c",
+      "  - **Examples:** ^x",
+      "    - a",
+      "    - b",
+    ]);
+  });
+
   test("a split line's box and block id go with its first sentence", () => {
     const yours = ["- [ ] one. two ^yt-1"];
     const topics = topicsOf(
@@ -660,7 +704,7 @@ describe("organize", () => {
 
   test("an unlabelled point hands its words up and its points move up; past four levels, words go to the fourth", () => {
     const yours = ["- a", "- b", "- c"];
-    const deep = (level: number): unknown =>
+    const deep = (level: number): Point =>
       level > 6
         ? { label: "Leaf", text: "Leaf.", says: [3] }
         : { label: `Level ${level}`, text: `L${level}.`, under: [deep(level + 1)] };
@@ -692,22 +736,49 @@ describe("organize", () => {
     ]);
   });
 
+  test("the outline is read as the pen writes it: fences skipped, labels unbolded, a colon in the text kept", () => {
+    expect(
+      outlineIn(
+        [
+          "```",
+          "# Panic spiral",
+          "- **Pattern:** A small slip sets off: a big panic. []",
+          "  - Dream: [1, 2]",
+          "    * Trigger: [3]",
+          "  - just words",
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual([
+      {
+        name: "Panic spiral",
+        points: [
+          {
+            label: "Pattern",
+            text: "A small slip sets off: a big panic.",
+            says: [],
+            under: [
+              {
+                label: "Dream",
+                text: "",
+                says: [1, 2],
+                under: [{ label: "Trigger", text: "", says: [3], under: [] }],
+              },
+              { label: "", text: "just words", says: [], under: [] },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
   test("no name or no point of the pen's, no topic; a topic with no sentences goes; nothing usable is null", () => {
-    expect(organizeReply("not json", paragraph)).toBeNull();
-    expect(organizeReply('{"points": []}', paragraph)).toBeNull();
-    expect(
-      organizeReply(
-        '{"topics": [{"points": [{"label": "Claim", "text": "x", "says": [1]}]}]}',
-        paragraph,
-      ),
-    ).toBeNull();
+    expect(organizeReply("not an outline", paragraph)).toBeNull();
+    expect(organizeReply('{"topics": []}', paragraph)).toBeNull();
+    // A point before any topic belongs to none.
+    expect(organizeReply("- Claim: x [1]", paragraph)).toBeNull();
     // Labels over your words alone: nothing the pen understood.
-    expect(
-      organizeReply(
-        '{"topics": [{"name": "A", "points": [{"label": "Example", "text": "", "says": [1]}]}]}',
-        paragraph,
-      ),
-    ).toBeNull();
+    expect(organizeReply("# A\n- Example: [1]", paragraph)).toBeNull();
     const topics = topicsOf(
       [
         { name: "A", points: [{ label: "Claim", text: "One.", says: [1, 2, 3, 4] }] },
