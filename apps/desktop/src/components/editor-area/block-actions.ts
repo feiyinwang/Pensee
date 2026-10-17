@@ -1,6 +1,7 @@
 import {
   EditorSelection,
   type EditorState,
+  type Line,
   type Text,
   type TransactionSpec,
 } from "@codemirror/state";
@@ -34,7 +35,10 @@ import { blockTypeOf, setBlockType, type BlockTypeId } from "./markdown-formatti
  *     clicked, once. An action that writes twice needs two undos, which reads
  *     as a bug even when the end state is right.
  *  2. **The target, not the caret.** These never look at `state.selection`.
- *     The handle can be beside a block the caret has never visited.
+ *     The handle can be beside a block the caret has never visited. The one
+ *     exception is the type grid on a list item that sits inside a selection
+ *     of several items: then the selection names the blocks
+ *     ({@link selectedListItems}).
  */
 
 /**
@@ -360,8 +364,15 @@ function writeTarget(
 
 /* -------------------------------------------------------------- block shapes */
 
-/** Which tile in the type grid is lit, if any. */
+/** Which tile in the type grid is lit, if any. Across a selection of items,
+ *  only the shape every one of them has — so the lit tile is always the one
+ *  that clears them all. */
 export function currentBlockType(view: BlockEditor, target: ActionTarget): BlockTypeId | null {
+  const items = selectedListItems(view.state, target);
+  if (items) {
+    const [first, ...rest] = items.map((s) => itemType(view.state.doc, s));
+    return rest.every((t) => t === first) ? (first ?? null) : null;
+  }
   const md = targetMarkdown(view, target);
   return md == null ? null : blockTypeOf(md.trim());
 }
@@ -369,42 +380,195 @@ export function currentBlockType(view: BlockEditor, target: ActionTarget): Block
 /** Convert the target. Picking the shape it already has clears it back to
  *  plain text — a radio group you can switch off, the same as Notion. */
 export function applyBlockType(view: BlockEditor, target: ActionTarget, id: BlockTypeId): boolean {
+  const items = listItemsFor(view.state, target);
+  if (items) return applyToItems(view, items, id);
   const md = targetMarkdown(view, target);
   if (md == null) return false;
   const current = blockTypeOf(md.trim());
   const nextId = current === id ? "text" : id;
   const next = setBlockType(md.trim(), nextId);
   if (next === md.trim()) return false;
-  if (isListItem(target) && !LIST_TYPES.has(nextId)) {
-    return writeListItemOut(view, target, next, `input.block.${id}`);
-  }
   return writeTarget(view, target, next, `input.block.${id}`);
 }
 
-/** An item that stops being a list item has to leave the list: written in
- *  place, a paragraph line between two items is read as a lazy continuation of
- *  the item above, and the item below folds into the paragraph. Blank lines on
- *  both sides split the list around it. */
-function writeListItemOut(
-  view: BlockEditor,
-  target: ListItemTarget,
-  md: string,
-  userEvent: string,
-): boolean {
-  const doc = view.state.doc;
-  // From the line start: a nested item's indentation goes too, or the
-  // paragraph would sit indented under nothing.
-  const from = doc.lineAt(target.from).from;
-  const to = target.to;
-  const before = from > 0 && doc.lineAt(from - 1).text.trim() ? "\n" : "";
-  const after = to < doc.length && doc.lineAt(to + 1).text.trim() ? "\n" : "";
+/* -------------------------------------------------------- list item shapes */
+
+/** A list item's own lines ({@link itemSpan}) plus where its whole node ends,
+ *  nested items included — what has to move sideways when its marker changes
+ *  width. */
+interface ItemSpan extends Span {
+  end: number;
+}
+
+/**
+ * The items a selection covers, when the grip's own item is one of them.
+ *
+ * Selecting seven bullets and picking "numbered" beside one of them used to
+ * number that one: the selection is the reader saying which blocks they mean,
+ * so the grid takes all of them. A grip outside the selection is pointing at
+ * something else and converts only itself. Null for fewer than two items.
+ */
+function selectedListItems(state: EditorState, target: ActionTarget): ItemSpan[] | null {
+  if (!isListItem(target)) return null;
+  const { doc } = state;
+  const sel = state.selection.main;
+  if (sel.empty) return null;
+  const first = doc.lineAt(sel.from);
+  // Dragging down to the start of the next line selects nothing on it.
+  const endsAtLineStart = sel.to > first.to && doc.lineAt(sel.to).from === sel.to;
+  const last = doc.lineAt(endsAtLineStart ? sel.to - 1 : sel.to);
+  if (target.from > last.to || target.to < first.from) return null;
+  const items: ItemSpan[] = [];
+  syntaxTree(state).iterate({
+    from: first.from,
+    to: last.to,
+    enter: (n) => {
+      if (n.name !== "ListItem") return;
+      const span = itemSpan(doc, n.node);
+      // A parent overlaps the range through its children; only its own lines count.
+      if (span.from <= last.to && span.to >= first.from) items.push({ ...span, end: n.to });
+    },
+  });
+  return items.length > 1 ? items : null;
+}
+
+/** The items the type grid converts: the selection's, or the one item. */
+function listItemsFor(state: EditorState, target: ActionTarget): ItemSpan[] | null {
+  const selected = selectedListItems(state, target);
+  if (selected) return selected;
+  if (!isListItem(target) || target.to > state.doc.length) return null;
+  const end = listItemNode(state, target.from)?.to ?? target.to;
+  return [{ from: target.from, to: target.to, end }];
+}
+
+function itemType(doc: Text, item: Span): BlockTypeId | null {
+  return blockTypeOf(doc.sliceString(item.from, item.to).trim());
+}
+
+/** Convert every item in one dispatch. Clearing is all-or-nothing: only when
+ *  every item already has the picked shape do they all go back to text. */
+function applyToItems(view: BlockEditor, items: ItemSpan[], id: BlockTypeId): boolean {
+  const { doc } = view.state;
+  const nextId = items.every((s) => itemType(doc, s) === id) ? "text" : id;
+  const out = !LIST_TYPES.has(nextId);
+  const changes = out ? itemsOut(doc, items, nextId) : remarkItems(doc, items, nextId);
+  if (!changes.length) return false;
+  const one = items.length === 1 ? items[0] : undefined;
   view.dispatch({
-    changes: { from, to, insert: `${before}${md}${after}` },
-    selection: EditorSelection.cursor(from + before.length),
-    userEvent,
-    scrollIntoView: true,
+    changes,
+    // One item: the caret goes to it, as with any other block. Several: the
+    // selection stays over them, so the next pick converts the same items.
+    ...(one && {
+      selection: EditorSelection.cursor(
+        out ? changes[0]!.from + (changes[0]!.insert.startsWith("\n") ? 1 : 0) : one.from,
+      ),
+      scrollIntoView: true,
+    }),
+    userEvent: `input.block.${id}`,
   });
   return true;
+}
+
+/** `- `, `1. `, `- [x] ` — the whole prefix a list item's text sits behind. */
+const ITEM_PREFIX = /^(?:[-*+]|\d+[.)])(?:[ \t]+\[[ xX]\])?[ \t]*/;
+
+/**
+ * List shape to list shape rewrites the marker and nothing else, so a wrapped
+ * item's second line and its children stay where they are. Two things follow
+ * from a marker changing:
+ *
+ *  - **Numbers run.** Each new number continues from the sibling above it —
+ *    including a numbered item just above the selection — and starts at 1
+ *    under a new parent or after a bullet.
+ *  - **Children move with the marker.** `1. ` is wider than `- `, and a child
+ *    indented less than its parent's text is no longer its child: it falls out
+ *    as a sibling. Every line under a re-marked item shifts by the difference.
+ */
+function remarkItems(
+  doc: Text,
+  items: ItemSpan[],
+  id: BlockTypeId,
+): { from: number; to?: number; insert?: string }[] {
+  const numbers = new Map<number, number>(); // line number → its new number
+  const shift = new Map<number, number>(); // line number → columns to add
+  const out: { from: number; to?: number; insert?: string }[] = [];
+  for (const item of items) {
+    const line = doc.lineAt(item.from);
+    const old = ITEM_PREFIX.exec(doc.sliceString(item.from, line.to))?.[0] ?? "";
+    let marker: string;
+    if (id === "numbered") {
+      const n = previousNumber(doc, line, item.from - line.from, numbers) + 1;
+      numbers.set(line.number, n);
+      marker = `${n}. `;
+    } else if (id === "task") {
+      const box = /\[([ xX])\]/.exec(old)?.[1];
+      marker = `- [${box && box !== " " ? "x" : " "}] `;
+    } else {
+      marker = "- ";
+    }
+    if (marker === old) continue;
+    out.push({ from: item.from, to: item.from + old.length, insert: marker });
+    const delta = marker.length - old.length;
+    if (!delta) continue;
+    for (let n = line.number + 1; n <= doc.lineAt(item.end).number; n++) {
+      shift.set(n, (shift.get(n) ?? 0) + delta);
+    }
+  }
+  for (const [n, delta] of shift) {
+    const line = doc.line(n);
+    if (!line.text.trim()) continue;
+    if (delta > 0) {
+      out.push({ from: line.from, insert: " ".repeat(delta) });
+    } else {
+      const cut = Math.min(-delta, /^ */.exec(line.text)![0].length);
+      if (cut) out.push({ from: line.from, to: line.from + cut });
+    }
+  }
+  return out.sort((a, b) => a.from - b.from);
+}
+
+/** The number the item before this one (same depth, same list) ends up with,
+ *  or 0 when there is none to continue from. */
+function previousNumber(
+  doc: Text,
+  line: Line,
+  indent: number,
+  numbers: Map<number, number>,
+): number {
+  for (let n = line.number - 1; n >= 1; n--) {
+    const text = doc.line(n).text;
+    const body = text.trimStart();
+    if (!body) continue; // a loose list's blank line
+    const at = text.length - body.length;
+    if (at > indent) continue; // an earlier sibling's child, or its wrapped text
+    if (at < indent) return 0; // the parent: this is its first child
+    return numbers.get(n) ?? Number(/^(\d+)[.)][ \t]/.exec(body)?.[1] ?? 0);
+  }
+  return 0;
+}
+
+/** Items that stop being list items have to leave the list: written in place,
+ *  a paragraph line between two items is read as a lazy continuation of the
+ *  item above, and the item below folds into the paragraph. Blank lines split
+ *  the list around them — but not between two items converted together, which
+ *  stay one run of lines (one quote, consecutive headings). */
+function itemsOut(
+  doc: Text,
+  items: ItemSpan[],
+  id: BlockTypeId,
+): { from: number; to: number; insert: string }[] {
+  // From the line start: a nested item's indentation goes too, or the
+  // paragraph would sit indented under nothing.
+  const starts = new Set(items.map((s) => doc.lineAt(s.from).from));
+  const ends = new Set(items.map((s) => s.to));
+  return items.map(({ from: at, to }) => {
+    const from = doc.lineAt(at).from;
+    const md = setBlockType(doc.sliceString(at, to).trim(), id);
+    const before = from > 0 && !ends.has(from - 1) && doc.lineAt(from - 1).text.trim() ? "\n" : "";
+    const after =
+      to < doc.length && !starts.has(to + 1) && doc.lineAt(to + 1).text.trim() ? "\n" : "";
+    return { from, to, insert: `${before}${md}${after}` };
+  });
 }
 
 /* -------------------------------------------------------------------- moving */

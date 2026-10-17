@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { EditorState, type TransactionSpec } from "@codemirror/state";
+import { EditorSelection, EditorState, type TransactionSpec } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxTree } from "@codemirror/language";
 import { GFM } from "@lezer/markdown";
@@ -33,9 +33,10 @@ class Fake {
   state: EditorState;
   dispatches = 0;
 
-  constructor(doc: string) {
+  constructor(doc: string, selection?: { anchor: number; head: number }) {
     this.state = EditorState.create({
       doc,
+      selection: selection && EditorSelection.single(selection.anchor, selection.head),
       extensions: [markdown({ extensions: [GFM, columnsParserExtension] })],
     });
   }
@@ -501,5 +502,100 @@ describe("list items", () => {
     const ed = new Fake("- a\n- b\n\npara");
     expect(deleteTarget(ed, item(4, 7))).toBe(true);
     expect(ed.doc).toBe("- a\n\npara");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A selection across several items: the type tiles convert every one of them
+// ---------------------------------------------------------------------------
+
+describe("selected list items", () => {
+  const item = (from: number, to: number): ActionTarget => block(from, to, "ListItem");
+  /** Select from the start of line `a` to the end of line `b` (1-based). */
+  const lines = (doc: string, a: number, b: number) => {
+    const all = doc.split("\n");
+    const start = all.slice(0, a - 1).join("\n").length + (a > 1 ? 1 : 0);
+    const end = all.slice(0, b).join("\n").length;
+    return { anchor: start, head: end };
+  };
+
+  test("numbered numbers every selected bullet in order, in one undo step", () => {
+    const doc = "- a\n- b\n- c";
+    const ed = new Fake(doc, lines(doc, 1, 3));
+    expect(applyBlockType(ed, item(4, 7), "numbered")).toBe(true);
+    expect(ed.doc).toBe("1. a\n2. b\n3. c");
+    expect(ed.dispatches).toBe(1);
+  });
+
+  test("the run continues from a numbered item just above the selection", () => {
+    const doc = "1. a\n- b\n- c\n- d";
+    const ed = new Fake(doc, lines(doc, 2, 3));
+    expect(applyBlockType(ed, item(5, 8), "numbered")).toBe(true);
+    expect(ed.doc).toBe("1. a\n2. b\n3. c\n- d");
+  });
+
+  test("nested items convert too, count from 1, and stay nested under the wider marker", () => {
+    const doc = "- a\n  - x\n  - y\n- b";
+    const ed = new Fake(doc, lines(doc, 1, 4));
+    expect(applyBlockType(ed, item(0, 3), "numbered")).toBe(true);
+    expect(ed.doc).toBe("1. a\n   1. x\n   2. y\n2. b");
+    // Still a child of `a`: two ListItems above its text, not one.
+    let depth = 0;
+    const x = ed.doc.indexOf("x");
+    for (let n = syntaxTree(ed.state).resolveInner(x, 1); n; n = n.parent!) {
+      if (n.name === "ListItem") depth++;
+      if (!n.parent) break;
+    }
+    expect(depth).toBe(2);
+  });
+
+  test("one item's children move with its marker too", () => {
+    const ed = new Fake("1. a\n   - x");
+    expect(applyBlockType(ed, item(0, 4), "bullet")).toBe(true);
+    expect(ed.doc).toBe("- a\n  - x");
+  });
+
+  test("a selection ending at the start of a line does not take that line", () => {
+    const doc = "- a\n- b\n- c";
+    const ed = new Fake(doc, { anchor: 0, head: 8 });
+    expect(applyBlockType(ed, item(0, 3), "task")).toBe(true);
+    expect(ed.doc).toBe("- [ ] a\n- [ ] b\n- c");
+  });
+
+  test("the tile is lit only when every selected item has that shape, and then clears them", () => {
+    const doc = "- a\n- b\n1. c";
+    const mixed = new Fake(doc, lines(doc, 1, 3));
+    expect(currentBlockType(mixed, item(0, 3))).toBeNull();
+    const same = new Fake(doc, lines(doc, 1, 2));
+    expect(currentBlockType(same, item(0, 3))).toBe("bullet");
+    expect(applyBlockType(same, item(0, 3), "bullet")).toBe(true);
+    expect(same.doc).toBe("a\nb\n\n1. c");
+    expect(same.dispatches).toBe(1);
+  });
+
+  test("bullet and task swap markers, keeping a ticked box when it stays a task", () => {
+    const doc = "1. a\n2. b";
+    const ed = new Fake(doc, lines(doc, 1, 2));
+    expect(applyBlockType(ed, item(0, 4), "bullet")).toBe(true);
+    expect(ed.doc).toBe("- a\n- b");
+    const doc2 = "- [x] a\n- b";
+    const ed2 = new Fake(doc2, lines(doc2, 1, 2));
+    expect(applyBlockType(ed2, item(0, 7), "task")).toBe(true);
+    expect(ed2.doc).toBe("- [x] a\n- [ ] b");
+  });
+
+  test("the selection keeps covering the items, so a second pick works on all of them", () => {
+    const doc = "- a\n- b";
+    const ed = new Fake(doc, lines(doc, 1, 2));
+    applyBlockType(ed, item(0, 3), "numbered");
+    applyBlockType(ed, item(0, 4), "task");
+    expect(ed.doc).toBe("- [ ] a\n- [ ] b");
+  });
+
+  test("a grip outside the selection converts only its own item", () => {
+    const doc = "- a\n- b\n- c";
+    const ed = new Fake(doc, lines(doc, 1, 2));
+    expect(applyBlockType(ed, item(8, 11), "numbered")).toBe(true);
+    expect(ed.doc).toBe("- a\n- b\n1. c");
   });
 });

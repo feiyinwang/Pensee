@@ -170,16 +170,18 @@ link previews.
 ## Blocks — BLK
 
 **Feature:** Each block has a handle menu (turn into, move, duplicate,
-delete). Blocks can be linked into other notes and edited in either place.
+delete). With several list items selected, turn into converts all of
+them. Blocks can be linked into other notes and edited in either place.
 **Spec:** SPECs/block-handle-menu-spec.md, SPECs/block-embed-spec.md
 **Code:** `src/components/editor-area/` (block-handle-menu.ts, block-actions.ts, block-embed.ts, linked-block-sync.ts, block-backlinks.ts)
 
-| ID     | Journey                                                    | Expected                                                     | Check                        |
-| ------ | ---------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------- |
-| BLK-01 | Hover a paragraph, open its ¶ handle, choose **Heading 2** | Only that block becomes `## `                                | legacy: block-handle-heading |
-| BLK-02 | Handle menu on a list item → **Move down**, **Delete**     | Only that item moves / goes; numbers stay in order           | manual                       |
-| BLK-03 | ⌘⇧C in a paragraph, ⌘⇧V in another note                    | A linked block appears; editing it changes the original note | manual                       |
-| BLK-04 | Select text, ⌘⌥N, pick a page                              | The text moves into that page and a link is left behind      | manual                       |
+| ID     | Journey                                                            | Expected                                                                                | Check        |
+| ------ | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------ |
+| BLK-01 | Hover a paragraph, open its ¶ handle, choose **Heading 2**         | Only that block becomes `## `                                                           | auto: blocks |
+| BLK-02 | Handle menu on a list item → **Move down**, **Delete**             | Only that item moves / goes; numbers stay in order                                      | manual       |
+| BLK-03 | ⌘⇧C in a paragraph, ⌘⇧V in another note                            | A linked block appears; editing it changes the original note                            | manual       |
+| BLK-04 | Select text, ⌘⌥N, pick a page                                      | The text moves into that page and a link is left behind                                 | manual       |
+| BLK-05 | Select several bullets, open one item's handle → **Numbered list** | Every selected item is numbered 1, 2, 3…; items outside the selection keep their marker | auto: blocks |
 
 ## Rich content — MED
 

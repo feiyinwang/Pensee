@@ -175,10 +175,21 @@ duplicates and deletes that item only. `listItemAt()` resolves the innermost
 item whose own lines contain the pointer's line; an item's extent stops before
 its nested list, so a parent never carries its children into a conversion.
 
-- **Type tiles.** Bullet / numbered / to-do rewrite the item in place. Any
-  other shape takes the item out of the list with a blank line on each side —
-  written in place, a paragraph line between two items is a lazy continuation
-  of the item above and swallows the item below.
+- **Type tiles.** Bullet / numbered / to-do rewrite the item's marker and
+  nothing else, so a wrapped second line stays put. Numbers continue from the
+  sibling above (`1.` above → `2.`), and when the marker changes width
+  (`- ` → `1. `) every line under the item shifts by the difference, or its
+  children would fall out of it as siblings. Any other shape takes the item
+  out of the list with a blank line on each side — written in place, a
+  paragraph line between two items is a lazy continuation of the item above
+  and swallows the item below.
+- **A selection of items.** When the editor's selection covers several items
+  and the grip's own item is one of them, the tiles act on every selected
+  item, nested ones included, in one undo step (`selectedListItems()`). The
+  lit tile is the shape all of them share; clicking it clears all of them.
+  The selection stays over the items, so a second pick converts the same set.
+  A grip outside the selection converts only its own item. Move, duplicate
+  and delete still act on the one item.
 - **Move** swaps with a sibling in the same list only, children travelling with
   their item. Bodies swap and markers stay put, so `1. 2. 3.` keeps counting.
 - **Insert / duplicate** add a sibling (`\n` + indent + marker), never `\n\n`,
