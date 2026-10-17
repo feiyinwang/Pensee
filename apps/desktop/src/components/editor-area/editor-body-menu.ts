@@ -5,6 +5,7 @@ import { buildEditorBodyMenuItemsSpec, showNativeContextMenu } from "./editor-co
 import { followLink, linkHrefAtPos } from "./link-navigation";
 import { runEditorCommand } from "./markdown-formatting";
 import { moveSelectionToPage } from "./wiki-pages-extension";
+import { addToProjects } from "./add-to-projects";
 import { copyBlockReferenceAtCaret, pasteBlockReference } from "./block-embed";
 import { tabularPasteTransaction } from "@/lib/tabular-paste";
 
@@ -65,6 +66,12 @@ export function editorBodyContextMenuExtension(
               ? () => {
                   view.focus();
                   moveSelectionToPage(view, getFilePath, isDisposed);
+                }
+              : undefined,
+            onAddToProjects: hasSelection
+              ? () => {
+                  const { from, to } = view.state.selection.main;
+                  void addToProjects(view.state.sliceDoc(from, to));
                 }
               : undefined,
             onCopyBlockReference: () => {

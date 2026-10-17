@@ -269,8 +269,10 @@ Opened full screen or **Edit here** over a note.
 
 **Feature:** The Projects space is a kanban of `Type: Project` notes by
 **Status**. Moving a card writes the note's frontmatter. Done folds its older cards.
-**Spec:** SPECs/project-views-spec.md
-**Code:** `src/components/spaces/project-views.tsx`, `src/components/arc/blocks/kanban-board/`, `src/lib/projects.ts`, `src/lib/project-template.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`
+Select sentences in any note, right-click, **Add to Projects**: Claude makes a
+project of each one that takes more than two steps, keeping names you wrote.
+**Spec:** SPECs/project-views-spec.md, SPECs/add-to-projects-spec.md
+**Code:** `src/components/spaces/project-views.tsx`, `src/components/arc/blocks/kanban-board/`, `src/lib/projects.ts`, `src/lib/project-template.ts`, `src/hooks/use-spaces.ts` (createProjectNote, adoptProjectNote, findNoteNamed), `src/lib/projects-from-text.ts`, `src/components/editor-area/add-to-projects.ts`, `src/components/editor-area/editor-context-menu.ts`, `src/components/editor-area/editor-body-menu.ts`, `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`
 
 | ID     | Journey                                   | Expected                                             | Check               |
 | ------ | ----------------------------------------- | ---------------------------------------------------- | ------------------- |
@@ -280,6 +282,9 @@ Opened full screen or **Edit here** over a note.
 | PRJ-04 | **+** on a column, type a new name, Enter | A project note is created with that Status and shows | legacy: project-add |
 | PRJ-05 | Click a card                              | Its note opens; **Back** returns to Projects         | manual              |
 | PRJ-06 | Done holds more cards than fit            | **Show N more** unfolds them, **Show fewer** folds   | manual              |
+| PRJ-07 | Select three sentences, each a plan of three steps or more, plus "Call Sam."; right-click, **Add to Projects** | **Adding to Projects…**, then a project note per plan, each holding its sentence, a name already written (`**Garden**:`, `[[Trip]]`) kept; none for "Call Sam."; the notice names them, says 1 sentence isn't a project, and offers **Open Projects** | you                 |
+| PRJ-08 | Select three sentences about one piece of work; **Add to Projects**                                            | One project note holding all three sentences                                                                                                                                                                                                          | you                 |
+| PRJ-09 | Right-click in a note with nothing selected                                                                    | No **Add to Projects** in the menu                                                                                                                                                                                                                    | you                 |
 
 ## Library — LIB
 

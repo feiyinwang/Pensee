@@ -27,6 +27,7 @@ export type EditorBodyMenuActionId =
   | "open-link"
   | "copy-link"
   | "move-to-page"
+  | "add-to-projects"
   | "copy-block-reference"
   | "paste-block-reference";
 
@@ -40,6 +41,8 @@ export interface EditorBodyMenuHandlers {
   onRunCommand?: (id: EditorCommandId) => void;
   /** Present only when there is a selection to move. */
   onMoveToPage?: () => void;
+  /** Present only when there is a selection to make projects from. */
+  onAddToProjects?: () => void;
   /** Linked blocks (SPECs/block-embed-spec.md); absent outside the main
    *  editor. */
   onCopyBlockReference?: () => void;
@@ -149,6 +152,16 @@ export function buildEditorBodyMenuItemsSpec(
       text: "Move selection to page…",
       action: handlers.onMoveToPage,
       accelerator: chordToAccelerator(MOVE_SELECTION_TO_PAGE_CHORD),
+    });
+  }
+
+  if (handlers.onAddToProjects) {
+    if (!handlers.onMoveToPage) items.push({ kind: "separator" });
+    items.push({
+      kind: "item",
+      id: "add-to-projects",
+      text: "Add to Projects",
+      action: handlers.onAddToProjects,
     });
   }
 

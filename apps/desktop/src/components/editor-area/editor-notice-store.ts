@@ -13,7 +13,8 @@ export interface EditorNoticeAction {
 interface EditorNoticeState {
   message: string | null;
   action: EditorNoticeAction | null;
-  showNotice: (message: string, action?: EditorNoticeAction) => void;
+  /** `stay`: shown until the next notice replaces it (work in progress). */
+  showNotice: (message: string, action?: EditorNoticeAction, stay?: boolean) => void;
   dismissNotice: () => void;
 }
 
@@ -24,9 +25,11 @@ let dismissTimer: number | null = null;
 export const useEditorNoticeStore = create<EditorNoticeState>((set, get) => ({
   message: null,
   action: null,
-  showNotice: (message, action) => {
+  showNotice: (message, action, stay = false) => {
     if (dismissTimer !== null) window.clearTimeout(dismissTimer);
+    dismissTimer = null;
     set({ message, action: action ?? null });
+    if (stay) return;
     dismissTimer = window.setTimeout(
       () => {
         dismissTimer = null;
@@ -44,8 +47,8 @@ export const useEditorNoticeStore = create<EditorNoticeState>((set, get) => ({
   },
 }));
 
-export function showEditorNotice(message: string, action?: EditorNoticeAction) {
-  useEditorNoticeStore.getState().showNotice(message, action);
+export function showEditorNotice(message: string, action?: EditorNoticeAction, stay?: boolean) {
+  useEditorNoticeStore.getState().showNotice(message, action, stay);
 }
 
 export function dismissEditorNotice() {

@@ -80,6 +80,12 @@ export function organizeModel(): string {
   return id === "haiku" ? "sonnet" : id;
 }
 
+/** Whether a request is waiting on the pen's Claude: there is one process,
+ *  so another request must wait its turn. */
+export function penBusy(): boolean {
+  return waiting.size > 0;
+}
+
 /** Start the pen's Claude now, so the next request doesn't wait for it. */
 export function warmPen(): void {
   if (!useWorkspaceStore.getState().root) return;

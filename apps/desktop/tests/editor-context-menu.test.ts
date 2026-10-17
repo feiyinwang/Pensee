@@ -247,6 +247,38 @@ describe("buildTitleMenuItemsSpec", () => {
     expect(handlers.calls).toEqual(["rename", "reveal", "copy-path"]);
   });
 
+  test("Add to Projects shows only with its handler, after Move selection to page", () => {
+    const handlers = makeBodyHandlers();
+    handlers.onMoveToPage = () => handlers.calls.push("move-to-page");
+    handlers.onAddToProjects = () => handlers.calls.push("add-to-projects");
+    const ids = buildEditorBodyMenuItemsSpec(handlers, false).map((e) =>
+      e.kind === "item" ? e.id : e.kind,
+    );
+    expect(ids.slice(ids.indexOf("move-to-page"), ids.indexOf("move-to-page") + 2)).toEqual([
+      "move-to-page",
+      "add-to-projects",
+    ]);
+    const alone = makeBodyHandlers();
+    alone.onAddToProjects = () => {};
+    const aloneIds = buildEditorBodyMenuItemsSpec(alone, false).map((e) =>
+      e.kind === "item" ? e.id : e.kind,
+    );
+    expect(aloneIds).toEqual([
+      "cut",
+      "copy",
+      "paste",
+      "separator",
+      "add-to-projects",
+      "separator",
+      "select-all",
+    ]);
+    expect(
+      buildEditorBodyMenuItemsSpec(makeBodyHandlers(), false).some(
+        (e) => e.kind === "item" && e.id === "add-to-projects",
+      ),
+    ).toBe(false);
+  });
+
   describe("block reference items", () => {
     test("shown with their shortcuts when the editor offers them", () => {
       const handlers = {

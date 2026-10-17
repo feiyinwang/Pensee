@@ -54,6 +54,13 @@ describe("createProjectNote", () => {
     expect(files.get("/vault/Trip.md")).toBe("---\nType: Project\nStart: 2026-10-12\n---\n");
   });
 
+  test("an intro is the note's body", async () => {
+    await createProjectNote("Trip", { status: "" }, "Book flights, a hotel and a rail pass.");
+    expect(files.get("/vault/Trip.md")).toBe(
+      "---\nType: Project\nStatus:\n---\nBook flights, a hotel and a rail pass.\n",
+    );
+  });
+
   test("refuses an empty name", async () => {
     await expect(createProjectNote("   ", {})).rejects.toThrow("Enter a name first");
     expect(files.size).toBe(0);
@@ -112,6 +119,13 @@ describe("createProjectNote from the vault's template", () => {
     );
     expect(content).toContain('contains(Project, "Trip")');
     expect(content).not.toContain("<%");
+  });
+
+  test("an intro starts the body, above the template's sections", async () => {
+    await createProjectNote("Trip", { status: "" }, "Book flights and a hotel.");
+    expect(files.get("/vault/1. Project/Trip.md")).toMatch(
+      /\n---\nBook flights and a hotel\.\n\n# Tasks\n/,
+    );
   });
 
   test("No status empties the template's status", async () => {

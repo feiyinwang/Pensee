@@ -262,19 +262,24 @@ export async function adoptProjectNote(
 /** Write a project note named `name` with `edit`'s fields set; opens nothing.
  *  For a name no note has yet (see `findNoteNamed`). It is made from the
  *  vault's project template when Templater has one, in that template's folder
- *  (lib/project-template.ts); otherwise it is just the fields, at the root. */
+ *  (lib/project-template.ts); otherwise it is just the fields, at the root.
+ *  `intro`, when given, starts the body, above the template's. */
 export async function createProjectNote(
   name: string,
   edit: ProjectEdit,
+  intro = "",
 ): Promise<{ path: string; stem: string }> {
+  const lead = intro.trim() === "" ? "" : `${intro.trim()}\n`;
   const root = useWorkspaceStore.getState().root;
   const template = root ? await loadProjectTemplate(root) : null;
-  if (!template) return createRootNote(name, () => projectNoteContent(edit));
+  if (!template) return createRootNote(name, () => `${projectNoteContent(edit)}${lead}`);
   return createNoteIn(template.folder, name, (stem) => {
     const { frontmatter, body } = parseFrontmatter(
       fillTemplate(template.content, stem, new Date()),
     );
-    return serializeFile(asProjectFrontmatter(frontmatter, edit), body);
+    const rest = body.replace(/^\n+/, "");
+    const withIntro = lead === "" ? body : rest === "" ? lead : `${lead}\n${rest}`;
+    return serializeFile(asProjectFrontmatter(frontmatter, edit), withIntro);
   });
 }
 
