@@ -1,7 +1,14 @@
 // Editor journeys (ED in docs/qa/user-journeys.md) beyond the smoke set.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { ok, strictEqual } from "node:assert/strict";
-import { mouseClick, pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
+import {
+  invoke,
+  mouseClick,
+  pressCmd,
+  typeInEditor,
+  waitForTitle,
+  workspaceRoot,
+} from "./_helpers.js";
 
 /** Open a note by name through ⌘F, the way PAL-01 does. */
 async function openViaPalette(name) {
@@ -157,5 +164,71 @@ describe("Journeys: editor", function () {
     ok(!(await $("[data-search-overlay]").isExisting()), "⌘F opened no find bar");
     await browser.keys("Escape");
     await $("[cmdk-input]").waitForExist({ timeout: 5_000, reverse: true });
+  });
+
+  it("ED-26 ⌘↓ and ⌘↑ go to the very bottom and top of the page", async function () {
+    await openViaPalette("Long essay");
+    await typeInEditor("", { atEnd: false });
+    // The front note's real scroller (`.cm-scroller` doesn't scroll) and
+    // whether its title is on screen. `nudge` scrolls it 1px first: the hidden
+    // e2e window runs no frames, so CodeMirror never runs the measure the
+    // scroll happens in by itself (qa-checklist harness notes).
+    const page = (nudge = 0) =>
+      browser.execute((by) => {
+        const scope = document.querySelector("[data-column-tab][data-focused]") ?? document;
+        const editor = [...scope.querySelectorAll(".cm-editor")].find((el) => el.offsetParent);
+        let scroller = editor.parentElement;
+        while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) {
+          scroller = scroller.parentElement;
+        }
+        scroller.scrollTop += by;
+        const title = [...scope.querySelectorAll("[data-page-title]")].find(
+          (el) => el.offsetParent,
+        );
+        const box = scroller.getBoundingClientRect();
+        return {
+          top: scroller.scrollTop,
+          fromBottom: scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop,
+          titleShown: title.getBoundingClientRect().top >= box.top - 1,
+        };
+      }, nudge);
+    /** Poll, nudging the scroller ±1px between reads, until `done(state)`. */
+    const waitForPage = async (done, timeoutMsg) => {
+      let step = 1;
+      let seen = null;
+      await browser
+        .waitUntil(
+          async () => {
+            await page(step);
+            step = -step;
+            await browser.pause(150);
+            seen = await page();
+            return done(seen);
+          },
+          { timeout: 5_000, interval: 100 },
+        )
+        .catch(() => {
+          throw new Error(`${timeoutMsg}: ${JSON.stringify(seen)}`);
+        });
+    };
+
+    await pressCmd("ArrowDown", { inFocus: true });
+    await waitForPage((state) => state.fromBottom < 2, "⌘↓ did not reach the bottom of the page");
+    ok((await page()).top > 1000, "the long note scrolled down");
+    // The caret went with it: typing lands at the note's end.
+    await typeInEditor("End mark", { atEnd: false });
+    const path = `${await workspaceRoot()}/Notes/Long essay.md`;
+    await browser.waitUntil(
+      async () => {
+        const read = await invoke("read_file", { path });
+        const text = typeof read.value === "string" ? read.value : (read.value?.content ?? "");
+        return text.trimEnd().endsWith("End mark");
+      },
+      { timeout: 5_000, timeoutMsg: "typing after ⌘↓ did not land at the note's end" },
+    );
+
+    await pressCmd("ArrowUp", { inFocus: true });
+    await waitForPage((state) => state.top < 2, "⌘↑ did not reach the top of the page");
+    ok((await page()).titleShown, "the title shows above the body");
   });
 });

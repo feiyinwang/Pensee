@@ -2,6 +2,7 @@
 
 ## 2026-10-17
 
+- ⌘↓ now takes you to the very bottom of a note and ⌘↑ to the very top, title included. Add ⇧ to select up to there.
 - Select several list items, hover any of them and pick **Numbered list** (or Bulleted, To-do, a heading…) from its handle: every selected item changes, not just that one, and the numbers run 1, 2, 3 on from the item above. Items nested inside stay nested. Pick the lit tile again to turn them all back to text.
 - **On this page** now marks the section filling most of your screen: a heading counts as the one you're reading once it passes the middle of the screen, not only once it reaches the top. At the end of a note the last heading in view is marked, and a heading you click in the list stays marked until you scroll or type, even when its section is short.
 - **# Organize** is quicker: it writes about half as much as before, so a short note is organized in about 5 seconds instead of 7 or 8, and longer notes save more. Each point the pen writes now only says what your sentences don't (what they share, what they show); where it would just repeat one of yours, it leaves the point out and your sentence sits straight under the point above, so the outline is shorter to read too.

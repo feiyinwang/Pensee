@@ -185,6 +185,8 @@ Standard editing shortcuts provided by CodeMirror's basic setup. Indent is rebou
 | Cmd+Z                | Undo                           |
 | Cmd+Shift+Z          | Redo                           |
 | Cmd+A                | Select all                     |
+| Cmd+ArrowUp          | Top of the page (⇧: select)    |
+| Cmd+ArrowDown        | Bottom of the page (⇧: select) |
 | Cmd+D                | Delete the line(s)             |
 | Alt+ArrowUp          | Move line up                   |
 | Alt+ArrowDown        | Move line down                 |

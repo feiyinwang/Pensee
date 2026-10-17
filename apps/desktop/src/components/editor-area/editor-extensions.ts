@@ -27,6 +27,7 @@ import { imageSrcResolver } from "./image-src-resolver";
 import { linkNavigationExtension } from "./link-navigation";
 import { linkChips, linkPreviews } from "./link-preview";
 import { emptyHeadingKeymap, markdownFormatting } from "./markdown-formatting";
+import { pageEdgeKeys } from "./page-edge-keys";
 import { pageTitleArrowUp } from "./page-title";
 import { paragraphSelection } from "./paragraph-selection";
 import { mathDecorations } from "./math-decorations";
@@ -172,6 +173,7 @@ export function createEditorExtensions(
     markdownFormatting,
     emptyHeadingKeymap,
     pageTitleArrowUp,
+    pageEdgeKeys,
     storeSyncExtension(getFilePath),
     editorClipboardExtension(getFilePath, isDisposed),
     focusOnRevealExtension(isDisposed),
