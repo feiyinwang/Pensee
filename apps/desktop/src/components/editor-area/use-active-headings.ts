@@ -7,6 +7,8 @@ import { EDITOR_SAFE_SCROLL_MARGIN } from "./editor-scroll-container";
 // activates the destination heading instead of keeping the previous one
 // active. A small fudge protects against measurement jitter at the boundary.
 const ACTIVE_OFFSET_PX = EDITOR_SAFE_SCROLL_MARGIN + 4;
+// Slack for a scroll that settles a fraction of a pixel short of the end.
+const AT_END_SLACK_PX = 2;
 
 export interface ActiveHeadings {
   activeIndex: number | null;
@@ -22,7 +24,15 @@ function computeActive(
   if (headings.length === 0) return EMPTY;
   const docLen = view.state.doc.length;
   const scrollerRect = scroller.getBoundingClientRect();
-  const threshold = scrollerRect.top + ACTIVE_OFFSET_PX;
+  // Headings near the end of a note can never scroll up to the threshold, so
+  // once the note is scrolled to its end the line drops to the pane's
+  // bottom: the last heading in view is the one being read. A note too short
+  // to scroll keeps the top threshold.
+  const scrollable = scroller.scrollHeight > scroller.clientHeight;
+  const atEnd =
+    scrollable &&
+    scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - AT_END_SLACK_PX;
+  const threshold = atEnd ? scrollerRect.bottom : scrollerRect.top + ACTIVE_OFFSET_PX;
 
   let activeIndex: number | null = null;
   for (let i = 0; i < headings.length; i++) {

@@ -2,6 +2,7 @@
 
 ## 2026-10-17
 
+- **On this page** now marks the last heading when you scroll to the end of a note. Before, a heading near the end could never scroll up far enough, so the one above it stayed marked, even after clicking the last heading in the list.
 - **# Organize** is quicker: it writes about half as much as before, so a short note is organized in about 5 seconds instead of 7 or 8, and longer notes save more. Each point the pen writes now only says what your sentences don't (what they share, what they show); where it would just repeat one of yours, it leaves the point out and your sentence sits straight under the point above, so the outline is shorter to read too.
 - The pen's box (⌘.) now always opens where you can see it. At the end of a long paragraph, or with lines selected up from the bottom of a long note, it used to open at the top, out of view; now it opens just above the caret.
 - **# Organize** no longer pours every topic into the same five parts. Each topic is now a tree grown from how your writing hangs together: a reason with its examples under it, the steps of something you described, a feeling and what set it off. Flat notes give a shallow tree, ideas that nest give a deeper one (four levels at most), and parts your writing doesn't support, like Rules or Open questions, are left out. Every line the pen writes still starts with a bold label for what kind of line it is (**Theory:**, **Reason:**, **Example:**…), and your own words, unchanged, now sit right under the point they back instead of all together under **Evidence** at the end.
