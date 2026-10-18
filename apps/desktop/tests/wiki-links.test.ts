@@ -5,6 +5,7 @@ import {
   HTML_EMBED_MIN_HEIGHT,
   canonicalWikiTarget,
   findWikiLinkAt,
+  firstBookLinkTarget,
   normalizeWikiTarget,
   parseWikiHtmlEmbedTarget,
   parseWikiLink,
@@ -584,5 +585,26 @@ describe("findWikiLinkAt", () => {
   test("returns null outside any token", () => {
     expect(findWikiLinkAt(doc, 101)).toBeNull();
     expect(findWikiLinkAt(doc, 125)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// firstBookLinkTarget
+// ---------------------------------------------------------------------------
+
+describe("firstBookLinkTarget", () => {
+  test("finds a paper's embedded PDF past its image and page links", () => {
+    const body = "See [[Other note]] and ![[fig.png]].\n\n![[papers/Attention.pdf]]\n[[b.epub]]";
+    expect(firstBookLinkTarget(body)).toBe("papers/Attention.pdf");
+  });
+
+  test("reads a plain link, dropping its alias and page fragment", () => {
+    expect(firstBookLinkTarget("[[A_Wandering_Mind.PDF#page=3|the paper]]")).toBe(
+      "A_Wandering_Mind.PDF",
+    );
+  });
+
+  test("is null when the page links to no PDF or EPUB", () => {
+    expect(firstBookLinkTarget("[[pdf notes]] ![[scan.png]] paper.pdf")).toBeNull();
   });
 });

@@ -24,7 +24,7 @@ import { TONE_COLOR, statusTextTone } from "@/lib/projects";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { allTypes, notesInTab, type SpaceTab } from "@/lib/spaces";
 import { FilesSpace } from "./files-space";
-import { NoteGallery } from "./note-gallery";
+import { NoteGallery, type CardBook } from "./note-gallery";
 import { noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
 
@@ -80,15 +80,18 @@ export function SpacePage({
   );
 }
 
-/** Opens the note; a note with a `Book` file (a Library book) opens with its
- *  book beside it. */
-function openNote(event: MouseEvent | KeyboardEvent, path: string, book?: string) {
+/** Opens the note; a Library book or paper opens with its PDF or EPUB beside
+ *  it (`book`). */
+function openNote(event: MouseEvent | KeyboardEvent, path: string, book?: CardBook) {
   const open = event.metaKey || event.ctrlKey ? openLinkedPage : navigateToFile;
   void (async () => {
     await open(path);
     if (!book) return;
-    const { openBookBesideOpenPage } = await import("@/lib/book-import");
-    await openBookBesideOpenPage(path, book);
+    const { openBookBesideOpenPage, openLinkedBookBesideOpenPage } =
+      await import("@/lib/book-import");
+    await (book === "linked"
+      ? openLinkedBookBesideOpenPage(path)
+      : openBookBesideOpenPage(path, book.file));
   })().catch((error: unknown) => {
     window.alert(`Failed to open: ${error instanceof Error ? error.message : String(error)}`);
   });

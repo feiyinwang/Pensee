@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- Clicking a paper in Library now opens its PDF in the reader beside its note, as a book does. It reads the first PDF the note links to, like `![[paper.pdf]]`, so papers you brought from Obsidian work as they are.
 - The **Bookmarks** tab in Library and the X sync behind it are gone for now, until they're ready. Settings no longer has **X Bookmarks**, Pensée no longer checks X in the background, and a bookmark note opens as a plain note. Bookmark notes already in your vault stay where they are.
 - When **Add to Projects** finds a line that looks like a project you already have, it now asks first. **Already a project?** shows your line and that project as a card, with its status and the start of its note: **Same project** adds nothing, **New project** makes its own. With several, it asks about each in turn in the same popup. Esc or a click outside adds nothing new. Projects in **Done** don't count: a line like a finished project becomes a new project.
 - **Add to Projects** now keeps each bullet you select as its own project. Three bullets for a website, a Discord channel and a support email make three projects, not one. A bullet is judged by the work it takes, not by how short it is, so "Make a Discord channel" counts. Bullets only share a project when one is a step of another, like booking flights under a trip. Projects you already have are recognised even when worded differently, so adding the same lines twice no longer makes a second copy.

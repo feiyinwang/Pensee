@@ -13,7 +13,9 @@ import { resolveDailyNoteFile } from "./daily-note";
 import { pdfKind, withLibraryType } from "./library-add";
 import { getFileExtension, getFileName, getFileStem, getParentDir } from "./paths";
 import * as tauri from "./tauri";
+import { firstBookLinkTarget } from "./wiki-links";
 import { findWikiPage, newPagePath, safePageName } from "./wiki-pages";
+import { resolveEmbedPath } from "@/components/editor-area/wiki-embed-resolver";
 import { editPage, readPageParts } from "@/components/editor-area/linked-block-sync";
 import { showEditorNotice } from "@/components/editor-area/editor-notice-store";
 import { tauriWikiPageDeps } from "@/components/editor-area/wiki-pages-extension";
@@ -257,6 +259,17 @@ export async function openBookBesideOpenPage(notePath: string, file: string): Pr
   if (isBookFile(bookPath) && (await tauri.fileExists(bookPath))) {
     await openBook(bookPath, notePath);
   }
+}
+
+/** A Library card's page with no `Book` value, already open: the first PDF or
+ *  EPUB its body links to (`![[paper.pdf]]`, found as an embed is) joins it in
+ *  the reader; with none, or one that isn't there, the page stays on its own. */
+export async function openLinkedBookBesideOpenPage(notePath: string): Promise<void> {
+  const target = firstBookLinkTarget((await tauri.readFile(notePath)).content);
+  if (!target) return;
+  const root = useWorkspaceStore.getState().root;
+  const bookPath = await resolveEmbedPath(target, root, notePath);
+  if (bookPath) await openBook(bookPath, notePath);
 }
 
 /** A book picked from search: open it beside its page, or, when its file is

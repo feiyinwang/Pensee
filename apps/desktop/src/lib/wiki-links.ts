@@ -178,6 +178,17 @@ function embedPathWithExtension(target: string): { path: string; ext: string } |
   return { path, ext: path.slice(dot + 1).toLowerCase() };
 }
 
+/** The target of the first `[[…]]` or `![[…]]` in `markdown` that names a
+ *  PDF or EPUB, or null. A paper's page keeps its PDF this way, in its body,
+ *  where a book's page has a `Book` property (SPECs/book-reader-spec.md). */
+export function firstBookLinkTarget(markdown: string): string | null {
+  for (const match of markdown.matchAll(WIKI_LINK_RE)) {
+    const { path } = parseWikiLink(match[2]!);
+    if (/\.(pdf|epub)$/i.test(path)) return path;
+  }
+  return null;
+}
+
 /**
  * Parse the inner text of a `![[...]]` embed. Returns the normalized image
  * path (slashes normalized, leading `/` stripped) when the target is an

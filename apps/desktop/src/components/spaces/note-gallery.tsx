@@ -9,7 +9,18 @@ import type { TypedNote } from "@/lib/tauri";
 import { SpaceCover, noteTitle } from "./space-cover";
 import styles from "./spaces.module.css";
 
-type OpenNote = (event: MouseEvent | KeyboardEvent, path: string, book?: string) => void;
+/** What a card opens in the reader beside its page: the page's `Book` file,
+ *  or, for a book or paper with none, the first PDF or EPUB its body links to. */
+export type CardBook = { file: string } | "linked";
+
+type OpenNote = (event: MouseEvent | KeyboardEvent, path: string, book?: CardBook) => void;
+
+const READ_IN_READER: ReadonlySet<CoverKind> = new Set(["book", "paper"]);
+
+function cardBook(note: TypedNote, kind: CoverKind): CardBook | undefined {
+  if (note.properties.book) return { file: note.properties.book };
+  return READ_IN_READER.has(kind) ? "linked" : undefined;
+}
 
 /** Download a note's cover into its assets folder and write `Cover:`. */
 async function getCover(note: TypedNote, kind: CoverKind): Promise<void> {
@@ -122,7 +133,7 @@ export function NoteGallery({
               <button
                 type="button"
                 className={styles.item}
-                onClick={(event) => openNote(event, note.path, note.properties.book)}
+                onClick={(event) => openNote(event, note.path, cardBook(note, tab.cover))}
               >
                 <SpaceCover note={note} kind={tab.cover} />
                 <span className={styles.itemTitle}>{noteTitle(note)}</span>

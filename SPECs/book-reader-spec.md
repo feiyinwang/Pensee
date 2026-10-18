@@ -74,6 +74,10 @@ to explain or define something.
   - **Open Book** in the palette, from a book page;
   - Cmd+click a highlight block;
   - a `[[Name.pdf]]` link.
+  - its card in Library: a book by its `Book` file; a book or paper with
+    no `Book` by the first PDF or EPUB its page links to (`![[paper.pdf]]`,
+    found as an embed is), since papers keep their PDF in the body
+    (`openLinkedBookBesideOpenPage`).
 
 ### Reading place
 
