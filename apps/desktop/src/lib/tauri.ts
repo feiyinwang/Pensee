@@ -443,6 +443,9 @@ export interface LinkPreview {
   icon: string | null;
   /** False when the site forbids being shown in a frame. */
   embeddable: boolean;
+  /** The paper's PDF: the link itself when it serves one, else the page's
+   *  `citation_pdf_url`. */
+  pdf: string | null;
 }
 
 export function fetchLinkPreview(url: string): Promise<LinkPreview> {
@@ -472,6 +475,13 @@ export function searchPapers(query: string): Promise<Paper[]> {
  *  note's folder, e.g. `My video-assets/cover.jpg`. */
 export function saveWebCover(url: string, markdownFilePath: string): Promise<string> {
   return invoke("save_web_cover", { url, markdownFilePath });
+}
+
+/** Download the PDF at `url` into the note's `<stem>-assets` folder as
+ *  `<name>.pdf`; returns that path relative to the note's folder. Refuses a
+ *  response that isn't a PDF. */
+export function saveWebPdf(url: string, markdownFilePath: string, name: string): Promise<string> {
+  return invoke("save_web_pdf", { url, markdownFilePath, name });
 }
 
 export function saveClipboardImage(

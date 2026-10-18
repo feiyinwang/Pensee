@@ -77,6 +77,18 @@ pub fn image_extension(content_type: &str) -> Option<&'static str> {
 }
 
 pub fn write_cover(md_path: &Path, ext: &str, bytes: &[u8]) -> Result<String, AppError> {
+    write_asset(md_path, "cover", ext, bytes)
+}
+
+/// Save `bytes` in the note's `<stem>-assets` folder as `<base>.<ext>`, or
+/// `<base>-<n>.<ext>` for the first n whose name no file of any extension
+/// has, and return that path relative to the note's folder.
+pub fn write_asset(
+    md_path: &Path,
+    base: &str,
+    ext: &str,
+    bytes: &[u8],
+) -> Result<String, AppError> {
     let dir = md_path
         .parent()
         .ok_or_else(|| AppError::Io("No parent directory".into()))?;
@@ -87,30 +99,28 @@ pub fn write_cover(md_path: &Path, ext: &str, bytes: &[u8]) -> Result<String, Ap
     let assets = format!("{stem}-assets");
     let assets_dir = dir.join(&assets);
     std::fs::create_dir_all(&assets_dir)?;
-    let name = free_cover_name(&assets_dir, ext);
+    let name = free_name(&assets_dir, base, ext);
     std::fs::write(assets_dir.join(&name), bytes)?;
     Ok(format!("{assets}/{name}"))
 }
 
-/// `cover.<ext>`, or `cover-<n>.<ext>` for the first n not already taken by
-/// a cover of any extension.
-fn free_cover_name(dir: &Path, ext: &str) -> String {
-    let taken = |base: &str| -> bool {
+fn free_name(dir: &Path, base: &str, ext: &str) -> String {
+    let taken = |name: &str| -> bool {
         std::fs::read_dir(dir)
             .into_iter()
             .flatten()
             .flatten()
-            .any(|entry| PathBuf::from(entry.file_name()).file_stem() == Some(base.as_ref()))
+            .any(|entry| PathBuf::from(entry.file_name()).file_stem() == Some(name.as_ref()))
     };
     let mut n = 1;
     loop {
-        let base = if n == 1 {
-            "cover".to_string()
+        let name = if n == 1 {
+            base.to_string()
         } else {
-            format!("cover-{n}")
+            format!("{base}-{n}")
         };
-        if !taken(&base) {
-            return format!("{base}.{ext}");
+        if !taken(&name) {
+            return format!("{name}.{ext}");
         }
         n += 1;
     }

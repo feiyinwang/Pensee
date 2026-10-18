@@ -80,6 +80,8 @@ export function parseLibraryLink(query: string): LibraryLink | null {
   if (!guess && /(^|\.)amazon\.[a-z.]+$/.test(host) && /\/(dp|gp\/product)\//.test(url.pathname)) {
     guess = "book";
   }
+  // A bare PDF on a site Pensée doesn't know is most often a paper.
+  if (!guess && /\.pdf$/i.test(url.pathname)) guess = "paper";
   return { url: address, host, guess };
 }
 
@@ -151,12 +153,27 @@ export function libraryNoteContent(type: string, url: string | null): string {
 }
 
 /** A file name for a link whose page gave no title: the host and the last
- *  meaningful path segment ("youtube.com dQw4w9WgXcQ"). */
+ *  meaningful path segment ("youtube.com dQw4w9WgXcQ"), less a `.pdf`. */
 export function fallbackLinkTitle(link: LibraryLink): string {
   const youtube = youtubeVideoId(link.url);
   if (youtube) return `${link.host} ${youtube}`;
   const segment = new URL(link.url).pathname.split("/").filter(Boolean).pop();
-  return segment ? `${link.host} ${decodeURIComponent(segment)}` : link.host;
+  return segment ? `${link.host} ${decodeURIComponent(segment).replace(/\.pdf$/i, "")}` : link.host;
+}
+
+/** The page to read a link's title and PDF from: an arXiv PDF has neither a
+ *  title nor citation tags, so its abstract page stands in. */
+export function titlePageUrl(url: string): string {
+  const arxiv = url.match(/^https?:\/\/(?:www\.|export\.)?arxiv\.org\/pdf\/([^?#]+?)(?:\.pdf)?$/i);
+  return arxiv ? `https://arxiv.org/abs/${arxiv[1]}` : url;
+}
+
+/** A new paper note's body with its downloaded PDF embedded on the first
+ *  line (`file` relative to the note), above whatever was written. */
+export function withPdfEmbed(body: string, file: string): string {
+  const embed = `![[${file}]]`;
+  const rest = body.replace(/^\n+/, "");
+  return rest ? `${embed}\n\n${rest}` : `${embed}\n`;
 }
 
 /** A page title with the site's name trimmed off ("Title - YouTube"). */

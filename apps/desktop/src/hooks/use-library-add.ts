@@ -5,9 +5,12 @@ import {
   fallbackLinkTitle,
   libraryNoteContent,
   libraryNoteType,
+  titlePageUrl,
+  withPdfEmbed,
   type LibraryKind,
   type LibraryLink,
 } from "@/lib/library-add";
+import { getFileStem, getParentDir } from "@/lib/paths";
 import { spaceFileStem } from "@/lib/spaces";
 import * as tauri from "@/lib/tauri";
 import { safePageName } from "@/lib/wiki-pages";
@@ -15,6 +18,7 @@ import {
   dismissEditorNotice,
   showEditorNotice,
 } from "@/components/editor-area/editor-notice-store";
+import { editPage } from "@/components/editor-area/linked-block-sync";
 import { bringInTranscript } from "@/components/editor-area/video-transcript";
 import { useEditorStore } from "@/stores/editor-store";
 import { openComposer } from "@/hooks/use-composer";
@@ -39,14 +43,15 @@ export interface LibraryAddOptions {
   open?: boolean;
 }
 
-async function linkTitle(link: LibraryLink): Promise<string | null> {
+/** The link's page, read for its title and its PDF; null when it is slow or
+ *  unreachable. */
+async function linkPage(link: LibraryLink): Promise<tauri.LinkPreview | null> {
   let timer: number | undefined;
   const timeout = new Promise<null>((resolve) => {
     timer = window.setTimeout(() => resolve(null), TITLE_TIMEOUT_MS);
   });
   try {
-    const preview = await Promise.race([tauri.fetchLinkPreview(link.url), timeout]);
-    return preview?.title ? cleanPageTitle(preview.title, preview.site_name) : null;
+    return await Promise.race([tauri.fetchLinkPreview(titlePageUrl(link.url)), timeout]);
   } catch (error) {
     // Offline or a page that refuses: the note is still made, named by its link.
     console.warn(`[library] Couldn't read the title of ${link.url}:`, error);
@@ -95,13 +100,16 @@ export async function addLinkToLibrary(
 ): Promise<string | null> {
   try {
     showEditorNotice(`Adding ${link.host}…`);
-    const title = (await linkTitle(link)) || fallbackLinkTitle(link);
+    const page = await linkPage(link);
+    const title =
+      (page?.title ? cleanPageTitle(page.title, page.site_name) : null) || fallbackLinkTitle(link);
     const path = await createAndOpen(
       title,
       withBody(libraryNoteContent(libraryNoteType(kind, link.host), link.url), body),
       open,
     );
     dismissEditorNotice();
+    if (kind === "paper" && page?.pdf) await bringInPdf(path, page.pdf, open);
     // The note opens at once; its transcript follows (it notifies on failure).
     const videoId = youtubeVideoId(link.url);
     if (videoId) void bringInTranscript(path, videoId);
@@ -109,6 +117,29 @@ export async function addLinkToLibrary(
   } catch (error) {
     reportFailure(error);
     return null;
+  }
+}
+
+/** Download a paper's PDF into its note's assets, embed it at the top of the
+ *  note, and open it in the reader beside the note when the note was opened.
+ *  A PDF that can't be had leaves the note as it is, with a notice. */
+async function bringInPdf(notePath: string, url: string, open: boolean): Promise<void> {
+  showEditorNotice("Getting the PDF…");
+  try {
+    const file = await tauri.saveWebPdf(url, notePath, getFileStem(notePath));
+    await editPage(notePath, (page) => ({
+      frontmatter: page.frontmatter,
+      body: withPdfEmbed(page.body, file),
+    }));
+    dismissEditorNotice();
+    if (!open) return;
+    const { openBook } = await import("@/lib/book-import");
+    await openBook(`${getParentDir(notePath)}/${file}`, notePath);
+  } catch (error) {
+    console.warn(`[library] Couldn't get the PDF at ${url}:`, error);
+    showEditorNotice(
+      `Couldn't get the PDF: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 

@@ -618,6 +618,7 @@ pub fn run() {
             commands::link_preview::fetch_link_preview,
             commands::papers::search_papers,
             commands::covers::save_web_cover,
+            commands::web_pdf::save_web_pdf,
             commands::podcasts::podcast_episode,
             commands::agent::agent_send,
             commands::agent::agent_cancel,

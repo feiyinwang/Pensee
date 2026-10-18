@@ -54,6 +54,24 @@ tab (SPECs/spaces-spec.md).
   opens even from the composer's ⌘↵, with its player
   ([podcast-notes-spec.md](podcast-notes-spec.md)).
 
+## A paper's PDF from its link
+
+- A link to a PDF on a site Pensée doesn't know guesses Paper.
+- When a paper is added from a link, the page read for its title also says
+  where its PDF is: the link itself when it serves `application/pdf`, else
+  the page's `citation_pdf_url` (arXiv, OpenReview, bioRxiv and most
+  journals publish it). An arXiv `/pdf/` link is read from its `/abs/` page,
+  which has the title the PDF lacks.
+- The PDF is downloaded (`save_web_pdf`, up to 2 minutes and 200 MB) into
+  the note's `<stem>-assets/<stem>.pdf` and embedded on the body's first
+  line (`![[<stem>-assets/<stem>.pdf]]`), the way the vault's own papers
+  keep their PDFs, so the note stays `Type: Paper` with no `Book` property.
+  A note opened as it is added (⌘⇧↵) gets the PDF in the reader beside it;
+  later, its Library card opens both
+  ([book-reader-spec.md](book-reader-spec.md)).
+- A response that isn't a PDF (a paywall's sign-in page) is refused, and
+  the note is kept without one: "Couldn't get the PDF: …".
+
 ## A dropped PDF: book or paper
 
 A new page for a PDF is checked against its first four pages:
@@ -72,7 +90,10 @@ and an existing page keeps its type.
 - `lib/library-add.ts`: link parsing, source keys, PDF verdict, note content,
   retyping (pure, `tests/library-add.test.ts`).
 - `hooks/use-library-add.ts`: writing the note (with the composer's text and
-  Keep open), and `openLibraryAdd`, which opens the composer.
+  Keep open), bringing in a paper's PDF (`bringInPdf`), and `openLibraryAdd`,
+  which opens the composer.
+- `src-tauri/src/commands/web_pdf.rs` (`save_web_pdf`), `link_preview.rs`
+  (the preview's `pdf`).
 - `components/command-palette/library-add-rows.tsx`: ⌘F's link rows.
 - `lib/book-import.ts` (`settlePdfType`), `book-reader/book-meta.ts`
   (`readPdfClues`), the editor notice's optional action.

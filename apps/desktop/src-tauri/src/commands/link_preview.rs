@@ -28,6 +28,9 @@ pub struct LinkPreview {
     /// (`X-Frame-Options` or CSP `frame-ancestors`), so the editor shows the
     /// summary card instead of a blank frame.
     pub embeddable: bool,
+    /// The paper's PDF: the link itself when it serves one, else the page's
+    /// `citation_pdf_url` (what arXiv, OpenReview and most journals publish).
+    pub pdf: Option<String>,
 }
 
 pub(crate) fn client() -> Result<&'static reqwest::Client, AppError> {
@@ -95,9 +98,13 @@ pub async fn fetch_link_preview(url: String) -> Result<LinkPreview, AppError> {
         });
     }
     if !content_type.is_empty() && !content_type.contains("html") {
+        let pdf = content_type
+            .starts_with("application/pdf")
+            .then(|| final_url.to_string());
         return Ok(LinkPreview {
             url: final_url.to_string(),
             embeddable,
+            pdf,
             ..LinkPreview::default()
         });
     }
@@ -216,6 +223,7 @@ pub fn parse_preview(html: &str, base: &Url) -> LinkPreview {
     let mut meta_description = None;
     let mut icon = None;
     let mut apple_icon = None;
+    let mut pdf = None;
 
     for tag in tags(html) {
         match tag.name.as_str() {
@@ -241,6 +249,7 @@ pub fn parse_preview(html: &str, base: &Url) -> LinkPreview {
                     "twitter:description" => &mut twitter_description,
                     "twitter:image" | "twitter:image:src" => &mut twitter_image,
                     "description" => &mut meta_description,
+                    "citation_pdf_url" => &mut pdf,
                     _ => continue,
                 };
                 slot.get_or_insert(content);
@@ -278,6 +287,7 @@ pub fn parse_preview(html: &str, base: &Url) -> LinkPreview {
             .and_then(resolve)
             .or_else(|| base.join("/favicon.ico").ok().map(|u| u.to_string())),
         embeddable: true,
+        pdf: pdf.and_then(resolve),
     }
 }
 
@@ -501,6 +511,18 @@ mod tests {
             preview.icon.as_deref(),
             Some("https://example.com/favicon.svg")
         );
+    }
+
+    #[test]
+    fn reads_a_papers_pdf_from_citation_tags() {
+        let html = r#"<head><meta name="citation_title" content="A paper">
+            <meta name="citation_pdf_url" content="/pdf/2401.12345v2"></head>"#;
+        let preview = parse_preview(html, &base());
+        assert_eq!(
+            preview.pdf.as_deref(),
+            Some("https://example.com/pdf/2401.12345v2")
+        );
+        assert_eq!(parse_preview("<head></head>", &base()).pdf, None);
     }
 
     #[test]

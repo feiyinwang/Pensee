@@ -254,9 +254,17 @@ export async function submitComposer(target: ComposerTarget, open = false): Prom
     await linkIntoDay(draft.day, path);
   }
   if (!opens) {
+    // A paper's Open brings its PDF up beside it, as its Library card does.
+    const paper = target.kind !== "file" && target.library === "paper";
     showEditorNotice(`Added ${getFileStem(path)}`, {
       label: "Open",
-      run: () => void useEditorStore.getState().openFile(path),
+      run: () =>
+        void (async () => {
+          await useEditorStore.getState().openFile(path);
+          if (!paper) return;
+          const { openLinkedBookBesideOpenPage } = await import("@/lib/book-import");
+          await openLinkedBookBesideOpenPage(path);
+        })(),
     });
   }
 }

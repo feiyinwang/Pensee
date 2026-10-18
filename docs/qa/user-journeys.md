@@ -295,16 +295,19 @@ project of each one that takes more than two steps, keeping names you wrote.
 **Feature:** Books, videos (courses among them), podcasts and papers as a cover
 gallery with type tabs; items are added from a link, a file or a title.
 **Spec:** SPECs/add-to-library-spec.md, SPECs/spaces-spec.md
-**Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/components/spaces/space-cover.tsx`, `src/lib/covers.ts`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src/lib/book-import.ts` (openBookBesideOpenPage, openLinkedBookBesideOpenPage), `src/lib/wiki-links.ts` (firstBookLinkTarget), `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`, `src-tauri/src/commands/covers.rs`
+**Code:** `src/components/spaces/note-gallery.tsx`, `src/components/spaces/space-page.tsx`, `src/components/spaces/space-cover.tsx`, `src/lib/covers.ts`, `src/lib/library-add.ts`, `src/lib/book-library.ts`, `src/lib/book-import.ts` (openBookBesideOpenPage, openLinkedBookBesideOpenPage), `src/lib/wiki-links.ts` (firstBookLinkTarget), `src/hooks/use-library-add.ts`, `src/hooks/use-composer.ts` (the Added notice's Open), `src-tauri/src/commands/web_pdf.rs`, `src-tauri/src/commands/link_preview.rs` (pdf), `src-tauri/src/commands/spaces.rs`, `src-tauri/src/file_cache.rs`, `src-tauri/src/commands/covers.rs`
 
-| ID     | Journey                                                 | Expected                                                  | Check                  |
-| ------ | ------------------------------------------------------- | --------------------------------------------------------- | ---------------------- |
-| LIB-01 | ★ Click **Library**                                     | The seeded book shows under Books                         | auto: core             |
-| LIB-05 | Switch Library tabs (Books, Videos, …)                  | Covers show; switching is instant                         | legacy: library-covers |
-| LIB-02 | Click a book cover                                      | Its note opens (beside its book file when there is one)   | manual                 |
-| LIB-03 | **+** at the top, paste a YouTube link                  | A video note named after the video is created and opens   | you                    |
-| LIB-06 | Library → Podcasts, a podcast with a YouTube link       | Its cover is the video's thumbnail                        | you                    |
-| LIB-07 | Library → Papers, click a paper whose note embeds a PDF | Its note opens, and the PDF opens in the reader beside it | auto: library          |
+| ID     | Journey                                                    | Expected                                                                                                                       | Check                  |
+| ------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| LIB-01 | ★ Click **Library**                                        | The seeded book shows under Books                                                                                              | auto: core             |
+| LIB-05 | Switch Library tabs (Books, Videos, …)                     | Covers show; switching is instant                                                                                              | legacy: library-covers |
+| LIB-02 | Click a book cover                                         | Its note opens (beside its book file when there is one)                                                                        | manual                 |
+| LIB-03 | **+** at the top, paste a YouTube link                     | A video note named after the video is created and opens                                                                        | you                    |
+| LIB-06 | Library → Podcasts, a podcast with a YouTube link          | Its cover is the video's thumbnail                                                                                             | you                    |
+| LIB-07 | Library → Papers, click a paper whose note embeds a PDF    | Its note opens, and the PDF opens in the reader beside it                                                                      | auto: library          |
+| LIB-08 | ⌘N, paste a link to a PDF, ⌘⇧↵                             | A `Type: Paper` note opens with the PDF saved in its assets and embedded at the top, and the PDF opens in the reader beside it | auto: library          |
+| LIB-09 | ⌘N, paste an arXiv abstract link, ⌘⇧↵                      | The note is named by the paper's title, and its PDF opens in the reader beside it                                              | you                    |
+| LIB-10 | ⌘N, paste a link to a PDF, ⌘↵, then **Open** on the notice | The paper's note opens with its PDF in the reader beside it                                                                    | auto: library          |
 
 ## Book reader — BK
 

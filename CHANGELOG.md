@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- Adding a paper from a link now brings in its PDF. Press ⌘N and paste a link to a PDF, or to a paper's page on arXiv, OpenReview or a journal that offers its PDF: Pensée saves the PDF beside the note, embeds it at the top, and with ⌘⇧↵ opens it in the reader next to the note. The note stays a Paper. A link that ends in `.pdf` is now guessed as a paper. If the PDF needs a sign-in, the note is still made and Pensée says it couldn't get the PDF.
 - Clicking a paper in Library now opens its PDF in the reader beside its note, as a book does. It reads the first PDF the note links to, like `![[paper.pdf]]`, so papers you brought from Obsidian work as they are.
 - The **Bookmarks** tab in Library and the X sync behind it are gone for now, until they're ready. Settings no longer has **X Bookmarks**, Pensée no longer checks X in the background, and a bookmark note opens as a plain note. Bookmark notes already in your vault stay where they are.
 - When **Add to Projects** finds a line that looks like a project you already have, it now asks first. **Already a project?** shows your line and that project as a card, with its status and the start of its note: **Same project** adds nothing, **New project** makes its own. With several, it asks about each in turn in the same popup. Esc or a click outside adds nothing new. Projects in **Done** don't count: a line like a finished project becomes a new project.

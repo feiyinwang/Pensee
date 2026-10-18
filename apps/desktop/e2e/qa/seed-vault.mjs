@@ -200,7 +200,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 /** A valid one-page PDF showing `text`, with a correct xref table so pdf.js
  *  opens it without repair. */
-function onePagePdf(text) {
+export function onePagePdf(text) {
   const stream = `BT /F1 24 Tf 72 720 Td (${text}) Tj ET`;
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",

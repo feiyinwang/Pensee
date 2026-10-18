@@ -9,7 +9,9 @@ import {
   parseLibraryLink,
   pdfKind,
   sourceKey,
+  titlePageUrl,
   withLibraryType,
+  withPdfEmbed,
 } from "../src/lib/library-add";
 import type { TypedNote } from "../src/lib/tauri";
 
@@ -46,6 +48,10 @@ describe("parseLibraryLink", () => {
 
   test("an unknown site has no guess", () => {
     expect(parseLibraryLink("https://someblog.substack.com/p/on-writing")?.guess).toBeNull();
+  });
+
+  test("a PDF on an unknown site is a paper", () => {
+    expect(parseLibraryLink("https://lab.example.edu/pubs/attention.pdf")?.guess).toBe("paper");
   });
 
   test("a spotify track or playlist is not a podcast", () => {
@@ -137,6 +143,27 @@ describe("new notes", () => {
     expect(fallbackLinkTitle(parseLibraryLink("https://arxiv.org/abs/1706.03762")!)).toBe(
       "arxiv.org 1706.03762",
     );
+    expect(fallbackLinkTitle(parseLibraryLink("https://lab.example.edu/attention.pdf")!)).toBe(
+      "lab.example.edu attention",
+    );
+  });
+
+  test("an arXiv PDF is read from its abstract page; other links from themselves", () => {
+    expect(titlePageUrl("https://arxiv.org/pdf/1706.03762v7")).toBe(
+      "https://arxiv.org/abs/1706.03762v7",
+    );
+    expect(titlePageUrl("https://arxiv.org/pdf/1706.03762.pdf")).toBe(
+      "https://arxiv.org/abs/1706.03762",
+    );
+    expect(titlePageUrl("https://arxiv.org/abs/1706.03762")).toBe(
+      "https://arxiv.org/abs/1706.03762",
+    );
+    expect(titlePageUrl("https://lab.example.edu/a.pdf")).toBe("https://lab.example.edu/a.pdf");
+  });
+
+  test("a paper's PDF is embedded on the body's first line, above what was written", () => {
+    expect(withPdfEmbed("", "P-assets/P.pdf")).toBe("![[P-assets/P.pdf]]\n");
+    expect(withPdfEmbed("\nMy take\n", "P-assets/P.pdf")).toBe("![[P-assets/P.pdf]]\n\nMy take\n");
   });
 
   test("page titles lose the site's name and arXiv's id", () => {

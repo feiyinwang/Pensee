@@ -172,6 +172,8 @@ Learned the hard way; each one cost a failed run.
 - Opening a link puts its page in a new column. "The note in front" is the
   `[data-column-tab][data-focused]` column: use `activeTitle()` / `waitForTitle()`.
 - A note's title also shows in the sidebar's file tree, so `//button[.//*[normalize-space(.)="A paper"]]` clicks the sidebar row, which opens the note without the Library card's extras (LIB-07): scope a Library card to its gallery, `//*[@data-cover="paper"]//button[…]`.
+- The composer is `[role="dialog"][aria-label="New note"]` only when other UI is open beside it; in a spec run on its own it has no dialog role. Find its field as `input.composer-title[aria-label="Title"]` (LIB-08), and wait for `.app-splash` to go before ⌘N.
+- A `timeoutMsg` is built when `waitUntil` is called, so a variable the condition fills (`seen`) shows its starting value: report it from a `.catch` instead (`waitForReaderBeside` in `library.spec.js`).
 - The QA vault is small and local. Bugs that need a big or iCloud vault don't
   show here; make them `you` journeys, or time the Rust command directly
   against the user's vault, read-only.
