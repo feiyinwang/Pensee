@@ -6,11 +6,9 @@ import {
   useId,
   useRef,
   useState,
-  type CSSProperties,
   type KeyboardEvent,
 } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Badge } from "@/components/arc/badge/badge";
 import { KanbanBoard, type KanbanCard } from "@/components/arc/blocks/kanban-board/kanban-board";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { Add01Icon, ArrowDown01Icon, ArrowUp01Icon } from "@hugeicons/core-free-icons";
@@ -34,7 +32,6 @@ import {
   projectOf,
   statusColumns,
   deadlineTag,
-  statusLabel,
   statusTone,
   statusValue,
   today,
@@ -43,11 +40,10 @@ import {
   type Project,
   type ProjectEdit,
   type StatusColumn,
-  type TagTone,
-  TONE_COLOR,
 } from "@/lib/projects";
 import { noteTitle } from "./space-cover";
 import styles from "./project-views.module.css";
+import { StatusTag, Tag } from "./project-tag";
 
 /** Project views (SPECs/project-views-spec.md): the projects as a kanban, a
  *  column per status. Edits write the project note's frontmatter. */
@@ -468,21 +464,6 @@ function AddField({ projects, columns, onAdd, onClose }: AddFieldProps) {
       )}
     </div>
   );
-}
-
-/** A tag: Arc's badge as a neutral pill, its meaning in a coloured dot. */
-function Tag({ tone, children }: { tone: TagTone; children: string }) {
-  return (
-    <Badge size="sm" className={styles.tag} style={{ "--tag": TONE_COLOR[tone] } as CSSProperties}>
-      {children}
-    </Badge>
-  );
-}
-
-function StatusTag({ status, columns }: { status: string; columns: StatusColumn[] }) {
-  const tone = statusTone(status);
-  if (tone === null) return <span className={styles.noStatus}>No status</span>;
-  return <Tag tone={tone}>{statusLabel(columns, status)}</Tag>;
 }
 
 function DeadlineTag({ project, now }: { project: Project; now: Day }) {

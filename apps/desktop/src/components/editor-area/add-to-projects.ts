@@ -1,6 +1,14 @@
 import { adoptProjectNote, createProjectNote, findNoteNamed, openSpace } from "@/hooks/use-spaces";
 import { getFileStem } from "@/lib/paths";
-import { PROJECT_TYPE, isProjectType, noteType } from "@/lib/projects";
+import {
+  DONE,
+  NO_STATUS,
+  PROJECT_TYPE,
+  isProjectType,
+  noteType,
+  projectOf,
+  statusColumns,
+} from "@/lib/projects";
 import {
   projectsPrompt,
   projectsReply,
@@ -8,9 +16,10 @@ import {
   type ProjectFromText,
 } from "@/lib/projects-from-text";
 import { organizeModel, penBusy, penConversation } from "@/lib/second-pen-agent";
-import { listTypedNotes } from "@/lib/tauri";
+import { listTypedNotes, type TypedNote } from "@/lib/tauri";
 import { readPageParts } from "./linked-block-sync";
 import { showEditorNotice } from "./editor-notice-store";
+import { askRepeats } from "@/components/add-to-projects/repeat-store";
 
 // Add to Projects (SPECs/add-to-projects-spec.md): the selection's items
 // go to Claude on the pen's channel, which says which make which project;
@@ -28,19 +37,47 @@ type Outcome = "added" | "already" | "declined";
 const NO_STATUS_EDIT = { status: "" };
 
 /** Add one project: the note it names when there is one, else a new note
- *  holding the writer's words. */
-async function addProject(project: ProjectFromText): Promise<Outcome> {
+ *  holding the writer's words, which is also what a project in Done gets
+ *  (paths in `done`): a finished project is not this one. Returns the name
+ *  it went under. */
+async function addProject(
+  project: ProjectFromText,
+  done: ReadonlySet<string>,
+): Promise<{ outcome: Outcome; name: string }> {
   const found = await findNoteNamed(project.name);
-  if (found === null) {
-    await createProjectNote(project.name, NO_STATUS_EDIT, introOf(project.items));
-    return "added";
+  if (found === null || done.has(found)) {
+    const name = found === null ? project.name : await freeName(project.name);
+    await createProjectNote(name, NO_STATUS_EDIT, introOf(project.items));
+    return { outcome: "added", name };
   }
-  if (isProjectType(noteType((await readPageParts(found)).frontmatter))) return "already";
+  if (isProjectType(noteType((await readPageParts(found)).frontmatter))) {
+    return { outcome: "already", name: project.name };
+  }
   const stem = getFileStem(found);
   const adopted = await adoptProjectNote(found, NO_STATUS_EDIT, (type) =>
     window.confirm(`"${stem}" is a ${type} note. Make it a project instead?`),
   );
-  return adopted ? "added" : "declined";
+  return { outcome: adopted ? "added" : "declined", name: project.name };
+}
+
+/** `name`, or `name 2`, `name 3`… when a note already has it: a project the
+ *  writer said is new, though Claude named it as one they have. */
+async function freeName(name: string): Promise<string> {
+  let candidate = name;
+  for (let n = 2; (await findNoteNamed(candidate)) !== null; n += 1) candidate = `${name} ${n}`;
+  return candidate;
+}
+
+/** What the popup's card shows of the writer's project named `name`. */
+function projectCard(notes: readonly TypedNote[], name: string) {
+  const note = notes.find((n) => n.name === name);
+  const project = note ? projectOf(note) : null;
+  return {
+    name,
+    status: project?.status ?? NO_STATUS,
+    columns: project ? statusColumns([project]) : [],
+    excerpt: note?.excerpt?.trim() || null,
+  };
 }
 
 /** A new project's opening: its one item as written, or its items as a list. */
@@ -68,17 +105,32 @@ export async function addToProjects(text: string): Promise<void> {
   showEditorNotice("Adding to Projects…", undefined, true);
   const conversation = penConversation(organizeModel());
   let reply: string;
+  let notes: TypedNote[];
+  let done: ReadonlySet<string>;
   try {
-    // The projects there are, so one already there keeps its name.
-    const existing = (await listTypedNotes([PROJECT_TYPE], true)).map((note) => note.name);
-    reply = await conversation.send(projectsPrompt(items, existing));
+    // The projects there are, so one that may be there already is asked about.
+    // Projects in Done are finished: a line is never asked about as one of them.
+    const all = await listTypedNotes([PROJECT_TYPE], true);
+    const finished = all.filter((note) => projectOf(note).status === DONE);
+    done = new Set(finished.map((note) => note.path));
+    notes = all.filter((note) => !done.has(note.path));
+    reply = await conversation.send(
+      projectsPrompt(
+        items,
+        notes.map((note) => note.name),
+      ),
+    );
   } catch (error) {
     showEditorNotice(`Couldn't add to Projects: ${errorText(error)}`);
     return;
   } finally {
     conversation.end();
   }
-  const found = projectsReply(reply, items);
+  const found = projectsReply(
+    reply,
+    items,
+    notes.map((note) => note.name),
+  );
   if (!found) {
     console.error("[add-to-projects] Unreadable reply:", reply);
     showEditorNotice("Couldn't add to Projects: Claude's answer couldn't be read. Try again.");
@@ -89,15 +141,35 @@ export async function addToProjects(text: string): Promise<void> {
     return;
   }
 
+  // A project that may be one the writer has: they say which before anything is made.
+  const repeats = found.projects.filter((project) => project.sameAs !== null);
+  const answers = await askRepeats(
+    repeats.map((project) => ({
+      line: project.items.join(" "),
+      existing: projectCard(notes, project.sameAs!),
+    })),
+  );
+  const isNew = new Set(repeats.filter((_, k) => answers[k] === "new"));
+
   const added: string[] = [];
   const already: string[] = [];
   const failed: string[] = [];
   // One by one: two projects may name the same note, and the first makes it.
   for (const project of found.projects) {
     try {
-      const outcome = await addProject(project);
-      if (outcome === "added") added.push(project.name);
-      if (outcome === "already") already.push(project.name);
+      if (project.sameAs !== null && !isNew.has(project)) {
+        already.push(project.sameAs);
+        continue;
+      }
+      if (isNew.has(project)) {
+        const name = await freeName(project.name);
+        await createProjectNote(name, NO_STATUS_EDIT, introOf(project.items));
+        added.push(name);
+        continue;
+      }
+      const { outcome, name } = await addProject(project, done);
+      if (outcome === "added") added.push(name);
+      if (outcome === "already") already.push(name);
     } catch (error) {
       console.error(`[add-to-projects] Couldn't add "${project.name}":`, error);
       failed.push(project.name);

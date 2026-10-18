@@ -1,0 +1,26 @@
+/* Tags. A colour has one meaning: blue in progress, green done, red overdue,
+   orange due soon, gray neither (lib/projects.ts, which also maps each tone to
+   its colour, TONE_COLOR, set here as --tag). A tag is the colour's pastel
+   with its label in the text colour, like Harvey's pills
+   (SPECs/harvey-neutral-colour-spec.md). Two classes (.tag.tag) to outrank Arc's tone
+   and size classes on the badge; tags are
+   captions, so they take the caption size (the type-scale tokens), not Arc's
+   11px. */
+.tag.tag {
+  --badge-color: var(--color-text-primary);
+  --badge-background: oklch(
+    from var(--tag) var(--color-tint-l) calc(c * var(--color-tint-chroma)) h
+  );
+  --badge-foreground: var(--color-text-primary);
+  --badge-border: transparent;
+  flex-shrink: 0;
+  border-radius: var(--radius-chip);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+.noStatus {
+  white-space: nowrap;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}

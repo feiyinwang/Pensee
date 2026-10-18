@@ -24,7 +24,17 @@ Why (2026-10-18): the first version cut bullets into sentences, judged each by i
 
 - A name the writer already gave is kept exactly: a `[[link]]`, a bold lead, a heading, or a name before a colon or dash ("Website redesign: …" → **Website redesign**).
 - Otherwise Claude names it in 1 to 5 words close to what the item means, in the note's language.
-- The request lists the writer's existing project names (the cached index, `list_typed_notes(["Project"], true)`, at most 300). When an item is one of them, even worded differently, Claude uses that name exactly, so the project is found and not made twice; the notice then says **Already in Projects**.
+- The request lists the writer's existing project names (the cached index, `list_typed_notes(["Project"], true)`, at most 300), leaving out those in **Done**: a finished project is never asked about, and a line named like one gets a project of its own (`Name 2` when the name is taken). Claude still names each project itself, and adds `same_as` when one of those may be the same piece of work, even worded differently. A name that is one of theirs counts too.
+
+## Repeats
+
+A project that may be one the writer has is never merged or made silently (2026-10-18: Claude reused a name on its own, and before that a second run made a near-duplicate). Before anything is written, **Already a project?** asks about each, one at a time in one popup (Arc `dialog` + `button`, `components/add-to-projects/`):
+
+- Title **Already a project?**, with "1 of 2" under it only when there are several (the text swaps in place). No other subtitle: the card and the answers say the rest (grilled 2026-10-18).
+- The writer's line, plain, then the project it may be as a card like the board's: its name, its status tag (`components/spaces/project-tag.tsx`, shared with the board) and the first lines of its note.
+- **New project** (secondary) makes its own note under Claude's name, or that name with ` 2`, ` 3`… when a note has it. **Same project** (primary, focused) makes nothing; the notice lists it under **Already in Projects**.
+- No × button: Esc and a click outside already close it, as **Same project** for every question left, so nothing the writer didn't ask for is made.
+- The popup loads Arc and motion only when a question comes (`React.lazy`).
 
 ## What is written
 

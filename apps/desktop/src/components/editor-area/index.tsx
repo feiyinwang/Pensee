@@ -3,6 +3,7 @@ import { TabColumns } from "./tab-columns";
 import { pageKindView } from "./page-kinds/views";
 import { EditorSearchOverlay } from "./editor-search-overlay";
 import { EditorNoticeBanner } from "./editor-notice-banner";
+import { AddToProjectsRepeats } from "@/components/add-to-projects";
 
 interface EditorAreaProps {
   showFooter?: boolean;
@@ -21,6 +22,7 @@ function EditorArea({ showFooter = true }: EditorAreaProps) {
         : null}
       <EditorSearchOverlay />
       <EditorNoticeBanner />
+      <AddToProjectsRepeats />
     </div>
   );
 }

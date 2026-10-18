@@ -12,6 +12,9 @@ export interface ProjectFromText {
   name: string;
   /** The writer's items behind it, in their order. */
   items: string[];
+  /** The writer's project this may be, as listed (Claude thinks so, or the
+   *  name is the same); the writer is asked before anything is made. */
+  sameAs: string | null;
 }
 
 export interface ProjectsFromText {
@@ -42,7 +45,7 @@ export function selectionItems(text: string): Item[] {
 const EXISTING_MAX = 300;
 
 /** The request: `items`, and `existing`, the names of the writer's projects,
- *  so one already there is named as it is instead of made again. */
+ *  so one that may already be there is flagged and the writer asked. */
 export function projectsPrompt(items: readonly Item[], existing: readonly string[] = []): string {
   const known = existing.slice(0, EXISTING_MAX);
   return [
@@ -54,11 +57,11 @@ export function projectsPrompt(items: readonly Item[], existing: readonly string
     "Name each project. When the writer already named it, keep their name exactly as written: a [[link]], a **bold** lead, a heading, or a name before a colon or dash. Otherwise give it a short name, 1 to 5 words, close to what the item means, in the language it is written in. No quotation marks, no ending period.",
     ...(known.length > 0
       ? [
-          'The writer\'s projects so far. Before naming a project, look for it here: when one of these is about the same piece of work, even worded differently ("Website launch" and "Launch the website" are the same), use its name exactly as listed, so it isn\'t made twice:',
+          'The writer\'s projects so far. For each project, look for it here: when one of these may be the same piece of work, even worded differently ("Website launch" and "Launch the website"), still give your own name, and add "same_as" with that project\'s name exactly as listed. The writer is asked whether it is the same project. Leave "same_as" out when none is.',
           `<projects>\n${known.join("\n")}\n</projects>`,
         ]
       : []),
-    'Reply with JSON only: [{"name": "…", "says": [1, 2]}], in the order the items come. [] when none of it is a project.',
+    'Reply with JSON only: [{"name": "…", "says": [1, 2], "same_as": "…"}], in the order the items come. [] when none of it is a project.',
   ].join("\n");
 }
 
@@ -78,9 +81,15 @@ function nameOf(raw: unknown): string {
 
 /** A reply's projects, held to its word: each item goes to the first
  *  project that claims it, a project with no name or no item is dropped,
- *  two with the same name are one. Null when the reply isn't the JSON asked
- *  for. */
-export function projectsReply(reply: string, items: readonly Item[]): ProjectsFromText | null {
+ *  two with the same name are one. `same_as` counts only when it names one of
+ *  `existing`; a name that is one of them is flagged too. Null when the reply
+ *  isn't the JSON asked for. */
+export function projectsReply(
+  reply: string,
+  items: readonly Item[],
+  existing: readonly string[] = [],
+): ProjectsFromText | null {
+  const listed = new Map(existing.map((name) => [name.toLowerCase(), name]));
   const json = /\[[\s\S]*\]/.exec(reply)?.[0];
   if (!json) return null;
   let data: unknown;
@@ -91,7 +100,7 @@ export function projectsReply(reply: string, items: readonly Item[]): ProjectsFr
   }
   if (!Array.isArray(data)) return null;
   const claimed = new Set<number>();
-  const byName = new Map<string, { name: string; says: number[] }>();
+  const byName = new Map<string, { name: string; says: number[]; sameAs: string | null }>();
   for (const item of data) {
     const entry = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
     const name = nameOf(entry.name);
@@ -102,14 +111,21 @@ export function projectsReply(reply: string, items: readonly Item[]): ProjectsFr
     if (says.length === 0) continue;
     for (const k of says) claimed.add(k);
     const key = name.toLowerCase();
-    const project = byName.get(key) ?? { name, says: [] };
+    const sameAs =
+      listed.get(key) ??
+      (typeof entry.same_as === "string"
+        ? (listed.get(nameOf(entry.same_as).toLowerCase()) ?? null)
+        : null);
+    const project = byName.get(key) ?? { name, says: [], sameAs };
     project.says.push(...says);
+    project.sameAs ??= sameAs;
     byName.set(key, project);
   }
   return {
     projects: [...byName.values()].map((p) => ({
       name: p.name,
       items: p.says.sort((a, b) => a - b).map((k) => items[k]!.text),
+      sameAs: p.sameAs,
     })),
     left: items.length - claimed.size,
   };

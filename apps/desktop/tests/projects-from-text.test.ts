@@ -70,9 +70,9 @@ describe("projectsReply", () => {
       '```json\n[{"name": "Website redesign", "says": [1]}, {"name": "Japan trip", "says": [2]}, {"name": "**Garden**", "says": [4]}]\n```';
     expect(projectsReply(reply, items)).toEqual({
       projects: [
-        { name: "Website redesign", items: [items[0]!.text] },
-        { name: "Japan trip", items: [items[1]!.text] },
-        { name: "Garden", items: [items[3]!.text] },
+        { name: "Website redesign", items: [items[0]!.text], sameAs: null },
+        { name: "Japan trip", items: [items[1]!.text], sameAs: null },
+        { name: "Garden", items: [items[3]!.text], sameAs: null },
       ],
       left: 1,
     });
@@ -96,7 +96,7 @@ describe("projectsReply", () => {
     const reply =
       '[{"name": "[[Japan trip|Trip]]", "says": [2]}, {"name": "\\"japan trip.\\"", "says": [3]}]';
     expect(projectsReply(reply, items)?.projects).toEqual([
-      { name: "Japan trip", items: [items[1]!.text, items[2]!.text] },
+      { name: "Japan trip", items: [items[1]!.text, items[2]!.text], sameAs: null },
     ]);
   });
 
@@ -107,6 +107,21 @@ describe("projectsReply", () => {
       { name: "one two three four five six seven eight nine", says: [1] },
     ]);
     expect(projectsReply(reply, items)).toEqual({ projects: [], left: 4 });
+  });
+
+  test("same_as flags a project the writer has, only when it is one of theirs", () => {
+    const existing = ["One page website launch", "Garden"];
+    const reply = JSON.stringify([
+      { name: "One page website", says: [1], same_as: "One page website launch" },
+      { name: "Discord community", says: [2], same_as: "Some project they don't have" },
+      { name: "garden", says: [4] },
+    ]);
+    expect(projectsReply(reply, items, existing)?.projects.map((p) => [p.name, p.sameAs])).toEqual([
+      ["One page website", "One page website launch"],
+      ["Discord community", null],
+      // The same name as one of theirs is a repeat too, named as listed.
+      ["garden", "Garden"],
+    ]);
   });
 
   test("null when the reply isn't the JSON asked for", () => {
