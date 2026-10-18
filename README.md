@@ -30,6 +30,26 @@ _A paper in Library opens its PDF beside its note, so what you write sits next t
 
 _On a board, drop a card beside another and it docks into place with an arrow._
 
+## Install
+
+For Macs with Apple Silicon (M1 and later). With [Homebrew](https://brew.sh):
+
+```bash
+brew install --cask feiyinwang/tap/pensee
+```
+
+Or without Homebrew, paste this into Terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/feiyinwang/Pensee/master/install.sh | bash
+```
+
+Both download the latest [release](https://github.com/feiyinwang/Pensee/releases) into Applications. Pensée isn't notarized by Apple yet, so both also clear the quarantine flag macOS puts on downloads; without that, macOS refuses to open the app. Update with `brew upgrade --cask pensee`, or by running the curl line again.
+
+The second pen and the Agent run on [Claude Code](https://docs.anthropic.com/en/docs/claude-code): install it, and Pensée can sign you in from Settings.
+
+## How it's built
+
 It is built with Tauri v2, React, Zustand, CodeMirror, and Rust. The app keeps documents on disk, respects workspace `.gitignore` rules, supports multiple windows, and renders extended markdown such as tables and Mermaid diagrams. The logo and brand are described in [`docs/brand.md`](./docs/brand.md).
 
 ## Repository
@@ -86,6 +106,8 @@ neither does the website.
 ## Building
 
 Build and install the app locally with `scripts/ship-local.sh`. It makes a release build, signs it ad hoc and installs it in `/Applications`. The app doesn't check for updates.
+
+Publish a release with `scripts/release.sh` after bumping `version` in `apps/desktop/src-tauri/tauri.conf.json`. It builds for Apple Silicon, uploads the zip to GitHub Releases, and points the Homebrew cask in [feiyinwang/homebrew-tap](https://github.com/feiyinwang/homebrew-tap) at it.
 
 ## License
 

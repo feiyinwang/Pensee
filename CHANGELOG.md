@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- Pensée can now be installed with one line: `brew install --cask feiyinwang/tap/pensee`, or the `curl … install.sh | bash` line in the README for Macs without Homebrew. Both fetch the latest release (0.6.0, Apple Silicon) from GitHub. `scripts/release.sh` publishes the next one.
 - Adding a paper from a link now brings in its PDF. Press ⌘N and paste a link to a PDF, or to a paper's page on arXiv, OpenReview or a journal that offers its PDF: Pensée saves the PDF beside the note, embeds it at the top, and with ⌘⇧↵ opens it in the reader next to the note. The note stays a Paper. A link that ends in `.pdf` is now guessed as a paper. If the PDF needs a sign-in, the note is still made and Pensée says it couldn't get the PDF.
 - Clicking a paper in Library now opens its PDF in the reader beside its note, as a book does. It reads the first PDF the note links to, like `![[paper.pdf]]`, so papers you brought from Obsidian work as they are.
 - The **Bookmarks** tab in Library and the X sync behind it are gone for now, until they're ready. Settings no longer has **X Bookmarks**, Pensée no longer checks X in the background, and a bookmark note opens as a plain note. Bookmark notes already in your vault stay where they are.
