@@ -1,5 +1,7 @@
 # Pensée
 
+![Pensée: the ¶ mark and PENSÉE wordmark on cream paper above the editor, open on a note called "Writing is thinking"](./assets/readme/hero.jpg)
+
 Thinking, made by writing.
 
 I'm making Pensée for people like me, with ADHD or a brain that works a little differently. We collect everything: the article, the video, the book a friend mentioned, the idea that shows up at 2am. Very little of it gets digested, and we wish it did, because digesting is how you come to understand the world and yourself.
