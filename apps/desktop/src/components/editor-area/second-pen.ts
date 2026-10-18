@@ -300,6 +300,14 @@ const COMBINED: PenHintPart[] = [
   { key: "⌘ ." },
   { text: "on any line to go deeper" },
 ];
+const ORGANIZED: PenHintPart[] = [
+  { gap: true },
+  { key: "↵" },
+  { text: "keep" },
+  { gap: true },
+  { key: "Esc" },
+  { text: "put mine back" },
+];
 const TAKE_EMPTY: PenHintPart[] = [
   { text: "Your take first" },
   { gap: true },
@@ -611,7 +619,13 @@ class PenPlugin {
   private placement: Placement | null = null;
   /** Organize's outline, in place of your lines until Enter keeps it or Esc
    *  puts them back. */
-  private organizing: { from: number; to: number; original: string } | null = null;
+  private organizing: {
+    from: number;
+    to: number;
+    original: string;
+    /** Said under the outline and in the bottom bar until Enter or Esc. */
+    said: string;
+  } | null = null;
   /** The line you typed in the box, just written: the request about to run
    *  writes under it. `context` is the lines it was typed on. */
   private typed: { pos: number; context: number[] } | null = null;
@@ -624,6 +638,9 @@ class PenPlugin {
   private added: number | null = null;
   /** The combine is the last thing that happened: Undo shows on that line. */
   private undoable = false;
+  /** While the box is open: the page scrolling under it moves it to where
+   *  you can see it. */
+  private popScroll: { scroller: HTMLElement; listener: () => void } | null = null;
 
   constructor(
     readonly view: EditorView,
@@ -638,9 +655,6 @@ class PenPlugin {
   update(update: ViewUpdate): void {
     if (update.docChanged) {
       this.fresh = this.fresh.map(update.changes);
-  /** While the box is open: the page scrolling under it moves it to where
-   *  you can see it. */
-  private popScroll: { scroller: HTMLElement; listener: () => void } | null = null;
       if (this.placement) {
         this.placement = { ...this.placement, pos: update.changes.mapPos(this.placement.pos) };
       }
@@ -677,6 +691,7 @@ class PenPlugin {
 
   destroy(): void {
     this.destroyed = true;
+    this.unwatchPop();
     this.conversation?.cancel();
     for (const timer of this.timers) clearTimeout(timer);
     setPenHint(this.getFilePath(), null);
@@ -691,7 +706,6 @@ class PenPlugin {
 
   private later(ms: number, run: () => void): void {
     const timer = window.setTimeout(() => {
-    this.unwatchPop();
       this.timers.delete(timer);
       run();
     }, ms);
@@ -848,6 +862,9 @@ class PenPlugin {
       };
     }
     if (this.message && now < this.message.until) return { parts: this.message.parts };
+    // Organize's outline waits on you: the bar says so too, the line under
+    // it may be scrolled out of sight.
+    if (this.organizing) return { parts: [{ text: this.organizing.said }, ...ORGANIZED] };
     const caretLine = state.doc.lineAt(state.selection.main.head).text;
     // Only a list line can be a take or a pen line: skip the rest cheaply.
     if (state.selection.main.empty && this.caretInNote() && isItem(caretLine)) {
@@ -887,46 +904,6 @@ class PenPlugin {
     warmPen();
     const { state } = this.view;
     this.armed = targetIndexes(state);
-    const sel = state.selection.main;
-    const line = state.doc.lineAt(sel.from);
-    const start = sel.empty ? line.from + Math.min(bodyStart(line.text), line.length) : sel.from;
-    // The part of the page you see: the window, cut by every parent that
-    // clips the note (CodeMirror's own scroller is as tall as the note).
-    let top = 0;
-    let bottom = window.innerHeight;
-    for (let at = view.dom.parentElement; at && at !== document.body; at = at.parentElement) {
-      if (getComputedStyle(at).overflowY === "visible") continue;
-      const rect = at.getBoundingClientRect();
-      top = Math.max(top, rect.top);
-      bottom = Math.min(bottom, rect.bottom);
-    }
-    const seen = (pos: number) => {
-      const at = view.coordsAtPos(pos);
-      return !!at && at.top >= top && at.bottom <= bottom;
-    };
-    if (seen(start)) return start;
-    if (seen(sel.head)) return sel.head;
-    // Both out of sight (a whole long note selected, a paragraph taller than
-    // the page): the first of what it acts on at the top of the page.
-    const end = sel.empty ? line.to : sel.to;
-    const first = view.posAtCoords(
-      { x: view.contentDOM.getBoundingClientRect().left + 1, y: top + view.defaultLineHeight },
-      false,
-    );
-    return Math.min(Math.max(first, start), end);
-  }
-
-  /** Close the box. From inside an update it waits for the next tick. */
-  disarm(): void {
-    if (!this.armed) return;
-    this.armed = null;
-    queueMicrotask(() => {
-      if (!this.destroyed) this.view.dispatch({ effects: [setPop.of(null), refresh.of(null)] });
-    });
-  }
-
-  private closePop(refocus: boolean): void {
-    this.armed = null;
     this.view.dispatch({ effects: [setPop.of({ pos: this.popAt() }), refresh.of(null)] });
     this.watchPop();
   }
@@ -981,6 +958,48 @@ class PenPlugin {
   private popAt(): number {
     const { view } = this;
     const { state } = view;
+    const sel = state.selection.main;
+    const line = state.doc.lineAt(sel.from);
+    const start = sel.empty ? line.from + Math.min(bodyStart(line.text), line.length) : sel.from;
+    // The part of the page you see: the window, cut by every parent that
+    // clips the note (CodeMirror's own scroller is as tall as the note).
+    let top = 0;
+    let bottom = window.innerHeight;
+    for (let at = view.dom.parentElement; at && at !== document.body; at = at.parentElement) {
+      if (getComputedStyle(at).overflowY === "visible") continue;
+      const rect = at.getBoundingClientRect();
+      top = Math.max(top, rect.top);
+      bottom = Math.min(bottom, rect.bottom);
+    }
+    const seen = (pos: number) => {
+      const at = view.coordsAtPos(pos);
+      return !!at && at.top >= top && at.bottom <= bottom;
+    };
+    if (seen(start)) return start;
+    if (seen(sel.head)) return sel.head;
+    // Both out of sight (a whole long note selected, a paragraph taller than
+    // the page): the first of what it acts on at the top of the page.
+    const end = sel.empty ? line.to : sel.to;
+    const first = view.posAtCoords(
+      { x: view.contentDOM.getBoundingClientRect().left + 1, y: top + view.defaultLineHeight },
+      false,
+    );
+    return Math.min(Math.max(first, start), end);
+  }
+
+  /** Close the box. From inside an update it waits for the next tick. */
+  disarm(): void {
+    if (!this.armed) return;
+    this.armed = null;
+    this.unwatchPop();
+    queueMicrotask(() => {
+      if (!this.destroyed) this.view.dispatch({ effects: [setPop.of(null), refresh.of(null)] });
+    });
+  }
+
+  private closePop(refocus: boolean): void {
+    this.armed = null;
+    this.unwatchPop();
     if (this.destroyed) return;
     this.view.dispatch({ effects: [setPop.of(null), refresh.of(null)] });
     if (refocus) this.view.focus();
@@ -991,7 +1010,6 @@ class PenPlugin {
   }
 
   /** What the box offers for the lines it opened on. */
-    this.unwatchPop();
   private pills(): PenPill[] {
     const { state } = this.view;
     const lines = docLines(state);
@@ -999,7 +1017,6 @@ class PenPlugin {
     const answer = {
       key: "!",
       label: "Answer",
-    this.unwatchPop();
       title: "The AI answers, sealed until you've written your own take.",
     };
     if (!withText.length) return [answer];
@@ -1404,8 +1421,9 @@ class PenPlugin {
         return id;
       }).join("\n");
       const count = topics.length;
+      const said = `${count} ${count === 1 ? "topic" : "topics"}. Your words sit under the points they back.`;
       this.spot = null;
-      this.organizing = { from, to: from + organized.length, original: block };
+      this.organizing = { from, to: from + organized.length, original: block, said };
       this.view.dispatch({
         changes: { from, to, insert: organized },
         annotations: penEdit.of(true),
@@ -1417,7 +1435,7 @@ class PenPlugin {
             // Lined up with the outline's words: past the bullets' slot.
             depth: 1,
             bullet: false,
-            text: `${count} ${count === 1 ? "topic" : "topics"}. Your words sit under the points they back.`,
+            text: said,
             busy: false,
             keys: [
               ["↵", "keep"],

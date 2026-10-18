@@ -9,7 +9,7 @@ import {
 } from "@/lib/library-add";
 import type { TypedNote } from "@/lib/tauri";
 
-// The palette's "Add to Library" rows (SPECs/add-to-library-spec.md): in ⌘F
+// The palette's "Add to Library" rows (SPECs/add-to-library-spec.md): in ⌘O
 // when the query is a link. Titles and files are added from the composer.
 // Rows are worked out from the query alone, with no network, so they never
 // change under the cursor.

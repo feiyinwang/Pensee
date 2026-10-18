@@ -1,6 +1,7 @@
 import { EditorSelection, type Extension, type StateCommand, Prec } from "@codemirror/state";
 import { type EditorView, type KeyBinding, keymap } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
+import { toggleCheckboxStatus } from "@/lib/prosemark-core/list";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -527,7 +528,9 @@ export const editorCommands = {
   "format.bold": { run: toggleBold, label: "Bold", chord: "Mod-b" },
   "format.italic": { run: toggleItalic, label: "Italic", chord: "Mod-i" },
   "format.link": { run: insertLink, label: "Link…", chord: "Mod-k" },
-  "format.code": { run: toggleInlineCode, label: "Inline code", chord: "Mod-e" },
+  // No chord: ⌘E is Obsidian's reading view, which Pensée doesn't have
+  // (SPECs/obsidian-shortcuts-spec.md).
+  "format.code": { run: toggleInlineCode, label: "Inline code" },
   "format.strikethrough": {
     run: toggleStrikethrough,
     label: "Strikethrough",
@@ -538,6 +541,7 @@ export const editorCommands = {
   "format.numberedList": { run: toggleNumberedList, label: "Numbered list", chord: "Mod-Shift-7" },
   "format.blockquote": { run: toggleBlockquote, label: "Blockquote", chord: "Mod-Shift-." },
   "format.taskList": { run: toggleTaskList, label: "Task list", chord: "Mod-Shift-Enter" },
+  "format.toggleCheckbox": { run: toggleCheckboxStatus, label: "Toggle checkbox", chord: "Mod-l" },
   "format.codeBlock": { run: toggleFencedCodeBlock, label: "Code block" },
   "format.heading1": { run: setHeading(1), label: "Heading 1", chord: "Mod-Alt-1" },
   "format.heading2": { run: setHeading(2), label: "Heading 2", chord: "Mod-Alt-2" },

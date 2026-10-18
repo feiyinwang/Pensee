@@ -2,12 +2,12 @@ import { keymap, dropCursor, EditorView } from "@codemirror/view";
 import { type Extension } from "@codemirror/state";
 import {
   defaultKeymap,
+  deleteLine,
   historyKeymap,
   indentLess,
   indentMore,
   indentWithTab,
 } from "@codemirror/commands";
-import { selectNextOccurrence } from "@codemirror/search";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { defaultHideExtensions } from "./hide";
 import { defaultFoldableSyntaxExtensions } from "./fold";
@@ -47,10 +47,9 @@ export const prosemarkBasicSetup = (): Extension => [
     ...closeBracketsKeymap,
     ...editorDefaultKeymap,
     ...historyKeymap,
-    // Multi-cursor selection helper from @codemirror/search, without the
-    // rest of `searchKeymap` (whose Escape/Mod-f bindings assume its panel).
-    // Mod-Shift-l is left out: it is Add to Library app-wide.
-    { key: "Mod-d", run: selectNextOccurrence, preventDefault: true },
+    // Obsidian's "Delete paragraph": the line(s) the selection touches
+    // (SPECs/obsidian-shortcuts-spec.md).
+    { key: "Mod-d", run: deleteLine, preventDefault: true },
     indentWithTab,
   ]),
   EditorView.lineWrapping,
@@ -58,11 +57,11 @@ export const prosemarkBasicSetup = (): Extension => [
 
 /** CodeMirror's `defaultKeymap` with indent moved from Mod-[ / Mod-] to
  *  Mod-Shift-[ / Mod-Shift-], and without Mod-l (select line). Mod-[ toggles
- *  the sidebar and Mod-l opens Library app-wide (`useKeyboardShortcuts`), and
- *  CodeMirror only preventDefaults — it never stops propagation — so leaving
- *  them bound would run both. Mod-] moves with Mod-[ so the pair stays a
- *  pair. Every editor in the app (main,
- *  columns, mermaid) pulls this so the keys mean one thing everywhere. */
+ *  the sidebar app-wide (`useKeyboardShortcuts`), and CodeMirror only
+ *  preventDefaults — it never stops propagation — so leaving it bound would
+ *  run both; Mod-] moves with Mod-[ so the pair stays a pair. Mod-l is
+ *  Obsidian's toggle checkbox (`editorCommands`). Every editor in the app
+ *  (main, columns, mermaid) pulls this so the keys mean one thing everywhere. */
 export const editorDefaultKeymap = [
   { key: "Mod-Shift-[", run: indentLess },
   { key: "Mod-Shift-]", run: indentMore },

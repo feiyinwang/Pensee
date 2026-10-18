@@ -13,7 +13,7 @@ async function readFile(path) {
 }
 
 async function openViaPalette(name) {
-  await pressCmd("f");
+  await pressCmd("o");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);
@@ -453,6 +453,7 @@ describe("Journeys: second pen", function () {
 
   it("PEN-01 ★ ⌘. ! writes a sealed answer under the line, your take beside it", async function () {
     const path = `${root}/Notes/Pen.md`;
+    await openViaPalette("Pen");
     await armOn("why does sleep help memory?");
     await pick("!", { shift: true });
     await waitForDisk(
@@ -829,6 +830,9 @@ describe("Journeys: second pen", function () {
       /\d+ topics?\. Your words sit under the points they back\./.test(said),
       `under the outline: ${said}`,
     );
+    // And in the bottom bar, where it can't scroll out of sight.
+    const bar = await barText();
+    ok(bar.includes(said) && bar.includes("put mine back"), `in the bar: ${bar}`);
     await key("Enter");
     const text = await waitForDisk(
       path,
@@ -965,11 +969,18 @@ describe("Journeys: second pen", function () {
       const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         if (!node.data.includes(label)) continue;
-        return Number(getComputedStyle(node.parentElement).fontWeight);
+        const key = getComputedStyle(node.parentElement);
+        return {
+          weight: Number(key.fontWeight),
+          color: key.color,
+          ink: getComputedStyle(line).color,
+        };
       }
       return null;
     }, label);
-    ok(bold !== null && bold >= 600, `the key phrase isn't bold on screen (weight ${bold})`);
+    ok(bold && bold.weight >= 600, `the key phrase isn't bold on screen (${JSON.stringify(bold)})`);
+    // Bold, but the pen's ink like the rest of its line: never your black.
+    ok(bold.color === bold.ink, `key ${bold.color} vs the line's ink ${bold.ink}`);
   });
 
   it("PEN-31 Organize keeps every level you wrote: blueberry, its benefit, its types", async function () {
@@ -992,7 +1003,7 @@ describe("Journeys: second pen", function () {
     // Your lines only: a topic's heading and the pen's own lines (its
     // ink, `^ai-g-…`) may use the same words.
     ok(/ \^ai-g-[a-z0-9]{4}$/m.test(text), `no point of the pen's:\n${text}`);
-    const yours = (l) => !/^#/.test(l) && !/ \^ai-g-[a-z0-9]{4}$/.test(l);
+    const yours = (l) => !l.startsWith("#") && !/ \^ai-g-[a-z0-9]{4}$/.test(l);
     const at = (re) => {
       const k = lines.findIndex((l) => yours(l) && re.test(l));
       ok(k >= 0, `${re} is gone:\n${text}`);

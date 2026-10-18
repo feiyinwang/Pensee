@@ -16,6 +16,7 @@ function mount(notePath: string, shown: boolean): VideoPlayer & { visible: boole
     time: () => 0,
     seek: () => {},
     toggle: () => {},
+    playing: () => false,
     speed: () => {},
     rect: () => new DOMRect(),
     shown: () => player.visible,

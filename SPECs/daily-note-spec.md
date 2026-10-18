@@ -27,8 +27,8 @@ filename every morning.
   opens the existing note without touching its contents.
 - Entry points, all running the same action:
   - A **Today's note** button on the new-tab page, below Create new note, showing
-    the `⌘⇧N` hint in the same style as the existing rows.
-  - The global `Cmd+Shift+N` (`Ctrl+Shift+N`) shortcut.
+    the `⌘T` hint in the same style as the existing rows.
+  - The global `Cmd+T` shortcut, and the go key's `Cmd+G` then `T`.
   - An **Open Today's Note** command in the command palette.
 - All three entry points require an open workspace, matching `Cmd+N`. In compact
   single-file windows (no workspace root) the shortcut and command are inert; the

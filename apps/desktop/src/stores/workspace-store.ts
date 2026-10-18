@@ -127,6 +127,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       tabs: [],
       activeTabId: null,
       activeFilePath: null,
+      closedTabs: [],
     });
 
     const info = await tauri.openWorkspace(path);
@@ -175,6 +176,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       tabs: [],
       activeTabId: null,
       activeFilePath: null,
+      closedTabs: [],
     });
     set((state) =>
       withNextWorkspaceGeneration(state, {
@@ -198,6 +200,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       tabs: [],
       activeTabId: null,
       activeFilePath: null,
+      closedTabs: [],
     });
 
     set((state) =>

@@ -25,7 +25,7 @@ import { openComposer } from "@/hooks/use-composer";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
 // Adding a Library note (SPECs/add-to-library-spec.md), from the composer or a
-// link pasted in ⌘F. Nothing touches the network until the add is chosen; the
+// link pasted in ⌘O. Nothing touches the network until the add is chosen; the
 // page's title is read then, and the note is named by it.
 
 // A page slower than this gets a note named from its link instead.

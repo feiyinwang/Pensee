@@ -1,0 +1,1125 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE (emil-prototype). Nothing imports this. Delete after the decision. -->
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Proto · AI on the page</title>
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <style>
+      :root {
+        /* Settings the app writes at runtime; light-theme values for the proto. */
+        --contrast: 0.2;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+        --motion-fast: 100ms;
+        --motion-settle: 180ms;
+        --motion-word: 220ms;
+        --col: 680px;
+        --ai-ink: var(--hue-blue);
+        --graphite: color-mix(in oklch, var(--color-text-muted) 85%, var(--hue-blue));
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        background: var(--color-bg-app);
+        color: var(--color-text-primary);
+        font-family: var(--font-ui);
+        -webkit-font-smoothing: antialiased;
+        font-synthesis: none;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      .canvas {
+        position: relative;
+        margin: 12px;
+        min-height: calc(100vh - 24px);
+        background: var(--color-bg-canvas);
+        border-radius: var(--radius-window);
+        box-shadow: var(--shadow-card);
+        padding: 88px 0 200px;
+      }
+      .doc {
+        width: var(--col);
+        max-width: calc(100% - 64px);
+        margin: 0 auto;
+        font-family: var(--font-editor);
+        font-size: var(--font-size-editor);
+        line-height: 1.6;
+        outline: none;
+        caret-color: var(--color-accent);
+      }
+      .doc h1 {
+        font-family: var(--font-title);
+        font-weight: 500;
+        font-size: 34px;
+        line-height: 1.15;
+        letter-spacing: -0.01em;
+        margin: 0 0 20px;
+        text-wrap: balance;
+      }
+      .doc ul {
+        margin: 0;
+        padding-left: 1.45em;
+        list-style-type: disc;
+      }
+      .doc li {
+        margin: 0.3em 0;
+        padding-left: 0.15em;
+        position: relative;
+      }
+      .doc li::marker {
+        color: var(--color-text-faint);
+      }
+      .doc ::selection {
+        background: var(--color-selection);
+      }
+      /* ⌘. arms the AI: the selection (or the caret's line) turns AI-blue until the next key. */
+      .doc.armed ::selection {
+        background: color-mix(in oklch, var(--ai-ink) 24%, transparent);
+      }
+      ::highlight(proto-armed) {
+        background-color: color-mix(in oklch, var(--ai-ink) 16%, transparent);
+      }
+      [contenteditable="false"]:focus-visible,
+      .doc li.ai:focus-visible,
+      .pnote:focus-visible {
+        outline: 2px solid var(--color-text-faint);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+
+      /* The only resting chrome: one faint line, top-left. Brightens while there's a selection. */
+      .hint {
+        position: fixed;
+        left: 32px;
+        top: 26px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: var(--font-size-caption);
+        color: var(--color-text-faint);
+        opacity: 0.6;
+        user-select: none;
+        pointer-events: none;
+        transition: opacity var(--motion-fast) var(--ease-out);
+      }
+      .hint[data-live] {
+        opacity: 1;
+      }
+      .hint b {
+        font-weight: 600;
+        color: var(--color-text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+      .hint .gap {
+        width: 8px;
+      }
+      kbd {
+        font: inherit;
+        min-width: 18px;
+        text-align: center;
+        padding: 0 5px;
+        border-radius: var(--radius-chip);
+        background: var(--color-bg-kbd);
+        color: var(--color-text-secondary);
+      }
+
+      /* AI writes word by word: a quick soft fade, like ink settling. */
+      .w {
+        display: inline-block;
+        animation: word-in var(--motion-word) var(--ease-out) both;
+      }
+      @keyframes word-in {
+        from {
+          opacity: 0;
+          filter: blur(3px);
+          transform: translateY(2px);
+        }
+      }
+      .src {
+        color: var(--color-text-faint);
+        font-size: 0.85em;
+        white-space: nowrap;
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+        }
+      }
+      .leaving {
+        opacity: 0;
+        transition: opacity 140ms var(--ease-exit);
+      }
+
+      /* Shorten: red pencil, deletion only. Cut words fade out on apply. */
+      .cut {
+        cursor: pointer;
+        color: var(--color-text-faint);
+        text-decoration: line-through;
+        text-decoration-color: var(--hue-red);
+        text-decoration-thickness: 1.5px;
+        border-radius: 3px;
+        transition:
+          opacity 140ms var(--ease-exit),
+          color var(--motion-fast) var(--ease-out),
+          background-color var(--motion-fast) var(--ease-out);
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      .cut[data-kept] {
+        color: inherit;
+        text-decoration-color: transparent;
+        background: var(--color-bg-subtle);
+      }
+      .cut.going {
+        opacity: 0;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .cut:hover {
+          background: var(--color-bg-hover);
+        }
+      }
+
+      /* ---------- 1 · Second pen: AI writes its own bullets, in blue ink ---------- */
+      .doc li.ai {
+        color: var(--ai-ink);
+        cursor: pointer;
+      }
+      .doc li.ai::marker {
+        content: "◦  ";
+        color: var(--ai-ink);
+      }
+      .doc li.ai .src {
+        color: color-mix(in oklch, var(--ai-ink) 55%, var(--color-text-faint));
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .doc li.ai:hover {
+          text-decoration: underline;
+          text-decoration-color: color-mix(in oklch, var(--ai-ink) 35%, transparent);
+          text-underline-offset: 4px;
+        }
+      }
+
+      /* ---------- 2 · Pencil notes: AI writes between your lines ---------- */
+      .pnote {
+        font-family: var(--font-book-serif);
+        font-style: italic;
+        font-size: 0.86em;
+        line-height: 1.45;
+        color: var(--graphite);
+        margin: 0.1em 0 0.35em;
+        cursor: pointer;
+        text-wrap: pretty;
+      }
+      .pnote::before {
+        content: "— ";
+        color: var(--color-text-faint);
+      }
+      .pnote .src {
+        font-style: normal;
+        font-family: var(--font-ui);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .pnote:hover {
+          color: var(--color-text-secondary);
+        }
+      }
+
+      /* ---------- 3 · Ghost line: the AI's line waits where you'd write next ---------- */
+      .doc li.ghost.blank::before {
+        content: attr(data-ghost);
+        position: absolute;
+        inset: 0 auto auto 0.15em;
+        pointer-events: none;
+        color: color-mix(in oklch, var(--ai-ink) 55%, var(--color-text-faint));
+        font-style: italic;
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      .doc li.ghost.blank::marker {
+        color: color-mix(in oklch, var(--ai-ink) 45%, transparent);
+      }
+      .doc li.ghost:not(.blank)[data-q]::before {
+        content: attr(data-q);
+        display: block;
+        font-family: var(--font-ui);
+        font-size: var(--font-size-caption);
+        font-style: italic;
+        line-height: 1.4;
+        color: color-mix(in oklch, var(--ai-ink) 70%, var(--color-text-faint));
+        margin-bottom: 1px;
+        user-select: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+
+      /* ---------------- Picker (PICKER.md, verbatim) ---------------- */
+      .proto-picker {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(10, 10, 10, 0.82);
+        -webkit-backdrop-filter: blur(12px) saturate(1.4);
+        backdrop-filter: blur(12px) saturate(1.4);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+          0 8px 24px rgba(0, 0, 0, 0.24),
+          0 2px 6px rgba(0, 0, 0, 0.12);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .proto-picker-highlight {
+        position: absolute;
+        top: 4px;
+        left: 0;
+        height: 28px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        will-change: transform;
+      }
+      .proto-picker[data-ready] .proto-picker-highlight {
+        transition:
+          transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+          width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .proto-picker[data-ready] .proto-picker-highlight {
+          transition: none;
+        }
+      }
+      .proto-picker-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.55);
+        font: inherit;
+        cursor: pointer;
+        transition: color 150ms ease-out;
+      }
+      .proto-picker-item:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .proto-picker-item:active {
+        transform: scale(0.97);
+      }
+      .proto-picker-item:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.4);
+        outline-offset: 2px;
+      }
+      .proto-picker-item[data-active] {
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="canvas" id="canvas"></main>
+    <div class="hint" id="hint" aria-live="polite"></div>
+
+    <nav class="proto-picker" aria-label="Prototype variants">
+      <span class="proto-picker-highlight" aria-hidden="true"></span>
+      <button class="proto-picker-item">Second pen</button>
+      <button class="proto-picker-item">Pencil notes</button>
+      <button class="proto-picker-item">Ghost line</button>
+    </nav>
+
+    <script>
+      /* ============================================================
+         The page: a writer's messy first pass on some topic. Edits carry
+         across variants; reload resets.
+
+         How the AI behaves (from the writer's principles):
+         - It asks, never answers.                       → ?  ask
+         - It fills gaps with facts, not opinions,
+           and says where each fact comes from.          → @  facts (or says it has none)
+         - It enumerates mixes; the writer judges.       → +  mix, click the one worth keeping
+         - It never spews: one line per key press.
+           The writer controls the length.               → press again for one more
+         - It never interrupts: nothing until asked,
+           no popups, it writes on the page.             → ⌘. then the key; without ⌘. keys just type
+         - Writers spew too; it helps cut, only cut.     → −  shorten
+         The "AI" here is scripted against this page.
+         ============================================================ */
+      const TITLE = "Four-day week";
+      const OUTLINE = [
+        [
+          "Everyone is tired. I think a four-day week would basically fix burnout for most of the team.",
+          [
+            [
+              "We'd get the same work done because people would actually focus more when they have less time.",
+            ],
+            [
+              "Fridays are already kind of dead anyway, nobody really ships anything on Friday afternoons.",
+            ],
+          ],
+        ],
+        [
+          "Risks",
+          [
+            ["Customers expect us to be around on Fridays."],
+            ["Some people would just end up working the fifth day at home anyway."],
+          ],
+        ],
+        ["Maybe start with a trial over the summer and see how it goes."],
+      ];
+      const outlineHTML = (nodes) =>
+        `<ul>${nodes.map(([t, kids]) => `<li>${esc(t)}${kids ? outlineHTML(kids) : ""}</li>`).join("")}</ul>`;
+      let saved = null; // the writer's outline, AI lines stripped
+
+      const SCRIPT = {
+        ask: [
+          [
+            ["burnout", "tired"],
+            [
+              "Is the tiredness about hours, or about what fills them?",
+              "Who on the team would a shorter week not help?",
+            ],
+          ],
+          [
+            ["same work", "focus"],
+            [
+              "What would people stop doing to fit five days into four?",
+              "How would you notice if output dropped?",
+            ],
+          ],
+          [
+            ["fridays are", "ships"],
+            ["Is Friday slow because of the work, or because of the week?"],
+          ],
+          [["customers"], ["Which customers, and what do they need from you on a Friday?"]],
+          [["fifth day"], ["What would stop that from happening — and should it?"]],
+          [["risks"], ["What's the risk of changing nothing?"]],
+          [
+            ["trial", "summer"],
+            [
+              "What result would make you end the trial?",
+              "Is summer a fair test if work is quieter then?",
+            ],
+          ],
+        ],
+        facts: [
+          [
+            ["burnout", "tired"],
+            [
+              [
+                "The WHO classes burnout as an occupational phenomenon caused by unmanaged chronic workplace stress.",
+                "WHO, ICD-11, 2019",
+              ],
+              [
+                "In a 2022 UK pilot, 56 of the 61 companies kept the four-day week afterwards.",
+                "Autonomy, 2023",
+              ],
+            ],
+          ],
+          [
+            ["same work", "focus"],
+            [
+              [
+                "“Work expands so as to fill the time available for its completion.”",
+                "Parkinson, The Economist, 1955",
+              ],
+              [
+                "Iceland's 2015–2019 trials cut hours for about 2,500 public workers; productivity held or improved in most workplaces.",
+                "Autonomy & Alda, 2021",
+              ],
+            ],
+          ],
+          [
+            ["trial", "summer"],
+            [
+              [
+                "Microsoft Japan's August 2019 trial reported sales per employee up about 40%.",
+                "Microsoft Japan, 2019",
+              ],
+              [
+                "In a 2022 UK pilot, 56 of the 61 companies kept the four-day week afterwards.",
+                "Autonomy, 2023",
+              ],
+            ],
+          ],
+        ],
+        mix: [
+          [
+            ["burnout", "tired", "four-day"],
+            [
+              "× fallow fields — rest a season so the soil gives more?",
+              "× sprint cadence — what if the week were the sprint?",
+              "× school calendars — a rhythm everyone already plans around.",
+            ],
+          ],
+          [
+            ["fridays", "customers"],
+            [
+              "× restaurants closed Mondays — close the day customers miss least.",
+              "× on-call rotation — Fridays covered in turns, not by everyone.",
+              "× bakeries — open early, close when the bread runs out.",
+            ],
+          ],
+          [
+            ["trial", "summer"],
+            [
+              "× clinical trials — what's your control group?",
+              "× beta releases — one opt-in team first?",
+              "× A/B tests — half the team, same quarter.",
+            ],
+          ],
+        ],
+      };
+      const short = (s) => {
+        const w = s
+          .trim()
+          .replace(/[.,;:?!]+$/, "")
+          .split(/\s+/);
+        return w.length <= 5 ? w.join(" ") : w.slice(0, 4).join(" ") + "…";
+      };
+      const lookup = (table, text) => {
+        const t = text.toLowerCase();
+        return table.find(([keys]) => keys.some((k) => t.includes(k)))?.[1];
+      };
+      function aiLines(kind, text) {
+        if (kind === "ask")
+          return (
+            lookup(SCRIPT.ask, text) || [
+              `What do you mean by “${short(text)}”?`,
+              "What would someone who disagrees say first?",
+            ]
+          ).map((t) => ({ t }));
+        if (kind === "facts")
+          return (
+            lookup(SCRIPT.facts, text) || [
+              ["No fact here I'd stand behind. Try selecting a specific claim.", ""],
+            ]
+          ).map(([t, src]) => ({ t, src }));
+        if (kind === "mix")
+          return (
+            lookup(SCRIPT.mix, text) || [
+              "× chess — what's the opening move?",
+              "× jazz — where's the improvisation?",
+              "× gardening — what gets pruned?",
+            ]
+          ).map((t) => ({ t }));
+      }
+      const KEY_FOR = { ask: "?", facts: "@", mix: "+" };
+
+      /* ---------------- helpers ---------------- */
+      const $ = (s, r = document) => r.querySelector(s);
+      const esc = (s) =>
+        s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      const words = (s) => s.split(/\s+/).filter(Boolean).length;
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const AI_SEL = ".ai, .pnote, .ghost.blank";
+      const WORD_STAGGER = 22; // ms between words; pairs with --motion-word
+
+      const ownText = (li) =>
+        [...li.childNodes]
+          .filter((n) => n.nodeType === 3)
+          .map((n) => n.data)
+          .join("")
+          .trim();
+      function childList(li) {
+        let ul = li.querySelector(":scope > ul");
+        if (!ul) {
+          ul = document.createElement("ul");
+          li.appendChild(ul);
+        }
+        return ul;
+      }
+      function selectedLines(el) {
+        const s = getSelection();
+        if (!s.rangeCount) return [];
+        const r = s.getRangeAt(0);
+        if (!el.contains(r.commonAncestorContainer)) return [];
+        return [...el.querySelectorAll("li")].filter(
+          (li) =>
+            !li.matches(AI_SEL) &&
+            !li.closest(".ai") &&
+            [...li.childNodes].some(
+              (n) => n.nodeType === 3 && n.data.trim() && r.intersectsNode(n),
+            ),
+        );
+      }
+      function caretLine(el) {
+        const s = getSelection();
+        if (!s.rangeCount) return null;
+        let n = s.anchorNode;
+        while (n && n !== el && n.tagName !== "LI") n = n.parentNode;
+        return n && n.tagName === "LI" ? n : null;
+      }
+      function placeCaret(node, atEnd = true) {
+        const r = document.createRange();
+        r.selectNodeContents(node);
+        r.collapse(!atEnd);
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+      }
+      // The AI writes its line word by word, then names its source.
+      async function writeWords(node, text, src) {
+        const ws = text.split(" ");
+        node.innerHTML =
+          `<span class="sr-only">Written by AI: </span>` +
+          ws
+            .map(
+              (w, k) =>
+                `<span class="w" style="animation-delay:${k * WORD_STAGGER}ms">${esc(w)}</span>`,
+            )
+            .join(" ") +
+          (src
+            ? ` <span class="src" style="animation-delay:${ws.length * WORD_STAGGER}ms">— ${esc(src)}</span>`
+            : "");
+        if (!reduced) await wait(ws.length * WORD_STAGGER + 220);
+      }
+      const fadeRemove = (nodes) => {
+        nodes.forEach((n) => n.classList.add("leaving"));
+        setTimeout(() => nodes.forEach((n) => n.remove()), 150);
+      };
+      function answerUnder(ul) {
+        const li = document.createElement("li");
+        li.appendChild(document.createElement("br"));
+        ul.prepend(li);
+        placeCaret(li, false);
+        return li;
+      }
+
+      const hint = $("#hint");
+      const REST = `<kbd>⌘ .</kbd> think about the selection, or the line you're on`;
+      const ARMED = `<kbd>?</kbd> ask <kbd>@</kbd> facts <kbd>+</kbd> mix <kbd>−</kbd> shorten <span class="gap"></span><kbd>Esc</kbd> never mind`;
+      let hintTimer;
+      const setHint = (html, live, ms) => {
+        clearTimeout(hintTimer);
+        hint.innerHTML = html;
+        hint.toggleAttribute("data-live", !!live);
+        hintTimer = ms ? setTimeout(() => setHint(REST), ms) : null;
+      };
+
+      /* ---------------- Shell shared by every variant ----------------
+         Renders the outline and owns the keys: ⌘. arms the AI for one key
+         (? @ + −) on the selection or the caret's line; without ⌘. every
+         key types as usual. Tab / Shift-Tab indent, Esc takes back the
+         AI's lines. One request = one line. The variant decides only
+         how an AI line looks and where it sits. */
+      function shell(canvas, write) {
+        const el = document.createElement("article");
+        el.className = "doc";
+        el.contentEditable = "true";
+        el.spellcheck = false;
+        el.setAttribute("aria-label", "Document");
+        el.innerHTML = `<h1>${esc(TITLE)}</h1>` + (saved ?? outlineHTML(OUTLINE));
+        canvas.appendChild(el);
+        setHint(REST);
+        let cur = null,
+          busy = false,
+          shortening = null;
+        const save = () => {
+          const c = el.querySelector(":scope > ul").cloneNode(true);
+          c.querySelectorAll(".ai, .pnote, li.ghost.blank").forEach((n) => n.remove());
+          c.querySelectorAll("li.ghost").forEach((n) => {
+            n.className = "";
+            delete n.dataset.q;
+            delete n.dataset.ghost;
+          });
+          saved = c.outerHTML;
+        };
+
+        async function run(kind, lines) {
+          if (busy) return;
+          if (kind === "shorten") return shorten(lines);
+          const anchor = lines[lines.length - 1];
+          const again =
+            cur &&
+            cur.anchor === anchor &&
+            cur.kind === kind &&
+            cur.batch.every((n) => n.isConnected);
+          if (!again)
+            cur = {
+              anchor,
+              kind,
+              i: -1,
+              lines: aiLines(kind, lines.map(ownText).join(" ")),
+              batch: [],
+            };
+          if (cur.i + 1 >= cur.lines.length) {
+            setHint("That's all I have on this line. The rest is yours.", true, 2200);
+            return;
+          }
+          cur.i++;
+          busy = true;
+          const c = cur; // the variant may clear `cur` while writing (Ghost drops its old line)
+          const node = await write(c, el);
+          busy = false;
+          cur = c;
+          if (node) c.batch.push(node);
+          const more = c.i + 1 < c.lines.length;
+          setHint(
+            `${more ? `<kbd>⌘ .</kbd> <kbd>${KEY_FOR[kind]}</kbd> one more <span class="gap"></span>` : ""}<kbd>Esc</kbd> take it back`,
+            true,
+            4000,
+          );
+        }
+
+        function shorten(lines) {
+          const CUTS = [
+            /\b(?:I think |basically |actually |really |just |kind of |quite |literally |very )/gi,
+            / anyway(?=[,.])/gi,
+            / and see how it goes/g,
+            /already /g,
+          ];
+          const jobs = lines
+            .map((li) => {
+              const node = [...li.childNodes].find((n) => n.nodeType === 3 && n.data.trim());
+              const text = node.data,
+                cuts = [];
+              for (const re of CUTS)
+                for (const m of text.matchAll(re)) {
+                  const a = m.index,
+                    b = a + m[0].length;
+                  if (!cuts.some((c) => a < c.b && b > c.a)) cuts.push({ a, b });
+                }
+              cuts.sort((x, y) => x.a - y.a);
+              return { node, text, cuts };
+            })
+            .filter((j) => j.cuts.length);
+          if (!jobs.length) {
+            setHint("Nothing to cut. Every word is pulling its weight.", true, 2200);
+            return;
+          }
+          getSelection().removeAllRanges();
+          el.contentEditable = "false";
+          for (const j of jobs) {
+            const span = document.createElement("span");
+            let html = "",
+              at = 0;
+            j.cuts.forEach((c, i) => {
+              html +=
+                esc(j.text.slice(at, c.a)) +
+                `<span class="cut" data-i="${i}" title="Click to keep these words">${esc(j.text.slice(c.a, c.b))}</span>`;
+              at = c.b;
+            });
+            span.innerHTML = html + esc(j.text.slice(at));
+            j.span = span;
+            j.node.replaceWith(span);
+            span.querySelectorAll(".cut").forEach((s) =>
+              s.addEventListener("click", () => {
+                const c = j.cuts[+s.dataset.i];
+                c.kept = !c.kept;
+                s.toggleAttribute("data-kept");
+                count();
+              }),
+            );
+          }
+          const tidy = (t) =>
+            t
+              .replace(/\s{2,}/g, " ")
+              .replace(/\s+([.,?!])/g, "$1")
+              .replace(/(^|[.?!]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+          const result = (j) =>
+            tidy(
+              j.cuts.reduceRight((t, c) => (c.kept ? t : t.slice(0, c.a) + t.slice(c.b)), j.text),
+            );
+          function count() {
+            const d = jobs.reduce((n, j) => n + words(result(j)) - words(j.text), 0);
+            setHint(
+              `<b>${String(d).replace("-", "−")} words</b> &nbsp;Only cuts. Click a cut to keep it. <span class="gap"></span><kbd>↵</kbd> shorten <kbd>Esc</kbd> cancel`,
+              true,
+            );
+          }
+          shortening = async (apply) => {
+            shortening = null;
+            if (apply && !reduced) {
+              jobs.forEach((j) =>
+                j.span
+                  .querySelectorAll(".cut:not([data-kept])")
+                  .forEach((c) => c.classList.add("going")),
+              );
+              await wait(150);
+            }
+            for (const j of jobs)
+              j.span.replaceWith(document.createTextNode(apply ? result(j) : j.text));
+            el.contentEditable = "true";
+            setHint(REST);
+            save();
+          };
+          count();
+        }
+
+        function indent(li, out) {
+          if (out) {
+            const p = li.parentElement.closest("li");
+            if (p) p.after(li);
+          } else {
+            const prev = li.previousElementSibling;
+            if (prev) childList(prev).appendChild(li);
+          }
+        }
+
+        const onKey = (e) => {
+          if (shortening) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              shortening(true);
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              shortening(false);
+            }
+            return;
+          }
+          if (!el.contains(document.activeElement) && document.activeElement !== el) return;
+          if (e.defaultPrevented) return;
+          if (e.metaKey && (e.key === "." || e.code === "Period")) {
+            e.preventDefault();
+            arm(!armed && targetLines().length > 0);
+            return;
+          }
+          if (armed) {
+            if (e.key === "Shift") return; // ? and @ and + need Shift; wait for the real key
+            const KEYS = { "?": "ask", "@": "facts", "+": "mix", "-": "shorten", "−": "shorten" };
+            const lines = targetLines();
+            arm(false);
+            if (KEYS[e.key] && lines.length) {
+              e.preventDefault();
+              run(KEYS[e.key], lines);
+              return;
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              return;
+            }
+            // Any other key: not for the AI. Let it type as usual.
+          }
+          if (e.metaKey || e.ctrlKey || e.altKey) return;
+          if (e.key === "Tab") {
+            const li = caretLine(el);
+            if (li && !li.matches(AI_SEL)) {
+              e.preventDefault();
+              indent(li, e.shiftKey);
+              placeCaret(li);
+              save();
+            }
+          } else if (e.key === "Escape" && cur?.batch.length) {
+            e.preventDefault();
+            fadeRemove(cur.batch);
+            cur = null;
+            setHint(REST);
+          }
+        };
+        // The selection's lines, or the caret's line when nothing is selected.
+        function targetLines() {
+          if (!getSelection().isCollapsed) return selectedLines(el);
+          const li = caretLine(el);
+          return li && !li.matches(AI_SEL) && !li.closest(".ai") && ownText(li) ? [li] : [];
+        }
+        let armed = false;
+        function arm(on) {
+          armed = on;
+          el.classList.toggle("armed", on);
+          CSS.highlights?.delete("proto-armed");
+          if (on) {
+            if (getSelection().isCollapsed) {
+              const node = [...targetLines()[0].childNodes].find(
+                (n) => n.nodeType === 3 && n.data.trim(),
+              );
+              const r = document.createRange();
+              r.selectNodeContents(node);
+              CSS.highlights?.set("proto-armed", new Highlight(r));
+            }
+            setHint(ARMED, true);
+          } else if (!hintTimer) setHint(REST);
+        }
+        const onInput = () => save();
+        el.addEventListener("mousedown", () => armed && arm(false));
+        const onSel = () => {
+          if (!shortening && !hintTimer && !armed)
+            hint.toggleAttribute(
+              "data-live",
+              !getSelection().isCollapsed && selectedLines(el).length > 0,
+            );
+        };
+        document.addEventListener("keydown", onKey, true);
+        document.addEventListener("selectionchange", onSel);
+        el.addEventListener("input", onInput);
+        el.focus();
+        placeCaret(el.querySelector("li").firstChild);
+        return {
+          el,
+          clearCur: () => {
+            cur = null;
+          },
+          cleanup: () => {
+            clearTimeout(hintTimer);
+            shortening?.(false);
+            save();
+            document.removeEventListener("keydown", onKey, true);
+            document.removeEventListener("selectionchange", onSel);
+          },
+        };
+      }
+
+      /* ============================================================
+         1 · SECOND PEN — the AI writes real bullets under your line,
+         in blue ink with a hollow marker. Click one to answer under it;
+         click a mix to keep it and drop the others.
+         ============================================================ */
+      function SecondPen(canvas) {
+        const { cleanup } = shell(canvas, async (cur) => {
+          const l = cur.lines[cur.i];
+          const li = document.createElement("li");
+          li.className = "ai";
+          li.contentEditable = "false";
+          li.tabIndex = 0;
+          const prev = cur.batch[cur.batch.length - 1];
+          prev ? prev.after(li) : childList(cur.anchor).prepend(li);
+          const batch = cur.batch;
+          const act = () => {
+            if (cur.kind === "mix") fadeRemove(batch.filter((b) => b !== li));
+            const sub = childList(li);
+            sub.contentEditable = "true";
+            answerUnder(sub);
+          };
+          // Clicks inside your answers under this line are yours, not a request to answer again.
+          li.addEventListener("click", (e) => {
+            const ul = e.target.closest("ul");
+            if (!ul || !li.contains(ul)) act();
+          });
+          li.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && e.target === li) {
+              e.preventDefault();
+              act();
+            }
+          });
+          await writeWords(li, l.t, l.src);
+          return li;
+        });
+        return cleanup;
+      }
+
+      /* ============================================================
+         2 · PENCIL NOTES — the AI writes between your lines, smaller,
+         in a serif italic like an editor's pencil. No bullets of its own.
+         ============================================================ */
+      function PencilNotes(canvas) {
+        const { cleanup } = shell(canvas, async (cur) => {
+          const l = cur.lines[cur.i];
+          const n = document.createElement("div");
+          n.className = "pnote";
+          n.contentEditable = "false";
+          n.tabIndex = 0;
+          const prev = cur.batch[cur.batch.length - 1];
+          prev
+            ? prev.after(n)
+            : cur.anchor.insertBefore(n, cur.anchor.querySelector(":scope > ul"));
+          const batch = cur.batch,
+            anchor = cur.anchor,
+            kind = cur.kind;
+          const act = () => {
+            if (kind === "mix") fadeRemove(batch.filter((b) => b !== n));
+            answerUnder(childList(anchor));
+          };
+          n.addEventListener("click", act);
+          n.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              act();
+            }
+          });
+          await writeWords(n, l.t, l.src);
+          return n;
+        });
+        return cleanup;
+      }
+
+      /* ============================================================
+         3 · GHOST LINE — one faint AI line waits on the line where you'd
+         write next. Type to answer it, Tab for another, ↵ to keep it in
+         blue. Write anywhere else and it leaves without a trace.
+         ============================================================ */
+      function GhostLine(canvas) {
+        let ghost = null;
+        const { el, cleanup, clearCur } = shell(canvas, async (cur) => {
+          if (
+            ghost &&
+            ghost.cur === cur &&
+            ghost.li.isConnected &&
+            ghost.li.classList.contains("blank")
+          ) {
+            paint();
+            placeCaret(ghost.li, false);
+            return null;
+          }
+          dropGhost();
+          const li = document.createElement("li");
+          li.className = "ghost blank";
+          li.appendChild(document.createElement("br"));
+          childList(cur.anchor).prepend(li);
+          ghost = { li, cur };
+          paint();
+          placeCaret(li, false);
+          return li;
+        });
+        function paint() {
+          const { li, cur } = ghost;
+          const l = cur.lines[cur.i];
+          li.dataset.ghost =
+            l.t +
+            (l.src ? `  — ${l.src}` : "") +
+            (cur.lines.length > 1 ? `    ⇥ ${cur.i + 1}/${cur.lines.length}` : "");
+          li.setAttribute(
+            "aria-label",
+            `AI suggests: ${l.t}. Type to answer, Tab for another, Enter to keep.`,
+          );
+          if (cur.kind === "ask") li.dataset.q = l.t;
+          else delete li.dataset.q;
+          reserve(li);
+        }
+        // The ghost is drawn by ::before, which takes no space; reserve its wrapped height so it never overlaps.
+        function reserve(li) {
+          const m = document.createElement("div");
+          const cs = getComputedStyle(li);
+          m.style.cssText = `position:absolute;visibility:hidden;font:${cs.font};font-style:italic;line-height:${cs.lineHeight};width:${li.clientWidth - parseFloat(cs.paddingLeft)}px`;
+          m.textContent = li.dataset.ghost;
+          document.body.appendChild(m);
+          li.style.minHeight = m.offsetHeight + "px";
+          m.remove();
+        }
+        function dropGhost() {
+          if (ghost?.li.classList.contains("blank")) {
+            ghost.li.remove();
+            clearCur();
+          }
+          ghost = null;
+        }
+        const isBlank = (li) => !li.textContent.trim();
+        const onKey = (e) => {
+          if (!ghost || caretLine(el) !== ghost.li || !isBlank(ghost.li)) return;
+          const { cur } = ghost;
+          if (e.key === "Tab") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            cur.i = (cur.i + 1) % cur.lines.length;
+            paint();
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            const l = cur.lines[cur.i];
+            const kept = document.createElement("li");
+            kept.className = "ai";
+            kept.contentEditable = "false";
+            ghost.li.replaceWith(kept);
+            ghost = null;
+            clearCur();
+            writeWords(kept, l.t, l.src);
+            const sub = childList(kept);
+            sub.contentEditable = "true";
+            answerUnder(sub);
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            dropGhost();
+          }
+        };
+        const onInput = () => {
+          if (!ghost) return;
+          if (caretLine(el) === ghost.li) {
+            ghost.li.classList.toggle("blank", isBlank(ghost.li));
+            if (!isBlank(ghost.li)) {
+              ghost.li.removeAttribute("aria-label");
+              ghost.li.style.minHeight = "";
+            } else reserve(ghost.li);
+          } else if (isBlank(ghost.li)) dropGhost(); // you wrote elsewhere: it leaves
+        };
+        document.addEventListener("keydown", onKey, true);
+        el.addEventListener("input", onInput);
+        return () => {
+          dropGhost();
+          document.removeEventListener("keydown", onKey, true);
+          cleanup();
+        };
+      }
+
+      /* ---------------- Picker wiring (PICKER.md) ---------------- */
+      const variants = [SecondPen, PencilNotes, GhostLine];
+      const stage = $("#canvas");
+      const picker = $(".proto-picker");
+      const highlight = picker.querySelector(".proto-picker-highlight");
+      const items = [...picker.querySelectorAll(".proto-picker-item")];
+      let current = 0,
+        cleanup = null;
+
+      function moveHighlight() {
+        const el = items[current];
+        highlight.style.width = el.offsetWidth + "px";
+        highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+      }
+      function mount(i) {
+        cleanup?.();
+        cleanup = null;
+        stage.innerHTML = "";
+        setTimeout(() => {
+          cleanup = variants[i](stage);
+        });
+      }
+      function setActive(i) {
+        if (i < 0 || i >= variants.length) return;
+        current = i;
+        items.forEach((el, j) => {
+          el.toggleAttribute("data-active", j === i);
+          if (j === i) el.setAttribute("aria-current", "true");
+          else el.removeAttribute("aria-current");
+        });
+        moveHighlight();
+        const url = new URL(location);
+        url.searchParams.set("v", i + 1);
+        history.replaceState(null, "", url);
+        mount(i);
+      }
+      items.forEach((el, i) => el.addEventListener("click", () => setActive(i)));
+      addEventListener("resize", moveHighlight);
+      document.addEventListener("keydown", (e) => {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable)
+          return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= variants.length) setActive(num - 1);
+        else if (e.key === "ArrowRight") setActive((current + 1) % variants.length);
+        else if (e.key === "ArrowLeft")
+          setActive((current - 1 + variants.length) % variants.length);
+      });
+      setActive((parseInt(new URLSearchParams(location.search).get("v"), 10) || 1) - 1);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => picker.setAttribute("data-ready", "")),
+      );
+    </script>
+  </body>
+</html>

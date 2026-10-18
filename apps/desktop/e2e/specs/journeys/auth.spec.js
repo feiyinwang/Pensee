@@ -155,7 +155,7 @@ const accountRow = () =>
   });
 
 async function openSettings() {
-  await pressCmd("f");
+  await pressCmd("p");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue("Settings");

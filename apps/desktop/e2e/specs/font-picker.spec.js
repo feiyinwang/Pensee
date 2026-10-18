@@ -45,7 +45,7 @@ describe("Settings font selects", function () {
   }
 
   it("opens settings via the command palette", async function () {
-    await pressCmd("f");
+    await pressCmd("p");
     const settingsCommand = await $('[cmdk-item][data-value="open-settings"]');
     await settingsCommand.waitForExist({ timeout: 5_000 });
     await settingsCommand.click();

@@ -9,7 +9,8 @@ import {
 import { useChromeTooltip } from "@/components/chrome-tooltip";
 import { openTodaysNote } from "@/hooks/use-daily-note";
 import { openSpace, spaceLocationOf, useActiveSpaceKey, useSpaces } from "@/hooks/use-spaces";
-import type { SpaceIcon } from "@/lib/spaces";
+import { GO_TODAY_KEY, type SpaceIcon } from "@/lib/spaces";
+import { useUIStore } from "@/stores/ui-store";
 import { SIDEBAR_SECTION_LABEL_CLASS } from "./sidebar-section";
 
 const ICONS: Record<SpaceIcon, IconSvgElement> = {
@@ -33,6 +34,7 @@ function Row({
   tooltip,
   keys,
   keyshortcuts,
+  goKey,
   onClick,
 }: {
   icon: IconSvgElement;
@@ -45,9 +47,12 @@ function Row({
   keys?: readonly string[];
   /** The shortcut for `aria-keyshortcuts` (`Meta+T`). */
   keyshortcuts?: string;
+  /** The letter after ⌘G that opens this row, boxed on the row while ⌘G waits. */
+  goKey?: string;
   onClick: () => void;
 }) {
   const hint = useChromeTooltip(tooltip ?? label, { keys, side: "right" });
+  const goKeyPending = useUIStore((s) => s.goKeyPending);
 
   return (
     <>
@@ -70,6 +75,15 @@ function Row({
         >
           {label}
         </span>
+        {goKeyPending && goKey && (
+          // No motion: it answers a key press.
+          <kbd
+            data-go-key={goKey}
+            className="ml-auto flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[var(--radius-button)] bg-[var(--color-bg-kbd)] px-1 font-[inherit] text-caption text-[var(--color-text-primary)]"
+          >
+            {goKey.toUpperCase()}
+          </kbd>
+        )}
       </button>
       {hint.tooltip}
     </>
@@ -98,6 +112,7 @@ export function SidebarSpaces() {
           tooltip="Open today's note"
           keys={["⌘", "T"]}
           keyshortcuts="Meta+T"
+          goKey={GO_TODAY_KEY}
           onClick={openToday}
         />
       </div>
@@ -112,8 +127,9 @@ export function SidebarSpaces() {
               spaceKey={space.key}
               active={activeKey === space.key}
               tooltip={`Go to ${space.name}`}
-              keys={space.shortcut ? ["⌘", space.shortcut] : undefined}
-              keyshortcuts={space.shortcut ? `Meta+${space.shortcut}` : undefined}
+              keys={space.goKey ? ["⌘", "G", space.goKey.toUpperCase()] : undefined}
+              keyshortcuts={space.goKey ? `Meta+G ${space.goKey.toUpperCase()}` : undefined}
+              goKey={space.goKey}
               onClick={() => openSpace(spaceLocationOf(space))}
             />
           ))}

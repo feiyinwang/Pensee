@@ -89,13 +89,13 @@ one way this could quietly act on the wrong block.
 Built per target; an item that would be a no-op is not rendered rather than
 greyed out.
 
-| Target                            | Type tiles | Move / insert                    | Duplicate | Cut / Copy | Delete                        |
-| --------------------------------- | ---------- | -------------------------------- | --------- | ---------- | ----------------------------- |
-| Paragraph line, heading, quote    | yes        | up / down / insert above / below | yes       | yes        | no confirm                    |
-| List item                         | yes        | up / down among siblings / insert a sibling | yes (as a sibling) | yes | no confirm          |
-| Picture, fence, table, HTML, rule | no         | up / down / insert above / below | yes       | yes        | no confirm                    |
-| Band (a column's caption)         | yes        | —                                | yes       | yes        | no confirm                    |
-| Column                            | no         | left / right                     | yes       | yes        | **confirm, with block count** |
+| Target                            | Type tiles | Move / insert                               | Duplicate          | Cut / Copy | Delete                        |
+| --------------------------------- | ---------- | ------------------------------------------- | ------------------ | ---------- | ----------------------------- |
+| Paragraph line, heading, quote    | yes        | up / down / insert above / below            | yes                | yes        | no confirm                    |
+| List item                         | yes        | up / down among siblings / insert a sibling | yes (as a sibling) | yes        | no confirm                    |
+| Picture, fence, table, HTML, rule | no         | up / down / insert above / below            | yes                | yes        | no confirm                    |
+| Band (a column's caption)         | yes        | —                                           | yes                | yes        | no confirm                    |
+| Column                            | no         | left / right                                | yes                | yes        | **confirm, with block count** |
 
 Nine type tiles: Text, H1–H3, numbered, bulleted, to-do, code, quote. The tile
 matching the block is lit; clicking it again clears the block back to Text.

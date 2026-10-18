@@ -51,11 +51,22 @@ export interface SessionTab {
   forward: SerializedLocation[];
 }
 
+/** A tab the user closed, kept for ⌘⇧T with the index it sat at. */
+export interface ClosedTab {
+  tab: Tab;
+  index: number;
+}
+
+/** How many closed tabs ⌘⇧T can bring back. */
+const CLOSED_TABS_LIMIT = 20;
+
 interface EditorState {
   openFiles: Map<string, OpenFile>;
   tabs: Tab[];
   activeTabId: string | null;
   activeFilePath: string | null;
+  /** Newest last (SPECs/obsidian-shortcuts-spec.md#reopen-closed-tab). */
+  closedTabs: ClosedTab[];
 
   openFile: (path: string) => Promise<void>;
   openCompactFile: (path: string, prefetched?: FileContent | null) => Promise<void>;
@@ -69,8 +80,12 @@ interface EditorState {
   openOrFocus: (match: (tab: Tab) => boolean, factory: () => Tab) => void;
   replaceTabWithFile: (tabId: string, path: string) => Promise<void>;
   closeFile: (path: string) => void;
-  closeTab: (tabId: string) => void;
+  /** Close a tab. It is kept for ⌘⇧T unless `remember` is false (a tab
+   *  closed because its file failed to load) or it is a New tab page. */
+  closeTab: (tabId: string, options?: { remember?: boolean }) => void;
   closeActiveTab: () => void;
+  /** ⌘⇧T: bring back the newest closed tab where it was. */
+  reopenClosedTab: () => Promise<void>;
   setActiveFile: (path: string) => void;
   setActiveTab: (tabId: string) => void;
   navigateToFile: (path: string) => Promise<void>;
@@ -347,6 +362,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   tabs: [],
   activeTabId: null,
   activeFilePath: null,
+  closedTabs: [],
 
   openFile: async (path: string) => {
     const state = get();
@@ -386,7 +402,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       await loadPromise;
     } catch {
-      get().closeTab(nextTab.id);
+      get().closeTab(nextTab.id, { remember: false });
     }
   },
 
@@ -448,7 +464,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       await loadPromise;
     } catch {
-      get().closeTab(nextTab.id);
+      get().closeTab(nextTab.id, { remember: false });
     }
   },
 
@@ -482,7 +498,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       await ensureFileLoaded(path, set as EditorStateSetter, get);
     } catch {
-      get().closeTab(nextTab.id);
+      get().closeTab(nextTab.id, { remember: false });
     }
   },
 
@@ -515,7 +531,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       await ensureFileLoaded(path, set as EditorStateSetter, get);
     } catch {
-      get().closeTab(nextTab.id);
+      get().closeTab(nextTab.id, { remember: false });
       throw new Error(`Failed to open ${path}`);
     }
   },
@@ -645,12 +661,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (targetTab) get().closeTab(targetTab.id);
   },
 
-  closeTab: (tabId: string) => {
+  closeTab: (tabId: string, { remember = true } = {}) => {
     set((state) => {
       const index = getTabIndex(state.tabs, tabId);
       if (index === -1) return state;
 
       const closedTab = state.tabs[index]!;
+      const closedTabs =
+        remember && closedTab.location.kind !== "launcher"
+          ? [...state.closedTabs, { tab: closedTab, index }].slice(-CLOSED_TABS_LIMIT)
+          : state.closedTabs;
       let tabs = state.tabs.filter((tab) => tab.id !== tabId);
 
       let activeTabId = state.activeTabId;
@@ -668,6 +688,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         tabs,
         activeTabId,
         activeFilePath: deriveActiveFilePath(tabs, activeTabId),
+        closedTabs,
         ...(files ? { openFiles: files } : {}),
       };
     });
@@ -678,6 +699,40 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   closeActiveTab: () => {
     const activeTabId = get().activeTabId;
     if (activeTabId) get().closeTab(activeTabId);
+  },
+
+  reopenClosedTab: async () => {
+    const { closedTabs } = get();
+    const closed = closedTabs[closedTabs.length - 1];
+    if (!closed) return;
+    const tab: Tab = { ...closed.tab, id: createTabId() };
+    const path = locationPrimaryPath(tab.location);
+
+    set((state) => {
+      // A lone New tab page is what closing the last tab left; take its place.
+      const lone = state.tabs.length === 1 && state.tabs[0]!.location.kind === "launcher";
+      const rest = lone ? [] : state.tabs;
+      const at = Math.min(closed.index, rest.length);
+      const tabs = [...rest.slice(0, at), tab, ...rest.slice(at)];
+      const openFiles =
+        path && !state.openFiles.has(path)
+          ? new Map(state.openFiles).set(path, createLoadingFile(path))
+          : undefined;
+      return {
+        tabs,
+        activeTabId: tab.id,
+        activeFilePath: path,
+        closedTabs: state.closedTabs.slice(0, -1),
+        ...(openFiles ? { openFiles } : {}),
+      };
+    });
+
+    if (!path) return;
+    try {
+      await ensureFileLoaded(path, set as EditorStateSetter, get);
+    } catch {
+      get().closeTab(tab.id, { remember: false });
+    }
   },
 
   setActiveFile: (path: string) => {
@@ -1056,6 +1111,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         tabs: [],
         activeTabId: null,
         activeFilePath: null,
+        closedTabs: [],
       });
       get().ensureLauncherTab();
       return;
@@ -1109,6 +1165,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         tabs: restoredTabs,
         activeTabId: activeTab?.id ?? null,
         activeFilePath: activePath,
+        // Another workspace's closed tabs don't come back here.
+        closedTabs: [],
       };
     });
 

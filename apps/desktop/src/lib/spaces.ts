@@ -28,8 +28,8 @@ export interface SpaceDef {
   tabs: SpaceTab[];
   /** The space note, for a space you added. */
   path?: string;
-  /** The letter that, with ⌘, opens a built-in space from anywhere. */
-  shortcut?: string;
+  /** The letter that follows ⌘G to open a built-in space (`p` Projects). */
+  goKey?: string;
 }
 
 export const SPACE_NOTE_TYPE = "Space";
@@ -49,7 +49,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     name: "Projects",
     icon: "projects",
     view: "kanban",
-    shortcut: "P",
+    goKey: "p",
     tabs: [tab("projects", "Projects", "project", [PROJECT_TYPE], "note")],
   },
   {
@@ -57,7 +57,7 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
     name: "Library",
     icon: "library",
     view: "gallery",
-    shortcut: "L",
+    goKey: "l",
     tabs: [
       tab("books", "Books", "book", ["Book"], "book"),
       // Courses are videos too: their notes keep `Type: Course` and show here.
@@ -66,15 +66,38 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
       tab("papers", "Papers", "paper", ["Paper"], "paper"),
     ],
   },
-  { key: "files", name: "Files", icon: "files", view: "files", tabs: [], shortcut: "O" },
+  {
+    key: "files",
+    name: "Files",
+    icon: "files",
+    view: "files",
+    goKey: "f",
+    tabs: [],
+  },
 ];
 
 export const FILES_SPACE_KEY = "files";
 
-/** The built-in space whose ⌘ shortcut is `key` (`p`), if any. */
-export function spaceForShortcut(key: string): SpaceDef | undefined {
-  const letter = key.toUpperCase();
-  return BUILT_IN_SPACES.find((space) => space.shortcut === letter);
+/** The go key: ⌘G, then a letter (T Today, P Projects, L Library, F Files),
+ *  as Linear's G but held with ⌘ so it works mid-sentence
+ *  (SPECs/obsidian-shortcuts-spec.md#the-system). */
+export const GO_TODAY_KEY = "t";
+
+/** Every place the go key reaches, in sidebar order, for its hint strip. */
+export function goKeyPlaces(): { key: string; name: string }[] {
+  return [
+    { key: GO_TODAY_KEY, name: "Today" },
+    ...BUILT_IN_SPACES.flatMap((space) =>
+      space.goKey ? [{ key: space.goKey, name: space.name }] : [],
+    ),
+  ];
+}
+
+/** What the letter after ⌘G opens: Today, a built-in space, or nothing. */
+export function goTargetForKey(key: string): "today" | SpaceDef | undefined {
+  const letter = key.toLowerCase();
+  if (letter === GO_TODAY_KEY) return "today";
+  return BUILT_IN_SPACES.find((space) => space.goKey === letter);
 }
 
 export function builtInSpace(key: string): SpaceDef | undefined {

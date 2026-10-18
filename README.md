@@ -1,12 +1,18 @@
 # Pensée
 
-Thinking, made by writing. A local-first markdown app for the notes you think with.
+Thinking, made by writing.
+
+I'm making Pensée for people like me, with ADHD or a brain that works a little differently. We collect everything: the article, the video, the book a friend mentioned, the idea that shows up at 2am. Very little of it gets digested, and we wish it did, because digesting is how you come to understand the world and yourself.
+
+Pensée is where the collecting turns into understanding. Your memory goes on the page, so your head doesn't have to hold it all. You write about each new thing you meet in your own words, and the notes link up into something you can come back to. It's meant to feel calm enough to get into the zone, and safe: every note is a file in a folder on your own computer.
+
+The AI is a second pen, not a ghostwriter. It answers a question only after you've written your own take. It lays out the evidence on both sides of a claim and leaves the call to you. It shows where a line connects to something you wrote months ago, and you write how they connect. Your ideas stay yours.
 
 ![Pensée](./assets/screenshot.png)
 
 Every note is a markdown file in your own folder, so it opens in Obsidian or any editor. Around the notes:
 
-- **Library** keeps books, videos, podcasts, papers and your X bookmarks as notes, and opens PDFs and EPUBs beside their page so highlights land in it.
+- **Library** keeps books, videos, podcasts and papers as notes, and opens PDFs and EPUBs beside their page so highlights land in it.
 - **Projects** shows your project notes as a list, a kanban or a timeline, and writes changes back to each note's properties.
 - **YouTube notes** play the video inside its note, and each note you take can be pinned to the moment it was written.
 - The **Agent** chat is Claude with your pages in view: it reads and edits them, and explains or defines what you select in a book.

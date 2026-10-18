@@ -1,0 +1,3462 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE (emil-prototype). Nothing imports this. Delete after the decision. -->
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Proto · Quiz me</title>
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <style>
+      :root {
+        /* Settings the app writes at runtime; light-theme values for the proto. */
+        --contrast: 0.2;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+        --motion-fast: 100ms;
+        --motion-hover: 150ms;
+        --motion-settle: 180ms;
+        --motion-word: 220ms;
+        --col: 680px;
+        /* Same AI ink as proto/ai-writing, so both explorations read as one voice. */
+        --ai-ink: var(--hue-blue);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background: var(--color-bg-app);
+        color: var(--color-text-primary);
+        font-family: var(--font-ui);
+        -webkit-font-smoothing: antialiased;
+        font-synthesis: none;
+        overflow: hidden;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      kbd {
+        font: inherit;
+        font-size: var(--font-size-caption);
+        min-width: 18px;
+        text-align: center;
+        padding: 0 5px;
+        border-radius: var(--radius-chip);
+        background: var(--color-bg-kbd);
+        color: var(--color-text-muted);
+      }
+      :focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 2px;
+      }
+      [contenteditable]:focus-visible {
+        outline: none;
+      }
+
+      /* ---------------- The window and its panes ---------------- */
+      .win {
+        position: fixed;
+        inset: 12px;
+        display: flex;
+        overflow: hidden;
+        background: var(--color-bg-canvas);
+        border-radius: var(--radius-window);
+        box-shadow: var(--shadow-card);
+      }
+      .scroller {
+        flex: 1 1 0;
+        min-width: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scroll-padding-bottom: 120px;
+      }
+      .col {
+        width: var(--col);
+        max-width: calc(100% - 64px);
+        margin-inline: auto;
+      }
+      .page-head {
+        padding-top: 64px;
+      }
+      .title {
+        font-family: var(--font-title);
+        font-weight: 500;
+        font-size: 34px;
+        line-height: 1.15;
+        letter-spacing: -0.01em;
+        margin: 0 0 16px;
+        text-wrap: balance;
+      }
+      .props {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
+        gap: 6px 12px;
+        margin: 0 0 24px;
+        font-size: var(--font-size-label);
+        line-height: 20px;
+      }
+      .props dt {
+        color: var(--color-text-muted);
+        font-weight: 500;
+      }
+      .props dd {
+        margin: 0;
+        color: var(--color-text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Toolbar buttons (Pin / Quiz me): video-pin-button's look. */
+      .band-row {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+        padding-top: 6px;
+      }
+      .tbtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 24px;
+        padding-inline: 7px;
+        border-radius: var(--radius-chip);
+        color: var(--color-text-muted);
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        white-space: nowrap;
+        transition:
+          color var(--motion-hover) var(--ease-out),
+          background-color var(--motion-hover) var(--ease-out),
+          transform var(--motion-hover) var(--ease-out);
+      }
+      .tbtn kbd {
+        background: none;
+        padding: 0;
+        min-width: 0;
+      }
+      .tbtn:active {
+        transform: scale(0.97);
+      }
+      .tbtn[data-on] {
+        color: var(--color-text-primary);
+        background: var(--color-bg-subtle);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .tbtn:hover {
+          color: var(--color-text-primary);
+          background: var(--color-bg-subtle);
+        }
+      }
+
+      /* ---------------- The video band (video-player.css) ---------------- */
+      .video-band {
+        position: sticky;
+        top: 0;
+        z-index: 6;
+        padding: 0 12px 4px;
+        border-bottom: 1px solid transparent;
+      }
+      .video-band[data-stuck] {
+        border-bottom-color: var(--color-border-subtle);
+        background: color-mix(in oklch, var(--color-bg-canvas) 78%, transparent);
+        -webkit-backdrop-filter: blur(20px) saturate(1.3);
+        backdrop-filter: blur(20px) saturate(1.3);
+      }
+      .video-frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        max-height: 60vh;
+        overflow: hidden;
+        border-radius: var(--radius-menu);
+        background: var(--color-letterbox);
+        box-shadow:
+          0 0 0 1px var(--line-subtle),
+          var(--shadow-overlay);
+        cursor: pointer;
+      }
+      /* The picture itself is video content, not UI: its colours are the video's. */
+      .poster {
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        height: 100%;
+        max-width: 100%;
+        aspect-ratio: 16 / 9;
+        background: radial-gradient(
+          120% 90% at 20% 10%,
+          oklch(0.34 0.04 250),
+          oklch(0.17 0.02 250)
+        );
+        color: oklch(0.96 0.01 90);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: center;
+        gap: 4%;
+        padding: 0 8%;
+      }
+      .poster h3 {
+        margin: 0;
+        font-family: var(--font-title);
+        font-weight: 500;
+        font-size: clamp(22px, 3.4vw, 46px);
+        line-height: 1.05;
+      }
+      .poster p {
+        margin: 10px 0 0;
+        font-size: clamp(11px, 1vw, 14px);
+        opacity: 0.7;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .poster svg {
+        width: 100%;
+        height: auto;
+      }
+      .vbar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 28px 14px 10px;
+        background: linear-gradient(transparent, rgb(0 0 0 / 55%));
+        color: var(--white);
+        font-size: var(--font-size-label);
+        font-variant-numeric: tabular-nums;
+        opacity: 0;
+        transition: opacity var(--motion-settle) var(--ease-out);
+      }
+      .video-frame:hover .vbar,
+      .video-frame:focus-within .vbar,
+      .video-frame[data-paused-flash] .vbar {
+        opacity: 1;
+      }
+      .vplay {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: var(--radius-chip);
+        flex-shrink: 0;
+      }
+      .vplay svg {
+        width: 16px;
+        height: 16px;
+      }
+      .vtime {
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .vtrack {
+        flex: 1;
+        display: flex;
+        gap: 3px;
+        height: 16px;
+        align-items: center;
+        cursor: pointer;
+      }
+      .vseg {
+        position: relative;
+        height: 3px;
+        border-radius: 2px;
+        background: rgb(255 255 255 / 30%);
+        overflow: hidden;
+      }
+      .vseg i {
+        position: absolute;
+        inset: 0 auto 0 0;
+        background: var(--white);
+      }
+      .vchap {
+        white-space: nowrap;
+        flex-shrink: 0;
+        max-width: 32%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0.9;
+      }
+      .vflash {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        translate: -50% 0;
+        padding: 4px 10px;
+        border-radius: var(--radius-pill);
+        background: rgb(0 0 0 / 60%);
+        color: var(--white);
+        font-size: var(--font-size-label);
+        font-variant-numeric: tabular-nums;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--motion-settle) var(--ease-out);
+      }
+      .vflash[data-on] {
+        opacity: 1;
+      }
+
+      /* Podcast: a compact audio bar on the text column, sticky like the video. */
+      .video-band.is-audio {
+        padding-top: 4px;
+      }
+      .audio {
+        position: relative;
+        display: grid;
+        grid-template-columns: 48px 32px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        width: var(--col);
+        max-width: calc(100% - 40px);
+        margin: 0 auto;
+        padding: 10px 12px 10px 10px;
+        border-radius: var(--radius-menu);
+        background: var(--color-bg-canvas);
+        box-shadow:
+          0 0 0 1px var(--line-subtle),
+          var(--shadow-overlay);
+      }
+      /* The cover art is the show's, not UI. */
+      .audio .cover {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-8);
+        display: grid;
+        place-items: center;
+        background: radial-gradient(
+          120% 100% at 30% 20%,
+          oklch(0.42 0.08 280),
+          oklch(0.2 0.05 280)
+        );
+        color: oklch(0.96 0.01 90);
+        font-family: var(--font-title);
+        font-size: 20px;
+        letter-spacing: 0.02em;
+      }
+      .audio .vplay {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--color-bg-inverse);
+        color: var(--color-text-inverse);
+        transition: transform var(--motion-hover) var(--ease-out);
+      }
+      .audio .vplay:active {
+        transform: scale(0.97);
+      }
+      .audio .vplay svg {
+        width: 13px;
+        height: 13px;
+      }
+      .ameta {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .atitle {
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ainfo {
+        display: flex;
+        gap: 6px;
+        min-width: 0;
+        font-size: var(--font-size-caption);
+        color: var(--color-text-muted);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .ainfo .vchap {
+        max-width: none;
+        flex-shrink: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 1;
+      }
+      .audio .vtrack {
+        flex: none;
+        height: 10px;
+      }
+      .audio .vseg {
+        background: var(--color-bg-subtle-strong);
+      }
+      .audio .vseg i {
+        background: var(--color-text-primary);
+      }
+      .aspeed {
+        min-width: 44px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: var(--radius-button);
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        transition: background-color var(--motion-hover) var(--ease-out);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .aspeed:hover {
+          background: var(--color-bg-hover);
+        }
+      }
+      .audio .vflash {
+        display: none;
+      }
+      .is-audio .band-row {
+        width: var(--col);
+        max-width: calc(100% - 40px);
+      }
+
+      /* Mini player (the board's): On the page parks the video top-right while quizzing. */
+      .win[data-mini] .video-band {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 320px;
+        padding: 0;
+        z-index: 8;
+        background: none;
+        border: 0;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+      .win[data-mini] .video-band .band-row {
+        display: none;
+      }
+      .win[data-mini] .poster h3 {
+        font-size: 15px;
+      }
+      .win[data-mini] .poster p,
+      .win[data-mini] .vchap {
+        display: none;
+      }
+
+      /* ---------------- Notes (the editor) ---------------- */
+      .doc {
+        padding: 18px 0 220px;
+        font-family: var(--font-editor);
+        font-size: var(--font-size-editor);
+        line-height: 1.6;
+        outline: none;
+        caret-color: var(--color-accent);
+      }
+      .doc ::selection {
+        background: var(--color-selection);
+      }
+      .doc ul {
+        margin: 0;
+        padding-left: 1.45em;
+        list-style-type: disc;
+      }
+      .doc li {
+        margin: 0.3em 0;
+        padding-left: 0.15em;
+      }
+      .doc li::marker {
+        color: var(--color-text-faint);
+      }
+      .doc li.hl {
+        color: var(--color-text-secondary);
+      }
+      .transcript {
+        margin: 0 0 12px;
+        color: var(--color-text-secondary);
+      }
+      .transcript summary {
+        cursor: pointer;
+        font-family: var(--font-ui);
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        color: var(--color-text-muted);
+        width: max-content;
+      }
+      .transcript p {
+        font-size: 0.9em;
+        margin: 0.5em 0;
+      }
+      .transcript small {
+        color: var(--color-text-muted);
+        font-family: var(--font-ui);
+        font-variant-numeric: tabular-nums;
+        margin-right: 6px;
+      }
+      .pin,
+      .bkref {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 3px;
+        margin-left: 6px;
+        color: var(--color-text-faint);
+        font-family: var(--font-ui);
+        font-size: var(--font-size-caption);
+        font-variant-numeric: tabular-nums;
+        user-select: none;
+        cursor: pointer;
+        vertical-align: baseline;
+        border-radius: var(--radius-chip);
+        transition: color var(--motion-hover) var(--ease-out);
+      }
+      .pin svg {
+        width: 11px;
+        height: 11px;
+        translate: 0 1px;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .pin:hover,
+        .bkref:hover {
+          color: var(--color-text-primary);
+        }
+      }
+      .flash {
+        animation: flash 1.2s var(--ease-out);
+        border-radius: var(--radius-chip);
+      }
+      /* book-reader.css ::highlight(book-flash) */
+      @keyframes flash {
+        0%,
+        30% {
+          background: color-mix(in srgb, var(--fg-base) 30%, transparent);
+        }
+        100% {
+          background: transparent;
+        }
+      }
+
+      /* ---------------- Book reader ---------------- */
+      .reader {
+        background: var(--color-bg-raised);
+        border-right: 1px solid var(--color-border-subtle);
+      }
+      .reader-col {
+        max-width: 62ch;
+        margin: 0 auto;
+        padding: 64px 48px 160px;
+        font-family: var(--font-book-serif);
+        font-size: 19px;
+        line-height: 1.6;
+        color: var(--color-text-primary);
+      }
+      .reader-col .r-chap {
+        font-family: var(--font-ui);
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        color: var(--color-text-muted);
+        margin: 0 0 6px;
+      }
+      .reader-col h2 {
+        font-family: var(--font-title);
+        font-weight: 500;
+        font-size: 28px;
+        line-height: 1.15;
+        margin: 0 0 28px;
+        text-wrap: balance;
+      }
+      .reader-col p {
+        margin: 0 0 1em;
+        text-wrap: pretty;
+        hanging-punctuation: first;
+      }
+      /* book-reader.css ::highlight(book-highlight) */
+      .reader-col mark {
+        background: color-mix(in srgb, var(--fg-base) 14%, transparent);
+        color: inherit;
+        border-radius: 2px;
+      }
+      .r-here {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 28px 0;
+        font-family: var(--font-ui);
+        font-size: var(--font-size-caption);
+        color: var(--color-text-faint);
+      }
+      .r-here::before,
+      .r-here::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--color-border-subtle);
+      }
+      .unread {
+        color: var(--color-text-muted);
+      }
+
+      /* ---------------- AI text, written word by word ---------------- */
+      .w {
+        display: inline-block;
+        animation: word-in var(--motion-word) var(--ease-out) both;
+      }
+      @keyframes word-in {
+        from {
+          opacity: 0;
+          filter: blur(3px);
+          transform: translateY(2px);
+        }
+      }
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+        }
+      }
+      .leaving {
+        opacity: 0;
+        transition: opacity 140ms var(--ease-exit);
+      }
+
+      /* ---------------- 1 · Second pen (proto/ai-writing, same rules) ---------------- */
+      .doc li {
+        position: relative;
+      }
+      /* ⌘. arms the AI: the selection (or the caret's line) turns AI-blue until the next key. */
+      .doc.armed ::selection {
+        background: color-mix(in oklch, var(--ai-ink) 24%, transparent);
+      }
+      ::highlight(proto-armed) {
+        background-color: color-mix(in oklch, var(--ai-ink) 16%, transparent);
+      }
+      .doc li.ai:focus-visible {
+        outline: 2px solid var(--color-text-faint);
+        outline-offset: 2px;
+        border-radius: 3px;
+      }
+      .doc li.ai {
+        color: var(--ai-ink);
+        cursor: pointer;
+      }
+      .doc li.ai::marker {
+        content: "◦  ";
+        color: var(--ai-ink);
+      }
+      .doc li.ai .src {
+        color: color-mix(in oklch, var(--ai-ink) 55%, var(--color-text-faint));
+        font-size: 0.85em;
+        white-space: nowrap;
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      .doc li.ai .src svg {
+        width: 11px;
+        height: 11px;
+        translate: 0 1px;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .doc li.ai:hover > .t {
+          text-decoration: underline;
+          text-decoration-color: color-mix(in oklch, var(--ai-ink) 35%, transparent);
+          text-underline-offset: 4px;
+        }
+        .doc li.ai .src:hover {
+          color: var(--ai-ink);
+        }
+      }
+      /* Your answers under an AI line are yours: your ink, your caret. */
+      .doc li.ai > ul {
+        color: var(--color-text-primary);
+        cursor: text;
+      }
+      .dk {
+        color: var(--color-text-muted);
+        font-style: italic;
+        user-select: none;
+      }
+      /* The keys for what you can do next, under the line you're on (ai-writing's hint, moved under the note). */
+      .doc li.pen-keys {
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 6px;
+        align-items: center;
+        margin: 0.15em 0 0.35em;
+        font-family: var(--font-ui);
+        font-size: var(--font-size-caption);
+        line-height: 20px;
+        color: var(--color-text-muted);
+        user-select: none;
+        cursor: default;
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      .doc li.pen-keys::marker {
+        content: none;
+      }
+      .pen-keys b {
+        font-weight: 600;
+        color: var(--color-text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+      .pen-keys .gap {
+        width: 8px;
+      }
+      /* ? at a note's right edge: quiz me on this note. The AI's marker, as a button. */
+      .qz {
+        position: absolute;
+        z-index: 4;
+        translate: 0 -50%;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1.5px solid currentColor;
+        color: var(--ai-ink);
+        background: var(--color-bg-canvas);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        opacity: 0.55;
+        transition:
+          opacity var(--motion-hover) var(--ease-out),
+          transform var(--motion-hover) var(--ease-out);
+      }
+      .qz[hidden] {
+        display: none;
+      }
+      .qz:active {
+        transform: scale(0.97);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .qz:hover {
+          opacity: 1;
+        }
+      }
+      /* Shorten: red pencil, deletion only (proto/ai-writing). */
+      .cut {
+        cursor: pointer;
+        color: var(--color-text-faint);
+        text-decoration: line-through;
+        text-decoration-color: var(--hue-red);
+        text-decoration-thickness: 1.5px;
+        border-radius: 3px;
+        transition:
+          opacity 140ms var(--ease-exit),
+          color var(--motion-fast) var(--ease-out),
+          background-color var(--motion-fast) var(--ease-out);
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      .cut[data-kept] {
+        color: inherit;
+        text-decoration-color: transparent;
+        background: var(--color-bg-subtle);
+      }
+      .cut.going {
+        opacity: 0;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .cut:hover {
+          background: var(--color-bg-hover);
+        }
+      }
+      .hint {
+        position: fixed;
+        left: 50%;
+        translate: -50% 0;
+        bottom: 76px;
+        z-index: 20;
+        padding: 6px 12px;
+        border-radius: var(--radius-pill);
+        background: var(--color-bg-popover);
+        box-shadow: var(--shadow-popover);
+        border: 1px solid var(--color-border-floating);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: var(--font-size-caption);
+        color: var(--color-text-secondary);
+        user-select: none;
+        pointer-events: none;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity var(--motion-settle) var(--ease-out);
+      }
+      .hint[data-live] {
+        opacity: 1;
+      }
+      .hint .gap {
+        width: 8px;
+      }
+
+      /* ---------------- 2 · Closed book ---------------- */
+      .cb {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+      }
+      .cb-veil {
+        position: absolute;
+        inset: 0;
+        background: color-mix(in oklch, var(--color-bg-canvas) 70%, transparent);
+        -webkit-backdrop-filter: blur(16px) saturate(0.9);
+        backdrop-filter: blur(16px) saturate(0.9);
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      .cb-card {
+        position: absolute;
+        top: 14vh;
+        left: 50%;
+        width: 600px;
+        max-width: calc(100% - 48px);
+        translate: -50% 0;
+        padding: 20px 24px 22px;
+        background: var(--color-bg-popover);
+        border: 1px solid var(--color-border-floating);
+        border-radius: var(--radius-sheet);
+        box-shadow: var(--shadow-dialog);
+        animation: card-in 220ms var(--ease-out) both;
+      }
+      @keyframes card-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px) scale(0.98);
+        }
+      }
+      .cb.leaving {
+        opacity: 0;
+        transition: opacity 150ms var(--ease-exit);
+      }
+      .cb-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .cb-where {
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-variant-numeric: tabular-nums;
+      }
+      .cb-stop {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: var(--radius-button);
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        flex-shrink: 0;
+        transition:
+          background-color var(--motion-hover) var(--ease-out),
+          transform var(--motion-hover) var(--ease-out);
+      }
+      .cb-stop kbd {
+        background: none;
+        padding: 0;
+        min-width: 0;
+      }
+      .cb-stop:active {
+        transform: scale(0.97);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .cb-stop:hover {
+          background: var(--color-bg-hover);
+        }
+      }
+      .cb-kind {
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        color: var(--ai-ink);
+        margin-bottom: 4px;
+      }
+      .cb-q {
+        margin: 0 0 18px;
+        font-family: var(--font-book-serif);
+        font-size: 23px;
+        line-height: 1.35;
+        text-wrap: pretty;
+        min-height: 1.35em;
+      }
+      .cb-label {
+        display: block;
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        color: var(--color-text-muted);
+        margin-bottom: 6px;
+      }
+      .field {
+        display: block;
+        width: 100%;
+        min-height: 92px;
+        padding: 10px 12px;
+        font: inherit;
+        font-family: var(--font-editor);
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--color-text-primary);
+        background: var(--color-bg-input);
+        border: 1px solid transparent;
+        border-radius: var(--radius-field);
+        resize: none;
+        outline: none;
+        transition:
+          border-color var(--motion-hover) var(--ease-out),
+          background-color var(--motion-hover) var(--ease-out);
+      }
+      .field:focus-visible {
+        border-color: var(--color-focus);
+        background: var(--color-bg-canvas);
+      }
+      .cb-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: var(--radius-button);
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        white-space: nowrap;
+        transition:
+          background-color var(--motion-hover) var(--ease-out),
+          transform var(--motion-hover) var(--ease-out),
+          opacity var(--motion-hover) var(--ease-out);
+      }
+      .btn:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+      .btn:disabled {
+        cursor: default;
+        color: var(--color-text-faint);
+      }
+      .btn.primary {
+        background: var(--color-bg-inverse);
+        color: var(--color-text-inverse);
+      }
+      .btn.primary kbd {
+        background: none;
+        color: inherit;
+        opacity: 0.65;
+        padding: 0;
+        min-width: 0;
+      }
+      .btn.primary:disabled {
+        background: var(--color-bg-subtle-strong);
+        color: var(--color-text-muted);
+      }
+      .btn.ghost {
+        color: var(--color-text-secondary);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .btn.ghost:hover:not(:disabled) {
+          background: var(--color-bg-hover);
+        }
+        .btn.primary:hover:not(:disabled) {
+          background: color-mix(in oklch, var(--color-bg-inverse) 86%, var(--color-bg-canvas));
+        }
+      }
+      .cb-yours {
+        margin: 0 0 14px;
+        padding: 0;
+        font-family: var(--font-editor);
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--color-text-primary);
+        white-space: pre-wrap;
+      }
+      .cb-yours.empty {
+        color: var(--color-text-muted);
+        font-style: italic;
+      }
+      .cb-src {
+        padding: 12px 14px;
+        border-radius: var(--radius-card);
+        background: var(--color-bg-subtle);
+        animation: fade-in var(--motion-settle) var(--ease-out) both;
+      }
+      .cb-src + .cb-src {
+        margin-top: 8px;
+      }
+      .cb-src-label {
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        color: var(--color-text-muted);
+        margin-bottom: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+      .cb-src p {
+        margin: 0;
+        font-family: var(--font-book-serif);
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--color-text-secondary);
+        text-wrap: pretty;
+      }
+      .cb-src ul {
+        margin: 0;
+        padding-left: 1.2em;
+        font-family: var(--font-editor);
+        font-size: 15px;
+        line-height: 1.5;
+        color: var(--color-text-secondary);
+      }
+      .cb-done {
+        margin: 0;
+        font-family: var(--font-book-serif);
+        font-size: 19px;
+        line-height: 1.4;
+        color: var(--color-text-secondary);
+      }
+      details.recall {
+        margin-top: 1.4em;
+        border-radius: var(--radius-chip);
+      }
+      details.recall summary {
+        cursor: pointer;
+        font-family: var(--font-ui);
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        color: var(--color-text-muted);
+        width: max-content;
+      }
+      details.recall .rq {
+        margin: 0.8em 0 0.1em;
+        color: var(--ai-ink);
+      }
+      details.recall .ra {
+        margin: 0;
+        padding-left: 1em;
+        border-left: 2px solid var(--color-border-subtle);
+      }
+      details.recall .ra.empty {
+        color: var(--color-text-muted);
+        font-style: italic;
+      }
+
+      /* ---------------- 3 · Beside (the Agent panel) ---------------- */
+      .agent-pill {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 25;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: var(--radius-pill);
+        background: var(--color-bg-popover);
+        border: 1px solid var(--color-border-floating);
+        box-shadow: var(--shadow-popover);
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        transition: transform var(--motion-hover) var(--ease-out);
+      }
+      .agent-pill:active {
+        transform: scale(0.97);
+      }
+      .agent-pill svg {
+        width: 13px;
+        height: 13px;
+      }
+      .ap {
+        position: absolute;
+        right: 16px;
+        bottom: 56px;
+        z-index: 26;
+        width: 400px;
+        max-width: calc(100% - 32px);
+        height: min(600px, calc(100% - 80px));
+        display: flex;
+        flex-direction: column;
+        background: var(--color-bg-popover);
+        border: 1px solid var(--color-border-floating);
+        border-radius: var(--radius-sheet);
+        box-shadow: var(--shadow-surface);
+        transform-origin: bottom right;
+        animation: panel-in 200ms var(--ease-out) both;
+      }
+      @keyframes panel-in {
+        from {
+          opacity: 0;
+          transform: scale(0.96);
+        }
+      }
+      .ap.leaving {
+        opacity: 0;
+        transform: scale(0.98);
+        transition:
+          opacity 140ms var(--ease-exit),
+          transform 140ms var(--ease-exit);
+      }
+      .ap-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 44px;
+        padding: 0 8px 0 16px;
+        border-bottom: 1px solid var(--color-border-subtle);
+        flex-shrink: 0;
+      }
+      .ap-title {
+        flex: 1;
+        min-width: 0;
+        font-size: var(--font-size-label);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .icon-btn {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: var(--radius-button);
+        color: var(--color-text-muted);
+        flex-shrink: 0;
+        transition:
+          background-color var(--motion-hover) var(--ease-out),
+          color var(--motion-hover) var(--ease-out),
+          transform var(--motion-hover) var(--ease-out);
+      }
+      .icon-btn:active {
+        transform: scale(0.97);
+      }
+      .icon-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .icon-btn:hover {
+          background: var(--color-bg-hover);
+          color: var(--color-text-primary);
+        }
+      }
+      .ap-msgs {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .m.ai {
+        color: var(--color-text-primary);
+        text-wrap: pretty;
+      }
+      .m.ai.ask {
+        font-weight: 500;
+      }
+      .m.ai.src {
+        color: var(--color-text-secondary);
+      }
+      .m.ai.src q {
+        font-family: var(--font-book-serif);
+        font-size: 15px;
+      }
+      .m.ai.done {
+        color: var(--color-text-muted);
+      }
+      .m.me {
+        align-self: flex-end;
+        max-width: 85%;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+      }
+      .bubble {
+        padding: 8px 12px;
+        border-radius: 14px;
+        background: var(--color-bg-subtle-strong);
+        white-space: pre-wrap;
+        text-wrap: pretty;
+      }
+      .bubble.empty {
+        color: var(--color-text-muted);
+        font-style: italic;
+      }
+      .keep {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: var(--radius-chip);
+        color: var(--color-text-muted);
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        transition:
+          color var(--motion-hover) var(--ease-out),
+          background-color var(--motion-hover) var(--ease-out);
+      }
+      .keep svg {
+        width: 12px;
+        height: 12px;
+      }
+      .keep:disabled {
+        cursor: default;
+        color: var(--color-text-faint);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .keep:hover:not(:disabled) {
+          color: var(--color-text-primary);
+          background: var(--color-bg-hover);
+        }
+      }
+      .tchip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 3px;
+        padding: 0 5px;
+        border-radius: var(--radius-chip);
+        background: var(--color-bg-subtle);
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: var(--color-text-primary);
+      }
+      .tchip svg {
+        width: 10px;
+        height: 10px;
+        translate: 0 1px;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .tchip:hover {
+          background: var(--color-bg-subtle-strong);
+        }
+      }
+      .typing {
+        display: inline-flex;
+        gap: 4px;
+        padding: 6px 0;
+      }
+      .typing i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--color-text-faint);
+        animation: dot 900ms ease-in-out infinite;
+      }
+      .typing i:nth-child(2) {
+        animation-delay: 150ms;
+      }
+      .typing i:nth-child(3) {
+        animation-delay: 300ms;
+      }
+      @keyframes dot {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .ap-foot {
+        padding: 8px 12px 12px;
+        border-top: 1px solid var(--color-border-subtle);
+        flex-shrink: 0;
+      }
+      .ap-chips {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .chip {
+        height: 26px;
+        padding: 0 10px;
+        border-radius: var(--radius-pill);
+        border: 1px solid var(--color-border-subtle);
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-caption);
+        font-weight: 500;
+        white-space: nowrap;
+        transition:
+          background-color var(--motion-hover) var(--ease-out),
+          transform var(--motion-hover) var(--ease-out);
+      }
+      .chip:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+      .chip:disabled {
+        cursor: default;
+        color: var(--color-text-faint);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .chip:hover:not(:disabled) {
+          background: var(--color-bg-hover);
+        }
+      }
+      .ap-comp {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        padding: 6px 6px 6px 12px;
+        border-radius: var(--radius-field);
+        background: var(--color-bg-input);
+        border: 1px solid transparent;
+        transition: border-color var(--motion-hover) var(--ease-out);
+      }
+      .ap-comp:focus-within {
+        border-color: var(--color-focus);
+      }
+      .ap-comp textarea {
+        flex: 1;
+        min-height: 24px;
+        max-height: 144px;
+        padding: 3px 0;
+        border: 0;
+        background: none;
+        resize: none;
+        outline: none;
+        font: inherit;
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--color-text-primary);
+      }
+      .ap-comp textarea::placeholder {
+        color: var(--color-text-faint);
+      }
+      .send {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: var(--radius-button);
+        background: var(--color-bg-inverse);
+        color: var(--color-text-inverse);
+        flex-shrink: 0;
+        transition: transform var(--motion-hover) var(--ease-out);
+      }
+      .send:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+      .send:disabled {
+        background: var(--color-bg-subtle-strong);
+        color: var(--color-text-muted);
+        cursor: default;
+      }
+      .send svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+
+      /* ---------------- Harness: context switch (not a contestant) ---------------- */
+      .proto-ctx {
+        position: fixed;
+        top: 20px;
+        right: 24px;
+        z-index: 2147483646;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 3px;
+        border-radius: 999px;
+        background: rgba(10, 10, 10, 0.82);
+        -webkit-backdrop-filter: blur(12px) saturate(1.4);
+        backdrop-filter: blur(12px) saturate(1.4);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+          0 8px 24px rgba(0, 0, 0, 0.24);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 12px;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+      }
+      .proto-ctx button {
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        color: rgba(255, 255, 255, 0.55);
+        transition:
+          color 150ms ease-out,
+          background-color 150ms ease-out;
+      }
+      .proto-ctx button:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .proto-ctx button[data-active] {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .proto-ctx span {
+        width: 1px;
+        height: 14px;
+        margin: 0 4px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      /* ---------------- Picker (PICKER.md, verbatim) ---------------- */
+      .proto-picker {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(10, 10, 10, 0.82);
+        -webkit-backdrop-filter: blur(12px) saturate(1.4);
+        backdrop-filter: blur(12px) saturate(1.4);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+          0 8px 24px rgba(0, 0, 0, 0.24),
+          0 2px 6px rgba(0, 0, 0, 0.12);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .proto-picker-highlight {
+        position: absolute;
+        top: 4px;
+        left: 0;
+        height: 28px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        will-change: transform;
+      }
+      .proto-picker[data-ready] .proto-picker-highlight {
+        transition:
+          transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+          width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .proto-picker[data-ready] .proto-picker-highlight {
+          transition: none;
+        }
+      }
+      .proto-picker-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.55);
+        font: inherit;
+        cursor: pointer;
+        transition: color 150ms ease-out;
+      }
+      .proto-picker-item:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .proto-picker-item:active {
+        transform: scale(0.97);
+      }
+      .proto-picker-item:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.4);
+        outline-offset: 2px;
+      }
+      .proto-picker-item[data-active] {
+        color: #fff;
+      }
+      .proto-picker-divider {
+        width: 1px;
+        height: 16px;
+        margin: 0 4px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="win" id="win"></main>
+    <div class="hint" id="hint" aria-live="polite"></div>
+
+    <div class="proto-ctx" role="group" aria-label="Prototype context">
+      <button data-ctx="video">Video note</button>
+      <button data-ctx="podcast">Podcast note</button>
+      <button data-ctx="book">Book note</button>
+      <span aria-hidden="true"></span>
+      <button data-notes="1">With notes</button>
+      <button data-notes="0">No notes yet</button>
+    </div>
+
+    <nav class="proto-picker" aria-label="Prototype variants">
+      <span class="proto-picker-highlight" aria-hidden="true"></span>
+      <button class="proto-picker-item">Second pen</button>
+      <button class="proto-picker-item">Closed book</button>
+      <button class="proto-picker-item">Beside</button>
+    </nav>
+
+    <script>
+      /* ============================================================
+         Quiz me: the AI asks you questions about what you've watched
+         or read so far, for active recall, then follow-ups that make
+         you elaborate. You decide when to stop.
+
+         Shared by every variant (the "engine"):
+         - Questions only come from the part you've seen: the video up to
+           its current time, the book up to your reading place.
+         - First a recall question per idea. "I don't know" gets one hint,
+           then the source. A real answer gets the source to check against.
+         - Then follow-ups on the same idea (why, how, your own example).
+           With notes, one follow-up quotes your note back at you.
+         - New topic skips to the next idea. Stop ends it, any time.
+         The "AI" here is scripted against this content.
+         ============================================================ */
+      const TODAY = "13 Oct";
+      const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+      const GENERIC = "Explain it in two sentences to someone who skipped this part.";
+
+      const CONTENT = {
+        video: {
+          kind: "video",
+          title: "How we remember: retrieval practice, explained",
+          short: "How we remember",
+          props: [
+            ["Type", "Video"],
+            ["Link", "youtube.com/watch?v=Rt2xP8kLm0Q"],
+            ["Channel", "Learning Lab"],
+            ["Added", "12 Oct 2026"],
+          ],
+          dur: 1458,
+          start: 892,
+          chapters: [
+            [0, "Why rereading feels like learning"],
+            [220, "The forgetting curve"],
+            [495, "The testing effect"],
+            [810, "Desirable difficulties"],
+            [1130, "Spacing and interleaving"],
+          ],
+          segs: [
+            {
+              id: "s1",
+              at: 65,
+              src: "Rereading makes the page familiar, and familiarity feels like knowing. But recognising something when it’s in front of you is a different skill from pulling it out of memory when it isn’t.",
+              recall: "Why does rereading feel like learning, according to the video?",
+              hint: "It makes the page feel a certain way. Which word did the video use for that feeling?",
+              noteQ:
+                "You wrote “familiarity, not recall.” Which of your notes on this video could you only recognise, not recall?",
+              deeper: [
+                "What’s the difference between recognising an idea and recalling it?",
+                "When did something feel known to you, right until someone asked you to explain it?",
+              ],
+            },
+            {
+              id: "s2",
+              at: 250,
+              src: "In the 1880s Hermann Ebbinghaus memorised lists of nonsense syllables and tested himself at intervals. Most of what he lost, he lost within the first day. After that, the curve flattens.",
+              recall: "What did Ebbinghaus find about when we forget the most?",
+              hint: "Was the biggest drop early or late?",
+              noteQ:
+                "Your note says the curve is steepest in the first day. So when should you first review this video?",
+              deeper: ["Why would nonsense syllables make a cleaner test than real words?"],
+            },
+            {
+              id: "s3",
+              at: 540,
+              src: "In a 2006 study, Roediger and Karpicke had students either reread a passage or recall it from memory. Five minutes later, the rereaders did slightly better. A week later, the recall group remembered far more.",
+              recall:
+                "In the 2006 study, which group did better after five minutes, and which after a week?",
+              hint: "One group reread, one group recalled. Which one remembered more a week later?",
+              noteQ: "You wrote “that’s why it feels better.” What does that feeling get wrong?",
+              deeper: [
+                "Why might rereading win at five minutes but lose at a week?",
+                "If you planned your own studying from this, what would you stop doing?",
+              ],
+            },
+            {
+              id: "s4",
+              at: 680,
+              src: "Every time you retrieve something, you change it: the memory gets easier to find next time. A test isn’t only a measurement. It’s a study session.",
+              recall: "Besides measuring you, what does a test do?",
+              hint: "The video called a test a kind of… what?",
+              deeper: ["Why would pulling a memory out make it easier to find next time?"],
+            },
+            {
+              id: "s5",
+              at: 840,
+              src: "Robert Bjork calls these desirable difficulties: conditions that slow you down while you learn but make what you learn last. The effort is the point, as long as you can eventually succeed.",
+              recall: "What makes a difficulty “desirable”?",
+              hint: "There’s a condition attached: the effort only helps if what?",
+              noteQ:
+                "You suggested flashcards with a peek. When does a peek help, and when does it spoil the effort?",
+              deeper: ["Where’s the line between a useful struggle and a wasted one?"],
+            },
+            {
+              id: "s6",
+              at: 1180,
+              src: "Spread the same hours over several days and you remember more than if you cram them into one. Mixing topics in a session feels messier, but it trains you to choose the right method, not just repeat the last one.",
+              recall: "What two changes to a study schedule does this chapter recommend?",
+              hint: "One is about when you study, one about what you mix.",
+              deeper: ["Why would mixing topics help, if it feels messier?"],
+            },
+          ],
+          notes: [
+            { t: "rereading = familiarity, not recall", seg: "s1" },
+            { t: "forgetting curve: steepest in the first day", seg: "s2" },
+            {
+              t: "Roediger & Karpicke 2006: reread vs recall. recall wins after a week",
+              seg: "s3",
+              kids: ["but rereading wins at 5 min?? that’s why it feels better"],
+            },
+            { t: "“a test is a study session”", seg: "s4" },
+            {
+              t: "the thing about effort: if it’s too hard and you never get it, it doesn’t count. he said “eventually succeed”, which I think means you need a hint before giving up completely, maybe like flashcards with a peek",
+              seg: "s5",
+            },
+          ],
+        },
+        book: {
+          kind: "book",
+          title: "Walden",
+          short: "Walden",
+          props: [
+            ["Type", "Book"],
+            ["Author", "Henry David Thoreau"],
+            ["File", "walden.epub"],
+            ["Started", "2 Oct 2026"],
+          ],
+          chapter: "Where I Lived, and What I Lived For",
+          place: "p. 90",
+          lead: "Every morning was a cheerful invitation to make my life of equal simplicity, and I may say innocence, with Nature herself.",
+          segs: [
+            {
+              id: "b1",
+              page: "p. 88",
+              text: "I went to the woods because I wished to live deliberately, to front only the essential facts of life, and see if I could not learn what it had to teach, and not, when I came to die, discover that I had not lived. I did not wish to live what was not life, living is so dear; nor did I wish to practise resignation, unless it was quite necessary.",
+              src: "I went to the woods because I wished to live deliberately, to front only the essential facts of life, and see if I could not learn what it had to teach, and not, when I came to die, discover that I had not lived.",
+              marks: [
+                "I went to the woods because I wished to live deliberately, to front only the essential facts of life",
+              ],
+              recall: "Why did Thoreau say he went to the woods?",
+              hint: "He names one way he wanted to live. Which word?",
+              noteQ:
+                "You wrote “he’s not running away, he’s running an experiment.” What is the experiment testing?",
+              deeper: [
+                "What does living “deliberately” rule out, by his account?",
+                "What would a deliberate week look like for you? What would go?",
+              ],
+            },
+            {
+              id: "b2",
+              page: "p. 89",
+              text: "Still we live meanly, like ants. Our life is frittered away by detail. An honest man has hardly need to count more than his ten fingers, or in extreme cases he may add his ten toes, and lump the rest. Simplicity, simplicity, simplicity! I say, let your affairs be as two or three, and not a hundred or a thousand; instead of a million count half a dozen, and keep your accounts on your thumb-nail.",
+              src: "Our life is frittered away by detail. … Simplicity, simplicity, simplicity! I say, let your affairs be as two or three, and not a hundred or a thousand.",
+              marks: [
+                "Our life is frittered away by detail.",
+                "Simplicity, simplicity, simplicity!",
+              ],
+              recall: "What does he say our life is frittered away by, and what’s his fix?",
+              hint: "He repeats one word three times. Which word?",
+              noteQ: "You asked what your own thumb-nail would hold. Name the two or three things.",
+              deeper: ["Why count on fingers? What does keeping accounts that small do?"],
+            },
+            {
+              id: "b3",
+              page: "p. 90",
+              text: "Why should we live with such hurry and waste of life? We are determined to be starved before we are hungry. Men say that a stitch in time saves nine, and so they take a thousand stitches to-day to save nine to-morrow.",
+              src: "Men say that a stitch in time saves nine, and so they take a thousand stitches to-day to save nine to-morrow.",
+              marks: [],
+              recall: "How does he turn “a stitch in time saves nine” against itself?",
+              hint: "Count the stitches: how many today, to save how many tomorrow?",
+              deeper: ["Where are you taking a thousand stitches today to save nine tomorrow?"],
+            },
+            {
+              id: "b4",
+              page: "p. 91",
+              unread: true,
+              text: "Time is but the stream I go a-fishing in. I drink at it; but while I drink I see the sandy bottom and detect how shallow it is. Its thin current slides away, but eternity remains.",
+              src: "Time is but the stream I go a-fishing in.",
+              marks: [],
+              recall: "What does he compare time to?",
+              hint: "",
+              deeper: [],
+            },
+          ],
+          notes: [
+            {
+              t: "“I went to the woods because I wished to live deliberately, to front only the essential facts of life…”",
+              seg: "b1",
+              hl: true,
+              kids: ["he’s not running away, he’s running an experiment"],
+            },
+            { t: "“Our life is frittered away by detail.”", seg: "b2", hl: true },
+            {
+              t: "“Simplicity, simplicity, simplicity!”",
+              seg: "b2",
+              hl: true,
+              kids: ["keep your accounts on your thumb-nail. what would that be for me?"],
+            },
+          ],
+        },
+      };
+
+      CONTENT.podcast = {
+        kind: "podcast",
+        title: "Sleep on it: how memories set overnight",
+        short: "Sleep on it",
+        show: "The Night Shift",
+        props: [
+          ["Type", "Podcast"],
+          ["Show", "The Night Shift"],
+          ["Episode", "112"],
+          ["Link", "nightshift.fm/112"],
+          ["Added", "11 Oct 2026"],
+        ],
+        dur: 2834,
+        start: 1860,
+        chapters: [
+          [0, "Memories keep setting"],
+          [480, "The 1924 sleep study"],
+          [960, "Replay in the night"],
+          [1500, "The all-nighter"],
+          [2200, "Naps"],
+        ],
+        segs: [
+          {
+            id: "p1",
+            at: 130,
+            src: "A memory isn’t finished when you learn something. For hours afterwards the brain keeps stabilising it. Researchers call this consolidation.",
+            recall: "What is consolidation, in the episode’s words?",
+            hint: "It’s what happens after you learn. Is the memory finished yet?",
+            noteQ:
+              "You wrote “memory keeps setting after you learn.” Setting from what, into what?",
+            deeper: [
+              "If memories keep setting for hours, what should you avoid right after studying?",
+            ],
+          },
+          {
+            id: "p2",
+            at: 580,
+            src: "In 1924, Jenkins and Dallenbach had two people learn nonsense syllables, then either sleep or stay awake. After sleep, they forgot much less.",
+            recall: "What did the 1924 study compare, and what did it find?",
+            hint: "There were two conditions after learning. One was sleep. What was the other?",
+            noteQ:
+              "You wrote “sleepers forgot less.” Is that because sleep helps, or because being awake gets in the way?",
+            deeper: ["Why might being awake cause more forgetting than sleeping?"],
+          },
+          {
+            id: "p3",
+            at: 1040,
+            src: "During deep sleep, the hippocampus replays the day’s patterns and the cortex slowly takes them over. That’s one leading account of why sleep helps.",
+            recall: "What happens between the hippocampus and the cortex during deep sleep?",
+            hint: "One of them replays the day. Which one?",
+            noteQ:
+              "You asked if this is why things click after a night. What would have to be true for that?",
+            deeper: ["Why would the brain move a memory from one place to another at all?"],
+          },
+          {
+            id: "p4",
+            at: 1580,
+            src: "Pull an all-nighter before an exam and you cut the very sleep that would have set what you crammed.",
+            recall: "Why does the episode say all-nighters backfire?",
+            hint: "Think about what sleep does to what you learned that day.",
+            noteQ:
+              "You wrote that all-nighters “delete” what you crammed. Is delete the right word?",
+            deeper: ["What would you do the night before an exam instead?"],
+          },
+          {
+            id: "p5",
+            at: 2260,
+            src: "Even a short nap after learning can help, if it reaches deeper sleep.",
+            recall: "When does a nap help memory, according to the episode?",
+            hint: "It depends on how deep the nap goes.",
+            deeper: ["How would you fit that into a study day?"],
+          },
+        ],
+        notes: [
+          { t: "consolidation = memory keeps setting after you learn", seg: "p1" },
+          { t: "1924: sleep vs awake → sleepers forgot less", seg: "p2" },
+          {
+            t: "replay: hippocampus → cortex at night",
+            seg: "p3",
+            kids: ["is this why things click after a night?"],
+          },
+          { t: "all-nighters basically delete what you crammed lol", seg: "p4" },
+        ],
+      };
+
+      /* @ facts and + mixes per moment, for ⌘. @ and ⌘. + (as in proto/ai-writing).
+         Facts name their source; a moment with none says so. */
+      const EXTRA = {
+        s1: {
+          facts: [
+            [
+              "In a 2009 survey of college students, 84% said they reread notes or textbooks to study.",
+              "Karpicke, Butler & Roediger, Memory, 2009",
+            ],
+          ],
+          mix: [
+            "× a familiar face — you know you’ve met, but not their name.",
+            "× an open-book exam — you know where it is, not what it says.",
+          ],
+        },
+        s2: {
+          facts: [
+            ["Ebbinghaus published the curve in 1885, in Über das Gedächtnis.", "Ebbinghaus, 1885"],
+            ["A 2015 replication found nearly the same curve.", "Murre & Dros, PLOS ONE, 2015"],
+          ],
+          mix: [
+            "× a leaky bucket — most of it goes at first, then it slows.",
+            "× radioactive decay — a half-life for facts?",
+          ],
+        },
+        s3: {
+          facts: [
+            [
+              "The students were tested 5 minutes, 2 days or 1 week after studying.",
+              "Roediger & Karpicke, Psychological Science, 2006",
+            ],
+          ],
+          mix: [
+            "× flashcards — the testing effect in a box.",
+            "× a sports drill — practise the move instead of watching it.",
+          ],
+        },
+        s4: {
+          facts: [
+            [
+              "Researchers call this the testing effect, or retrieval practice.",
+              "Roediger & Butler, Trends in Cognitive Sciences, 2011",
+            ],
+          ],
+          mix: [
+            "× a path through grass — every walk makes it easier to find.",
+            "× search history — what you look up comes up faster.",
+          ],
+        },
+        s5: {
+          facts: [["Bjork introduced the term in 1994.", "Bjork, in Metacognition, 1994"]],
+          mix: [
+            "× weight training — heavy enough to strain, light enough to lift.",
+            "× a crossword — hard is fun until it’s impossible.",
+          ],
+        },
+        s6: {
+          facts: [
+            [
+              "A 2006 review of 317 experiments found spaced practice beat massed practice.",
+              "Cepeda et al., Psychological Bulletin, 2006",
+            ],
+          ],
+        },
+        b1: {
+          facts: [
+            [
+              "He lived at the pond for two years and two months, from 1845 to 1847.",
+              "Walden, “Economy”",
+            ],
+          ],
+          mix: [
+            "× a sabbatical — leave to see what you’d miss.",
+            "× a lab experiment — strip life down to one variable.",
+          ],
+        },
+        b2: {
+          facts: [
+            [
+              "Walden was published in 1854, seven years after he left the pond.",
+              "Ticknor and Fields, 1854",
+            ],
+          ],
+          mix: [
+            "× decluttering — keep what fits in two or three boxes.",
+            "× a budget on a sticky note.",
+          ],
+        },
+        b3: {
+          mix: [
+            "× premature optimisation — a thousand stitches to save nine.",
+            "× insurance — how much do you pay to avoid how little?",
+          ],
+        },
+        p1: {
+          facts: [
+            [
+              "Georg Müller and Alfons Pilzecker proposed consolidation in 1900, after new learning disrupted memories made just before.",
+              "Müller & Pilzecker, 1900",
+            ],
+          ],
+          mix: [
+            "× concrete — workable for a while, then it sets.",
+            "× a photo in the darkroom — the image fixes after you leave.",
+          ],
+        },
+        p2: {
+          facts: [
+            [
+              "The study had only two participants.",
+              "Jenkins & Dallenbach, American Journal of Psychology, 1924",
+            ],
+          ],
+          mix: [
+            "× a snow globe — stop shaking it and things settle.",
+            "× saving a file — sleep is when it writes to disk?",
+          ],
+        },
+        p3: {
+          facts: [
+            [
+              "In 1994, Wilson and McNaughton found place cells in sleeping rats replaying patterns from that day’s exploring.",
+              "Wilson & McNaughton, Science, 1994",
+            ],
+          ],
+          mix: [
+            "× moving notes from a scratchpad into a notebook.",
+            "× a night editor filing the day’s stories.",
+          ],
+        },
+        p4: {
+          facts: [
+            [
+              "In one study, a night without sleep cut people’s ability to form new memories the next day by about 40%.",
+              "Yoo et al., Nature Neuroscience, 2007",
+            ],
+          ],
+          mix: ["× pouring concrete and walking on it straight away."],
+        },
+      };
+      for (const C of Object.values(CONTENT))
+        for (const sg of C.segs) Object.assign(sg, EXTRA[sg.id]);
+      const timed = (C) => C.kind !== "book";
+      const SAYS = { video: "the video says", podcast: "the episode says", book: "Thoreau writes" };
+
+      /* ---------------- helpers ---------------- */
+      const $ = (s, r = document) => r.querySelector(s);
+      const esc = (s) =>
+        s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const STAGGER = 22; // ms between words; pairs with --motion-word
+      const dunno = (t) =>
+        /^\s*$|^(i\s+)?(don'?t|dont|do not)\s+know|^no idea|^not sure|^idk|^\?+$/i.test(t);
+      const h = (tag, cls, html) => {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (html != null) n.innerHTML = html;
+        return n;
+      };
+      const PIN = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.75a4.25 4.25 0 0 0-4.25 4.25c0 3.1 4.25 8.25 4.25 8.25s4.25-5.15 4.25-8.25A4.25 4.25 0 0 0 8 1.75Z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="6" r="1.4" fill="currentColor"/></svg>`;
+      const PLAY = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></svg>`;
+      const PAUSE = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"/></svg>`;
+      const CLOSE = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+      const UP = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const ARROW = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5 13 8 3 13.5 5.5 8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+      const PLUS = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+      const TICK = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.5 3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+      async function writeWords(node, text, src, label = "Asked by AI: ") {
+        const ws = text.split(" ");
+        node.innerHTML =
+          `<span class="sr-only">${label}</span>` +
+          ws
+            .map(
+              (w, k) => `<span class="w" style="animation-delay:${k * STAGGER}ms">${esc(w)}</span>`,
+            )
+            .join(" ") +
+          (src
+            ? ` <span class="src-slot" style="animation-delay:${ws.length * STAGGER}ms">${src}</span>`
+            : "");
+        if (!reduced) await wait(ws.length * STAGGER + 200);
+      }
+      function placeCaret(node, atEnd = true) {
+        const r = document.createRange();
+        r.selectNodeContents(node);
+        r.collapse(!atEnd);
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+      }
+
+      const hint = $("#hint");
+      let hintTimer;
+      const setHint = (html, ms) => {
+        clearTimeout(hintTimer);
+        hint.innerHTML = html || "";
+        hint.toggleAttribute("data-live", !!html);
+        if (ms) hintTimer = setTimeout(() => setHint(""), ms);
+      };
+
+      /* ---------------- The question engine ---------------- */
+      function engine(P, scope) {
+        const C = P.C;
+        const seen = () => C.segs.filter((s) => P.seen(s) && (!scope || scope.includes(s.id)));
+        const used = new Set();
+        let seg = null,
+          stage = null,
+          list = [],
+          k = 0;
+        function recall(s) {
+          seg = s;
+          stage = "recall";
+          k = 0;
+          used.add(s.id);
+          list = [...(P.withNotes && s.noteQ ? [s.noteQ] : []), ...s.deeper, GENERIC];
+          return { q: s.recall, seg: s, kind: "recall" };
+        }
+        return {
+          get seg() {
+            return seg;
+          },
+          hasNext: () => seen().some((s) => !used.has(s.id)),
+          hasDeeper: () => !!seg && k < list.length,
+          nextIdea() {
+            const s = seen().find((x) => !used.has(x.id));
+            return s ? recall(s) : null;
+          },
+          deeper() {
+            if (seg && k < list.length) {
+              stage = "deeper";
+              return { q: list[k++], seg, kind: "deeper" };
+            }
+            return this.nextIdea();
+          },
+          // → { hint } on a first "don't know", { reveal } on a recall answer, {} on a follow-up.
+          answer(text) {
+            if (stage === "recall" && dunno(text) && seg.hint) {
+              stage = "hint";
+              return { hint: { q: seg.hint, seg, kind: "hint" } };
+            }
+            if (stage === "recall" || stage === "hint") {
+              stage = "checked";
+              return { reveal: seg };
+            }
+            return {};
+          },
+          doneLine: () =>
+            timed(C)
+              ? `That’s everything up to ${fmt(P.now())}. ${C.kind === "video" ? "Watch" : "Listen"} on, then quiz again.`
+              : `That’s everything up to ${C.place}. Read on, then quiz again.`,
+        };
+      }
+      const where = (P, seg) => (timed(P.C) ? fmt(seg.at) : seg.page);
+      const chapterOf = (C, t) => [...C.chapters].reverse().find(([s]) => s <= t)[1];
+      const notesFor = (P, seg) =>
+        P.withNotes
+          ? P.C.notes.filter((n) => n.seg === seg.id).flatMap((n) => [n.t, ...(n.kids || [])])
+          : [];
+      const srcLabel = (P, seg) =>
+        timed(P.C) ? `At ${fmt(seg.at)} ${SAYS[P.C.kind]}` : `On ${seg.page} ${SAYS.book}`;
+
+      /* ---------------- The page every variant stands on ---------------- */
+      function notesHTML(P) {
+        const C = P.C;
+        const ref = (n) =>
+          timed(C)
+            ? `<span class="pin" contenteditable="false" data-seg="${n.seg}" title="${fmt(C.segs.find((s) => s.id === n.seg).at)}">${PIN}</span>`
+            : `<span class="bkref" contenteditable="false" data-seg="${n.seg}">${C.segs.find((s) => s.id === n.seg).page}</span>`;
+        const items = P.withNotes
+          ? C.notes
+              .map(
+                (n) =>
+                  `<li${n.hl ? ' class="hl"' : ""}>${esc(n.t)}${ref(n)}${n.kids ? `<ul>${n.kids.map((k) => `<li>${esc(k)}</li>`).join("")}</ul>` : ""}</li>`,
+              )
+              .join("")
+          : `<li><br></li>`;
+        const transcript = timed(C)
+          ? `<details class="transcript" contenteditable="false"><summary>Transcript</summary>${C.segs.map((s) => `<p><small>${fmt(s.at)}</small>${esc(s.src)}</p>`).join("")}</details>`
+          : "";
+        return `${transcript}<ul class="notes">${items}</ul>`;
+      }
+      const headHTML = (C) =>
+        `<header class="col page-head"><h1 class="title">${esc(C.title)}</h1><dl class="props">${C.props.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl></header>`;
+
+      function buildPage(win, ctx, withNotes) {
+        const C = CONTENT[ctx];
+        const P = { C, withNotes, onQuiz: null, onEsc: null, timers: [] };
+        if (timed(C)) {
+          const track = `<div class="vtrack" aria-hidden="true">${C.chapters.map(([s], i) => `<div class="vseg" style="flex:${(C.chapters[i + 1]?.[0] ?? C.dur) - s}"><i></i></div>`).join("")}</div>`;
+          const player =
+            C.kind === "video"
+              ? `
+                <div class="video-frame" id="frame">
+                  <div class="poster" aria-hidden="true">
+                    <div><h3>${esc(C.short)}</h3><p>${esc(C.props[2][1])} · Retrieval practice</p></div>
+                    <svg viewBox="0 0 200 120"><path d="M10 10 v100 h180" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path d="M12 14 C 30 70, 50 84, 80 90 S 150 98, 188 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><text x="150" y="88" fill="currentColor" fill-opacity=".6" font-size="9" font-family="system-ui">days</text></svg>
+                  </div>
+                  <div class="vbar">
+                    <button class="vplay" aria-label="Play"></button>
+                    <span class="vtime"></span>
+                    ${track}
+                    <span class="vchap"></span>
+                  </div>
+                  <div class="vflash" aria-live="polite"></div>
+                </div>`
+              : `
+                <div class="audio" id="frame">
+                  <div class="cover" aria-hidden="true">${C.show
+                    .split(" ")
+                    .filter((w) => w !== "The")
+                    .map((w) => w[0])
+                    .join("")}</div>
+                  <button class="vplay" aria-label="Play"></button>
+                  <div class="ameta">
+                    <div class="atitle">${esc(C.title)}</div>
+                    <div class="ainfo"><span class="vtime"></span><span aria-hidden="true">·</span><span class="vchap"></span></div>
+                    ${track}
+                  </div>
+                  <button class="aspeed" aria-label="Playback speed">1×</button>
+                  <div class="vflash" aria-live="polite"></div>
+                </div>`;
+          win.innerHTML = `
+            <div class="scroller pane" id="pane">
+              ${headHTML(C)}
+              <div class="video-band${C.kind === "podcast" ? " is-audio" : ""}" id="band">
+                ${player}
+                <div class="band-row col"><button class="tbtn" data-quiz>Quiz me <kbd>⌘⇧R</kbd></button><button class="tbtn" data-pin>Pin <kbd>⌘⇧M</kbd></button></div>
+              </div>
+              <article class="col doc" contenteditable="true" spellcheck="false" aria-label="Notes">${notesHTML(P)}</article>
+            </div>`;
+          const pane = $("#pane", win),
+            band = $("#band", win),
+            frame = $("#frame", win);
+          let t = C.start,
+            playing = false,
+            tick = null,
+            flashT;
+          const play = $(".vplay", frame),
+            time = $(".vtime", frame),
+            chap = $(".vchap", frame),
+            segs = [...frame.querySelectorAll(".vseg i")];
+          function render() {
+            play.innerHTML = playing ? PAUSE : PLAY;
+            play.setAttribute("aria-label", playing ? "Pause" : "Play");
+            time.textContent = `${fmt(t)} / ${fmt(C.dur)}`;
+            chap.textContent = chapterOf(C, t);
+            C.chapters.forEach(([s], i) => {
+              const e = C.chapters[i + 1]?.[0] ?? C.dur;
+              segs[i].style.width = `${Math.max(0, Math.min(1, (t - s) / (e - s))) * 100}%`;
+            });
+          }
+          const flash = (text) => {
+            const f = $(".vflash", frame);
+            f.textContent = text;
+            f.toggleAttribute("data-on", true);
+            frame.toggleAttribute("data-paused-flash", true);
+            clearTimeout(flashT);
+            flashT = setTimeout(() => {
+              f.removeAttribute("data-on");
+              frame.removeAttribute("data-paused-flash");
+            }, 1100);
+          };
+          let speed = 1;
+          const SPEEDS = [1, 1.25, 1.5, 2, 0.75];
+          const setPlaying = (on) => {
+            playing = on;
+            clearInterval(tick);
+            if (on)
+              tick = setInterval(() => {
+                t = Math.min(C.dur, t + speed);
+                render();
+              }, 1000);
+            render();
+          };
+          P.timers.push(
+            () => clearInterval(tick),
+            () => clearTimeout(flashT),
+          );
+          // The video plays from anywhere on it; the podcast bar only from its button.
+          P.toggle = () => {
+            setPlaying(!playing);
+            flash(playing ? "Playing" : "Paused");
+          };
+          frame.addEventListener("click", (e) => {
+            if (e.target.closest(".vtrack, .aspeed")) return;
+            if (C.kind === "podcast" && !e.target.closest(".vplay")) return;
+            P.toggle();
+          });
+          $(".aspeed", frame)?.addEventListener("click", (e) => {
+            speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+            e.currentTarget.textContent = `${speed}×`;
+          });
+          $(".vtrack", frame).addEventListener("click", (e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            P.seek(((e.clientX - r.left) / r.width) * C.dur);
+          });
+          P.now = () => t;
+          P.pause = (say) => {
+            if (playing) {
+              setPlaying(false);
+              if (say) flash("Paused");
+            }
+          };
+          P.seek = (s) => {
+            t = Math.max(0, Math.min(C.dur, Math.round(s)));
+            render();
+            flash(fmt(t));
+          };
+          P.jump = (seg) => P.seek(seg.at);
+          P.seen = (s) => s.at <= t;
+          P.ref = (seg) =>
+            `<span class="pin" contenteditable="false" data-seg="${seg.id}" title="${fmt(seg.at)}">${PIN}</span>`;
+          P.scroller = pane;
+          const pad = () => {
+            pane.style.scrollPaddingTop =
+              (win.hasAttribute("data-mini") ? 16 : band.offsetHeight + 16) + "px";
+          };
+          const stuck = () =>
+            band.toggleAttribute(
+              "data-stuck",
+              pane.scrollTop > band.offsetTop - 1 && !win.hasAttribute("data-mini"),
+            );
+          pane.addEventListener("scroll", stuck, { passive: true });
+          addEventListener("resize", pad);
+          P.timers.push(() => removeEventListener("resize", pad));
+          P.layout = () => {
+            pad();
+            stuck();
+          };
+          render();
+          requestAnimationFrame(P.layout);
+        } else {
+          const mark = (s) => {
+            let x = esc(s.text);
+            if (withNotes) for (const m of s.marks) x = x.replace(esc(m), `<mark>${esc(m)}</mark>`);
+            return x;
+          };
+          win.innerHTML = `
+            <div class="scroller reader" id="reader" aria-label="Book">
+              <div class="reader-col">
+                <p class="r-chap">Chapter 2</p>
+                <h2>${esc(C.chapter)}</h2>
+                <p>${esc(C.lead)}</p>
+                ${C.segs
+                  .filter((s) => !s.unread)
+                  .map((s) => `<p data-seg="${s.id}">${mark(s)}</p>`)
+                  .join("")}
+                <div class="r-here">You’re here · ${C.place}</div>
+                ${C.segs
+                  .filter((s) => s.unread)
+                  .map((s) => `<p class="unread">${esc(s.text)}</p>`)
+                  .join("")}
+              </div>
+            </div>
+            <div class="scroller pane" id="pane">
+              ${headHTML(C)}
+              <div class="band-row col"><button class="tbtn" data-quiz>Quiz me <kbd>⌘⇧R</kbd></button></div>
+              <article class="col doc" contenteditable="true" spellcheck="false" aria-label="Notes">${notesHTML(P)}</article>
+            </div>`;
+          P.now = () => 0;
+          P.pause = () => {};
+          P.seen = (s) => !s.unread;
+          P.jump = (seg) => {
+            const p = $(`[data-seg="${seg.id}"]`, $("#reader", win));
+            p.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+            p.classList.remove("flash");
+            void p.offsetWidth;
+            p.classList.add("flash");
+          };
+          P.ref = (seg) =>
+            `<span class="bkref" contenteditable="false" data-seg="${seg.id}">${seg.page}</span>`;
+          P.scroller = $("#pane", win);
+          P.layout = () => {};
+          const r = $("#reader", win);
+          r.scrollTop = r.scrollHeight;
+          requestAnimationFrame(() => {
+            r.scrollTop = $(".r-here", r).offsetTop - r.clientHeight * 0.55;
+          });
+        }
+        P.doc = $(".doc", win);
+        // Pins and page refs jump to their moment.
+        win.addEventListener("click", (e) => {
+          const ref = e.target.closest(".pin, .bkref, [data-jump]");
+          if (!ref) return;
+          e.preventDefault();
+          P.jump(C.segs.find((s) => s.id === (ref.dataset.seg || ref.dataset.jump)));
+        });
+        // Pin (⌘⇧M): stamp the caret's bullet with the current moment.
+        const pinIt = () => {
+          if (!timed(C)) return;
+          const sel = getSelection();
+          let li = sel.anchorNode;
+          while (li && li !== P.doc && li.tagName !== "LI") li = li.parentNode;
+          if (!li || li === P.doc) {
+            const ul = P.doc.querySelector("ul.notes");
+            li = ul.lastElementChild;
+          }
+          const t = P.now(),
+            s = { id: "", at: t };
+          const pin = h("span", "pin", PIN);
+          pin.contentEditable = "false";
+          pin.title = fmt(t);
+          pin.dataset.t = t;
+          pin.addEventListener("click", (e) => {
+            e.stopPropagation();
+            P.seek(t);
+          });
+          if (li.querySelector(":scope > .pin")) {
+            const n = h("li");
+            n.append(document.createElement("br"), pin);
+            li.after(n);
+            placeCaret(n, false);
+          } else {
+            li.append(pin);
+          }
+        };
+        $("[data-pin]", win)?.addEventListener("click", pinIt);
+        P.pinIt = pinIt;
+        // The Agent launcher lives in every window's bottom-right corner.
+        const pill = h("button", "agent-pill", `${ARROW}Agent`);
+        pill.addEventListener("click", () =>
+          P.onAgent
+            ? P.onAgent()
+            : setHint("The Agent chat isn’t part of this prototype. Try “Beside”.", 2600),
+        );
+        win.append(pill);
+        $("[data-quiz]", win).addEventListener("click", () => P.onQuiz?.());
+        return P;
+      }
+
+      /* ============================================================
+         1 · SECOND PEN — proto/ai-writing's Second pen, in a source note.
+         ⌘. arms the AI for one key, on the selection or the line you're
+         on (as in ai-writing):
+           ?  quiz me   — recall, then why/how follow-ups, one per press
+           @  facts     — with their source, or says it has none
+           +  mix       — click the one worth keeping, the rest go
+           −  shorten   — only cuts; click a cut to keep it
+           →  new topic — while a quiz is going
+         From an empty line, ? quizzes you on everything so far.
+         Each of your notes also has a ? at its right edge: quiz me on
+         this note. The AI writes real bullets in blue ink with a hollow
+         marker, under your line; you answer under them. The keys for
+         what you can do next sit under the line you're on.
+         One request = one line. Esc takes back what you haven't answered.
+         ============================================================ */
+      function SecondPen(P) {
+        const doc = P.doc;
+        const win = doc.closest(".win");
+        const pane = P.scroller;
+        pane.style.position = "relative";
+        const btn = $("[data-quiz]", win);
+        btn.innerHTML = `Quiz me <kbd>⌘ . ?</kbd>`;
+        const segById = (id) => P.C.segs.find((x) => x.id === id);
+
+        const sessions = new WeakMap(); // question line → its quiz
+        const pendingOf = new WeakMap(); // answer line → its quiz
+        let cur = null,
+          busy = false,
+          armed = false,
+          run = null,
+          shortening = null;
+
+        /* ---- Small helpers ---- */
+        const lineOf = (n) => {
+          while (n && n !== doc && n.tagName !== "LI") n = n.parentNode;
+          return n && n.tagName === "LI" ? n : null;
+        };
+        const caretLi = () => {
+          const x = getSelection();
+          return x.rangeCount && doc.contains(x.anchorNode) ? lineOf(x.anchorNode) : null;
+        };
+        const isUser = (li) =>
+          li && !li.classList.contains("ai") && !li.classList.contains("pen-keys");
+        // A line's own words: not its pins, sub-bullets or the keys under it.
+        const txt = (li) =>
+          [...li.childNodes]
+            .filter(
+              (n) =>
+                !(
+                  n.nodeType === 1 &&
+                  (n.tagName === "UL" ||
+                    n.classList.contains("pen-keys") ||
+                    n.classList.contains("pin") ||
+                    n.classList.contains("bkref"))
+                ),
+            )
+            .map((n) => n.textContent)
+            .join("")
+            .trim();
+        const ownTextNode = (li) =>
+          [...li.childNodes].find((n) => n.nodeType === 3 && n.data.trim());
+        function childList(li) {
+          let ul = li.querySelector(":scope > ul");
+          if (!ul) {
+            ul = h("ul");
+            li.append(ul);
+          }
+          ul.contentEditable = "true";
+          return ul;
+        }
+        // The moment a line is about: its pin or page, else its parent's.
+        function segOf(li) {
+          const own = li.querySelector(":scope > [data-seg]");
+          if (own) return own.dataset.seg;
+          const t = li.querySelector(":scope > .pin[data-t]");
+          if (t) return [...P.C.segs].reverse().find((x) => x.at <= +t.dataset.t)?.id ?? null;
+          const up = li.parentElement.closest("li");
+          if (!up) return null;
+          if (up.classList.contains("ask")) return sessions.get(up)?.sess.seg?.id ?? null;
+          return up.classList.contains("ai") ? null : segOf(up);
+        }
+        function selLines() {
+          const x = getSelection();
+          if (!x.rangeCount || x.isCollapsed) return [];
+          const r = x.getRangeAt(0);
+          if (!doc.contains(r.commonAncestorContainer)) return [];
+          return [...doc.querySelectorAll("ul.notes li")].filter(
+            (li) =>
+              isUser(li) &&
+              [...li.childNodes].some(
+                (n) => n.nodeType === 3 && n.data.trim() && r.intersectsNode(n),
+              ),
+          );
+        }
+        // What a request is about: your lines, a quiz you're in, or everything so far.
+        function target(over) {
+          const sel = over ? over : selLines();
+          const lines = (sel.length ? sel : [caretLi()]).filter(isUser);
+          const user = lines.filter((l) => txt(l));
+          const q = lines.map((l) => l.closest("li.ai.ask")).find(Boolean);
+          const segs = [...new Set(user.map(segOf).filter(Boolean))];
+          const base = { user, at: lines[lines.length - 1] || null };
+          if (q && sessions.has(q)) return { ...base, kind: "continue", s: sessions.get(q) };
+          if (segs.length)
+            return {
+              ...base,
+              kind: "lines",
+              key: segs.join(),
+              anchor: user[user.length - 1],
+              segs,
+            };
+          return {
+            ...base,
+            kind: "all",
+            key: "all",
+            slot: lines.find((l) => !txt(l) && !l.closest("li.ai")) || null,
+          };
+        }
+        const soFar = () => `everything so far <b>to ${timed(P.C) ? fmt(P.now()) : P.C.place}</b>`;
+
+        /* ---- The keys, under the line you're on ---- */
+        let keys = null,
+          kt = null;
+        function showKeys(html, li, ms) {
+          clearTimeout(kt);
+          keys?.remove();
+          keys = null;
+          if (!html) return;
+          li = li?.isConnected ? li : doc.querySelector("ul.notes").lastElementChild;
+          keys = h("li", "pen-keys", html);
+          keys.contentEditable = "false";
+          keys.setAttribute("aria-live", "polite");
+          const sub = !li.classList.contains("ai") && li.querySelector(":scope > ul");
+          sub ? sub.prepend(keys) : li.after(keys);
+          if (ms)
+            kt = setTimeout(() => {
+              keys?.remove();
+              keys = null;
+            }, ms);
+        }
+        P.timers.push(() => clearTimeout(kt));
+        const ANSWER = `<kbd>↵</kbd> answer <span class="gap"></span><kbd>↵</kbd> on an empty line: I don’t know <span class="gap"></span><kbd>Esc</kbd> take it back`;
+        const AFTER = `<kbd>⌘ .</kbd> <kbd>?</kbd> one more <span class="gap"></span><kbd>⌘ .</kbd> <kbd>→</kbd> new topic`;
+
+        function arm(on) {
+          armed = on;
+          doc.classList.toggle("armed", on);
+          CSS.highlights?.delete("proto-armed");
+          if (!on) {
+            showKeys(null);
+            return;
+          }
+          const t = target();
+          if (getSelection().isCollapsed && t.user.length) {
+            const node = ownTextNode(t.user[0]);
+            if (node) {
+              const r = document.createRange();
+              r.selectNodeContents(node);
+              CSS.highlights?.set("proto-armed", new Highlight(r));
+            }
+          }
+          const going = t.kind === "continue" || (cur && cur.key === t.key && cur.started);
+          showKeys(
+            t.user.length
+              ? `<kbd>?</kbd> quiz me <kbd>@</kbd> facts <kbd>+</kbd> mix <kbd>−</kbd> shorten ${going ? `<kbd>→</kbd> new topic ` : ""}<span class="gap"></span><kbd>Esc</kbd> never mind`
+              : `<kbd>?</kbd> quiz me on ${soFar()} <span class="gap"></span><kbd>Esc</kbd> never mind`,
+            t.at || caretLi(),
+          );
+        }
+
+        function aiLine(cls) {
+          const li = h("li", "ai " + cls);
+          li.contentEditable = "false";
+          li.tabIndex = 0;
+          li.append(h("span", "t"));
+          return li;
+        }
+        function answerLine(where, s, item, inside = false) {
+          const a = h("li");
+          a.append(document.createElement("br"));
+          inside ? where.append(a) : where.after(a);
+          s.pending = { li: a, item };
+          pendingOf.set(a, s);
+          placeCaret(a);
+          a.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+          return a;
+        }
+        const srcBtn = (seg) =>
+          `<button class="src" data-jump="${seg.id}" aria-label="Go to ${where(P, seg)}">— ${timed(P.C) ? PIN : ""}${where(P, seg)}</button>`;
+        const fadeRemove = (nodes) => {
+          nodes.forEach((n) => n.classList.add("leaving"));
+          setTimeout(() => nodes.forEach((n) => n.remove()), reduced ? 0 : 150);
+        };
+
+        /* ---- ? quiz me ---- */
+        async function quiz(mode, over) {
+          if (busy || shortening) return;
+          showKeys(null);
+          const t = target(over);
+          let s =
+            t.kind === "continue"
+              ? t.s
+              : cur && cur.key === t.key && cur.last?.isConnected
+                ? cur
+                : null;
+          if (!s)
+            s = {
+              sess: engine(P, t.kind === "lines" ? t.segs : null),
+              key: t.key,
+              scoped: t.kind === "lines",
+              anchor: t.anchor,
+              slot: t.slot,
+              last: null,
+              pending: null,
+              started: false,
+            };
+          cur = s;
+          if (s.pending?.li.isConnected) {
+            placeCaret(s.pending.li);
+            showKeys(ANSWER, s.pending.li);
+            return;
+          }
+          const item = mode === "next" || !s.started ? s.sess.nextIdea() : s.sess.deeper();
+          if (!item) {
+            showKeys(
+              s.scoped ? "That's all I have on this line. The rest is yours." : s.sess.doneLine(),
+              s.last || t.at,
+              2600,
+            );
+            return;
+          }
+          s.started = true;
+          P.pause(true);
+          busy = true;
+          const q = aiLine("ask");
+          if (s.last?.isConnected) s.last.after(q);
+          else if (s.scoped) childList(s.anchor).prepend(q);
+          else if (s.slot?.isConnected && !txt(s.slot)) s.slot.replaceWith(q);
+          else doc.querySelector("ul.notes").append(q);
+          s.last = q;
+          sessions.set(q, s);
+          q.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+          await writeWords($(".t", q), item.q);
+          const sub = h("ul");
+          sub.contentEditable = "true";
+          q.append(sub);
+          const a = answerLine(sub, s, item, true);
+          busy = false;
+          showKeys(ANSWER, a);
+        }
+
+        async function submit(s) {
+          const { li: a } = s.pending;
+          const text = txt(a);
+          s.pending = null;
+          pendingOf.delete(a);
+          showKeys(null);
+          busy = true;
+          if (!text) a.innerHTML = `<span class="dk" contenteditable="false">I don’t know</span>`;
+          const r = s.sess.answer(text);
+          if (r.hint) {
+            const cue = aiLine("cue");
+            a.after(cue);
+            await writeWords($(".t", cue), "Hint: " + r.hint.q);
+            const a2 = answerLine(cue, s, r.hint);
+            busy = false;
+            showKeys(ANSWER, a2);
+            return;
+          }
+          let last = a;
+          if (r.reveal) {
+            const c = aiLine("chk");
+            a.parentElement.append(c);
+            await writeWords($(".t", c), `“${r.reveal.src}”`, srcBtn(r.reveal), "Written by AI: ");
+            last = c;
+          }
+          busy = false;
+          if (text) placeCaret(a);
+          showKeys(AFTER, last, 5000);
+        }
+
+        /* ---- @ facts, + mix (proto/ai-writing's Second pen) ---- */
+        function linesFor(kind, seg) {
+          if (kind === "facts")
+            return seg?.facts?.length
+              ? seg.facts.map(([t, src]) => ({ t, src }))
+              : [{ t: "No fact here I'd stand behind. Try selecting a specific claim." }];
+          return (
+            seg?.mix?.length
+              ? seg.mix
+              : [
+                  "× chess — what's the opening move?",
+                  "× jazz — where's the improvisation?",
+                  "× gardening — what gets pruned?",
+                ]
+          ).map((t) => ({ t }));
+        }
+        async function aiRun(kind, t) {
+          if (busy || shortening) return;
+          const anchor = t.user[t.user.length - 1];
+          if (!anchor) {
+            showKeys("Put the caret on a note first.", t.at, 2200);
+            return;
+          }
+          const again =
+            run &&
+            run.anchor === anchor &&
+            run.kind === kind &&
+            run.batch.every((n) => n.isConnected);
+          if (!again)
+            run = { anchor, kind, i: -1, lines: linesFor(kind, segById(segOf(anchor))), batch: [] };
+          if (run.i + 1 >= run.lines.length) {
+            showKeys("That's all I have on this line. The rest is yours.", anchor, 2200);
+            return;
+          }
+          const r = run;
+          r.i++;
+          busy = true;
+          const l = r.lines[r.i];
+          const li = aiLine(kind === "mix" ? "mix" : "fact");
+          li._batch = r.batch;
+          const prev = r.batch[r.batch.length - 1];
+          prev ? prev.after(li) : childList(anchor).prepend(li);
+          r.batch.push(li);
+          await writeWords(
+            $(".t", li),
+            l.t,
+            l.src ? `<span class="src">— ${esc(l.src)}</span>` : "",
+            "Written by AI: ",
+          );
+          busy = false;
+          const more = r.i + 1 < r.lines.length;
+          showKeys(
+            `${more ? `<kbd>⌘ .</kbd> <kbd>${kind === "facts" ? "@" : "+"}</kbd> one more <span class="gap"></span>` : ""}${kind === "mix" ? 'Click the one worth keeping <span class="gap"></span>' : ""}<kbd>Esc</kbd> take it back`,
+            li,
+            4000,
+          );
+        }
+
+        /* ---- − shorten (proto/ai-writing): only cuts; click a cut to keep it ---- */
+        function shorten(lines) {
+          if (busy || shortening) return;
+          const CUTS = [
+            /\b(?:I think |basically |actually |really |just |kind of |quite |literally |very |maybe )/gi,
+            / (?:completely|anyway)(?=[,.]|$)/gi,
+            / lol\b/gi,
+            /^the thing about /gi,
+          ];
+          const jobs = lines
+            .map((li) => {
+              const node = ownTextNode(li);
+              const text = node ? node.data : "",
+                cuts = [];
+              for (const re of CUTS)
+                for (const m of text.matchAll(re)) {
+                  const x = m.index,
+                    y = x + m[0].length;
+                  if (!cuts.some((c) => x < c.b && y > c.a)) cuts.push({ a: x, b: y });
+                }
+              cuts.sort((p, q) => p.a - q.a);
+              return { li, node, text, cuts };
+            })
+            .filter((j) => j.cuts.length);
+          const at = lines[lines.length - 1];
+          if (!jobs.length) {
+            showKeys("Nothing to cut. Every word is pulling its weight.", at, 2200);
+            return;
+          }
+          getSelection().removeAllRanges();
+          doc.contentEditable = "false";
+          for (const j of jobs) {
+            const span = document.createElement("span");
+            let html = "",
+              k = 0;
+            j.cuts.forEach((c, i) => {
+              html +=
+                esc(j.text.slice(k, c.a)) +
+                `<span class="cut" data-i="${i}" title="Click to keep these words">${esc(j.text.slice(c.a, c.b))}</span>`;
+              k = c.b;
+            });
+            span.innerHTML = html + esc(j.text.slice(k));
+            j.span = span;
+            j.node.replaceWith(span);
+            span.querySelectorAll(".cut").forEach((x) =>
+              x.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const c = j.cuts[+x.dataset.i];
+                c.kept = !c.kept;
+                x.toggleAttribute("data-kept");
+                count();
+              }),
+            );
+          }
+          const tidy = (t) =>
+            t
+              .replace(/\s{2,}/g, " ")
+              .replace(/\s+([.,?!])/g, "$1")
+              .replace(/(^|[.?!]\s+)([a-z])/g, (m, x, y) => x + y.toUpperCase());
+          const result = (j) =>
+            tidy(
+              j.cuts.reduceRight((t, c) => (c.kept ? t : t.slice(0, c.a) + t.slice(c.b)), j.text),
+            );
+          const words = (t) => t.split(/\s+/).filter(Boolean).length;
+          function count() {
+            const d = jobs.reduce((n, j) => n + words(result(j)) - words(j.text), 0);
+            showKeys(
+              `<b>${String(d).replace("-", "−")} words</b> Only cuts. Click a cut to keep it. <span class="gap"></span><kbd>↵</kbd> shorten <kbd>Esc</kbd> cancel`,
+              at,
+            );
+          }
+          shortening = async (apply) => {
+            shortening = null;
+            if (apply && !reduced) {
+              jobs.forEach((j) =>
+                j.span
+                  .querySelectorAll(".cut:not([data-kept])")
+                  .forEach((c) => c.classList.add("going")),
+              );
+              await wait(150);
+            }
+            for (const j of jobs)
+              j.span.replaceWith(document.createTextNode(apply ? result(j) : j.text));
+            doc.contentEditable = "true";
+            showKeys(null);
+          };
+          count();
+        }
+
+        /* ---- Esc: take back what you haven't answered ---- */
+        function takeBack() {
+          const li = caretLi();
+          const s = li && pendingOf.get(li);
+          if (s && !txt(li)) {
+            const ai = li.previousElementSibling?.classList.contains("cue")
+              ? li.previousElementSibling
+              : li.closest("li.ai.ask");
+            const isQ = ai.classList.contains("ask");
+            if (isQ && s.last === ai)
+              s.last = ai.previousElementSibling?.classList.contains("ask")
+                ? ai.previousElementSibling
+                : null;
+            s.pending = null;
+            pendingOf.delete(li);
+            showKeys(null);
+            // A question that took your empty line's place gives the line back.
+            const back = isQ && s.slot && !s.slot.isConnected && !s.last ? s.slot : null;
+            const gone = isQ ? [ai] : [ai, li];
+            gone.forEach((n) => n.classList.add("leaving"));
+            setTimeout(
+              () => {
+                if (back) {
+                  ai.replaceWith(back);
+                  placeCaret(back);
+                }
+                gone.forEach((n) => n.remove());
+              },
+              reduced ? 0 : 150,
+            );
+            return true;
+          }
+          if (run?.batch.length && run.batch.some((n) => n.isConnected)) {
+            fadeRemove(
+              run.batch.filter(
+                (n) =>
+                  n.isConnected &&
+                  !n.querySelector(":scope > ul li:not(.pen-keys)")?.textContent.trim(),
+              ),
+            );
+            run = null;
+            showKeys(null);
+            return true;
+          }
+          return false;
+        }
+
+        function indent(li, out) {
+          if (out) {
+            const up = li.parentElement.closest("li");
+            if (up && isUser(up)) up.after(li);
+          } else {
+            const prev = li.previousElementSibling;
+            if (prev && isUser(prev)) childList(prev).append(li);
+          }
+        }
+
+        P.onQuiz = () => quiz("ask");
+        P.onEsc = () => {
+          if (shortening) {
+            shortening(false);
+            return true;
+          }
+          if (armed) {
+            arm(false);
+            return true;
+          }
+          return takeBack();
+        };
+
+        const onKey = (e) => {
+          if (!doc.isConnected) return;
+          if (shortening) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              shortening(true);
+            }
+            return;
+          }
+          if (e.metaKey && (e.key === "." || e.code === "Period")) {
+            e.preventDefault();
+            arm(!armed);
+            return;
+          }
+          if (armed) {
+            if (e.key === "Shift" || e.key === "Escape") return; // ? @ + need Shift; Esc is P.onEsc's
+            const t = target();
+            arm(false);
+            const k =
+              e.key === "/" && e.shiftKey
+                ? "?"
+                : e.key === "2" && e.shiftKey
+                  ? "@"
+                  : e.key === "=" && e.shiftKey
+                    ? "+"
+                    : e.key;
+            if (k === "?") {
+              e.preventDefault();
+              quiz("ask");
+              return;
+            }
+            if (k === "ArrowRight") {
+              e.preventDefault();
+              quiz("next");
+              return;
+            }
+            if (k === "@") {
+              e.preventDefault();
+              aiRun("facts", t);
+              return;
+            }
+            if (k === "+") {
+              e.preventDefault();
+              aiRun("mix", t);
+              return;
+            }
+            if (k === "-" || k === "−") {
+              e.preventDefault();
+              if (t.user.length) shorten(t.user);
+              else showKeys("Put the caret on a note first.", t.at, 2200);
+              return;
+            }
+            return; // any other key: not for the AI, it types as usual
+          }
+          if (!doc.contains(document.activeElement) && document.activeElement !== doc) return;
+          if (e.key === "Tab") {
+            const li = caretLi();
+            if (isUser(li) && !pendingOf.get(li)) {
+              e.preventDefault();
+              indent(li, e.shiftKey);
+              placeCaret(li);
+            }
+            return;
+          }
+          if (e.key !== "Enter") return;
+          if (busy) {
+            e.preventDefault();
+            return;
+          }
+          const li = caretLi();
+          const s = li && pendingOf.get(li);
+          if (s && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            e.preventDefault();
+            submit(s);
+          }
+        };
+        document.addEventListener("keydown", onKey, true);
+        P.timers.push(() => document.removeEventListener("keydown", onKey, true));
+        doc.addEventListener("mousedown", () => armed && arm(false));
+
+        // Click an AI line to answer under it; a mix you click is kept and the others go.
+        doc.addEventListener("click", (e) => {
+          const ai = e.target.closest("li.ai");
+          if (
+            !ai ||
+            ai.classList.contains("cue") ||
+            ai.classList.contains("chk") ||
+            e.target.closest(".src")
+          )
+            return;
+          const ul = e.target.closest("ul");
+          if (ul && ai.contains(ul)) return; // clicks inside your answers are yours
+          if (ai.classList.contains("mix") && ai._batch) {
+            fadeRemove(ai._batch.filter((b) => b !== ai && b.isConnected));
+            if (run?.batch === ai._batch) run = null;
+          }
+          const a = h("li");
+          a.append(document.createElement("br"));
+          childList(ai).append(a);
+          placeCaret(a);
+        });
+        doc.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && e.target.matches?.("li.ai.ask, li.ai.fact, li.ai.mix")) {
+            e.preventDefault();
+            e.target.click();
+          }
+        });
+
+        /* ---- ? at the right edge of every note: quiz me on this one ---- */
+        const qz = h("button", "qz", "?");
+        qz.type = "button";
+        qz.setAttribute("aria-label", "Quiz me on this note");
+        qz.title = "Quiz me on this note (⌘ . ?)";
+        qz.hidden = true;
+        pane.append(qz);
+        let qzLi = null,
+          hoverLi = null;
+        function placeQz() {
+          const li = hoverLi || caretLi();
+          if (!isUser(li) || !txt(li) || shortening || li.closest("li.cue, li.chk")) {
+            qz.hidden = true;
+            qzLi = null;
+            return;
+          }
+          qzLi = li;
+          const pr = pane.getBoundingClientRect(),
+            dr = doc.getBoundingClientRect();
+          const n = ownTextNode(li);
+          let r = li.getBoundingClientRect();
+          if (n) {
+            const rg = document.createRange();
+            rg.setStart(n, 0);
+            rg.setEnd(n, Math.min(1, n.length));
+            r = rg.getBoundingClientRect();
+          }
+          qz.style.top = `${r.top - pr.top + pane.scrollTop + r.height / 2}px`;
+          qz.style.left = `${dr.right - pr.left + 8}px`;
+          qz.hidden = false;
+        }
+        doc.addEventListener("mouseover", (e) => {
+          const li = e.target.closest("li");
+          hoverLi = isUser(li) ? li : hoverLi;
+          placeQz();
+        });
+        doc.addEventListener("mouseleave", (e) => {
+          if (e.relatedTarget !== qz) {
+            hoverLi = null;
+            placeQz();
+          }
+        });
+        qz.addEventListener("mouseleave", (e) => {
+          if (!doc.contains(e.relatedTarget)) {
+            hoverLi = null;
+            placeQz();
+          }
+        });
+        qz.addEventListener("mousedown", (e) => e.preventDefault()); // keep the caret where it is
+        qz.addEventListener("click", () => {
+          if (qzLi) quiz("ask", [qzLi]);
+        });
+        const onSel = () => {
+          if (!hoverLi) placeQz();
+        };
+        document.addEventListener("selectionchange", onSel);
+        P.timers.push(() => document.removeEventListener("selectionchange", onSel));
+        new ResizeObserver(() => placeQz()).observe(doc);
+      }
+
+      /* ============================================================
+         2 · Closed book — the video and your notes blur out while you
+         answer, so it's real recall, not reading. One question on one
+         card. Check shows your answer beside the source (and your own
+         note); then Go deeper or New topic. Stop writes the session
+         into the note as a closed Recall toggle, like the transcript.
+         ============================================================ */
+      function ClosedBook(P) {
+        const win = P.doc.closest(".win");
+        let sess = null,
+          ov = null,
+          log = [],
+          item = null;
+
+        P.onQuiz = () => {
+          if (ov) {
+            $(".field", ov)?.focus();
+            return;
+          }
+          P.pause(false);
+          sess ??= engine(P);
+          ov = h("div", "cb");
+          ov.setAttribute("role", "dialog");
+          ov.setAttribute("aria-modal", "true");
+          ov.setAttribute("aria-label", "Quiz, closed book");
+          ov.innerHTML = `<div class="cb-veil"></div><div class="cb-card"></div>`;
+          win.append(ov);
+          ov.querySelector(".cb-veil").addEventListener("click", () => $(".field", ov)?.focus());
+          showAsk(sess.nextIdea());
+        };
+
+        const card = () => $(".cb-card", ov);
+        // Before an answer the header names no chapter: it would give the answer away.
+        const top = (seg, after) =>
+          `<div class="cb-top"><span class="cb-where">${!seg ? (timed(P.C) ? P.C.short : P.C.title) : !after ? `Question ${asked}` : timed(P.C) ? `${fmt(seg.at)} · ${chapterOf(P.C, seg.at)}` : `${seg.page} · ${P.C.chapter}`}</span><button class="cb-stop" data-stop>Stop <kbd>esc</kbd></button></div>`;
+        let asked = 0;
+
+        async function showAsk(it) {
+          item = it;
+          if (!it) {
+            card().innerHTML = `${top(null)}<p class="cb-done"></p><div class="cb-actions"><button class="btn primary" data-stop>Stop <kbd>esc</kbd></button></div>`;
+            await writeWords($(".cb-done", card()), sess.doneLine());
+            $(".btn.primary", card()).focus();
+            return;
+          }
+          if (it.kind !== "hint") asked++;
+          card().innerHTML = `${top(it.seg)}
+            ${it.kind === "hint" ? `<div class="cb-kind">Hint</div>` : ""}
+            <p class="cb-q"></p>
+            <form class="cb-form">
+              <label class="cb-label" for="cb-a">Your answer</label>
+              <textarea class="field" id="cb-a" rows="3" spellcheck="false"></textarea>
+              <div class="cb-actions">
+                <button type="button" class="btn ghost" data-dk>I don’t know</button>
+                <button type="submit" class="btn primary">${it.kind === "deeper" ? "Answer" : "Check"} <kbd>⌘↵</kbd></button>
+              </div>
+            </form>`;
+          const ta = $(".field", card());
+          ta.focus();
+          await writeWords($(".cb-q", card()), it.q);
+          const form = $("form", card());
+          form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            answer(ta.value.trim());
+          });
+          ta.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              answer(ta.value.trim());
+            }
+          });
+          $("[data-dk]", card()).addEventListener("click", () => answer(""));
+        }
+
+        function answer(text) {
+          const it = item;
+          // A hint belongs to its question: its answer is the question's answer.
+          if (it.kind === "hint") Object.assign(log[log.length - 1], { a: text, hinted: true });
+          else log.push({ q: it.q, a: text, kind: it.kind });
+          const r = sess.answer(text);
+          if (r.hint) {
+            showAsk(r.hint);
+            return;
+          }
+          const seg = it.seg;
+          const notes = r.reveal ? notesFor(P, seg) : [];
+          const deeper = sess.hasDeeper(),
+            next = sess.hasNext();
+          card().innerHTML = `${top(seg, true)}
+            <p class="cb-q">${esc(it.q)}</p>
+            <div class="cb-label">Your answer</div>
+            <p class="cb-yours${text ? "" : " empty"}">${text ? esc(text) : "I don’t know"}</p>
+            ${r.reveal ? `<div class="cb-src"><div class="cb-src-label">${srcLabel(P, seg)}</div><p>${esc(seg.src)}</p></div>` : ""}
+            ${notes.length ? `<div class="cb-src"><div class="cb-src-label">Your notes</div><ul>${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
+            <div class="cb-actions">
+              <button class="btn ghost" data-next ${next ? "" : "disabled"}>New topic</button>
+              <button class="btn primary" data-deeper ${deeper ? "" : "disabled"}>Go deeper <kbd>⌘↵</kbd></button>
+            </div>`;
+          const primary = deeper
+            ? $("[data-deeper]", card())
+            : next
+              ? $("[data-next]", card())
+              : null;
+          if (!deeper && next) {
+            const b = $("[data-next]", card());
+            b.className = "btn primary";
+            b.innerHTML = `New topic <kbd>⌘↵</kbd>`;
+            $("[data-deeper]", card()).className = "btn ghost";
+            $("[data-deeper]", card()).innerHTML = "Go deeper";
+          }
+          (primary || $("[data-stop]", card())).focus();
+          $("[data-deeper]", card()).addEventListener("click", () => showAsk(sess.deeper()));
+          $("[data-next]", card()).addEventListener("click", () => showAsk(sess.nextIdea()));
+          if (!deeper && !next) showAsk(null);
+        }
+
+        function stop() {
+          if (!ov) return;
+          const leaving = ov;
+          ov = null;
+          leaving.classList.add("leaving");
+          setTimeout(() => leaving.remove(), reduced ? 0 : 150);
+          const done = log;
+          log = [];
+          if (!done.length) return;
+          const d = h("details", "recall");
+          d.contentEditable = "false";
+          d.innerHTML =
+            `<summary>Recall · ${TODAY} · ${done.length} question${done.length > 1 ? "s" : ""}</summary>` +
+            done
+              .map(
+                (e) =>
+                  `<p class="rq">${esc(e.q)}</p><p class="ra${e.a ? "" : " empty"}">${e.a ? esc(e.a) : "I don’t know"}${e.hinted && e.a ? ` <span class="dk">(after a hint)</span>` : ""}</p>`,
+              )
+              .join("");
+          P.doc.append(d);
+          d.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+          const s = d.querySelector("summary");
+          s.classList.add("flash");
+          setHint(`Saved to this note as <b>Recall · ${TODAY}</b>.`, 2600);
+        }
+        P.onEsc = () => {
+          if (ov) {
+            stop();
+            return true;
+          }
+        };
+        win.addEventListener("click", (e) => {
+          if (e.target.closest("[data-stop]")) stop();
+        });
+      }
+
+      /* ============================================================
+         3 · Beside — the quiz is a conversation in the Agent panel.
+         Video and notes stay open (open book): play, scrub, reread.
+         The AI asks, quotes the source with a jump chip after a recall
+         answer, then follows up. Chips steer; Keep in note copies an
+         answer into the note with its pin. Close ends it.
+         ============================================================ */
+      function Beside(P) {
+        const win = P.doc.closest(".win");
+        let sess = null,
+          ap = null,
+          item = null,
+          busy = false,
+          chats = [];
+
+        function open() {
+          ap = h("section", "ap");
+          ap.setAttribute("role", "dialog");
+          ap.setAttribute("aria-label", "Quiz");
+          ap.innerHTML = `
+            <header class="ap-head"><span class="ap-title">Quiz · ${esc(P.C.short)}</span><button class="icon-btn" data-close aria-label="Close quiz">${CLOSE}</button></header>
+            <div class="ap-msgs" aria-live="polite"></div>
+            <div class="ap-foot">
+              <div class="ap-chips">
+                <button class="chip" data-dk>I don’t know</button>
+                <button class="chip" data-deep>Go deeper</button>
+                <button class="chip" data-next>New topic</button>
+              </div>
+              <form class="ap-comp"><label class="sr-only" for="ap-in">Your answer</label><textarea id="ap-in" rows="1" placeholder="Your answer" spellcheck="false"></textarea><button class="send" type="submit" aria-label="Send answer" disabled>${UP}</button></form>
+            </div>`;
+          win.append(ap);
+          const msgs = $(".ap-msgs", ap);
+          chats.forEach((n) => msgs.append(n));
+          const ta = $("textarea", ap),
+            send = $(".send", ap);
+          const grow = () => {
+            ta.style.height = "auto";
+            ta.style.height = ta.scrollHeight + "px";
+            send.disabled = !ta.value.trim() || busy || !item;
+          };
+          ta.addEventListener("input", grow);
+          ta.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!send.disabled) reply(ta.value.trim());
+            }
+          });
+          $("form", ap).addEventListener("submit", (e) => {
+            e.preventDefault();
+            if (!send.disabled) reply(ta.value.trim());
+          });
+          $("[data-close]", ap).addEventListener("click", close);
+          $("[data-dk]", ap).addEventListener("click", () => reply(""));
+          $("[data-deep]", ap).addEventListener("click", () => ask(sess.deeper()));
+          $("[data-next]", ap).addEventListener("click", () => ask(sess.nextIdea()));
+          ap.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              close();
+            }
+          });
+          ap.grow = grow;
+          ta.focus();
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+        function close() {
+          if (!ap) return;
+          const leaving = ap;
+          ap = null;
+          leaving.classList.add("leaving");
+          setTimeout(() => leaving.remove(), reduced ? 0 : 140);
+          $("[data-quiz]", win).removeAttribute("data-on");
+        }
+        function sync() {
+          if (!ap) return;
+          $("[data-dk]", ap).disabled = busy || !item;
+          $("[data-deep]", ap).disabled = busy || !sess.hasDeeper();
+          $("[data-next]", ap).disabled = busy || !sess.hasNext();
+          ap.grow();
+        }
+        const push = (node) => {
+          chats.push(node);
+          if (ap) {
+            const m = $(".ap-msgs", ap);
+            m.append(node);
+            m.scrollTo({ top: m.scrollHeight, behavior: reduced ? "auto" : "smooth" });
+          }
+        };
+
+        async function ask(it) {
+          busy = true;
+          item = null;
+          sync();
+          const typing = h(
+            "div",
+            "m ai",
+            `<span class="typing" aria-label="Thinking"><i></i><i></i><i></i></span>`,
+          );
+          push(typing);
+          if (!reduced) await wait(420);
+          typing.remove();
+          chats = chats.filter((n) => n !== typing);
+          const m = h("div", "m ai ask");
+          push(m);
+          await writeWords(m, it ? (it.kind === "hint" ? "Hint: " + it.q : it.q) : sess.doneLine());
+          if (!it) m.className = "m ai done";
+          item = it;
+          busy = false;
+          sync();
+          if (ap) $("textarea", ap).focus();
+        }
+
+        async function reply(text) {
+          if (busy || !item) return;
+          const it = item;
+          const me = h(
+            "div",
+            "m me",
+            `<div class="bubble${text ? "" : " empty"}">${text ? esc(text) : "I don’t know"}</div>`,
+          );
+          if (text) {
+            const keep = h("button", "keep", `${PLUS}Keep in note`);
+            keep.addEventListener("click", () => {
+              const ul = P.doc.querySelector("ul.notes");
+              let li = ul.lastElementChild;
+              if (li && li.textContent.trim()) {
+                li = h("li");
+                ul.append(li);
+              }
+              li.innerHTML = esc(text) + P.ref(it.seg);
+              li.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+              li.classList.add("flash");
+              keep.disabled = true;
+              keep.innerHTML = `${TICK}Kept`;
+            });
+            me.append(keep);
+          }
+          push(me);
+          if (ap) {
+            const ta = $("textarea", ap);
+            ta.value = "";
+          }
+          const r = sess.answer(text);
+          if (r.hint) return ask(r.hint);
+          if (r.reveal) {
+            const seg = r.reveal;
+            busy = true;
+            item = null;
+            sync();
+            if (!reduced) await wait(300);
+            const verb = SAYS[P.C.kind];
+            const at = `<button class="tchip" data-jump="${seg.id}" aria-label="Go to ${where(P, seg)}">${timed(P.C) ? PIN : ""}${where(P, seg)}</button>`;
+            push(
+              h(
+                "div",
+                "m ai src",
+                `${timed(P.C) ? "At" : "On"} ${at} ${verb}: <q>${esc(seg.src)}</q>`,
+              ),
+            );
+          }
+          ask(sess.deeper());
+        }
+
+        P.onQuiz = () => {
+          $("[data-quiz]", win).setAttribute("data-on", "");
+          if (!sess) {
+            sess = engine(P);
+            P.pause(true);
+            open();
+            ask(sess.nextIdea());
+            return;
+          }
+          if (!ap) {
+            open();
+            sync();
+          } else $("textarea", ap).focus();
+        };
+        P.onAgent = () => (ap ? close() : P.onQuiz());
+        P.onEsc = () => {
+          if (ap) {
+            close();
+            return true;
+          }
+        };
+      }
+
+      /* ---------------- Harness ---------------- */
+      const variants = [SecondPen, ClosedBook, Beside];
+      const win = $("#win");
+      const params = new URLSearchParams(location.search);
+      const S = {
+        ctx: ["book", "podcast"].includes(params.get("ctx")) ? params.get("ctx") : "video",
+        notes: params.get("notes") !== "0",
+      };
+      let P = null;
+
+      function mount(i) {
+        P?.timers.forEach((f) => f());
+        win.removeAttribute("data-mini");
+        setHint("");
+        P = buildPage(win, S.ctx, S.notes);
+        variants[i](P);
+      }
+
+      const ctxBtns = [...document.querySelectorAll(".proto-ctx button")];
+      function syncCtx() {
+        ctxBtns.forEach((b) =>
+          b.toggleAttribute(
+            "data-active",
+            b.dataset.ctx ? b.dataset.ctx === S.ctx : (b.dataset.notes === "1") === S.notes,
+          ),
+        );
+        const url = new URL(location);
+        url.searchParams.set("ctx", S.ctx);
+        url.searchParams.set("notes", S.notes ? "1" : "0");
+        history.replaceState(null, "", url);
+      }
+      ctxBtns.forEach((b) =>
+        b.addEventListener("click", () => {
+          if (b.dataset.ctx) S.ctx = b.dataset.ctx;
+          else S.notes = b.dataset.notes === "1";
+          syncCtx();
+          mount(current);
+        }),
+      );
+      syncCtx();
+
+      // App-wide keys for the prototype's page: ⌘⇧R quiz, ⌘⇧M pin, ⌘⇧J play, Esc stop.
+      document.addEventListener(
+        "keydown",
+        (e) => {
+          const k = e.key.toLowerCase();
+          if (e.metaKey && e.shiftKey && k === "r") {
+            e.preventDefault();
+            P.onQuiz?.();
+            return;
+          }
+          if (e.metaKey && e.shiftKey && k === "m") {
+            e.preventDefault();
+            P.pinIt?.();
+            return;
+          }
+          if (e.metaKey && e.shiftKey && k === "j") {
+            e.preventDefault();
+            P.toggle?.();
+            return;
+          }
+          if (e.key === "Escape" && P.onEsc?.()) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        },
+        true,
+      );
+
+      /* ---------------- Picker (PICKER.md reference wiring) ---------------- */
+      const picker = document.querySelector(".proto-picker");
+      const highlight = picker.querySelector(".proto-picker-highlight");
+      const items = [...picker.querySelectorAll(".proto-picker-item:not(.proto-picker-replay)")];
+      let current = 0;
+
+      function moveHighlight() {
+        const el = items[current];
+        highlight.style.width = el.offsetWidth + "px";
+        highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+      }
+      function setActive(i) {
+        if (i < 0 || i >= variants.length) return;
+        current = i;
+        items.forEach((el, j) => {
+          el.toggleAttribute("data-active", j === i);
+          if (j === i) el.setAttribute("aria-current", "true");
+          else el.removeAttribute("aria-current");
+        });
+        moveHighlight();
+        const url = new URL(location);
+        url.searchParams.set("v", i + 1);
+        history.replaceState(null, "", url);
+        mount(i);
+      }
+      items.forEach((el, i) => el.addEventListener("click", () => setActive(i)));
+      addEventListener("resize", moveHighlight);
+      document.addEventListener("keydown", (e) => {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable)
+          return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= variants.length) setActive(num - 1);
+        else if (e.key === "ArrowRight") setActive((current + 1) % variants.length);
+        else if (e.key === "ArrowLeft")
+          setActive((current - 1 + variants.length) % variants.length);
+      });
+      setActive((parseInt(params.get("v"), 10) || 1) - 1);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => picker.setAttribute("data-ready", "")),
+      );
+    </script>
+  </body>
+</html>

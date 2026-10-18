@@ -51,7 +51,8 @@ export function EditorSearchOverlay() {
 
   const [query, setQuery] = useState("");
   const [replaceText, setReplaceText] = useState("");
-  const [showReplace, setShowReplace] = useState(false);
+  const showReplace = useEditorSearchStore((s) => s.showReplace);
+  const setShowReplace = useEditorSearchStore((s) => s.setShowReplace);
   const findInputRef = useRef<HTMLInputElement>(null);
 
   // On open: pre-fill from selection (single-line only) and focus the find input.
@@ -187,7 +188,7 @@ export function EditorSearchOverlay() {
         </IconButton>
         <button
           type="button"
-          onClick={() => setShowReplace((v) => !v)}
+          onClick={() => setShowReplace(!showReplace)}
           aria-pressed={showReplace}
           aria-label="Toggle replace"
           className={`shrink-0 rounded-md px-2 text-label whitespace-nowrap tracking-tight transition-colors h-[var(--chrome-control-height)] ${

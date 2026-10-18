@@ -15,26 +15,39 @@ export async function invoke(command, args) {
   );
 }
 
-/** A Cmd+key shortcut, dispatched to the document like the global hook expects.
- *  `inFocus` sends it to the focused element instead, so the editor's own
- *  keymap sees it first, as a real press would. */
-export async function pressCmd(key, { shift = false, inFocus = false } = {}) {
+/** A key press with modifiers, dispatched to the document like the global
+ *  hook expects. `inFocus` sends it to the focused element instead, so the
+ *  editor's own keymap sees it first, as a real press would. `code` is the
+ *  physical key, which the go key (⌘G) matches on. */
+export async function pressKey(
+  key,
+  { meta = false, ctrl = false, shift = false, alt = false, code, inFocus = false } = {},
+) {
   await browser.execute(
-    (pressedKey, shiftKey, inFocus) => {
+    (pressedKey, mods, keyCode, inFocus) => {
       (inFocus ? (document.activeElement ?? document) : document).dispatchEvent(
         new KeyboardEvent("keydown", {
           key: pressedKey,
-          metaKey: true,
-          shiftKey,
+          ...(keyCode ? { code: keyCode } : {}),
+          metaKey: mods.meta,
+          ctrlKey: mods.ctrl,
+          shiftKey: mods.shift,
+          altKey: mods.alt,
           bubbles: true,
           cancelable: true,
         }),
       );
     },
     key,
-    shift,
+    { meta, ctrl, shift, alt },
+    code ?? null,
     inFocus,
   );
+}
+
+/** A Cmd+key shortcut (see `pressKey`). */
+export async function pressCmd(key, { shift = false, alt = false, inFocus = false } = {}) {
+  await pressKey(key, { meta: true, shift, alt, inFocus });
 }
 
 /** Wait for the restored QA vault and return its root. */
@@ -160,4 +173,61 @@ export async function mouseClick(element, { metaKey = false } = {}) {
     element,
     metaKey,
   );
+}
+
+/** Put the caret right after `text` in the front editor with a real mouse
+ *  click at its coordinates (the e2e window is never focused, so CodeMirror
+ *  ignores a scripted DOM selection). Same as pen.spec.js's. */
+export async function caretAfter(text) {
+  await browser.execute((needle) => {
+    const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
+    const line = [...editor.querySelectorAll(".cm-line")].find((l) =>
+      l.textContent.includes(needle),
+    );
+    if (!line) throw new Error(`no line with "${needle}"`);
+    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const at = node.data.indexOf(needle);
+      if (at < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, at + needle.length - 1);
+      range.setEnd(node, at + needle.length);
+      // Low in the window: a video note's sticky player covers the top, the
+      // bottom bar the last few lines.
+      let scroller = line.parentElement;
+      while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+        scroller = scroller.parentElement;
+      }
+      // Somewhere the click lands on the line itself, not under a sticky
+      // video at the top or the bottom bar.
+      const hits = () => {
+        const r = range.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.right - 1, r.top + r.height / 2);
+        return !!hit && line.contains(hit);
+      };
+      for (const ratio of [0.75, 0.5, 0.6, 0.4]) {
+        if (!scroller) break;
+        const lineTop = line.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        scroller.scrollTop += lineTop - scroller.clientHeight * ratio;
+        if (hits()) break;
+      }
+      const box = range.getBoundingClientRect();
+      const point = {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        detail: 1,
+        clientX: box.right - 1,
+        clientY: box.top + box.height / 2,
+      };
+      const target = document.elementFromPoint(point.clientX, point.clientY) ?? line;
+      target.dispatchEvent(new MouseEvent("mousedown", point));
+      target.dispatchEvent(new MouseEvent("mouseup", point));
+      target.dispatchEvent(new MouseEvent("click", point));
+      return;
+    }
+    throw new Error(`"${needle}" is split across nodes`);
+  }, text);
+  await browser.pause(150);
 }

@@ -14,6 +14,9 @@ import { EditorView } from "@codemirror/view";
 interface EditorSearchState {
   isOpen: boolean;
   view: EditorView | null;
+  // Whether the Replace row shows: set by each open (⌥⌘F opens with it),
+  // toggled by the overlay's Replace button.
+  showReplace: boolean;
   openVersion: number;
   // Bumped on every doc/selection change so the overlay can recompute the
   // match count without subscribing to CodeMirror state directly.
@@ -23,11 +26,13 @@ interface EditorSearchState {
   query: string;
   bumpDocVersion: (view: EditorView) => void;
   setQuery: (query: string) => void;
+  setShowReplace: (showReplace: boolean) => void;
 }
 
 export const useEditorSearchStore = create<EditorSearchState>((set) => ({
   isOpen: false,
   view: null,
+  showReplace: false,
   openVersion: 0,
   docVersion: 0,
   query: "",
@@ -37,14 +42,20 @@ export const useEditorSearchStore = create<EditorSearchState>((set) => ({
       return { docVersion: s.docVersion + 1 };
     }),
   setQuery: (query) => set({ query }),
+  setShowReplace: (showReplace) => set({ showReplace }),
 }));
 
-export function openEditorSearch(view: EditorView) {
+export function openEditorSearch(view: EditorView, { replace = false } = {}) {
   const currentView = useEditorSearchStore.getState().view;
   if (currentView && currentView !== view) closeSearchPanel(currentView);
 
   openSearchPanel(view);
-  useEditorSearchStore.setState((s) => ({ isOpen: true, view, openVersion: s.openVersion + 1 }));
+  useEditorSearchStore.setState((s) => ({
+    isOpen: true,
+    view,
+    showReplace: replace,
+    openVersion: s.openVersion + 1,
+  }));
 }
 
 export function closeEditorSearch({

@@ -42,7 +42,8 @@ import { BookOpen } from "lucide-react";
 import type { LibraryBook } from "@/lib/book-library";
 import { useGlobalRecentFiles } from "@/hooks/use-global-recent-files";
 import { openStandaloneFile } from "@/hooks/use-open-drop";
-import { settingsKind } from "@/components/editor-area/page-kinds/settings";
+import { BUILT_IN_SPACES } from "@/lib/spaces";
+import { openSpace, spaceLocationOf } from "@/hooks/use-spaces";
 import { getFileExtension, getFileName, getFileStem, getParentDir } from "@/lib/paths";
 import { safePageName } from "@/lib/wiki-pages";
 import {
@@ -112,19 +113,26 @@ export function CommandPalette() {
 
   const isCreateIntent = intent === "create-file";
   const isMoveIntent = intent === "move-to-page";
+  // ⌘P: commands only, as Obsidian's command palette. ⌘O (`search`): notes
+  // only, as its quick switcher (SPECs/obsidian-shortcuts-spec.md#the-system).
+  const isCommandsIntent = intent === "commands";
+  const isSearchIntent = intent === "search";
   const trimmedSearch = search.trim();
-  const fileQuery = isCreateIntent ? "" : search;
+  const fileQuery = isSearchIntent || isMoveIntent ? search : "";
   // Standalone compact windows have no workspace index — search filters the
   // global recents list client-side instead of hitting fuzzy_search.
   const results = useFuzzySearch(isCompactFileMode ? "" : fileQuery);
-  const { files: globalRecents } = useGlobalRecentFiles(30, isOpen && isCompactFileMode);
-  const library = useBookLibrary(isOpen && !isCompactFileMode ? root : null);
+  const { files: globalRecents } = useGlobalRecentFiles(
+    30,
+    isOpen && (isCompactFileMode || isSearchIntent),
+  );
+  const library = useBookLibrary(isOpen && isSearchIntent && !isCompactFileMode ? root : null);
   // In standalone mode new files are created next to the active file.
   const createBaseDir = root ?? (activeFilePath ? getParentDir(activeFilePath) : null);
   const createPath =
     createBaseDir && trimmedSearch ? toCreatePath(createBaseDir, trimmedSearch) : null;
 
-  // "Add to Library" for a link pasted in ⌘F (SPECs/add-to-library-spec.md);
+  // "Add to Library" for a link pasted in ⌘O (SPECs/add-to-library-spec.md);
   // everything else is added from the composer.
   const wantsLibrary =
     Boolean(root) && !isCompactFileMode && intent === "search" && parseLibraryLink(search) !== null;
@@ -181,14 +189,31 @@ export function CommandPalette() {
     close();
   }
 
-  type Command = { id: string; label: string; description: string; run: () => void };
+  /** `keys`: its shortcut, one keycap each, shown on the right. */
+  type Command = { id: string; label: string; keys?: string[]; run: () => void };
+
+  // ⌘G P Projects, ⌘G L Library, ⌘G F Files: the go key.
+  const spaceCommands = BUILT_IN_SPACES.map(
+    (space) =>
+      Boolean(root) &&
+      !isCompactFileMode && {
+        id: `go-to-${space.key}`,
+        label: `Go to ${space.name}`,
+        keys: space.goKey ? ["⌘", "G", space.goKey.toUpperCase()] : undefined,
+        run: () => {
+          openSpace(spaceLocationOf(space));
+          close();
+        },
+      },
+  );
 
   const commands: Command[] = [
+    ...spaceCommands,
     root &&
       !isCompactFileMode && {
         id: "toggle-sidebar",
         label: "Toggle Sidebar",
-        description: "Command",
+        keys: ["⌘", "\\"],
         run: () => {
           toggleSidebar();
           close();
@@ -198,7 +223,7 @@ export function CommandPalette() {
       !isCompactFileMode && {
         id: "toggle-calendar",
         label: "Toggle Calendar",
-        description: "Command",
+        keys: ["⌘", "]"],
         run: () => {
           toggleCalendarPanel();
           close();
@@ -207,7 +232,7 @@ export function CommandPalette() {
     (root || (isCompactFileMode && activeFilePath)) && {
       id: "new-file",
       label: "Create New File",
-      description: "Command",
+      keys: ["⌘", "N"],
       run: () => {
         if (isCompactFileMode) {
           openCommandPalette("create-file");
@@ -220,16 +245,24 @@ export function CommandPalette() {
     root && {
       id: "daily-note",
       label: "Open Today's Note",
-      description: "Command",
+      keys: ["⌘", "T"],
       run: () => {
         void openTodaysNote();
         close();
       },
     },
+    root &&
+      !isCompactFileMode && {
+        id: "new-today-note",
+        label: "New Note for Today",
+        run: () => {
+          close();
+          openComposer({ today: true });
+        },
+      },
     root && {
       id: "import-book",
       label: "Import Book…",
-      description: "Command",
       run: () => {
         close();
         void import("@/lib/book-import").then(({ pickAndImportBook }) => pickAndImportBook());
@@ -239,7 +272,6 @@ export function CommandPalette() {
       !isCompactFileMode && {
         id: "add-to-library",
         label: "Add to Library…",
-        description: "Command",
         run: () => {
           close();
           openLibraryAdd();
@@ -249,7 +281,6 @@ export function CommandPalette() {
       activeFilePath && {
         id: "open-book",
         label: "Open Book",
-        description: "Command",
         run: () => {
           close();
           void import("@/lib/book-import").then(({ openBookOfPage }) =>
@@ -260,7 +291,6 @@ export function CommandPalette() {
     root && {
       id: "sync-apple-books",
       label: "Import Apple Books Highlights",
-      description: "Command",
       run: () => {
         void syncAppleBooksNow();
         close();
@@ -270,7 +300,6 @@ export function CommandPalette() {
       activeFilePath && {
         id: "open-in-compact-window",
         label: "Open File in Compact Window",
-        description: "Command",
         run: () => {
           void tauri.openFileInStandaloneWindow(activeFilePath);
           close();
@@ -280,7 +309,7 @@ export function CommandPalette() {
       !isCompactFileMode && {
         id: "close-tab",
         label: "Close Current Tab",
-        description: "Command",
+        keys: ["⌘", "W"],
         run: () => {
           closeActiveTab();
           close();
@@ -290,7 +319,6 @@ export function CommandPalette() {
       !isCompactFileMode && {
         id: "close-all",
         label: "Close All Tabs",
-        description: "Command",
         run: () => {
           for (const tab of tabs) closeTab(tab.id);
           close();
@@ -299,13 +327,11 @@ export function CommandPalette() {
     {
       id: "open-workspace",
       label: "Open Workspace",
-      description: "Command",
       run: () => void handleOpenWorkspace(),
     },
     root && {
       id: "close-workspace",
       label: "Close Workspace",
-      description: "Command",
       run: () => {
         closeWorkspace();
         close();
@@ -314,7 +340,6 @@ export function CommandPalette() {
     {
       id: "toggle-theme",
       label: "Toggle Dark Mode",
-      description: "Command",
       run: () => {
         toggleTheme();
         close();
@@ -323,7 +348,7 @@ export function CommandPalette() {
     !isCompactFileMode && {
       id: "open-settings",
       label: "Settings",
-      description: settingsKind.description,
+      keys: ["⌘", ","],
       run: () => {
         openSettingsTab();
         close();
@@ -355,31 +380,37 @@ export function CommandPalette() {
   }
 
   const visibleFiles: SearchResult[] =
-    !isCreateIntent && !isMoveIntent && trimmedSearch && !isCompactFileMode ? results : [];
+    isSearchIntent && trimmedSearch && !isCompactFileMode ? results : [];
   // Books added to the workspace (the file index is markdown-only).
   const visibleBooks: LibraryBook[] =
-    !isCreateIntent && !isMoveIntent && trimmedSearch
+    isSearchIntent && trimmedSearch
       ? library.filter(
           (b) =>
             matchesSearch(b.title, trimmedSearch) ||
             matchesSearch(getFileName(b.book), trimmedSearch),
         )
       : [];
-  const visibleRecents: RecentFile[] =
-    !isCreateIntent && isCompactFileMode && trimmedSearch
-      ? globalRecents.filter(
-          (entry) =>
-            matchesSearch(entry.title ?? "", trimmedSearch) ||
-            matchesSearch(entry.name, trimmedSearch) ||
-            matchesSearch(entry.path, trimmedSearch),
-        )
-      : [];
-  const visibleCommands =
-    isCreateIntent || isMoveIntent
-      ? []
-      : trimmedSearch
-        ? commands.filter((c) => matchesSearch(c.label, trimmedSearch))
-        : commands;
+  // A compact window searches its recents; a workspace's ⌘O shows its own
+  // recent notes until you type, as Obsidian's quick switcher does.
+  const visibleRecents: RecentFile[] = !isSearchIntent
+    ? []
+    : isCompactFileMode
+      ? trimmedSearch
+        ? globalRecents.filter(
+            (entry) =>
+              matchesSearch(entry.title ?? "", trimmedSearch) ||
+              matchesSearch(entry.name, trimmedSearch) ||
+              matchesSearch(entry.path, trimmedSearch),
+          )
+        : []
+      : trimmedSearch || !root
+        ? []
+        : globalRecents.filter((entry) => entry.path.startsWith(`${root}/`)).slice(0, 8);
+  const visibleCommands = !isCommandsIntent
+    ? []
+    : trimmedSearch
+      ? commands.filter((c) => matchesSearch(c.label, trimmedSearch))
+      : commands;
   const firstValue = isMoveIntent
     ? (exactPage?.path ?? (newPageName ? newPageValue : (otherMovePages[0]?.path ?? "")))
     : (firstLibraryValue ??
@@ -407,7 +438,9 @@ export function CommandPalette() {
     ? "Create a new note..."
     : isMoveIntent
       ? "Move selection to page…"
-      : "Search notes and commands…";
+      : isCommandsIntent
+        ? "Select a command…"
+        : "Find a note…";
 
   return (
     <CommandDialog
@@ -496,16 +529,31 @@ export function CommandPalette() {
               visibleCommands.length > 0) && (
               <CommandGroup
                 heading={
-                  trimmedSearch ? (isIndexing ? "Results (indexing...)" : "Results") : "Suggested"
+                  isCommandsIntent
+                    ? "Commands"
+                    : trimmedSearch
+                      ? isIndexing
+                        ? "Results (indexing...)"
+                        : "Results"
+                      : "Recent"
                 }
               >
                 {visibleCommands.map((c) => (
                   <CommandItem key={c.id} value={c.id} onSelect={c.run}>
-                    <div className="flex flex-col">
-                      <span>{c.label}</span>
-                      <span className="text-caption text-[var(--color-text-muted)]">
-                        {c.description}
-                      </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate">{c.label}</span>
+                      {c.keys && (
+                        <span className="flex shrink-0 items-center gap-0.5">
+                          {c.keys.map((key) => (
+                            <kbd
+                              key={key}
+                              className="flex h-[18px] min-w-[18px] items-center justify-center rounded-[var(--radius-button)] bg-[var(--color-bg-kbd)] px-1 font-[inherit] text-caption text-[var(--color-text-muted)]"
+                            >
+                              {key}
+                            </kbd>
+                          ))}
+                        </span>
+                      )}
                     </div>
                   </CommandItem>
                 ))}

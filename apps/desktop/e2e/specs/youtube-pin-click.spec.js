@@ -130,7 +130,7 @@ describe("YouTube pin click", function () {
   it("plays from each pin's moment on a real press", async function () {
     await browser.execute(() =>
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "f", metaKey: true, bubbles: true, cancelable: true }),
+        new KeyboardEvent("keydown", { key: "o", metaKey: true, bubbles: true, cancelable: true }),
       ),
     );
     const input = await $("[cmdk-input]");

@@ -1,13 +1,7 @@
 import { EditorView, keymap } from "@codemirror/view";
 import { type Extension, Prec, StateField } from "@codemirror/state";
 import { search } from "@codemirror/search";
-import {
-  closeEditorSearch,
-  findNextMatch,
-  findPreviousMatch,
-  openEditorSearch,
-  useEditorSearchStore,
-} from "./editor-search-store";
+import { closeEditorSearch, openEditorSearch, useEditorSearchStore } from "./editor-search-store";
 import { EDITOR_SAFE_SCROLL_MARGIN } from "./editor-scroll-container";
 import { findOuterScroller } from "./editor-scroll";
 
@@ -75,17 +69,11 @@ const searchScrollHandler = EditorView.scrollHandler.of((view, range) => {
   return true;
 });
 
-const openOrFind = (find: (view: EditorView) => boolean) => (view: EditorView) => {
-  if (!useEditorSearchStore.getState().isOpen) {
-    openEditorSearch(view);
-    return true;
-  }
-  return find(view);
-};
-
 /** Find/replace wiring: CodeMirror's search state (with a hidden panel so its
  *  match highlighter runs), the safe-zone scroll for search navigation, and
- *  the Mod-Shift-f / Mod-g / Escape bindings that drive the React overlay.
+ *  the Mod-f / Mod-Alt-f / Escape bindings that drive the React overlay
+ *  (Obsidian's keys, SPECs/obsidian-shortcuts-spec.md). Find next / previous
+ *  are ↵ / ⇧↵ in the find bar: ⌘G is the go key.
  *
  *  Place after `prosemarkBasicSetup()` in the extension list: the Escape
  *  binding is at default precedence so an open completion popup gets Escape
@@ -97,18 +85,19 @@ export const editorSearchExtensions: Extension = [
   Prec.highest(
     keymap.of([
       {
-        // Mod-f is search app-wide (use-keyboard-shortcuts.ts).
-        key: "Mod-Shift-f",
+        // Mod-Shift-f is search app-wide (use-keyboard-shortcuts.ts).
+        key: "Mod-f",
         run: (view) => {
           openEditorSearch(view);
           return true;
         },
       },
       {
-        key: "Mod-g",
-        preventDefault: true,
-        run: openOrFind(findNextMatch),
-        shift: openOrFind(findPreviousMatch),
+        key: "Mod-Alt-f",
+        run: (view) => {
+          openEditorSearch(view, { replace: true });
+          return true;
+        },
       },
     ]),
   ),

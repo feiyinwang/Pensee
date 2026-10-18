@@ -70,7 +70,7 @@ describe("Journeys: lists", function () {
 
   it("ED-14 a nested list gets one straight guide; hovering its parent darkens it", async function () {
     // Seeded with `- one`, `- two`, `- [ ] a task`.
-    await pressCmd("f");
+    await pressCmd("o");
     const input = await $("[cmdk-input]");
     await input.waitForExist({ timeout: 5_000 });
     await input.setValue("Welcome");

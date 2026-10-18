@@ -10,9 +10,9 @@ import {
   workspaceRoot,
 } from "./_helpers.js";
 
-/** Open a note by name through ⌘F, the way PAL-01 does. */
+/** Open a note by name through ⌘O, the way PAL-01 does. */
 async function openViaPalette(name) {
-  await pressCmd("f");
+  await pressCmd("o");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);
@@ -150,20 +150,34 @@ describe("Journeys: editor", function () {
     strictEqual(unchecked.dots, 0, "unchecking plays no burst");
   });
 
-  it("ED-16 ⌘⇧F opens find in the note; ⌘F opens search", async function () {
+  it("ED-16 ⌘F opens find in the note; ⌘⇧F opens search", async function () {
     await openViaPalette("Welcome");
     await typeInEditor("");
-    await pressCmd("f", { shift: true, inFocus: true });
+    await pressCmd("f", { inFocus: true });
     await $("[data-search-overlay]").waitForExist({ timeout: 5_000 });
-    ok(!(await $("[cmdk-input]").isExisting()), "⌘⇧F opened no search");
+    ok(!(await $("[cmdk-input]").isExisting()), "⌘F opened no search");
+    ok(!(await $('input[aria-label="Replace"]').isExisting()), "⌘F shows no Replace row");
     await browser.keys("Escape");
     await $("[data-search-overlay]").waitForExist({ timeout: 5_000, reverse: true });
     await typeInEditor("");
-    await pressCmd("f", { inFocus: true });
+    await pressCmd("f", { shift: true, inFocus: true });
     await $("[cmdk-input]").waitForExist({ timeout: 5_000 });
-    ok(!(await $("[data-search-overlay]").isExisting()), "⌘F opened no find bar");
+    ok(!(await $("[data-search-overlay]").isExisting()), "⌘⇧F opened no find bar");
     await browser.keys("Escape");
     await $("[cmdk-input]").waitForExist({ timeout: 5_000, reverse: true });
+  });
+
+  it("ED-17 ⌥⌘F opens find in the note with the Replace row", async function () {
+    await openViaPalette("Welcome");
+    await typeInEditor("");
+    await pressCmd("f", { alt: true, inFocus: true });
+    await $("[data-search-overlay]").waitForExist({ timeout: 5_000 });
+    await $('input[aria-label="Replace"]').waitForExist({
+      timeout: 5_000,
+      timeoutMsg: "⌥⌘F opened find without Replace",
+    });
+    await browser.keys("Escape");
+    await $("[data-search-overlay]").waitForExist({ timeout: 5_000, reverse: true });
   });
 
   it("ED-26 ⌘↓ and ⌘↑ go to the very bottom and top of the page", async function () {

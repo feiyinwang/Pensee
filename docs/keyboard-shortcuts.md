@@ -88,7 +88,7 @@ they work with an input source such as Pinyin that types 《 》 there.
 
 ⁴ The go key (`handleGoKey` in `use-keyboard-shortcuts.ts`): Cmd+G waits
 1.5s for a letter, and each sidebar row shows its letter in a box
-(`sidebar-spaces.tsx`); with the sidebar hidden, a strip at the top names
+(`sidebar-spaces.tsx`); with the sidebar hidden, a tray at the bottom centre names
 them instead (`components/go-key-hint.tsx`). It is captured before the editor, so it works
 mid-sentence and the letter never types; the key after Cmd+G is taken
 whatever it is, and Esc just ends the wait. Each built-in space's letter is

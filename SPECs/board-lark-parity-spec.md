@@ -24,14 +24,14 @@ A board is an SVG file in the note's `{stem}-assets/` folder. The markdown refer
 
 Selecting anything on a board shows a floating toolbar centred under the selection, clear of the resize handles. It flips above the selection when it would run into the bottom controls, and it hides during any drag, resize, rotate, marquee or pan. It replaces the old fixed style panel in the top-right corner.
 
-| Control | Shows for | Sets |
-| --- | --- | --- |
-| Shape | shapes | the shape kind (10 kinds) |
-| Fill / Note colour | shapes / sticky notes | fill token / paper colour |
-| Border (Line for connectors) | shapes, connectors | colour, width (thin/medium/thick), style (solid/dashed/dotted) |
-| Connector | connectors | route (straight/elbow/curved), start and end arrowheads |
-| Text colour, Text size, Align | text, shapes with a label | colour token, size (12–48), left/centre/right |
-| More | everything | opacity, bring forward, send backward, duplicate, delete |
+| Control                       | Shows for                 | Sets                                                           |
+| ----------------------------- | ------------------------- | -------------------------------------------------------------- |
+| Shape                         | shapes                    | the shape kind (10 kinds)                                      |
+| Fill / Note colour            | shapes / sticky notes     | fill token / paper colour                                      |
+| Border (Line for connectors)  | shapes, connectors        | colour, width (thin/medium/thick), style (solid/dashed/dotted) |
+| Connector                     | connectors                | route (straight/elbow/curved), start and end arrowheads        |
+| Text colour, Text size, Align | text, shapes with a label | colour token, size (12–48), left/centre/right                  |
+| More                          | everything                | opacity, bring forward, send backward, duplicate, delete       |
 
 A control appears when at least one selected element can take it, and shows the first such element's value. Applying it changes every selected element that can take it. The rules live in `board-selection.ts`, and shape labels gained an optional colour (`lb.c`, with ink as the omitted default).
 
@@ -43,13 +43,13 @@ The toolbar is React + Arc (Popover, Tooltip, SegmentedControl, `motion` springs
 
 Measured in the real app (WKWebView, 120Hz display, frame-to-frame time with one input event per frame). The JavaScript was never the problem (about 1ms per pointer event); painting was.
 
-| | Before | After |
-| --- | --- | --- |
-| Pan | 47ms avg, 110ms max | 8ms median, 10ms max |
-| Drag a shape | 17ms avg, 71ms max | 8ms avg |
-| Pinch/⌘-scroll zoom | 23ms median, 41ms p90 | 8ms median, 10ms p90 |
-| 300 elements, drag / pan | — | 8ms / 10ms avg |
-| Open a board | — | 6–24ms to first content |
+|                          | Before                | After                   |
+| ------------------------ | --------------------- | ----------------------- |
+| Pan                      | 47ms avg, 110ms max   | 8ms median, 10ms max    |
+| Drag a shape             | 17ms avg, 71ms max    | 8ms avg                 |
+| Pinch/⌘-scroll zoom      | 23ms median, 41ms p90 | 8ms median, 10ms p90    |
+| 300 elements, drag / pan | —                     | 8ms / 10ms avg          |
+| Open a board             | —                     | 6–24ms to first content |
 
 What made the difference, in order of impact. Several follow Excalidraw's renderer (`renderer/staticScene.ts`, `renderElement.ts`, `throttleRAF`, `shouldCacheIgnoreZoom`):
 
@@ -62,11 +62,11 @@ What made the difference, in order of impact. Several follow Excalidraw's render
 
 Second pass ("instant no matter what I move"), measured A/B against the previous build on a mixed board (sections, sticky notes, a flowchart, a 13-topic mind map, a large picture), interleaved runs:
 
-| | Before | After |
-| --- | --- | --- |
+|                                             | Before             | After             |
+| ------------------------------------------- | ------------------ | ----------------- |
 | Input → drawing changes, every kind of move | 8–10ms (one frame) | ~1ms (same frame) |
-| Frame time while moving | 8–11ms | 8–10ms |
-| Click to select, to next frame | 16ms | 10ms median |
+| Frame time while moving                     | 8–11ms             | 8–10ms            |
+| Click to select, to next frame              | 16ms               | 10ms median       |
 
 7. **Same-frame moves.** The first pointer move in a frame is applied synchronously, and later moves in that frame fold into one when it turns. Deferring every move to `requestAnimationFrame` had added a full frame of lag. (Trackpad scrolling had the same treatment until 13 made it a compositor move.)
 8. **Gestures touch only what can change.** At drag, resize or rotate start, the set that can change is fixed: the moving elements plus connectors bound to them. Each frame re-renders only that set (`SceneRenderer.renderSome`), with no stamp pass over the rest of the board. Mind topics are stamped relative to their parent, so dragging a whole map is transforms only. Selecting skips the element pass entirely.
@@ -75,13 +75,13 @@ Second pass ("instant no matter what I move"), measured A/B against the previous
 
 Third pass ("is it still snappy with loads of everything?"), on a stress board of 2,640 elements: 64 tiles, each a section with six sticky notes, a five-step flowchart with arrows, a 17-topic mind map, three pen strokes, two text boxes, three labelled shapes, and a picture in every fourth tile. Interleaved A/B in WKWebView; "far" is 10% zoom with most of the board on screen.
 
-| | Before | After |
-| --- | --- | --- |
-| Zoom commit (repaint after a pinch rests), mid zoom | 14–44ms | 15–28ms |
-| Zoom commit, far | 94–154ms | 54–71ms |
-| JavaScript per zoom step, far | 62–71ms | 9–19ms |
-| Pan frame, far | 106ms median, every frame slow | 8ms median (one slow frame per 192px of travel) |
-| Pinch frame, far, p90 | 9–474ms | 9–10ms |
+|                                                     | Before                         | After                                           |
+| --------------------------------------------------- | ------------------------------ | ----------------------------------------------- |
+| Zoom commit (repaint after a pinch rests), mid zoom | 14–44ms                        | 15–28ms                                         |
+| Zoom commit, far                                    | 94–154ms                       | 54–71ms                                         |
+| JavaScript per zoom step, far                       | 62–71ms                        | 9–19ms                                          |
+| Pan frame, far                                      | 106ms median, every frame slow | 8ms median (one slow frame per 192px of travel) |
+| Pinch frame, far, p90                               | 9–474ms                        | 9–10ms                                          |
 
 A normal board (36 elements) is unchanged: 8ms frames, 9–29ms commits.
 

@@ -33,7 +33,7 @@ export function FileBrowser() {
             </span>
             Search
             <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-caption text-current">
-              ⌘<span className="ml-0.5">F</span>
+              ⌘<span className="ml-0.5">O</span>
             </kbd>
           </button>
         </div>

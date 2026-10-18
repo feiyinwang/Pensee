@@ -193,7 +193,7 @@ export interface BoardCanvasHandle {
   destroy: () => void;
   flush: () => BoardScene;
   focus: () => void;
-  /** Opens find & replace (⌘⇧F, routed here by the overlay). */
+  /** Opens find & replace (⌘F, routed here by the overlay). */
   find: () => void;
   /** Undo or redo on the board (⌘Z routed here when focus is outside it). */
   history: (dir: "undo" | "redo") => void;

@@ -9,15 +9,15 @@ surface with Arc controls. Its content is Pensée's own.
 
 It replaces the New tab page's four links (Create new note, Today's note,
 Search, Add to Library) and the palette's create and add modes. Search stays
-on ⌘F.
+on ⌘O.
 
 ## Ways in
 
 | Way in                                   | Opens the composer…                                         |
 | ---------------------------------------- | ----------------------------------------------------------- |
 | ⌘N, the tab bar's **+**                  | as it was left (an empty draft starts over as a plain note) |
-| ⌘⇧N                                      | with the date chip on today                                 |
-| ⌘⇧L, **Add to Library…** in ⌘F           | ready for Library: type Book until a link says otherwise    |
+| **New Note for Today** in ⌘P             | with the date chip on today                                 |
+| **Add to Library…** in ⌘P                | ready for Library: type Book until a link says otherwise    |
 | A Library tab's **Add <noun>** / **+**   | with that tab's kind picked                                 |
 | Drop one PDF or EPUB while it is showing | with the file attached                                      |
 | A window with no tabs (the New tab page) | in the page itself; ⌘N puts the caret there                 |
@@ -82,7 +82,7 @@ go first and the existing notices report progress and failures.
 ## Motion
 
 None on the box: it opens from the keyboard, often, so it is simply there,
-like ⌘F (docs/motion.md). The Arc pieces inside it (chips, menus, the
+like ⌘O (docs/motion.md). The Arc pieces inside it (chips, menus, the
 calendar) move on Pensée's timing while the box shows:
 ease-out, at most 180ms, instead of Arc's 580ms spring settle
 (`body.composer-motion`, docs/arc.md). The calendar's selected-day glide and

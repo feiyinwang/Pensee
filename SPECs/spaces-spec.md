@@ -21,15 +21,16 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
   ```
 
   `Shows` takes one type or a comma list; `View` is `gallery`, `list` or `cards` (default `gallery`). In Obsidian it is an ordinary note.
+
 - The three built-in spaces are defined in code (`lib/spaces.ts`), so a vault gets them without Pensée writing files into it.
 
 ## Built-in spaces
 
-| Space | Shows | View |
-|---|---|---|
-| Projects | `Type: Project` | kanban ([project-views-spec.md](project-views-spec.md)) |
-| Library | tabs: Books (`Book`), Videos (`YouTube`, `Video`, `Course`: courses are videos), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab |
-| Files | every file | the folder tree (moved here from the sidebar's Everything section) |
+| Space        | Shows                                                                                                         | View                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Projects     | `Type: Project`                                                                                               | kanban ([project-views-spec.md](project-views-spec.md)) |
+| Library      | tabs: Books (`Book`), Videos (`YouTube`, `Video`, `Course`: courses are videos), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab                                          |
+| Files        | every file                                                                                                    | the folder tree (moved here from the sidebar's Everything section)        |
 
 Library opens on Books. Its tabs are an Arc segmented control with the count of each tab. A gallery space (Library, or one you add with `View: gallery`) has no reading-width cap: its cover grid fills the width its tab has, adding a column for every cover's width of room.
 
@@ -39,12 +40,12 @@ Clicking a card opens its note in place. When the note's `Book` file (a PDF or E
 
 A book whose `Book:` is an EPUB shows the cover inside that file first (see below). Then `Cover:` (relative to the note's folder, or an `https` URL) is shown when present. Otherwise each category draws its own default cover from the note's title and author, coloured by a hash of the title so a note keeps its colour:
 
-| Category | Shape | Default cover |
-|---|---|---|
-| Book | 2:3 | spine edge, serif title, author; three layouts picked by the hash |
-| Video | 16:9 | title in a thumbnail frame with a play mark |
-| Podcast | 1:1 | show name set large with a microphone mark |
-| Paper | 3:4 | a typeset title page: venue and year, serif title, authors, text lines |
+| Category | Shape | Default cover                                                          |
+| -------- | ----- | ---------------------------------------------------------------------- |
+| Book     | 2:3   | spine edge, serif title, author; three layouts picked by the hash      |
+| Video    | 16:9  | title in a thumbnail frame with a play mark                            |
+| Podcast  | 1:1   | show name set large with a microphone mark                             |
+| Paper    | 3:4   | a typeset title page: venue and year, serif title, authors, text lines |
 
 A cover that fails to load falls back to the next one: the book's own cover, then `Cover:`, then a video's live thumbnail, then the default cover.
 
@@ -56,8 +57,8 @@ A local `Cover:` is drawn from a thumbnail, never the full picture: the gallery 
 
 Covers come from the note's own link (`url`, `link` or `source`, first non-blank; a bare `youtube.com/…` gets `https://`). Parsing lives in `lib/covers.ts`.
 
-- **Shown live:** a video with a YouTube link (`watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/`) and no `Cover:` shows `https://i.ytimg.com/vi/<id>/hqdefault.jpg` straight away. That is one image request per card, and nothing is written.
-- **Saved on request:** nothing is downloaded or written until the user asks. A card that has a cover to get (that YouTube thumbnail, or a podcast's page) shows a **Get cover** button over the cover's corner on hover. The gallery's "N covers not saved in their notes yet · **Get covers**" line gets them all, one at a time. `save_web_cover` (Rust, `commands/covers.rs`) runs the URL through `fetch_link_preview`. A direct image is used as is; a page gives its Open Graph image. The command downloads the image (`image/*` only, 10 MB cap) to `<stem>-assets/cover.<ext>` (`cover-2.<ext>` when one exists) and returns that path. The frontend writes it with `withCover` through `editPage`: it fills a blank or `null` `Cover:` line in place, else adds the line after `Type:`, and leaves every other line byte for byte. A cover the note already has is never replaced.
+- **Shown live:** a video or a podcast with a YouTube link (`watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/`) and no `Cover:` shows `https://i.ytimg.com/vi/<id>/hqdefault.jpg` straight away. That is one image request per card, and nothing is written.
+- **Saved on request:** nothing is downloaded or written until the user asks. A card that has a cover to get (that YouTube thumbnail, or a podcast's page; a podcast on YouTube gets its thumbnail) shows a **Get cover** button over the cover's corner on hover. The gallery's "N covers not saved in their notes yet · **Get covers**" line gets them all, one at a time. `save_web_cover` (Rust, `commands/covers.rs`) runs the URL through `fetch_link_preview`. A direct image is used as is; a page gives its Open Graph image. The command downloads the image (`image/*` only, 10 MB cap) to `<stem>-assets/cover.<ext>` (`cover-2.<ext>` when one exists) and returns that path. The frontend writes it with `withCover` through `editPage`: it fills a blank or `null` `Cover:` line in place, else adds the line after `Type:`, and leaves every other line byte for byte. A cover the note already has is never replaced.
 - **Why not automatic:** saving changes the note's modified time, and Library sorts by last edited. Fetching on open would reorder the list and rewrite dozens of files without asking.
 - A failure shows an editor notice and leaves the note as it was.
 

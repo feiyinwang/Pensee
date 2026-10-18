@@ -4,6 +4,8 @@
 .cm-editor .cm-pen-line .cm-list-body,
 .cm-editor .cm-pen-line {
   color: var(--color-ai-ink);
+  /* Bold keeps its weight but not your ink: Organize's `**Theory:**`. */
+  --editor-text-strong: var(--color-ai-ink);
 }
 
 .cm-editor .cm-pen-line .cm-list-prefix-bullet::before {

@@ -3,9 +3,9 @@
 import { ok, strictEqual } from "node:assert/strict";
 import { invoke, pressCmd, waitForTitle, workspaceRoot } from "./_helpers.js";
 
-/** Open a note by name through ⌘F, the way PAL-01 does. */
+/** Open a note by name through ⌘O, the way PAL-01 does. */
 async function openViaPalette(name) {
-  await pressCmd("f");
+  await pressCmd("o");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);

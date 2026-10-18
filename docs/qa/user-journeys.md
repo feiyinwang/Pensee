@@ -49,43 +49,44 @@ dissolves into the app; a click or a key skips to the dissolve.
 
 ## Sidebar — SB
 
-**Feature:** The sidebar shows the Search field (⌘F), **Today**, **Spaces** (Projects,
+**Feature:** The sidebar shows the Search field (⌘O), **Today**, **Spaces** (Projects,
 Library, Files), Pinned and Recents. **Files** holds the folder tree.
 **Spec:** SPECs/spaces-spec.md, SPECs/sidebar-drag-and-drop-move-spec.md
 **Code:** `src/components/sidebar/`, `src/components/chrome-tooltip.tsx`, `src/hooks/use-file-tree.ts`, `src-tauri/src/commands/fs.rs`, `src-tauri/src/watcher.rs`
 
-| ID    | Journey                                           | Expected                                                                          | Check      |
-| ----- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ---------- |
-| SB-01 | ★ Press ⌘[, then ⌘\\                              | The sidebar hides, then shows again                                               | auto: core |
-| SB-02 | Click a note under Recents                        | It opens in the active tab                                                        | manual     |
-| SB-03 | Click **Files**, expand a folder, click a note    | The tree opens and the note opens                                                 | manual     |
-| SB-04 | Right-click empty sidebar space → **New file**    | Files opens with a new note to name                                               | manual     |
-| SB-05 | Create a note outside Pensée (shell) in the vault | It appears in Files within a couple of seconds                                    | manual     |
-| SB-06 | Drag a note onto a folder in Files                | The file moves on disk; its open tab follows                                      | you        |
-| SB-07 | Click the **Search** field at the top             | The command palette opens                                                         | auto: core |
-| SB-08 | Hover the sidebar button, top left                | A tooltip under it reads `Hide sidebar ⌘ [`                                       | auto: core |
-| SB-09 | Look at **Spaces** in the sidebar                 | Projects, Library, Files; no Inspirations                                         | auto: core |
-| SB-10 | Hover **Today**, then each built-in space         | A tooltip right of the row: `Go to Projects ⌘ P` (Today: `Open today's note ⌘ T`) | auto: core |
-| SB-11 | From a note, press ⌘P, ⌘L, ⌘O                     | Projects, Library, Files open in turn                                             | auto: core |
+| ID    | Journey                                            | Expected                                                                                                                                                                                                                                                                                                                     | Check      |
+| ----- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| SB-01 | ★ Press ⌘[, then ⌘\\                               | The sidebar hides, then shows again                                                                                                                                                                                                                                                                                          | auto: core |
+| SB-02 | Click a note under Recents                         | It opens in the active tab                                                                                                                                                                                                                                                                                                   | manual     |
+| SB-03 | Click **Files**, expand a folder, click a note     | The tree opens and the note opens                                                                                                                                                                                                                                                                                            | manual     |
+| SB-04 | Right-click empty sidebar space → **New file**     | Files opens with a new note to name                                                                                                                                                                                                                                                                                          | manual     |
+| SB-05 | Create a note outside Pensée (shell) in the vault  | It appears in Files within a couple of seconds                                                                                                                                                                                                                                                                               | manual     |
+| SB-06 | Drag a note onto a folder in Files                 | The file moves on disk; its open tab follows                                                                                                                                                                                                                                                                                 | you        |
+| SB-07 | Click the **Search** field at the top              | The command palette opens                                                                                                                                                                                                                                                                                                    | auto: core |
+| SB-08 | Hover the sidebar button, top left                 | A tooltip under it reads `Hide sidebar ⌘ [`                                                                                                                                                                                                                                                                                  | auto: core |
+| SB-09 | Look at **Spaces** in the sidebar                  | Projects, Library, Files; no Inspirations                                                                                                                                                                                                                                                                                    | auto: core |
+| SB-10 | Hover **Today**, then each built-in space          | A tooltip right of the row: `Go to Projects ⌥ P` (Today: `Open today's note ⌘ T`)                                                                                                                                                                                                                                            | auto: core |
+| SB-11 | From a note, press ⌘G then P, then ⌘G L, then ⌘G F | While it waits, the sidebar rows show their letters in boxes (T Today, P Projects, L Library, F Files), no hint bar at the bottom; Projects, Library, Files open in turn and no letter is typed into the note; with the sidebar hidden, ⌘G shows a tray at the bottom centre, above the note footer, naming the same letters | auto: core |
 
 ## Tabs and columns — TAB
 
 **Feature:** Every open tab is a column side by side; pinch toggles one tab /
 all. Tabs have history, shortcuts and a right-click menu.
 **Spec:** SPECs/tab-columns-spec.md, SPECs/note-header-menu-spec.md
-**Code:** `src/components/editor-area/editor-tabs.tsx`, `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/tab-columns.css`, `src/components/editor-area/tab-menu.ts`, `src/components/editor-area/heading-level-labels.ts`, `src/components/editor-area/section-rail.tsx`, `src/components/book-reader/book-reader.tsx`, `src/stores/editor-store.ts`, `src/hooks/use-keyboard-shortcuts.ts`
+**Code:** `src/components/editor-area/editor-tabs.tsx`, `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/tab-columns.css`, `src/components/editor-area/tab-menu.ts`, `src/components/editor-area/heading-level-labels.ts`, `src/components/editor-area/section-rail.tsx`, `src/components/book-reader/book-reader.tsx`, `src/stores/editor-store.ts`, `src/hooks/use-keyboard-shortcuts.ts`, `src/stores/workspace-store.ts`
 
-| ID     | Journey                                                     | Expected                                                                                        | Check               |
-| ------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------- |
-| TAB-01 | Open two notes in two tabs                                  | Both show as columns side by side                                                               | legacy: tab-columns |
-| TAB-02 | ⌘W on the front tab                                         | It closes; its neighbour takes focus                                                            | manual              |
-| TAB-03 | Ctrl+Tab, Ctrl+Shift+Tab, ⌘1…⌘9                             | Focus moves to the next, previous, Nth tab                                                      | manual              |
-| TAB-04 | Follow a link, then ⌥← and ⌥→                               | Goes back to the first note, then forward again                                                 | manual              |
-| TAB-05 | Right-click a tab → **Rename**, type, Enter                 | The file is renamed on disk and in the tab                                                      | manual              |
-| TAB-06 | Right-click a tab → **Delete**                              | The note goes to the Trash and its tab closes                                                   | manual              |
-| TAB-07 | Pinch in on a tab, then out                                 | One tab fills the window as the fingers start to move, then all columns return; nothing flashes | you                 |
-| TAB-09 | Pinch out a little on a column of a note with headings      | That tab shows alone at once; each H1–H6 label is beside its heading in the first frame         | auto: tabs          |
-| TAB-10 | Pinch in to the columns, then back out and in, fingers down | Each change of direction switches the layout again                                              | auto: tabs          |
+| ID     | Journey                                                                | Expected                                                                                        | Check               |
+| ------ | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------- |
+| TAB-01 | Open two notes in two tabs                                             | Both show as columns side by side                                                               | legacy: tab-columns |
+| TAB-02 | ⌘W on the front tab                                                    | It closes; its neighbour takes focus                                                            | manual              |
+| TAB-03 | Ctrl+Tab, Ctrl+Shift+Tab, ⌘1…⌘8, ⌘9                                    | Focus moves to the next, previous, Nth tab; ⌘9 the last                                         | manual              |
+| TAB-04 | Open two notes in one tab, then ⌥⌘← and ⌥⌘→ with the caret in the note | Goes back to the first note, then forward again                                                 | auto: shortcuts     |
+| TAB-05 | Right-click a tab → **Rename**, type, Enter                            | The file is renamed on disk and in the tab                                                      | manual              |
+| TAB-06 | Right-click a tab → **Delete**                                         | The note goes to the Trash and its tab closes                                                   | manual              |
+| TAB-07 | Pinch in on a tab, then out                                            | One tab fills the window as the fingers start to move, then all columns return; nothing flashes | you                 |
+| TAB-08 | ⌘W a note's tab, then ⌘⇧T                                              | The tab comes back where it was, on the same note                                               | auto: shortcuts     |
+| TAB-09 | Pinch out a little on a column of a note with headings                 | That tab shows alone at once; each H1–H6 label is beside its heading in the first frame         | auto: tabs          |
+| TAB-10 | Pinch in to the columns, then back out and in, fingers down            | Each change of direction switches the layout again                                              | auto: tabs          |
 
 ## Composer (new note) — CMP
 
@@ -94,29 +95,30 @@ Library item.
 **Spec:** SPECs/composer-spec.md
 **Code:** `src/components/composer/`, `src/hooks/use-composer.ts`
 
-| ID     | Journey                                | Expected                                                    | Check      |
-| ------ | -------------------------------------- | ----------------------------------------------------------- | ---------- |
-| CMP-01 | ★ ⌘N, type a title and text, ⌘⇧↵       | The note is created with that text and opens                | auto: core |
-| CMP-02 | ⌘N, type a title, ⌘↵                   | The note is created, you stay put, a notice offers **Open** | manual     |
-| CMP-03 | ⌘⇧N, type text with an empty title, ⌘↵ | The text lands at the end of today's note, which opens      | auto: core |
-| CMP-04 | ⌘⇧L, paste a YouTube link in the title | Type switches to Video; creating makes a Library video note | manual     |
-| CMP-05 | Type something, Esc, ⌘N again          | The box reopens with the draft kept                         | manual     |
-| CMP-06 | ⌘⇧N, leave everything empty, ⌘↵        | The button reads **Open today**; today's note opens         | auto: core |
+| ID     | Journey                                                      | Expected                                                    | Check      |
+| ------ | ------------------------------------------------------------ | ----------------------------------------------------------- | ---------- |
+| CMP-01 | ★ ⌘N, type a title and text, ⌘⇧↵                             | The note is created with that text and opens                | auto: core |
+| CMP-02 | ⌘N, type a title, ⌘↵                                         | The note is created, you stay put, a notice offers **Open** | manual     |
+| CMP-03 | ⌘P **New Note for Today**, type text with an empty title, ⌘↵ | The text lands at the end of today's note, which opens      | auto: core |
+| CMP-04 | ⌘P **Add to Library…**, paste a YouTube link in the title    | Type switches to Video; creating makes a Library video note | manual     |
+| CMP-05 | Type something, Esc, ⌘N again                                | The box reopens with the draft kept                         | manual     |
+| CMP-06 | ⌘P **New Note for Today**, leave everything empty, ⌘↵        | The button reads **Open today**; today's note opens         | auto: core |
 
 ## Command palette and search — PAL
 
-**Feature:** ⌘F searches files and commands; a pasted link
+**Feature:** ⌘O (also ⌘P and ⌘⇧F, Obsidian's keys) searches files and commands; a pasted link
 offers **Add to Library**; content search finds text inside notes.
-**Spec:** SPECs/fuzzy-search-grep-spec.md, SPECs/add-to-library-spec.md
+**Spec:** SPECs/fuzzy-search-grep-spec.md, SPECs/add-to-library-spec.md, SPECs/obsidian-shortcuts-spec.md
 **Code:** `src/components/command-palette/`, `src-tauri/src/commands/search.rs`
 
-| ID     | Journey                                          | Expected                                                                       | Check         |
-| ------ | ------------------------------------------------ | ------------------------------------------------------------------------------ | ------------- |
-| PAL-01 | ★ ⌘F, type part of a note's name, Enter          | That note opens                                                                | auto: core    |
-| PAL-02 | ⌘F, type a command name (e.g. "Toggle Calendar") | The command runs                                                               | manual        |
-| PAL-03 | ⌘F, paste a URL                                  | An **Add to Library** row is on top, kind guessed                              | manual        |
-| PAL-04 | Search for a word that is only inside a note     | The note is found with the matching line                                       | manual        |
-| PAL-05 | ⌘F, look at the field and headings               | The field reads _Search notes and commands…_; no text on screen is in all caps | auto: palette |
+| ID     | Journey                                          | Expected                                                                                                              | Check         |
+| ------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------- |
+| PAL-01 | ★ ⌘O, type part of a note's name, Enter          | That note opens                                                                                                       | auto: core    |
+| PAL-02 | ⌘P, type a command name (e.g. "Toggle Calendar") | The command runs                                                                                                      | manual        |
+| PAL-03 | ⌘O, paste a URL                                  | An **Add to Library** row is on top, kind guessed                                                                     | manual        |
+| PAL-04 | Search for a word that is only inside a note     | The note is found with the matching line                                                                              | manual        |
+| PAL-05 | ⌘P, look at the field, headings and rows         | The field reads _Select a command…_; only commands, each with its key (**Go to Projects ⌘ G P**); no text in all caps | auto: palette |
+| PAL-06 | ⌘O, then ⌘⇧F; type a command's name              | Each reads _Find a note…_ and lists notes only, never commands                                                        | auto: palette |
 
 ## Editor — ED
 
@@ -130,19 +132,22 @@ markdown, formatting shortcuts, lists and tasks, find and replace, autosave.
 | ED-01 | ★ Open a note, type a sentence                                                                        | It is saved to disk within a second; no unsaved dot remains                                                                                                                                                                                                               | auto: core                  |
 | ED-02 | ★ Click the title, rename, Enter                                                                      | The file is renamed; the caret moves to the body                                                                                                                                                                                                                          | auto: core                  |
 | ED-03 | Click **N properties ›** under the title                                                              | The properties open; clicking again folds them                                                                                                                                                                                                                            | auto: editor                |
-| ED-04 | ⌘B, ⌘I, ⌘E, ⌘K on selected text                                                                       | Bold, italic, code, link markup is applied and rendered                                                                                                                                                                                                                   | manual                      |
+| ED-04 | ⌘B, ⌘I, ⌘K on selected text; then ⌘E                                                                  | Bold, italic, link markup is applied and rendered; ⌘E does nothing                                                                                                                                                                                                        | manual                      |
 | ED-05 | Type `- a`, Enter, Tab, `b`                                                                           | A nested bullet; Shift+Tab lifts it back                                                                                                                                                                                                                                  | manual                      |
 | ED-06 | Type `1. a`, Enter, Tab                                                                               | Nested numbering reads `1.1` style, like a word processor                                                                                                                                                                                                                 | manual                      |
 | ED-07 | Click a task checkbox                                                                                 | It toggles `[ ]` ↔ `[x]` in the file                                                                                                                                                                                                                                      | manual                      |
 | ED-08 | ⌘⌥1 … ⌘⌥6, then ⌘⌥0                                                                                   | The line becomes H1…H6, then plain paragraph                                                                                                                                                                                                                              | legacy: empty-heading-enter |
-| ED-09 | ⌘⇧F, type a word, Enter; replace one, then **All**                                                    | Matches highlight and step; replacements are written                                                                                                                                                                                                                      | manual                      |
+| ED-09 | ⌥⌘F, type a word, Enter; replace one, then **All**                                                    | Find opens with Replace; matches highlight and step; replacements are written                                                                                                                                                                                             | manual                      |
 | ED-10 | Triple-click a paragraph; double-click a bullet's marker                                              | Selection stops at the text's end with a ¶; marker excluded                                                                                                                                                                                                               | manual                      |
 | ED-11 | ⌘Z, ⌘⇧Z after typing                                                                                  | Undo and redo the edit; history does not leak across files                                                                                                                                                                                                                | manual                      |
 | ED-12 | Change an open note on disk from the shell                                                            | The editor shows the new text without losing the tab                                                                                                                                                                                                                      | manual                      |
 | ED-13 | Click an unchecked task, then click it again                                                          | Box pops, tick draws in, six dots burst once; uncheck is still                                                                                                                                                                                                            | auto: editor                |
 | ED-14 | Type a nested bullet; hover its parent, then the nested one                                           | A faint straight guide drops from the parent; hovering the parent darkens it, hovering the nested (childless) one clears it                                                                                                                                               | auto: lists                 |
 | ED-15 | Under a nested bullet, type an unindented line, then more nested bullets                              | No guide crosses the line: the guide stops above it and starts again below for the bullets after it                                                                                                                                                                       | auto: lists                 |
-| ED-16 | In a note, ⌘⇧F, Esc, then ⌘F                                                                          | The note's find bar opens and closes; then search opens, with no find bar                                                                                                                                                                                                 | auto: editor                |
+| ED-16 | In a note, ⌘F, Esc, then ⌘⇧F                                                                          | The note's find bar opens (no Replace row) and closes; then search opens, with no find bar                                                                                                                                                                                | auto: editor                |
+| ED-17 | In a note, ⌥⌘F                                                                                        | The note's find bar opens with the Replace row                                                                                                                                                                                                                            | auto: editor                |
+| ED-18 | On a plain line, ⌘L three times                                                                       | `- [ ] line`, then `- [x] line`, then `- [ ] line` in the file                                                                                                                                                                                                            | auto: shortcuts             |
+| ED-19 | ⌘D on a line                                                                                          | The line is deleted; the lines around it stay                                                                                                                                                                                                                             | auto: shortcuts             |
 | ED-20 | Open a note with headings where the page has room on its right                                        | **On this page** lists every heading beside the page, indented by level; the one in view is marked on the line; no ticks                                                                                                                                                  | auto: outline               |
 | ED-21 | Click a heading under **On this page**                                                                | The note scrolls to that heading                                                                                                                                                                                                                                          | auto: outline               |
 | ED-22 | Narrow the room on the right (smaller window, wider page, side by side)                               | The list folds back into ticks; hovering them still opens the heading list                                                                                                                                                                                                | auto: outline               |
@@ -159,16 +164,17 @@ link previews.
 **Spec:** SPECs/wiki-link-pages-spec.md, SPECs/wiki-link-preview-spec.md, SPECs/heading-anchor-links-spec.md, SPECs/link-preview-spec.md
 **Code:** `src/components/editor-area/` (link-navigation.ts, link-preview.ts, wiki-link-\*.ts, wiki-pages-extension.ts, date-mention.ts), `src/lib/prosemark-core/links.ts`
 
-| ID     | Journey                                      | Expected                                                   | Check      |
-| ------ | -------------------------------------------- | ---------------------------------------------------------- | ---------- |
-| LNK-01 | ★ Click a `[[Welcome]]` link in a note       | Welcome opens in a new column beside the note              | auto: core |
-| LNK-02 | Type `[[Wel`, pick **Welcome** from the list | `[[Welcome]]` is inserted                                  | manual     |
-| LNK-08 | Type `[[Brand new page]]` and click it       | The page is created (empty) and opens beside               | manual     |
-| LNK-03 | Hover a `[[link]]`                           | A preview card of the page shows beside it                 | manual     |
-| LNK-04 | Type `@to`, Enter                            | `[[YYYY-MM-DD]]` for today is inserted; it opens that note | manual     |
-| LNK-05 | Click `[See](#section)`                      | The editor scrolls to that heading                         | manual     |
-| LNK-06 | Paste a URL on its own line                  | The page shows live in a frame with reload / open buttons  | manual     |
-| LNK-07 | A URL mid-sentence                           | Shows as a link icon; click opens the browser              | manual     |
+| ID     | Journey                                       | Expected                                                   | Check           |
+| ------ | --------------------------------------------- | ---------------------------------------------------------- | --------------- |
+| LNK-01 | ★ Click a `[[Welcome]]` link in a note        | Welcome opens in a new column beside the note              | auto: core      |
+| LNK-02 | Type `[[Wel`, pick **Welcome** from the list  | `[[Welcome]]` is inserted                                  | manual          |
+| LNK-08 | Type `[[Brand new page]]` and click it        | The page is created (empty) and opens beside               | manual          |
+| LNK-03 | Hover a `[[link]]`                            | A preview card of the page shows beside it                 | manual          |
+| LNK-04 | Type `@to`, Enter                             | `[[YYYY-MM-DD]]` for today is inserted; it opens that note | manual          |
+| LNK-05 | Click `[See](#section)`                       | The editor scrolls to that heading                         | manual          |
+| LNK-06 | Paste a URL on its own line                   | The page shows live in a frame with reload / open buttons  | manual          |
+| LNK-09 | Put the caret on a `[[Welcome]]` link, ⌥Enter | Welcome opens beside, as a click does                      | auto: shortcuts |
+| LNK-07 | A URL mid-sentence                            | Shows as a link icon; click opens the browser              | manual          |
 
 ## Blocks — BLK
 
@@ -237,7 +243,7 @@ setting (workspace root when blank) and is reached from ⌘T, the sidebar's
 | ID    | Journey                                              | Expected                                           | Check      |
 | ----- | ---------------------------------------------------- | -------------------------------------------------- | ---------- |
 | DN-01 | ★ Click **Today** in the sidebar                     | Today's note is created if missing and opens       | auto: core |
-| DN-02 | ⌘F → **Open Today's Note** twice                     | The same note opens; its text is never overwritten | manual     |
+| DN-02 | ⌘P → **Open Today's Note** twice                     | The same note opens; its text is never overwritten | manual     |
 | DN-03 | Set Daily Note Folder to `Journal/Daily`, open today | The note is created in that folder                 | manual     |
 | DN-04 | ★ From another note, press ⌘T                        | Today's note is created if missing and opens       | auto: core |
 | DN-05 | Hover **Today** in the sidebar                       | `⌘T` shows at the row's right end                  | you        |
@@ -359,7 +365,7 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 
 **Feature:** A podcast note plays its episode in a card under its properties
 (artwork, title and show, skips, timeline, speed, volume, Pin); adding a
-podcast opens the note, and ⌘⇧J / ⌘S play, pause and pin as on a video.
+podcast opens the note, and ⌘S plays, pins and pauses as on a video.
 **Spec:** SPECs/podcast-notes-spec.md
 **Code:** `src/components/editor-area/podcast-player.tsx`, `src/components/editor-area/podcast-player.css`, `src/components/editor-area/player-keys.tsx`, `src/lib/podcast-player.ts`, `src/lib/video-players.ts`, `src/components/editor-area/video-pin.ts`, `src/hooks/use-composer.ts`, `src-tauri/src/commands/podcasts.rs`
 
@@ -395,7 +401,7 @@ Window zoom with ⌘= / ⌘- / ⌘0.
 
 | ID     | Journey                                                        | Expected                                                                                        | Check                       |
 | ------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------- |
-| SET-01 | ★ ⌘F → **Settings** (or ⌘,)                                    | Preferences opens in a tab                                                                      | auto: core                  |
+| SET-01 | ★ ⌘P → **Settings** (or ⌘,)                                    | Preferences opens in a tab                                                                      | auto: core                  |
 | SET-02 | Pick another **Accent**                                        | Selection, focus ring, calendar day take the colour                                             | manual                      |
 | SET-03 | Change editor font                                             | The editor text changes at once and after relaunch                                              | legacy: font-picker         |
 | SET-04 | ⌘=, ⌘-, ⌘0                                                     | The window zooms in, out, back to 100%; persists                                                | legacy: window-zoom         |
@@ -469,16 +475,16 @@ There is no Shorten pill any more.
 | PEN-27 | After Combine, click another line with the last line empty                                               | The empty line under the list goes                                                                                                                                                                                                                                                                                                                                                                                                                                         | auto: pen                            |
 | PEN-28 | In a big iCloud vault, open it, then ⌘. `[` Enter on a line                                              | Echoes land in a few seconds (well under 30s), the first Connect after opening included                                                                                                                                                                                                                                                                                                                                                                                    | you                                  |
 | PEN-29 | Combine when the pen only echoes your take                                                               | Your points once in your ink; the pen's are its answer's own points, never your words                                                                                                                                                                                                                                                                                                                                                                                      | manual (logic in second-pen.test.ts) |
-| PEN-30 | Select a flat list, ⌘., `#` Enter, then Enter                                                            | A heading per topic, its first line a bold-labelled point of the pen's (two sentences at most, ink `^ai-g-…`); every pen line led by a bold label, no fixed **Evidence:** section; every line you selected is there word for word; the label is bold on screen                                                                                                                                                                                                             | auto: pen                            |
+| PEN-30 | Select a flat list, ⌘., `#` Enter, then Enter                                                            | A heading per topic, its first line a bold-labelled point of the pen's (two sentences at most, ink `^ai-g-…`); every pen line led by a bold label, no fixed **Evidence:** section; every line you selected is there word for word; the label is bold on screen, in the same blue as the line                                                                                                                                                                               | auto: pen                            |
 | PEN-31 | Organize `fruit` / apple, banana, blueberry › benefit › types › biomechanical (your example), then Enter | Every level you wrote stays: blueberry, then its benefit, its types and biomechanical each a level deeper, under the pen's points                                                                                                                                                                                                                                                                                                                                          | auto: pen                            |
+| PEN-32 | At the end of a long paragraph whose start is scrolled above the page, ⌘.                                | The box opens on screen, just above the caret, not up at the paragraph's start                                                                                                                                                                                                                                                                                                                                                                                             | you                                  |
+| PEN-33 | Select lines up from the bottom of a long note (start scrolled away), ⌘.                                 | The box opens on screen, above the caret                                                                                                                                                                                                                                                                                                                                                                                                                                   | auto: pen                            |
 
 ## Claude sign-in — AUTH
 
 **Feature:** When the pen (Organize and the rest) or the Agent fails because
 Claude Code is signed out, a popup offers **Sign in**: Claude Code opens the
 browser, and once the writer approves there the popup says Signed in.
-| PEN-32 | At the end of a long paragraph whose start is scrolled above the page, ⌘. | The box opens on screen, just above the caret, not up at the paragraph's start | you |
-| PEN-33 | Select lines up from the bottom of a long note (start scrolled away), ⌘. | The box opens on screen, above the caret | auto: pen |
 Settings → Agent → Claude shows whether Claude Code is signed in, with
 **Sign in** or **Sign out**.
 **Spec:** SPECs/claude-sign-in-spec.md

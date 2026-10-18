@@ -8,6 +8,8 @@ import {
   notesInTab,
   spaceFileStem,
   spaceFromNote,
+  goKeyPlaces,
+  goTargetForKey,
   splitTypes,
   titleHash,
 } from "../src/lib/spaces";
@@ -116,5 +118,30 @@ describe("helpers", () => {
     expect(bylineOf(note({ note_type: "Book", properties: { author: "A" } }))).toBe("A");
     expect(bylineOf(note({ note_type: "YouTube", properties: { channel: "C" } }))).toBe("C");
     expect(bylineOf(note({ note_type: "Paper" }))).toBeNull();
+  });
+});
+
+describe("the go key (⌘G, then a letter)", () => {
+  test("T is Today, then P Projects, L Library, F Files", () => {
+    expect(goTargetForKey("t")).toBe("today");
+    const at = (key: string) => {
+      const target = goTargetForKey(key);
+      return typeof target === "object" ? target.key : target;
+    };
+    expect(at("p")).toBe("projects");
+    expect(at("L")).toBe("library");
+    expect(at("f")).toBe("files");
+    expect(goTargetForKey("x")).toBeUndefined();
+  });
+
+  test("the hint lists every place once, in sidebar order", () => {
+    expect(goKeyPlaces().map((p) => `${p.key} ${p.name}`)).toEqual([
+      "t Today",
+      "p Projects",
+      "l Library",
+      "f Files",
+    ]);
+    const keys = goKeyPlaces().map((p) => p.key);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

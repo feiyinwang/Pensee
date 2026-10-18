@@ -305,7 +305,7 @@ button.composer-chip:not(:disabled) {
   color: var(--text-primary);
 }
 
-/* ⌘N: over the page, where ⌘F's palette sits. No entrance motion: it opens
+/* ⌘N: over the page, where ⌘O's palette sits. No entrance motion: it opens
    from the keyboard, often, so it is simply there (docs/motion.md). */
 .composer-dialog {
   position: fixed;

@@ -784,9 +784,44 @@ describe("editor-store tab columns", () => {
       tabs: [],
       activeTabId: null,
       activeFilePath: null,
+      closedTabs: [],
     });
     useWorkspaceStore.setState({ chromeMode: "workspace" });
     await useEditorStore.getState().openFile("/a.md");
+  });
+
+  test("reopenClosedTab brings the newest closed tab back where it was", async () => {
+    const store = useEditorStore.getState();
+    await store.openFileBeside("/b.md");
+    await store.openFileBeside("/c.md");
+    const b = useEditorStore.getState().tabs[1]!;
+    store.closeTab(b.id);
+    store.closeTab(useEditorStore.getState().tabs[1]!.id); // c, now second
+
+    await store.reopenClosedTab();
+    expect(paths()).toEqual(["/a.md", "/c.md"]);
+    expect(activePath()).toBe("/c.md");
+    await store.reopenClosedTab();
+    expect(paths()).toEqual(["/a.md", "/b.md", "/c.md"]);
+    expect(activePath()).toBe("/b.md");
+    expect(useEditorStore.getState().closedTabs).toEqual([]);
+  });
+
+  test("reopenClosedTab replaces the New tab page closing the last tab left", async () => {
+    const store = useEditorStore.getState();
+    store.closeActiveTab();
+    expect(useEditorStore.getState().tabs[0]!.location.kind).toBe("launcher");
+
+    await store.reopenClosedTab();
+    expect(paths()).toEqual(["/a.md"]);
+    expect(useEditorStore.getState().tabs).toHaveLength(1);
+  });
+
+  test("a tab closed because its file failed to load is not kept for ⌘⇧T", async () => {
+    mockedInvoke.mockRejectedValueOnce(new Error("gone"));
+    await useEditorStore.getState().openFileBeside("/missing.md");
+    expect(paths()).toEqual(["/a.md"]);
+    expect(useEditorStore.getState().closedTabs).toEqual([]);
   });
 
   test("openFileBeside opens a tab right of the active one and activates it", async () => {

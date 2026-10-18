@@ -666,7 +666,7 @@ export function copyBlockLink(view: EditorView, target: ActionTarget): boolean {
 function copyReference(link: string) {
   writeText(link).then(
     () =>
-      showEditorNotice("Reference copied. Press ⌘⇧V in any page to paste it as a linked block."),
+      showEditorNotice("Reference copied. Press ⌥⌘V in any page to paste it as a linked block."),
     (error) => {
       console.error("[editor] Failed to copy block reference:", error);
       showEditorNotice("Couldn't copy the block reference.");
@@ -674,10 +674,12 @@ function copyReference(link: string) {
   );
 }
 
-/* ------------------------------------------------- keyboard: ⌘⇧C / ⌘⇧V */
+/* ------------------------------------------------- keyboard: ⌘⇧C / ⌥⌘V */
 
 export const COPY_BLOCK_REFERENCE_CHORD = "Mod-Shift-c";
-export const PASTE_BLOCK_REFERENCE_CHORD = "Mod-Shift-v";
+// Not ⌘⇧V: that is plain paste in Obsidian and macOS
+// (SPECs/obsidian-shortcuts-spec.md).
+export const PASTE_BLOCK_REFERENCE_CHORD = "Mod-Alt-v";
 
 /** ⌘⇧C: copy a reference to the block the caret is in — the same block the
  *  gutter handle would act on. */
@@ -696,7 +698,7 @@ export function copyBlockReferenceAtCaret(view: EditorView): boolean {
   return copyBlockLink(view, target);
 }
 
-/** ⌘⇧V: put the copied reference below the caret's line as a linked block —
+/** ⌥⌘V: put the copied reference below the caret's line as a linked block —
  *  a new item when the caret is in a list. */
 export function pasteBlockReference(view: EditorView, isDisposed: () => boolean = () => false) {
   readText()

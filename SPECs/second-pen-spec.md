@@ -16,13 +16,13 @@ own ink, right under the line you're on. It never writes your conclusion:
   shaped by your writing, with your words under the points they back.
 
 Decided from the prototype `apps/desktop/proto/thinking-pen` (2026-10-13):
-Answer → *Sealed*, Check → *Both sides*, Connect → *Inline*. Rejected there:
-*Guess first* (the pen asks for a guess, then answers it; it said the same
-thing three times), *Hints* (three rungs, never the answer: slow when you just
-need the fact), *Verdict* (one Supported / Mixed / Contradicted line: the pen
-still makes the call), *Marks* (wavy underlines over the whole note: easy to
-glance at the colours and not read), *Margin* echoes (pulls you out of the
-text while you write) and *Review* (connections only after writing). The
+Answer → _Sealed_, Check → _Both sides_, Connect → _Inline_. Rejected there:
+_Guess first_ (the pen asks for a guess, then answers it; it said the same
+thing three times), _Hints_ (three rungs, never the answer: slow when you just
+need the fact), _Verdict_ (one Supported / Mixed / Contradicted line: the pen
+still makes the call), _Marks_ (wavy underlines over the whole note: easy to
+glance at the colours and not read), _Margin_ echoes (pulls you out of the
+text while you write) and _Review_ (connections only after writing). The
 earlier pills Ask me, Facts, Mix, New topic and the quiz in video and book
 notes are gone. The look is unchanged from the first Second pen
 (`proto/ai-writing`): Arc's box, AI ink, hollow bullets.
@@ -46,14 +46,15 @@ notes are gone. The look is unchanged from the first Second pen
   input style (a hairline; no focus ring while you type).
 - Each **pill shows its key**:
 
-  | Pill | What it does |
-  | --- | --- |
-  | `!` **Answer** | writes an answer, sealed, with a line under it for your take. It opens once you've written yours |
-  | `@` **Check** | the evidence for and against the line, each with a paper (or *no paper*), then a line for your call. No verdict |
-  | `[[` **Connect** | up to three short points from what you wrote in other notes, each saying what it is (Supports, Example…) and linked to its note |
+  | Pill             | What it does                                                                                                                                                                                              |
+  | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `!` **Answer**   | writes an answer, sealed, with a line under it for your take. It opens once you've written yours                                                                                                          |
+  | `@` **Check**    | the evidence for and against the line, each with a paper (or _no paper_), then a line for your call. No verdict                                                                                           |
+  | `[[` **Connect** | up to three short points from what you wrote in other notes, each saying what it is (Supports, Example…) and linked to its note                                                                           |
   | `#` **Organize** | splits the selected lines (one paragraph works too) into topics, each a tree of bold-labelled points whose branches and depth follow your writing; your words stay, untouched, under the points they back |
 
   On an empty line: **Answer** only (to what you type).
+
 - **Picking a pill keeps the box's width**: it stays as wide as its row
   of pills, no wider. The box then reads _Add a direction, or just press
   Enter_ (the lit pill and the `↵ organize` hint already name it).
@@ -75,9 +76,9 @@ notes are gone. The look is unchanged from the first Second pen
 ### While it writes
 
 - A line in AI ink appears right where the pen's line will land, with what
-  it's doing (*Writing an answer…*, *Finding papers…*, *Reading the
-  papers…*, *Reading your notes…*, *Comparing with yours…*, *Organizing your
-  lines…*) and **Esc stop**.
+  it's doing (_Writing an answer…_, _Finding papers…_, _Reading the
+  papers…_, _Reading your notes…_, _Comparing with yours…_, _Organizing your
+  lines…_) and **Esc stop**.
 - When it writes nothing, it says why on that same line for a few seconds
   ("No paper found for this line.").
 
@@ -97,8 +98,8 @@ notes are gone. The look is unchanged from the first Second pen
   and `v`, the comparison the earlier Answer wrote)
   keep their ink and stay hidden-id. Other apps show an ordinary line or
   bullet.
-- Drawn in AI ink (`--color-ai-ink`), every word of it: labels (*For:*, *How:*,
-  *Supports:*), a source's time, *no paper*, the seal's words and `[[links]]`
+- Drawn in AI ink (`--color-ai-ink`), every word of it: labels (_For:_, _How:_,
+  _Supports:_), a source's time, _no paper_, the seal's words and `[[links]]`
   inside it keep that one colour (a link keeps its underline); a bullet gets a
   hollow marker. Its id is
   never shown, even with the caret on the line. A paper is always a pill,
@@ -106,33 +107,33 @@ notes are gone. The look is unchanged from the first Second pen
   journal and year, citations and link, with **Open paper**. The words fade
   in as they land.
 - An empty line of yours that the pen is waiting on shows what goes there, in
-  faint italics: *Your take first…*, *Your call: does your line hold? Rewrite
-  it or keep it.*
+  faint italics: _Your take first…_, _Your call: does your line hold? Rewrite
+  it or keep it._
 - Its lines are your text: edit them, delete them, undo them like any line.
 
 ### Answer: sealed until you've written your take
 
 - **⌘. !** on a line (a question, or anything to explain): the pen writes its
-  answer under it **sealed**, blurred and unreadable, with *Sealed until you
-  write your take · ⌥↵ open it now* above the words, and an empty bullet
+  answer under it **sealed**, blurred and unreadable, with _Sealed until you
+  write your take · ⌥↵ open it now_ above the words, and an empty bullet
   right **beside** it (the next line, at its level, not under it) with the
-  caret in it: *Your take first…* Under a paragraph, the answer is a plain
+  caret in it: _Your take first…_ Under a paragraph, the answer is a plain
   line and your take the bullet right after it.
 - **Enter** on your take: the pen first checks it's a real attempt (wrong is
   fine; random letters or something off-topic keeps it sealed), then opens
   the answer (`^ai-s-…` becomes `^ai-r-…`, so it stays open after a reload).
   **Nothing else moves**, so you read the two side by side. No comparison is
-  written. An empty bullet goes under your take, caret in it: *Put the two
-  together, in your words…* and, right after those words, a quiet
+  written. An empty bullet goes under your take, caret in it: _Put the two
+  together, in your words…_ and, right after those words, a quiet
   **Combine into one list `Tab`** button.
-- **Enter on an empty take**: nothing opens; the bar says *A wrong guess
-  counts. Write anything first, or ⌥↵ to open it now.*
+- **Enter on an empty take**: nothing opens; the bar says _A wrong guess
+  counts. Write anything first, or ⌥↵ to open it now._
 - **⌥↵** on your take opens it without the check (same as Enter after it);
   on an empty take the answer opens and the take line goes.
 - **Esc** on the empty take takes the sealed answer back.
 - In a **video note** (transcript) or a **book note**, the answer comes from
   the source when it covers it, ending with where (`— 1:10`).
-- An answer the earlier pen wrote (your take *under* it) still opens: its take
+- An answer the earlier pen wrote (your take _under_ it) still opens: its take
   moves beside it, so Combine works on it too. Comparisons it wrote
   (`^ai-v-…`) stay as they are.
 
@@ -143,8 +144,8 @@ line up point for point. Combine breaks both into short points you can take
 one by one, and only when you ask.
 
 - **Tab** (or the **Combine** button) on the empty line under an opened
-  answer and your take. The bar says *Read both first · Tab combine them into
-  one list*. *Reading yours…* shows under your take while the pen reads.
+  answer and your take. The bar says _Read both first · Tab combine them into
+  one list_. _Reading yours…_ shows under your take while the pen reads.
 - The answer, your take and that empty line are replaced by **one tree** at
   their level, built **MECE** at every level: points side by side are the
   same kind of thing at the same level of detail, no two overlap, and
@@ -177,7 +178,7 @@ one by one, and only when you ask.
   - No heading over the list, no colour band, no buttons on the points: the
     next step on any of them is the usual ⌘. box, or Tab under one to go
     deeper.
-- An empty last line: *Add a point, or go deeper on any line above…* with
+- An empty last line: _Add a point, or go deeper on any line above…_ with
   **Undo `⌘Z`** right after the words. **Undo** (or ⌘Z) puts the opened
   answer, your take and the Combine line back exactly. Undo goes once you type
   anywhere; ⌘Z still works as usual.
@@ -187,19 +188,19 @@ one by one, and only when you ask.
   (`--motion-base`, `--ease-out`); a line whose words weren't found fades in.
   Nothing moves under reduced motion.
 - Decided from the prototype `apps/desktop/proto/pen-reconcile` (2026-10-13):
-  *Combine*. Rejected there: the shipped comparison line (the two points often
-  didn't belong together, and overlaps were hard to see), *Woven* (the pen's
+  _Combine_. Rejected there: the shipped comparison line (the two points often
+  didn't belong together, and overlaps were hard to see), _Woven_ (the pen's
   points tucked under yours: three levels deep; nesting by meaning, one level,
   came back on 2026-10-13 after the flat list put a detail beside the point it
-  belongs to), *Mixed* (the pen fused the
-  overlaps into one sentence: it did the mixing for you), *Ledger* (two
-  columns, keep or drop each side: a table in the middle of the note), *Line*
-  (only an empty line: no help finding the overlaps), *Split* (both split but
-  nothing paired), *Under each* (a reply line under every pen point: built
+  belongs to), _Mixed_ (the pen fused the
+  overlaps into one sentence: it did the mixing for you), _Ledger_ (two
+  columns, keep or drop each side: a table in the middle of the note), _Line_
+  (only an empty line: no help finding the overlaps), _Split_ (both split but
+  nothing paired), _Under each_ (a reply line under every pen point: built
   around the pen's points, not yours). Also rejected: splitting the moment
   it opens (you need to read first), a bracket or tinted band joining pairs,
   per-point Break down / Research buttons, a "Your take and the pen's,
-  together" heading, and *Now your version, in one line…* as the last line
+  together" heading, and _Now your version, in one line…_ as the last line
   (the next step is to go deeper, not to summarise).
 
 ### Check: what the papers say, you make the call
@@ -208,15 +209,15 @@ one by one, and only when you ask.
   and writes two lines under it, labelled for what the line asks, read with
   the lines it sits under. On a claim: **For:** the strongest support, then
   **Against:** the strongest challenge or limit. On anything else the labels
-  fit the ask instead (*How:* and *Caveat:* under "how to use it", *Why:* and
-  *But:*, *Answer:* and *Limit:*); a line that takes no side never gets For
-  and Against. Each ends with its paper's pill, or *no paper* when it is a
+  fit the ask instead (_How:_ and _Caveat:_ under "how to use it", _Why:_ and
+  _But:_, _Answer:_ and _Limit:_); a line that takes no side never gets For
+  and Against. Each ends with its paper's pill, or _no paper_ when it is a
   limit of the evidence rather than a finding (one small study, never
   measured, nothing on this exact use). It never writes a verdict.
-- An empty bullet under the second line waits, caret in it: *Your call: what
-  does this change? Rewrite your line or keep it.*
-- No paper found: *No paper found for this line.*
-- **Esc** on the empty *your call* bullet takes both lines back.
+- An empty bullet under the second line waits, caret in it: _Your call: what
+  does this change? Rewrite your line or keep it._
+- No paper found: _No paper found for this line._
+- **Esc** on the empty _your call_ bullet takes both lines back.
 - One more never cites a paper already there.
 
 ### Connect: what you wrote before
@@ -227,9 +228,9 @@ one by one, and only when you ask.
   pen's words on what you found or thought there, and the note as a link. The
   link keeps the original, so the echo never copies the whole line:
   `Supports: You remembered more after eight hours of sleep before an exam. — [[Sleep log]]`.
-  The labels: *Supports*, *Contradicts*, *Example* (your own experience
-  included), *Definition*, *Summary* (the same idea, said before), *Answer*
-  (to the line's question), *Another angle*. The label is in the same ink as
+  The labels: _Supports_, _Contradicts_, _Example_ (your own experience
+  included), _Definition_, _Summary_ (the same idea, said before), _Answer_
+  (to the line's question), _Another angle_. The label is in the same ink as
   the rest of the line.
 - A note already echoed under the line isn't offered again.
 - **Fast.** The search runs on an index of every note's own lines
@@ -249,9 +250,9 @@ one by one, and only when you ask.
   to add; every echo stays. A click on its link opens that note. Echoes go
   only when you remove them: delete them like any line, or press **Esc**
   right after they land to take back the ones just written.
-- Nothing found: *None of your other notes mention this yet.* Found, but
-  nothing on the same subject: *Your notes mention this, but nothing that
-  meets this line yet.*
+- Nothing found: _None of your other notes mention this yet._ Found, but
+  nothing on the same subject: _Your notes mention this, but nothing that
+  meets this line yet._
 
 ### Organize
 
@@ -320,7 +321,8 @@ under the points they back.
   still unreadable: _Couldn't organize these lines. Try again._
 - The outline replaces your lines, tinted, and the text waits: _4 topics.
   Your words sit under the points they back._ **Enter** keeps it, **Esc**
-  puts your lines back exactly as they were.
+  puts your lines back exactly as they were. The bottom bar says the same
+  line with its keys, since the one under a long outline can be out of sight.
 - This task is the one exception to the pen's "one line, never your
   conclusion": the prompt says so.
 
@@ -369,11 +371,13 @@ never shows through. It shows, in order of what applies:
 
 1. **Writing…** while a request runs (nothing while the pen's box is open);
 2. a short message, for 4 seconds (nothing found, an error);
-3. on your take beside a sealed answer: `↵ open it  ⌥↵ open it now`; on the
-   empty line under an opened answer and your take: `Read both first  Tab
-   combine them into one list`; on the empty line under a combined list, while
-   Combine was the last change: `⌘Z back to the two  ⌘. on any line to go
-   deeper`;
+3. while Organize's outline waits:
+   `4 topics. Your words sit under the points they back.  ↵ keep  Esc put mine back`;
+4. on your take beside a sealed answer: `↵ open it  ⌥↵ open it now`; on the
+   empty line under an opened answer and your take:
+   `Read both first  Tab combine them into one list`; on the empty line under
+   a combined list, while Combine was the last change:
+   `⌘Z back to the two  ⌘. on any line to go deeper`;
 5. on a pen line (an echo too): `↵ reply under it`;
 6. right after the pen writes: `Esc take them back` and the like, for 5 seconds;
 7. otherwise, while the caret is in the note: `⌘. answer, check or connect the line you're on`.

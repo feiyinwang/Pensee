@@ -2,7 +2,7 @@
 
 ## Problem
 
-A page's title was its first line when that line was a `# ` heading (or its frontmatter `title:`). Writing an H1 at the top of a note renamed it everywhere — tab, sidebar, ⌘F, recents — and every new note started as `# ` so the title had to be typed into the body. The title and the body's first heading were the same thing.
+A page's title was its first line when that line was a `# ` heading (or its frontmatter `title:`). Writing an H1 at the top of a note renamed it everywhere — tab, sidebar, ⌘O, recents — and every new note started as `# ` so the title had to be typed into the body. The title and the body's first heading were the same thing.
 
 ## Behaviour
 
@@ -10,7 +10,7 @@ A page's title was its first line when that line was a `# ` heading (or its fron
 - Editing the title renames the file, through the same write path as renaming in the sidebar (`renameFileStem`). Enter, ↓ at the end of the title, or clicking away renames; Escape keeps the old name. A name that is taken or invalid is refused with the sidebar's alert, and the title shows the name the file still has. An empty title keeps the old name.
 - Enter and ↓ continue into the body at its start; ↑ on the body's top visual line goes back to the title. A wrapped first line moves up line by line first.
 - A `# ` heading in the body is just a heading. It never becomes the title.
-- The title shown elsewhere (tabs, sidebar, ⌘F, recents, window) is the frontmatter `title:` when present, else the file name. A daily note (`YYYY-MM-DD.md`) keeps its date.
+- The title shown elsewhere (tabs, sidebar, ⌘O, recents, window) is the frontmatter `title:` when present, else the file name. A daily note (`YYYY-MM-DD.md`) keeps its date.
 - New notes start empty (`create_file` writes `""`, not `# `). Pages made from a wiki link start empty; pages made by **Move selection to page** hold only the moved text.
 - Existing notes are not rewritten: a note that starts with `# Same as its name` shows that heading under the title until the writer deletes it.
 

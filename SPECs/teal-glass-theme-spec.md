@@ -93,22 +93,22 @@ The default preset is whichever one equals the schema defaults, and it is
 listed first; the rest are alphabetical. `tests/theme-presets.test.ts` fails if
 the schema defaults stop matching a preset exactly.
 
-| Preset        | Dark bg / accent      | Light bg / accent     |
-| ------------- | --------------------- | --------------------- |
-| Teal (default)| `#003E4A` / `#8FDCD5` | `#E9F2F1` / `#0E6F78` |
-| Amber         | `#4A3600` / `#FFE08A` | `#F7F2E4` / `#80600E` |
-| Ember         | `#692313` / `#FFC3A6` | `#FAF0EB` / `#AD4529` |
-| Forest        | `#004123` / `#A8E6BE` | `#ECF5EF` / `#2A7549` |
-| High Contrast | `#000000` / `#79B8FF` | `#FFFFFF` / `#0040A0` |
-| Indigo        | `#243281` / `#BFCBFF` | `#EEF0FA` / `#3B4DB3` |
-| Midnight      | `#172448` / `#93B8FF` | `#ECEFF6` / `#2D4E8E` |
-| Ocean         | `#003A66` / `#A2D3FA` | `#EAF1F8` / `#1D5F99` |
-| Olive         | `#303E00` / `#D8EA9C` | `#F2F5E9` / `#5A6C22` |
-| Orange        | `#111111` / `#FF6A00` | `#FFFFFF` / `#FF6A00` |
-| Plum          | `#63204E` / `#FFB9DD` | `#F8EEF4` / `#9E3A74` |
-| Slate         | `#2A3B4F` / `#C6D3E3` | `#EEF1F5` / `#475569` |
-| Violet        | `#46297F` / `#DCC4FF` | `#F2EEF9` / `#6A41B5` |
-| Warm Paper    | `#1F1A14` / `#E0A269` | `#F6EFE3` / `#A45A2A` |
+| Preset         | Dark bg / accent      | Light bg / accent     |
+| -------------- | --------------------- | --------------------- |
+| Teal (default) | `#003E4A` / `#8FDCD5` | `#E9F2F1` / `#0E6F78` |
+| Amber          | `#4A3600` / `#FFE08A` | `#F7F2E4` / `#80600E` |
+| Ember          | `#692313` / `#FFC3A6` | `#FAF0EB` / `#AD4529` |
+| Forest         | `#004123` / `#A8E6BE` | `#ECF5EF` / `#2A7549` |
+| High Contrast  | `#000000` / `#79B8FF` | `#FFFFFF` / `#0040A0` |
+| Indigo         | `#243281` / `#BFCBFF` | `#EEF0FA` / `#3B4DB3` |
+| Midnight       | `#172448` / `#93B8FF` | `#ECEFF6` / `#2D4E8E` |
+| Ocean          | `#003A66` / `#A2D3FA` | `#EAF1F8` / `#1D5F99` |
+| Olive          | `#303E00` / `#D8EA9C` | `#F2F5E9` / `#5A6C22` |
+| Orange         | `#111111` / `#FF6A00` | `#FFFFFF` / `#FF6A00` |
+| Plum           | `#63204E` / `#FFB9DD` | `#F8EEF4` / `#9E3A74` |
+| Slate          | `#2A3B4F` / `#C6D3E3` | `#EEF1F5` / `#475569` |
+| Violet         | `#46297F` / `#DCC4FF` | `#F2EEF9` / `#6A41B5` |
+| Warm Paper     | `#1F1A14` / `#E0A269` | `#F6EFE3` / `#A45A2A` |
 
 Orange is the original Pensée palette, values unchanged (including its
 translucency). The gradient variants share the teal recipe: foreground white,

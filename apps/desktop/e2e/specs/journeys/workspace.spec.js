@@ -44,16 +44,21 @@ describe("Journeys: workspace and windows", function () {
     // A fresh splash: reload, and catch it before the 3s guard.
     await browser.refresh();
     await $(".app-splash .app-splash-wordmark").waitForExist({ timeout: 10_000 });
-    await browser.waitUntil(async () => (await entrance()).some((a) => a.name === "app-splash-write"), {
-      timeout: 3_000,
-      timeoutMsg: "the splash never started writing",
-    });
+    await browser.waitUntil(
+      async () => (await entrance()).some((a) => a.name === "app-splash-write"),
+      {
+        timeout: 3_000,
+        timeoutMsg: "the splash never started writing",
+      },
+    );
 
     await browser.execute(() =>
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true })),
     );
     const after = await entrance();
-    const writing = after.filter((a) => a.name === "app-splash-pop" || a.name === "app-splash-write");
+    const writing = after.filter(
+      (a) => a.name === "app-splash-pop" || a.name === "app-splash-write",
+    );
     ok(writing.length > 0, "no writing animations to skip");
     ok(
       writing.every((a) => a.state === "finished"),

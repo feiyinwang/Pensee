@@ -11,6 +11,7 @@ import {
   invoke,
   mouseClick,
   pressCmd,
+  pressKey,
   typeInEditor,
   waitForFile,
   waitForTitle,
@@ -56,9 +57,17 @@ async function hoverTooltip(selector) {
   return text;
 }
 
-/** Open a note by name through ⌘F, the way PAL-01 does. */
+/** Run a ⌘P command by its id. */
+async function runCommand(id) {
+  await pressCmd("p");
+  const item = await $(`[cmdk-item][data-value="${id}"]`);
+  await item.waitForExist({ timeout: 5_000 });
+  await item.click();
+}
+
+/** Open a note by name through ⌘O, the way PAL-01 does. */
 async function openViaPalette(name) {
-  await pressCmd("f");
+  await pressCmd("o");
   const input = await $("[cmdk-input]");
   await input.waitForExist({ timeout: 5_000 });
   await input.setValue(name);
@@ -91,7 +100,7 @@ describe("Journeys: core (smoke)", function () {
     const search = await $("[data-sidebar-surface-content] [data-sidebar-search-button]");
     await search.waitForExist({ timeout: 5_000 });
     strictEqual(await $("[data-sidebar-wordmark]").isExisting(), false, "no PENSÉE row");
-    strictEqual((await search.getText()).replace(/\s+/g, ""), "Search⌘F");
+    strictEqual((await search.getText()).replace(/\s+/g, ""), "Search⌘O");
     await search.click();
     await $("[cmdk-input]").waitForExist({ timeout: 5_000 });
     await browser.keys("Escape");
@@ -110,28 +119,84 @@ describe("Journeys: core (smoke)", function () {
   it("SB-10 hovering Today or a space shows what it does and its shortcut", async function () {
     for (const [selector, text] of [
       ['button[aria-keyshortcuts="Meta+T"]', "Open today's note ⌘ T"],
-      ['button[data-space-key="projects"]', "Go to Projects ⌘ P"],
-      ['button[data-space-key="library"]', "Go to Library ⌘ L"],
-      ['button[data-space-key="files"]', "Go to Files ⌘ O"],
+      ['button[data-space-key="projects"]', "Go to Projects ⌥ P"],
+      ['button[data-space-key="library"]', "Go to Library ⌥ L"],
+      ['button[data-space-key="files"]', "Go to Files ⌥ F"],
     ]) {
       strictEqual(await hoverTooltip(selector), text);
     }
   });
 
-  it("SB-11 ⌘P, ⌘L and ⌘O open Projects, Library and Files, from inside a note", async function () {
+  it("SB-11 ⌘G then P, L or F opens Projects, Library or Files, from inside a note", async function () {
+    // The go key: captured before the editor, so the letter never types.
     for (const [letter, key] of [
       ["p", "projects"],
       ["l", "library"],
-      ["o", "files"],
+      ["f", "files"],
     ]) {
       await openViaPalette("On writing");
       await typeInEditor("");
-      await pressCmd(letter, { inFocus: true });
+      const before = await browser.execute(
+        () => document.querySelector(".cm-content")?.textContent ?? "",
+      );
+      await pressKey("g", { meta: true, code: "KeyG", inFocus: true });
+      // Each sidebar row shows its letter in a box while ⌘G waits.
+      const hint = await $('[data-go-key="t"]');
+      await hint.waitForExist({ timeout: 2_000, timeoutMsg: "⌘G boxed no letters" });
+      const boxes = await browser.execute(() =>
+        [...document.querySelectorAll("[data-go-key]")].map(
+          (box) => `${box.textContent} ${box.previousElementSibling?.textContent?.trim()}`,
+        ),
+      );
+      strictEqual(boxes.join(", "), "T Today, P Projects, L Library, F Files");
+      strictEqual(
+        await $("[data-go-key-hint]").isExisting(),
+        false,
+        "the hint tray showed beside the sidebar",
+      );
+      await pressKey(letter, { code: `Key${letter.toUpperCase()}`, inFocus: true });
       await $(`button[data-space-key="${key}"][aria-current="page"]`).waitForExist({
         timeout: 5_000,
-        timeoutMsg: `⌘${letter.toUpperCase()} never opened ${key}`,
+        timeoutMsg: `⌘G ${letter.toUpperCase()} never opened ${key}`,
       });
+      await hint.waitForExist({ timeout: 2_000, reverse: true });
+      if (letter === "p") {
+        await openViaPalette("On writing");
+        const after = await browser.execute(
+          () => document.querySelector(".cm-content")?.textContent ?? "",
+        );
+        strictEqual(after, before, "the letter after ⌘G typed into the note");
+      }
     }
+
+    // Sidebar hidden: a tray at the bottom centre, above the note footer, names the letters.
+    await openViaPalette("On writing");
+    await pressKey("\\", { meta: true, code: "Backslash", inFocus: true });
+    await $('[data-go-key="t"]').waitForExist({ timeout: 2_000, reverse: true });
+    await pressKey("g", { meta: true, code: "KeyG", inFocus: true });
+    const tray = await $("[data-go-key-hint]");
+    await tray.waitForExist({
+      timeout: 2_000,
+      timeoutMsg: "⌘G showed no tray with the sidebar hidden",
+    });
+    const place = await browser.execute(() => {
+      const box = document.querySelector("[data-go-key-hint]").getBoundingClientRect();
+      return {
+        text: document.querySelector("[data-go-key-hint]").textContent,
+        offCentre: Math.abs(box.left + box.width / 2 - window.innerWidth / 2),
+        gapBelow: window.innerHeight - box.bottom,
+      };
+    });
+    strictEqual(place.text, "⌘GthenTTodayPProjectsLLibraryFFiles");
+    ok(place.offCentre <= 1, `the tray sits ${place.offCentre}px off centre`);
+    ok(
+      place.gapBelow >= 44,
+      `the tray covers the note footer (${place.gapBelow}px from the bottom)`,
+    );
+    await pressKey("Escape", { code: "Escape", inFocus: true });
+    await tray.waitForExist({ timeout: 3_000, reverse: true });
+    await pressKey("\\", { meta: true, code: "Backslash", inFocus: true });
+    await $('section[aria-label="Spaces"]').waitForExist({ timeout: 2_000 });
   });
 
   it("SB-09 the Spaces section lists Projects, Library and Files", async function () {
@@ -144,7 +209,7 @@ describe("Journeys: core (smoke)", function () {
     strictEqual(keys.join(","), "projects,library,files");
   });
 
-  it("PAL-01 ⌘F finds a note by name and opens it", async function () {
+  it("PAL-01 ⌘O finds a note by name and opens it", async function () {
     await openViaPalette("Welcome");
     ok((await editorText()).includes("A note to open first"), "Welcome's text shows");
   });
@@ -216,9 +281,9 @@ describe("Journeys: core (smoke)", function () {
     await waitForTitle(dayStamp());
   });
 
-  it("CMP-03 ⌘⇧N, text, ⌘↵ adds it to today's note and opens it", async function () {
+  it("CMP-03 New Note for Today in ⌘P, text, ⌘↵ adds it to today's note and opens it", async function () {
     await openViaPalette("On writing");
-    await pressCmd("n", { shift: true });
+    await runCommand("new-today-note");
     await $('[role="dialog"][aria-label="New note"]').waitForExist({ timeout: 5_000 });
     await fillField('[aria-label="New note"] textarea[aria-label="Text"]', "A line for today.");
     await browser.execute(() => {
@@ -235,9 +300,9 @@ describe("Journeys: core (smoke)", function () {
     ok((await readFile(`${root}/${dayStamp()}.md`)).includes("A line for today."));
   });
 
-  it("CMP-06 ⌘⇧N with nothing typed, ⌘↵ opens today's note", async function () {
+  it("CMP-06 New Note for Today with nothing typed, ⌘↵ opens today's note", async function () {
     await openViaPalette("On writing");
-    await pressCmd("n", { shift: true });
+    await runCommand("new-today-note");
     const button = await $('[aria-label="New note"] button.composer-submit');
     await button.waitForExist({ timeout: 5_000 });
     strictEqual((await button.getText()).replace("⌘↵", "").trim(), "Open today");
@@ -274,7 +339,7 @@ describe("Journeys: core (smoke)", function () {
   });
 
   it("SET-01 the palette opens Preferences", async function () {
-    await pressCmd("f");
+    await pressCmd("p");
     const input = await $("[cmdk-input]");
     await input.waitForExist({ timeout: 5_000 });
     await input.setValue("Settings");

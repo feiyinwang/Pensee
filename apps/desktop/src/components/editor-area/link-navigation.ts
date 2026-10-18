@@ -1,4 +1,4 @@
-import { EditorView } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { type Extension, Prec } from "@codemirror/state";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import * as editorApi from "@/hooks/editor-api";
@@ -8,9 +8,11 @@ import type { DocumentHeading } from "@/hooks/use-document-headings";
 import { resolveLinkTarget } from "@/lib/paths";
 import { setPendingAnchor } from "@/lib/pending-anchor";
 import { linkUrlAt, rawUrlAt } from "@/lib/prosemark-core/links";
+import { findWikiLinkAt } from "@/lib/wiki-links";
 import * as tauri from "@/lib/tauri";
 import { findOuterScroller, scrollPosToSafeTop } from "./editor-scroll";
 import { showEditorNotice } from "./editor-notice-store";
+import { followWikiLink } from "./wiki-pages-extension";
 
 export function findHeadingBySlug(content: string, slug: string): DocumentHeading | undefined {
   return buildSlugIndex(parseDocumentHeadings(content, { maxDepth: 6, slugDepth: 6 })).get(slug);
@@ -104,10 +106,54 @@ function linkHrefAt(event: MouseEvent, view: EditorView): string | null {
   return (isRenderedLink ? linkUrlAt(view.state, pos) : rawUrlAt(view.state, pos)) ?? null;
 }
 
+/** Follow the wiki or markdown link under the caret as a click would, or
+ *  return false when the caret isn't on one. */
+function followLinkAtCaret(
+  view: EditorView,
+  getFilePath: () => string,
+  isDisposed: () => boolean,
+): boolean {
+  const pos = view.state.selection.main.head;
+  const wiki = findWikiLinkAt(view.state.doc, pos);
+  if (wiki && !wiki.embed) {
+    void followWikiLink(wiki.inner, getFilePath() || null)
+      .then((path) => {
+        if (path && !isDisposed()) void editorApi.openLinkedPage(path);
+      })
+      .catch((error) => {
+        if (!isDisposed()) console.error("[editor] Failed to follow wiki link:", error);
+      });
+    return true;
+  }
+  const href = linkHrefAtPos(view, pos);
+  if (href === null) return false;
+  void followLink(href, view, getFilePath()).catch((error) => {
+    if (!isDisposed()) console.error("[editor] Failed to open link:", error);
+  });
+  return true;
+}
+
 export function linkNavigationExtension(
   getFilePath: () => string,
   isDisposed: () => boolean,
 ): Extension {
+  const follow = (view: EditorView) => followLinkAtCaret(view, getFilePath, isDisposed);
+  return [
+    // Obsidian's keys for the link under the caret: ⌥Enter follows it, and
+    // ⌘Enter (open in a new tab there) does the same, since following a link
+    // already opens it beside. Off a link both fall through: ⌘Enter keeps its
+    // own meaning (SPECs/obsidian-shortcuts-spec.md).
+    Prec.highest(
+      keymap.of([
+        { key: "Alt-Enter", run: follow },
+        { key: "Mod-Enter", run: follow },
+      ]),
+    ),
+    linkClickHandlers(getFilePath, isDisposed),
+  ];
+}
+
+function linkClickHandlers(getFilePath: () => string, isDisposed: () => boolean): Extension {
   return Prec.highest(
     EditorView.domEventHandlers({
       // Claim the press on mousedown so CodeMirror doesn't move the caret

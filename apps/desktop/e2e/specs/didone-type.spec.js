@@ -155,7 +155,7 @@ describe("Didone display type", function () {
   it("sets command-palette group headings in sentence case, not monospace", async function () {
     await browser.execute(() => {
       document.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "f", metaKey: true, bubbles: true, cancelable: true }),
+        new KeyboardEvent("keydown", { key: "o", metaKey: true, bubbles: true, cancelable: true }),
       );
     });
     const heading = await $("[cmdk-group-heading]");

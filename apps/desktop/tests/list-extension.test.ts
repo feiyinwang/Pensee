@@ -7,7 +7,12 @@ import {
 } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
-import { computeCheckboxToggle, listExtension, __test } from "../src/lib/prosemark-core/list";
+import {
+  computeCheckboxToggle,
+  listExtension,
+  toggleCheckboxStatus,
+  __test,
+} from "../src/lib/prosemark-core/list";
 import { newlyCheckedTicks } from "../src/lib/prosemark-core/list/task-celebration";
 import { withFullParse } from "./helpers/parsed-state";
 
@@ -591,6 +596,53 @@ describe("listOutdent (Shift-Tab)", () => {
     const { state } = run(listOutdent, s);
     expect(state.doc.toString()).toBe("1. a\n2. b");
     expect(state.selection.main.head).toBe(9);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toggleCheckboxStatus (⌘L)
+// ---------------------------------------------------------------------------
+
+describe("toggleCheckboxStatus", () => {
+  test("a plain line becomes an open task, keeping its indent", () => {
+    expect(run(toggleCheckboxStatus, makeState("idea", 2)).state.doc.toString()).toBe("- [ ] idea");
+    expect(run(toggleCheckboxStatus, makeState("  idea", 4)).state.doc.toString()).toBe(
+      "  - [ ] idea",
+    );
+  });
+
+  test("a bullet gains its box", () => {
+    expect(run(toggleCheckboxStatus, makeState("- idea", 4)).state.doc.toString()).toBe(
+      "- [ ] idea",
+    );
+  });
+
+  test("a task is ticked and unticked as a click does", () => {
+    const ticked = run(toggleCheckboxStatus, makeState("- [ ] idea", 8)).state;
+    expect(ticked.doc.toString()).toBe("- [x] idea");
+    expect(run(toggleCheckboxStatus, ticked).state.doc.toString()).toBe("- [ ] idea");
+  });
+
+  test("ticking celebrates like a click (same user event)", () => {
+    const state = makeState("- [ ] idea", 8);
+    let tr: Transaction | null = null;
+    toggleCheckboxStatus({ state, dispatch: (t) => (tr = t) });
+    expect(newlyCheckedTicks([tr!])).toEqual([3]);
+  });
+
+  test("a selection of tasks toggles each; a mix makes the rest tasks", () => {
+    const tasks = "- [ ] a\n- [x] b";
+    expect(run(toggleCheckboxStatus, makeState(tasks, 0, tasks.length)).state.doc.toString()).toBe(
+      "- [x] a\n- [ ] b",
+    );
+    const mixed = "- [ ] a\nb\n\n- c";
+    expect(run(toggleCheckboxStatus, makeState(mixed, 0, mixed.length)).state.doc.toString()).toBe(
+      "- [ ] a\n- [ ] b\n\n- [ ] c",
+    );
+  });
+
+  test("an empty line becomes an empty task", () => {
+    expect(run(toggleCheckboxStatus, makeState("", 0)).state.doc.toString()).toBe("- [ ] ");
   });
 });
 

@@ -46,14 +46,15 @@ Fences, tables, HTML blocks, column rows and rules can't be linked in v1, becaus
 ## Keyboard
 
 - **⌘⇧C** copies a reference to the block the caret is in: the same block the gutter handle addresses (`gripBlockAt`). It tags the block the first time, exactly like **Copy link to block**. Inside an embed, it copies that embedded block's reference.
-- **⌘⇧V** reads the clipboard. If it holds one block reference (`![[Page#^id]]` or `[[Page#^id]]`), the reference is inserted as a linked block (`referenceInsertion`):
+- **⌥⌘V** (⌘⇧V is plain paste, as in Obsidian) reads the clipboard. If it holds one block reference (`![[Page#^id]]` or `[[Page#^id]]`), the reference is inserted as a linked block (`referenceInsertion`):
   - on a blank line, in place of it;
   - on a list item, as a new sibling item (a numbered item gets the next number);
   - anywhere else, as its own paragraph below the line.
-  
+
   Anything else on the clipboard shows a notice instead of pasting.
+
 - The editor's right-click menu carries both, as **Copy block reference** and **Paste as linked block**, with their shortcuts. They act on the block under the click.
-- A paragraph's tag always goes after its *last* line, even when the caret or grip was on an earlier one, so the whole paragraph is the block.
+- A paragraph's tag always goes after its _last_ line, even when the caret or grip was on an earlier one, so the whole paragraph is the block.
 
 ## Backlinks
 
@@ -68,7 +69,6 @@ Where the counts come from (`block-backlinks.ts`):
 - **Pages on disk:** `find_block_references` (Rust, `commands/search.rs`) reads every indexed markdown file in parallel, off the UI thread. A file with no `#^` costs one substring scan.
 - **Open pages:** scanned in memory from the store (`referencesInText`, the same rule as the Rust scan). Their disk copy is ignored, so nothing counts twice and unsaved references count.
 - **When it runs:** a page with no ids starts nothing. A page with ids runs one disk scan when it opens. Another runs when a file changes outside the app, when the first index finishes, or when an open page closes (its saved text becomes the disk copy, and the app's own saves raise no watcher event). Store changes refresh the in-memory part only, debounced 300 ms.
-
 
 - Embeds are found by a regex over CodeMirror's visible ranges only. Off-screen embeds cost nothing.
 - Drawing an embed reads its page once: from the store if it's open, else one disk read shared by every embed of that page (bounded LRU of 64 pages).

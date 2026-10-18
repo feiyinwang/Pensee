@@ -192,9 +192,9 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     setTimeout(finalize, 150);
   };
 
-  /** Capture phase so ⌘Z, ⌘⇧F never reach the editor behind the overlay.
-   *  The board's own handlers run on the host element inside. ⌘F (search)
-   *  and ⌘P (Projects) are app-wide and go through. */
+  /** Capture phase so ⌘Z, ⌘F never reach the editor behind the overlay.
+   *  The board's own handlers run on the host element inside. ⌘⇧F (search)
+   *  and ⌘P (the palette) are app-wide and go through. */
   const SWALLOWED = new Set(["f", "k", "s"]);
   const onKeyDown = (e: KeyboardEvent): void => {
     if (!overlay.isConnected) return;
@@ -202,10 +202,10 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     if (inline && !(e.target instanceof Node && overlay.contains(e.target))) return;
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
-    if (mod && SWALLOWED.has(key) && (key !== "f" || e.shiftKey)) {
+    if (mod && SWALLOWED.has(key) && (key !== "f" || !e.shiftKey)) {
       e.preventDefault();
       e.stopPropagation();
-      // ⌘⇧F stays out of the note behind, but is the board's own find.
+      // ⌘F stays out of the note behind, but is the board's own find.
       if (key === "f") canvas?.find();
       return;
     }

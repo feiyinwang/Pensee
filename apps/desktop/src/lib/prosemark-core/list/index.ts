@@ -969,6 +969,47 @@ export const computeCheckboxToggle = (
   };
 };
 
+/** ⌘L, Obsidian's "Toggle checkbox status": when every line the selection
+ *  touches is a task, tick or untick each (as a click does, so a tick
+ *  celebrates); otherwise each line that isn't one becomes an open task — a
+ *  bullet gains its box, any other line `- [ ] `. Blank lines are skipped
+ *  unless they are all there is (SPECs/obsidian-shortcuts-spec.md). */
+export const toggleCheckboxStatus: StateCommand = ({ state, dispatch }) => {
+  const touched = new Map<number, Line>();
+  for (const range of state.selection.ranges) {
+    const last = state.doc.lineAt(range.to).number;
+    for (let n = state.doc.lineAt(range.from).number; n <= last; n++) {
+      touched.set(n, state.doc.line(n));
+    }
+  }
+  const lines = [...touched.values()];
+  const filled = lines.filter((line) => line.text.trim() !== "");
+  const targets = (filled.length > 0 ? filled : lines).map((line) => ({
+    line,
+    list: listLineAt(state, line.from),
+  }));
+
+  if (targets.every(({ list }) => list?.isTask)) {
+    const changes = targets.map(({ list }) => {
+      const at = list!.markerFrom + TASK_INNER_OFFSET;
+      const checked = state.doc.sliceString(at, at + 1).toLowerCase() === "x";
+      return { from: at, to: at + 1, insert: checked ? " " : "x" };
+    });
+    dispatch(state.update({ changes, userEvent: TOGGLE_CHECKBOX_EVENT }));
+    return true;
+  }
+
+  const changes = targets
+    .filter(({ list }) => !list?.isTask)
+    .map(({ line, list }) =>
+      list
+        ? { from: list.bodyFrom, insert: "[ ] " }
+        : { from: line.from + currentLineIndentLen(line.text), insert: "- [ ] " },
+    );
+  dispatch(state.update({ changes, userEvent: "input.format.taskList" }));
+  return true;
+};
+
 const computeCheckboxToggleFromLine = (state: EditorState, pos: number): TransactionSpec | null => {
   const parsed = parseBulletTaskLineAt(state, pos);
   if (!parsed || !parsed.isTask) return null;
