@@ -19,12 +19,20 @@ Every note is a markdown file in your own folder, so it opens in Obsidian or any
 - **Library** keeps books, videos, podcasts and papers as notes, and opens PDFs and EPUBs beside their page so highlights land in it.
 - **Boards** live inside a note: cards and arrows for mapping out an idea. Drag a card next to another and it docks there, joined by an arrow.
 - **Projects** shows your project notes as a list, a kanban or a timeline, and writes changes back to each note's properties.
-- **YouTube notes** play the video inside its note, and each note you take can be pinned to the moment it was written.
+- **YouTube and podcast notes** play the episode inside its note, and each line you write can be pinned to the moment you wrote it.
 - The **Agent** chat is Claude with your pages in view: it reads and edits them, and explains or defines what you select in a book.
 
-![Opening a paper from Library: its PDF opens in the reader beside the note](./assets/readme/reader.gif)
+![Highlighting "Vigorous writing is concise." in The Elements of Style: the line lands in the book's note, a click on it brings the page back, and a thought of your own goes under it](./assets/readme/book.gif)
 
-_A paper in Library opens its PDF beside its note, so what you write sits next to what you read._
+_Open a book from Library and its page sits beside its note. Highlight a line and it lands in the note. Click it later and the book goes back to that spot, and you write what it means to you under it._
+
+![Taking notes on a Huberman Lab video: ⌘S plays, ⌘S again pins the moment and pauses, then you write the line](./assets/readme/youtube.gif)
+
+_In a YouTube note, ⌘S plays and ⌘S again pauses and pins the moment to the line you're on. Write your thought, ⌘S to play on. Each pin plays from its moment._
+
+![Taking notes on a podcast episode the same way: each line pinned to the moment in the episode](./assets/readme/podcast.gif)
+
+_Podcasts work the same way: listen, pin, write._
 
 ![Dragging a card next to another on a board: it docks and an arrow joins them](./assets/readme/dock.gif)
 
