@@ -51,6 +51,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - [docs/qa/user-journeys.md](./docs/qa/user-journeys.md) — every user journey that must keep working, by feature: what the feature is, the code that can break it, and how each journey is checked
 - [docs/qa/qa-checklist.md](./docs/qa/qa-checklist.md) — the QA pass the `pensee-qa` skill runs after each change: pick journeys from the changed files, drive the real app with `apps/desktop/e2e/qa/run.sh`, fix failures, report; plus the e2e harness traps
 - [docs/qa/performance.md](./docs/qa/performance.md) — speed rules: every action has a budget (16ms typing, 50ms show, 100ms go), a change never makes an action slower than its baseline, the PERF journeys every QA pass runs, and what usually makes Pensée slow
+- [docs/qa/readme-gifs.md](./docs/qa/readme-gifs.md) — how the README GIFs are filmed again with one command (`apps/desktop/e2e/readme-gifs/film.sh <scene>`), each scene's crop and cut, and the traps (window in front, your keys leak in, focus and selection)
 
 **Infra**
 
