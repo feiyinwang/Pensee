@@ -55,16 +55,16 @@ below has a 2ms floor.
 Actions are clicks and typing, never shortcut keys, so a shortcut remap
 doesn't break them.
 
-| ID      | Action                                           | Kind   | Code it covers                                                                              |
-| ------- | ------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------- |
-| PERF-01 | A letter typed in a 1,800-line note              | `type` | `src/components/editor-area/` (extensions, decorations), `src/stores/editor-store.ts`       |
-| PERF-02 | Clicking Search opens the search palette         | `show` | `src/components/command-palette/`                                                           |
-| PERF-03 | Typing in search narrows the results             | `show` | `src/components/command-palette/`, `src-tauri/src/commands/search.rs`                       |
-| PERF-04 | Enter on a result opens the long note            | `go`   | `src/components/editor-area/`, `src/stores/editor-store.ts`, `src-tauri/src/commands/fs.rs` |
-| PERF-05 | Hiding and showing the sidebar                   | `show` | `src/components/sidebar/`, `src/components/app-layout.tsx`                                  |
-| PERF-06 | Clicking Projects, Library, Files in the sidebar | `go`   | `src/components/sidebar/`, `src/components/spaces/`, `src-tauri/src/commands/spaces.rs`     |
-| PERF-07 | A drag step on a board while a dock is offered   | `type` | `src/components/editor-area/board/` (board-canvas.ts, board-spark.ts, board-render.ts)      |
-| PERF-08 | A pinch between one tab and all columns (5 tabs) | `go`   | `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/` (editor panes)  |
+| ID      | Action                                            | Kind   | Code it covers                                                                              |
+| ------- | ------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------- |
+| PERF-01 | A letter typed in a 1,800-line note               | `type` | `src/components/editor-area/` (extensions, decorations), `src/stores/editor-store.ts`       |
+| PERF-02 | Clicking Search opens the search palette          | `show` | `src/components/command-palette/`                                                           |
+| PERF-03 | Typing in search narrows the results              | `show` | `src/components/command-palette/`, `src-tauri/src/commands/search.rs`                       |
+| PERF-04 | Enter on a result opens the long note             | `go`   | `src/components/editor-area/`, `src/stores/editor-store.ts`, `src-tauri/src/commands/fs.rs` |
+| PERF-05 | Hiding and showing the sidebar                    | `show` | `src/components/sidebar/`, `src/components/app-layout.tsx`                                  |
+| PERF-06 | Clicking Projects, Library, Files in the sidebar  | `go`   | `src/components/sidebar/`, `src/components/spaces/`, `src-tauri/src/commands/spaces.rs`     |
+| PERF-07 | A drag step on a board while a dock is offered    | `type` | `src/components/editor-area/board/` (board-canvas.ts, board-spark.ts, board-render.ts)      |
+| PERF-08 | A pinch between one tab and all columns (20 tabs) | `go`   | `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/` (editor panes)  |
 
 The long note is `Notes/Long essay.md` in the QA vault
 (`e2e/qa/seed-vault.mjs`): headings, prose, nested lists, tasks, quotes and
@@ -77,7 +77,7 @@ headroom in the shipped app.
 
 First baseline (2026-10-16): typing 4ms, Search opens 13ms, search narrows
 3ms, opening the long note 32ms, sidebar 4ms, spaces 3ms. Everything is
-well inside its budget; the rules below keep it there. PERF-07 (a board drag step with a dock offered) joined the same day at 1ms; the docking spark it replaced took 2–3ms. PERF-08 (a pinch between one tab and five columns) joined on 2026-10-18 at 28ms. It measures the shown editors inside the switch (22ms before, when CodeMirror measured them 50ms later in a frame of its own and its labels jumped there), and it can't see the book highlights that cost the user ~half a second per switch: those run in WebKit's rendering update, which the hidden e2e window doesn't schedule, so they were found and checked with `sample`.
+well inside its budget; the rules below keep it there. PERF-07 (a board drag step with a dock offered) joined the same day at 1ms; the docking spark it replaced took 2–3ms. PERF-08 (a pinch between one tab and five columns) joined on 2026-10-18 at 28ms. It measures the shown editors inside the switch (22ms before, when CodeMirror measured them 50ms later in a frame of its own and its labels jumped there), and it can't see the book highlights that cost the user ~half a second per switch: those run in WebKit's rendering update, which the hidden e2e window doesn't schedule, so they were found and checked with `sample`. Later that day it went to 20 tabs (the long note and a video among them), since the user keeps ~30 open and a pinch cost every one of them: 46ms with 20 tabs, then 14ms once a pinch stopped touching hidden tabs (below, **Hidden tabs**).
 
 Paint isn't timed (the hidden e2e window doesn't paint on schedule), and the
 QA vault is small. Neither replaces trying the app: when it feels slow in the
@@ -186,9 +186,15 @@ against the list before running the journeys; it is cheaper to catch here.
 - **Costly CSS.** Animate `transform` and `opacity` only; no
   `transition: all`; no `backdrop-filter`, `filter: blur` or large shadows
   on many elements or on anything that scrolls.
-- **Hidden tabs.** Keep-alive tabs keep their text rendered under
-  `visibility: hidden`. Work that walks a document (highlights, find,
-  selection) skips hidden tabs.
+- **Hidden tabs.** Keep-alive tabs stay mounted and laid out, moved out of
+  sight past the strip's clip (`tab-columns.css`), so their text is
+  rendered. Work that walks a document (highlights, find, selection) skips
+  hidden tabs. Hiding or showing a tab changes nothing inherited inside it:
+  WebKit restyles every node under a change to `visibility`, `pointer-events`,
+  `inert`, a custom property, and even `content-visibility` (measured
+  2026-10-18 on 19 hidden tabs: 65–120ms each, against 4ms for moving
+  them). A hidden tab keeps the layout it last showed in, so a pinch lays
+  out only the tabs it shows differently.
 - **Startup.** A new feature loads when first used, not at launch.
 - **Long AI replies.** The pen waits for Claude's whole reply, so its time
   is mostly how much Claude writes. Ask for terse formats: an outline

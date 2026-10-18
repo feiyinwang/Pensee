@@ -46,12 +46,12 @@ function define(book: string, text: string) {
 
 export default function BookReader({
   location,
-  isActive,
-  inColumn,
+  isShown,
 }: {
   location: BookTabLocation;
   isActive: boolean;
   inColumn: boolean;
+  isShown: boolean;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -62,7 +62,6 @@ export default function BookReader({
   const [textSize, setTextSize] = useState<number | null>(null);
   const reduceMotion = useReducedMotion();
   const bookName = getFileStem(location.path);
-  const isShown = isActive || inColumn;
   const isShownRef = useRef(isShown);
   isShownRef.current = isShown;
 

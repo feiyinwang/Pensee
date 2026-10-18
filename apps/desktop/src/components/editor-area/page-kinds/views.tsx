@@ -31,16 +31,23 @@ const FileTabBody = ({
   location,
   isActive,
   inColumn,
+  isShown,
 }: {
   location: FileLocation;
   isActive: boolean;
   inColumn: boolean;
-}) => <EditorPane path={location.path} isActive={isActive} inColumn={inColumn} />;
+  isShown: boolean;
+}) => <EditorPane path={location.path} isActive={isActive} inColumn={inColumn} isShown={isShown} />;
 
 // The reader (and pdf.js / fflate with it) loads only when a book tab mounts.
 const BookReader = lazy(() => import("@/components/book-reader/book-reader"));
 // eslint-disable-next-line react-doctor/only-export-components
-const BookTabBody = (props: { location: BookLocation; isActive: boolean; inColumn: boolean }) => (
+const BookTabBody = (props: {
+  location: BookLocation;
+  isActive: boolean;
+  inColumn: boolean;
+  isShown: boolean;
+}) => (
   <Suspense fallback={null}>
     <BookReader {...props} />
   </Suspense>

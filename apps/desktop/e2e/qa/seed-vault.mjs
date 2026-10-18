@@ -163,9 +163,29 @@ NOTES["Notes/Long essay.md"] = Array.from({ length: 120 }, (_, i) =>
 ).join("\n");
 
 // The pinch journey (PERF-08) opens each of these as a column beside it, so a
-// pinch has a strip of real notes to lay out, the long one among them.
+// pinch has a strip of real notes to lay out, the long one among them: twenty
+// tabs, as many as a writer keeps open in a day, so a pinch's cost shows
+// whether it grows with every open tab or only the ones on screen.
+const STRIP_NOTES = Array.from({ length: 10 }, (_, n) => `Strip ${n + 1}`);
+for (const name of STRIP_NOTES) {
+  NOTES[`Notes/${name}.md`] = Array.from({ length: 12 }, (_, i) =>
+    [
+      `## ${name} section ${i + 1}`,
+      "",
+      `A working paragraph in ${name}, long enough to wrap across the column a few times as a real draft does, with **bold** words and a [[Welcome]] link.`,
+      "",
+      "- a point to keep",
+      "  - a detail under it",
+      "- [ ] an open task",
+      "",
+    ].join("\n"),
+  ).join("\n");
+}
 NOTES["Notes/Pinch hub.md"] =
-  "Open [[Long essay]], [[Outline tour]], [[On writing]] and [[Welcome]] beside this.\n";
+  "Open [[Long essay]], [[Outline tour]], [[On writing]] and [[Welcome]] beside this.\n\n" +
+  "Then [[Side projects]], [[Fruit]], [[Sleep log]], [[A book]], [[How we remember]], " +
+  STRIP_NOTES.map((name) => `[[${name}]]`).join(", ") +
+  ".\n";
 
 /** Rebuild the vault and reset the e2e app's state. Called before every
  *  journey spec file (wdio.conf.js beforeSession), so specs never depend on

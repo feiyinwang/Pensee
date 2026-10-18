@@ -36,24 +36,16 @@ const ProjectViews = lazy(() => import("./project-views"));
  *  gallery, list or cards, the Projects kanban, or the folder tree for Files. */
 export function SpacePage({
   location,
-  isActive,
   inColumn,
 }: {
   location: SpaceLocation;
   isActive: boolean;
   inColumn: boolean;
 }) {
-  const isShown = isActive || inColumn;
   const space = useSpaceDef(location);
 
   return (
-    <div
-      data-space-page
-      className={
-        isShown ? "relative z-10 h-full" : "absolute inset-0 invisible pointer-events-none h-full"
-      }
-      aria-hidden={!isShown}
-    >
+    <div data-space-page className="relative z-10 h-full">
       <EditorScrollContainer>
         <div
           className={[

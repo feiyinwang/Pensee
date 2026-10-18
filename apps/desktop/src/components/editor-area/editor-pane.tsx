@@ -25,15 +25,18 @@ function AsciiSpinner() {
 interface EditorPaneProps {
   path: string;
   isActive: boolean;
-  /** One of several side-by-side tab columns: always shown, and sized for
-   *  its island rather than the whole window. */
+  /** Laid out as one of the side-by-side tab columns: sized for its island
+   *  rather than the whole window. */
   inColumn?: boolean;
+  /** On screen. A hidden tab is hidden by TabColumns, not here. */
+  isShown?: boolean;
 }
 
 export const EditorPane = memo(function EditorPane({
   path,
   isActive,
   inColumn = false,
+  isShown = true,
 }: EditorPaneProps) {
   const isLoading = useIsFileLoading(path);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -42,14 +45,9 @@ export const EditorPane = memo(function EditorPane({
 
   const getScrollContainer = useCallback(() => scrollContainerRef.current, []);
 
-  const visibilityClass =
-    inColumn || isActive
-      ? "relative z-10 h-full"
-      : "absolute inset-0 invisible pointer-events-none";
-
   if (isLoading) {
     return (
-      <div className={visibilityClass}>
+      <div className="relative z-10 h-full">
         <div className="flex h-full items-center justify-center text-ui text-[var(--text-muted)]">
           <AsciiSpinner />
         </div>
@@ -58,7 +56,7 @@ export const EditorPane = memo(function EditorPane({
   }
 
   return (
-    <div data-pane className={visibilityClass}>
+    <div data-pane data-shown={isShown || undefined} className="relative z-10 h-full">
       <EditorScrollContainer ref={scrollContainerRef}>
         <div
           // pt-10 / md:pt-24 are the 40px / 96px SectionRail's outlineTop lines up with.

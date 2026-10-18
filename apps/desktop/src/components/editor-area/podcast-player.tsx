@@ -28,6 +28,7 @@ import { coverValueSrc } from "../spaces/space-cover";
 import { showEditorNotice } from "./editor-notice-store";
 import { PlayerKeys } from "./player-keys";
 import { SPEED_KEYSHORTCUTS, installVideoPinShortcut } from "./video-pin";
+import { isInHiddenTab } from "./hidden-tab";
 import "./video-player.css";
 import "./podcast-player.css";
 
@@ -203,7 +204,10 @@ function PodcastBand({
         setPrefs((value) => ({ ...value, rate: stepPodcastSpeed(value.rate, step) }));
       },
       rect: () => bandRef.current?.getBoundingClientRect() ?? new DOMRect(),
-      shown: () => bandRef.current?.checkVisibility({ visibilityProperty: true }) ?? false,
+      shown: () => {
+        const band = bandRef.current;
+        return !!band && band.checkVisibility({ visibilityProperty: true }) && !isInHiddenTab(band);
+      },
     };
     playerRef.current = player;
 

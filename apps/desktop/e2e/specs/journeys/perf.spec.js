@@ -447,10 +447,11 @@ describe("Journeys: speed", function () {
     judge("PERF-07", "type", samples);
   });
 
-  it("PERF-08 a pinch switches between one tab and all columns", async function () {
-    // Leave the board (PERF-07), then open four notes as columns beside the
-    // hub. The driver's native click doesn't reach CodeMirror's link handler,
-    // so each link is pressed with synthetic mouse events.
+  it("PERF-08 a pinch switches between one tab and all columns (20 tabs)", async function () {
+    // Leave the board (PERF-07), then open nineteen notes as columns beside
+    // the hub: twenty tabs, the long note and a video among them. The
+    // driver's native click doesn't reach CodeMirror's link handler, so each
+    // link is pressed with synthetic mouse events.
     if (await $(".wr-board-fullscreen").isExisting()) await browser.keys("Escape");
     await closeSearch();
     await $("[data-sidebar-surface-content] [data-sidebar-search-button]").click();
@@ -465,12 +466,32 @@ describe("Journeys: speed", function () {
     });
     await $('//*[@cmdk-item][contains(., "Pinch hub")]').click();
     await waitForTitle("Pinch hub");
-    for (const [i, name] of ["Long essay", "Outline tour", "On writing", "Welcome"].entries()) {
+    const hubLinks = [
+      "Long essay",
+      "Outline tour",
+      "On writing",
+      "Welcome",
+      "Side projects",
+      "Fruit",
+      "Sleep log",
+      "A book",
+      "How we remember",
+      ...Array.from({ length: 10 }, (_, n) => `Strip ${n + 1}`),
+    ];
+    for (const [i, name] of hubLinks.entries()) {
       await browser.execute((text) => {
-        const link = [...document.querySelectorAll(".cm-wiki-link")].find(
+        // Other notes link too: the hub is the column linking to Strip 10.
+        const hub = [...document.querySelectorAll(".tab-column")].find((column) =>
+          [...column.querySelectorAll(".cm-wiki-link")].some((el) => el.textContent === "Strip 10"),
+        );
+        // New columns open at the strip's end and it scrolls to them.
+        const strip = hub.closest(".tab-columns");
+        if (strip) strip.scrollLeft = hub.offsetLeft;
+        const link = [...hub.querySelectorAll(".cm-wiki-link")].find(
           (el) => el.textContent === text,
         );
-        const r = link.getBoundingClientRect();
+        // A link that wraps has two boxes: press its first line.
+        const r = link.getClientRects()[0];
         const at = { bubbles: true, cancelable: true, button: 0, clientX: r.left + 4 };
         for (const type of ["mousedown", "mouseup", "click"]) {
           link.dispatchEvent(new MouseEvent(type, { ...at, clientY: r.top + r.height / 2 }));
@@ -483,10 +504,13 @@ describe("Journeys: speed", function () {
       );
       // Back to the hub, so the next link opens beside it.
       await browser.execute(() => {
-        const hub = [...document.querySelectorAll(".tab-column")].find((el) =>
-          el.querySelector(".cm-wiki-link"),
-        );
-        hub.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        [...document.querySelectorAll(".tab-column")]
+          .find((column) =>
+            [...column.querySelectorAll(".cm-wiki-link")].some(
+              (el) => el.textContent === "Strip 10",
+            ),
+          )
+          .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
       });
     }
     // Each sample is one pinch: a single Ctrl-wheel step past the threshold,

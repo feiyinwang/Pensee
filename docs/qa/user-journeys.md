@@ -73,7 +73,7 @@ Library, Files), Pinned and Recents. **Files** holds the folder tree.
 **Feature:** Every open tab is a column side by side; pinch toggles one tab /
 all. Tabs have history, shortcuts and a right-click menu.
 **Spec:** SPECs/tab-columns-spec.md, SPECs/note-header-menu-spec.md
-**Code:** `src/components/editor-area/editor-tabs.tsx`, `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/tab-columns.css`, `src/components/editor-area/tab-menu.ts`, `src/components/editor-area/heading-level-labels.ts`, `src/components/editor-area/section-rail.tsx`, `src/components/book-reader/book-reader.tsx`, `src/stores/editor-store.ts`, `src/hooks/use-keyboard-shortcuts.ts`
+**Code:** `src/components/editor-area/editor-tabs.tsx`, `src/components/editor-area/tab-columns.tsx`, `src/components/editor-area/tab-columns.css`, `src/components/editor-area/hidden-tab.ts`, `src/components/editor-area/tab-menu.ts`, `src/components/editor-area/heading-level-labels.ts`, `src/components/editor-area/section-rail.tsx`, `src/components/book-reader/book-reader.tsx`, `src/stores/editor-store.ts`, `src/hooks/use-keyboard-shortcuts.ts`
 
 | ID     | Journey                                                     | Expected                                                                                        | Check               |
 | ------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------- |
@@ -86,6 +86,7 @@ all. Tabs have history, shortcuts and a right-click menu.
 | TAB-07 | Pinch in on a tab, then out                                 | One tab fills the window as the fingers start to move, then all columns return; nothing flashes | you                 |
 | TAB-09 | Pinch out a little on a column of a note with headings      | That tab shows alone at once; each H1–H6 label is beside its heading in the first frame         | auto: tabs          |
 | TAB-10 | Pinch in to the columns, then back out and in, fingers down | Each change of direction switches the layout again                                              | auto: tabs          |
+| TAB-11 | Scroll a long note's column, pinch to one tab, then back    | The long note is where you left it, its text laid out                                           | auto: tabs          |
 
 ## Composer (new note) — CMP
 
