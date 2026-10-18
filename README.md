@@ -8,14 +8,25 @@ Pensée is where the collecting turns into understanding. Your memory goes on th
 
 The AI is a second pen, not a ghostwriter. It answers a question only after you've written your own take. It lays out the evidence on both sides of a claim and leaves the call to you. It shows where a line connects to something you wrote months ago, and you write how they connect. Your ideas stay yours.
 
-![Pensée](./assets/screenshot.png)
+![Asking the second pen a question: its answer stays sealed until you write your own take](./assets/readme/pen.gif)
+
+_Press ⌘. on a question and the pen writes an answer, sealed. Write your own take first, and it opens beside it._
 
 Every note is a markdown file in your own folder, so it opens in Obsidian or any editor. Around the notes:
 
 - **Library** keeps books, videos, podcasts and papers as notes, and opens PDFs and EPUBs beside their page so highlights land in it.
+- **Boards** live inside a note: cards and arrows for mapping out an idea. Drag a card next to another and it docks there, joined by an arrow.
 - **Projects** shows your project notes as a list, a kanban or a timeline, and writes changes back to each note's properties.
 - **YouTube notes** play the video inside its note, and each note you take can be pinned to the moment it was written.
 - The **Agent** chat is Claude with your pages in view: it reads and edits them, and explains or defines what you select in a book.
+
+![Opening a paper from Library: its PDF opens in the reader beside the note](./assets/readme/reader.gif)
+
+_A paper in Library opens its PDF beside its note, so what you write sits next to what you read._
+
+![Dragging a card next to another on a board: it docks and an arrow joins them](./assets/readme/dock.gif)
+
+_On a board, drop a card beside another and it docks into place with an arrow._
 
 It is built with Tauri v2, React, Zustand, CodeMirror, and Rust. The app keeps documents on disk, respects workspace `.gitignore` rules, supports multiple windows, and renders extended markdown such as tables and Mermaid diagrams. The logo and brand are described in [`docs/brand.md`](./docs/brand.md).
 
