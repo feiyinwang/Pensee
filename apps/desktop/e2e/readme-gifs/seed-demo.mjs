@@ -87,6 +87,13 @@ const NOTES = {
     "```",
     "",
   ].join("\n"),
+  "Notes/How I learn.md": [
+    "What I've noticed about how I learn, to check against what's known.",
+    "",
+    "- Rereading my notes is the best way to remember them.",
+    "- I only understand a book once I've written about it.",
+    "",
+  ].join("\n"),
   "Notes/Questions.md": [
     "Things I keep wondering about while reading.",
     "",

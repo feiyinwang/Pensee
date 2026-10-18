@@ -9,7 +9,7 @@
 #   e2e/readme-gifs/film.sh --stitch-only podcast  # re-stitch the last frames
 #   e2e/readme-gifs/film.sh all                 # every scene
 #
-# Scenes: pen, book, youtube, podcast, dock (it("…") names in scenes.spec.js).
+# Scenes: check, connect, pen, book, youtube, podcast, dock (it("…") names in scenes.spec.js).
 # Frames are kept in $FRAMES (default: $TMPDIR/pensee-readme-gifs) so a GIF
 # can be re-stitched with another crop without filming again.
 set -euo pipefail
@@ -18,19 +18,20 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 E2E_DIR="$HERE/.."
 TAURI_DIR="$E2E_DIR/../src-tauri"
 OUT_DIR="$E2E_DIR/../../../assets/readme"
-APP="$TAURI_DIR/target/debug/bundle/macos/Pensée.app/Contents/MacOS/desktop"
+# PENSEE_E2E_APP films another debug e2e build (another checkout's, with --no-build).
+APP="${PENSEE_E2E_APP:-$TAURI_DIR/target/debug/bundle/macos/Pensée.app/Contents/MacOS/desktop}"
 FRAMES="${FRAMES:-${TMPDIR:-/tmp}/pensee-readme-gifs}"
 export PATH="$HOME/.cargo/bin:$HOME/.vite-plus/bin:$PATH"
-ALL=(pen book youtube podcast dock)
+ALL=(check connect pen book youtube podcast dock)
 
-# How each scene is stitched: GIF width, then stitch.py options. The podcast
-# is cropped to the player and the notes under it (CSS px); the YouTube GIF
-# loses the sidebar's sliver and stops before the pin click.
+# How each scene is stitched: GIF width, then stitch.py options. YouTube and
+# the podcast are cropped to the player and the lines under it, as the spec
+# measured them (@notes), and stop before the pin click.
 stitch_args() {
   case "$1" in
-    pen | book | dock) echo "--width 1200" ;;
-    youtube) echo "--width 1200 --crop 163,0,end,end --until pin-click" ;;
-    podcast) echo "--width 1000 --crop 520,95,1080,420" ;;
+    check | connect | pen | book | dock) echo "--width 1200" ;;
+    youtube) echo "--width 1000 --crop @notes --until pin-click" ;;
+    podcast) echo "--width 1000 --crop @notes --until pin-click" ;;
     *) echo "Unknown scene: $1 (scenes: ${ALL[*]})" >&2; return 1 ;;
   esac
 }

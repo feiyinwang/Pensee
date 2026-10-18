@@ -2,6 +2,10 @@
 // vault (seed-demo.mjs). Each scene is a run of WebDriver screenshots (the
 // page only, never the desktop), named NNNN-<ms>.png so stitch.py can replay
 // them at their real pace. Run it through film.sh, one scene per app launch.
+// Typing is the exception: a screenshot takes 100–400ms, so typing a word a
+// frame shows the text in jumps with stalls between. typeLive() types a few
+// letters a frame and stamps each frame TYPE_STEP_MS after the last, so the
+// GIF types at an even pace however slow the screenshots were.
 //
 // Unlike the journey specs, this one brings the app window to front before
 // each step: a window in the background paints no frames, so its columns
@@ -21,9 +25,16 @@ import {
 const AI_TIMEOUT = 90_000;
 const FRAMES = process.env.FRAMES;
 const APP = process.env.PENSEE_E2E_APP;
+/** Letters typed per frame, and how long each such frame shows. */
+const TYPE_CHARS = 2;
+const TYPE_STEP_MS = 70;
 let scene = "";
 let n = 0;
 let marks = {};
+let regions = {};
+// The scene's clock: wall time minus the time typing frames didn't take.
+let lag = 0;
+let lastStamp = 0;
 
 /** Frames go to $FRAMES/<name>/, with the page's size in CSS pixels beside
  *  them (viewport.json): stitch.py crops in CSS pixels whatever the screen's
@@ -33,14 +44,22 @@ async function startScene(name) {
   scene = name;
   n = 0;
   marks = {};
+  regions = {};
+  lag = 0;
+  lastStamp = 0;
   mkdirSync(`${FRAMES}/${name}`, { recursive: true });
   const viewport = await browser.execute(() => ({ width: innerWidth, height: innerHeight }));
   writeFileSync(`${FRAMES}/${name}/viewport.json`, JSON.stringify(viewport));
 }
-async function shot() {
+/** One frame, stamped with the scene's clock; `step` stamps it that many ms
+ *  after the frame before, whatever time really passed. */
+async function shot(step) {
   const b64 = await browser.takeScreenshot();
+  const now = Date.now();
+  if (step !== undefined) lag = now - (lastStamp + step);
+  lastStamp = now - lag;
   writeFileSync(
-    `${FRAMES}/${scene}/${String(n++).padStart(4, "0")}-${Date.now()}.png`,
+    `${FRAMES}/${scene}/${String(n++).padStart(4, "0")}-${lastStamp}.png`,
     Buffer.from(b64, "base64"),
   );
 }
@@ -48,6 +67,24 @@ async function shot() {
 function mark(name) {
   marks[name] = n;
   writeFileSync(`${FRAMES}/${scene}/marks.json`, JSON.stringify(marks));
+}
+/** Saves where the player and the lines under it are now (CSS px), so
+ *  stitch.py can crop to them (--crop @name) whatever the layout was. */
+async function saveRegion(name) {
+  regions[name] = await browser.execute(() => {
+    const band = document.querySelector(".video-band");
+    const pane = band.closest("[data-pane]") ?? band.parentElement;
+    const lines = [...pane.querySelectorAll(".cm-line")].filter((l) => l.textContent.trim());
+    const last = lines[lines.length - 1].getBoundingClientRect();
+    const bottom = Math.min(last.bottom + 44, innerHeight);
+    // A podcast's card sits in the text column: crop to it. A video is as
+    // wide as the pane.
+    const card = band.querySelector(".podcast-card")?.getBoundingClientRect();
+    if (card) return [card.left - 32, Math.max(card.top - 24, 0), card.right + 32, bottom];
+    const side = pane.getBoundingClientRect();
+    return [side.left, Math.max(band.getBoundingClientRect().top - 8, 0), side.right, bottom];
+  });
+  writeFileSync(`${FRAMES}/${scene}/regions.json`, JSON.stringify(regions));
 }
 /** Screenshot as fast as WebDriver allows for `ms`. */
 async function film(ms) {
@@ -145,6 +182,46 @@ async function caretAfter(text) {
   await browser.pause(150);
 }
 
+/** Click into the last line matching `selector` at the end of its first
+ *  words (an echo's bold label; the end of the line is its [[link]], which a
+ *  click would open), then End: the caret goes past the hidden id (^ai-e-…),
+ *  so Enter starts a line under it. */
+async function caretAtEndOfLast(selector) {
+  await browser.execute((sel) => {
+    const lines = [...document.querySelectorAll(sel)];
+    const line = lines[lines.length - 1];
+    if (!line) throw new Error(`no line matches ${sel}`);
+    line.scrollIntoView({ block: "center" });
+    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    let first = null;
+    let node;
+    while (!first && (node = walker.nextNode())) {
+      if (node.data.trim().length > 1 && !node.parentElement.closest("a, [class*='link']")) {
+        first = node;
+      }
+    }
+    if (!first) throw new Error(`no words to click in ${sel}`);
+    const range = document.createRange();
+    range.setStart(first, first.data.length - 1);
+    range.setEnd(first, first.data.length);
+    const box = range.getBoundingClientRect();
+    const point = {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      detail: 1,
+      clientX: box.right - 1,
+      clientY: box.top + box.height / 2,
+    };
+    const target = document.elementFromPoint(point.clientX, point.clientY) ?? line;
+    target.dispatchEvent(new MouseEvent("mousedown", point));
+    target.dispatchEvent(new MouseEvent("mouseup", point));
+    target.dispatchEvent(new MouseEvent("click", point));
+  }, selector);
+  await browser.pause(150);
+  await key("End");
+}
+
 /** Click into the empty line of yours that shows `words` (what the pen waits
  *  for there), just left of those words: the caret goes on that line. */
 async function caretInWaiting(words) {
@@ -231,12 +308,12 @@ async function waitForBox() {
   );
 }
 
-/** Type `text` a word at a time at the caret, a frame after each word. */
-async function typeWords(text) {
+/** Type `text` at the caret a few letters a frame, at an even pace. */
+async function typeLive(text) {
   front();
-  for (const word of text.split(" ")) {
-    await typeInEditor(word + " ", { atEnd: false });
-    await shot();
+  for (let at = 0; at < text.length; at += TYPE_CHARS) {
+    await typeInEditor(text.slice(at, at + TYPE_CHARS), { atEnd: false });
+    await shot(TYPE_STEP_MS);
   }
 }
 
@@ -284,6 +361,16 @@ async function listenPinWrite(ms, text, newLine) {
   const before = await visiblePins();
   front();
   await pressCmd("s");
+  // A player that isn't ready yet ignores ⌘S: press it again until the keys
+  // row under it says Pin (playing).
+  const playing = () =>
+    browser.execute(() =>
+      [...document.querySelectorAll(".player-keys")].some((k) => k.textContent.includes("Pin")),
+    );
+  for (let attempt = 0; attempt < 5 && !(await playing()); attempt++) {
+    await browser.pause(1500);
+    if (!(await playing())) await pressCmd("s");
+  }
   if (newLine) {
     await key("End");
     await key("Enter");
@@ -296,7 +383,7 @@ async function listenPinWrite(ms, text, newLine) {
     timeoutMsg: "⌘S didn't pin the line",
   });
   await film(700);
-  await typeWords(text);
+  await typeLive(text);
   await film(500);
 }
 
@@ -332,6 +419,64 @@ describe("README GIFs", function () {
     await browser.pause(600);
   });
 
+  // Check: on a claim, the pen writes what papers say for and against it,
+  // and your call goes under them.
+  it("check", async function () {
+    await startScene("check");
+    await openViaPalette("How I learn");
+    await browser.pause(800);
+    await film(800);
+    await armOn("the best way to remember them.");
+    await film(900);
+    await key("@", { shift: true });
+    await film(700);
+    await key("Enter");
+    await filmUntil(() => waitingShows("Your call"), AI_TIMEOUT, 1200);
+    await film(1500);
+    // A paper's pill shows the paper on hover.
+    await browser.execute(() =>
+      document
+        .querySelector(".cm-pen-cite")
+        ?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
+    );
+    await film(2600);
+    await caretInWaiting("Your call");
+    await typeLive("So quiz myself instead of rereading.");
+    await film(1500);
+    const root = await workspaceRoot();
+    console.log("FINAL CHECK\n" + (await readFile(`${root}/Notes/How I learn.md`)));
+  });
+
+  // Connect: the pen brings back what your other notes say about a line, and
+  // you write how they connect.
+  it("connect", async function () {
+    await startScene("connect");
+    await openViaPalette("How I learn");
+    await browser.pause(800);
+    await film(800);
+    await armOn("once I've written about it.");
+    await film(900);
+    await key("[");
+    await film(700);
+    await key("Enter");
+    await filmUntil(
+      () => browser.execute(() => document.querySelectorAll(".cm-line.cm-pen-e").length > 0),
+      AI_TIMEOUT,
+      1200,
+    );
+    await film(2500);
+    await caretAtEndOfLast(".cm-line.cm-pen-e");
+    await key("Enter");
+    const columns = await browser.execute(
+      () => document.querySelectorAll("[data-column-tab]").length,
+    );
+    ok(columns === 1, `a click opened another note (${columns} columns)`);
+    await typeLive("Same thing twice: I understand it once I've said it myself.");
+    await film(1500);
+    const root = await workspaceRoot();
+    console.log("FINAL CONNECT\n" + (await readFile(`${root}/Notes/How I learn.md`)));
+  });
+
   // The second pen: ask about a line, write your take beside the answer,
   // then Tab combines the two into one list.
   it("pen", async function () {
@@ -347,11 +492,7 @@ describe("README GIFs", function () {
     await filmUntil(() => waitingShows("Your take"), AI_TIMEOUT, 1200);
     await film(1500);
     await caretInWaiting("Your take");
-    const take = "I guess the brain replays what you learned while you sleep";
-    for (const word of take.split(" ")) {
-      await typeInEditor(word + " ", { atEnd: false });
-      await shot();
-    }
+    await typeLive("I guess the brain replays what you learned while you sleep");
     await film(600);
     await key("Enter");
     const root = await workspaceRoot();
@@ -465,16 +606,14 @@ describe("README GIFs", function () {
     // note's column does.
     await browser.execute(() => {
       const editor = [...document.querySelectorAll(".cm-content")].find((el) => el.offsetParent);
-      editor
-        .closest(".tab-column")
-        .dispatchEvent(
-          new PointerEvent("pointerdown", {
-            bubbles: true,
-            pointerId: 1,
-            isPrimary: true,
-            button: 0,
-          }),
-        );
+      editor.closest(".tab-column").dispatchEvent(
+        new PointerEvent("pointerdown", {
+          bubbles: true,
+          pointerId: 1,
+          isPrimary: true,
+          button: 0,
+        }),
+      );
     });
     front();
     await caretAfter("Vigorous writing is concise");
@@ -485,7 +624,7 @@ describe("README GIFs", function () {
     await key("End");
     await key("Enter");
     await key("Tab");
-    await typeWords("My drafts say each thing three times. Say it once, then stop.");
+    await typeLive("My drafts say each thing three times. Say it once, then stop.");
     await film(1500);
     console.log("FINAL BOOK\n" + (await readFile(path)));
   });
@@ -500,6 +639,23 @@ describe("README GIFs", function () {
       { timeout: 20_000, timeoutMsg: "no player" },
     );
     await browser.pause(3000);
+    // Scroll the title and properties away: the video sticks to the top and
+    // the lines being written get the room under it.
+    await browser.execute(() => {
+      const band = document.querySelector(".video-band");
+      let scroller = band.parentElement;
+      while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+        scroller = scroller.parentElement;
+      }
+      scroller.scrollTop += band.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      // Past the point where it sticks, the video would cover the first lines
+      // under it: back off by how far it moved off its place in the flow,
+      // which the 1px sentinel just above it keeps.
+      const sentinel = document.querySelector(".video-band-sentinel");
+      const over = band.getBoundingClientRect().top - sentinel.getBoundingClientRect().top;
+      if (over > 0) scroller.scrollTop -= over;
+    });
+    await browser.pause(400);
     await film(1200);
     front();
     await typeInEditor("", { atEnd: true });
@@ -513,6 +669,7 @@ describe("README GIFs", function () {
       "So keep the reward away from the work I want to keep loving.",
       true,
     );
+    await saveRegion("notes");
     mark("pin-click");
     await clickFirstPin();
     await film(3000);
@@ -543,6 +700,7 @@ describe("README GIFs", function () {
     await typeInEditor("", { atEnd: true });
     await listenPinWrite(3500, "Why do most learning tools fail?", false);
     await listenPinWrite(3000, "Reading feels like learning, but nothing asks me to use it.", true);
+    await saveRegion("notes");
     mark("pin-click");
     await clickFirstPin();
     await film(2500);

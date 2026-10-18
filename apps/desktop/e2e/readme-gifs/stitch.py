@@ -4,8 +4,9 @@
 #
 #   stitch.py FRAMES_DIR OUT.gif --width 1200 [--crop L,T,R,B] [--until MARK] [--gap MS]
 #
-# --crop is in CSS pixels of the page (R and B may be "end"); the frames'
-#   own scale comes from the viewport.json the spec writes beside them.
+# --crop is in CSS pixels of the page (R and B may be "end"), or @name for a
+#   box the spec measured (saveRegion, regions.json); each frame's own scale
+#   comes from the viewport.json the spec writes beside them.
 # --until stops before the frame the spec marked with that name (marks.json).
 # --gap keeps at most one frame per MS milliseconds.
 import argparse, json, os
@@ -39,25 +40,35 @@ for f in files:
 files = keep
 ts = [int(f.split("-")[1][:-4]) for f in files]
 
-box = None
+# Crop edges in CSS pixels, scaled per frame: a run can switch screens (or
+# the screen its scale) partway, and its frames then change size.
+edges = None
 if args.crop:
     with open(os.path.join(args.frames_dir, "viewport.json")) as f:
         css_width = json.load(f)["width"]
-    first = Image.open(os.path.join(args.frames_dir, files[0]))
-    scale = first.width / css_width
-    edges = args.crop.split(",")
+    if args.crop.startswith("@"):
+        with open(os.path.join(args.frames_dir, "regions.json")) as f:
+            edges = [str(v) for v in json.load(f)[args.crop[1:]]]
+    else:
+        edges = args.crop.split(",")
     if len(edges) != 4:
         raise SystemExit("--crop takes L,T,R,B")
-    full = (None, None, first.width, first.height)
-    box = tuple(full[i] if v == "end" else int(float(v) * scale) for i, v in enumerate(edges))
+
+
+def crop(im):
+    if not edges:
+        return im
+    scale = im.width / css_width
+    full = (None, None, im.width, im.height)
+    return im.crop(tuple(full[i] if v == "end" else int(float(v) * scale) for i, v in enumerate(edges)))
+
 
 images = []
+size = None
 for f in files:
-    im = Image.open(os.path.join(args.frames_dir, f)).convert("RGB")
-    if box:
-        im = im.crop(box)
-    im = im.resize((args.width, round(im.height * args.width / im.width)), Image.LANCZOS)
-    images.append(im)
+    im = crop(Image.open(os.path.join(args.frames_dir, f)).convert("RGB"))
+    size = size or (args.width, round(im.height * args.width / im.width))
+    images.append(im.resize(size, Image.LANCZOS))
 durations = [min(max(b - a, 60), 350) for a, b in zip(ts, ts[1:])] + [2200]
 durations[0] = max(durations[0], 700)
 # Drop frames identical to the one before, adding their time to it.
