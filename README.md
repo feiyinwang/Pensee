@@ -10,9 +10,9 @@ Pensée is where the collecting turns into understanding. Your memory goes on th
 
 The AI is a second pen, not a ghostwriter. It answers a question only after you've written your own take. It lays out the evidence on both sides of a claim and leaves the call to you. It shows where a line connects to something you wrote months ago, and you write how they connect. Your ideas stay yours.
 
-![Asking the second pen a question: its answer stays sealed until you write your own take](./assets/readme/pen.gif)
+![Asking the second pen a question: its answer stays sealed until you write your own take, then Tab combines the two into one list of points](./assets/readme/pen.gif)
 
-_Press ⌘. on a question and the pen writes an answer, sealed. Write your own take first, and it opens beside it._
+_Press ⌘. on a question and the pen writes an answer, sealed. Write your own take first, and it opens beside it. Press Tab and the two become one list: your points in your words, the pen's in blue, only where it adds something._
 
 Every note is a markdown file in your own folder, so it opens in Obsidian or any editor. Around the notes:
 
