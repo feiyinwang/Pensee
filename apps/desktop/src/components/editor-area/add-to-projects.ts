@@ -1,17 +1,18 @@
 import { adoptProjectNote, createProjectNote, findNoteNamed, openSpace } from "@/hooks/use-spaces";
 import { getFileStem } from "@/lib/paths";
-import { isProjectType, noteType } from "@/lib/projects";
+import { PROJECT_TYPE, isProjectType, noteType } from "@/lib/projects";
 import {
   projectsPrompt,
   projectsReply,
-  selectionSentences,
+  selectionItems,
   type ProjectFromText,
 } from "@/lib/projects-from-text";
 import { organizeModel, penBusy, penConversation } from "@/lib/second-pen-agent";
+import { listTypedNotes } from "@/lib/tauri";
 import { readPageParts } from "./linked-block-sync";
 import { showEditorNotice } from "./editor-notice-store";
 
-// Add to Projects (SPECs/add-to-projects-spec.md): the selection's sentences
+// Add to Projects (SPECs/add-to-projects-spec.md): the selection's items
 // go to Claude on the pen's channel, which says which make which project;
 // each is then added the way the board's Add project adds a name.
 
@@ -27,11 +28,11 @@ type Outcome = "added" | "already" | "declined";
 const NO_STATUS_EDIT = { status: "" };
 
 /** Add one project: the note it names when there is one, else a new note
- *  holding the writer's sentences. */
+ *  holding the writer's words. */
 async function addProject(project: ProjectFromText): Promise<Outcome> {
   const found = await findNoteNamed(project.name);
   if (found === null) {
-    await createProjectNote(project.name, NO_STATUS_EDIT, project.sentences.join(" "));
+    await createProjectNote(project.name, NO_STATUS_EDIT, introOf(project.items));
     return "added";
   }
   if (isProjectType(noteType((await readPageParts(found)).frontmatter))) return "already";
@@ -40,6 +41,11 @@ async function addProject(project: ProjectFromText): Promise<Outcome> {
     window.confirm(`"${stem}" is a ${type} note. Make it a project instead?`),
   );
   return adopted ? "added" : "declined";
+}
+
+/** A new project's opening: its one item as written, or its items as a list. */
+function introOf(items: readonly string[]): string {
+  return items.length === 1 ? items[0]! : items.map((item) => `- ${item}`).join("\n");
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -53,8 +59,8 @@ function errorText(error: unknown): string {
 /** Make projects from `text`, the writer's selection, telling them how it
  *  went in the editor notice. */
 export async function addToProjects(text: string): Promise<void> {
-  const sentences = selectionSentences(text);
-  if (sentences.length === 0) return;
+  const items = selectionItems(text);
+  if (items.length === 0) return;
   if (penBusy()) {
     showEditorNotice("The pen is still writing. Try again when it's done.");
     return;
@@ -63,14 +69,16 @@ export async function addToProjects(text: string): Promise<void> {
   const conversation = penConversation(organizeModel());
   let reply: string;
   try {
-    reply = await conversation.send(projectsPrompt(sentences));
+    // The projects there are, so one already there keeps its name.
+    const existing = (await listTypedNotes([PROJECT_TYPE], true)).map((note) => note.name);
+    reply = await conversation.send(projectsPrompt(items, existing));
   } catch (error) {
     showEditorNotice(`Couldn't add to Projects: ${errorText(error)}`);
     return;
   } finally {
     conversation.end();
   }
-  const found = projectsReply(reply, sentences);
+  const found = projectsReply(reply, items);
   if (!found) {
     console.error("[add-to-projects] Unreadable reply:", reply);
     showEditorNotice("Couldn't add to Projects: Claude's answer couldn't be read. Try again.");
@@ -107,8 +115,8 @@ export async function addToProjects(text: string): Promise<void> {
   if (found.left > 0) {
     parts.push(
       found.left === 1
-        ? "1 sentence takes two steps or fewer, so it isn't a project."
-        : `${found.left} sentences take two steps or fewer, so they aren't projects.`,
+        ? "1 line takes two steps or fewer, so it isn't a project."
+        : `${found.left} lines take two steps or fewer, so they aren't projects.`,
     );
   }
   const reached = added.length + already.length > 0;
