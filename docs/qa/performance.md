@@ -162,6 +162,17 @@ Before guessing, measure (CLAUDE.md: a debug log before a second fix):
    while they click, and read the main-thread tree. JS timers can't see
    WebKit's own work (2026-10-13: a hidden book's text highlights froze tab
    switches for 460ms; only `sample` found it).
+   Use the `process-sample-diff` skill (in `~/.claude/skills/`) with these
+   settings for Pensée:
+   - Process: the `com.apple.WebKit.WebContent` started a second after
+     `Pensée.app/Contents/MacOS/desktop`
+     (`find-proc.sh MacOS/desktop WebContent`; `ps` shows the app as
+     `PenseM-LM^Ae`). Thread: `main`.
+   - Rebuild and relaunch: `scripts/ship-local.sh`, then `open -a "Pensée"`,
+     then find the pid again.
+   - Budgets: the table above, per action.
+   - Setup: the user's own workspace with their usual tabs open (2026-10-18:
+     30 keep-alive tabs made every pinch switch restyle all of them).
 
 ## What makes Pensée slow (check the diff for these)
 
