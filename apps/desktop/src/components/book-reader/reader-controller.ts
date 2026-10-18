@@ -72,11 +72,6 @@ export class ReaderController {
   #destroyed = false;
   /** The tab is shown (BookReader's isShown). */
   #shown = true;
-  /** The book is placed where it was left; until then it stays rendered. */
-  #placed = false;
-  /** While the tab is hidden the pages are out of rendering (see #hide):
-   *  where the reader was. */
-  #hidden: { place: ReadingPlace | null } | null = null;
 
   constructor(
     bookPath: string,
@@ -138,9 +133,6 @@ export class ReaderController {
       if (this.#pendingJump) this.jump(this.#pendingJump);
       else await this.#restorePlace(source);
       this.#trackPlace(source);
-      if (this.#destroyed) return;
-      this.#placed = true;
-      if (!this.#shown) this.#hide(source);
     } catch (error) {
       console.error(`[book] Couldn't open ${this.bookPath}:`, error);
       if (!this.#destroyed)
@@ -208,8 +200,6 @@ export class ReaderController {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const save = () => {
       timer = null;
-      // Hidden, the pages have no layout; #hide saved the place.
-      if (this.#hidden) return;
       const place = this.#place(source);
       if (place) void saveReadingPlace(this.bookPath, place);
     };
@@ -331,8 +321,7 @@ export class ReaderController {
     const location = parseBookHighlightId(id);
     if (!location) return false;
     const source = this.#source;
-    // Hidden pages have no layout to scroll: jump when the tab shows.
-    if (!source || this.#hidden) {
+    if (!source) {
       this.#pendingJump = id;
       return true;
     }
@@ -369,50 +358,26 @@ export class ReaderController {
   }
 
   /** Whether the reader's tab is on screen. Hidden, its highlights leave the
-   *  page's registry (highlight-painter.ts) and its pages leave rendering. */
+   *  page's registry (highlight-painter.ts). Its pages stay rendered: a
+   *  hidden tab is only moved out of sight (tab-columns.css), so they keep
+   *  their layout and place, and showing the tab lays out nothing. Taking
+   *  them out of rendering made every pinch lay out the whole book again
+   *  (~150ms a switch in a real EPUB). It was there because hidden tabs were
+   *  `visibility: hidden`, whose text is never a caret position, so WebKit
+   *  stepped through all of it on every press; moved-out text is. */
   setShown(shown: boolean) {
     if (shown === this.#shown) return;
     this.#shown = shown;
-    const source = this.#source;
-    if (!shown) {
-      this.#painter.setShown(false);
-      if (source && this.#placed) this.#hide(source);
-      return;
-    }
-    if (source && this.#hidden) this.#show(source);
-    this.#painter.setShown(true);
+    this.#painter.setShown(shown);
   }
 
-  /** Take the pages out of rendering. WebKit finds a caret position for every
-   *  press (Look Up) and every caret blink by stepping through rendered text a
-   *  character at a time, and a hidden tab's text (visibility: hidden) is
-   *  rendered but never a caret position, so it stepped through the whole
-   *  book: ~200ms a press. Text with no renderer is skipped in one step. */
-  #hide(source: BookSource) {
-    const place = this.#place(source);
-    if (place) void saveReadingPlace(this.bookPath, place);
-    this.#hidden = { place };
-    this.#releasePlace?.();
-    this.host.hidden = true;
-  }
-
-  #show(source: BookSource) {
-    const place = this.#hidden?.place ?? null;
-    this.#hidden = null;
-    this.host.hidden = false;
-    // A jump asked for while hidden wins over where the book was left.
-    if (this.#pendingJump) this.jump(this.#pendingJump);
-    else if (place) this.#goToPlace(source, place);
-  }
-
-  /** For the agent. A hidden book's passage is read at its place, since its
-   *  pages have no layout (and finding the text on screen by caret, as
-   *  passage() does, would walk the whole book: see #hide). */
+  /** For the agent: the passage at the reader's place. Hidden, the book is
+   *  out of sight, so it is read at the place rather than found on screen. */
   async passage() {
     const source = this.#source;
     if (!source) return null;
-    if (!this.#hidden) return source.passage();
-    const place = this.#hidden.place;
+    if (this.#shown) return source.passage();
+    const place = this.#place(source);
     return place ? source.passageAt(place.section, place.fraction) : null;
   }
 

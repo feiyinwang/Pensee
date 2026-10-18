@@ -28,15 +28,12 @@ interface EditorPaneProps {
   /** Laid out as one of the side-by-side tab columns: sized for its island
    *  rather than the whole window. */
   inColumn?: boolean;
-  /** On screen. A hidden tab is hidden by TabColumns, not here. */
-  isShown?: boolean;
 }
 
 export const EditorPane = memo(function EditorPane({
   path,
   isActive,
   inColumn = false,
-  isShown = true,
 }: EditorPaneProps) {
   const isLoading = useIsFileLoading(path);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -56,7 +53,7 @@ export const EditorPane = memo(function EditorPane({
   }
 
   return (
-    <div data-pane data-shown={isShown || undefined} className="relative z-10 h-full">
+    <div data-pane className="relative z-10 h-full">
       <EditorScrollContainer ref={scrollContainerRef}>
         <div
           // pt-10 / md:pt-24 are the 40px / 96px SectionRail's outlineTop lines up with.

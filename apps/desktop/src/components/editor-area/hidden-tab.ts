@@ -4,3 +4,9 @@
 export function isInHiddenTab(el: Element): boolean {
   return el.closest(".tab-column[data-hidden]") !== null;
 }
+
+/** The tab column holding `el`: TabColumns sets `data-hidden` on it while
+ *  the tab is hidden, so watching that attribute sees it hide and show. */
+export function tabColumnOf(el: Element): HTMLElement | null {
+  return el.closest<HTMLElement>(".tab-column");
+}

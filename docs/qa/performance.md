@@ -162,6 +162,11 @@ Before guessing, measure (CLAUDE.md: a debug log before a second fix):
    while they click, and read the main-thread tree. JS timers can't see
    WebKit's own work (2026-10-13: a hidden book's text highlights froze tab
    switches for 460ms; only `sample` found it).
+4. **Before building the fix on a feature that promises to skip work**
+   (`content-visibility`, `contain`, `inert`, memo, a cache), use the
+   `probe-the-primitive` skill: time it alone in the app's WebKit against
+   `display: none` and today's code. On 2026-10-18 `content-visibility`
+   made a pinch slower (46 → 65ms) where moving the tabs cost 4ms.
 
 ## What makes Pensée slow (check the diff for these)
 

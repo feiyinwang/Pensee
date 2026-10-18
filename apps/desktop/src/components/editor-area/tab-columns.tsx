@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -356,12 +357,6 @@ export function TabColumns() {
         if (isShown) layouts.set(tab.id, isColumns ? "column" : "alone");
         const layout = layouts.get(tab.id) ?? "column";
         const asColumn = isShown ? isColumns : layout === "column";
-        const Component = pageKindView(tab.location).Component as React.ComponentType<{
-          location: Tab["location"];
-          isActive: boolean;
-          inColumn: boolean;
-          isShown: boolean;
-        }>;
         return (
           <section
             key={tab.id}
@@ -385,7 +380,7 @@ export function TabColumns() {
               />
             ) : null}
             <div className="tab-column-body">
-              <Component
+              <TabBody
                 location={tab.location}
                 isActive={isActive}
                 inColumn={asColumn || (pair !== null && isShown)}
@@ -398,6 +393,21 @@ export function TabColumns() {
     </div>
   );
 }
+
+interface TabBodyProps {
+  location: Tab["location"];
+  isActive: boolean;
+  inColumn: boolean;
+  isShown: boolean;
+}
+
+/** A tab's page. Memoised: a pinch renders TabColumns again, and only the
+ *  tabs whose props change (the one changing layout, a book or Settings
+ *  told it is shown) should render with it, not every open tab. */
+const TabBody = memo(function TabBody(props: TabBodyProps) {
+  const Component = pageKindView(props.location).Component as React.ComponentType<TabBodyProps>;
+  return <Component {...props} />;
+});
 
 interface TabColumnHeaderProps {
   tab: Tab;

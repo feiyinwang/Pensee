@@ -27,17 +27,17 @@ import type { PageKindView } from "./types";
 // definition.
 // Page-kind view registry: exports the pageKindView resolver alongside the file-tab adapter component; not a Fast-Refresh component surface.
 // eslint-disable-next-line react-doctor/only-export-components
+// A note's pane takes no `isShown`: its tab column hides it, and a prop that
+// flips on every pinch would re-render every open note.
 const FileTabBody = ({
   location,
   isActive,
   inColumn,
-  isShown,
 }: {
   location: FileLocation;
   isActive: boolean;
   inColumn: boolean;
-  isShown: boolean;
-}) => <EditorPane path={location.path} isActive={isActive} inColumn={inColumn} isShown={isShown} />;
+}) => <EditorPane path={location.path} isActive={isActive} inColumn={inColumn} />;
 
 // The reader (and pdf.js / fflate with it) loads only when a book tab mounts.
 const BookReader = lazy(() => import("@/components/book-reader/book-reader"));
