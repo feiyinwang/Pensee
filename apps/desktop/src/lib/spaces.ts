@@ -1,5 +1,4 @@
 import { PROJECT_TYPE } from "./projects";
-import { TWEET_TYPE } from "./x-bookmarks";
 import type { TypedNote } from "./tauri";
 
 // Spaces (SPECs/spaces-spec.md): saved questions about a note's `Type:`, never
@@ -7,7 +6,7 @@ import type { TypedNote } from "./tauri";
 // `Type: Space`, read back through `spaceFromNote`.
 
 export type SpaceView = "gallery" | "list" | "cards" | "files" | "kanban";
-export type CoverKind = "book" | "video" | "podcast" | "paper" | "tweet" | "note";
+export type CoverKind = "book" | "video" | "podcast" | "paper" | "note";
 export type SpaceIcon = "projects" | "library" | "files" | "space";
 
 /** One tab of a space: which types it shows and how its covers look. */
@@ -18,9 +17,6 @@ export interface SpaceTab {
   noun: string;
   types: string[];
   cover: CoverKind;
-  /** Where the tab's notes come from when Pensée brings them in itself, so
-   *  the tab can show that sync's state (SPECs/x-bookmarks-spec.md). */
-  source?: "x";
 }
 
 export interface SpaceDef {
@@ -45,8 +41,7 @@ const tab = (
   noun: string,
   types: string[],
   cover: CoverKind,
-  source?: SpaceTab["source"],
-): SpaceTab => ({ id, label, noun, types, cover, ...(source ? { source } : {}) });
+): SpaceTab => ({ id, label, noun, types, cover });
 
 export const BUILT_IN_SPACES: readonly SpaceDef[] = [
   {
@@ -69,7 +64,6 @@ export const BUILT_IN_SPACES: readonly SpaceDef[] = [
       tab("videos", "Videos", "video", ["YouTube", "Video", "Course"], "video"),
       tab("podcasts", "Podcasts", "podcast", ["Podcast"], "podcast"),
       tab("papers", "Papers", "paper", ["Paper"], "paper"),
-      tab("bookmarks", "Bookmarks", "bookmark", [TWEET_TYPE], "tweet", "x"),
     ],
   },
   { key: "files", name: "Files", icon: "files", view: "files", tabs: [], shortcut: "O" },
@@ -98,7 +92,6 @@ const COVER_BY_TYPE: Record<string, CoverKind> = {
   course: "video",
   podcast: "podcast",
   paper: "paper",
-  tweet: "tweet",
 };
 
 /** The cover a type draws in a space you added (`Shows: Book` looks like a book). */
@@ -166,21 +159,6 @@ export function titleHash(title: string): number {
 /** How many avatar and cover tones there are (`.tone0`…`.tone9` in
  *  `spaces.module.css`). */
 export const TONES = 10;
-
-/** An X author's initial avatar, the same in Library and in the opened note:
- *  the name shown (the author, else `@handle`), its first letter, and a tone. */
-export function tweetAvatar(
-  author: string | null | undefined,
-  handle: string | null | undefined,
-  fallback: string,
-): { name: string; initial: string; tone: number } {
-  const name = author || (handle ? `@${handle}` : fallback);
-  return {
-    name,
-    initial: Array.from(name.replace(/^@/, ""))[0]?.toUpperCase() ?? "",
-    tone: titleHash(name) % TONES,
-  };
-}
 
 /** First author-like property of a note, for a cover's byline. */
 export function bylineOf(note: TypedNote): string | null {

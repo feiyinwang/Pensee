@@ -152,7 +152,6 @@ describe("new notes", () => {
   test("a Library tab's kind", () => {
     expect(libraryKindOfTab("books")).toBe("book");
     expect(libraryKindOfTab("videos")).toBe("video");
-    expect(libraryKindOfTab("bookmarks")).toBeNull();
   });
 });
 

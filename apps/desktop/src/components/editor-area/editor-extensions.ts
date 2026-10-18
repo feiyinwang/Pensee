@@ -35,7 +35,6 @@ import { mermaidDecorations } from "./mermaid-decorations";
 import { bookJump } from "./book-jump";
 import { secondPen } from "./second-pen";
 import { tableDecorations } from "./table-decorations";
-import { tweetThread } from "./tweet-thread";
 import { videoAutoPin } from "./video-pin";
 import { viewportParsePlugin } from "./viewport-parse";
 import { wikiLinkExtension } from "./wiki-link-extension";
@@ -165,8 +164,6 @@ export function createEditorExtensions(
     bookJump(getFilePath),
     // YouTube notes: words typed just after a pause pin that moment.
     videoAutoPin(getFilePath),
-    // X bookmark notes read as a thread: author header, posts on a spine.
-    tweetThread(getFilePath),
     wikiLinkExtension(getFilePath, isDisposed),
     wikiPagesExtension(getFilePath, isDisposed),
     wikiLinkPreview(getFilePath),

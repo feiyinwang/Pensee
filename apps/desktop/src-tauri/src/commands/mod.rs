@@ -18,4 +18,3 @@ pub mod spaces;
 pub mod startup;
 pub mod video_player;
 pub mod workspace;
-pub mod x_bookmarks;

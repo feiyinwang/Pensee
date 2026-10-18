@@ -15,7 +15,6 @@ const THUMB_BOX: Record<CoverKind, readonly [number, number]> = {
   paper: [400, 533],
   podcast: [400, 400],
   video: [640, 360],
-  tweet: [600, 375],
   note: [400, 400],
 };
 
@@ -194,7 +193,6 @@ function DefaultCover({
       );
     }
     case "note":
-    case "tweet":
       return <div className={`${styles.bookTop} ${styles.serif}`}>{title}</div>;
   }
 }

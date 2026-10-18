@@ -27,19 +27,12 @@ function note(partial: Partial<TypedNote> & { note_type: string }): TypedNote {
 }
 
 describe("built-in spaces", () => {
-  test("Library tabs cover the media types and X bookmarks, Books first", () => {
+  test("Library tabs cover the media types, Books first", () => {
     const library = builtInSpace("library")!;
-    expect(library.tabs.map((t) => t.label)).toEqual([
-      "Books",
-      "Videos",
-      "Podcasts",
-      "Papers",
-      "Bookmarks",
-    ]);
+    expect(library.tabs.map((t) => t.label)).toEqual(["Books", "Videos", "Podcasts", "Papers"]);
     expect(allTypes(library)).toContain("YouTube");
     // Courses are videos: their notes show on the Videos tab.
     expect(library.tabs.find((t) => t.id === "videos")?.types).toContain("Course");
-    expect(library.tabs.at(-1)).toMatchObject({ types: ["Tweet"], cover: "tweet", source: "x" });
   });
 
   test("Files has no types and the files view", () => {

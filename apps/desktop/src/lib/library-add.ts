@@ -7,7 +7,7 @@ import type { TypedNote } from "./tauri";
 // (SPECs/add-to-library-spec.md). Pure: what a pasted link is, which note
 // already holds it, and the frontmatter a new Library note starts with.
 
-/** The Library tabs one can add to by hand (Bookmarks come from X sync). */
+/** The Library tabs one can add to by hand. */
 export type LibraryKind = "book" | "video" | "podcast" | "paper";
 
 export const LIBRARY_KINDS: readonly LibraryKind[] = ["book", "video", "podcast", "paper"];

@@ -7,7 +7,6 @@ import { bylineOf, type CoverKind, type SpaceTab } from "@/lib/spaces";
 import * as tauri from "@/lib/tauri";
 import type { TypedNote } from "@/lib/tauri";
 import { SpaceCover, noteTitle } from "./space-cover";
-import { TweetCaption, TweetCover } from "./tweet-card";
 import styles from "./spaces.module.css";
 
 type OpenNote = (event: MouseEvent | KeyboardEvent, path: string, book?: string) => void;
@@ -125,18 +124,9 @@ export function NoteGallery({
                 className={styles.item}
                 onClick={(event) => openNote(event, note.path, note.properties.book)}
               >
-                {tab.cover === "tweet" ? (
-                  <>
-                    <TweetCover note={note} />
-                    <TweetCaption note={note} />
-                  </>
-                ) : (
-                  <>
-                    <SpaceCover note={note} kind={tab.cover} />
-                    <span className={styles.itemTitle}>{noteTitle(note)}</span>
-                    <span className={styles.itemSub}>{bylineOf(note) ?? ""}</span>
-                  </>
-                )}
+                <SpaceCover note={note} kind={tab.cover} />
+                <span className={styles.itemTitle}>{noteTitle(note)}</span>
+                <span className={styles.itemSub}>{bylineOf(note) ?? ""}</span>
               </button>
               {canGet && (
                 <button

@@ -40,13 +40,12 @@ renaming any of them would lose data. Moving one needs a migration that still
 reads the old name
 ([SPECs/pensee-rebrand-spec.md](../SPECs/pensee-rebrand-spec.md)).
 
-| Kept name             | What it is                                    | Why it stays                                                     |
-| --------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
-| `com.f.writer-mine`   | The local build's bundle identifier           | Its folder holds the settings and the workspace list             |
-| `.writer/config`      | The workspace config folder inside each vault | Every existing vault already has one                             |
-| `writer-board`        | The metadata id inside `.board.svg` files     | Pensée reads an existing board's scene back from it              |
-| `writer.video-player` | The video player's storage key                | It holds your playback speed and subtitle choice                 |
-| `Writer X Bookmarks`  | The Keychain service for the X sign-in        | Renaming it signs you out of X. It is visible in Keychain Access |
+| Kept name             | What it is                                    | Why it stays                                         |
+| --------------------- | --------------------------------------------- | ---------------------------------------------------- |
+| `com.f.writer-mine`   | The local build's bundle identifier           | Its folder holds the settings and the workspace list |
+| `.writer/config`      | The workspace config folder inside each vault | Every existing vault already has one                 |
+| `writer-board`        | The metadata id inside `.board.svg` files     | Pensée reads an existing board's scene back from it  |
+| `writer.video-player` | The video player's storage key                | It holds your playback speed and subtitle choice     |
 
 ## The mark
 

@@ -4,12 +4,10 @@ import { SETTINGS_SCHEMA, type SettingDef } from "@/lib/settings-schema";
 import { SettingControl } from "./setting-control";
 import { ThemesSection } from "./themes-section";
 import { ClaudeAccountRow } from "./claude-account-row";
-import { XAccountRow } from "./x-account-row";
 
-/** Account rows, each after the setting it belongs with: the X sign-in after
- *  the Client ID it needs, the Claude sign-in after the model the Agent uses. */
+/** Account rows, each after the setting it belongs with: the Claude sign-in
+ *  after the model the Agent uses. */
 const ACCOUNT_ROWS_AFTER: Partial<Record<string, ComponentType<{ isShown: boolean }>>> = {
-  "x-bookmarks.client-id": XAccountRow,
   "agent.model": ClaudeAccountRow,
 };
 import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-container";

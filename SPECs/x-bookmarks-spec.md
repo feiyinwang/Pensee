@@ -1,5 +1,7 @@
 # X Bookmarks Spec
 
+**Status: shelved (2026-10-18).** Taken out of the app as not ready: the Library tab, the sync, the Settings section, the thread view and the Rust commands are gone. `87b6183` is the last commit that has them; reverting the commit that removed them brings them back. Video embeds (`![[clip.mp4]]`), described below, stay.
+
 ## Summary
 
 Posts you bookmark on X show up in **Library → Bookmarks** on their own, each as a markdown note holding the author's whole thread, with its photos, videos and GIFs saved in the note's assets folder. Opening one reads the thread as one piece, media in place. Design mock (approved 2026-10-12): https://claude.ai/artifact/NCmAK8d4RBFZjpXmDwYsBB
@@ -106,14 +108,14 @@ Verified in the running app by `e2e/specs/tweet-thread.spec.js`.
 
 ## States
 
-| State | Shown |
-|---|---|
+| State                         | Shown                                                                                        |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
 | No Client ID or not connected | Bookmarks tab: "Bring in your X bookmarks" with **Connect X** (opens Settings → X Bookmarks) |
-| Syncing | "Saving bookmarks · 38 of 214"; cards appear as each finishes |
-| Sign-in expired or revoked | "Not synced since <date>" and **Reconnect X**; saved notes stay |
-| Post deleted on X | Nothing changes; the note keeps what was saved |
-| Removed from X bookmarks | Nothing changes; Pensée never deletes a note |
-| Callback port busy | "Another Pensée window is connecting to X. Finish there first." |
+| Syncing                       | "Saving bookmarks · 38 of 214"; cards appear as each finishes                                |
+| Sign-in expired or revoked    | "Not synced since <date>" and **Reconnect X**; saved notes stay                              |
+| Post deleted on X             | Nothing changes; the note keeps what was saved                                               |
+| Removed from X bookmarks      | Nothing changes; Pensée never deletes a note                                                 |
+| Callback port busy            | "Another Pensée window is connecting to X. Finish there first."                              |
 
 ## Build order
 
