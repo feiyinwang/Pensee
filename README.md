@@ -8,37 +8,41 @@ I'm making Pensée for people like me, with ADHD or a brain that works a little 
 
 Pensée is where the collecting turns into understanding. Your memory goes on the page, so your head doesn't have to hold it all. You write about each new thing you meet in your own words, and the notes link up into something you can come back to. It's meant to feel calm enough to get into the zone, and safe: every note is a file in a folder on your own computer.
 
-The AI is a second pen, not a ghostwriter. It checks, connects and answers; the conclusions are yours to write.
+The AI is a second pen, not a ghostwriter. Press ⌘. on a line and it can check it against papers, connect it to your other notes, or answer it. Each time, the conclusion is yours to write.
 
-![Checking a claim: the pen writes what papers say for and against it, a paper's details show on hover, and you write your call under them](./assets/readme/check.gif)
+![Checking a claim: the pen cites papers for and against it, a paper's details show on hover, and you write your call under them](./assets/readme/check.gif)
 
-_⌘. then @ on a claim: what papers say for and against it, cited. The call is yours._
+_Check (⌘. @) on a claim: the pen cites papers for and against it. You write the call._
 
 ![Connecting a line: the pen brings back what your other notes say about it, and you write how they connect](./assets/readme/connect.gif)
 
-_⌘. then [ on a line: what your other notes say about it. You write how they connect._
+_Connect (⌘. [) on a line: the pen brings back what your other notes say about it. You write how they connect._
 
-![Asking a question: the answer stays sealed until you write your own take, then Tab combines the two into one list](./assets/readme/pen.gif)
+![Answering a question: the answer stays sealed until you write your own take, then it opens and Tab combines the two into one list](./assets/readme/pen.gif)
 
-_⌘. then ! on a question: the answer stays sealed until you've written your own take. Tab combines the two._
+_Answer (⌘. !) on a question: the answer stays sealed until you've written your own take. Then it opens, and Tab combines the two into one list._
+
+Whatever you collect becomes a note you write in, beside its source.
 
 ![Highlighting a line in The Elements of Style: it lands in the book's note, a click brings the page back, and your own line goes under it](./assets/readme/book.gif)
 
-_Highlight a line in a book and it lands in the note. Click it later to go back to the page._
+_A book opens beside its note. Highlight a line and it lands in the note. Click it later and the page comes back, and your own thought goes under it._
 
-![Taking notes on a YouTube video: ⌘S pins the moment to the line you're writing](./assets/readme/youtube.gif)
+![Taking notes on a YouTube video: ⌘S plays, and ⌘S again pins the moment to the line you're writing](./assets/readme/youtube.gif)
 
-_In a YouTube note, ⌘S plays, and ⌘S again pins the moment to the line you're writing. Each pin plays from its moment._
+_A YouTube note keeps the video above your lines. ⌘S plays, and ⌘S again pins the moment to the line you're writing._
 
 ![Taking notes on a podcast episode the same way](./assets/readme/podcast.gif)
 
-_Podcasts work the same way._
+_A podcast note works the same way._
+
+When an idea needs a map, put a board in the note.
 
 ![Dragging a card next to another on a board: it docks and an arrow joins them](./assets/readme/dock.gif)
 
-_On a board, drop a card next to another and it docks with an arrow._
+_Drop a card next to another and it docks there, joined by an arrow._
 
-Every note is a markdown file in your own folder, so it opens in Obsidian or any editor. Pensée also has Projects (a list, kanban or timeline of your project notes) and the Agent, a Claude chat that can read and edit your pages.
+Notes are plain markdown, so they open in Obsidian or any editor. Pensée also has Projects (a list, kanban or timeline of your project notes) and the Agent, a Claude chat that can read and edit your pages.
 
 ## Install
 
