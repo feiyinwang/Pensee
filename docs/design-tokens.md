@@ -331,6 +331,7 @@ are drawn on Library covers and may.
 | `--font-size-title-md` | `21px` (--font-size-21) | same | Book reader title |
 | `--font-size-glyph` | `24px` (--font-size-24) | same | Block-menu glyph preview |
 | `--font-size-title-lg` | `26px` (--font-size-26) | same | Space title |
+| `--font-size-display` | `40px` (--font-size-40) | same | Onboarding's question on each screen |
 | `--font-size-cover-micro` | `8px` (--font-size-8) | same |  |
 | `--font-size-cover-fine` | `9px` (--font-size-9) | same |  |
 | `--font-size-cover-small` | `13px` (--font-size-13) | same |  |

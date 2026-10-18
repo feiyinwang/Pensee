@@ -9,6 +9,42 @@ loop on something they are learning, not a tour of features.
 Decided from the prototype https://claude.ai/artifact/AUjNcg7kaH8dfENCfku7W5
 (2026-10-16): **Sequence**, with a "What are you learning?" step.
 
+## Built (2026-10-18)
+
+The app follows the prototype's flow (with its _Mixed_ scenario: whatever
+the Mac really has), with these differences, each because the real app
+works that way:
+
+- **When it shows.** On a launch with no folder open and `onboarding.done`
+  unset (`preferences.json`). Existing users always reopen a folder, so they
+  never see it. A run quit midway resumes on the AI screen. ⌘P → **Show
+  Onboarding** plays it from the AI screen.
+- **Screen 1** reads Obsidian's own vault list
+  (`~/Library/Application Support/obsidian/obsidian.json`) and counts each
+  vault's notes (`obsidian_vaults`). **Start a new folder in Documents** makes
+  `~/Documents/Pensée`.
+- **Screen 2** offers Claude Code only: **Use Claude Code** when signed in,
+  **Sign in to Claude Code** (the existing sign-in popup) when signed out, or
+  its install line with **Check again** when it isn't installed. Codex and
+  Gemini CLI show under **Other options** as _Coming soon_ until the pen runs
+  on them (SPECs/ai-providers-spec.md).
+- **Screen 3's samples are real notes**, written into `Pensée samples/` in the
+  vault (the copy says so, and that they can be deleted), because only a
+  note in the vault gets the real editor, player and pen. The book is _The
+  Elements of Style_ (Strunk, public domain), downloaded from Project
+  Gutenberg and imported beside its page, not _Skip the Line_.
+- **The pin key is ⌘S**, the app's own, everywhere (guide and carousel); the
+  Library's key is ⌘G then L.
+- **The guide** reads the loop's progress from the note itself: a `^yt-` pin
+  or `^bk-` highlight, then the pen's ids (`^ai-p`/`^ai-n` for Check,
+  `^ai-e` for Connect, `^ai-s` then `^ai-r` for Answer). On a pin sample, the
+  first click in the note types the sample's line for the writer.
+- **The carousel** is `feature-scenes.ts`: the prototype's scenes, drawn
+  with the app's tokens. Its book covers ship in
+  `src/components/onboarding/assets/` (small, for the grid only).
+
+Journeys: docs/qa/user-journeys.md § Onboarding — ONB.
+
 ## Flow
 
 Four screens. Each one asks one question, centred, with stacked buttons and
@@ -174,11 +210,11 @@ back on screens 1–2.
 
 ## Open questions
 
-- **Pinning is ⌘P here** (the user's call, 2026-10-16), but the app's
-  shortcut map currently has ⌘S pin and ⌘P search (docs/keyboard-shortcuts.md,
-  commit a8d13e3). One of the two has to change before this ships.
+- ~~Pinning is ⌘P here~~ Settled when built (2026-10-18): the app's ⌘S.
 
-- **Rights to the samples.** Skip the Line is under copyright: the prototype
+- **Rights to the samples.** The book covers in the carousel's Library grid
+  (bundled, 300px) are shown to name the books, as the Library itself does;
+  check before a public launch. Skip the Line is under copyright: the prototype
   shows stand-in text in our own words, never the book's. Shipping it as a
   sample needs the publisher's permission (or a public-domain book, as
   Pascal's _Pensées_ was). The Huberman video and Gawande episode play

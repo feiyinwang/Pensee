@@ -61,4 +61,5 @@ if holder=$(lsof -nP -iTCP:4445 -sTCP:LISTEN -Fn -Fp 2>/dev/null | head -1) && [
 fi
 cd "$E2E_DIR"
 # wdio.conf.js reseeds the QA vault (qa/seed-vault.mjs) before every spec file.
-PENSEE_QA_SEED=1 PENSEE_E2E_APP="$APP" pnpm exec wdio run ./wdio.conf.js "${specs[@]}" ${grep_args[@]+"${grep_args[@]}"}
+PENSEE_OBSIDIAN_CONFIG="$HOME/Library/Application Support/com.pensee.app.e2e/obsidian.json" \
+  PENSEE_QA_SEED=1 PENSEE_E2E_APP="$APP" pnpm exec wdio run ./wdio.conf.js "${specs[@]}" ${grep_args[@]+"${grep_args[@]}"}

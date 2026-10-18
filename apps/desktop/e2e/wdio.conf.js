@@ -69,10 +69,12 @@ export const config = {
 
   // Journey runs (e2e/qa/run.sh) reseed the QA vault before each spec file's
   // app launch, so every spec starts from the same notes and settings.
-  beforeSession: async function () {
+  beforeSession: async function (_config, _capabilities, specs) {
     if (!process.env.PENSEE_QA_SEED) return;
-    const { seedVault } = await import("./qa/seed-vault.mjs");
-    seedVault();
+    const { seedVault, seedFirstRun } = await import("./qa/seed-vault.mjs");
+    // The onboarding journeys start where a new user does: no folder open.
+    if (specs.some((spec) => spec.endsWith("/onboarding.spec.js"))) seedFirstRun();
+    else seedVault();
   },
 
   onComplete: async function () {

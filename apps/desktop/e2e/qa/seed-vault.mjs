@@ -213,6 +213,21 @@ export function seedVault() {
   }
 }
 
+/** Obsidian's vault list, as onboarding reads it (run.sh points the app at
+ *  this file with PENSEE_OBSIDIAN_CONFIG): the QA vault, as a vault. */
+export const OBSIDIAN_CONFIG = join(APP_DATA, "obsidian.json");
+
+/** A first run (the onboarding journeys): the QA vault is built and listed
+ *  as an Obsidian vault, but no folder has been opened yet. */
+export function seedFirstRun() {
+  seedVault();
+  writeFileSync(join(APP_DATA, "recent_workspaces.json"), "[]");
+  writeFileSync(
+    OBSIDIAN_CONFIG,
+    JSON.stringify({ vaults: { qa: { path: VAULT, ts: Date.now(), open: true } } }),
+  );
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   seedVault();
   console.log(`QA vault ready at ${VAULT}`);

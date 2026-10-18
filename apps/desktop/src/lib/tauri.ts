@@ -509,3 +509,29 @@ export function saveAppleBooksCover(assetId: string, dest: string): Promise<bool
 export function hasFullDiskAccess(): Promise<boolean> {
   return invoke("has_full_disk_access");
 }
+
+/** An Obsidian vault from Obsidian's own vault list (onboarding). */
+export interface ObsidianVault {
+  name: string;
+  path: string;
+  notes: number;
+}
+
+export function obsidianVaults(): Promise<ObsidianVault[]> {
+  return invoke("obsidian_vaults");
+}
+
+/** Whether Claude Code's `claude` binary can be found on this Mac. */
+export function claudeInstalled(): Promise<boolean> {
+  return invoke("claude_installed");
+}
+
+/** `~/Documents/Pensée`, made if missing: onboarding's "Start a new folder". */
+export function createStarterFolder(): Promise<string> {
+  return invoke("create_starter_folder");
+}
+
+/** The public-domain sample book, downloaded to the app cache; its path. */
+export function downloadSampleBook(): Promise<string> {
+  return invoke("download_sample_book");
+}

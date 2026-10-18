@@ -505,6 +505,26 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 
 ---
 
+## Onboarding — ONB
+
+**Feature:** A first launch with no folder open asks one question per screen: which notes to open (the writer's Obsidian vaults, a folder, or a new one), which AI to use (Claude Code: use, sign in or install), and something to try Pensée on (a YouTube video, a podcast, a book or a blank note). The sample opens as a real note in `Pensée samples/` with a guide for one loop; then a carousel of animated demos shows the rest. ⌘P → **Show Onboarding** plays it again.
+**Spec:** SPECs/onboarding-spec.md
+**Code:** `src/components/onboarding/`, `src/App.tsx`, `src/components/command-palette/index.tsx` (show-onboarding), `src/lib/tauri.ts` (obsidianVaults, claudeInstalled, createStarterFolder, downloadSampleBook), `src-tauri/src/commands/onboarding.rs`, `e2e/qa/seed-vault.mjs` (seedFirstRun)
+
+| ID     | Journey                                                                   | Expected                                                                                                                                  | Check            |
+| ------ | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| ONB-01 | ★ First launch, no folder open; ↵                                         | _Open your second brain._ lists the Obsidian vault with its note count, focused; ↵ opens it and the AI screen follows                     | auto: onboarding |
+| ONB-02 | On the AI screen, **Other options**, then **Skip for now**                | Claude Code is offered (Use, Sign in, or the install command); Codex and Gemini CLI say _Coming soon_; Skip goes to the samples           | auto: onboarding |
+| ONB-03 | **Just write**                                                            | A note opens in `Pensée samples/`; the guide says _1 of 2 … for Answer_ with **Skip**; Skip goes to the carousel                         | auto: onboarding |
+| ONB-04 | In the carousel, →, then **Start writing**                                | → moves to the board demo; Start writing closes onboarding and saves `onboarding.done`, so the next launch opens straight into the vault | auto: onboarding |
+| ONB-05 | ⌘P → **Show Onboarding**, Skip for now, **YouTube**, click the empty line | The video note opens at 1:38:02; Pensée types _Rewarding yourself after studying…_ into the line; the guide says _Now ⌘S pins it to …_    | auto: onboarding |
+| ONB-06 | YouTube, ⌘S, then ⌘. `@` ↵ (signed in)                                    | The line is pinned; Check writes For and Against with papers; the guide offers **Continue**                                               | you              |
+| ONB-07 | **Book**                                                                  | _The Elements of Style_ downloads from Project Gutenberg and opens beside its page; Highlight lands a bullet and the guide moves to ⌘. `[[` | you              |
+| ONB-08 | **Podcast**, press play, click the line, ⌘S                               | The episode plays from 12:01 with its artwork; the line is written and pinned                                                            | you              |
+| ONB-09 | Swipe the carousel with two fingers                                       | The slides follow the fingers and settle on the nearest one; one swipe moves once                                                         | you              |
+
+---
+
 ## Template for a new feature
 
 ```md

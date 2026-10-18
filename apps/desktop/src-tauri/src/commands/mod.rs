@@ -7,6 +7,7 @@ pub mod fonts;
 pub mod fs;
 pub mod images;
 pub mod link_preview;
+pub mod onboarding;
 pub mod papers;
 pub mod podcasts;
 pub mod recents;

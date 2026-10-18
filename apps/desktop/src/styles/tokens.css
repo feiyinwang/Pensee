@@ -121,6 +121,7 @@
   --font-size-22: 22px;
   --font-size-24: 24px;
   --font-size-26: 26px;
+  --font-size-40: 40px;
   --font-size-72: 72px;
 
   /* Corner radii. */
@@ -342,6 +343,8 @@
   --font-size-title-md: var(--font-size-21);
   --font-size-glyph: var(--font-size-24);
   --font-size-title-lg: var(--font-size-26);
+  /* Onboarding's one question per screen (SPECs/onboarding-spec.md). */
+  --font-size-display: var(--font-size-40);
   --font-size-cover-micro: var(--font-size-8);
   /* Numbers on a picture of macOS (the Full Disk Access guide's markers). */
   --font-size-figure: var(--font-size-11);

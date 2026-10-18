@@ -324,6 +324,16 @@ export function CommandPalette() {
           close();
         },
       },
+    root && {
+      id: "show-onboarding",
+      label: "Show Onboarding",
+      run: () => {
+        close();
+        void import("@/components/onboarding/onboarding-store").then(({ showOnboarding }) =>
+          showOnboarding("ai"),
+        );
+      },
+    },
     {
       id: "open-workspace",
       label: "Open Workspace",

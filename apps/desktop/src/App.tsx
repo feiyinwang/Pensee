@@ -4,6 +4,7 @@ import { CommandPalette } from "./components/command-palette";
 import { Composer } from "./components/composer";
 import { FullDiskAccessGuide } from "./components/full-disk-access-guide";
 import { GoKeyHint } from "./components/go-key-hint";
+import { Onboarding } from "./components/onboarding";
 import { WindowTitle } from "./components/window-title";
 import { useIsStartupResolved } from "./hooks/use-workspace";
 import { useAppleBooksSync } from "./hooks/use-apple-books-sync";
@@ -42,6 +43,7 @@ function App() {
       <ClaudeSignIn />
       <FullDiskAccessGuide />
       <GoKeyHint />
+      <Onboarding />
     </>
   );
 }

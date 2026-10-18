@@ -151,6 +151,16 @@ Learned the hard way; each one cost a failed run.
     `switchView` in `calendar.spec.js`).
   - CodeMirror links resolve their target from the click's coordinates: use
     `mouseClick(element)` from `_helpers.js`. It also takes `{ metaKey: true }`.
+  - So code that must react to the user's click listens for `click`, not
+    `mousedown` (onboarding's click-to-write, `practice-guide.tsx`).
+  - `waitForClickable` can time out on a button that `click()` presses fine:
+    wait with `waitForExist`, then click (`onboarding.spec.js`).
+- `browser.keys(["Enter"])` on a focused `<button>` sends the keydown but
+  doesn't press the button: a screen that runs its focused choice on ↵
+  handles Enter itself (onboarding's `Question`).
+- The hidden e2e window throttles timers to about one a second: anything
+  typed out character by character on a timer should write at once when
+  `document.hidden` (onboarding's `typeInto`).
 - The e2e window is never in front (`document.hasFocus()` is false), so
   CodeMirror ignores a DOM selection set from a script: put the caret with a
   mouse click at the text's coordinates (`caretAfter` in `pen.spec.js`).
