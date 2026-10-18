@@ -40,26 +40,28 @@ import { viewportParsePlugin } from "./viewport-parse";
 import { wikiLinkExtension } from "./wiki-link-extension";
 import { wikiPagesExtension } from "./wiki-pages-extension";
 import { wikiLinkPreview } from "./wiki-link-preview";
+import { tabColumnOf } from "./hidden-tab";
 
-// Focus the editor when its pane is revealed (tab switch). Panes hide via an
-// `invisible` class, so watch for that flipping off.
+// Focus the editor when a tab switch reveals its tab: its column loses
+// `data-hidden` (tab-columns.tsx). Not when a pinch brings back all the
+// columns: every hidden tab shows then, and focus stays in the column it was in.
 function focusOnRevealExtension(isDisposed: () => boolean): Extension {
   return ViewPlugin.define((view) => {
-    const pane = view.dom.closest<HTMLElement>("[data-pane]");
-    if (!pane) return { destroy() {} };
+    const column = tabColumnOf(view.dom);
+    if (!column) return { destroy() {} };
 
-    let wasHidden = pane.classList.contains("invisible");
+    let wasHidden = column.hasAttribute("data-hidden");
 
     const mo = new MutationObserver(() => {
       if (isDisposed()) return;
-      const isHidden = pane.classList.contains("invisible");
-      if (wasHidden && !isHidden) {
+      const isHidden = column.hasAttribute("data-hidden");
+      if (wasHidden && !isHidden && !column.closest(".tab-columns[data-columns]")) {
         view.focus();
       }
       wasHidden = isHidden;
     });
 
-    mo.observe(pane, { attributes: true, attributeFilter: ["class"] });
+    mo.observe(column, { attributes: true, attributeFilter: ["data-hidden"] });
 
     return { destroy: () => mo.disconnect() };
   });

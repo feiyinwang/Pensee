@@ -5,10 +5,13 @@
    shows ever scrolls beneath it. The glass panel already sits 8px below the
    window top. */
 .tab-columns {
+  --tab-columns-top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
+  --tab-column-width: 640px;
+  --tab-column-gap: 8px;
   position: absolute;
   inset: 0;
   display: flex;
-  padding-top: calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2 - 8px);
+  padding-top: var(--tab-columns-top);
 }
 
 /* A single tab fills the panel exactly as it always has. */
@@ -21,12 +24,27 @@
   height: 100%;
 }
 
-/* Without columns, inactive tabs stay mounted but out of flow and hidden. */
+/* Without columns, inactive tabs stay mounted, out of flow, just past the
+   strip's right edge, where its clip hides them. Not `visibility: hidden`,
+   `content-visibility` or `inert`: each restyles every node inside (WebKit
+   applies them as inherited style), so a pinch cost every open tab. Moving
+   a tab costs nothing inside it, and it keeps the layout it last showed in
+   (`data-hidden` says which), so a pinch lays out only the tabs it shows
+   differently. */
+.tab-columns:not([data-columns]) {
+  overflow: clip;
+}
 .tab-column[data-hidden] {
   position: absolute;
-  inset: 0;
-  visibility: hidden;
-  pointer-events: none;
+  top: var(--tab-columns-top);
+  bottom: 0;
+  left: 100%;
+  width: 100%;
+  height: auto;
+}
+.tab-column[data-hidden="column"] {
+  bottom: 44px;
+  width: var(--tab-column-width);
 }
 
 /* Zoomed into a book or its page: the two share the panel as one block,
@@ -52,8 +70,6 @@
 /* ---- the strip -------------------------------------------------------- */
 
 .tab-columns[data-columns] {
-  --tab-column-width: 640px;
-  --tab-column-gap: 8px;
   column-gap: var(--tab-column-gap);
   overflow-x: auto;
   overflow-y: hidden;
@@ -73,7 +89,8 @@
   background: transparent;
 }
 
-.tab-columns[data-columns] > .tab-column {
+.tab-columns[data-columns] > .tab-column,
+.tab-column[data-hidden="column"] {
   flex: 0 0 var(--tab-column-width);
   width: var(--tab-column-width);
   overflow: hidden;

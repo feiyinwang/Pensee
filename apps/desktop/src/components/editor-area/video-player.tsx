@@ -19,6 +19,7 @@ import { PlayerKeys } from "./player-keys";
 import { installVideoPinShortcut, returnFocusFrom } from "./video-pin";
 import { useTranscriptView } from "./transcript-view";
 import { bringInTranscript, captionLanguagesOf } from "./video-transcript";
+import { isInHiddenTab } from "./hidden-tab";
 import "./video-player.css";
 
 // The box brings in Arc and `motion`: only notes with a transcript load it
@@ -250,7 +251,12 @@ function VideoBand({
         send({ cmd: "speed", step });
       },
       rect: () => frameRef.current?.getBoundingClientRect() ?? new DOMRect(),
-      shown: () => frameRef.current?.checkVisibility({ visibilityProperty: true }) ?? false,
+      shown: () => {
+        const frame = frameRef.current;
+        return (
+          !!frame && frame.checkVisibility({ visibilityProperty: true }) && !isInHiddenTab(frame)
+        );
+      },
     };
     playerRef.current = player;
 

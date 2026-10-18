@@ -1,9 +1,11 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  type FocusEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -68,6 +70,20 @@ function measureEditorsNow(strip: HTMLElement) {
   }
 }
 
+/** How a tab is laid out: one of the strip's islands, or alone in the panel. */
+type ColumnLayout = "column" | "alone";
+
+/** A hidden tab is only moved out of sight (tab-columns.css), so nothing
+ *  keeps focus out of it the way `visibility: hidden` did: send focus back
+ *  out, or typing would land in a note nobody can see. */
+function blurIfHidden(el: Element | null) {
+  if (el instanceof HTMLElement && el.closest(".tab-column[data-hidden]")) el.blur();
+}
+
+function blurHiddenFocus(event: FocusEvent<HTMLElement>) {
+  blurIfHidden(event.target);
+}
+
 /** Tab ids are `tab-<sequence>`, increasing as tabs are created. */
 function tabSequence(id: string) {
   return Number(id.slice(id.lastIndexOf("-") + 1)) || 0;
@@ -106,6 +122,10 @@ export function TabColumns() {
   const pair = !isColumns && canColumn ? bookPair(tabs, activeTabId, bookPages) : null;
   const shownAlone = new Set(pair ?? (activeTabId ? [activeTabId] : []));
   const domOrder = [...tabs].sort((a, b) => tabSequence(a.id) - tabSequence(b.id));
+  // The layout each tab last showed in. A hidden tab keeps it (tab-columns.css),
+  // so a pinch lays out only the tabs whose layout it changes; a tab that has
+  // never shown waits laid out as a column.
+  const lastLayoutRef = useRef(new Map<string, ColumnLayout>());
 
   const stripRef = useRef<HTMLDivElement | null>(null);
   // Set when activation came from a press inside that column: the user is
@@ -122,6 +142,9 @@ export function TabColumns() {
     const strip = stripRef.current;
     const known = knownTabsRef.current;
     knownTabsRef.current = new Set(tabs.map((t) => t.id));
+    for (const id of lastLayoutRef.current.keys()) {
+      if (!knownTabsRef.current.has(id)) lastLayoutRef.current.delete(id);
+    }
     if (!known || !strip || !isColumns || prefersReducedMotion()) return;
     const entering = tabs
       .filter((t) => !known.has(t.id))
@@ -166,6 +189,9 @@ export function TabColumns() {
     lastLayoutKeyRef.current = layoutKey;
     measureEditorsNow(stripRef.current);
   }, [layoutKey]);
+
+  // Focus left in a tab this change hid (a pinch over another column).
+  useLayoutEffect(() => blurIfHidden(document.activeElement), [layoutKey, activeTabId]);
 
   // Finish a drop once the store has reordered the tabs: everything snaps to
   // its new slot, and the dropped column eases the leftover distance home.
@@ -327,11 +353,10 @@ export function TabColumns() {
         // Without columns only the active tab (or its book pair) shows; kinds
         // that do not keep their state alive while hidden are not mounted.
         if (!isShown && !pageKind(tab.location).keepAlive) return null;
-        const Component = pageKindView(tab.location).Component as React.ComponentType<{
-          location: Tab["location"];
-          isActive: boolean;
-          inColumn: boolean;
-        }>;
+        const layouts = lastLayoutRef.current;
+        if (isShown) layouts.set(tab.id, isColumns ? "column" : "alone");
+        const layout = layouts.get(tab.id) ?? "column";
+        const asColumn = isShown ? isColumns : layout === "column";
         return (
           <section
             key={tab.id}
@@ -339,12 +364,14 @@ export function TabColumns() {
             style={{ order: index }}
             data-column-tab={tab.id}
             data-focused={(isColumns && isActive) || undefined}
-            data-hidden={!isShown || undefined}
+            data-hidden={isShown ? undefined : layout}
             data-pair-end={(pair && pair[1] === tab.id) || undefined}
             aria-label={isColumns ? `Column ${index + 1} of ${tabs.length}` : undefined}
+            aria-hidden={!isShown || undefined}
             onPointerDownCapture={() => onColumnPointerDown(tab.id)}
+            onFocusCapture={isShown ? undefined : blurHiddenFocus}
           >
-            {isColumns ? (
+            {asColumn ? (
               <TabColumnHeader
                 tab={tab}
                 index={index}
@@ -353,10 +380,11 @@ export function TabColumns() {
               />
             ) : null}
             <div className="tab-column-body">
-              <Component
+              <TabBody
                 location={tab.location}
                 isActive={isActive}
-                inColumn={isColumns || (pair !== null && isShown)}
+                inColumn={asColumn || (pair !== null && isShown)}
+                isShown={isShown}
               />
             </div>
           </section>
@@ -365,6 +393,21 @@ export function TabColumns() {
     </div>
   );
 }
+
+interface TabBodyProps {
+  location: Tab["location"];
+  isActive: boolean;
+  inColumn: boolean;
+  isShown: boolean;
+}
+
+/** A tab's page. Memoised: a pinch renders TabColumns again, and only the
+ *  tabs whose props change (the one changing layout, a book or Settings
+ *  told it is shown) should render with it, not every open tab. */
+const TabBody = memo(function TabBody(props: TabBodyProps) {
+  const Component = pageKindView(props.location).Component as React.ComponentType<TabBodyProps>;
+  return <Component {...props} />;
+});
 
 interface TabColumnHeaderProps {
   tab: Tab;

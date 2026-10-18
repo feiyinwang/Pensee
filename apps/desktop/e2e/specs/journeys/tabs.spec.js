@@ -1,4 +1,4 @@
-// Pinching between one tab and all columns (TAB-09, TAB-10 in
+// Pinching between one tab and all columns (TAB-09…11 in
 // docs/qa/user-journeys.md). A pinch reaches the page as Ctrl-wheel events;
 // the journeys send those, since the driver has no trackpad.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
@@ -126,5 +126,76 @@ describe("Journeys: tabs", function () {
     const back = await pinch([4, 4, 4]);
     ok(back.columns, "and pinching in again, the columns");
     deepEqual(back.off, [], "every heading label should sit beside its heading in that frame");
+  });
+
+  it("TAB-11 a pinch to one tab and back keeps every column's page where it was", async function () {
+    // Starts on the columns TAB-10 left. Hidden and off-screen tabs are
+    // skipped by the renderer (content-visibility), which must not lose
+    // their scroll or their text.
+    const scrollerOf = (title) =>
+      browser.execute((name) => {
+        const column = [...document.querySelectorAll(".tab-column")].find(
+          (el) => el.querySelector(".tab-column-title")?.textContent === name,
+        );
+        const scroller = [...column.querySelectorAll("*")].find(
+          (el) =>
+            el.scrollHeight > el.clientHeight + 100 && getComputedStyle(el).overflowY !== "visible",
+        );
+        scroller.dataset.qaScroller = name;
+        return true;
+      }, title);
+    await scrollerOf("Long essay.md");
+    const place = await browser.execute(() => {
+      const scroller = document.querySelector('[data-qa-scroller="Long essay.md"]');
+      scroller.scrollTop = 3000;
+      return scroller.scrollTop;
+    });
+    ok(place > 2000, "the long note should scroll down");
+    // Out on the hub, so the long note is hidden; then back in.
+    const pinchOn = (deltaY) =>
+      browser.execute((dy) => {
+        // The hub is the column without headings.
+        const hub = [...document.querySelectorAll(".tab-column")].find(
+          (el) => !el.querySelector(".cm-heading-line"),
+        );
+        const target = hub.querySelector(".cm-content");
+        const box = target.getBoundingClientRect();
+        for (let i = 0; i < 3; i++) {
+          target.dispatchEvent(
+            new WheelEvent("wheel", {
+              bubbles: true,
+              cancelable: true,
+              ctrlKey: true,
+              deltaY: dy,
+              clientX: box.left + 40,
+              clientY: box.top + 40,
+            }),
+          );
+        }
+        return document.querySelector(".tab-columns").hasAttribute("data-columns");
+      }, deltaY);
+    ok(!(await pinchOn(-4)), "pinching out on the hub should show it alone");
+    const hidden = await browser.execute(
+      () =>
+        document.querySelector('[data-qa-scroller="Long essay.md"]').closest("[data-hidden]") !==
+        null,
+    );
+    ok(hidden, "the long note should be hidden behind the hub");
+    await browser.pause(300);
+    ok(await pinchOn(4), "pinching in should bring the columns back");
+    const after = await browser.execute(() => {
+      const scroller = document.querySelector('[data-qa-scroller="Long essay.md"]');
+      const view = scroller.getBoundingClientRect();
+      const shown = [...scroller.querySelectorAll(".cm-line")].filter((line) => {
+        const r = line.getBoundingClientRect();
+        return r.height > 0 && r.bottom > view.top && r.top < view.bottom;
+      });
+      return { top: scroller.scrollTop, lines: shown.length, text: shown[0]?.textContent ?? "" };
+    });
+    ok(
+      Math.abs(after.top - place) < 2,
+      `the long note should stay at ${place}px, not ${after.top}px`,
+    );
+    ok(after.lines > 0, "the long note's lines in view should be laid out");
   });
 });

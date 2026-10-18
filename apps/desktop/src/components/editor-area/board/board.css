@@ -205,7 +205,9 @@
   z-index: 20;
 }
 
-.tab-columns:not([data-columns], [data-pair]) .wr-board-inline {
+.tab-columns:not([data-columns], [data-pair])
+  > .tab-column:not([data-hidden="column"])
+  .wr-board-inline {
   bottom: 44px;
 }
 

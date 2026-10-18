@@ -28,7 +28,7 @@
     "kind": "type"
   },
   "PERF-08": {
-    "median": 28,
+    "median": 16,
     "kind": "go"
   }
 }

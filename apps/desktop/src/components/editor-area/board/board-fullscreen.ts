@@ -21,6 +21,7 @@ import { followWikiLink } from "../wiki-pages-extension";
 import { parseVideoLink } from "@/lib/video-pins";
 import { openBookLink, parseBookLink } from "./board-book-links";
 import { openVideoLink } from "./board-video-links";
+import { isInHiddenTab } from "../hidden-tab";
 import { type BoardScene, cloneScene } from "./board-model";
 import { type BoardCanvasHandle, mountBoardCanvas } from "./board-canvas";
 
@@ -70,7 +71,8 @@ function onScreenInlineBoard(): { canvas: BoardCanvasHandle; rect: DOMRect } | n
   const canvas = open?.canvas();
   if (!open?.inline || !canvas) return null;
   const rect = open.overlay.getBoundingClientRect();
-  if (!rect.width || getComputedStyle(open.overlay).visibility !== "visible") return null;
+  if (!rect.width || isInHiddenTab(open.overlay)) return null;
+  if (getComputedStyle(open.overlay).visibility !== "visible") return null;
   return { canvas, rect };
 }
 
