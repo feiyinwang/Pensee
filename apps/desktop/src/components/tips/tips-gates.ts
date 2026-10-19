@@ -19,10 +19,14 @@ const BUSY_SELECTOR = [
   '[role="dialog"][aria-modal="true"]:not(.wr-board-fullscreen)',
 ].join(", ");
 
+/** Whether `el` is on screen: some menus stay in the page while closed (the
+ *  block menu is `hidden`), so being there is not being open. */
+const shown = (el: Element) => !el.closest("[hidden]") && el.getClientRects().length > 0;
+
 /** The app's gates: read only while a tip waits, never per keystroke. */
 export const APP_TIP_GATES: TipGates = {
   busy: () =>
     useOnboardingStore.getState().open ||
     useUIStore.getState().isCommandPaletteOpen ||
-    document.querySelector(BUSY_SELECTOR) !== null,
+    [...document.querySelectorAll(BUSY_SELECTOR)].some(shown),
 };
