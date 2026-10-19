@@ -25,7 +25,7 @@ export function FeatureCard({ feature, room }: { feature: Feature; room: string 
   const { demo } = feature;
   const zoom = "gif" in demo && demo.zoom ? zoomStyles(demo.zoom) : undefined;
   return (
-    <article className={feature.wide ? "fcard wide" : "fcard"}>
+    <article className="fcard">
       {"gif" in demo ? (
         <div className={demo.zoom ? "media zoomed" : "media"} style={zoom?.frame}>
           <img

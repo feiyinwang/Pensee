@@ -38,7 +38,7 @@ voice.
   across these intros.
 - **Feature cards.** 15 features, each a card with its demo, its shortcut as
   keycaps, a title naming the payoff, and one or two sentences. Seven demos are
-  the README GIFs (the three pen GIFs zoomed 1.67× onto the note, x 335–1055 and y 75–525 of 1200×750, so their writing is readable at card size; the book GIF spans the row, cropped to both panes above the Highlights list, so the selection, the Highlight pill and the line landing in the note read at about the app's own size; the podcast GIF, a wide strip, spans the row too); eight are small code-built scenes in the app's dark look
+  the README GIFs (the three pen GIFs zoomed 1.67× onto the note, x 335–1055 and y 75–525 of 1200×750, so their writing is readable at card size; the book GIF is cropped to its two panes, without the window around them); eight are small code-built scenes in the app's dark look
   that play when scrolled into view and repeat every 5 seconds while on screen, like the GIFs (static under reduced motion). Cards
   rest near flat (hairline ring, 1px shadow); a deeper shadow fades in on hover
   (160ms, opacity only).

@@ -524,11 +524,6 @@ button {
   max-width: none;
 }
 
-/* a wide card spans the row: for demos whose action needs the width */
-.fcard.wide {
-  grid-column: 1 / -1;
-}
-
 .fcard .words {
   padding: 18px 14px 12px;
 }
