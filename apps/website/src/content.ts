@@ -100,8 +100,8 @@ export interface Zoom {
 
 /** The note in the 1200×750 pen GIFs: the title, the pen's box and every line it adds, at 1.67×. */
 const PEN_NOTE: Zoom = { box: [335, 75, 1055, 525], size: [1200, 750] };
-/** Both panes of the book GIF without the window around them (16:10, like every card): the selection, the Highlight pill and the line landing in the note. */
-const BOOK_PANES: Zoom = { box: [14, 36, 1080, 702], size: [1200, 750] };
+/** The book GIF up close (16:10, 1.43×): the whole note, and the start of the book page with the Highlight pill and the highlighted sentence. The ends of the book's longer lines fall outside. */
+const BOOK_PANES: Zoom = { box: [20, 40, 860, 565], size: [1200, 750] };
 
 export type SceneId =
   | "organize"
