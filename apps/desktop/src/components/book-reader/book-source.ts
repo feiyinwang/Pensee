@@ -25,6 +25,9 @@ export interface BookSource {
    *  otherwise lay out a frame or more later, so their real heights are in
    *  place before the reader measures. True when it laid out any. */
   layOutInView: () => boolean;
+  /** A section's own name (an EPUB chapter's heading), or null when it has
+   *  none beyond its number (a PDF page). */
+  sectionTitle: (section: number) => string | null;
   /** For the agent: the text on screen and where it is. */
   passage: () => Promise<{ where: string; text: string }>;
   /** The same for a hidden reader, whose pages have no layout: about a

@@ -6,6 +6,7 @@ import {
   authorFromFileName,
   authorOf,
   bookHighlightsIn,
+  bookPlace,
   cleanBookTitle,
   sameAuthor,
   newBookNote,
@@ -17,6 +18,13 @@ import { parseFrontmatter } from "../src/lib/frontmatter";
 
 const p = (section: number, start: number, end: number) =>
   ({ unit: "p", section, start, end }) as const;
+
+describe("bookPlace", () => {
+  it("names a PDF page as is and an EPUB section from 1", () => {
+    expect(bookPlace(p(12, 0, 5))).toBe("page 12");
+    expect(bookPlace({ unit: "s", section: 0, start: 65, end: 93 })).toBe("section 1");
+  });
+});
 
 describe("book highlight ids", () => {
   it("round-trips a location", () => {

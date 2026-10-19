@@ -107,6 +107,7 @@ export class ReaderController {
             return passage ? { bookPath: this.bookPath, notePath, ...passage } : null;
           },
           jump: (id) => this.jump(id),
+          sectionTitle: (section) => this.#source?.sectionTitle(section) ?? null,
         }),
       );
       await this.#refreshHighlights();

@@ -33,6 +33,17 @@ import { blockEmbedHost, liveEditorsFor } from "./linked-block-sync";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+/** The pin icon, shared by video pins and book pins (book-jump.ts). */
+export function pinIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", PIN_ICON_PATH);
+  svg.append(path);
+  return svg;
+}
+
 /** The pin drawn in place of a `^yt-…` id. Atomic (block-embed.ts puts it in
  *  the editor's atomic ranges), so Backspace after it removes the pin whole. */
 export class VideoPinWidget extends WidgetType {
@@ -54,13 +65,7 @@ export class VideoPinWidget extends WidgetType {
     const label = `Play from ${formatVideoTime(this.seconds)}`;
     pin.title = label;
     pin.setAttribute("aria-label", label);
-    const svg = document.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("aria-hidden", "true");
-    const path = document.createElementNS(SVG_NS, "path");
-    path.setAttribute("d", PIN_ICON_PATH);
-    svg.append(path);
-    pin.append(svg);
+    pin.append(pinIcon());
     // The caret stays where it was: a pin is pressed, not clicked into.
     pin.addEventListener("mousedown", (event) => event.preventDefault());
     pin.addEventListener("click", (event) => {

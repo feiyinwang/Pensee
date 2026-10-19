@@ -208,10 +208,12 @@
   background-color: transparent !important;
 }
 
-/* A video pin at the end of a block (video-pin.ts, SPECs/youtube-notes-spec.md):
-   the `^yt-…` id drawn as a pin that plays its moment. Muted like the id it
-   stands for; the accent on hover says it can be pressed. */
-.cm-video-pin {
+/* A pin at the end of a block: a video pin (video-pin.ts,
+   SPECs/youtube-notes-spec.md), the `^yt-…` id drawn as a pin that plays its
+   moment, or a book pin (book-jump.ts, SPECs/book-reader-spec.md), the `^bk-…`
+   id of a highlight, drawn as a pin that goes to the passage. Muted like the
+   id it stands for; the accent on hover says it can be pressed. */
+:is(.cm-video-pin, .cm-book-pin) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -229,12 +231,12 @@
     background-color var(--motion-hover) var(--ease-hover);
 }
 
-.cm-video-pin:hover {
+:is(.cm-video-pin, .cm-book-pin):hover {
   color: var(--accent);
   background: color-mix(in oklch, var(--accent) 12%, transparent);
 }
 
-.cm-video-pin svg {
+:is(.cm-video-pin, .cm-book-pin) svg {
   width: 13px;
   height: 13px;
   fill: none;

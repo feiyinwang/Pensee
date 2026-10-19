@@ -319,7 +319,8 @@ gallery with type tabs; items are added from a link, a file or a title.
 ## Book reader — BK
 
 **Feature:** PDFs and EPUBs open beside their book note; highlights become
-bullets; text size and reading place persist.
+bullets that end in a pin leading back to the passage; text size and reading
+place persist.
 **Spec:** SPECs/book-reader-spec.md
 **Code:** `src/components/book-reader/`, `src/lib/book-*.ts`, `src-tauri/src/commands/books.rs`
 
@@ -329,6 +330,7 @@ bullets; text size and reading place persist.
 | BK-02 | Select text in the book → **Highlight** | A bullet with the passage is added to the note           | manual                 |
 | BK-03 | Close and reopen the book               | It opens on the same passage                             | legacy: book-place     |
 | BK-04 | **Aa** → large A                        | Text grows; the passage stays in view; the size persists | legacy: book-text-size |
+| BK-05 | Open a book's note, hover a highlight bullet's pin, click it | The bullet ends in a pin, not its `^bk-` id; the tooltip names the page or chapter; the book opens (if closed) and scrolls to the passage, which flashes | manual |
 
 ## YouTube notes — YT
 

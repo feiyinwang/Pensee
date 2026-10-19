@@ -222,6 +222,7 @@ export async function openPdf(
     currentSection,
     // Pages are placeholders at their size from the start.
     layOutInView: () => false,
+    sectionTitle: () => null,
     passage: () => passageAt(currentSection()),
     passageAt: (section) => passageAt(section),
     destroy: () => {

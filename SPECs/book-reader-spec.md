@@ -166,9 +166,17 @@ to explain or define something.
     on the open page.
 - **Editing a block's text** changes nothing in the book. The id still
   anchors the highlight.
+- **The pin.** A highlight block's id is drawn as a pin at the end of the
+  block, the same pin as a video note's moments, so a line that came from the
+  book says so. It is one atomic unit: the caret steps over it, and Backspace
+  after it removes it whole, which, like deleting the block, removes the
+  highlight. Its tooltip names the place: **Go to page 24** for a PDF, the
+  chapter's heading for an EPUB while the book is open, else **Go to
+  section 3**.
 - **Jumping back.** Putting the caret on a highlight block scrolls the open
-  book to that highlight and flashes it. Cmd+click on the block opens the book
-  first if it is closed.
+  book to that highlight and flashes it. A click on the block's pin, or
+  Cmd+click on the block, does the same and opens the book first if it is
+  closed.
 - **Apple Books ids** (`^bk-<12 hex>`) do not match the location form, so they
   are ignored by the reader.
 
@@ -241,7 +249,8 @@ to explain or define something.
   - the open readers (book → page path, current passage);
   - jump requests.
 - `components/editor-area/book-jump.ts`: the caret/Cmd+click editor
-  extension.
+  extension and `BookPinWidget`, the pin `block-embed.ts` draws in place of a
+  highlight's id (the icon is the video pin's, `pinIcon` in `video-pin.ts`).
 - `lib/agent-context.ts`: the `books` field and the `<book_passage>` block.
 
 ## Follow-ups

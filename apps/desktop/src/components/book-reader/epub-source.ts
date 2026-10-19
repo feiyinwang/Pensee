@@ -191,6 +191,7 @@ export async function openEpub(
     },
     currentSection,
     layOutInView,
+    sectionTitle: (section) => titles[section] ?? null,
     passage: async () => {
       const index = currentSection();
       const where = titles[index]!;

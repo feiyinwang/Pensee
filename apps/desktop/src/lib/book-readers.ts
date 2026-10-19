@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import { type BookLocation, bookPlace } from "./book-highlights";
+
 // The book readers open in this window (SPECs/book-reader-spec.md). A plain
 // registry, not a store: nothing renders from it. The editor asks it to jump
 // to a highlight, and the agent asks it for the passage on screen at send time,
@@ -21,6 +23,8 @@ export interface OpenReader {
   /** Scroll to block id `id`'s highlight and flash it. False when the id is
    *  not one of this book's highlights. */
   jump: (id: string) => boolean;
+  /** A section's own name (an EPUB chapter's heading), or null. */
+  sectionTitle: (section: number) => string | null;
 }
 
 const readers = new Set<OpenReader>();
@@ -64,6 +68,19 @@ export function jumpToHighlight(notePath: string, id: string): boolean {
     if (reader.notePath === notePath && reader.jump(id)) return true;
   }
   return false;
+}
+
+/** Where `location` is in the book of page `notePath`, in words: the
+ *  chapter's heading while an EPUB is open, else "page 12" / "section 3". */
+export function bookPlaceName(notePath: string, location: BookLocation): string {
+  if (location.unit === "s") {
+    for (const reader of readers) {
+      if (reader.notePath !== notePath) continue;
+      const title = reader.sectionTitle(location.section);
+      if (title) return title;
+    }
+  }
+  return bookPlace(location);
 }
 
 export function isBookOpenFor(notePath: string): boolean {

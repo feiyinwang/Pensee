@@ -47,6 +47,7 @@ import {
   referenceInsertion,
   restoreMarker,
 } from "@/lib/block-refs";
+import { parseBookHighlightId } from "@/lib/book-highlights";
 import { parseVideoPinId } from "@/lib/video-pins";
 import { WIKI_LINK_RE, findWikiLinkAt } from "@/lib/wiki-links";
 import { findWikiPage } from "@/lib/wiki-pages";
@@ -70,6 +71,7 @@ import {
   writeBlock,
 } from "./linked-block-sync";
 import { BacklinkBadge, backlinksField, blockBacklinks } from "./block-backlinks";
+import { BookPinWidget } from "./book-jump";
 import { VideoPinWidget } from "./video-pin";
 import "./block-embed.css";
 
@@ -468,6 +470,15 @@ function inListItem(state: EditorState, start: number): boolean {
 }
 
 const hiddenId = Decoration.replace({});
+
+/** The pin drawn in place of block id `id`: a video moment or a book
+ *  highlight. Null for any other id, which stays hidden text. */
+function pinWidget(id: string, getFilePath: () => string): WidgetType | null {
+  const seconds = parseVideoPinId(id);
+  if (seconds !== null) return new VideoPinWidget(seconds, getFilePath);
+  const location = parseBookHighlightId(id);
+  return location ? new BookPinWidget(id, location, getFilePath) : null;
+}
 const visibleId = Decoration.mark({ class: "cm-block-id" });
 
 function build(
@@ -523,15 +534,14 @@ function build(
       lastIdLine = Math.max(lastIdLine, line.number);
       if (id && !inCode(state, line.to)) {
         const idFrom = line.from + id.index;
-        const pinAt = parseVideoPinId(id[1]!);
-        if (pinAt !== null) {
-          // A video pin is always the pin, never its id: one atomic unit
-          // that plays its moment (SPECs/youtube-notes-spec.md).
-          const pin = Decoration.replace({
-            widget: new VideoPinWidget(pinAt, getFilePath),
-          }).range(idFrom, line.to);
-          decorations.push(pin);
-          embeds.push(pin);
+        const pin = pinWidget(id[1]!, getFilePath);
+        if (pin) {
+          // A pin is always the pin, never its id: one atomic unit that plays
+          // its moment (SPECs/youtube-notes-spec.md) or goes to its passage
+          // in the book (SPECs/book-reader-spec.md).
+          const range = Decoration.replace({ widget: pin }).range(idFrom, line.to);
+          decorations.push(range);
+          embeds.push(range);
         } else {
           decorations.push(
             // The second pen's ids name its own lines: never shown, like a pin's.
