@@ -324,13 +324,14 @@ place persist.
 **Spec:** SPECs/book-reader-spec.md
 **Code:** `src/components/book-reader/`, `src/lib/book-*.ts`, `src-tauri/src/commands/books.rs`
 
-| ID    | Journey                                 | Expected                                                 | Check                  |
-| ----- | --------------------------------------- | -------------------------------------------------------- | ---------------------- |
-| BK-01 | Drop an EPUB on the window              | It is saved by its note and opens beside it              | you                    |
-| BK-02 | Select text in the book → **Highlight** | A bullet with the passage is added to the note           | manual                 |
-| BK-03 | Close and reopen the book               | It opens on the same passage                             | legacy: book-place     |
-| BK-04 | **Aa** → large A                        | Text grows; the passage stays in view; the size persists | legacy: book-text-size |
-| BK-05 | Open a book's note, hover a highlight bullet's pin, click it | The bullet ends in a pin, not its `^bk-` id; the tooltip names the page or chapter; the book opens (if closed) and scrolls to the passage, which flashes | manual |
+| ID    | Journey                                                      | Expected                                                                                                                       | Check                  |
+| ----- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| BK-01 | Drop an EPUB on the window                                   | It is saved by its note and opens beside it                                                                                    | you                    |
+| BK-02 | Select text in the book → **Highlight**                      | A bullet with the passage is added to the note                                                                                 | manual                 |
+| BK-03 | Close and reopen the book                                    | It opens on the same passage                                                                                                   | legacy: book-place     |
+| BK-04 | **Aa** → large A                                             | Text grows; the passage stays in view; the size persists                                                                       | legacy: book-text-size |
+| BK-05 | Open a book's note, hover a highlight bullet's pin, click it | The bullet ends in a pin, not its `^bk-` id; the tooltip names the page or chapter; the book opens beside the note (if closed) | auto: library          |
+| BK-06 | Click a highlight bullet's pin with its book open            | The book scrolls to the passage, which flashes                                                                                 | you                    |
 
 ## YouTube notes — YT
 
@@ -513,17 +514,17 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 **Spec:** SPECs/onboarding-spec.md
 **Code:** `src/components/onboarding/`, `src/App.tsx`, `src/components/command-palette/index.tsx` (show-onboarding), `src/lib/tauri.ts` (obsidianVaults, claudeInstalled, createStarterFolder, downloadSampleBook), `src-tauri/src/commands/onboarding.rs`, `e2e/qa/seed-vault.mjs` (seedFirstRun)
 
-| ID     | Journey                                                                   | Expected                                                                                                                                  | Check            |
-| ------ | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| ONB-01 | ★ First launch, no folder open; ↵                                         | _Open your second brain._ lists the Obsidian vault with its note count, focused; ↵ opens it and the AI screen follows                     | auto: onboarding |
-| ONB-02 | On the AI screen, **Other options**, then **Skip for now**                | Claude Code is offered (Use, Sign in, or the install command); Codex and Gemini CLI say _Coming soon_; Skip goes to the samples           | auto: onboarding |
-| ONB-03 | **Just write**                                                            | A note opens in `Pensée samples/`; the guide says _1 of 2 … for Answer_ with **Skip**; Skip goes to the carousel                         | auto: onboarding |
-| ONB-04 | In the carousel, →, then **Start writing**                                | → moves to the board demo; Start writing closes onboarding and saves `onboarding.done`, so the next launch opens straight into the vault | auto: onboarding |
-| ONB-05 | ⌘P → **Show Onboarding**, Skip for now, **YouTube**, click the empty line | The video note opens at 1:38:02; Pensée types _Rewarding yourself after studying…_ into the line; the guide says _Now ⌘S pins it to …_    | auto: onboarding |
-| ONB-06 | YouTube, ⌘S, then ⌘. `@` ↵ (signed in)                                    | The line is pinned; Check writes For and Against with papers; the guide offers **Continue**                                               | you              |
+| ID     | Journey                                                                   | Expected                                                                                                                                    | Check            |
+| ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| ONB-01 | ★ First launch, no folder open; ↵                                         | _Open your second brain._ lists the Obsidian vault with its note count, focused; ↵ opens it and the AI screen follows                       | auto: onboarding |
+| ONB-02 | On the AI screen, **Other options**, then **Skip for now**                | Claude Code is offered (Use, Sign in, or the install command); Codex and Gemini CLI say _Coming soon_; Skip goes to the samples             | auto: onboarding |
+| ONB-03 | **Just write**                                                            | A note opens in `Pensée samples/`; the guide says _1 of 2 … for Answer_ with **Skip**; Skip goes to the carousel                            | auto: onboarding |
+| ONB-04 | In the carousel, →, then **Start writing**                                | → moves to the board demo; Start writing closes onboarding and saves `onboarding.done`, so the next launch opens straight into the vault    | auto: onboarding |
+| ONB-05 | ⌘P → **Show Onboarding**, Skip for now, **YouTube**, click the empty line | The video note opens at 1:38:02; Pensée types _Rewarding yourself after studying…_ into the line; the guide says _Now ⌘S pins it to …_      | auto: onboarding |
+| ONB-06 | YouTube, ⌘S, then ⌘. `@` ↵ (signed in)                                    | The line is pinned; Check writes For and Against with papers; the guide offers **Continue**                                                 | you              |
 | ONB-07 | **Book**                                                                  | _The Elements of Style_ downloads from Project Gutenberg and opens beside its page; Highlight lands a bullet and the guide moves to ⌘. `[[` | you              |
-| ONB-08 | **Podcast**, press play, click the line, ⌘S                               | The episode plays from 12:01 with its artwork; the line is written and pinned                                                            | you              |
-| ONB-09 | Swipe the carousel with two fingers                                       | The slides follow the fingers and settle on the nearest one; one swipe moves once                                                         | you              |
+| ONB-08 | **Podcast**, press play, click the line, ⌘S                               | The episode plays from 12:01 with its artwork; the line is written and pinned                                                               | you              |
+| ONB-09 | Swipe the carousel with two fingers                                       | The slides follow the fingers and settle on the nearest one; one swipe moves once                                                           | you              |
 
 ---
 
@@ -533,14 +534,14 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 **Spec:** SPECs/whats-new-card-spec.md
 **Code:** `src/components/whats-new/`, `src/lib/whats-new.ts`, `src/App.tsx`, `src/components/command-palette/index.tsx` (show-whats-new), `src/lib/tauri.ts` (fetchChangelog), `src-tauri/src/commands/changelog.rs`, `e2e/qa/seed-vault.mjs` (seedWhatsNew, the changelog fixture), `e2e/qa/run.sh` (PENSEE_CHANGELOG_FILE)
 
-| ID    | Journey                                                    | Expected                                                                                                                                            | Check           |
-| ----- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| WN-01 | ★ Launch with a changelog day after the last one seen      | The card shows bottom-right without taking focus: its painting and credit, _What's new · 5 changes_, _October 18_, three first sentences, **2 more** | auto: whats-new |
-| WN-02 | **2 more**                                                 | All five changes show in place                                                                                                                      | auto: whats-new |
-| WN-03 | **Got it**                                                 | The card fades out and `whatsNew.lastSeen` is the day, so it doesn't show again                                                                     | auto: whats-new |
-| WN-04 | ⌘P → **Show What's New**                                   | The newest day's card shows again                                                                                                                   | auto: whats-new |
-| WN-05 | A first launch (nothing seen yet)                          | No card: the newest day is recorded as seen, and onboarding has the screen                                                                          | you             |
-| WN-06 | **Read all**                                               | The changelog opens on GitHub in the browser and the card closes                                                                                    | you             |
+| ID    | Journey                                               | Expected                                                                                                                                             | Check           |
+| ----- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| WN-01 | ★ Launch with a changelog day after the last one seen | The card shows bottom-right without taking focus: its painting and credit, _What's new · 5 changes_, _October 18_, three first sentences, **2 more** | auto: whats-new |
+| WN-02 | **2 more**                                            | All five changes show in place                                                                                                                       | auto: whats-new |
+| WN-03 | **Got it**                                            | The card fades out and `whatsNew.lastSeen` is the day, so it doesn't show again                                                                      | auto: whats-new |
+| WN-04 | ⌘P → **Show What's New**                              | The newest day's card shows again                                                                                                                    | auto: whats-new |
+| WN-05 | A first launch (nothing seen yet)                     | No card: the newest day is recorded as seen, and onboarding has the screen                                                                           | you             |
+| WN-06 | **Read all**                                          | The changelog opens on GitHub in the browser and the card closes                                                                                     | you             |
 
 ---
 

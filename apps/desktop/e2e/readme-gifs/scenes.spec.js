@@ -440,9 +440,11 @@ describe("README GIFs", function () {
 
   before(async function () {
     await $('section[aria-label="Spaces"]').waitForExist({ timeout: 10_000 });
-    // The plugin sizes the window in device pixels: 2880×1800 is 1440×900 on
-    // a 2× screen (and larger frames on a screen scaled further).
-    await browser.setWindowSize(2880, 1800);
+    // The plugin sizes the window in device pixels: ask the screen for its
+    // ratio so the app is always 1440×900 CSS pixels (2880×1800 on a 2×
+    // screen, 1440×900 on a 1× display, where 2880 doubled the app's room).
+    const ratio = await browser.execute(() => window.devicePixelRatio || 1);
+    await browser.setWindowSize(Math.round(1440 * ratio), Math.round(900 * ratio));
     await browser.pause(600);
     front();
     await $(".app-splash").waitForExist({ timeout: 10_000, reverse: true });
