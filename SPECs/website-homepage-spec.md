@@ -29,7 +29,9 @@ voice.
   stays in view. On a phone the painting runs edge to edge on top and fades to
   black, and the words follow below it. Under the headline _Thinking, made by
   writing._ comes the README's first paragraph, with "neurodivergent" added.
-  The painting hangs as cloth (`components/Cloth.tsx`): still at rest, and a
+  Every painting (hero, rooms, closing) hangs as cloth
+  (`components/Cloth.tsx`, mounted by `Painting`); the demo GIFs and book
+  covers stay still. Each rests still, and a
   mouse stroke across it sends a broad wave (21px folds, 290px reach) that
   settles back flat quickly.
   No wind, so it never moves on its own and the loop stops when calm; reduced

@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { Cloth } from "../components/Cloth";
 import { DownloadButton } from "../components/DownloadButton";
 import { FeatureCard } from "../components/FeatureCard";
 import { InstallLine } from "../components/InstallLine";
@@ -38,9 +37,7 @@ function HomePage() {
       <main id="top">
         {/* The philosopher sits left of centre, so the words take the dark stair on the right. */}
         <section className="full hero">
-          <Painting painting={PAINTINGS.rembrandt} eager>
-            <Cloth />
-          </Painting>
+          <Painting painting={PAINTINGS.rembrandt} eager />
           <div className="scrim" aria-hidden="true" />
           <div className="over">
             <div className="eyebrow">Pensée for Mac · version {VERSION}</div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 /*
- * The painting hung as a cloth. It rests still; moving the mouse across it
+ * A painting hung as a cloth. It rests still; moving the mouse across it
  * sends a soft wave that grows with the cursor's speed and settles back flat.
  *
  * Adapted from canvas-ui's Cloth (`npx shadcn add @canvas-ui/cloth-react`).

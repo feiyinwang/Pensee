@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import type { Painting as PaintingData } from "../content";
+import { Cloth } from "./Cloth";
 
 /** "Rembrandt, Philosopher in Meditation, 1632" with the title in italics. */
 export function Credit({ painting }: { painting: PaintingData }) {
@@ -12,7 +13,11 @@ export function Credit({ painting }: { painting: PaintingData }) {
   );
 }
 
-/** A painting cropped to its frame, keeping its subject in view. */
+/**
+ * A painting cropped to its frame, keeping its subject in view. Every painting
+ * hangs as cloth that ripples under the mouse; the demo GIFs and book covers
+ * are not paintings and stay still.
+ */
 export function Painting({
   painting,
   eager = false,
@@ -31,6 +36,7 @@ export function Painting({
         loading={eager ? "eager" : "lazy"}
         fetchPriority={eager ? "high" : undefined}
       />
+      <Cloth />
       {children}
     </figure>
   );
