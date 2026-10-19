@@ -12,6 +12,7 @@ pub mod onboarding;
 pub mod papers;
 pub mod podcasts;
 pub mod recents;
+pub mod release;
 pub mod search;
 pub mod settings;
 #[cfg(target_os = "macos")]

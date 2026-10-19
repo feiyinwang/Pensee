@@ -526,6 +526,27 @@ export function fetchChangelog(): Promise<string> {
   return invoke("fetch_changelog");
 }
 
+/** The newest GitHub release and the running app's version (commands/release.rs). */
+export interface Release {
+  version: string;
+  current: string;
+}
+
+export function latestRelease(): Promise<Release> {
+  return invoke("latest_release");
+}
+
+/** Upgrades Pensée to the latest release the way it was installed (Homebrew,
+ *  or the release zip in place of this app). Resolves once it's in place. */
+export function upgradeApp(): Promise<void> {
+  return invoke("upgrade_app");
+}
+
+/** Quits and reopens Pensée, so an upgrade takes effect. */
+export function restartApp(): Promise<void> {
+  return invoke("restart_app");
+}
+
 /** Whether Claude Code's `claude` binary can be found on this Mac. */
 export function claudeInstalled(): Promise<boolean> {
   return invoke("claude_installed");

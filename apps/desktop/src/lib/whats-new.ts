@@ -98,3 +98,27 @@ export function paintingIndex(date: string, count: number): number {
   for (const ch of date) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return hash % count;
 }
+
+/** `0.7.0` → [0, 7, 0]. A suffix after the numbers (`-beta`) is ignored. */
+function versionParts(version: string): number[] {
+  const numbers = /^v?(\d+(?:\.\d+)*)/.exec(version.trim())?.[1];
+  if (!numbers) throw new Error(`Not a version: "${version}"`);
+  return numbers.split(".").map(Number);
+}
+
+/** Whether `latest` is a later version than `current` (`0.10.0` > `0.9.2`). */
+export function isNewerVersion(latest: string, current: string): boolean {
+  const a = versionParts(latest);
+  const b = versionParts(current);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0);
+    if (diff !== 0) return diff > 0;
+  }
+  return false;
+}
+
+/** Whether the card should come up on its own for a release the app can
+ *  update to: one the writer hasn't already closed the card for. */
+export function isUnseenRelease(release: string, releaseSeen: string | null): boolean {
+  return releaseSeen === null || isNewerVersion(release, releaseSeen);
+}

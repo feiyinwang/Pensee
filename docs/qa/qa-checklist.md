@@ -146,6 +146,9 @@ Learned the hard way; each one cost a failed run.
 
 - Act like the user: click and type on what is on screen. Use IPC (`invoke`)
   only to arrange files before a journey or to read the result on disk.
+- Never return an object with an `error` key from `browser.execute`: the
+  WebDriver plugin reads it as the script failing and throws its text as a
+  `WebDriverError` (WN-08). Name it `failure` or similar.
 - The WebDriver plugin's `click()` sends no pointer events and no coordinates.
   - Radix menus and popovers open on `pointerdown`: dispatch it (see
     `switchView` in `calendar.spec.js`).

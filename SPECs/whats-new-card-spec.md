@@ -17,6 +17,8 @@ how they work, like a new shortcut or a fix to something that annoyed them.
 - As a new writer, my first launch shows onboarding, not a backlog of changes.
 - As a writer away for a week, I see the newest day, not a stack of cards.
 - As a writer who closed it too fast, I can bring it back from ⌘P.
+- As a writer on an older Pensée, when a new release is out, the card tells
+  me and updates the app for me, the same way I installed it.
 
 ## Behaviour
 
@@ -41,7 +43,8 @@ how they work, like a new shortcut or a fix to something that annoyed them.
   **Read all** opens the changelog on GitHub in the browser, then does the same.
   The card doesn't take focus and has no Esc, so typing in a note never
   reaches it.
-- **⌘P → Show What's New** shows the newest day at any time, seen or not.
+- **⌘P → Show What's New** shows the newest day at any time, seen or not,
+  with **Update** when a newer release is out.
 - **Painting.** Ten public-domain paintings of reading, writing and thinking
   rooms, bundled in `src/components/whats-new/paintings/`. The day picks one (a hash of its
   date), so each update has its own and the same day always shows the same one.
@@ -49,22 +52,55 @@ how they work, like a new shortcut or a fix to something that annoyed them.
   `--ease-out`, and its rows follow `--motion-stagger` apart. It leaves on
   `--motion-fast`. Under reduced motion it appears and goes still.
 
+## Release ready
+
+- **Source.** `latest_release` (Rust) reads
+  `api.github.com/repos/feiyinwang/Pensee/releases/latest` with the changelog,
+  and returns its tag without the `v` and the running app's version (tauri's
+  `PackageInfo`, from `tauri.conf.json`). `isNewerVersion` compares them
+  number by number. A failed read is logged and counts as no release.
+- **When it shows.** A release newer than the app brings the card up on its
+  own, with the newest day, unless the writer already closed the card for that
+  release (`whatsNew.releaseSeen`, preferences.json). An unseen day with a
+  newer release out shows the release state too.
+- **Card.** The title is `Pensée <version>` instead of the date. **Update**,
+  the one filled button, sits on the left of **Got it** and **Read all**.
+  Closing the card records the release as seen as well as the day.
+- **Update** (`upgrade_app`) upgrades the app the way it was installed:
+  - **Homebrew** (`brew list --cask pensee` succeeds, with `brew` from
+    `/opt/homebrew/bin` or `/usr/local/bin`): `brew upgrade --cask pensee`.
+  - **Anything else** does what install.sh does: find the release's
+    `-arm64.zip`, download it, unzip it with `ditto`, copy the new app next
+    to the running one (`.Pensée.app.new`), then rename it into place and
+    delete the old one, and clear quarantine. Copying beside it first means a
+    failed copy leaves the running app whole. A build not inside a `.app`
+    (`tauri dev`) can't update itself and says so.
+- **Steps.** The button reads **Downloading…** (disabled) while it runs, then
+  **Restart Pensée**, which quits through the normal exit and opens the new
+  app (`restart_app`). A failure shows its message in the card, in the error
+  colour above the buttons, and the button becomes **Try again**. The step
+  lives in the store, not the card, so closing the card mid-download and
+  bringing it back from ⌘P shows how it went.
+- **Stubs.** `PENSEE_RELEASE_FILE` reads the release JSON from a file, and
+  `PENSEE_UPGRADE_FILE` fakes Update: after a second it succeeds when the file
+  says `ok` and fails with the file's text otherwise (the e2e journeys).
+
 ## Paintings
 
 All from Wikimedia Commons, public domain or CC0, downscaled to 800px wide.
 
-| File                              | Credit                                                      |
-| --------------------------------- | ----------------------------------------------------------- |
-| `durer-saint-jerome.jpg`          | Albrecht Dürer, _Saint Jerome in His Study_, 1514 (NGA)     |
-| `rembrandt-philosopher.jpg`       | Rembrandt, _Philosopher in Meditation_, 1632 (Louvre)       |
+| File                              | Credit                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `durer-saint-jerome.jpg`          | Albrecht Dürer, _Saint Jerome in His Study_, 1514 (NGA)                 |
+| `rembrandt-philosopher.jpg`       | Rembrandt, _Philosopher in Meditation_, 1632 (Louvre)                   |
 | `hammershoi-interior.jpg`         | Vilhelm Hammershøi, _Interior with a Woman Seen from the Back_, 1903–04 |
-| `ter-borch-woman-writing.jpg`     | Gerard ter Borch, _Woman Writing a Letter_, c. 1655         |
-| `vermeer-woman-in-blue.jpg`       | Johannes Vermeer, _Woman in Blue Reading a Letter_, c. 1663 |
-| `vermeer-geographer.jpg`          | Johannes Vermeer, _The Geographer_, 1669 (Städel)           |
-| `hammershoi-dust-motes.jpg`       | Vilhelm Hammershøi, _Dust Motes Dancing in the Sunbeams_, 1900 |
-| `antonello-saint-jerome.jpg`      | Antonello da Messina, _Saint Jerome in His Study_, c. 1475  |
-| `chardin-philosopher-reading.jpg` | Jean-Baptiste Siméon Chardin, _The Philosopher Reading_, 1734 |
-| `carpaccio-saint-augustine.jpg`   | Vittore Carpaccio, _The Vision of Saint Augustine_, 1502    |
+| `ter-borch-woman-writing.jpg`     | Gerard ter Borch, _Woman Writing a Letter_, c. 1655                     |
+| `vermeer-woman-in-blue.jpg`       | Johannes Vermeer, _Woman in Blue Reading a Letter_, c. 1663             |
+| `vermeer-geographer.jpg`          | Johannes Vermeer, _The Geographer_, 1669 (Städel)                       |
+| `hammershoi-dust-motes.jpg`       | Vilhelm Hammershøi, _Dust Motes Dancing in the Sunbeams_, 1900          |
+| `antonello-saint-jerome.jpg`      | Antonello da Messina, _Saint Jerome in His Study_, c. 1475              |
+| `chardin-philosopher-reading.jpg` | Jean-Baptiste Siméon Chardin, _The Philosopher Reading_, 1734           |
+| `carpaccio-saint-augustine.jpg`   | Vittore Carpaccio, _The Vision of Saint Augustine_, 1502                |
 
 ## Decision (from the 2026-10-19 prototype)
 
@@ -80,5 +116,6 @@ All from Wikimedia Commons, public domain or CC0, downscaled to 800px wide.
   - **Vermeer's _A Lady Writing_.** Pale and looking straight out, it read
     as a ghost. Every painting shows someone absorbed in their reading or
     writing, or an empty room.
-- Not built yet: a "release ready" state with an Update button. That needs
-  an in-app updater (Homebrew or the install script).
+- Kept from the prototype: the release-ready state with an **Update** button,
+  built on 2026-10-19 (see Release ready). It upgrades through Homebrew or the
+  install script's steps, so no updater framework or signing key is needed.

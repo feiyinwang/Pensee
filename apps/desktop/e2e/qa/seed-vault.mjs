@@ -212,6 +212,8 @@ export function seedVault() {
     rmSync(join(APP_DATA, file), { force: true });
   }
   writeFileSync(CHANGELOG_FILE, CHANGELOG);
+  writeRelease("0.6.0");
+  writeFileSync(UPGRADE_FILE, "ok");
 }
 
 /** The changelog the What's new card reads (run.sh points the app at this
@@ -234,6 +236,29 @@ const CHANGELOG = [
   "- ⌘↓ now takes you to the very bottom of a note and ⌘↑ to the very top.",
   "",
 ].join("\n");
+
+/** The latest release the What's new card checks (run.sh points the app at
+ *  this file with PENSEE_RELEASE_FILE), in GitHub's JSON. Seeded as the app's
+ *  own 0.6.0, so no card offers an Update until a journey writes a newer one. */
+export const RELEASE_FILE = join(APP_DATA, "release.json");
+export function writeRelease(version) {
+  const zip = `Pensee-${version}-arm64.zip`;
+  writeFileSync(
+    RELEASE_FILE,
+    JSON.stringify({
+      tag_name: `v${version}`,
+      assets: [
+        {
+          name: zip,
+          browser_download_url: `https://github.com/feiyinwang/Pensee/releases/download/v${version}/${zip}`,
+        },
+      ],
+    }),
+  );
+}
+
+/** How the faked Update ends (PENSEE_UPGRADE_FILE): `ok`, or the error to show. */
+export const UPGRADE_FILE = join(APP_DATA, "upgrade.txt");
 
 /** The What's new journeys: the writer last saw 2026-10-17, so the
  *  changelog's 2026-10-18 is new and the card shows at launch. */
