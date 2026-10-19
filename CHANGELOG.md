@@ -2,6 +2,7 @@
 
 ## 2026-10-19
 
+- A line you highlighted in a book now ends in a pin in the book's note, the same pin a video note's moments have, so you can tell it came from the book. Hover it to see where: the page, or the chapter for an EPUB. Click it and the book scrolls to the passage and flashes it, opening the book first if it's closed. The pin is the highlight: Backspace after it removes the pin and the highlight with it.
 - Pensée now tells you what changed. When Pensée's changelog has a new day, a card shows once in the bottom-right corner. It has a painting of someone reading or writing (Vermeer, Rembrandt, Hammershøi and others, a different one each update), the day's changes in a sentence each, **N more** for the rest, and **Read all** for the whole changelog on GitHub. **Got it** puts it away until the next update, and ⌘P → **Show What's New** brings it back. A first launch shows onboarding, not a card.
 - The website is now one page you can download Pensée from. It opens on Rembrandt's _Philosopher in Meditation_ and the README's opening, for people who are neurodivergent, with ADHD or a brain that works a little differently. **Download for Mac** (marked Beta) gets the newest release's zip straight away. Below it, four rooms, each opening with an old painting, show all 15 features with their shortcuts: the README's GIFs, and small demos that repeat while you look at them. It ends on Hammershøi's interior with the download again and the Homebrew line to copy.
 

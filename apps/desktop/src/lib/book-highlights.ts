@@ -45,6 +45,12 @@ export function parseBookHighlightId(id: string): BookLocation | null {
   return location.end > location.start ? location : null;
 }
 
+/** Where `location` is, in words: "page 12" for a PDF, "section 3" for an
+ *  EPUB (1-based for the reader; a chapter's title needs the open book). */
+export function bookPlace({ unit, section }: BookLocation): string {
+  return unit === "p" ? `page ${section}` : `section ${section + 1}`;
+}
+
 /** Reading order. */
 export function compareLocations(a: BookLocation, b: BookLocation): number {
   return a.section - b.section || a.start - b.start || a.end - b.end;
