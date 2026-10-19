@@ -39,7 +39,7 @@ voice.
 - **Feature cards.** 15 features, each a card with its demo, its shortcut as
   keycaps, a title naming the payoff, and one or two sentences. Seven demos are
   the README GIFs; eight are small code-built scenes in the app's dark look
-  that play once when scrolled into view (static under reduced motion). Cards
+  that play when scrolled into view and repeat every 5 seconds while on screen, like the GIFs (static under reduced motion). Cards
   rest near flat (hairline ring, 1px shadow); a deeper shadow fades in on hover
   (160ms, opacity only).
 - **Closing.** Hammershøi's interior fills the screen: _Start writing what you
