@@ -29,6 +29,10 @@ voice.
   stays in view. On a phone the painting runs edge to edge on top and fades to
   black, and the words follow below it. Under the headline _Thinking, made by
   writing._ comes the README's first paragraph, with "neurodivergent" added.
+  The painting hangs as cloth (`components/Cloth.tsx`): still at rest, and a
+  mouse stroke across it sends a soft wave (8px folds) that settles back flat.
+  No wind, so it never moves on its own and the loop stops when calm; reduced
+  motion and browsers without WebGL2 get the still painting.
 - **Beta.** Said once: a gold tag (`#e9b44c`, the window light in the
   Rembrandt) inside the hero's download button. Nowhere else.
 - **Rooms.** Four groups of features, each opening with a painting and a short

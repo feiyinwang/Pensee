@@ -227,6 +227,19 @@ button {
   object-position: var(--focus, 50% 50%);
 }
 
+.art .cloth {
+  position: absolute;
+  inset: -32px;
+  width: calc(100% + 64px);
+  height: calc(100% + 64px);
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+}
+
+.art .cloth[data-ready] {
+  opacity: 1;
+}
+
 .art figcaption {
   position: absolute;
   left: 0;
