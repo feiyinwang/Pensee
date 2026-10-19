@@ -1,0 +1,742 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE (emil-prototype). Nothing imports this. Delete after the decision. -->
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Proto · In-context tips</title>
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <style>
+      :root {
+        /* Settings the app writes at runtime. */
+        --contrast: 0.5;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background: #050505;
+        color: var(--color-text-primary);
+        font-family: var(--font-ui);
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+
+      /* ---------------- the window: a real frame of the app, scaled to fit */
+      #fit {
+        position: fixed;
+        inset: 72px 24px 72px;
+      }
+      #stage {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform-origin: center;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1);
+        background: var(--color-bg-app);
+      }
+      #stage > img {
+        display: block;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+      /* Where the writer acts: clickable over the frame. */
+      .hot {
+        position: absolute;
+        cursor: pointer;
+        border-radius: 6px;
+      }
+
+      /* ---------------- shared tip parts (the app's own guide pill styles) */
+      kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        margin-right: 3px;
+        padding: 0 5px;
+        border-radius: var(--radius-button);
+        background: var(--color-bg-kbd);
+        box-shadow: 0 0 0 1px var(--color-border-default);
+        color: var(--color-text-secondary);
+        font: inherit;
+        font-size: var(--font-size-caption);
+        font-variant-numeric: tabular-nums;
+      }
+      .not-now {
+        padding: 4px 2px;
+        color: var(--color-text-muted);
+        font-size: var(--font-size-label);
+        white-space: nowrap;
+      }
+      .not-now:hover {
+        color: var(--color-text-primary);
+      }
+      .not-now:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 2px;
+        border-radius: var(--radius-button);
+      }
+      .msg {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .keys-label {
+        margin-left: 6px;
+        color: var(--color-text-secondary);
+      }
+      .keys-pill kbd {
+        transition:
+          scale 100ms ease-out,
+          background-color 100ms ease-out,
+          color 100ms ease-out;
+      }
+      .keys-pill kbd[data-down] {
+        scale: 0.92;
+        background: var(--color-bg-selected);
+        color: var(--color-text-primary);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .keys-pill kbd {
+          transition: none;
+        }
+      }
+      .done-mark {
+        color: var(--color-text-primary);
+      }
+
+      /* Enter: 240ms ease-out, small rise. Exit: 150ms, quieter. */
+      .tip {
+        animation: tip-in 240ms var(--ease-out) both;
+      }
+      .tip[data-leaving] {
+        animation: tip-out 150ms cubic-bezier(0.4, 0, 1, 1) both;
+      }
+      @keyframes tip-in {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+      @keyframes tip-out {
+        to {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+      }
+
+      /* The ring on what the tip names (Guide pill only). */
+      .ring {
+        position: absolute;
+        border-radius: 8px;
+        box-shadow:
+          0 0 0 2px color-mix(in srgb, var(--hue-blue) 80%, transparent),
+          0 0 0 6px color-mix(in srgb, var(--hue-blue) 18%, transparent);
+        pointer-events: none;
+        animation: ring-in 240ms var(--ease-out) both;
+      }
+      .ring[data-leaving] {
+        animation: tip-out 150ms cubic-bezier(0.4, 0, 1, 1) both;
+      }
+      @keyframes ring-in {
+        from {
+          opacity: 0;
+        }
+      }
+
+      /* ---------------- 1. Guide pill: one place, bottom centre of the window */
+      .pill {
+        position: absolute;
+        left: 50%;
+        bottom: 28px;
+        translate: -50% 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 46px;
+        padding: 7px 10px 7px 16px;
+        border-radius: var(--radius-card);
+        background: var(--color-bg-popover);
+        box-shadow:
+          0 0 0 1px var(--color-border-floating),
+          var(--shadow-popover);
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-label);
+        white-space: nowrap;
+      }
+
+      /* ---------------- 2. Bubble: at the control, pointing at it */
+      .bubble {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 4px 14px;
+        flex-wrap: wrap;
+        width: max-content;
+        max-width: 420px;
+        padding: 8px 10px 8px 14px;
+        border-radius: var(--radius-card);
+        background: var(--color-bg-popover);
+        box-shadow:
+          0 0 0 1px var(--color-border-floating),
+          var(--shadow-popover);
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-label);
+        line-height: 1.45;
+        transform-origin: var(--origin, top center);
+        animation: bubble-in 200ms var(--ease-out) both;
+      }
+      .bubble[data-leaving] {
+        animation: bubble-out 150ms cubic-bezier(0.4, 0, 1, 1) both;
+      }
+      @keyframes bubble-in {
+        from {
+          opacity: 0;
+          transform: scale(0.96);
+        }
+      }
+      @keyframes bubble-out {
+        to {
+          opacity: 0;
+          transform: scale(0.98);
+        }
+      }
+      .bubble::before {
+        /* The arrow: a rotated square sharing the bubble's ground and ring. */
+        content: "";
+        position: absolute;
+        left: var(--arrow-x, 24px);
+        width: 10px;
+        height: 10px;
+        background: var(--color-bg-popover);
+        rotate: 45deg;
+      }
+      .bubble[data-side="below"]::before {
+        top: -5px;
+        box-shadow: -1px -1px 0 0 var(--color-border-floating);
+      }
+      .bubble[data-side="above"]::before {
+        bottom: -5px;
+        box-shadow: 1px 1px 0 0 var(--color-border-floating);
+      }
+      .bubble .not-now {
+        margin-left: auto;
+      }
+
+      /* ---------------- 3. In the line: placeholder text where the work goes */
+      .ghost {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+        color: var(--color-text-faint);
+        font-size: var(--ghost-size, 17px);
+        font-style: italic;
+        white-space: nowrap;
+      }
+      .ghost kbd {
+        font-style: normal;
+      }
+      .ghost .not-now {
+        margin-left: 10px;
+        font-style: normal;
+        font-size: var(--font-size-caption);
+        color: var(--color-text-faint);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .tip,
+        .tip[data-leaving],
+        .ring,
+        .ring[data-leaving],
+        .bubble,
+        .bubble[data-leaving] {
+          animation: none;
+        }
+      }
+
+      /* ---------------- harness chrome: which page you are on */
+      .scenes {
+        position: fixed;
+        left: 24px;
+        bottom: 20px;
+        display: flex;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(10, 10, 10, 0.82);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+      }
+      .scenes button {
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 999px;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .scenes button:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .scenes button[aria-current="true"] {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .scenes button:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.4);
+        outline-offset: 2px;
+      }
+      .how {
+        position: fixed;
+        right: 24px;
+        bottom: 26px;
+        color: rgba(255, 255, 255, 0.45);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 12px;
+      }
+
+      /* ---------------- the picker (PICKER.md, verbatim) */
+      .proto-picker {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(10, 10, 10, 0.82);
+        -webkit-backdrop-filter: blur(12px) saturate(1.4);
+        backdrop-filter: blur(12px) saturate(1.4);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+          0 8px 24px rgba(0, 0, 0, 0.24),
+          0 2px 6px rgba(0, 0, 0, 0.12);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .proto-picker-highlight {
+        position: absolute;
+        top: 4px;
+        left: 0;
+        height: 28px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        will-change: transform;
+      }
+      .proto-picker[data-ready] .proto-picker-highlight {
+        transition:
+          transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+          width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .proto-picker[data-ready] .proto-picker-highlight {
+          transition: none;
+        }
+      }
+      .proto-picker-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.55);
+        font: inherit;
+        cursor: pointer;
+        transition: color 150ms ease-out;
+      }
+      .proto-picker-item:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .proto-picker-item:active {
+        transform: scale(0.97);
+      }
+      .proto-picker-item:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.4);
+        outline-offset: 2px;
+      }
+      .proto-picker-item[data-active] {
+        color: #fff;
+      }
+      .proto-picker-divider {
+        width: 1px;
+        height: 16px;
+        margin: 0 4px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .proto-picker-replay {
+        padding: 0 10px;
+        font-size: 14px;
+      }
+      .proto-picker[data-position="top"] {
+        bottom: auto;
+        top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fit"><div id="stage"></div></div>
+
+    <nav class="scenes" aria-label="Page"></nav>
+    <div class="how">Do what the tip says · Esc: Not now</div>
+
+    <!-- The guide pill sits bottom-centre of the window, so the picker goes on top. -->
+    <nav class="proto-picker" aria-label="Prototype variants" data-position="top">
+      <span class="proto-picker-highlight" aria-hidden="true"></span>
+      <button class="proto-picker-item" data-active aria-current="true">Guide pill</button>
+      <button class="proto-picker-item">Bubble</button>
+      <button class="proto-picker-item">In the line</button>
+      <span class="proto-picker-divider" aria-hidden="true"></span>
+      <button class="proto-picker-item">Line + keys</button>
+      <span class="proto-picker-divider" aria-hidden="true"></span>
+      <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+    </nav>
+
+    <script>
+      const K = (...keys) => keys.map((k) => `<kbd>${k}</kbd>`).join("");
+
+      /* Each page: a real frame of the app, the one thing to try there, how the
+         tip knows it's done, and where each form of the tip sits (frame px). */
+      const SCENES = [
+        {
+          id: "library",
+          label: "Library",
+          img: "library.jpg",
+          w: 1200,
+          h: 750,
+          // The Elements of Style's cover.
+          target: { x: 670, y: 114, w: 108, h: 210 },
+          ask: "Open a book to read it beside its note.",
+          done: "Its note opens beside the book.",
+          doneBy: "click",
+          bubble: { side: "below", x: 610, y: 336, arrowX: 108 },
+          ghost: { x: 48, y: 352, text: "Open a book: it reads beside its note." },
+          line: "Open a book: it reads beside its note.",
+        },
+        {
+          id: "book",
+          label: "Book",
+          img: "book.jpg",
+          w: 1200,
+          h: 750,
+          // "Vigorous writing is concise."
+          target: { x: 572, y: 190, w: 180, h: 24 },
+          ask: "Select a line in the book, then Highlight. It lands in your note.",
+          done: "Highlighted. Its pin in the note takes you back to the page.",
+          doneBy: "click",
+          bubble: { side: "below", x: 572, y: 226, arrowX: 60 },
+          ghost: { x: 62, y: 358, size: 16, text: "Highlight a line in the book: it lands here." },
+          line: "Select a line in the book. Highlighted, it lands here.",
+          keys: { keys: ["H"], label: "Highlight the selected line" },
+          doneKey: "h",
+        },
+        {
+          id: "youtube",
+          label: "YouTube",
+          img: "youtube.jpg",
+          w: 1000,
+          h: 501,
+          // The key row's Pin ⌘S, and the empty line under it.
+          target: { x: 610, y: 354, w: 46, h: 20 },
+          ask: `Type what stuck, then ${K("⌘", "S")} pins it to 1:39:16.`,
+          done: "Pinned to 1:39:16. Click the pin to hear it again.",
+          doneBy: "s",
+          bubble: { side: "below", x: 470, y: 386, arrowX: 158 },
+          ghost: { x: 84, y: 396, size: 16, text: `What stuck? Then ${K("⌘", "S")} pins it to 1:39:16.` },
+          line: "What stuck? Write it here and pin it to this moment.",
+          keys: { keys: ["⌘", "S"], label: "Pin to 1:39:16" },
+        },
+        {
+          id: "question",
+          label: "A question",
+          img: "question.jpg",
+          w: 1200,
+          h: 750,
+          // "why does sleep help memory?"
+          target: { x: 444, y: 231, w: 212, h: 26 },
+          ask: `On your question, ${K("⌘", ".")} then ${K("!")}: your guess first, then its answer.`,
+          done: "Sealed until you write your guess. Then it opens.",
+          doneBy: ".",
+          bubble: { side: "below", x: 430, y: 268, arrowX: 40 },
+          ghost: { x: 664, y: 232, size: 16, text: `${K("⌘", ".")} ${K("!")} guess first, then see the answer` },
+          line: "Guess first, then see Pensée's answer.",
+          keys: { keys: ["⌘", ".", "!"], label: "Answer" },
+        },
+      ];
+
+      const VARIANTS = ["pill", "bubble", "ghost", "line-keys"];
+      const stage = document.getElementById("stage");
+      const fit = document.getElementById("fit");
+      let variant = 0;
+      let scene = 0;
+      let state = "idle"; // idle → asking → done → gone
+      let timers = [];
+
+      const later = (ms, fn) => timers.push(window.setTimeout(fn, ms));
+      const clearTimers = () => {
+        timers.forEach(clearTimeout);
+        timers = [];
+      };
+
+      function scaleStage() {
+        const s = SCENES[scene];
+        const k = Math.min(fit.clientWidth / s.w, fit.clientHeight / s.h);
+        stage.style.width = s.w + "px";
+        stage.style.height = s.h + "px";
+        stage.style.transform = `translate(-50%, -50%) scale(${k})`;
+      }
+
+      function box(el, r) {
+        Object.assign(el.style, { left: r.x + "px", top: r.y + "px", width: r.w + "px", height: r.h + "px" });
+        return el;
+      }
+
+      function notNow(label = "Not now") {
+        return `<button type="button" class="not-now" data-not-now>${label}</button>`;
+      }
+
+      /* One tip, drawn in the chosen form. */
+      function drawTip(s, kind) {
+        const v = VARIANTS[variant];
+        const text = kind === "done" ? `<span class="done-mark">${s.done}</span>` : s.ask;
+        const nodes = [];
+        if (v === "pill") {
+          const pill = document.createElement("div");
+          pill.className = "tip pill";
+          pill.setAttribute("role", "status");
+          pill.innerHTML = `<span class="msg">${text}</span>${kind === "done" ? "" : notNow()}`;
+          nodes.push(pill);
+          if (kind !== "done") nodes.push(box(Object.assign(document.createElement("div"), { className: "ring" }), pad(s.target, 4)));
+        } else if (v === "bubble") {
+          const b = document.createElement("div");
+          b.className = "bubble";
+          b.dataset.side = s.bubble.side;
+          b.setAttribute("role", "status");
+          b.style.left = s.bubble.x + "px";
+          b.style.top = s.bubble.y + "px";
+          b.style.setProperty("--arrow-x", s.bubble.arrowX + "px");
+          b.style.setProperty("--origin", `${s.bubble.arrowX + 5}px 0`);
+          b.innerHTML = `<div class="msg">${text}</div>${kind === "done" ? "" : notNow()}`;
+          nodes.push(b);
+        } else if (v === "line-keys") {
+          const g = document.createElement("div");
+          g.className = "tip ghost";
+          g.style.left = s.ghost.x + "px";
+          g.style.top = s.ghost.y + "px";
+          if (s.ghost.size) g.style.setProperty("--ghost-size", s.ghost.size + "px");
+          if (kind === "done") {
+            g.setAttribute("role", "status");
+            g.innerHTML = `<span>${s.done}</span>`;
+            nodes.push(g);
+          } else if (!s.keys) {
+            // No key for this move: the line alone, with its own way out.
+            g.setAttribute("role", "status");
+            g.innerHTML = `<span>${s.line}</span>${notNow("Not now Esc")}`;
+            nodes.push(g);
+          } else {
+            g.innerHTML = `<span>${s.line}</span>`;
+            const pill = document.createElement("div");
+            pill.className = "tip pill keys-pill";
+            pill.setAttribute("role", "status");
+            pill.innerHTML = `<span class="msg">${s.keys.keys.map((k) => `<kbd data-key="${k}">${k}</kbd>`).join("")}<span class="keys-label">${s.keys.label}</span></span>${notNow()}`;
+            nodes.push(g, pill);
+          }
+        } else {
+          const g = document.createElement("div");
+          g.className = "tip ghost";
+          g.setAttribute("role", "status");
+          g.style.left = s.ghost.x + "px";
+          g.style.top = s.ghost.y + "px";
+          if (s.ghost.size) g.style.setProperty("--ghost-size", s.ghost.size + "px");
+          g.innerHTML = kind === "done" ? `<span>${s.done}</span>` : `<span class="msg">${s.ghost.text}</span>${notNow("Not now Esc")}`;
+          nodes.push(g);
+        }
+        nodes.forEach((n) => stage.appendChild(n));
+        return nodes;
+      }
+
+      const pad = (r, p) => ({ x: r.x - p, y: r.y - p, w: r.w + 2 * p, h: r.h + 2 * p });
+
+      let tipNodes = [];
+      function removeTip(after) {
+        const old = tipNodes;
+        tipNodes = [];
+        old.forEach((n) => n.setAttribute("data-leaving", ""));
+        const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        later(reduce ? 0 : 150, () => {
+          old.forEach((n) => n.remove());
+          after?.();
+        });
+      }
+
+      function finish() {
+        if (state !== "asking") return;
+        state = "done";
+        removeTip(() => {
+          tipNodes = drawTip(SCENES[scene], "done");
+          later(2400, () => removeTip(() => (state = "gone")));
+        });
+      }
+
+      function dismiss() {
+        if (state !== "asking") return;
+        state = "gone";
+        removeTip();
+      }
+
+      /* Arrive on a page: the frame, then the tip after a short settle. */
+      function mount() {
+        clearTimers();
+        state = "idle";
+        tipNodes = [];
+        const s = SCENES[scene];
+        stage.innerHTML = `<img src="${s.img}" width="${s.w}" height="${s.h}" alt="Pensée, ${s.label} page" />`;
+        scaleStage();
+        const hot = box(Object.assign(document.createElement("button"), { className: "hot", type: "button" }), pad(s.target, 4));
+        hot.setAttribute("aria-label", "Do it");
+        hot.addEventListener("click", finish);
+        stage.appendChild(hot);
+        later(600, () => {
+          state = "asking";
+          tipNodes = drawTip(s, "ask");
+        });
+      }
+
+      stage.addEventListener("click", (e) => {
+        if (e.target.closest("[data-not-now]")) dismiss();
+      });
+
+      /* Page switcher (harness chrome). */
+      const sceneNav = document.querySelector(".scenes");
+      function drawScenes() {
+        sceneNav.innerHTML = SCENES.map(
+          (s, i) => `<button type="button" data-i="${i}" ${i === scene ? 'aria-current="true"' : ""}>${s.label}</button>`,
+        ).join("");
+      }
+      sceneNav.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        scene = Number(b.dataset.i);
+        drawScenes();
+        const url = new URL(location);
+        url.searchParams.set("page", SCENES[scene].id);
+        history.replaceState(null, "", url);
+        mount();
+      });
+
+      /* The keys a tip asks for. */
+      document.addEventListener(
+        "keydown",
+        (e) => {
+          const s = SCENES[scene];
+          if (e.key === "Escape") return dismiss();
+          pressKey(e);
+          if (!e.metaKey && s.doneKey && e.key.toLowerCase() === s.doneKey) finish();
+          if (e.metaKey && e.key.toLowerCase() === "s") {
+            e.preventDefault();
+            if (s.doneBy === "s") finish();
+          }
+          if (e.metaKey && e.key === ".") {
+            e.preventDefault();
+            if (s.doneBy === ".") finish();
+          }
+        },
+        true,
+      );
+
+      /* Light the pill's keys while they are held. */
+      function pressKey(e) {
+        const name = e.key === "Meta" ? "⌘" : e.key.length === 1 ? e.key.toUpperCase() : null;
+        if (!name) return;
+        document.querySelectorAll(".keys-pill kbd").forEach((k) => {
+          if (k.dataset.key.toUpperCase() === name || (e.metaKey && k.dataset.key === "⌘")) k.setAttribute("data-down", "");
+        });
+      }
+      document.addEventListener("keyup", (e) => {
+        document.querySelectorAll(".keys-pill kbd[data-down]").forEach((k) => {
+          if (e.key === "Meta" || k.dataset.key.toUpperCase() === e.key.toUpperCase()) k.removeAttribute("data-down");
+        });
+      });
+
+      window.addEventListener("resize", scaleStage);
+
+      /* ---------------- picker wiring (PICKER.md) */
+      const picker = document.querySelector(".proto-picker");
+      const highlight = picker.querySelector(".proto-picker-highlight");
+      const items = [...picker.querySelectorAll(".proto-picker-item:not(.proto-picker-replay)")];
+      const replay = picker.querySelector(".proto-picker-replay");
+
+      function moveHighlight() {
+        const el = items[variant];
+        highlight.style.width = el.offsetWidth + "px";
+        highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+      }
+
+      function setActive(i) {
+        if (i < 0 || i >= VARIANTS.length) return;
+        variant = i;
+        items.forEach((el, j) => {
+          el.toggleAttribute("data-active", j === i);
+          if (j === i) el.setAttribute("aria-current", "true");
+          else el.removeAttribute("aria-current");
+        });
+        moveHighlight();
+        const url = new URL(location);
+        url.searchParams.set("v", i + 1);
+        history.replaceState(null, "", url);
+        mount();
+      }
+
+      items.forEach((el, i) => el.addEventListener("click", () => setActive(i)));
+      replay.addEventListener("click", mount);
+      window.addEventListener("resize", moveHighlight);
+
+      document.addEventListener("keydown", (e) => {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= VARIANTS.length) setActive(num - 1);
+        else if (e.key === "ArrowRight") setActive((variant + 1) % VARIANTS.length);
+        else if (e.key === "ArrowLeft") setActive((variant - 1 + VARIANTS.length) % VARIANTS.length);
+        else if (e.key === "r" || e.key === "R") mount();
+      });
+
+      const params = new URLSearchParams(location.search);
+      scene = Math.max(0, SCENES.findIndex((s) => s.id === params.get("page")));
+      drawScenes();
+      setActive((parseInt(params.get("v"), 10) || 1) - 1);
+      requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute("data-ready", "")));
+    </script>
+  </body>
+</html>
