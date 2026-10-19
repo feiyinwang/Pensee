@@ -180,7 +180,6 @@
 }
 
 .onb-keys kbd,
-.onb-guide kbd,
 .onb-cr-keys kbd {
   display: inline-flex;
   align-items: center;
@@ -293,61 +292,7 @@
   background: var(--color-text-primary);
 }
 
-/* ---------------------------------------------------------- the practice guide */
-
-.onb-guide {
-  position: fixed;
-  z-index: 55;
-  left: 50%;
-  bottom: 28px;
-  translate: -50% 0;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 46px;
-  padding: 7px 8px 7px 16px;
-  border-radius: var(--radius-card);
-  background: var(--color-bg-popover);
-  box-shadow:
-    0 0 0 1px var(--color-border-floating),
-    var(--shadow-popover);
-  color: var(--color-text-secondary);
-  font-family: var(--font-ui);
-  font-size: var(--font-size-label);
-  white-space: nowrap;
-  animation: onb-enter 240ms var(--ease-out) both;
-}
-
-.onb-guide-n {
-  color: var(--color-text-faint);
-  font-variant-numeric: tabular-nums;
-}
-
-.onb-guide-msg {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.onb-guide-small {
-  color: var(--color-text-faint);
-  font-size: var(--font-size-caption);
-}
-
-.onb-guide .onb-text-button {
-  margin: 0 8px 0 4px;
-}
-
-.onb-guide-go {
-  height: 32px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: var(--radius-field);
-  background: var(--color-bg-inverse);
-  color: var(--color-text-inverse);
-  font: inherit;
-  cursor: pointer;
-}
+/* The practice guide is the shared GuidePill (components/tips/guide-pill.css). */
 
 /* ---------------------------------------------------------- 4. the carousel */
 
@@ -588,7 +533,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .onb-col,
-  .onb-guide,
   .onb-more,
   .onb-panel,
   .onb-replay {

@@ -26,7 +26,7 @@ async function clickButton(label) {
 }
 
 const guideText = () =>
-  browser.execute(() => document.querySelector(".onb-guide")?.textContent ?? null);
+  browser.execute(() => document.querySelector(".guide-pill")?.textContent ?? null);
 
 describe("Onboarding", function () {
   this.timeout(120_000);

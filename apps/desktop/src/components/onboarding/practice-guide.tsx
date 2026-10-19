@@ -1,13 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { EditorView } from "@codemirror/view";
+import { GuideKeys, GuidePill } from "@/components/tips/guide-pill";
 import { PIN_SHORTCUT_LABEL } from "@/components/editor-area/video-pin";
 import { editorPath } from "@/lib/editor-views";
 import { formatVideoTime } from "@/lib/video-pins";
 import { seekVideo, videoPlayerFor } from "@/lib/video-players";
 import { useEditorStore } from "@/stores/editor-store";
 import { useClaudeSignInStore } from "@/stores/claude-sign-in-store";
-import { goToScreen, useOnboardingStore } from "./onboarding-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { finishOnboarding, goToScreen, useOnboardingStore } from "./onboarding-store";
 import { SAMPLES, type Sample } from "./samples";
 
 /** Where the writer is in the practice loop, read from the note itself: the
@@ -27,14 +28,6 @@ function stepOf(sample: Sample, body: string): Step {
   if (sample.pill === "!" && /\^ai-s-/.test(body)) return "take";
   return "pen";
 }
-
-const Keys = ({ keys }: { keys: string[] }) => (
-  <>
-    {keys.map((k) => (
-      <kbd key={k}>{k}</kbd>
-    ))}
-  </>
-);
 
 /** The empty first bullet a pin sample's note opens with: where Pensée
  *  writes the line for the writer. */
@@ -80,12 +73,14 @@ function typeInto(view: EditorView, from: number, text: string, onDone: () => vo
 
 /** The practice loop's guide (SPECs/onboarding-spec.md): one instruction at
  *  a time at the bottom of the real note, counting the steps, with a quiet
- *  Skip. It never leaves the flow: when the loop is done it offers Continue. */
+ *  Skip. When the loop is done it offers Open <vault>, which finishes
+ *  onboarding, and a quiet way on to the features carousel. */
 export function PracticeGuide() {
   const id = useOnboardingStore((s) => s.sample);
   const path = useOnboardingStore((s) => s.practicePath);
   const body = useEditorStore((s) => (path ? (s.openFiles.get(path)?.content ?? "") : ""));
   const signedOut = useClaudeSignInStore((s) => s.account !== "signed-in");
+  const vault = useWorkspaceStore((s) => s.root?.split("/").pop() ?? "your notes");
   const [writing, setWriting] = useState<"no" | "yes" | "done">("no");
   const [time, setTime] = useState(0);
   const sample = id ? SAMPLES[id] : null;
@@ -130,7 +125,7 @@ export function PracticeGuide() {
   const n = (s: Step) => (s === "capture" ? 1 : s === "pen" ? total - 1 : total);
   const pinKeys = (
     <>
-      <Keys keys={PIN_SHORTCUT_LABEL.split("")} /> pins it to {formatVideoTime(time)}.
+      <GuideKeys keys={PIN_SHORTCUT_LABEL.split("")} /> pins it to {formatVideoTime(time)}.
     </>
   );
 
@@ -149,7 +144,7 @@ export function PracticeGuide() {
   } else if (step === "pen") {
     message = (
       <>
-        Press <Keys keys={["⌘", "."]} /> on your line, then <kbd>{sample.pill}</kbd> for{" "}
+        Press <GuideKeys keys={["⌘", "."]} /> on your line, then <kbd>{sample.pill}</kbd> for{" "}
         {sample.pillName}.
       </>
     );
@@ -168,27 +163,51 @@ export function PracticeGuide() {
           : "That's Pensée: your take first, then its answer.";
   }
 
-  return createPortal(
-    <div className="onb-guide" role="status">
-      {step !== "done" && (
-        <span className="onb-guide-n">
-          {n(step)} of {total}
-        </span>
+  if (step === "done") {
+    return (
+      <GuidePill
+        quiet={{ label: "See what else Pensée does", onClick: () => goToScreen("more") }}
+        go={{
+          label: (
+            <>
+              Open {vault}
+              <kbd>↵</kbd>
+            </>
+          ),
+          onClick: finishOnboarding,
+        }}
+      >
+        <span className="guide-pill-msg">{message}</span>
+        <FinishOnEnter />
+      </GuidePill>
+    );
+  }
+  return (
+    <GuidePill quiet={{ label: "Skip", onClick: () => goToScreen("more") }}>
+      <span className="guide-pill-n">
+        {n(step)} of {total}
+      </span>
+      <span className="guide-pill-msg">{message}</span>
+      {step !== "capture" && signedOut && (
+        <span className="guide-pill-small">Needs Claude Code signed in</span>
       )}
-      <span className="onb-guide-msg">{message}</span>
-      {step !== "capture" && step !== "done" && signedOut && (
-        <span className="onb-guide-small">Needs Claude Code signed in</span>
-      )}
-      {step === "done" ? (
-        <button type="button" className="onb-guide-go" onClick={() => goToScreen("more")}>
-          Continue
-        </button>
-      ) : (
-        <button type="button" className="onb-text-button" onClick={() => goToScreen("more")}>
-          Skip
-        </button>
-      )}
-    </div>,
-    document.body,
+    </GuidePill>
   );
+}
+
+/** ↵ opens the vault once the loop is done, unless a line is being written:
+ *  the guide's filled button is the screen's one action. */
+function FinishOnEnter() {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.metaKey || event.altKey || event.shiftKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest(".cm-editor, input, textarea, [contenteditable]")) return;
+      event.preventDefault();
+      finishOnboarding();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return null;
 }
