@@ -3,6 +3,8 @@ import {
   firstSentence,
   formatDay,
   inlineParts,
+  isNewerVersion,
+  isUnseenRelease,
   paintingIndex,
   parseChangelog,
   unseenDay,
@@ -105,5 +107,37 @@ describe("formatDay and paintingIndex", () => {
       expect(i).toBeGreaterThanOrEqual(0);
       expect(i).toBeLessThan(10);
     }
+  });
+});
+
+describe("isNewerVersion", () => {
+  it("compares each number, not the text", () => {
+    expect(isNewerVersion("0.7.0", "0.6.0")).toBe(true);
+    expect(isNewerVersion("0.10.0", "0.9.2")).toBe(true);
+    expect(isNewerVersion("1.0", "0.99.99")).toBe(true);
+  });
+
+  it("is false for the same or an older version", () => {
+    expect(isNewerVersion("0.6.0", "0.6.0")).toBe(false);
+    expect(isNewerVersion("0.6", "0.6.0")).toBe(false);
+    expect(isNewerVersion("0.5.9", "0.6.0")).toBe(false);
+  });
+
+  it("reads a v prefix and ignores a suffix", () => {
+    expect(isNewerVersion("v0.7.0", "0.6.0")).toBe(true);
+    expect(isNewerVersion("0.6.0-beta", "0.6.0")).toBe(false);
+  });
+
+  it("throws on something that isn't a version", () => {
+    expect(() => isNewerVersion("latest", "0.6.0")).toThrow('Not a version: "latest"');
+  });
+});
+
+describe("isUnseenRelease", () => {
+  it("is unseen until the card was closed for it or a later one", () => {
+    expect(isUnseenRelease("0.7.0", null)).toBe(true);
+    expect(isUnseenRelease("0.7.0", "0.6.0")).toBe(true);
+    expect(isUnseenRelease("0.7.0", "0.7.0")).toBe(false);
+    expect(isUnseenRelease("0.7.0", "0.8.0")).toBe(false);
   });
 });

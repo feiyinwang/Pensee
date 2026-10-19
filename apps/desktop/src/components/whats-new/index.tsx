@@ -1,6 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Fragment, useEffect, useState } from "react";
 import { useOnboardingStore } from "@/components/onboarding/onboarding-store";
+import { restartApp } from "@/lib/tauri";
 import {
   firstSentence,
   formatDay,
@@ -13,7 +14,9 @@ import {
   CHECK_EVERY_MS,
   checkWhatsNew,
   dismissWhatsNew,
+  startUpgrade,
   useWhatsNewStore,
+  type UpgradeState,
 } from "./whats-new-store";
 import "./whats-new.css";
 
@@ -35,12 +38,22 @@ export function WhatsNew() {
   }, []);
 
   const day = useWhatsNewStore((s) => s.day);
+  const release = useWhatsNewStore((s) => s.release);
   const onboardingOpen = useOnboardingStore((s) => s.open);
   if (!day || onboardingOpen) return null;
-  return <WhatsNewCard key={day.date} day={day} />;
+  return <WhatsNewCard key={day.date} day={day} release={release} />;
 }
 
-function WhatsNewCard({ day }: { day: ChangelogDay }) {
+/** The Update button's label at each step of an upgrade. */
+const UPGRADE_LABEL: Record<UpgradeState["step"], string> = {
+  idle: "Update",
+  running: "Downloading…",
+  done: "Restart Pensée",
+  failed: "Try again",
+};
+
+function WhatsNewCard({ day, release }: { day: ChangelogDay; release: string | null }) {
+  const upgrade = useWhatsNewStore((s) => s.upgrade);
   const [all, setAll] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const painting = PAINTINGS[paintingIndex(day.date, PAINTINGS.length)];
@@ -83,7 +96,7 @@ function WhatsNewCard({ day }: { day: ChangelogDay }) {
           What's new · {count === 1 ? "1 change" : `${count} changes`}
         </div>
         <h2 id="whats-new-title" className="whats-new-title">
-          {formatDay(day.date)}
+          {release ? `Pensée ${release}` : formatDay(day.date)}
         </h2>
         <ul className="whats-new-list" data-all={all || undefined}>
           {entries.map((entry, i) => (
@@ -111,7 +124,29 @@ function WhatsNewCard({ day }: { day: ChangelogDay }) {
             {rest} more
           </button>
         )}
+        {release && upgrade.step === "failed" && (
+          <p className="whats-new-error" role="alert">
+            {upgrade.error}
+          </p>
+        )}
         <div className="whats-new-actions">
+          {release && (
+            <button
+              type="button"
+              className="whats-new-update"
+              disabled={upgrade.step === "running"}
+              aria-busy={upgrade.step === "running" || undefined}
+              onClick={() => {
+                if (upgrade.step === "done") {
+                  void restartApp().catch((error: unknown) =>
+                    console.error("[whats-new] Failed to restart:", error),
+                  );
+                } else void startUpgrade();
+              }}
+            >
+              {UPGRADE_LABEL[upgrade.step]}
+            </button>
+          )}
           <button type="button" className="whats-new-button" onClick={close}>
             Got it
           </button>

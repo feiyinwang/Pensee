@@ -180,6 +180,36 @@
   color: var(--color-text-primary);
 }
 
+/* Update: the one filled button, so a release reads as something to do. */
+.whats-new-update {
+  height: 30px;
+  padding: 0 12px;
+  margin-right: auto;
+  border-radius: var(--radius-button);
+  background: var(--color-bg-inverse);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-label);
+  white-space: nowrap;
+  transition: opacity var(--motion-hover) var(--ease-hover);
+}
+
+.whats-new-update:hover:not(:disabled) {
+  opacity: 0.86;
+}
+
+.whats-new-update:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.whats-new-error {
+  margin: 12px 0 0;
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+  color: var(--color-text-error);
+  overflow-wrap: anywhere;
+}
+
 .whats-new-link {
   padding: 0;
   font-size: var(--font-size-label);
@@ -195,6 +225,7 @@
 }
 
 .whats-new-button:focus-visible,
+.whats-new-update:focus-visible,
 .whats-new-link:focus-visible,
 .whats-new-more:focus-visible {
   outline: 2px solid var(--color-focus);

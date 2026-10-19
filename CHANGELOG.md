@@ -3,6 +3,7 @@
 ## 2026-10-19
 
 - Pensée now tells you what changed. When Pensée's changelog has a new day, a card shows once in the bottom-right corner. It has a painting of someone reading or writing (Vermeer, Rembrandt, Hammershøi and others, a different one each update), the day's changes in a sentence each, **N more** for the rest, and **Read all** for the whole changelog on GitHub. **Got it** puts it away until the next update, and ⌘P → **Show What's New** brings it back. A first launch shows onboarding, not a card.
+- When a new Pensée release is out, the What's new card says so: its title becomes **Pensée** and the new version, and an **Update** button sits beside **Got it**. Update installs it the way you installed Pensée, with Homebrew (`brew upgrade --cask pensee`) or, for the install script, by downloading the release and putting it in place of the app. It reads **Downloading…** while it works, then **Restart Pensée** opens the new version. If the update fails, the card says why and the button becomes **Try again**. ⌘P → **Show What's New** brings it back if you closed it.
 
 ## 2026-10-18
 

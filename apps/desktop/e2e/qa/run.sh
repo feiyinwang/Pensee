@@ -63,4 +63,6 @@ cd "$E2E_DIR"
 # wdio.conf.js reseeds the QA vault (qa/seed-vault.mjs) before every spec file.
 PENSEE_OBSIDIAN_CONFIG="$HOME/Library/Application Support/com.pensee.app.e2e/obsidian.json" \
   PENSEE_CHANGELOG_FILE="$HOME/Library/Application Support/com.pensee.app.e2e/changelog.md" \
+  PENSEE_RELEASE_FILE="$HOME/Library/Application Support/com.pensee.app.e2e/release.json" \
+  PENSEE_UPGRADE_FILE="$HOME/Library/Application Support/com.pensee.app.e2e/upgrade.txt" \
   PENSEE_QA_SEED=1 PENSEE_E2E_APP="$APP" pnpm exec wdio run ./wdio.conf.js "${specs[@]}" ${grep_args[@]+"${grep_args[@]}"}
