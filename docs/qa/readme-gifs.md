@@ -4,14 +4,14 @@ The GIFs in `assets/readme/` are filmed from the debug e2e build on a made-up
 vault, so they never show real notes, and can be filmed again after the UI
 changes. Everything lives in `apps/desktop/e2e/readme-gifs/`:
 
-| File                 | What it does                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `film.sh`            | Builds, seeds, films the scenes you name, stitches them and writes `assets/readme/<scene>.gif`                      |
-| `scenes.spec.js`     | One `it("<scene>")` per GIF: `check`, `connect`, `pen`, `book`, `youtube`, `podcast`, `dock`                        |
-| `seed-demo.mjs`      | Writes the "Pensée demo" vault into `~/Library/Application Support/com.pensee.app.e2e` and clears the saved session |
-| `make-book-pdf.py`   | Writes the book's PDF: rules 13–14 of Strunk's _The Elements of Style_ (1918, public domain)                        |
-| `reading-slowly.pdf` | The demo paper in the Library                                                                                       |
-| `stitch.py`          | Turns a scene's frames into a GIF at their real pace, with one shared palette                                       |
+| File                 | What it does                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `film.sh`            | Builds, seeds, films the scenes you name, stitches them and writes `assets/readme/<scene>.gif`                                                                                       |
+| `scenes.spec.js`     | One `it("<scene>")` per GIF: `check`, `connect`, `pen`, `book`, `youtube`, `podcast`, `dock`                                                                                         |
+| `seed-demo.mjs`      | Writes the "Pensée demo" vault into `~/Library/Application Support/com.pensee.app.e2e` and clears the saved session                                                                  |
+| `make-book-epub.py`  | Writes the book as an EPUB, so the reader shows it on the app's own ground (a PDF page is always white paper): rules 13–14 of Strunk's _The Elements of Style_ (1918, public domain) |
+| `reading-slowly.pdf` | The demo paper in the Library                                                                                                                                                        |
+| `stitch.py`          | Turns a scene's frames into a GIF at their real pace, with one shared palette                                                                                                        |
 
 ## Filming
 
@@ -41,7 +41,8 @@ YouTube scene scrolls the note's title and properties away first, so the
 video sticks to the top and the lines being written show under it.
 The `check`, `connect` and `pen` scenes ask the AI, so they need the Claude
 this Mac is signed in to.
-The GIFs follow the Mac's light or dark appearance.
+The seed sets the app to dark (`appearance.theme = dark` in its config), since
+macOS's Auto appearance turns light by day and the GIFs should match.
 
 Look at every GIF before committing it. The spec logs each note's final text
 (`FINAL …`) so you can check what was written.
@@ -59,7 +60,7 @@ Learned on 2026-10-18, filming the GIFs the README has now.
   whatever the screenshot took, so the GIF types at an even pace.
 - **Your own keys leak in.** With the window in front, real keystrokes (an
   IME too) go into the note and garble it. Hands off.
-- **Activating the window collapses a scripted PDF selection.** Bringing it to
+- **Activating the window collapses a scripted selection in the book.** Bringing it to
   front hands focus back to the note's editor, which puts its caret over the
   selection. Order: `front()`, blur the active element, then select and send
   the `mouseup` in one `execute` (the `book` scene).
@@ -80,4 +81,7 @@ Learned on 2026-10-18, filming the GIFs the README has now.
   keep their index (0.28 MB).
 - Only one WebDriver run per machine: `film.sh` stops if a QA run is going or
   an e2e app holds port 4445 ([qa-checklist.md](./qa-checklist.md) harness
-  notes).
+  notes). A QA run another session starts mid-film kills the WebDriver (the
+  scene fails with `UND_ERR_SOCKET`), and `run.sh`'s `pkill -f
+tauri-webdriver` also kills any shell whose command line names it, such as
+  a wait loop. Wait for a minute with no run from a script file, then film.

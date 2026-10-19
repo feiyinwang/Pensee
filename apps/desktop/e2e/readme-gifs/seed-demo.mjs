@@ -15,7 +15,7 @@ const project = (status, start, deadline, body) =>
   `---\nType: Project\nStatus: ${status}\nStart: ${start}\nDeadline: ${deadline}\n---\n\n${body}\n`;
 const amazon = (id) => `https://m.media-amazon.com/images/I/${id}.jpg`;
 const book = (author, cover, body) =>
-  `---\nType: Book\nAuthor: ${author}\nCover: ${amazon(cover)}\n---\n\n## Highlights\n\n${body}\n`;
+  `---\nType: Book\nAuthor: ${author}\nCover: ${amazon(cover)}\n---\n## Highlights\n${body}\n`;
 
 const NOTES = {
   "Notes/Writing is thinking.md": [
@@ -89,14 +89,12 @@ const NOTES = {
   ].join("\n"),
   "Notes/How I learn.md": [
     "What I've noticed about how I learn, to check against what's known.",
-    "",
     "- Rereading my notes is the best way to remember them.",
     "- I only understand a book once I've written about it.",
     "",
   ].join("\n"),
   "Notes/Questions.md": [
     "Things I keep wondering about while reading.",
-    "",
     "- why does sleep help memory?",
     "",
   ].join("\n"),
@@ -147,7 +145,7 @@ const NOTES = {
     "71bIiz4wX0L",
     "- Clutter is the disease of writing.",
   ),
-  "Library/The Elements of Style.md": `---\nType: Book\nAuthor: William Strunk Jr.\nCover: ${amazon("71aV5vqvptL")}\nBook: The Elements of Style.pdf\ntags: [Book]\n---\n\nA friend who edits for a living gave me this. Reading it one rule a night.\n\n## Highlights\n`,
+  "Library/The Elements of Style.md": `---\nType: Book\nAuthor: William Strunk Jr.\nCover: ${amazon("71aV5vqvptL")}\nBook: The Elements of Style.epub\ntags: [Book]\n---\nA friend who edits for a living gave me this. Reading it one rule a night.\n## Highlights\n- Omit needless words. ^bk-s0-45-65\n`,
   "Library/Deep Work.md": book("Cal Newport", "71aqIRRigeL", "- Focus is a skill you train."),
   "Library/Steal Like an Artist.md": book("Austin Kleon", "617JBhF7XcL", "- Nothing is original."),
 };
@@ -160,8 +158,8 @@ copyFileSync(
 );
 execFileSync("python3", [
   "-I",
-  fileURLToPath(new URL("./make-book-pdf.py", import.meta.url)),
-  join(VAULT, "Library/The Elements of Style.pdf"),
+  fileURLToPath(new URL("./make-book-epub.py", import.meta.url)),
+  join(VAULT, "Library/The Elements of Style.epub"),
 ]);
 for (const [relative, content] of Object.entries(NOTES)) {
   const path = join(VAULT, relative);
@@ -173,4 +171,7 @@ writeFileSync(join(APP_DATA, "recent_workspaces.json"), JSON.stringify([VAULT], 
 for (const file of ["sessions.json", "recent_files.json", "config", "preferences.json"]) {
   rmSync(join(APP_DATA, file), { force: true });
 }
+// Dark whatever the Mac's appearance is now: macOS's Auto appearance turns
+// light by day, and the GIFs should all look alike.
+writeFileSync(join(APP_DATA, "config"), "appearance.theme = dark\n");
 console.log(`Demo vault ready at ${VAULT}`);

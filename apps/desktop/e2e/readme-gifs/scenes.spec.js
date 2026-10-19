@@ -532,8 +532,8 @@ describe("README GIFs", function () {
     await browser.waitUntil(
       () =>
         browser.execute(() =>
-          [...document.querySelectorAll(".textLayer span")].some((s) =>
-            s.textContent.includes("Vigorous writing"),
+          [...document.querySelectorAll(".book-epub-section p")].some((p) =>
+            p.textContent.includes("Vigorous writing"),
           ),
         ),
       { timeout: 15_000, timeoutMsg: "the book's text never showed" },
@@ -549,10 +549,12 @@ describe("README GIFs", function () {
     const selectUpTo = (upto, release) =>
       browser.execute(
         (needle, end, up) => {
-          const span = [...document.querySelectorAll(".textLayer span")].find((s) =>
-            s.textContent.includes(needle),
+          const para = [...document.querySelectorAll(".book-epub-section p")].find((p) =>
+            p.textContent.includes(needle),
           );
-          const node = span.firstChild;
+          const node = [...para.childNodes].find(
+            (n) => n.nodeType === Node.TEXT_NODE && n.data.includes(needle),
+          );
           const at = node.data.indexOf(needle);
           const range = document.createRange();
           range.setStart(node, at);
@@ -562,7 +564,7 @@ describe("README GIFs", function () {
           sel.addRange(range);
           if (!up) return;
           const box = range.getBoundingClientRect();
-          span.closest(".book-reader-scroller").dispatchEvent(
+          para.closest(".book-reader-scroller").dispatchEvent(
             new MouseEvent("mouseup", {
               bubbles: true,
               button: 0,
@@ -592,13 +594,13 @@ describe("README GIFs", function () {
     const path = `${root}/Library/The Elements of Style.md`;
     await waitForDisk(
       path,
-      (t) => /Vigorous writing is concise\. \^bk-p/.test(t),
+      (t) => /Vigorous writing is concise\. \^bk-[ps]/.test(t),
       "the highlight should land in the note",
     );
     await film(1800);
     // Read on: the sentence scrolls out of sight.
     await browser.execute(() =>
-      document.querySelector(".book-reader-scroller").scrollBy({ top: 900, behavior: "smooth" }),
+      document.querySelector(".book-reader-scroller").scrollBy({ top: 600, behavior: "smooth" }),
     );
     await film(1600);
     // Back in the note, a click on the highlight brings the book back to it.
