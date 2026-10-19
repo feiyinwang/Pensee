@@ -71,11 +71,13 @@ export const config = {
   // app launch, so every spec starts from the same notes and settings.
   beforeSession: async function (_config, _capabilities, specs) {
     if (!process.env.PENSEE_QA_SEED) return;
-    const { seedVault, seedFirstRun, seedWhatsNew } = await import("./qa/seed-vault.mjs");
+    const { seedVault, seedFirstRun, seedTips, seedWhatsNew } = await import("./qa/seed-vault.mjs");
     // The onboarding journeys start where a new user does: no folder open.
     if (specs.some((spec) => spec.endsWith("/onboarding.spec.js"))) seedFirstRun();
     // The What's new journeys start with a changelog day the writer hasn't seen.
     else if (specs.some((spec) => spec.endsWith("/whats-new.spec.js"))) seedWhatsNew();
+    // The tips journeys run with tips on; every other spec has them off.
+    else if (specs.some((spec) => spec.endsWith("/tips.spec.js"))) seedTips();
     else seedVault();
   },
 

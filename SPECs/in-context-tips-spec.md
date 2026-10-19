@@ -12,8 +12,9 @@ Screen 3's practice loop already works this way: its guide reads the note to
 see what you did (a `^yt-` pin, a `^bk-` highlight, the pen's ids). Tips use
 that same approach everywhere else in the app.
 
-Decided from the prototype `apps/desktop/proto/in-context-tips/` (2026-10-19):
-**In the line, with the keys in the guide pill.**
+Decided from the prototype (2026-10-19; `apps/desktop/proto/in-context-tips/`,
+removed once built, in git history at bb2c83d): **In the line, with the
+keys in the guide pill.**
 
 ## How a tip looks
 
@@ -58,8 +59,10 @@ Decided from the prototype `apps/desktop/proto/in-context-tips/` (2026-10-19):
   default.
 - There is no list of tips anywhere. They only appear in context.
 
-State lives in `preferences.json`: `tips.enabled`, and per tip
-`tips.<id>.shown` (a count) and `tips.<id>.done`.
+State lives in `preferences.json`: per tip `tips.<id>.shown` (a count) and
+`tips.<id>.done`, plus `tips.space-clicks` (the go key's trigger). The
+switch is the setting `tips.enabled` in `shared/settings.schema.json`
+(Settings → General), since every setting goes through the schema.
 
 ## The tips
 
@@ -111,6 +114,46 @@ SPECs/onboarding-spec.md changes to match.
   line change, selection, panel open). Nothing extra runs per keystroke, and
   the vault search for "already used" runs once, off the launch path. Typing
   stays inside its 16ms budget (docs/qa/performance.md).
+
+## As built (2026-10-19)
+
+Where the build differs from the table above, and why:
+
+- **Library and Projects lines sit under the header** (under the type
+  tabs), for both their tips: under a long shelf the line would be off
+  screen.
+- **`library-empty` is done when anything is added to the Library** (the
+  palette's add, a book import, **Add it**): the tip is about an empty
+  Library. **Add it** imports the sample book through onboarding's
+  `openSample`, so it lands in the Book pages folder beside its page and
+  opens, as in onboarding.
+- **`book-highlight` shows when the reader opens beside its note**, and the
+  reader now has the H key the pill names (with the selection's pill
+  showing, as its Highlight button).
+- **`tabs-pinch` shows only when one tab is showing** of three or more: with
+  two or more tabs the columns are already the default, and pinching out is
+  what shows one. Pinching back in is the done.
+- **`board-dock`'s vault trace is any `.board.svg`**, as the launch-search
+  bullet above says. Boards are drawn without React, so the line gets a
+  small React root at the top of the canvas.
+- **`go-key`** counts clicks on a Space row with a go letter (Projects,
+  Library, Files), across launches.
+- **The launch search** is one Rust command, `find_tip_traces`: once per
+  opened vault, after its index is built and at the first idle moment, it
+  reads the indexed notes in parallel for `^yt-`, `^bk-` and `^ai-<kind>-`
+  (skipping notes offloaded to iCloud, which would download) and looks for
+  any `.board.svg`.
+- **What holds a tip back** (`tips-gates.ts`): onboarding, the palette, a
+  Radix menu or popover, the block menu, autocomplete, the pen's box, the
+  composer, and any modal dialog except the board's own overlay. Native
+  context menus leave nothing in the DOM to read.
+- **Per keystroke** the editor does one `includes("^")` per changed line
+  (at most 40), and a caret moving to another line asks the registry once.
+- **The fade is `--motion-base` (160ms)**, the nearest token to the
+  prototype's 150ms (docs/motion.md: no literal durations).
+- **E2E:** every journey file except `tips.spec.js` runs with tips off
+  (`e2e/qa/seed-vault.mjs`), so a tip never lands in another journey's
+  checks.
 
 ## Rejected (2026-10-19, prototype round 1)
 

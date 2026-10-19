@@ -108,6 +108,10 @@ On a focused board, Alt+ArrowLeft / Alt+ArrowRight are claimed for card travel
 (out to the card leading into the selected one / into its next steps); Tab /
 Shift+Tab step between cards on the same level. A board's own find is Cmd+F.
 
+In the book reader, with text selected and its pill showing (Highlight ·
+Define), H highlights the selection as the pill's Highlight does, and Esc
+drops the pill (`book-reader.tsx`). Typing in a field is never taken.
+
 In the Projects space ([project views](../SPECs/project-views-spec.md)), a
 focused kanban card takes Space (lift, then drop), the arrow keys (move a
 lifted card) and Escape (put it back), as Arc's kanban board defines them; a

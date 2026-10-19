@@ -103,11 +103,18 @@ back on screens 1–2.
 
    A guide pill at the bottom gives one instruction at a time, with its keys,
    and counts the steps (_1 of 3_). Its only exit during the loop is a quiet
-   **Skip** text button. When the loop is done it says what just happened
-   (_That's Pensée: your take first, then its answer._) and offers
-   **Continue ↵**. That leads to the next screen; it never leaves the flow.
+   **Skip** text button, which goes on to screen 4. When the loop is done it
+   says what just happened (_That's Pensée: your take first, then its
+   answer._) and offers **Open <vault> ↵**, which finishes onboarding, with a
+   quiet **See what else Pensée does** beside it that opens screen 4
+   (2026-10-19, SPECs/in-context-tips-spec.md: each feature now teaches
+   itself in place, so the carousel is optional). The guide is the shared
+   `GuidePill` (`components/tips/guide-pill.tsx`), whose keys press down
+   while held.
    With no AI connected, the loop runs as a preview, and the guide says so.
-4. **There's more when you need it.** A features carousel, laid out like
+4. **There's more when you need it.** Optional since 2026-10-19: reached
+   from the practice guide's **See what else Pensée does** (or its Skip), not
+   on the way into the vault. A features carousel, laid out like
    Arc's carousel (uiarc.dev/components/carousel). One slide sits in the
    centre, with its neighbours peeking in smaller and dimmer. Under it, the
    caption has a title and one line on the left and the feature's keys on the
@@ -198,7 +205,8 @@ back on screens 1–2.
   medium's loop instead of standing alone.
 - **A big "Open <vault>" button inside the practice loop.** It invited
   leaving mid-sequence. Replaced by a quiet Skip; the filled button appears
-  only on the last screen.
+  only once the loop is done (on the guide since 2026-10-19, before that on
+  the last screen).
 - **A tour of every feature.** Six stops would be skipped. The rest goes on
   screen 4.
 - **Screen 4 as a list of six rows with keys** (2026-10-16): too much at once

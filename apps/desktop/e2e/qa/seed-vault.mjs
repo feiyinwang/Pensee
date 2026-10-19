@@ -212,6 +212,15 @@ export function seedVault() {
     rmSync(join(APP_DATA, file), { force: true });
   }
   writeFileSync(CHANGELOG_FILE, CHANGELOG);
+  // Tips off: a tip arriving 600ms into a journey would land in the middle
+  // of its checks. The tips journeys turn them back on (seedTips).
+  writeFileSync(join(APP_DATA, "config"), "tips.enabled = false\n");
+}
+
+/** The tips journeys: the QA vault with tips on and none shown yet. */
+export function seedTips() {
+  seedVault();
+  rmSync(join(APP_DATA, "config"), { force: true });
 }
 
 /** The changelog the What's new card reads (run.sh points the app at this
