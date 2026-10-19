@@ -88,17 +88,22 @@ export const PAINTINGS = {
 } satisfies Record<string, Painting>;
 
 /**
- * A window into a 16:10 GIF, as fractions of its width and height: the frame
- * shows only that part, enlarged. Same aspect as the frame, so nothing stretches.
+ * The part of a GIF a card shows, in the GIF's own pixels: `box` is
+ * [left, top, right, bottom] inside a GIF of `size` [width, height]. The frame
+ * takes the box's shape and the GIF is enlarged so the box fills it, so nothing
+ * stretches.
  */
 export interface Zoom {
-  x: number;
-  y: number;
-  w: number;
+  box: [number, number, number, number];
+  size: [number, number];
 }
 
-/** The note area of the 1200×750 pen GIFs (x 335–1055, y 75–525): the title, the pen's box and every line it adds, at 1.67×. */
-const PEN_NOTE: Zoom = { x: 335 / 1200, y: 75 / 750, w: 720 / 1200 };
+/** The note in the 1200×750 pen GIFs: the title, the pen's box and every line it adds, at 1.67×. */
+const PEN_NOTE: Zoom = { box: [335, 75, 1055, 525], size: [1200, 750] };
+/** Both panes of the book GIF, cut below the Highlights list: the selection, the Highlight pill and the line landing in the note. */
+const BOOK_PANES: Zoom = { box: [14, 36, 1080, 446], size: [1200, 750] };
+/** The podcast GIF whole: a wide strip, so its card spans the row. */
+const PODCAST_STRIP: Zoom = { box: [0, 0, 1000, 401], size: [1000, 401] };
 
 export type SceneId =
   | "organize"
@@ -119,6 +124,8 @@ export interface Feature {
   description: string;
   keys: Key[];
   demo: { gif: string; zoom?: Zoom } | { scene: SceneId };
+  /** Spans the whole row: for wide demos whose action needs the width. */
+  wide?: boolean;
 }
 
 export interface Room {
@@ -185,7 +192,8 @@ export const ROOMS: Room[] = [
         description:
           "PDFs and EPUBs open next to their note. Highlight a line and it lands there; click it later and the page comes back.",
         keys: [{ say: "Select → Highlight" }],
-        demo: { gif: bookGif },
+        demo: { gif: bookGif, zoom: BOOK_PANES },
+        wide: true,
       },
       {
         id: "youtube",
@@ -196,20 +204,21 @@ export const ROOMS: Room[] = [
         demo: { gif: youtubeGif },
       },
       {
-        id: "podcast",
-        title: "Podcasts work the same way",
-        description:
-          "Episodes play inside the note. ⌘S plays, ⌘S again pins the moment, and every pin jumps back to its second.",
-        keys: ["⌘", "S"],
-        demo: { gif: podcastGif },
-      },
-      {
         id: "library",
         title: "One shelf for everything you collect",
         description:
           "Books, videos, podcasts and papers in one Library, added from a link, a file or a title. Apple Books highlights sync in on their own.",
         keys: ["⌘G", "L"],
         demo: { scene: "library" },
+      },
+      {
+        id: "podcast",
+        title: "Pin a podcast to the second, too",
+        description:
+          "Episodes play inside the note like videos do. ⌘S plays, ⌘S again pins the moment, and every pin jumps back to its second.",
+        keys: ["⌘", "S"],
+        demo: { gif: podcastGif, zoom: PODCAST_STRIP },
+        wide: true,
       },
     ],
   },

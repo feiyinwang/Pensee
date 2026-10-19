@@ -4,25 +4,32 @@ import type { Feature, Zoom } from "../content";
 import { Keycaps } from "./Keycaps";
 import { Scene } from "./Scene";
 
-/** Enlarges the GIF so only the zoom window fills the frame. */
-const zoomStyle = ({ x, y, w }: Zoom): CSSProperties => ({
+/** The frame takes the zoom box's shape; the GIF is enlarged and offset so the box fills it. */
+function zoomStyles({ box: [l, t, r, b], size: [width, height] }: Zoom) {
+  const w = (r - l) / width;
+  const h = (b - t) / height;
+  const frame: CSSProperties = { aspectRatio: `${r - l} / ${b - t}` };
   // Both sizes are set, not just width: a lazy image with no height yet never
   // counts as on screen, so it would never load.
-  width: `${100 / w}%`,
-  height: `${100 / w}%`,
-  left: `${(-x / w) * 100}%`,
-  top: `${(-y / w) * 100}%`,
-});
+  const img: CSSProperties = {
+    width: `${100 / w}%`,
+    height: `${100 / h}%`,
+    left: `${(-l / width / w) * 100}%`,
+    top: `${(-t / height / h) * 100}%`,
+  };
+  return { frame, img };
+}
 
 /** One feature: its demo, its shortcut, what you get, and how. */
 export function FeatureCard({ feature, room }: { feature: Feature; room: string }) {
   const { demo } = feature;
+  const zoom = "gif" in demo && demo.zoom ? zoomStyles(demo.zoom) : undefined;
   return (
-    <article className="fcard">
+    <article className={feature.wide ? "fcard wide" : "fcard"}>
       {"gif" in demo ? (
-        <div className={demo.zoom ? "media zoomed" : "media"}>
+        <div className={demo.zoom ? "media zoomed" : "media"} style={zoom?.frame}>
           <img
-            style={demo.zoom && zoomStyle(demo.zoom)}
+            style={zoom?.img}
             src={demo.gif}
             alt={`${feature.title}: ${feature.description}`}
             loading="lazy"
