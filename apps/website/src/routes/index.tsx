@@ -1,79 +1,113 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
+import { DownloadButton } from "../components/DownloadButton";
+import { FeatureCard } from "../components/FeatureCard";
+import { InstallLine } from "../components/InstallLine";
 import { PenseeMark } from "../components/Mark";
-
-const FEATURES = [
-  { label: "Private", description: "all your documents live in your computer" },
-  { label: "Blazing fast", description: "cold starts takes a fraction of a second" },
-  { label: "Extended markdown", description: "mermaid charts, tables and HTML" },
-  { label: "Multiwindow", description: "snappy switch between multiple workspaces" },
-  { label: "Frontmatter", description: "YAML metadata support built-in" },
-];
-
-const DEMOS = [
-  "/demo-videos/00.mp4",
-  "/demo-videos/01.mp4",
-  "/demo-videos/02.mp4",
-  "/demo-videos/03.mp4",
-  "/demo-videos/04.mp4",
-  "/demo-videos/05.mp4",
-  "/demo-videos/06.mp4",
-  "/demo-videos/07.mp4",
-  "/demo-videos/08.mp4",
-];
+import { Credit, Painting } from "../components/Painting";
+import {
+  FINE_PRINT,
+  HEADLINE,
+  INTRO,
+  PAINTINGS,
+  REPO,
+  REQUIREMENTS,
+  ROOMS,
+  VERSION,
+} from "../content";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+const ROMAN = ["I", "II", "III", "IV"];
+
+/** One page, one action: Download for Mac (SPECs/website-homepage-spec.md). */
 function HomePage() {
   return (
     <div className="page">
-      <main className="hero">
-        <header className="site-header">
-          <Link className="brand" to="/" aria-label="Pensée">
-            <PenseeMark size={28} />
-            <span className="wordmark">PENSÉE</span>
-          </Link>
-        </header>
+      <header className="bar">
+        <a className="lockup" href="#top" aria-label="Pensée, back to top">
+          <PenseeMark size={18} />
+          <span className="wordmark">PENSÉE</span>
+        </a>
+        <DownloadButton />
+      </header>
 
-        <h1 className="headline">Thinking, made by writing.</h1>
+      <main id="top">
+        {/* The philosopher sits left of centre, so the words take the dark stair on the right. */}
+        <section className="full hero">
+          <Painting painting={PAINTINGS.rembrandt} eager />
+          <div className="scrim" aria-hidden="true" />
+          <div className="over">
+            <div className="eyebrow">Pensée for Mac · version {VERSION}</div>
+            <h1>{HEADLINE}</h1>
+            <p className="stand">{INTRO}</p>
+            <div className="acts">
+              <DownloadButton size="lg" tone="light" beta />
+              <a className="tlink" href="#room-think">
+                See what it does
+              </a>
+            </div>
+            <div className="meta">{REQUIREMENTS}</div>
+          </div>
+          <p className="credit">
+            <Credit painting={PAINTINGS.rembrandt} /> · {PAINTINGS.rembrandt.at}
+          </p>
+        </section>
 
-        <p className="status">For macOS. Not yet available to download.</p>
+        {ROOMS.map((room, i) => (
+          <section className="room" id={`room-${room.id}`} key={room.id}>
+            <Painting painting={room.painting}>
+              <figcaption>
+                <Credit painting={room.painting} />
+                <small>{room.painting.at}</small>
+              </figcaption>
+            </Painting>
+            <div className="room-head">
+              <div>
+                <div className="eyebrow">
+                  Room {ROMAN[i]} · {room.features.length} features
+                </div>
+                <h2>{room.name}</h2>
+              </div>
+              <p>{room.intro}</p>
+            </div>
+            <div className="cards">
+              {room.features.map((feature) => (
+                <FeatureCard feature={feature} room={room.name} key={feature.id} />
+              ))}
+            </div>
+          </section>
+        ))}
 
-        <p className="caption">Free and open source, under the GPL.</p>
-
-        <ul className="features">
-          {FEATURES.map(({ label, description }) => (
-            <li className="feature" key={label}>
-              <span className="feature-label">{label}</span>
-              <span className="feature-desc">{description}</span>
-            </li>
-          ))}
-        </ul>
+        <section className="full closing">
+          <Painting painting={PAINTINGS.hammershoi} />
+          <div className="scrim" aria-hidden="true" />
+          <div className="over">
+            <div className="eyebrow">Ready when you are</div>
+            <h2>Start writing what you think.</h2>
+            <div className="acts">
+              <DownloadButton size="lg" tone="light" />
+            </div>
+            <div className="meta">{REQUIREMENTS}</div>
+            <InstallLine />
+            <p className="fine">{FINE_PRINT}</p>
+          </div>
+          <p className="credit">
+            <Credit painting={PAINTINGS.hammershoi} /> · {PAINTINGS.hammershoi.at}
+          </p>
+        </section>
       </main>
 
-      <aside className="screenshots">
-        {DEMOS.map((src) => (
-          <DemoVideo key={src} src={src} />
-        ))}
-      </aside>
-    </div>
-  );
-}
-
-function DemoVideo({ src }: { src: string }) {
-  return (
-    <div className="shot">
-      <video
-        src={src}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        aria-label="Pensée app demo"
-      />
+      <footer className="foot">
+        <span>Pensée is GPL v3. Neither the app nor this site collects usage data.</span>
+        <nav aria-label="Project">
+          <a href={REPO}>GitHub</a>
+          <a href={`${REPO}/releases`}>Releases</a>
+          <a href={`${REPO}/blob/master/LICENSE`}>License</a>
+        </nav>
+      </footer>
     </div>
   );
 }
