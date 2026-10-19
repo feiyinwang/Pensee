@@ -513,6 +513,17 @@ button {
   object-fit: contain;
 }
 
+/* zoomed GIFs: the image is enlarged and offset so one window of it fills the
+   frame (FeatureCard sets width, left and top from the feature's zoom) */
+.media.zoomed {
+  display: block;
+}
+
+.media.zoomed img {
+  position: absolute;
+  max-width: none;
+}
+
 .fcard .words {
   padding: 18px 14px 12px;
 }

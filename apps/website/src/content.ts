@@ -87,6 +87,19 @@ export const PAINTINGS = {
   },
 } satisfies Record<string, Painting>;
 
+/**
+ * A window into a 16:10 GIF, as fractions of its width and height: the frame
+ * shows only that part, enlarged. Same aspect as the frame, so nothing stretches.
+ */
+export interface Zoom {
+  x: number;
+  y: number;
+  w: number;
+}
+
+/** The note area of the 1200×750 pen GIFs (x 335–1055, y 75–525): the title, the pen's box and every line it adds, at 1.67×. */
+const PEN_NOTE: Zoom = { x: 335 / 1200, y: 75 / 750, w: 720 / 1200 };
+
 export type SceneId =
   | "organize"
   | "library"
@@ -105,7 +118,7 @@ export interface Feature {
   title: string;
   description: string;
   keys: Key[];
-  demo: { gif: string } | { scene: SceneId };
+  demo: { gif: string; zoom?: Zoom } | { scene: SceneId };
 }
 
 export interface Room {
@@ -131,7 +144,7 @@ export const ROOMS: Room[] = [
         description:
           "Select a line and the pen cites papers for and against it. You write the call.",
         keys: ["⌘", ".", "@"],
-        demo: { gif: checkGif },
+        demo: { gif: checkGif, zoom: PEN_NOTE },
       },
       {
         id: "connect",
@@ -139,7 +152,7 @@ export const ROOMS: Room[] = [
         description:
           "The pen brings back what your other notes say about a line. You write how they connect.",
         keys: ["⌘", ".", "["],
-        demo: { gif: connectGif },
+        demo: { gif: connectGif, zoom: PEN_NOTE },
       },
       {
         id: "answer",
@@ -147,7 +160,7 @@ export const ROOMS: Room[] = [
         description:
           "The answer stays sealed until you’ve written your own. Then Tab combines the two into one list.",
         keys: ["⌘", ".", "!"],
-        demo: { gif: penGif },
+        demo: { gif: penGif, zoom: PEN_NOTE },
       },
       {
         id: "organize",
