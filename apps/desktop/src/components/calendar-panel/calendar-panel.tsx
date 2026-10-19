@@ -13,6 +13,10 @@ import * as tauri from "@/lib/tauri";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import "./calendar-panel.css";
+import { TipLine } from "@/components/tips/tip-line";
+import type { TipArrival } from "@/components/tips/tips";
+
+const CALENDAR_ARRIVAL: TipArrival = { anchor: "calendar" };
 
 type View = "days" | "months" | "years";
 
@@ -219,6 +223,7 @@ export default function CalendarPanelContent() {
             </div>
           </>
         )}
+        <TipLine anchor="calendar" arrival={CALENDAR_ARRIVAL} className="calendar-panel-tip" />
       </div>
     </aside>
   );

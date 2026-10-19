@@ -41,6 +41,7 @@ import { wikiLinkExtension } from "./wiki-link-extension";
 import { wikiPagesExtension } from "./wiki-pages-extension";
 import { wikiLinkPreview } from "./wiki-link-preview";
 import { tabColumnOf } from "./hidden-tab";
+import { tipsEditor } from "@/components/tips/tips-editor";
 
 // Focus the editor when a tab switch reveals its tab: its column loses
 // `data-hidden` (tab-columns.tsx). Not when a pinch brings back all the
@@ -174,6 +175,8 @@ export function createEditorExtensions(
     pageTitleArrowUp,
     pageEdgeKeys,
     storeSyncExtension(getFilePath),
+    // In-context tips: the editor's moments and a tip's line in the note.
+    tipsEditor(getFilePath),
     editorClipboardExtension(getFilePath, isDisposed),
     focusOnRevealExtension(isDisposed),
   ];

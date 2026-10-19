@@ -15,7 +15,7 @@ import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-co
 /** Section that renders above the Themes block. The schema-driven section
  *  list is rendered in two passes — these come first, the Themes section
  *  comes next, and everything else is rendered after. */
-const SECTIONS_BEFORE_THEMES = ["Appearance", "Typography"] as const;
+const SECTIONS_BEFORE_THEMES = ["General", "Appearance", "Typography"] as const;
 
 export function SettingsPanel({ isShown = true }: { isShown?: boolean }) {
   const settings = useAllSettings();

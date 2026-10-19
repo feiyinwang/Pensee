@@ -23,6 +23,9 @@ import { libraryKindOfTab } from "@/lib/library-add";
 import { TONE_COLOR, statusTextTone } from "@/lib/projects";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { allTypes, notesInTab, type SpaceTab } from "@/lib/spaces";
+import { TipLine } from "@/components/tips/tip-line";
+import type { TipArrival } from "@/components/tips/tips";
+import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import { FilesSpace } from "./files-space";
 import { NoteGallery, type CardBook } from "./note-gallery";
 import { noteTitle } from "./space-cover";
@@ -157,6 +160,7 @@ function TypedSpace({ space }: { space: SpaceDef }) {
           )}
         </div>
       </header>
+      <SpaceTip space={space} count={notes?.length ?? null} />
       {space.tabs
         .filter((t) => warm || t.id === shownTab.id)
         .map((t) => (
@@ -165,6 +169,32 @@ function TypedSpace({ space }: { space: SpaceDef }) {
           </div>
         ))}
     </>
+  );
+}
+
+/** The space's tip, under its header (SPECs/in-context-tips-spec.md): the
+ *  Library's and Projects' own, reported once the notes are counted. */
+function SpaceTip({ space, count }: { space: SpaceDef; count: number | null }) {
+  const root = useWorkspaceRoot();
+  let arrival: TipArrival | null = null;
+  if (count !== null && space.key === "library") arrival = { anchor: "library", items: count };
+  if (count !== null && space.key === "projects") arrival = { anchor: "projects", cards: count };
+  const anchor = space.key === "projects" ? "projects" : "library";
+  if (space.key !== "library" && space.key !== "projects") return null;
+  // Add it: onboarding's sample book, imported beside its page and opened.
+  const addSample = () => {
+    if (!root) return;
+    void import("@/components/onboarding/samples")
+      .then(({ openSample }) => openSample(root, "book"))
+      .catch((error: unknown) => console.error("[tips] Couldn't add the sample book:", error));
+  };
+  return (
+    <TipLine
+      anchor={anchor}
+      arrival={arrival}
+      className={styles.tip}
+      actions={{ "library-empty": { label: "Add it", run: addSample } }}
+    />
   );
 }
 

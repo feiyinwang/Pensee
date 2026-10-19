@@ -12,6 +12,8 @@ import { openSpace, spaceLocationOf, useActiveSpaceKey, useSpaces } from "@/hook
 import { GO_TODAY_KEY, type SpaceIcon } from "@/lib/spaces";
 import { useUIStore } from "@/stores/ui-store";
 import { SIDEBAR_SECTION_LABEL_CLASS } from "./sidebar-section";
+import { TipLine } from "@/components/tips/tip-line";
+import { clickSpaceRow } from "@/components/tips/tips-store";
 
 const ICONS: Record<SpaceIcon, IconSvgElement> = {
   projects: Target02Icon,
@@ -75,6 +77,14 @@ function Row({
         >
           {label}
         </span>
+        {spaceKey && (
+          <TipLine
+            anchor="sidebar"
+            inline
+            className="tip-line-row"
+            match={(a) => a.anchor === "sidebar" && a.space === spaceKey}
+          />
+        )}
         {goKeyPending && goKey && (
           // No motion: it answers a key press.
           <kbd
@@ -130,7 +140,16 @@ export function SidebarSpaces() {
               keys={space.goKey ? ["⌘", "G", space.goKey.toUpperCase()] : undefined}
               keyshortcuts={space.goKey ? `Meta+G ${space.goKey.toUpperCase()}` : undefined}
               goKey={space.goKey}
-              onClick={() => openSpace(spaceLocationOf(space))}
+              onClick={() => {
+                openSpace(spaceLocationOf(space));
+                if (space.goKey) {
+                  clickSpaceRow({
+                    space: space.key,
+                    name: space.name,
+                    letter: space.goKey.toUpperCase(),
+                  });
+                }
+              }}
             />
           ))}
         </div>

@@ -186,3 +186,8 @@
     transition: none;
   }
 }
+
+/* The calendar's tip, under the grid (SPECs/in-context-tips-spec.md). */
+.calendar-panel-tip {
+  padding: 12px 12px 0;
+}

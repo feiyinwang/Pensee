@@ -24,15 +24,13 @@ export type NoteKind = "note" | "youtube" | "podcast" | "book";
  *  editor reports three moments: a note opening, the caret leaving a line,
  *  and a selection of several lines. */
 export type TipArrival =
-  | { anchor: "library"; items: number; readerUsed: boolean }
+  | { anchor: "library"; items: number }
   | {
       anchor: "editor";
       moment: "open";
       path: string;
+      /** A book's note reports this when its reader opens beside it. */
       kind: NoteKind;
-      /** The line the tip writes on: the empty line under the player, or
-       *  the note's empty last line. 0-based; null when there is none. */
-      line: number | null;
     }
   | {
       anchor: "editor";
@@ -46,14 +44,14 @@ export type TipArrival =
     }
   | { anchor: "editor"; moment: "select"; path: string; line: number; lines: number }
   | { anchor: "tabs"; count: number }
-  | { anchor: "board"; path: string }
+  | { anchor: "board" }
   | { anchor: "sidebar"; space: string; name: string; letter: string; clicks: number }
   | { anchor: "projects"; cards: number }
   | { anchor: "calendar" };
 
 /** App events that finish a tip (the rest finish on a trace in the note). */
 export type TipEvent =
-  | "book-added"
+  | "library-item-added"
   | "reader-opened"
   | "columns-on"
   | "card-docked"
@@ -127,12 +125,12 @@ export const TIPS: readonly Tip[] = [
     when: (a) => a.anchor === "library" && a.items === 0,
     line: "Try one: The Elements of Style.",
     did: () => "Added. It's on your shelf.",
-    done: { event: "book-added" },
+    done: { event: "library-item-added" },
   },
   {
     id: "library-open",
     anchor: "library",
-    when: (a) => a.anchor === "library" && a.items > 0 && !a.readerUsed,
+    when: (a) => a.anchor === "library" && a.items > 0,
     line: "Open a book: it reads beside its note.",
     did: () => "Its note opens beside the book.",
     done: { event: "reader-opened" },
@@ -245,7 +243,7 @@ export const TIPS: readonly Tip[] = [
       a.anchor === "sidebar"
         ? { keys: ["⌘", "G", a.letter], label: `Go to ${a.name}` }
         : { keys: ["⌘", "G"], label: "Go" },
-    did: () => "⌘G then a letter goes there from anywhere.",
+    did: () => "Any row: ⌘G and its letter.",
     done: { event: "go-key" },
   },
   {

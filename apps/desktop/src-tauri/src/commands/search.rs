@@ -409,6 +409,104 @@ fn references_in_text(
     }
 }
 
+/// What the in-context tips' one launch search found (SPECs/in-context-tips-spec.md):
+/// which traces of a feature already sit in the vault, so a tip for a
+/// feature the writer has used never shows.
+#[derive(Debug, Clone, Serialize, PartialEq, Default)]
+pub struct TipTraces {
+    /// Each distinct marker found once: `^yt-`, `^bk-`, or `^ai-` with its
+    /// kind letter (`^ai-s-`, `^ai-e-`…).
+    pub traces: Vec<String>,
+    /// Whether any `.board.svg` is in the vault.
+    pub has_board: bool,
+}
+
+/// One pass for the tips: the markers in the indexed notes, and whether a
+/// board exists. Never waits on iCloud (a note offloaded there is skipped),
+/// and one scan at a time, like `find_block_references`.
+#[tauri::command]
+pub async fn find_tip_traces(
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+) -> Result<TipTraces, AppError> {
+    static SCAN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _scan = SCAN.lock().await;
+    let state = app.state::<AppState>().get_or_create(webview.label());
+    let root = state.workspace_root.read().clone();
+    let Some(root) = root else {
+        return Ok(TipTraces::default());
+    };
+    let paths: Vec<PathBuf> = state
+        .file_index
+        .read()
+        .iter()
+        .map(|f| f.path.clone())
+        .collect();
+    tauri::async_runtime::spawn_blocking(move || {
+        let texts = |path: &PathBuf| {
+            if is_offloaded(path) {
+                return None;
+            }
+            std::fs::read_to_string(path).ok()
+        };
+        let mut traces: Vec<String> = in_parallel(&paths, |path| {
+            texts(path).map(|t| tip_traces_in(&t)).unwrap_or_default()
+        })
+        .into_iter()
+        .flatten()
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+        traces.sort();
+        Ok(TipTraces {
+            traces,
+            has_board: has_board_file(&root),
+        })
+    })
+    .await
+    .map_err(|e| AppError::Io(e.to_string()))?
+}
+
+const TIP_MARKERS: [&str; 3] = ["^yt-", "^bk-", "^ai-"];
+
+/// The distinct tip markers in `text`: `^yt-`, `^bk-`, and `^ai-` with the
+/// letter after it (`^ai-s-`).
+pub fn tip_traces_in(text: &str) -> HashSet<String> {
+    let mut found = HashSet::new();
+    for marker in TIP_MARKERS {
+        for (at, _) in text.match_indices(marker) {
+            let end = at + marker.len();
+            if marker != "^ai-" {
+                found.insert(marker.to_string());
+                break;
+            }
+            let bytes = text.as_bytes();
+            if let (Some(kind), Some(b'-')) = (bytes.get(end), bytes.get(end + 1)) {
+                if kind.is_ascii_lowercase() {
+                    found.insert(format!("^ai-{}-", *kind as char));
+                }
+            }
+        }
+    }
+    found
+}
+
+/// Whether a `.board.svg` is anywhere under `root`, hidden and ignored
+/// folders left out as the index leaves them out. Stops at the first.
+pub fn has_board_file(root: &Path) -> bool {
+    WalkBuilder::new(root)
+        .hidden(true)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .build()
+        .flatten()
+        .any(|entry| {
+            entry.file_type().is_some_and(|t| t.is_file())
+                && entry.file_name().to_string_lossy().ends_with(".board.svg")
+        })
+}
+
 /// One line of another note that mentions some of the pen's search words:
 /// what Connect quotes back (SPECs/second-pen-spec.md#connect-what-you-wrote-before).
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -708,6 +806,25 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::TempDir;
+
+    #[test]
+    fn tip_traces_name_each_marker_once() {
+        let text = "- a ^yt-12\n- b ^yt-40\n- c ^bk-p3-1-2\n  - d ^ai-s-ab12\n  - e ^ai-e-cd34\nnot ^ai- alone";
+        let mut found: Vec<String> = tip_traces_in(text).into_iter().collect();
+        found.sort();
+        assert_eq!(found, vec!["^ai-e-", "^ai-s-", "^bk-", "^yt-"]);
+        assert!(tip_traces_in("- plain line").is_empty());
+    }
+
+    #[test]
+    fn has_board_file_finds_a_board_anywhere() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("plans")).unwrap();
+        std::fs::write(dir.path().join("note.md"), "x").unwrap();
+        assert!(!has_board_file(dir.path()));
+        std::fs::write(dir.path().join("plans/Essay.board.svg"), "<svg/>").unwrap();
+        assert!(has_board_file(dir.path()));
+    }
 
     fn setup_workspace() -> TempDir {
         let dir = TempDir::new().unwrap();

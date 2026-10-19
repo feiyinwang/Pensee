@@ -36,6 +36,7 @@ import { createSpaceTab, useEditorStore } from "@/stores/editor-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import type { SearchResult } from "@/types/fs";
+import { noteTipEvent } from "@/components/tips/tips-store";
 
 export type { SpaceDef } from "@/lib/spaces";
 export type { TypedNote } from "@/lib/tauri";
@@ -256,6 +257,7 @@ export async function adoptProjectNote(
     ...page,
     frontmatter: asProjectFrontmatter(page.frontmatter, edit),
   }));
+  noteTipEvent("project-created");
   return true;
 }
 
@@ -272,6 +274,7 @@ export async function createProjectNote(
   const lead = intro.trim() === "" ? "" : `${intro.trim()}\n`;
   const root = useWorkspaceStore.getState().root;
   const template = root ? await loadProjectTemplate(root) : null;
+  noteTipEvent("project-created");
   if (!template) return createRootNote(name, () => `${projectNoteContent(edit)}${lead}`);
   return createNoteIn(template.folder, name, (stem) => {
     const { frontmatter, body } = parseFrontmatter(

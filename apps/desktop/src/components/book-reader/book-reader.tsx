@@ -10,6 +10,7 @@ import type { BookLocation as BookTabLocation } from "@/components/editor-area/p
 import { askAgent, warmAgent } from "@/lib/agent-ask";
 import { speak } from "@/lib/speak";
 import { getFileStem } from "@/lib/paths";
+import { useBookTips } from "@/hooks/use-tips";
 import { stepBookTextSize } from "@/lib/book-text-size";
 import { ReaderController, type ReaderStatus, type SelectionInfo } from "./reader-controller";
 import styles from "./book-reader.module.css";
@@ -67,6 +68,8 @@ export default function BookReader({
 
   // Define and Explain go to the agent, so have it running before they're asked.
   useEffect(() => warmAgent(), []);
+
+  useBookTips(location.note ?? null);
 
   useEffect(() => {
     ensureArcTokens();
@@ -142,11 +145,23 @@ export default function BookReader({
   );
 
   // The pill belongs to one spot in the text: scrolling or Escape drops it.
+  // H highlights the selection it offers, as its Highlight button does.
   useEffect(() => {
     if (!pill) return;
     const scroller = scrollerRef.current;
     const close = () => setPill(null);
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && close();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") return close();
+      if (pill.kind !== "selection" || event.key.toLowerCase() !== "h") return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if ((event.target as HTMLElement | null)?.closest?.("input, textarea, [contenteditable]")) {
+        return;
+      }
+      event.preventDefault();
+      const controller = controllerRef.current;
+      if (controller) void controller.addHighlight(pill.selection);
+      close();
+    };
     scroller?.addEventListener("scroll", close, { passive: true });
     window.addEventListener("keydown", onKey);
     return () => {

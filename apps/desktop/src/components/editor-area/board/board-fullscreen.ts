@@ -24,6 +24,7 @@ import { openVideoLink } from "./board-video-links";
 import { isInHiddenTab } from "../hidden-tab";
 import { type BoardScene, cloneScene } from "./board-model";
 import { type BoardCanvasHandle, mountBoardCanvas } from "./board-canvas";
+import { mountBoardTip } from "@/components/tips/board-tip";
 
 export interface BoardFullscreenOptions {
   scene: BoardScene;
@@ -144,6 +145,7 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
   let commitTimer = -1;
   let latest: BoardScene = cloneScene(opts.scene);
   let closed = false;
+  let unmountTip: (() => void) | null = null;
 
   const flushCommit = (): void => {
     window.clearTimeout(commitTimer);
@@ -172,6 +174,7 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
 
     canvas?.destroy();
     canvas = null;
+    unmountTip?.();
     previouslyFocused?.focus({ preventScroll: true });
 
     if (inline) {
@@ -245,6 +248,7 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
   }
 
   (inline ?? document.body).append(overlay);
+  unmountTip = mountBoardTip(overlay);
 
   canvas = mountBoardCanvas(stage, {
     scene: opts.scene,

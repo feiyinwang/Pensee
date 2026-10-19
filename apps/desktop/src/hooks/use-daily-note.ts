@@ -3,6 +3,7 @@ import { periodNoteStem, type PeriodKind } from "@/lib/periodic-notes";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { noteTipEvent } from "@/components/tips/tips-store";
 
 function dailyNoteFolder(): string {
   return useSettingsStore.getState().getSetting("workspace.daily-note-folder") ?? "";
@@ -41,4 +42,5 @@ export async function openPeriodNote(kind: PeriodKind, date: Date, beside = fals
     PERIOD_LABELS[kind],
     createDailyNoteDependencies(beside ? openFileBeside : openFile),
   );
+  if (kind !== "day") noteTipEvent("period-note-opened");
 }

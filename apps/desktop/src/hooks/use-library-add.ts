@@ -22,6 +22,7 @@ import { editPage } from "@/components/editor-area/linked-block-sync";
 import { bringInTranscript } from "@/components/editor-area/video-transcript";
 import { useEditorStore } from "@/stores/editor-store";
 import { openComposer } from "@/hooks/use-composer";
+import { noteTipEvent } from "@/components/tips/tips-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
 // Adding a Library note (SPECs/add-to-library-spec.md), from the composer or a
@@ -73,6 +74,7 @@ async function createAndOpen(name: string, content: string, open = true): Promis
     if (!stem) throw new Error("That has no usable name");
     if (await tauri.fileExists(`${root}/${stem}.md`)) continue;
     const { path } = await createRootNote(candidate, () => content);
+    noteTipEvent("library-item-added");
     if (open) await useEditorStore.getState().openFile(path);
     return path;
   }

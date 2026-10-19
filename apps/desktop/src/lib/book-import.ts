@@ -21,6 +21,7 @@ import { showEditorNotice } from "@/components/editor-area/editor-notice-store";
 import { tauriWikiPageDeps } from "@/components/editor-area/wiki-pages-extension";
 import { useEditorStore, type Tab } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { noteTipEvent } from "@/components/tips/tips-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
 // Bringing a PDF/EPUB into the workspace and opening it beside its book page,
@@ -185,6 +186,7 @@ export async function importBook(
       body: page.body,
     }));
   }
+  if (isNew) noteTipEvent("library-item-added");
   if (open) await openBook(bookPath, notePath);
   return notePath;
 }

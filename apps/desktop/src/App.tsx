@@ -6,6 +6,7 @@ import { FullDiskAccessGuide } from "./components/full-disk-access-guide";
 import { GoKeyHint } from "./components/go-key-hint";
 import { Onboarding } from "./components/onboarding";
 import { WhatsNew } from "./components/whats-new";
+import { Tips } from "./components/tips";
 import { WindowTitle } from "./components/window-title";
 import { useIsStartupResolved } from "./hooks/use-workspace";
 import { useAppleBooksSync } from "./hooks/use-apple-books-sync";
@@ -46,6 +47,7 @@ function App() {
       <GoKeyHint />
       <Onboarding />
       <WhatsNew />
+      <Tips />
     </>
   );
 }

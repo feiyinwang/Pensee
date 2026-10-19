@@ -129,6 +129,7 @@ import {
 import type { SelectionToolbarActions, SelectionToolbarHandle } from "./board-selection-toolbar";
 import type { ToolDockHandle } from "./board-dock";
 import { type Charge, type ChargeView, drawCharge, glideInto, playFlow } from "./board-spark";
+import { noteTipEvent } from "@/components/tips/tips-store";
 
 /* -------------------------------------------------------------- constants */
 
@@ -2936,7 +2937,10 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
               }
             }
           });
-          if (docked.length) settleDock(docked, release);
+          if (docked.length) {
+            settleDock(docked, release);
+            noteTipEvent("card-docked");
+          }
         } else {
           // A click: redraw so the overlay is the resting one (with the
           // quick-connect dots), whatever the gesture drew.

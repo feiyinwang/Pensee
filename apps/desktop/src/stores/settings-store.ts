@@ -2,6 +2,7 @@ import { create } from "zustand";
 import * as tauri from "@/lib/tauri";
 import { applyCssVarBindings, applyTheme } from "@/lib/theme";
 import { applyZoom } from "@/lib/zoom";
+import { setTipsEnabled } from "@/components/tips/tips-store";
 import type { SettingsMap, SettingKey } from "@/lib/settings-schema";
 
 interface SettingsState {
@@ -28,6 +29,7 @@ function applySettingsSideEffects(settings: Record<string, unknown>) {
   applyTheme(settings["appearance.theme"], settings);
   applyCssVarBindings(settings);
   applyZoom(settings);
+  setTipsEnabled(settings["tips.enabled"] !== false);
 }
 
 interface PersistedSettingValue {

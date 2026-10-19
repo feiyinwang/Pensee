@@ -68,6 +68,11 @@
   margin-bottom: 24px;
 }
 
+/* A space's tip sits in the gap under the header, before its notes. */
+.tip {
+  margin: -16px 0 16px;
+}
+
 /* A space's name is display type: the brand Didone at regular weight. */
 .title {
   margin: 0;

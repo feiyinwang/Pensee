@@ -1,0 +1,139 @@
+/* A tip's line (SPECs/in-context-tips-spec.md): faint italic words where the
+   move happens, the way the pen writes "Your take first…". On a page it is
+   a <TipLine>; in a note, the editor's tip placeholder (tips-editor.ts). */
+
+.tip-line,
+.cm-editor .cm-tip {
+  color: var(--color-text-faint);
+  font-style: italic;
+  /* The guide's own rise: 240ms on --ease-out, 6px. */
+  animation: guide-pill-rise 240ms var(--ease-out) both;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+
+.tip-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 8px 0;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-label);
+}
+
+/* In the window's chrome (the tab strip): one line, no room above or below. */
+.tip-line.tip-line-chrome {
+  flex-wrap: nowrap;
+  padding: 0 0 0 8px;
+  white-space: nowrap;
+}
+
+/* At a sidebar row's right end. */
+.tip-line.tip-line-row {
+  margin-left: auto;
+  padding: 0;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  font-size: var(--font-size-caption);
+}
+
+/* On a board: centred at the top of the canvas, over its empty space. */
+.tip-board-slot {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  left: 50%;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.tip-line.tip-line-board {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+/* What happened, once it's done: the same place, the primary ink. */
+.tip-line[data-phase="did"],
+.tip-line[data-phase="leaving"],
+.cm-editor .cm-tip[data-phase="did"],
+.cm-editor .cm-tip[data-phase="leaving"] {
+  color: var(--color-text-secondary);
+}
+
+.tip-line[data-phase="leaving"],
+.cm-editor .cm-tip[data-phase="leaving"] {
+  opacity: 0;
+}
+
+.cm-editor .cm-tip {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* After a line it is about: a gap from the words. */
+.cm-editor .cm-tip[data-place="after"] {
+  margin-inline-start: 12px;
+}
+
+.tip-line-act,
+.tip-line-not-now,
+.cm-editor .cm-tip-not-now {
+  border: 0;
+  padding: 2px;
+  background: none;
+  font: inherit;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-caption);
+  font-style: normal;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.tip-line-act {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 3px;
+}
+
+.tip-line-not-now,
+.cm-editor .cm-tip-not-now {
+  color: var(--color-text-faint);
+}
+
+.cm-editor .cm-tip-not-now {
+  margin-inline-start: 10px;
+}
+
+.tip-line-act:hover,
+.tip-line-not-now:hover,
+.cm-editor .cm-tip-not-now:hover {
+  color: var(--color-text-primary);
+}
+
+.tip-line-act:focus-visible,
+.tip-line-not-now:focus-visible,
+.cm-editor .cm-tip-not-now:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
+}
+
+.tip-line kbd,
+.cm-editor .cm-tip kbd {
+  margin-left: 2px;
+  padding: 0 4px;
+  border-radius: var(--radius-chip);
+  background: var(--color-bg-kbd);
+  font: inherit;
+  font-style: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tip-line,
+  .cm-editor .cm-tip {
+    animation: none;
+    transition: none;
+  }
+}

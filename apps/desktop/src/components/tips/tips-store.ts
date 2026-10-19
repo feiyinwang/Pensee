@@ -36,6 +36,8 @@ export interface ActiveTip {
 }
 
 interface TipsState {
+  /** Clicks on each Space's sidebar row (the go key's trigger), by space. */
+  spaceClicks: Readonly<Record<string, number>>;
   /** Counts and done flags are read from preferences: no tip shows before. */
   loaded: boolean;
   /** Settings → General → Show tips. */
@@ -48,6 +50,7 @@ interface TipsState {
 export const useTipsStore = create<TipsState>(() => ({
   loaded: false,
   enabled: true,
+  spaceClicks: {},
   shown: {},
   done: {},
   active: null,
@@ -73,16 +76,20 @@ export function noteTipKey(): void {
   lastKeyAt = now();
 }
 
+const ORDER = new Map(TIPS.map((tip, i) => [tip.id, i]));
+const order = (id: string) => ORDER.get(id) ?? TIPS.length;
 const isDone = (id: string) => useTipsStore.getState().done[id] === true;
 const shownCount = (id: string) => useTipsStore.getState().shown[id] ?? 0;
 
 /* ------------------------------------------------------------ persistence */
 
+const SPACE_CLICKS_KEY = "tips.space-clicks";
 const shownKey = (id: string) => `tips.${id}.shown`;
 const doneKey = (id: string) => `tips.${id}.done`;
 
 /** Reads every tip's count and done flag. Called once, at launch. */
 export async function loadTips(): Promise<void> {
+  const clicks = getPreference<Record<string, number>>(SPACE_CLICKS_KEY, {});
   const entries = await Promise.all(
     TIPS.map(async (tip) => {
       const [shown, done] = await Promise.all([
@@ -100,7 +107,13 @@ export async function loadTips(): Promise<void> {
   }
   const state = useTipsStore.getState();
   // A tip finished before the load landed stays finished.
-  useTipsStore.setState({ loaded: true, shown, done: { ...done, ...state.done } });
+  const spaceClicks = await clicks;
+  useTipsStore.setState({
+    loaded: true,
+    shown,
+    done: { ...done, ...state.done },
+    spaceClicks: { ...spaceClicks, ...state.spaceClicks },
+  });
 }
 
 /** Settings → General → Show tips. Off hides the one showing now. */
@@ -140,11 +153,10 @@ export function arriveAt(arrival: TipArrival): void {
   if (!state.loaded || !state.enabled) return;
   if (state.active) return;
   const tip = dueTip(arrival, isDone, shownCount, TIP_RULES.maxShown);
-  if (!tip) {
-    // A newer arrival at the same anchor replaces a waiting one.
-    if (pending && tipById(pending.id)?.anchor === arrival.anchor) clearPending();
-    return;
-  }
+  if (!tip) return;
+  // Two due: the first in the registry's order goes, the other waits for its
+  // next trigger. The same tip due again starts its settle over.
+  if (pending && order(pending.id) < order(tip.id)) return;
   clearPending();
   const settle: Pending = { id: tip.id, arrival, timer: undefined };
   settle.timer = setTimeout(() => tryShow(settle), TIP_RULES.settleMs);
@@ -234,11 +246,29 @@ export function noteTipLine(text: string): void {
   if (ids.length > 0) finishTips(ids);
 }
 
+/** A Space's sidebar row was clicked: counted, then reported (the go key's
+ *  tip names the row's own letter). */
+export function clickSpaceRow(row: { space: string; name: string; letter: string }): void {
+  const state = useTipsStore.getState();
+  const clicks = (state.spaceClicks[row.space] ?? 0) + 1;
+  const spaceClicks = { ...state.spaceClicks, [row.space]: clicks };
+  useTipsStore.setState({ spaceClicks });
+  void setPreference(SPACE_CLICKS_KEY, spaceClicks);
+  arriveAt({ anchor: "sidebar", ...row, clicks });
+}
+
 /** Tests: back to a fresh launch. */
 export function resetTipsForTest(): void {
   clearPending();
   clearPhaseTimer();
   lastKeyAt = Number.NEGATIVE_INFINITY;
   gates = { busy: () => false };
-  useTipsStore.setState({ loaded: true, enabled: true, shown: {}, done: {}, active: null });
+  useTipsStore.setState({
+    loaded: true,
+    enabled: true,
+    shown: {},
+    done: {},
+    spaceClicks: {},
+    active: null,
+  });
 }

@@ -19,6 +19,7 @@ import { useScrollActiveTabIntoView } from "@/hooks/use-scroll-active-tab-into-v
 import { pageKind } from "./page-kinds";
 import { showTabMenu } from "./tab-menu";
 import { TabTitleRename } from "./tab-title-rename";
+import { TipLine } from "@/components/tips/tip-line";
 
 interface EditorTabButtonProps {
   tab: Tab;
@@ -177,6 +178,7 @@ export function EditorTabs() {
         >
           +
         </button>
+        <TipLine anchor="tabs" className="tip-line-chrome" />
       </div>
     </div>
   );

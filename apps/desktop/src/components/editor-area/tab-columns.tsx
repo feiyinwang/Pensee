@@ -21,6 +21,8 @@ import { useBookPages } from "@/lib/book-readers";
 import { bookFileOf } from "@/lib/book-highlights";
 import { TabTitleRename } from "./tab-title-rename";
 import "./tab-columns.css";
+import { useTipArrival } from "@/components/tips/tip-line";
+import { noteTipEvent } from "@/components/tips/tips-store";
 
 // Pointer travel before a header press becomes a drag, so a click that
 // wobbles a pixel still only focuses the column.
@@ -117,6 +119,11 @@ export function TabColumns() {
   focusedOneRef.current = focusedOne;
   const canColumn = tabs.length > 1;
   const isColumns = canColumn && !focusedOne;
+  // Three or more tabs with one showing: the pinch that shows them all.
+  useTipArrival(
+    "tabs",
+    focusedOne && tabs.length >= 3 ? { anchor: "tabs", count: tabs.length } : null,
+  );
   // Zoomed into a book or its page: the two show together, as one block.
   const bookPages = useBookPages((s) => s.pages);
   const pair = !isColumns && canColumn ? bookPair(tabs, activeTabId, bookPages) : null;
@@ -235,6 +242,7 @@ export function TabColumns() {
       if (focus) openBookOfFocusedPage();
       // Committed inside the event, so the new layout is in the next frame.
       flushSync(() => setFocusedOne(focus));
+      if (!focus) noteTipEvent("columns-on");
     };
     // preventDefault stops the pinch from also zooming the page.
     // eslint-disable-next-line react-doctor/client-passive-event-listeners

@@ -304,6 +304,18 @@ export function findBlockReferences(ids: string[]): Promise<BlockReference[]> {
   return invoke("find_block_references", { ids });
 }
 
+/** What the in-context tips' launch search found: the distinct markers
+ *  (`^yt-`, `^bk-`, `^ai-s-`…) in the vault's notes, and whether a board
+ *  exists (SPECs/in-context-tips-spec.md). */
+export interface TipTraces {
+  traces: string[];
+  has_board: boolean;
+}
+
+export function findTipTraces(): Promise<TipTraces> {
+  return invoke("find_tip_traces");
+}
+
 /** A line of another note that mentions some of the second pen's search
  *  words (SPECs/second-pen-spec.md#connect-what-you-wrote-before). */
 export interface MentioningLine {

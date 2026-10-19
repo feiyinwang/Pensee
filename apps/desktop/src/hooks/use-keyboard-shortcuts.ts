@@ -11,6 +11,7 @@ import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { openSpace, spaceLocationOf } from "@/hooks/use-spaces";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 import { goTargetForKey } from "@/lib/spaces";
+import { noteTipEvent } from "@/components/tips/tips-store";
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
 /** How long ⌘G waits for its letter. */
@@ -46,6 +47,7 @@ function handleGoKey(e: KeyboardEvent): void {
     setGoKeyPending(false);
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const target = goTargetForKey(e.key);
+    if (target) noteTipEvent("go-key");
     if (target === "today") void openTodaysNote();
     else if (target) openSpace(spaceLocationOf(target));
     return;

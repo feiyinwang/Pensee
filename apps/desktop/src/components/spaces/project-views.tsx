@@ -44,6 +44,7 @@ import {
 import { noteTitle } from "./space-cover";
 import styles from "./project-views.module.css";
 import { StatusTag, Tag } from "./project-tag";
+import { noteTipEvent } from "@/components/tips/tips-store";
 
 /** Project views (SPECs/project-views-spec.md): the projects as a kanban, a
  *  column per status. Edits write the project note's frontmatter. */
@@ -594,7 +595,10 @@ function Kanban({
   const onCardsChange = (next: KanbanCard[]) => {
     for (const card of next) {
       const project = byPath.get(card.id);
-      if (project && project.status !== card.column) edit(project, { status: card.column });
+      if (project && project.status !== card.column) {
+        edit(project, { status: card.column });
+        noteTipEvent("status-written");
+      }
     }
     // Folded done cards aren't on the board; they keep their place at Done's end.
     setOrder([...next.filter((card) => byPath.has(card.id)).map((card) => card.id), ...doneHidden]);

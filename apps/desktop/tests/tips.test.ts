@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/tes
 
 const prefs = new Map<string, unknown>();
 vi.mock("@/lib/preferences", () => ({
-  getPreference: async (key: string, fallback: unknown) => (prefs.has(key) ? prefs.get(key) : fallback),
+  getPreference: async (key: string, fallback: unknown) =>
+    prefs.has(key) ? prefs.get(key) : fallback,
   setPreference: async (key: string, value: unknown) => void prefs.set(key, value),
 }));
 
@@ -48,7 +49,6 @@ const open = (kind: "note" | "youtube" | "podcast" | "book"): TipArrival => ({
   moment: "open",
   path: "/v/a.md",
   kind,
-  line: 2,
 });
 
 describe("tip registry", () => {
@@ -78,9 +78,9 @@ describe("tip registry", () => {
   });
 
   test("Library: empty asks for a sample, with books asks to open one", () => {
-    expect(due({ anchor: "library", items: 0, readerUsed: false })).toBe("library-empty");
-    expect(due({ anchor: "library", items: 4, readerUsed: false })).toBe("library-open");
-    expect(due({ anchor: "library", items: 4, readerUsed: true })).toBeNull();
+    expect(due({ anchor: "library", items: 0 })).toBe("library-empty");
+    expect(due({ anchor: "library", items: 4 })).toBe("library-open");
+    expect(due({ anchor: "library", items: 4 }, (id) => id === "library-open")).toBeNull();
   });
 
   test("a note's kind picks its tip when it opens", () => {
@@ -102,7 +102,9 @@ describe("tip registry", () => {
     const answered = (id: string) => id === "pen-answer";
     expect(due(claim, answered)).toBe("pen-check");
     expect(due(leave("- Too short a line"), answered)).toBeNull();
-    expect(due(leave("Spaced repetition beats rereading for long term memory"), answered)).toBeNull();
+    expect(
+      due(leave("Spaced repetition beats rereading for long term memory"), answered),
+    ).toBeNull();
   });
 
   test("Connect wants 20+ notes in the vault and a 6-word line", () => {
@@ -126,7 +128,7 @@ describe("tip registry", () => {
   test("tabs, board, sidebar, Projects and calendar", () => {
     expect(due({ anchor: "tabs", count: 2 })).toBeNull();
     expect(due({ anchor: "tabs", count: 3 })).toBe("tabs-pinch");
-    expect(due({ anchor: "board", path: "/v/b.board.svg" })).toBe("board-dock");
+    expect(due({ anchor: "board" })).toBe("board-dock");
     const row = { anchor: "sidebar", space: "library", name: "Library", letter: "L" } as const;
     expect(due({ ...row, clicks: 2 })).toBeNull();
     expect(due({ ...row, clicks: 3 })).toBe("go-key");
@@ -159,7 +161,7 @@ describe("tip registry", () => {
   });
 
   test("a done tip and a tip shown twice are skipped", () => {
-    const arrival = { anchor: "library", items: 0, readerUsed: false } as const;
+    const arrival = { anchor: "library", items: 0 } as const;
     expect(dueTip(arrival, (id) => id === "library-empty", none)).toBeNull();
     expect(dueTip(arrival, never, () => 2)).toBeNull();
     expect(dueTip(arrival, never, () => 1)?.id).toBe("library-empty");
@@ -185,7 +187,7 @@ describe("tip done tests", () => {
     expect(tipsFinishedByEvent("status-written")).toEqual(["projects-move"]);
     expect(tipsFinishedByEvent("project-created")).toEqual(["projects-empty"]);
     expect(tipsFinishedByEvent("period-note-opened")).toEqual(["calendar-period"]);
-    expect(tipsFinishedByEvent("book-added")).toEqual(["library-empty"]);
+    expect(tipsFinishedByEvent("library-item-added")).toEqual(["library-empty"]);
     expect(tipsFinishedByEvent("reader-opened")).toEqual(["library-open"]);
   });
 
@@ -206,7 +208,7 @@ describe("tips store", () => {
     vi.useRealTimers();
   });
 
-  const library = { anchor: "library", items: 0, readerUsed: false } as const;
+  const library = { anchor: "library", items: 0 } as const;
   const active = () => useTipsStore.getState().active;
 
   test("a tip waits out the settle, then shows and counts one showing", () => {
@@ -247,6 +249,25 @@ describe("tips store", () => {
     expect(active()?.id).toBe("library-empty");
   });
 
+  test("of two due while one waits, the first in the registry's order goes", () => {
+    arriveAt({ anchor: "calendar" });
+    arriveAt(library);
+    vi.advanceTimersByTime(TIP_RULES.settleMs);
+    expect(active()?.id).toBe("library-empty");
+    dismissTip();
+    arriveAt(library);
+    arriveAt({ anchor: "calendar" });
+    vi.advanceTimersByTime(TIP_RULES.settleMs);
+    expect(active()?.id).toBe("library-empty");
+  });
+
+  test("an arrival with nothing due leaves a waiting tip alone", () => {
+    arriveAt(open("youtube"));
+    arriveAt(leave("- just a line"));
+    vi.advanceTimersByTime(TIP_RULES.settleMs);
+    expect(active()?.id).toBe("video-pin");
+  });
+
   test("leaving before the settle cancels it, and nothing is counted", () => {
     arriveAt(library);
     leaveAnchor("library");
@@ -280,7 +301,7 @@ describe("tips store", () => {
   test("done: the line says what happened for 2.4s, fades, and never shows again", () => {
     arriveAt(library);
     vi.advanceTimersByTime(TIP_RULES.settleMs);
-    noteTipEvent("book-added");
+    noteTipEvent("library-item-added");
     expect(active()).toMatchObject({ id: "library-empty", phase: "did" });
     expect(prefs.get("tips.library-empty.done")).toBe(true);
     // Leaving the page doesn't cut the done line short.
