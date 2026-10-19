@@ -28,13 +28,13 @@ Whatever you collect becomes a note you write in, beside its source.
 
 _A book opens beside its note. Highlight a line and it lands in the note. Click it later and the page comes back, and your own thought goes under it._
 
-![Taking notes on a YouTube video: ⌘S plays, and ⌘S again pins the moment to the line you're writing](./assets/readme/youtube.gif)
+![Taking notes on a YouTube video: a click on a transcript line plays it from there, ⌘S pins the moment, and the note says what he just said](./assets/readme/youtube.gif)
 
-_A YouTube note keeps the video above your lines. ⌘S plays, and ⌘S again pins the moment to the line you're writing._
+_A YouTube note plays the video beside its transcript. Click a line to play from it, and ⌘S pins the moment to the line you're writing._
 
-![Taking notes on a podcast episode the same way](./assets/readme/podcast.gif)
+![Taking notes on a podcast episode the same way: ⌘S plays, ⌘S again pins the moment, and you write what was just asked](./assets/readme/podcast.gif)
 
-_A podcast note works the same way._
+_A podcast note works the same way: ⌘S plays, and ⌘S again pins the moment._
 
 When an idea needs a map, put a board in the note.
 

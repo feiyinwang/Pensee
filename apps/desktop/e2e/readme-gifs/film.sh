@@ -74,7 +74,13 @@ for scene in "$@"; do
     node "$HERE/seed-demo.mjs"
     rm -rf "${FRAMES:?}/$scene"
     (cd "$E2E_DIR" && FRAMES="$FRAMES" PENSEE_E2E_APP="$APP" pnpm exec wdio run ./wdio.conf.js \
-      --spec "$HERE/scenes.spec.js" --mochaOpts.grep "README GIFs $scene\$" --mochaOpts.timeout 300000)
+      --spec "$HERE/scenes.spec.js" --mochaOpts.grep "README GIFs $scene\$" --mochaOpts.timeout 300000) || true
+    # wdio exits 0 when its WebDriver dies mid-run (another QA run): trust
+    # only the spec's own mark that the scene passed.
+    if [[ ! -f "$FRAMES/$scene/passed" ]]; then
+      echo "Scene $scene didn't finish; its GIF is left as it was." >&2
+      exit 1
+    fi
   fi
   [[ -d "$FRAMES/$scene" ]] || { echo "No frames for $scene in $FRAMES" >&2; exit 1; }
   # shellcheck disable=SC2046

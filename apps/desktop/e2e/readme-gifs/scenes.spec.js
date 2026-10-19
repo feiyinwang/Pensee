@@ -354,23 +354,47 @@ const visiblePins = () =>
     () => [...document.querySelectorAll(".cm-video-pin")].filter((p) => p.checkVisibility()).length,
   );
 
-/** ⌘S plays; after `ms`, ⌘S again pins the moment on the caret's empty line
- *  and pauses, and `text` is written there. `newLine` starts a line first:
- *  End, since Enter mid-line would split the line before its hidden ^yt- id. */
-async function listenPinWrite(ms, text, newLine) {
-  const before = await visiblePins();
+const playing = () =>
+  browser.execute(() =>
+    [...document.querySelectorAll(".player-keys")].some((k) => k.textContent.includes("Pin")),
+  );
+
+/** ⌘S plays. A player that isn't ready yet ignores ⌘S: press it again until
+ *  the keys row under it says Pin (playing). */
+async function playWithKeys() {
   front();
   await pressCmd("s");
-  // A player that isn't ready yet ignores ⌘S: press it again until the keys
-  // row under it says Pin (playing).
-  const playing = () =>
-    browser.execute(() =>
-      [...document.querySelectorAll(".player-keys")].some((k) => k.textContent.includes("Pin")),
-    );
   for (let attempt = 0; attempt < 5 && !(await playing()); attempt++) {
     await browser.pause(1500);
     if (!(await playing())) await pressCmd("s");
   }
+}
+
+/** Click the transcript line that says `words`: the video plays from it.
+ *  The box is scrolled to it first, as you would; the caret then goes back
+ *  to the end of the note, where the pin goes. */
+async function playFromTranscript(words) {
+  front();
+  await browser.execute((needle) => {
+    const line = [...document.querySelectorAll(".transcript-box-line")].find((l) =>
+      l.textContent.includes(needle),
+    );
+    if (!line) throw new Error(`no transcript line says "${needle}"`);
+    const list = line.closest(".transcript-box-lines");
+    list.scrollTop += line.getBoundingClientRect().top - list.getBoundingClientRect().top - 8;
+    line.click();
+  }, words);
+  await browser.waitUntil(playing, { timeout: 8_000, timeoutMsg: "the line didn't play" });
+  await typeInEditor("", { atEnd: true });
+}
+
+/** `play` starts the player; after `ms`, ⌘S pins the moment on the caret's
+ *  empty line and pauses, and `text` is written there. `newLine` starts a
+ *  line first: End, since Enter mid-line would split the line before its
+ *  hidden ^yt- id. */
+async function listenPinWrite(ms, text, newLine, play = playWithKeys) {
+  const before = await visiblePins();
+  await play();
   if (newLine) {
     await key("End");
     await key("Enter");
@@ -408,6 +432,12 @@ async function openFresh(name) {
 }
 
 describe("README GIFs", function () {
+  // film.sh stitches a scene only when this marks it passed: a run another
+  // QA run cut off still exits 0.
+  afterEach(function () {
+    if (this.currentTest?.state === "passed") writeFileSync(`${FRAMES}/${scene}/passed`, "");
+  });
+
   before(async function () {
     await $('section[aria-label="Spaces"]').waitForExist({ timeout: 10_000 });
     // The plugin sizes the window in device pixels: 2880×1800 is 1440×900 on
@@ -658,18 +688,28 @@ describe("README GIFs", function () {
       if (over > 0) scroller.scrollTop -= over;
     });
     await browser.pause(400);
-    await film(1200);
+    // Its transcript comes in beside the video; the notes follow what he says
+    // there: a study at 1:39:16 on rewarding children for drawing.
     front();
-    await typeInEditor("", { atEnd: true });
-    await listenPinWrite(
-      3500,
-      "Rewarding yourself after studying can make studying feel worse.",
-      false,
+    await browser.execute(() =>
+      [...document.querySelectorAll(".video-pin-button")]
+        .find((b) => b.textContent.includes("Transcript"))
+        .click(),
     );
+    await browser.waitUntil(
+      () => browser.execute(() => document.querySelectorAll(".transcript-box-line").length > 10),
+      { timeout: 30_000, timeoutMsg: "the transcript never came in" },
+    );
+    await browser.pause(800);
+    await film(1200);
     await listenPinWrite(
-      3000,
-      "So keep the reward away from the work I want to keep loving.",
-      true,
+      6000,
+      "Kids who loved drawing started getting a reward for it.",
+      false,
+      () => playFromTranscript("took kids that liked to draw"),
+    );
+    await listenPinWrite(6500, "Once the reward stopped, they drew less on their own.", true, () =>
+      playFromTranscript("Then they stopped giving them the gold star"),
     );
     await saveRegion("notes");
     mark("pin-click");
@@ -696,12 +736,18 @@ describe("README GIFs", function () {
         }),
       { timeout: 30_000, timeoutMsg: "the episode never loaded" },
     );
+    // The notes follow what's said from 1:05:12 (the episode's transcript on
+    // dwarkesh.com): Dwarkesh asks whether learning has to feel fun, or
+    // whether some of it is misery you push through.
+    await browser.execute(() => {
+      document.querySelector(".podcast-band audio").currentTime = 3912;
+    });
     await browser.pause(1500);
     await film(1200);
     front();
     await typeInEditor("", { atEnd: true });
-    await listenPinWrite(3500, "Why do most learning tools fail?", false);
-    await listenPinWrite(3000, "Reading feels like learning, but nothing asks me to use it.", true);
+    await listenPinWrite(5500, "Does learning have to feel fun?", false);
+    await listenPinWrite(6000, "Or is some misery just part of learning?", true);
     await saveRegion("notes");
     mark("pin-click");
     await clickFirstPin();
