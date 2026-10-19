@@ -211,6 +211,38 @@ export function seedVault() {
   for (const file of ["sessions.json", "recent_files.json", "config", "preferences.json"]) {
     rmSync(join(APP_DATA, file), { force: true });
   }
+  writeFileSync(CHANGELOG_FILE, CHANGELOG);
+}
+
+/** The changelog the What's new card reads (run.sh points the app at this
+ *  file with PENSEE_CHANGELOG_FILE), so no journey reads GitHub. Its newest
+ *  day has five changes: three show, two wait behind "2 more". */
+export const CHANGELOG_FILE = join(APP_DATA, "changelog.md");
+const CHANGELOG = [
+  "# Changelog",
+  "",
+  "## 2026-10-18",
+  "",
+  "- Pensée now welcomes you on first launch. It asks one thing per screen.",
+  "- Pensée can now be installed with one line: `brew install --cask feiyinwang/tap/pensee`, or the install script.",
+  "- Adding a paper from a link now brings in its PDF. Paste a link and it's saved.",
+  "- Clicking a paper in Library now opens its PDF in the reader beside its note, as a book does.",
+  "- When **Add to Projects** finds a line that looks like a project you already have, it now asks first.",
+  "",
+  "## 2026-10-17",
+  "",
+  "- ⌘↓ now takes you to the very bottom of a note and ⌘↑ to the very top.",
+  "",
+].join("\n");
+
+/** The What's new journeys: the writer last saw 2026-10-17, so the
+ *  changelog's 2026-10-18 is new and the card shows at launch. */
+export function seedWhatsNew() {
+  seedVault();
+  writeFileSync(
+    join(APP_DATA, "preferences.json"),
+    JSON.stringify({ "whatsNew.lastSeen": "2026-10-17" }),
+  );
 }
 
 /** Obsidian's vault list, as onboarding reads it (run.sh points the app at

@@ -107,6 +107,8 @@
   --motion-fast: 100ms;
   --motion-base: 160ms;
   --motion-settle: 180ms;
+  /* The gap between rows that reveal one after another (the What's new card). */
+  --motion-stagger: 40ms;
   /* Hover highlights on menu rows: the pointer is already there, so the
      colour has to land at once. Plain `ease` rather than --ease-out because
      the change is a flat fill with nothing to overshoot into. */

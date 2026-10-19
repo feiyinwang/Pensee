@@ -525,6 +525,23 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 
 ---
 
+## What's new — WN
+
+**Feature:** When CHANGELOG.md on GitHub has a day the writer hasn't seen, a card in the bottom-right corner shows that day's changes once: a painting with its credit, `What's new · N changes`, the date, and the first sentence of each change (three, then **N more**). **Got it** or **Read all** closes it until the next update; ⌘P → **Show What's New** brings it back.
+**Spec:** SPECs/whats-new-card-spec.md
+**Code:** `src/components/whats-new/`, `src/lib/whats-new.ts`, `src/App.tsx`, `src/components/command-palette/index.tsx` (show-whats-new), `src/lib/tauri.ts` (fetchChangelog), `src-tauri/src/commands/changelog.rs`, `e2e/qa/seed-vault.mjs` (seedWhatsNew, the changelog fixture), `e2e/qa/run.sh` (PENSEE_CHANGELOG_FILE)
+
+| ID    | Journey                                                    | Expected                                                                                                                                            | Check           |
+| ----- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| WN-01 | ★ Launch with a changelog day after the last one seen      | The card shows bottom-right without taking focus: its painting and credit, _What's new · 5 changes_, _October 18_, three first sentences, **2 more** | auto: whats-new |
+| WN-02 | **2 more**                                                 | All five changes show in place                                                                                                                      | auto: whats-new |
+| WN-03 | **Got it**                                                 | The card fades out and `whatsNew.lastSeen` is the day, so it doesn't show again                                                                     | auto: whats-new |
+| WN-04 | ⌘P → **Show What's New**                                   | The newest day's card shows again                                                                                                                   | auto: whats-new |
+| WN-05 | A first launch (nothing seen yet)                          | No card: the newest day is recorded as seen, and onboarding has the screen                                                                          | you             |
+| WN-06 | **Read all**                                               | The changelog opens on GitHub in the browser and the card closes                                                                                    | you             |
+
+---
+
 ## Template for a new feature
 
 ```md

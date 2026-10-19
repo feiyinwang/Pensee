@@ -21,6 +21,7 @@ Rules for any animation in the desktop app. Tokens live in `apps/desktop/src/App
 | `--ease-hover`    | `ease`                                                  | Hover fills only. A flat colour change has nothing to overshoot into, so the plain curve is fine here.           |
 | `--motion-base`   | 160ms                                                   | Open/close, reveal, layout moves.                                                                                |
 | `--motion-settle` | 180ms                                                   | Duration paired with `--ease-spring`.                                                                            |
+| `--motion-stagger` | 40ms                                                   | The gap between rows that reveal one after another, as the What's new card's changes do.                          |
 | `--motion-enter-icon`, `--motion-enter-write`, `--motion-enter-reveal` | 240ms, 480ms, 280ms | The launch splash only (`AppSplash`): the app icon settling in, its ¶ and the wordmark being written, then the reveal. With `--enter-mark-delay` 160ms, `--enter-word-delay` 320ms, `--enter-hold` 200ms, `--ease-enter-write` (in-out cubic) and `--ease-enter-reveal` (ease-out quart). |
 
 Tailwind utilities (`transition-colors`, `transition-transform`, ...) already resolve to `--ease-out` at 120ms. Do not add `duration-*` or `ease-*` classes unless the element genuinely needs a different token.
@@ -28,6 +29,8 @@ Tailwind utilities (`transition-colors`, `transition-transform`, ...) already re
 ## JS-driven motion
 
 When JavaScript has to drive an animation (the compact picker frame morph, the section rail's mount transition), its duration constant and easing must match the CSS token it runs alongside, with a comment naming the token. A mismatch makes CSS-driven and JS-driven parts of the same motion land at different times.
+
+Don't finish a close on `transitionend` or `animationend`: a hidden window sends neither, and the element stays mounted (the What's new card did, 2026-10-19). Close on a timer set to the token's duration, named after it (`LEAVE_MS`, `--motion-fast`).
 
 ## Gestures today
 

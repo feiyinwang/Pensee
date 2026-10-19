@@ -616,6 +616,7 @@ pub fn run() {
             commands::images::read_file_data_url,
             commands::images::write_export_file,
             commands::link_preview::fetch_link_preview,
+            commands::changelog::fetch_changelog,
             commands::papers::search_papers,
             commands::covers::save_web_cover,
             commands::web_pdf::save_web_pdf,

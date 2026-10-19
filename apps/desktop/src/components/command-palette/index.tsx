@@ -324,6 +324,16 @@ export function CommandPalette() {
           close();
         },
       },
+    {
+      id: "show-whats-new",
+      label: "Show What's New",
+      run: () => {
+        close();
+        void import("@/components/whats-new/whats-new-store")
+          .then(({ showWhatsNew }) => showWhatsNew())
+          .catch((error: unknown) => console.error("[whats-new] Couldn't show it:", error));
+      },
+    },
     root && {
       id: "show-onboarding",
       label: "Show Onboarding",

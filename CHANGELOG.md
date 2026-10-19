@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-19
+
+- Pensée now tells you what changed. When Pensée's changelog has a new day, a card shows once in the bottom-right corner. It has a painting of someone reading or writing (Vermeer, Rembrandt, Hammershøi and others, a different one each update), the day's changes in a sentence each, **N more** for the rest, and **Read all** for the whole changelog on GitHub. **Got it** puts it away until the next update, and ⌘P → **Show What's New** brings it back. A first launch shows onboarding, not a card.
+
 ## 2026-10-18
 
 - Pensée now welcomes you on first launch. It asks one thing per screen: which notes to open (your Obsidian vaults are listed with their note counts; ↵ opens the first), which AI to use (Claude Code, signed in from right there, or the line to install it), and something to try it on. Pick **YouTube**, **Podcast**, **Book** or **Just write** and it opens as a real note in a `Pensée samples` folder, with a guide at the bottom for one loop. On the video, Huberman Lab's dopamine episode opens at the motivation tool: click the line and Pensée writes what stuck, ⌘S pins it to the second, then ⌘. `@` checks it against real papers. The book is *The Elements of Style* (public domain), downloaded for you. Then a carousel shows the rest in short animated demos with their keys: pinching between one tab and all of them, docking cards on a board, Connect, Check, Organize, a book beside its note, and pinned podcast lines. Swipe it with two fingers, or use ← →. If you already use Pensée, nothing changes; ⌘P → **Show Onboarding** plays it any time.
