@@ -7,7 +7,7 @@ The marketing website lives in `apps/website/` and deploys to the Cloudflare Wor
 - Worker config: `wrangler.jsonc`
 - Worker name: `pensee-website`
 - Static assets directory: `apps/website/dist/client` (the build prerenders every page, so the Worker only serves files)
-- Production URL: the `*.workers.dev` address Cloudflare shows on the Worker's page, until a custom domain is added.
+- Production URL: https://pensee-website.zhhv5f4p77.workers.dev (live since 2026-10-19), until a custom domain is added.
 
 The Worker name in Cloudflare must match `name` in `wrangler.jsonc`, so a Git build and a manual deploy update the same Worker.
 
