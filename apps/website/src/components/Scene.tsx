@@ -68,53 +68,6 @@ const Chip = ({
   </span>
 );
 
-function Organize() {
-  const messy = [
-    "website needs a pricing page",
-    "make a discord?? or slack",
-    "answer the 4 support emails",
-    "landing page copy, hero first",
-    "invite the beta people to discord",
-    "set up support@ inbox",
-  ];
-  const outline: [string, string[]][] = [
-    ["Website", ["Landing page copy, hero first", "Pricing page"]],
-    ["Community", ["Make a Discord", "Invite the beta people"]],
-    ["Support", ["Set up the support@ inbox", "Answer the 4 emails"]],
-  ];
-  let i = 0;
-  return (
-    <div className="sc-in org">
-      <div className="h1">Launch plan</div>
-      <div className="pen">
-        <Chip>Answer</Chip>
-        <Chip>Check</Chip>
-        <Chip>Connect</Chip>
-        <Chip className="pill-on">Organize</Chip>
-      </div>
-      <div className="stack">
-        <div className="lines">
-          {messy.map((t) => (
-            <div key={t}>{t}</div>
-          ))}
-        </div>
-        <div className="outline">
-          {outline.flatMap(([h, items]) => [
-            <div className="hd" key={h} style={at(1.75 + 0.04 * i++)}>
-              {h}
-            </div>,
-            ...items.map((t) => (
-              <div className="li" key={t} style={at(1.75 + 0.04 * i++)}>
-                {t}
-              </div>
-            )),
-          ])}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function Library() {
   const books: [string, string, string][] = [
     [bird, "Bird by Bird", "Anne Lamott"],
@@ -151,106 +104,76 @@ function Library() {
   );
 }
 
+/**
+ * The Projects board as the app draws it (components/spaces/project-views.tsx):
+ * a lane per status, each headed by its status tag in the status's colour
+ * (To-do gray, Ongoing blue, Done green; No status untagged) and a count.
+ * A card moves from Ongoing to Done.
+ */
 function Projects() {
-  const card = (title: string, tag: string, className = "") => (
+  const card = (title: string, due?: string, className = "") => (
     <div className={`card ${className}`}>
-      {title}
-      <span className="m">{tag}</span>
+      <div className="title">{title}</div>
+      {due && <span className="tag due">{due}</span>}
+    </div>
+  );
+  const head = (label: string, tone: string | null, before: number, after = before) => (
+    <div className="head">
+      {tone ? (
+        <span className={`tag ${tone}`}>{label}</span>
+      ) : (
+        <span className="none">{label}</span>
+      )}
+      <span className="count">
+        {before === after ? (
+          before
+        ) : (
+          <>
+            <span className="was">{before}</span>
+            <span className="now">{after}</span>
+          </>
+        )}
+      </span>
     </div>
   );
   return (
     <div className="sc-in prj">
-      <span className="h1">Projects</span>
-      <div className="cols">
-        <div className="col">
-          <h4>
-            Idea <span>2</span>
-          </h4>
-          {card("Essay on note-taking", "Writing")}
-          {card("Podcast with Ana", "Side project")}
-        </div>
-        <div className="col">
-          <h4>
-            Doing <span>1</span>
-          </h4>
-          {card("Read 12 books on attention", "Reading")}
-        </div>
-        <div className="col">
-          <h4>
-            Done <span>2</span>
-          </h4>
-          <div className="slot" />
-          {card("Move notes out of Notion", "Setup")}
-        </div>
-        {card("Newsletter issue #4", "Writing", "mover")}
+      <div className="top">
+        <span className="h1">Projects</span>
+        <span className="views">
+          <span>List</span>
+          <span className="on">Kanban</span>
+          <span>Timeline</span>
+        </span>
       </div>
-      <div className="fm">
-        Status: <b>Done</b>
-      </div>
-    </div>
-  );
-}
-
-function Tabs() {
-  // Each tab is a note already well under way: a title and a run of bullets.
-  const panes: [string, string[]][] = [
-    [
-      "Deep Work",
-      [
-        "Focus is a skill, so it can be trained.",
-        "Schedule every minute; shallow work goes in blocks.",
-        "Boredom is part of the training. Don’t fill every gap.",
-        "Quit social media for 30 days, then see what you missed.",
-        "End the day with a shutdown ritual.",
-      ],
-    ],
-    [
-      "How I learn",
-      [
-        "Rereading my notes is the best way to remember them.",
-        "I only understand a book once I’ve written about it.",
-        "Writing it in my own words shows me the gaps.",
-        "Linking a note to an old one is when it sticks.",
-        "Short sessions beat one long cram.",
-      ],
-    ],
-    [
-      "Bird by Bird",
-      [
-        "Short assignments: write what fits in a one-inch frame.",
-        "Shitty first drafts are how good ones start.",
-        "Perfectionism is the voice of the oppressor.",
-        "Index cards in every pocket.",
-        "Take it bird by bird.",
-      ],
-    ],
-  ];
-  const [, reading] = panes;
-  // Starts on one tab read alone at its normal size, then pinches in to all
-  // three. The two layouts cross-fade with a uniform scale, so no text stretches.
-  return (
-    <div className="sc-in tbs">
-      <div className="one">
-        <div className="h1">{reading[0]}</div>
-        <ul>
-          {reading[1].map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
-      </div>
-      <div className="all">
-        {panes.map(([title, items]) => (
-          <div className="pane" key={title}>
-            <div className="h1">{title}</div>
-            <ul>
-              {items.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
+      <div className="lanes">
+        <div className="lane">
+          {head("No status", null, 1)}
+          <div className="well">{card("Podcast with Ana")}</div>
+        </div>
+        <div className="lane">
+          {head("To-do", "gray", 2)}
+          <div className="well">
+            {card("Essay on note-taking", "Due Fri")}
+            {card("Read 12 books on attention")}
           </div>
-        ))}
+        </div>
+        <div className="lane">
+          {head("Ongoing", "blue", 2, 1)}
+          <div className="well">
+            <div className="slot" />
+            {card("Move notes out of Notion")}
+          </div>
+        </div>
+        <div className="lane">
+          {head("Done", "green", 1, 2)}
+          <div className="well">
+            <div className="slot" />
+            {card("Set up the vault")}
+          </div>
+        </div>
+        {card("Newsletter #4", undefined, "mover")}
       </div>
-      <Chip className="tbs-hint">Pinch in: all tabs</Chip>
     </div>
   );
 }
@@ -425,10 +348,8 @@ function Rich() {
 }
 
 const SCENES: Record<SceneId, () => ReactNode> = {
-  organize: Organize,
   library: Library,
   projects: Projects,
-  tabs: Tabs,
   calendar: Calendar,
   agent: Agent,
   markdown: Markdown,

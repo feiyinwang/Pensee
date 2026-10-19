@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 import type { Feature, Zoom } from "../content";
 import { Keycaps } from "./Keycaps";
+import { OnboardingScene } from "./OnboardingScene";
 import { Scene } from "./Scene";
 
 /** The frame takes the zoom box's shape; the GIF is enlarged and offset so the box fills it. */
@@ -36,6 +37,8 @@ export function FeatureCard({ feature, room }: { feature: Feature; room: string 
             decoding="async"
           />
         </div>
+      ) : "onboarding" in demo ? (
+        <OnboardingScene id={demo.onboarding} label={feature.title} />
       ) : (
         <Scene id={demo.scene} label={feature.title} />
       )}

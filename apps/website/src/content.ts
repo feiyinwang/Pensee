@@ -103,15 +103,9 @@ const PEN_NOTE: Zoom = { box: [335, 75, 1055, 525], size: [1200, 750] };
 /** The book GIF up close (16:10, 1.43×): the whole note, and the start of the book page with the Highlight pill and the highlighted sentence. The ends of the book's longer lines fall outside. */
 const BOOK_PANES: Zoom = { box: [20, 40, 860, 565], size: [1200, 750] };
 
-export type SceneId =
-  | "organize"
-  | "library"
-  | "projects"
-  | "tabs"
-  | "calendar"
-  | "agent"
-  | "markdown"
-  | "rich";
+export type SceneId = "library" | "projects" | "calendar" | "agent" | "markdown" | "rich";
+/** Scenes the app's onboarding already plays (apps/desktop/src/components/onboarding/feature-scenes.ts). */
+export type OnboardingSceneId = "dump" | "tabs";
 
 /** A keycap label, or words for a gesture that has no key. */
 export type Key = string | { say: string };
@@ -121,7 +115,8 @@ export interface Feature {
   title: string;
   description: string;
   keys: Key[];
-  demo: { gif: string; zoom?: Zoom } | { scene: SceneId };
+  /** A README GIF, one of this site's scenes, or one of the app's onboarding scenes. */
+  demo: { gif: string; zoom?: Zoom } | { scene: SceneId } | { onboarding: OnboardingSceneId };
 }
 
 export interface Room {
@@ -171,7 +166,7 @@ export const ROOMS: Room[] = [
         description:
           "Type fast and messy. The pen sorts your lines into an outline, in your own words.",
         keys: ["⌘", ".", "#"],
-        demo: { scene: "organize" },
+        demo: { onboarding: "dump" },
       },
     ],
   },
@@ -245,7 +240,7 @@ export const ROOMS: Room[] = [
         description:
           "Pinch in on the trackpad and open tabs sit side by side. Pinch out on one to read it alone.",
         keys: [{ say: "Pinch" }],
-        demo: { scene: "tabs" },
+        demo: { onboarding: "tabs" },
       },
       {
         id: "calendar",

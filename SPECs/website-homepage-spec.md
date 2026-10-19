@@ -38,7 +38,7 @@ voice.
   across these intros.
 - **Feature cards.** 15 features, each a card with its demo, its shortcut as
   keycaps, a title naming the payoff, and one or two sentences. Seven demos are
-  the README GIFs (the three pen GIFs zoomed 1.67× onto the note, x 335–1055 and y 75–525 of 1200×750, so their writing is readable at card size; the book GIF zoomed 1.43× onto the note and the start of the book page, so the Highlight pill and the line landing in the note are readable); eight are small code-built scenes in the app's dark look
+  the README GIFs (the three pen GIFs zoomed 1.67× onto the note, x 335–1055 and y 75–525 of 1200×750, so their writing is readable at card size; the book GIF zoomed 1.43× onto the note and the start of the book page, so the Highlight pill and the line landing in the note are readable); two are the app's own onboarding scenes, played from `apps/desktop/src/components/onboarding/feature-scenes.ts` with the app's tokens and onboarding styles (the brain dump: the key bar shows ⌘ . then # then ↵ and the real pen box opens; the pinch between one tab and all tabs), so the site and onboarding can't drift; six are small code-built scenes in the app's dark look (Projects drawn as the app's board: a lane per status, its tag in the status colour, To-do gray, Ongoing blue, Done green)
   that play when scrolled into view and repeat every 5 seconds while on screen, like the GIFs (static under reduced motion). Cards
   rest near flat (hairline ring, 1px shadow); a deeper shadow fades in on hover
   (160ms, opacity only).
