@@ -10,8 +10,10 @@ export function mountBoardTip(host: HTMLElement): () => void {
   host.append(slot);
   const root = createRoot(slot);
   root.render(<TipLine anchor="board" arrival={{ anchor: "board" }} className="tip-line-board" />);
+  // A board can close from inside a React render (a click in the app's
+  // own UI): unmounting a root then is refused, so it waits a tick.
   return () => {
-    root.unmount();
     slot.remove();
+    queueMicrotask(() => root.unmount());
   };
 }
