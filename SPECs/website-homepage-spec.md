@@ -30,7 +30,8 @@ voice.
   black, and the words follow below it. Under the headline _Thinking, made by
   writing._ comes the README's first paragraph, with "neurodivergent" added.
   The painting hangs as cloth (`components/Cloth.tsx`): still at rest, and a
-  mouse stroke across it sends a soft wave (8px folds) that settles back flat.
+  mouse stroke across it sends a broad wave (21px folds, 290px reach) that
+  settles back flat quickly.
   No wind, so it never moves on its own and the loop stops when calm; reduced
   motion and browsers without WebGL2 get the still painting.
 - **Beta.** Said once: a gold tag (`#e9b44c`, the window light in the

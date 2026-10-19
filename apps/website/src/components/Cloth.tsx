@@ -46,16 +46,16 @@ export interface ClothOptions {
   sheen: number;
 }
 
-/** Still until the mouse moves; then a soft wave, gone a moment later. */
+/** Still until the mouse moves; then a broad wave that settles quickly. */
 const SUBTLE: ClothOptions = {
   wind: 0,
   speed: 0.35,
-  amplitude: 8,
-  brush: 1.4,
-  brushSize: 180,
-  damping: 1.2,
-  light: 0.5,
-  sheen: 0.03,
+  amplitude: 21,
+  brush: 2.55,
+  brushSize: 290,
+  damping: 2.15,
+  light: 0.65,
+  sheen: 0.08,
 };
 
 const SEG = 96;
@@ -464,7 +464,7 @@ function createCloth(
     touch.x += touch.vx * delta;
     touch.y += touch.vy * delta;
     // Rise fast with a stroke, fall slower, so the wave trails off.
-    const speed = Math.min(Math.hypot(touch.vx, touch.vy) / 700, 1);
+    const speed = Math.min(Math.hypot(touch.vx, touch.vy) / 500, 1);
     stroke += (speed - stroke) * Math.min(delta * (speed > stroke ? 12 : 4), 1);
     touchImprint(delta, width, height);
 
