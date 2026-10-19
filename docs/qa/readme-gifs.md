@@ -38,11 +38,19 @@ either CSS pixels or `@name`, a box the spec measured with `saveRegion()`
 whatever the layout or screen scale was. `--until <mark>` cuts where the spec
 called `mark("<mark>")`: the YouTube and podcast GIFs stop before the pin click. The
 YouTube scene scrolls the note's title and properties away first, so the
-video sticks to the top and the lines being written show under it.
+video sticks to the top and the lines being written show under it, then
+brings in the transcript and clicks the line where the Stanford drawing
+study starts (1:39:16), so the notes say what he says. The podcast scene
+starts the episode at 1:05:12, where Dwarkesh asks whether learning has to
+feel fun (from the episode's transcript on dwarkesh.com). Write notes from
+what is said at the moment you pin, never made-up lines.
 The `check`, `connect` and `pen` scenes ask the AI, so they need the Claude
 this Mac is signed in to.
 The seed sets the app to dark (`appearance.theme = dark` in its config), since
 macOS's Auto appearance turns light by day and the GIFs should match.
+
+A scene's GIF is written only when the spec marks the scene passed: wdio
+exits 0 even when another QA run cut it off.
 
 Look at every GIF before committing it. The spec logs each note's final text
 (`FINAL …`) so you can check what was written.

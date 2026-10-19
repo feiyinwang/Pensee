@@ -9,8 +9,8 @@
 #   comes from the viewport.json the spec writes beside them.
 # --until stops before the frame the spec marked with that name (marks.json).
 # --gap keeps at most one frame per MS milliseconds.
-import argparse, json, os
-from PIL import Image
+import argparse, json, os, sys
+from PIL import Image, features
 
 ap = argparse.ArgumentParser()
 ap.add_argument("frames_dir")
@@ -83,11 +83,19 @@ kept_d[-1] = 2200
 # One palette for every frame, from a strip of frames across the clip, so
 # unchanged pixels keep their index and each frame stores only what moved
 # (the book GIF went from 3.1 MB with a palette per frame to 0.28 MB).
-sample = kept[:: max(1, len(kept) // 12)]
+# libimagequant weighs colours by how they look, so a face in a mostly grey
+# video keeps its skin tones; median cut splits by pixel count and gives them
+# a few flat patches. Pillow builds without it fall back to median cut.
+sample = kept[:: max(1, len(kept) // 24)]
 strip = Image.new("RGB", (sample[0].width, sample[0].height * len(sample)))
 for i, im in enumerate(sample):
     strip.paste(im, (0, i * im.height))
-master = strip.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+if features.check_feature("libimagequant"):
+    method = Image.Quantize.LIBIMAGEQUANT
+else:
+    print("stitch.py: Pillow has no libimagequant; colours in video may band", file=sys.stderr)
+    method = Image.Quantize.MEDIANCUT
+master = strip.quantize(colors=256, method=method, dither=Image.Dither.NONE)
 pal = [im.quantize(palette=master, dither=Image.Dither.NONE) for im in kept]
 pal[0].save(args.out, save_all=True, append_images=pal[1:], duration=kept_d, loop=0, optimize=True, disposal=1)
 print(
