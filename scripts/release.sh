@@ -25,6 +25,10 @@ VERSION=$(sed -n 's/^  "version": *"\([^"]*\)".*/\1/p' "$CONF")
 TAG="v$VERSION"
 APP="$DIST/release/bundle/macos/Pensée.app"
 ZIP="$DIST/Pensee-$VERSION-arm64.zip"
+# The same zip under a name that never changes, so the website's Download button
+# can link to releases/latest/download/Pensee-arm64.zip and the browser gets the
+# file directly. The cask keeps the versioned name.
+LATEST="$DIST/Pensee-arm64.zip"
 
 if [ "${1:-}" != "--no-build" ]; then
   echo "[release] building Pensée $VERSION"
@@ -42,15 +46,16 @@ fi
 "$ROOT_DIR/scripts/sign-local.sh" "$APP"
 codesign --verify --deep --strict "$APP"
 
-rm -f "$ZIP"
+rm -f "$ZIP" "$LATEST"
 ditto -c -k --keepParent "$APP" "$ZIP"
+cp "$ZIP" "$LATEST"
 SHA=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)
 echo "[release] $ZIP ($SHA)"
 
 if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
-  gh release upload "$TAG" "$ZIP" -R "$REPO" --clobber
+  gh release upload "$TAG" "$ZIP" "$LATEST" -R "$REPO" --clobber
 else
-  gh release create "$TAG" "$ZIP" -R "$REPO" --title "Pensée $VERSION" \
+  gh release create "$TAG" "$ZIP" "$LATEST" -R "$REPO" --title "Pensée $VERSION" \
     --notes "Pensée $VERSION for Apple Silicon Macs (M1 and later). Install with \`brew install --cask feiyinwang/tap/pensee\`, or see the README."
 fi
 

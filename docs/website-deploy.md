@@ -37,3 +37,4 @@ Verify the deployment by opening the Worker's URL that `wrangler deploy` prints.
 - Do not rely on Cloudflare Git Builds for this website unless this document is updated first.
 - Keep `wrangler.jsonc` at the repository root so local Wrangler deploys use the same Worker settings.
 - Run `vp check` before deploying source changes when practical.
+- The Download button links to `https://github.com/feiyinwang/Pensee/releases/latest/download/Pensee-arm64.zip`, so the browser gets the newest zip directly. That works only because `scripts/release.sh` uploads the zip a second time under that fixed name; keep the name in both places.
