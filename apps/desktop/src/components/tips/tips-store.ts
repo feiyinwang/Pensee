@@ -114,6 +114,9 @@ export async function loadTips(): Promise<void> {
     done: { ...done, ...state.done },
     spaceClicks: { ...spaceClicks, ...state.spaceClicks },
   });
+  const waiting = early;
+  early = [];
+  for (const arrival of waiting) arriveAt(arrival);
 }
 
 /** Settings → General → Show tips. Off hides the one showing now. */
@@ -132,6 +135,7 @@ interface Pending {
 }
 
 let pending: Pending | null = null;
+let early: TipArrival[] = [];
 let phaseTimer: ReturnType<typeof setTimeout> | null = null;
 
 function clearPending(): void {
@@ -150,7 +154,13 @@ function clearPhaseTimer(): void {
  *  trigger. */
 export function arriveAt(arrival: TipArrival): void {
   const state = useTipsStore.getState();
-  if (!state.loaded || !state.enabled) return;
+  if (!state.loaded) {
+    // Before the counts load (a note restored at launch): the latest arrival
+    // per anchor waits for them.
+    early = [...early.filter((a) => a.anchor !== arrival.anchor), arrival];
+    return;
+  }
+  if (!state.enabled) return;
   if (state.active) return;
   const tip = dueTip(arrival, isDone, shownCount, TIP_RULES.maxShown);
   if (!tip) return;
@@ -261,6 +271,7 @@ export function clickSpaceRow(row: { space: string; name: string; letter: string
 export function resetTipsForTest(): void {
   clearPending();
   clearPhaseTimer();
+  early = [];
   lastKeyAt = Number.NEGATIVE_INFINITY;
   gates = { busy: () => false };
   useTipsStore.setState({

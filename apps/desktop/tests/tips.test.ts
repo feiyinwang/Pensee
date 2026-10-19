@@ -334,6 +334,14 @@ describe("tips store", () => {
     expect(active()).toBeNull();
   });
 
+  test("an arrival before the counts load waits for them", async () => {
+    useTipsStore.setState({ loaded: false });
+    arriveAt({ anchor: "calendar" });
+    await loadTips();
+    vi.advanceTimersByTime(TIP_RULES.settleMs);
+    expect(active()?.id).toBe("calendar-period");
+  });
+
   test("counts and done flags come back from preferences", async () => {
     vi.useRealTimers();
     prefs.set("tips.library-empty.shown", 2);
