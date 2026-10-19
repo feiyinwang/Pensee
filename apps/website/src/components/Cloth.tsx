@@ -265,6 +265,7 @@ function createCloth(
   const touch = { x: -1e5, y: -1e5, vx: 0, vy: 0, s: 0 };
   // 0 to 1: how fast the cursor is moving, so a resting cursor leaves no dent.
   let stroke = 0;
+  let lastMove = -Infinity;
   let fieldEnergy = 0;
 
   function stepSim(dt: number) {
@@ -481,7 +482,13 @@ function createCloth(
       onReady();
     }
     // Calm cloth, no wind, resting cursor: stop until the mouse moves again.
-    if (config.wind <= 0 && fieldEnergy < 0.004 && stroke < 0.01) return;
+    // Wait out the half second after the last move first, or the loop stops
+    // on the stroke's first frame, before the cursor has any speed. Folds under
+    // 0.3px are invisible, and that last bit takes seconds to creep flat.
+    const calm = config.amplitude * fieldEnergy < 0.3;
+    if (config.wind <= 0 && now - lastMove > 500 && calm && stroke < 0.01) {
+      return;
+    }
     raf = requestAnimationFrame(frame);
   }
 
@@ -524,7 +531,10 @@ function createCloth(
     pointer.x = x;
     pointer.y = y;
     pointer.inside = inside;
-    if (inside) start();
+    if (inside) {
+      lastMove = performance.now();
+      start();
+    }
   }
   function onPointerLeave() {
     pointer.inside = false;
