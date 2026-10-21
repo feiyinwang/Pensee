@@ -41,6 +41,10 @@ export function useOpenFile() {
   return useEditorStore((s) => s.openFile);
 }
 
+export function useShowFile() {
+  return useEditorStore((s) => s.showFile);
+}
+
 export function useCloseTab() {
   return useEditorStore((s) => s.closeTab);
 }

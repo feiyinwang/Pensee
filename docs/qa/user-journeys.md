@@ -89,6 +89,8 @@ all. Tabs have history, shortcuts and a right-click menu.
 | TAB-10 | Pinch in to the columns, then back out and in, fingers down            | Each change of direction switches the layout again                                              | auto: tabs          |
 | TAB-11 | Scroll a long note's column, pinch to one tab, then back               | The long note is where you left it, its text laid out                                           | auto: tabs          |
 | TAB-12 | Scroll the active column out of view, ⌘O a note                        | The note opens in that column and the strip scrolls it fully into view                          | auto: tabs          |
+| TAB-13 | ⌘O, Enter on a recent note open in another column                      | That column becomes active and scrolls fully into view; no tab opens                            | auto: tabs          |
+| TAB-14 | Scroll the active column away, ⌘O, pick the note it shows              | The strip scrolls that column back fully into view; no tab opens                                | auto: tabs          |
 
 ## Composer (new note) — CMP
 

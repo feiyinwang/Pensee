@@ -852,6 +852,48 @@ describe("editor-store tab columns", () => {
     expect(activePath()).toBe("/a.md");
   });
 
+  test("showFile goes to the nearest tab already showing the file", async () => {
+    const store = useEditorStore.getState();
+    await store.openFileBeside("/b.md");
+    await store.openFileBeside("/c.md");
+    await store.openFileInNewTab("/b.md");
+    const tabs = useEditorStore.getState().tabs;
+    expect(paths()).toEqual(["/a.md", "/b.md", "/c.md", "/b.md"]);
+
+    store.setActiveTab(tabs[0]!.id);
+    const before = useEditorStore.getState().revealRequest;
+    await store.showFile("/b.md");
+    expect(useEditorStore.getState().activeTabId).toBe(tabs[1]!.id);
+    expect(useEditorStore.getState().revealRequest).toBe(before + 1);
+
+    // From the last b, that b is the nearest: it stays.
+    store.setActiveTab(tabs[3]!.id);
+    await store.showFile("/b.md");
+    expect(useEditorStore.getState().activeTabId).toBe(tabs[3]!.id);
+    expect(paths()).toEqual(["/a.md", "/b.md", "/c.md", "/b.md"]);
+  });
+
+  test("showFile on the note in front asks to reveal it without opening anything", async () => {
+    const store = useEditorStore.getState();
+    await store.openFileBeside("/b.md");
+    const before = useEditorStore.getState().revealRequest;
+    await store.showFile("/b.md");
+
+    expect(paths()).toEqual(["/a.md", "/b.md"]);
+    expect(activePath()).toBe("/b.md");
+    expect(useEditorStore.getState().tabs[1]!.back).toEqual([]);
+    expect(useEditorStore.getState().revealRequest).toBe(before + 1);
+  });
+
+  test("showFile opens a note no tab shows in the active tab", async () => {
+    const store = useEditorStore.getState();
+    await store.openFileBeside("/b.md");
+    await store.showFile("/c.md");
+
+    expect(paths()).toEqual(["/a.md", "/c.md"]);
+    expect(activePath()).toBe("/c.md");
+  });
+
   test("moveTab reorders and clamps without changing the active tab", async () => {
     const store = useEditorStore.getState();
     await store.openFileBeside("/b.md");

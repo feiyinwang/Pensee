@@ -67,8 +67,15 @@ interface EditorState {
   activeFilePath: string | null;
   /** Newest last (SPECs/obsidian-shortcuts-spec.md#reopen-closed-tab). */
   closedTabs: ClosedTab[];
+  /** Bumped to scroll the active tab's column into view when nothing else
+   *  changed: ⌘O on the note already in front (SPECs/tab-columns-spec.md). */
+  revealRequest: number;
 
   openFile: (path: string) => Promise<void>;
+  /** ⌘O: go to the tab already showing `path` (the active one, else the
+   *  nearest) and scroll its column into view; open it with `openFile` when
+   *  no tab shows it. */
+  showFile: (path: string) => Promise<void>;
   openCompactFile: (path: string, prefetched?: FileContent | null) => Promise<void>;
   openFileInNewTab: (path: string) => Promise<void>;
   /** Show `path` in a tab right of the active one (a new column), or
@@ -363,6 +370,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeTabId: null,
   activeFilePath: null,
   closedTabs: [],
+  revealRequest: 0,
+
+  showFile: async (path: string) => {
+    const { tabs, activeTabId } = get();
+    const from = getTabIndex(tabs, activeTabId ?? "");
+    let nearest: Tab | null = null;
+    let distance = Infinity;
+    tabs.forEach((tab, index) => {
+      if (tab.location.kind !== "file" || tab.location.path !== path) return;
+      const d = Math.abs(index - from);
+      if (d < distance) {
+        nearest = tab;
+        distance = d;
+      }
+    });
+    if (!nearest) {
+      await get().openFile(path);
+      return;
+    }
+    const target: Tab = nearest;
+    if (target.id !== activeTabId) get().setActiveTab(target.id);
+    set((state) => ({ revealRequest: state.revealRequest + 1 }));
+  },
 
   openFile: async (path: string) => {
     const state = get();

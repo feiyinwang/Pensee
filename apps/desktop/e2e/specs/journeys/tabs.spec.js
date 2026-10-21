@@ -3,7 +3,7 @@
 // the journeys send those, since the driver has no trackpad.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { deepEqual, ok } from "node:assert/strict";
-import { waitForTitle, workspaceRoot } from "./_helpers.js";
+import { pressCmd, waitForTitle, workspaceRoot } from "./_helpers.js";
 
 async function openViaSearch(name) {
   await $("[data-sidebar-surface-content] [data-sidebar-search-button]").click();
@@ -63,6 +63,63 @@ const pinch = (steps) =>
       off,
     };
   }, steps);
+
+/** Make the column at `activeAt` (in tab order) the active one, scroll the
+ *  strip to its start, and tag the column at `targetAt` as qa-target. The
+ *  strip's smooth scroll lands at once: the hidden window may not run it. */
+const arrangeColumns = (activeAt, targetAt) =>
+  browser.execute(
+    (a, t) => {
+      const strip = document.querySelector(".tab-columns[data-columns]");
+      strip.scrollTo = (options) =>
+        Element.prototype.scrollTo.call(strip, { ...options, behavior: "auto" });
+      const cols = [...document.querySelectorAll(".tab-column")].sort(
+        (x, y) => Number(x.style.order) - Number(y.style.order),
+      );
+      const at = (i) => cols[i < 0 ? cols.length + i : i];
+      document.querySelectorAll("[data-qa-target]").forEach((el) => delete el.dataset.qaTarget);
+      at(t).dataset.qaTarget = "";
+      at(a)
+        .querySelector(".tab-column-body")
+        .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      // The caret is in the active column, as when you press ⌘O while writing.
+      at(a).querySelector(".cm-content")?.focus({ preventScroll: true });
+      strip.scrollLeft = 0;
+      const view = strip.getBoundingClientRect();
+      const box = at(t).getBoundingClientRect();
+      return {
+        tabs: cols.length,
+        title: at(t).querySelector(".tab-column-title").textContent.replace(/\.md$/, ""),
+        hidden: box.left < view.left - 1 || box.right > view.right + 1,
+      };
+    },
+    activeAt,
+    targetAt,
+  );
+
+/** ⌘O with nothing typed, then the recent row named `name`. */
+async function pickRecent(name) {
+  await pressCmd("o");
+  const item = await $(`//*[@cmdk-item][contains(., "${name}")]`);
+  await item.waitForExist({ timeout: 5_000 });
+  await item.click();
+}
+
+/** The qa-target column: active, fully in view, and how many tabs are open. */
+const targetColumn = () =>
+  browser.execute(() => {
+    const strip = document.querySelector(".tab-columns[data-columns]");
+    const column = document.querySelector("[data-qa-target]");
+    const view = strip.getBoundingClientRect();
+    const box = column.getBoundingClientRect();
+    return {
+      tabs: document.querySelectorAll(".tab-column").length,
+      focused: column.hasAttribute("data-focused"),
+      inView: box.left >= view.left - 1 && box.right <= view.right + 1,
+      // For a failure message: where the strip and the column ended up.
+      at: `strip at ${Math.round(strip.scrollLeft)} showing ${Math.round(view.left)}–${Math.round(view.right)}, column at ${Math.round(box.left)}–${Math.round(box.right)}`,
+    };
+  });
 
 describe("Journeys: tabs", function () {
   before(async function () {
@@ -257,5 +314,39 @@ describe("Journeys: tabs", function () {
     ok(shown.focused, "the hub's column should still be the active one");
     ok(shown.title?.startsWith("Welcome"), `the column should show Welcome, not ${shown.title}`);
     ok(shown.inView, "the column ⌘O opened Welcome in should be scrolled fully into view");
+  });
+
+  it("TAB-13 ⌘O on a recent note open in another column goes to that column", async function () {
+    const before = await arrangeColumns(0, -1);
+    ok(before.hidden, "the last column should not be fully in view");
+    await pickRecent(before.title);
+    await waitForTitle(before.title);
+    const after = await targetColumn();
+    ok(after.focused, `${before.title}'s column should be the active one`);
+    ok(after.inView, `${before.title}'s column should be scrolled fully into view (${after.at})`);
+    ok(
+      after.tabs === before.tabs,
+      `no tab should open: ${before.tabs} before, ${after.tabs} after`,
+    );
+  });
+
+  it("TAB-14 ⌘O on the note in front brings its column back into view", async function () {
+    const before = await arrangeColumns(-1, -1);
+    ok(before.hidden, "the active last column should not be fully in view");
+    await pickRecent(before.title);
+    await browser
+      .waitUntil(async () => (await targetColumn()).inView, {
+        timeout: 5_000,
+        timeoutMsg: `${before.title}'s column never scrolled into view`,
+      })
+      .catch(async (error) => {
+        throw new Error(`${error.message} (${(await targetColumn()).at})`);
+      });
+    const after = await targetColumn();
+    ok(after.focused, `${before.title}'s column should stay active`);
+    ok(
+      after.tabs === before.tabs,
+      `no tab should open: ${before.tabs} before, ${after.tabs} after`,
+    );
   });
 });

@@ -29,6 +29,7 @@ import {
   useOpenFile,
   useOpenSettingsTab,
   useOpenTabs,
+  useShowFile,
 } from "@/hooks/use-tabs";
 import { useTheme } from "@/hooks/use-theme";
 import { useFuzzySearch } from "./use-fuzzy-search";
@@ -102,6 +103,7 @@ export function CommandPalette() {
   const { root, isIndexing, openWorkspace } = useWorkspace();
   const closeWorkspace = useCloseWorkspace();
   const openFile = useOpenFile();
+  const showFile = useShowFile();
   const closeActiveTab = useCloseActiveTab();
   const closeTab = useCloseTab();
   const activeTabId = useActiveTabId();
@@ -152,8 +154,9 @@ export function CommandPalette() {
     : [];
   const firstLibraryValue = visibleLibraryGroups[0]?.rows[0]?.value;
 
+  // A note already open in a tab is gone to there, not opened again in front.
   function handleSelect(path: string) {
-    void (isCompactFileMode ? openStandaloneFile(path) : openFile(path));
+    void (isCompactFileMode ? openStandaloneFile(path) : showFile(path));
     close();
   }
 
