@@ -2,6 +2,8 @@ import {
   Decoration,
   type DecorationSet,
   EditorView,
+  keymap,
+  runScopeHandlers,
   tooltips,
   type ViewUpdate,
   ViewPlugin,
@@ -11,6 +13,7 @@ import { type EditorState, type Extension, Prec, RangeSetBuilder } from "@codemi
 import { syntaxTree } from "@codemirror/language";
 import {
   autocompletion,
+  completionKeymap,
   type Completion,
   type CompletionContext,
   type CompletionResult,
@@ -314,6 +317,22 @@ async function wikiLinkCompletions(context: CompletionContext): Promise<Completi
   };
 }
 
+// An open menu owns its keys. The default completion keymap is `Prec.highest`,
+// but so is the list keymap, which is registered first and so wins: Enter on a
+// bullet split the line instead of picking the suggestion. DOM keydown
+// handlers run before every keymap, so the menu's bindings live in their own
+// scope and run from here. Each command returns false while no menu is open.
+const COMPLETION_SCOPE = "completion-menu";
+
+const completionKeysFirst: Extension = [
+  keymap.of(completionKeymap.map((binding) => ({ ...binding, scope: COMPLETION_SCOPE }))),
+  Prec.highest(
+    EditorView.domEventHandlers({
+      keydown: (event, view) => runScopeHandlers(view, event, COMPLETION_SCOPE),
+    }),
+  ),
+];
+
 // ---------------------------------------------------------------------------
 // Click handling
 // ---------------------------------------------------------------------------
@@ -447,8 +466,10 @@ export function wikiLinkExtension(
     // neutralize its `backdrop-filter`. `position` already defaults to
     // `"fixed"` on non-iOS.
     tooltips({ parent: document.body }),
+    completionKeysFirst,
     autocompletion({
       override: [wikiLinkCompletions, slashCompletions, dateMentionCompletions],
+      defaultKeymap: false,
       icons: false,
       addToOptions: [slashOptionIcon, dateMentionIcon],
     }),

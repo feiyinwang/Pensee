@@ -5,7 +5,9 @@ import { ok } from "node:assert/strict";
 import {
   activeTitle,
   caretAfter,
+  dayStamp,
   invoke,
+  mouseClick,
   pressCmd,
   pressKey,
   typeInEditor,
@@ -71,6 +73,41 @@ describe("Journeys: Obsidian shortcuts", function () {
     await caretAfter("See ");
     await pressKey("Enter", { alt: true, inFocus: true });
     await waitForTitle("Welcome");
+  });
+
+  it("LNK-02 in a bullet, [[Wel then Enter puts the link down, not a new bullet", async function () {
+    await openViaPalette("Welcome");
+    await caretAfter("two");
+    await typeInEditor(" [[Wel", { atEnd: false });
+    await $(".cm-tooltip-autocomplete li[aria-selected]").waitForExist({ timeout: 5_000 });
+    // The menu ignores Enter for its first 75ms (CodeMirror's interactionDelay).
+    await browser.pause(150);
+    await pressKey("Enter", { inFocus: true });
+    await waitForContent(
+      `${root}/Welcome.md`,
+      (text) => /- two \[\[Wel[^\]\n]*\]\]\n- \[ \] a task/.test(text),
+      "got the link on the bullet's line",
+    );
+  });
+
+  it("LNK-04 @to then Enter puts down today's [[date]] link", async function () {
+    await openViaPalette("Welcome");
+    await caretAfter("one");
+    await typeInEditor(" @to", { atEnd: false });
+    await $(".cm-tooltip-autocomplete li[aria-selected]").waitForExist({ timeout: 5_000 });
+    await browser.pause(150);
+    await pressKey("Enter", { inFocus: true });
+    await waitForContent(
+      `${root}/Welcome.md`,
+      (text) => text.includes(`- one [[${dayStamp()}]]\n- two`),
+      "got today's link on the bullet's line",
+    );
+    // Off the line, so the link folds back into a clickable widget.
+    await caretAfter("two");
+    const link = await $(`.cm-wiki-link=${dayStamp()}`);
+    await link.waitForExist({ timeout: 5_000 });
+    await mouseClick(link);
+    await waitForTitle(dayStamp());
   });
 
   it("TAB-04 ⌥⌘← and ⌥⌘→ go back and forward, with the caret in a note", async function () {

@@ -168,10 +168,10 @@ link previews.
 | ID     | Journey                                       | Expected                                                   | Check           |
 | ------ | --------------------------------------------- | ---------------------------------------------------------- | --------------- |
 | LNK-01 | ★ Click a `[[Welcome]]` link in a note        | Welcome opens in a new column beside the note              | auto: core      |
-| LNK-02 | Type `[[Wel`, pick **Welcome** from the list  | `[[Welcome]]` is inserted                                  | manual          |
+| LNK-02 | In a bullet, type `[[Wel`, Enter             | `[[Welcome]]` is inserted on that line; no new bullet      | auto: shortcuts |
 | LNK-08 | Type `[[Brand new page]]` and click it        | The page is created (empty) and opens beside               | manual          |
 | LNK-03 | Hover a `[[link]]`                            | A preview card of the page shows beside it                 | manual          |
-| LNK-04 | Type `@to`, Enter                             | `[[YYYY-MM-DD]]` for today is inserted; it opens that note | manual          |
+| LNK-04 | Type `@to`, Enter                             | `[[YYYY-MM-DD]]` for today is inserted; it opens that note | auto: shortcuts |
 | LNK-05 | Click `[See](#section)`                       | The editor scrolls to that heading                         | manual          |
 | LNK-06 | Paste a URL on its own line                   | The page shows live in a frame with reload / open buttons  | manual          |
 | LNK-09 | Put the caret on a `[[Welcome]]` link, ⌥Enter | Welcome opens beside, as a click does                      | auto: shortcuts |
