@@ -124,11 +124,12 @@ async function closeSearch() {
   await $("[cmdk-input]").waitForExist({ timeout: 5_000, reverse: true });
 }
 
+/** Open ⌘O's palette. Its rows before you type are the vault's recent notes
+ *  (SPECs/obsidian-shortcuts-spec.md), so a fresh vault shows none. */
 async function openSearch() {
   await closeSearch();
   await $("[data-sidebar-surface-content] [data-sidebar-search-button]").click();
   await $("[cmdk-input]").waitForExist({ timeout: 5_000 });
-  await $("[cmdk-item]").waitForExist({ timeout: 5_000 });
 }
 
 /** Search for `name`, untimed, and leave its row ready to open with Enter. */
@@ -159,6 +160,9 @@ describe("Journeys: speed", function () {
     // The launch splash covers the window for its first seconds (WS-05).
     await $(".app-splash").waitForExist({ timeout: 10_000, reverse: true });
     await browser.execute(installTimer);
+    // The seed clears recent notes; open a few, as anyone using Pensée has,
+    // so ⌘O has rows before you type (PERF-02, PERF-03).
+    for (const name of ["Welcome", "On writing", "Long essay"]) await openNote(name);
   });
 
   after(function () {
@@ -237,10 +241,13 @@ describe("Journeys: speed", function () {
   });
 
   it("PERF-03 typing in search narrows the results", async function () {
-    const samples = await sample(openSearch, () =>
+    const openWithRecents = async () => {
+      await openSearch();
+      await $("[cmdk-item]").waitForExist({ timeout: 5_000 });
+    };
+    const samples = await sample(openWithRecents, () =>
       browser.executeAsync((done) => {
         const field = document.querySelector("[cmdk-input]");
-        const before = document.querySelectorAll("[cmdk-item]").length;
         window
           .__perfTime(
             () => {
@@ -250,12 +257,12 @@ describe("Journeys: speed", function () {
               );
               field.dispatchEvent(new Event("input", { bubbles: true }));
             },
-            () => {
-              const items = [...document.querySelectorAll("[cmdk-item]")];
-              return (
-                items.length < before && items.some((el) => el.textContent.includes("Long essay"))
-              );
-            },
+            // Recent lists Long essay too, so wait for the list to turn into results.
+            () =>
+              document.querySelector("[cmdk-group-heading]")?.textContent === "Results" &&
+              [...document.querySelectorAll("[cmdk-item]")].some((el) =>
+                el.textContent.includes("Long essay"),
+              ),
           )
           .then(
             (ms) => done({ ms }),
