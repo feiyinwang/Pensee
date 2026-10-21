@@ -11,6 +11,11 @@ import penGif from "../../../assets/readme/pen.gif";
 import podcastGif from "../../../assets/readme/podcast.gif";
 import youtubeGif from "../../../assets/readme/youtube.gif";
 
+import type { Zoom } from "./zoom";
+
+/** The part of a GIF a card shows (src/zoom.ts). */
+export type { Zoom };
+
 export const VERSION = "0.6.0";
 export const REPO = "https://github.com/feiyinwang/Pensee";
 /** The newest release's zip, straight to the browser. scripts/release.sh uploads it under this fixed name. */
@@ -85,18 +90,15 @@ export const PAINTINGS = {
     year: "1903–04",
     at: "Randers Kunstmuseum",
   },
+  wright: {
+    src: "/paintings/wright.webp",
+    focus: "50% 36%",
+    by: "Joseph Wright of Derby",
+    title: "A Philosopher Lecturing on the Orrery",
+    year: "c. 1766",
+    at: "Derby Museum and Art Gallery",
+  },
 } satisfies Record<string, Painting>;
-
-/**
- * The part of a GIF a card shows, in the GIF's own pixels: `box` is
- * [left, top, right, bottom] inside a GIF of `size` [width, height]. The frame
- * takes the box's shape and the GIF is enlarged so the box fills it, so nothing
- * stretches.
- */
-export interface Zoom {
-  box: [number, number, number, number];
-  size: [number, number];
-}
 
 /** The note in the 1200×750 pen GIFs: the title, the pen's box and every line it adds, at 1.67×. */
 const PEN_NOTE: Zoom = { box: [335, 75, 1055, 525], size: [1200, 750] };

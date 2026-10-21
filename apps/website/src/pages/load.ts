@@ -9,14 +9,21 @@
 import { notFound } from "@tanstack/react-router";
 import { createServerOnlyFn } from "@tanstack/react-start";
 
-import { findPage, listPages, typesWithPages } from "./content.server";
-import type { Page, PageSummary } from "./parse";
+import { findPage, findPath, listPages, typesWithPages } from "./content.server";
+import { summarize, type Page, type PageSummary } from "./parse";
 import type { PageType } from "./types";
 
-export const loadPage = createServerOnlyFn((type: PageType, slug: string): Page => {
+/** A page, and the page its closing hands on to. */
+export type LoadedPage = Page & { nextPage?: PageSummary };
+
+export const loadPage = createServerOnlyFn((type: PageType, slug: string): LoadedPage => {
   const page = findPage(type, slug);
   if (!page) throw notFound();
-  return page;
+  if (!page.next) return page;
+  const next = findPath(page.next);
+  // At build a published page can't hand on to a draft or a missing page.
+  if (!next) throw new Error(`${page.path}: next "${page.next}" is not a published page`);
+  return { ...page, nextPage: summarize(next) };
 });
 
 /** A type with no pages has no index: nothing links it, and it would only say "nothing here". */

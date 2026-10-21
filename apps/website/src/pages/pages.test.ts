@@ -26,7 +26,8 @@ describe("parsePage", () => {
       steps: [],
       questions: [],
     });
-    expect(parsed.html).toContain("<h2>Hello</h2>");
+    expect(parsed.html).toContain('<h2 id="hello">Hello</h2>');
+    expect(parsed.outline).toEqual([{ id: "hello", text: "Hello" }]);
   });
 
   it.each([
@@ -80,6 +81,85 @@ describe("parsePage", () => {
         answer: "In a folder you pick. They stay plain markdown.",
       },
     ]);
+  });
+
+  it("gives every ## its own id, for the On this page list", () => {
+    const body = "## What you need\n\n## Why it *works*\n\n### Not listed\n\n## What you need";
+    expect(parsePage(FILE, page(FIELDS, body)).outline).toEqual([
+      { id: "what-you-need", text: "What you need" },
+      { id: "why-it-works", text: "Why it works" },
+      { id: "what-you-need-2", text: "What you need" },
+    ]);
+  });
+
+  it("ends a guide with the app, an essay with the next read, unless the page says", () => {
+    expect(parsePage(FILE, page(FIELDS)).cta).toBe("try");
+    const essay = parsePage(
+      "../../content/essays/example-page.md",
+      page(`${FIELDS}\nnext: /guides/other-page/`),
+    );
+    expect(essay).toMatchObject({ cta: "read-next", next: "/guides/other-page/" });
+    expect(parsePage(FILE, page(`${FIELDS}\ncta: install`)).cta).toBe("install");
+  });
+
+  it.each([
+    ["an unknown closing", `${FIELDS}\ncta: buy-now`, /cta "buy-now"/],
+    ["a closing that hands on with no next page", `${FIELDS}\ncta: method`, /needs "next"/],
+    ["a next that isn't a page path", `${FIELDS}\ncta: method\nnext: guides/x`, /page path/],
+    ["an unknown painting", `${FIELDS}\npainting: monet`, /painting "monet"/],
+  ])("fails the build on %s", (_, fields, why) => {
+    expect(() => parsePage(FILE, page(fields))).toThrow(why);
+  });
+
+  const MEDIA = { youtube: "/assets/youtube.gif" };
+
+  it("shows a demo as a figure, whole or one box of it, never inside a <p>", () => {
+    const whole = parsePage(FILE, page(FIELDS, '![The note](demo:youtube "Caption.")'), MEDIA);
+    expect(whole.html).toContain(
+      '<figure class="demo"><div class="media"><img src="/assets/youtube.gif" alt="The note"',
+    );
+    expect(whole.html).toContain("<figcaption>Caption.</figcaption>");
+    expect(whole.html).not.toContain("<p><figure");
+
+    const crop = parsePage(
+      FILE,
+      page(FIELDS, "![The box](demo:youtube?crop=500,0,1000,250&of=1000,500)"),
+      MEDIA,
+    );
+    expect(crop.html).toContain('style="max-width:750px"');
+    expect(crop.html).toContain("aspect-ratio:500 / 250");
+    expect(crop.html).toContain("width:200%;height:200%;left:-100%;top:0%");
+  });
+
+  it.each([
+    ["an unknown demo", "![x](demo:nope)", /no demo called "nope"/],
+    ["a demo with no alt text", "![](demo:youtube)", /needs alt text/],
+    ["a crop outside the GIF", "![x](demo:youtube?crop=0,0,1200,10&of=1000,500)", /outside/],
+  ])("fails the build on %s", (_, body, why) => {
+    expect(() => parsePage(FILE, page(FIELDS, body), MEDIA)).toThrow(why);
+  });
+
+  it("shows a note file with its name, escaped", () => {
+    const body = '```md title="A note.md"\n- a <b> line ^yt-12\n```';
+    expect(parsePage(FILE, page(FIELDS, body)).html).toContain(
+      '<figure class="file"><figcaption>A note.md</figcaption><pre><code>- a &lt;b&gt; line ^yt-12</code></pre></figure>',
+    );
+  });
+
+  it("links each citation to its numbered source", () => {
+    const body = "A claim.[^2]\n\n## Sources\n\n1. First.\n2. Second.";
+    const { html } = parsePage(FILE, page(FIELDS, body));
+    expect(html).toContain('<a href="#source-2" aria-label="Source 2">2</a>');
+    expect(html).toContain('<h2 id="sources">Sources</h2>');
+    expect(html).toContain('<li id="source-1">First.</li>');
+    expect(html).toContain('<li id="source-2">Second.</li>');
+  });
+
+  it("fails the build on a citation with no source", () => {
+    expect(() => parsePage(FILE, page(FIELDS, "A claim.[^3]\n\n## Sources\n\n1. One."))).toThrow(
+      /\[\^3\]/,
+    );
+    expect(() => parsePage(FILE, page(FIELDS, "A claim.[^1]"))).toThrow(/no ## Sources/);
   });
 });
 

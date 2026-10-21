@@ -1,22 +1,21 @@
 import type { CSSProperties } from "react";
 
-import type { Feature, Zoom } from "../content";
+import type { Feature } from "../content";
+import { zoomLayout, type Zoom } from "../zoom";
 import { Keycaps } from "./Keycaps";
 import { OnboardingScene } from "./OnboardingScene";
 import { Scene } from "./Scene";
 
-/** The frame takes the zoom box's shape; the GIF is enlarged and offset so the box fills it. */
-function zoomStyles({ box: [l, t, r, b], size: [width, height] }: Zoom) {
-  const w = (r - l) / width;
-  const h = (b - t) / height;
-  const frame: CSSProperties = { aspectRatio: `${r - l} / ${b - t}` };
+function zoomStyles(zoom: Zoom) {
+  const { aspectRatio, width, height, left, top } = zoomLayout(zoom);
+  const frame: CSSProperties = { aspectRatio };
   // Both sizes are set, not just width: a lazy image with no height yet never
   // counts as on screen, so it would never load.
   const img: CSSProperties = {
-    width: `${100 / w}%`,
-    height: `${100 / h}%`,
-    left: `${(-l / width / w) * 100}%`,
-    top: `${(-t / height / h) * 100}%`,
+    width: `${width}%`,
+    height: `${height}%`,
+    left: `${left}%`,
+    top: `${top}%`,
   };
   return { frame, img };
 }

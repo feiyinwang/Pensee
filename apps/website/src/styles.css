@@ -629,10 +629,217 @@ button {
   padding: 56px 28px 112px;
 }
 
-.doc > .art {
-  aspect-ratio: 5 / 2;
-  border-radius: 18px;
-  margin-bottom: 40px;
+/* On this page: a list beside the text on wide screens; on medium ones a
+   column of ticks at the right edge that opens the list on hover or focus.
+   Never over the text (grill-toc rule 4). */
+.doc-main.has-toc {
+  max-width: 1024px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 64px;
+  align-items: start;
+}
+
+.toc-rail {
+  position: sticky;
+  top: 96px;
+}
+
+.toc {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.toc-title {
+  margin: 0 0 10px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.toc-body {
+  position: relative;
+  border-left: 1px solid var(--faint);
+}
+
+.toc ol {
+  max-height: calc(100svh - 180px);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.toc a {
+  display: block;
+  padding: 5px 0 5px 14px;
+  color: var(--muted);
+  text-decoration: none;
+  text-wrap: pretty;
+}
+
+.toc a[aria-current] {
+  color: var(--text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .toc a:hover {
+    color: var(--text);
+  }
+}
+
+.toc a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+.toc-marker {
+  position: absolute;
+  top: 0;
+  left: -1px;
+  width: 2px;
+  background: var(--text);
+  opacity: 0;
+}
+
+.toc-marker[data-ready] {
+  opacity: 1;
+  transition: transform 160ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toc-marker[data-ready] {
+    transition: none;
+  }
+}
+
+/* Medium screens: no room beside the text, so a tick per section at the edge. */
+@media (max-width: 1179px) {
+  .doc-main.has-toc {
+    max-width: 760px;
+    display: block;
+  }
+
+  .toc-rail {
+    position: fixed;
+    top: 50%;
+    right: 12px;
+    z-index: 5;
+    transform: translateY(-50%);
+  }
+
+  .toc {
+    width: 22px;
+    padding: 8px 4px;
+    border-radius: 12px;
+  }
+
+  .toc-title,
+  .toc-marker {
+    display: none;
+  }
+
+  .toc[data-away] {
+    visibility: hidden;
+  }
+
+  .toc-body {
+    border-left: 0;
+  }
+
+  .toc a {
+    padding: 4px 0;
+  }
+
+  .toc-label {
+    display: block;
+    width: 14px;
+    height: 2px;
+    margin-left: auto;
+    overflow: hidden;
+    border-radius: 1px;
+    background: var(--g300);
+    color: transparent;
+    white-space: nowrap;
+  }
+
+  .toc a[aria-current] .toc-label {
+    background: var(--text);
+  }
+
+  .toc:hover,
+  .toc:focus-within {
+    width: 240px;
+    padding: 12px 16px;
+    background: var(--card);
+    box-shadow:
+      0 0 0 1px var(--faint),
+      0 12px 32px rgb(15 14 13 / 12%);
+  }
+
+  .toc:hover .toc-title,
+  .toc:focus-within .toc-title {
+    display: block;
+  }
+
+  .toc:hover .toc-label,
+  .toc:focus-within .toc-label,
+  .toc:hover a[aria-current] .toc-label,
+  .toc:focus-within a[aria-current] .toc-label {
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    background: none;
+    color: inherit;
+    white-space: normal;
+  }
+}
+
+/* Phones: the margin is the gutter; the sections are a scroll away. */
+@media (max-width: 759px) {
+  .toc-rail {
+    display: none;
+  }
+}
+
+.prose h2[id] {
+  scroll-margin-top: 80px;
+}
+
+/* A page opens on its own painting, edge to edge, its title on it: the
+   homepage's full-screen hero, shorter, so the words start on the first screen. */
+.post-hero {
+  min-height: min(72svh, 680px);
+}
+
+.post-hero .over {
+  max-width: 820px;
+  padding: 0 28px 64px;
+}
+
+.post-hero h1 {
+  max-width: 18ch;
+  font-size: clamp(38px, 5vw, 64px);
+}
+
+.post-hero .eyebrow a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.post-hero .eyebrow a:hover {
+  color: #fff;
+}
+
+.post-hero .eyebrow a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.post-hero .draft-tag {
+  border-color: rgb(255 255 255 / 40%);
+  color: rgb(255 255 255 / 80%);
 }
 
 .doc-head h1 {
@@ -779,16 +986,170 @@ button {
   line-height: 1.65;
 }
 
+/* Demos: the app's own GIFs, whole or one box of them, captioned. */
+.prose .demo {
+  margin: 32px 0 0;
+}
+
+.prose .demo .media:not(.zoomed) {
+  aspect-ratio: auto;
+}
+
+.prose .demo .media:not(.zoomed) img {
+  height: auto;
+}
+
+.prose .demo img {
+  border-radius: 0;
+}
+
+.prose figcaption {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* A note file: what the page's steps leave on disk, with its name. */
+.prose .file {
+  margin: 24px 0 0;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--faint);
+}
+
+.prose .file figcaption {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--faint);
+  font: 500 13px/1.4 var(--mono);
+}
+
+.prose .file pre {
+  margin: 0;
+  border-radius: 0;
+}
+
+.prose kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--g100);
+  box-shadow:
+    inset 0 0 0 1px var(--faint),
+    0 1px 0 var(--faint);
+  font: 500 13px/1 var(--sans);
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.prose .cite {
+  font-size: 0.7em;
+  line-height: 0;
+}
+
+.prose .cite a {
+  padding: 0 1px;
+  text-decoration: none;
+  color: var(--muted);
+}
+
+.prose .cite a:hover {
+  color: var(--text);
+}
+
+.prose #sources ~ ol {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.prose #sources ~ ol li:target {
+  color: var(--text);
+}
+
+.prose li[id] {
+  scroll-margin-top: 80px;
+}
+
 .doc-cta {
+  display: grid;
+  gap: 18px;
+  margin-top: 72px;
+  padding-top: 32px;
+  border-top: 1px solid var(--faint);
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.doc-cta h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.doc-cta-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 14px 22px;
-  margin-top: 64px;
-  padding-top: 28px;
-  border-top: 1px solid var(--faint);
-  font-size: 14px;
+}
+
+.doc-cta-quiet {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.doc-cta-quiet a {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.doc-cta-quiet code {
+  font: 0.95em/1 var(--mono);
+  color: var(--text);
+}
+
+.doc-next {
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.doc-next-title {
+  font-family: var(--serif);
+  font-size: 30px;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.doc-next-desc {
   color: var(--muted);
+  font-size: 16px;
+  text-wrap: pretty;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .doc-next:hover .doc-next-title {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+  }
+}
+
+.doc-next:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 4px;
 }
 
 .doc-list {
@@ -882,8 +1243,8 @@ button {
     padding: 36px 16px 88px;
   }
 
-  .doc > .art {
-    aspect-ratio: 4 / 3;
+  .post-hero .over {
+    padding: 0 16px 56px;
   }
 
   .room {

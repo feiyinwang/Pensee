@@ -12,17 +12,28 @@ const files = import.meta.glob<string>("../../content/*/*.md", {
   eager: true,
 });
 
+/** The README's demo GIFs, the same files the homepage shows: `youtube` → its built URL. */
+const MEDIA = Object.fromEntries(
+  Object.entries(
+    import.meta.glob<string>("../../../../assets/readme/*.gif", { import: "default", eager: true }),
+  ).map(([path, url]) => [path.replace(/^.*\/|\.gif$/g, ""), url]),
+);
+
 /**
  * Newest first, the order every list on the site uses. A draft is parsed (so
  * a malformed one still fails the build) but only shows in `vite dev`.
  */
 export const PAGES: readonly Page[] = Object.entries(files)
-  .map(([file, raw]) => parsePage(file, raw))
+  .map(([file, raw]) => parsePage(file, raw, MEDIA))
   .filter((page) => import.meta.env.DEV || !page.draft)
   .sort((a, b) => b.updated.localeCompare(a.updated) || a.title.localeCompare(b.title));
 
 export function findPage(type: PageType, slug: string): Page | undefined {
   return PAGES.find((page) => page.type === type && page.slug === slug);
+}
+
+export function findPath(path: string): Page | undefined {
+  return PAGES.find((page) => page.path === path);
 }
 
 export function listPages(type: PageType): PageSummary[] {
