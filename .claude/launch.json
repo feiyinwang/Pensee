@@ -27,6 +27,18 @@
         "cd apps/website && vp exec vite dev"
       ],
       "port": 5173
+    },
+    {
+      "name": "launch-film-proto",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5480",
+        "-d",
+        "/private/tmp/claude-501/-Users-warlock-code-writer/9591cf4e-9ad1-4a21-bfcf-b5eda508795f/scratchpad/proto"
+      ],
+      "port": 5480
     }
   ]
 }
