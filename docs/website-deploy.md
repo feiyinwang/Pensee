@@ -15,25 +15,34 @@ The Worker name in Cloudflare must match `name` in `wrangler.jsonc`, so a Git bu
 
 Cloudflare's GitHub app watches `feiyinwang/Pensee`. The Worker's **Settings → Build** holds:
 
-| Setting           | Value                                                                                                                                              |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Git repository    | `feiyinwang/Pensee`, production branch `master`                                                                                                    |
-| Root directory    | empty (the repository root, where `wrangler.jsonc` is)                                                                                             |
-| Build command     | `pnpm install --frozen-lockfile && pnpm --filter website build`                                                                                    |
-| Deploy command    | `pnpm dlx wrangler deploy --config wrangler.jsonc`                                                                                                 |
-| Build watch paths | include `apps/website/**`, `assets/readme/**`, `apps/desktop/src/components/onboarding/**`, `apps/desktop/src/styles/tokens.css`, `wrangler.jsonc` |
+| Setting           | Value                                                                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git repository    | `feiyinwang/Pensee`, production branch `master`                                                                                                                               |
+| Root directory    | empty (the repository root, where `wrangler.jsonc` is)                                                                                                                        |
+| Build command     | `pnpm install --frozen-lockfile && pnpm --filter website build`                                                                                                               |
+| Deploy command    | `pnpm dlx wrangler deploy --config wrangler.jsonc`                                                                                                                            |
+| Build watch paths | include `apps/website/**`, `apps/website/content/**`, `assets/readme/**`, `apps/desktop/src/components/onboarding/**`, `apps/desktop/src/styles/tokens.css`, `wrangler.jsonc` |
 
 Why these:
 
 - **pnpm, not npx.** The root `package.json` asks for Node 24.19 in `devEngines`, and npm refuses to run (`EBADDEVENGINES`) on Cloudflare's default Node 22. pnpm doesn't enforce it, and both commands were tested on Node 22 from a fresh clone (2026-10-19).
 - **The whole workspace installs** (about 7 seconds with a warm store), because the website imports the README GIFs from `assets/readme/`, and from the desktop app its onboarding folder (two demo scenes, their styles and the book covers) and its design tokens.
-- **Watch paths** keep app-only commits from redeploying the site. Add a path here when the website starts importing from a new folder.
+- **Watch paths** keep app-only commits from redeploying the site. Add a path here when the website starts importing from a new folder. `apps/website/content/**` is inside `apps/website/**` already; it's listed so narrowing the first path never drops the pages.
 
 **A push to `master` that touches the website publishes it.** Check the page locally before pushing:
 
 ```sh
 vp run website#build
 ```
+
+## Pages
+
+Besides the homepage, the site builds one page per markdown file in `apps/website/content/<type>/<slug>.md` (types: `guides`, `docs`, `essays`), an index per type that has pages, and `sitemap.xml`, `robots.txt` and `llms.txt` from the same list. Frontmatter, what the templates read from the markdown, drafts and the URL shape are in [SPECs/website-pages-spec.md](../SPECs/website-pages-spec.md).
+
+- **Add a page:** add the file, run `vp run website#build`, and check the prerender log lists `/<type>/<slug>/`. A missing field, a slug that isn't the file name, or a folder that isn't a type fails the build and names the file.
+- **A type's first page** also adds its index and its footer link.
+- **Drafts** (`draft: true`) show only in `vite dev`.
+- **The domain:** every absolute URL (canonicals, og:url, JSON-LD, the sitemap, robots.txt, llms.txt) comes from `SITE_URL` in `apps/website/src/site.ts`.
 
 ## Deploy manually (fallback)
 

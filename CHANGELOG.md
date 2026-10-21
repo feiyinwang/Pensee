@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-21
+
+- The website can hold more pages than the homepage: guides, docs and essays, each a markdown file in `apps/website/content/`. A page gets its own title, description and link preview, set in the site's Bodoni type under an old painting and ending on the download, and is listed on its kind's page, which the footer links once the first one is there. The site also serves a sitemap, `robots.txt` and `llms.txt`, built from the same pages. There are no pages yet, so the site looks as it did.
+
 ## 2026-10-19
 
 - A line you highlighted in a book now ends in a pin in the book's note, the same pin a video note's moments have, so you can tell it came from the book. Hover it to see where: the page, or the chapter for an EPUB. Click it and the book scrolls to the passage and flashes it, opening the book first if it's closed. The pin is the highlight: Backspace after it removes the pin and the highlight with it.

@@ -622,6 +622,223 @@ button {
   color: var(--text);
 }
 
+/* ---------- pages: guides, docs, essays (SPECs/website-pages-spec.md) ---------- */
+.doc-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 56px 28px 112px;
+}
+
+.doc > .art {
+  aspect-ratio: 5 / 2;
+  border-radius: 18px;
+  margin-bottom: 40px;
+}
+
+.doc-head h1 {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(36px, 4.6vw, 54px);
+  line-height: 1.06;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.doc-head .eyebrow a {
+  text-decoration: none;
+}
+
+.doc-head .eyebrow a:hover {
+  color: var(--text);
+}
+
+.doc-stand {
+  margin: 18px 0 0;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.draft-tag {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--g300);
+  border-radius: 999px;
+  font: 500 12px/1.2 var(--sans);
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+.prose {
+  margin-top: 40px;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose h2 {
+  margin: 56px 0 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.prose h3 {
+  margin: 32px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose blockquote,
+.prose table,
+.prose pre {
+  margin: 16px 0 0;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.4em;
+}
+
+.prose li + li {
+  margin-top: 6px;
+}
+
+.prose a {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.prose code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--g100);
+  font: 0.9em/1 var(--mono);
+}
+
+.prose pre {
+  padding: 16px 18px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: var(--g100);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose blockquote {
+  padding-left: 18px;
+  border-left: 2px solid var(--g300);
+  font-family: var(--serif);
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.prose th,
+.prose td {
+  padding: 9px 12px 9px 0;
+  border-bottom: 1px solid var(--faint);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose img {
+  border-radius: 12px;
+}
+
+/* Essays read like a book page: serif body, a narrower measure. */
+.essay .prose {
+  max-width: 34em;
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.65;
+}
+
+.doc-cta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  margin-top: 64px;
+  padding-top: 28px;
+  border-top: 1px solid var(--faint);
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.doc-list {
+  margin: 48px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--faint);
+}
+
+.doc-list li {
+  border-bottom: 1px solid var(--faint);
+}
+
+.doc-list a {
+  display: grid;
+  gap: 4px;
+  padding: 22px 0;
+  text-decoration: none;
+}
+
+.doc-list-title {
+  font-family: var(--serif);
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.doc-list-desc {
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.doc-list time {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .doc-list a:hover .doc-list-title {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+}
+
+.doc-list a:focus-visible,
+.doc-head .eyebrow a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+
 /* ---------- narrower screens ---------- */
 @media (max-width: 900px) {
   .hero {
@@ -659,6 +876,14 @@ button {
 @media (max-width: 640px) {
   .bar {
     padding: 0 16px;
+  }
+
+  .doc-main {
+    padding: 36px 16px 88px;
+  }
+
+  .doc > .art {
+    aspect-ratio: 4 / 3;
   }
 
   .room {

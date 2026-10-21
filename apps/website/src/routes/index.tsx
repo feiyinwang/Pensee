@@ -5,18 +5,23 @@ import { FeatureCard } from "../components/FeatureCard";
 import { InstallLine } from "../components/InstallLine";
 import { PenseeMark } from "../components/Mark";
 import { Credit, Painting } from "../components/Painting";
-import {
-  FINE_PRINT,
-  HEADLINE,
-  INTRO,
-  PAINTINGS,
-  REPO,
-  REQUIREMENTS,
-  ROOMS,
-  VERSION,
-} from "../content";
+import { SiteFooter } from "../components/SiteFooter";
+import { FINE_PRINT, HEADLINE, INTRO, PAINTINGS, REQUIREMENTS, ROOMS, VERSION } from "../content";
+import { jsonLdScript } from "../pages/head";
+import { softwareApplication } from "../pages/jsonld";
+import { absoluteUrl } from "../site";
 
 export const Route = createFileRoute("/")({
+  // The root's title and description are the homepage's; it adds what's only its own.
+  head: () => ({
+    links: [
+      { rel: "canonical", href: absoluteUrl("/") },
+      // The hero painting is the first thing on screen: fetch it with the page.
+      { rel: "preload", as: "image", href: PAINTINGS.rembrandt.src, fetchPriority: "high" },
+    ],
+    meta: [{ property: "og:url", content: absoluteUrl("/") }],
+    scripts: [jsonLdScript(softwareApplication())],
+  }),
   component: HomePage,
 });
 
@@ -100,14 +105,7 @@ function HomePage() {
         </section>
       </main>
 
-      <footer className="foot">
-        <span>Pensée is GPL v3. Neither the app nor this site collects usage data.</span>
-        <nav aria-label="Project">
-          <a href={REPO}>GitHub</a>
-          <a href={`${REPO}/releases`}>Releases</a>
-          <a href={`${REPO}/blob/master/LICENSE`}>License</a>
-        </nav>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

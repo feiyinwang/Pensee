@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 
+import { loadSections } from "../pages/load";
 import styles from "../styles.css?url";
 
 const TITLE = "Pensée — Thinking, made by writing";
@@ -10,6 +11,8 @@ const DESCRIPTION =
   "A markdown notes app for the Mac, made for neurodivergent minds: what you collect becomes what you understand, and the AI is a second pen, not a ghostwriter.";
 
 export const Route = createRootRoute({
+  // Which page types have pages, for the footer on every page.
+  loader: () => loadSections(),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -30,8 +33,6 @@ export const Route = createRootRoute({
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400&display=swap",
       },
-      // The hero painting is the first thing on screen: fetch it with the page.
-      { rel: "preload", as: "image", href: "/paintings/rembrandt.webp", fetchPriority: "high" },
       { rel: "stylesheet", href: styles },
     ],
   }),
