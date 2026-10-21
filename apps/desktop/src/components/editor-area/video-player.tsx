@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ScrollText } from "lucide-react";
 
-import { videoIdOf } from "@/lib/video-pins";
+import { videoLinkOf } from "@/lib/video-pins";
 import { transcriptSourceIn } from "@/lib/video-transcript";
 import {
   type VideoPlayer as VideoPlayerHandle,
@@ -42,11 +42,12 @@ const TranscriptBox = lazy(() =>
 export function VideoPlayer({ filePath }: { filePath: string }) {
   const frontmatter = useEditorStore((s) => s.openFiles.get(filePath)?.frontmatter ?? null);
   // Most notes link no video: skip the YAML parse unless a link key is there.
-  const videoId = useMemo(
+  const link = useMemo(
     () =>
-      frontmatter && /^(url|link|source)\s*:/im.test(frontmatter) ? videoIdOf(frontmatter) : null,
+      frontmatter && /^(url|link|source)\s*:/im.test(frontmatter) ? videoLinkOf(frontmatter) : null,
     [frontmatter],
   );
+  const videoId = link?.id ?? null;
   useTranscriptForNewLinks(filePath, videoId);
   const [origin, setOrigin] = useState<string | null>(null);
   useEffect(() => {
@@ -67,7 +68,15 @@ export function VideoPlayer({ filePath }: { filePath: string }) {
   }, [videoId]);
 
   if (!videoId || !origin) return null;
-  return <VideoBand key={videoId} filePath={filePath} videoId={videoId} origin={origin} />;
+  return (
+    <VideoBand
+      key={videoId}
+      filePath={filePath}
+      videoId={videoId}
+      start={link?.start ?? 0}
+      origin={origin}
+    />
+  );
 }
 
 /**
@@ -175,10 +184,13 @@ interface Report {
 function VideoBand({
   filePath,
   videoId,
+  start,
   origin,
 }: {
   filePath: string;
   videoId: string;
+  /** The second the note's link starts at (`t=210`); read when the frame loads. */
+  start: number;
   origin: string;
 }) {
   const frameRef = useRef<HTMLIFrameElement | null>(null);
@@ -202,13 +214,14 @@ function VideoBand({
   const [src] = useState(() => {
     const prefs = readPrefs();
     const query = new URLSearchParams({ v: videoId, rate: String(prefs.rate) });
+    if (start) query.set("t", String(start));
     if (prefs.cc) query.set("cc", "1");
     return `${origin}/youtube-player.html?${query}`;
   });
 
   useEffect(() => {
     installVideoPinShortcut();
-    let report: Report = { t: 0, playing: false, at: performance.now() };
+    let report: Report = { t: start, playing: false, at: performance.now() };
     // Commands sent before the page has loaded would be dropped: the last
     // one waits for its first report.
     let ready = false;

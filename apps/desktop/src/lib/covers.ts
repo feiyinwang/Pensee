@@ -65,6 +65,26 @@ export function youtubeVideoId(address: string): string | null {
   return id && YOUTUBE_ID.test(id) ? id : null;
 }
 
+const YOUTUBE_TIME = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/i;
+
+/** The second a YouTube link starts at, as YouTube reads it: `t=210`,
+ *  `t=210s`, `t=3m30s` or `t=1h2m3s` in the query or after `#`, or an
+ *  embed's `start=210`. 0 when it names none. */
+export function youtubeStartSeconds(address: string): number {
+  let url: URL;
+  try {
+    url = new URL(address);
+  } catch {
+    return 0;
+  }
+  const hash = new URLSearchParams(url.hash.slice(1));
+  const value = url.searchParams.get("t") ?? hash.get("t") ?? url.searchParams.get("start") ?? "";
+  const match = YOUTUBE_TIME.exec(value.trim());
+  if (!value.trim() || !match) return 0;
+  const [, h = "0", m = "0", s = "0"] = match;
+  return Number(h) * 3600 + Number(m) * 60 + Number(s);
+}
+
 export function youtubeThumbnail(id: string): string {
   return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 }

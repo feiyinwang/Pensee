@@ -15,6 +15,11 @@ selected.
 - A note gets a player when its properties hold a YouTube link under `url`,
   `link` or `source`. These are the same keys and link shapes that Library
   covers read (`noteLink`, `youtubeVideoId` in `lib/covers.ts`).
+- A link with a time plays from it, as YouTube does: `t=210`, `t=210s`,
+  `t=3m30s` or `t=1h2m3s` in the query or after `#`, or an embed's
+  `start=210` (`youtubeStartSeconds` in `lib/covers.ts`). The time is read
+  when the player loads; editing it in the link takes effect the next time
+  the note opens.
 - The player sits under the properties, the full width of the pane, edge
   to edge: 16:9, but no taller than 60% of the window (past that, the frame
   keeps the width and YouTube letterboxes the picture). Its corners are

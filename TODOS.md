@@ -9,4 +9,5 @@
 
 ## Done
 
+- YouTube links with a time (`t=210`, `t=3m30s`, `#t=`, `start=`) play from that time in their note ([spec](./SPECs/youtube-notes-spec.md)).
 - Website: pages from `apps/website/content/{guides,docs,essays}/`, with templates, sitemap.xml, robots.txt and llms.txt ([spec](./SPECs/website-pages-spec.md)).

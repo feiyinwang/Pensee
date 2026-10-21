@@ -5,6 +5,7 @@ import {
   noteLink,
   webAddressIn,
   withCover,
+  youtubeStartSeconds,
   youtubeThumbnail,
   youtubeVideoId,
 } from "../src/lib/covers";
@@ -51,6 +52,22 @@ describe("youtubeVideoId", () => {
     "not a url",
   ])("%s → null", (url) => {
     expect(youtubeVideoId(url)).toBeNull();
+  });
+});
+
+describe("youtubeStartSeconds", () => {
+  test.each([
+    ["https://youtu.be/XhjXAjs_BK8?si=Y7CYHOX1M2fE5Cw4&t=210", 210],
+    ["https://www.youtube.com/watch?v=wAZn9dF3XTo&t=735s", 735],
+    ["https://www.youtube.com/watch?v=wAZn9dF3XTo&t=3m30s", 210],
+    ["https://www.youtube.com/watch?v=wAZn9dF3XTo&t=1h2m3s", 3723],
+    ["https://www.youtube.com/watch?v=wAZn9dF3XTo#t=90", 90],
+    ["https://www.youtube.com/embed/Hjlu-jIY9Ao?start=42", 42],
+    ["https://youtu.be/WUq8Pun28FI", 0],
+    ["https://youtu.be/WUq8Pun28FI?t=soon", 0],
+    ["not a url", 0],
+  ])("%s → %d", (url, seconds) => {
+    expect(youtubeStartSeconds(url)).toBe(seconds);
   });
 });
 

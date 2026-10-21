@@ -7,6 +7,7 @@ import {
   pinEmptyLine,
   pinnedItemAfter,
   videoIdOf,
+  videoLinkOf,
   videoLinkTarget,
   videoPinId,
 } from "../src/lib/video-pins";
@@ -51,6 +52,20 @@ describe("videoIdOf", () => {
     expect(videoIdOf(null)).toBeNull();
     expect(videoIdOf("Type: Video\nurl: https://vimeo.com/123")).toBeNull();
     expect(videoIdOf("title: https://youtu.be/dQw4w9WgXcQ")).toBeNull();
+  });
+});
+
+describe("videoLinkOf", () => {
+  test("carries the second the link starts at", () => {
+    expect(videoLinkOf("Link: https://youtu.be/dQw4w9WgXcQ?si=abc&t=210")).toEqual({
+      id: "dQw4w9WgXcQ",
+      start: 210,
+    });
+    expect(videoLinkOf("url: https://youtu.be/dQw4w9WgXcQ")).toEqual({
+      id: "dQw4w9WgXcQ",
+      start: 0,
+    });
+    expect(videoLinkOf("url: https://vimeo.com/123")).toBeNull();
   });
 });
 

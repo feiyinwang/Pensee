@@ -1,6 +1,6 @@
 import { pageProperty } from "./book-highlights";
 import { nextItemPrefix } from "./block-refs";
-import { LINK_KEYS, webAddressIn, youtubeVideoId } from "./covers";
+import { LINK_KEYS, webAddressIn, youtubeStartSeconds, youtubeVideoId } from "./covers";
 import { getFileStem } from "./paths";
 
 // Pins on a YouTube note (SPECs/youtube-notes-spec.md). A pin is a hidden
@@ -45,11 +45,17 @@ export function formatVideoTime(seconds: number): string {
 /** The YouTube video a note's properties link to (`url`, `link` or `source`,
  *  as Library covers read them), or null. */
 export function videoIdOf(frontmatter: string | null): string | null {
+  return videoLinkOf(frontmatter)?.id ?? null;
+}
+
+/** The video a note links to and the second its link starts at
+ *  (`…&t=210`, as YouTube plays it), or null. */
+export function videoLinkOf(frontmatter: string | null): { id: string; start: number } | null {
   if (!frontmatter) return null;
   for (const key of LINK_KEYS) {
     const address = webAddressIn(pageProperty(frontmatter, key) ?? undefined);
     const id = address ? youtubeVideoId(address) : null;
-    if (id) return id;
+    if (id) return { id, start: youtubeStartSeconds(address!) };
   }
   return null;
 }

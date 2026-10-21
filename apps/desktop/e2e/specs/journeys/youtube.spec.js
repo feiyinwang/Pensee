@@ -561,3 +561,53 @@ describe("YouTube notes: the arrow keys over the video", function () {
     equal(await caret(null), at + 1, "→ off the video didn't move the caret");
   });
 });
+
+describe("YouTube notes: a link with a timestamp", function () {
+  before(async function () {
+    await workspaceRoot();
+    await openNote("Start at a time");
+    await $(".video-band iframe").waitForExist({ timeout: 15_000 });
+    await browser.execute(() => {
+      window.__ytStarts = [];
+      addEventListener("message", (e) => {
+        if (e.data?.source === "pensee-yt" && e.data.type === "state")
+          window.__ytStarts.push(e.data);
+      });
+    });
+  });
+
+  it("YT-22 a link ending in t=210 plays from 3:30", async function () {
+    const src = await $(".video-band iframe").getAttribute("src");
+    equal(
+      new URL(src).searchParams.get("t"),
+      "210",
+      `the player page wasn't told to start at 210: ${src}`,
+    );
+    await browser.waitUntil(async () => browser.execute(() => window.__ytStarts.length > 0), {
+      timeout: 30_000,
+      timeoutMsg: "the player page never reported (needs YouTube)",
+    });
+    // Play, as the keys row says (⌘S while paused), from the note.
+    await browser.execute(() => {
+      const view = document
+        .querySelector(".video-band")
+        .closest("[data-pane]")
+        .querySelector(".cm-content").cmTile.root.view;
+      view.dispatch({ selection: { anchor: view.state.doc.length } });
+      view.focus();
+    });
+    await pressCmd("s");
+    let last = null;
+    await browser
+      .waitUntil(
+        async () => {
+          last = await browser.execute(() => window.__ytStarts.at(-1));
+          return last.playing && last.t >= 209 && last.t < 240;
+        },
+        { timeout: 30_000 },
+      )
+      .catch(() => {
+        throw new Error(`the video didn't play from 3:30; last report ${JSON.stringify(last)}`);
+      });
+  });
+});

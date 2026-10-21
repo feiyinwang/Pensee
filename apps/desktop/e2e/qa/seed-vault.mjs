@@ -91,6 +91,16 @@ const NOTES = {
     "- what did the 2006 study compare?",
     "",
   ].join("\n"),
+  // A link with a timestamp (YT-22): the player starts at 3:30.
+  "Start at a time.md": [
+    "---",
+    "Type: Video",
+    "Link: https://youtu.be/aqz-KE-bpKQ?si=Y7CYHOX1M2fE5Cw4&t=210",
+    "---",
+    "",
+    "Notes from 3:30 on",
+    "",
+  ].join("\n"),
   // The transcript box (YT-04…08): four paragraphs, two sentences each.
   "Speech talk.md": [
     "---",

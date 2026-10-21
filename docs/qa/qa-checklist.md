@@ -184,6 +184,7 @@ Learned the hard way; each one cost a failed run.
 - A note's title also shows in the sidebar's file tree, so `//button[.//*[normalize-space(.)="A paper"]]` clicks the sidebar row, which opens the note without the Library card's extras (LIB-07): scope a Library card to its gallery, `//*[@data-cover="paper"]//button[…]`.
 - The composer is `[role="dialog"][aria-label="New note"]` only when other UI is open beside it; in a spec run on its own it has no dialog role. Find its field as `input.composer-title[aria-label="Title"]` (LIB-08), and wait for `.app-splash` to go before ⌘N.
 - A `timeoutMsg` is built when `waitUntil` is called, so a variable the condition fills (`seen`) shows its starting value: report it from a `.catch` instead (`waitForReaderBeside` in `library.spec.js`).
+- `--only …,PERF` with a YouTube journey runs `perf.spec.js` and `youtube.spec.js` in two workers at once: a video playing in one can push a PERF journey over its baseline (PERF-08 31ms vs 16ms, 2026-10-21), and YT-20's skip can miss its window. Rerun the failing IDs alone before chasing a slowdown.
 - The QA vault is small and local. Bugs that need a big or iCloud vault don't
   show here; make them `you` journeys, or time the Rust command directly
   against the user's vault, read-only.

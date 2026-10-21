@@ -366,6 +366,7 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-19 | Look at the row under the video                       | It starts with the keys in full, then **Transcript** on the same line: **Play ⌘S** while paused (**Pin ⌘S** while playing), **Slower ⇧,**, **Faster ⇧.**; there are no Play or Pin buttons | auto: youtube             |
 | YT-20 | Over the video press ← / →; off it, press →           | Over the video each press skips it 5s back or on and the caret stays put; off it, → moves the caret                                                                                        | auto: youtube             |
 | YT-21 | Hover the track of a video with chapters, rest 3s     | The line thickens, the chapter there more, a knob marks the playhead; the tooltip names the whole chapter and the time; the bar stays up                                                   | you                       |
+| YT-22 | Open a note whose link ends in `t=210`, press Play     | The video plays from 3:30, as the link does on YouTube (`t=3m30s`, `#t=` and an embed's `start=` too)                                                                                   | auto: youtube (YouTube)   |
 
 ## Podcast notes — POD
 
