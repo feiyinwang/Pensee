@@ -6,7 +6,14 @@
 // journeys don't wait on YouTube (YT-14, the language menu, does).
 import { equal, ok } from "node:assert/strict";
 import { execSync } from "node:child_process";
-import { invoke, pressCmd, typeInEditor, waitForTitle, workspaceRoot } from "./_helpers.js";
+import {
+  invoke,
+  pressCmd,
+  pressKey,
+  typeInEditor,
+  waitForTitle,
+  workspaceRoot,
+} from "./_helpers.js";
 
 /** Seeded by qa/seed-vault.mjs: four timed paragraphs, two sentences each. */
 const NOTE = "Speech talk";
@@ -458,5 +465,99 @@ describe("YouTube notes: where the transcript shows", function () {
       },
       { timeout: 5_000, timeoutMsg: "the menu doesn't say English" },
     );
+  });
+});
+
+describe("YouTube notes: the arrow keys over the video", function () {
+  before(async function () {
+    // The workspace first: ⌘O does nothing until it has loaded.
+    await workspaceRoot();
+    await openNote(NOTE);
+    await $(".video-band iframe").waitForExist({ timeout: 15_000 });
+    await browser.execute(() => {
+      window.__ytReports = [];
+      addEventListener("message", (e) => {
+        if (e.data?.source === "pensee-yt" && e.data.type === "state")
+          window.__ytReports.push(e.data);
+      });
+    });
+    await browser.waitUntil(async () => browser.execute(() => window.__ytReports.length > 0), {
+      timeout: 30_000,
+      timeoutMsg: "the player page never reported (needs YouTube)",
+    });
+  });
+
+  /** The pointer over the video, or off it, as the player page reports it:
+   *  the frame is another origin, so its own pointer events are out of reach. */
+  async function hover(over) {
+    await browser.execute((isOver) => {
+      const frame = document.querySelector(".video-band iframe");
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { source: "pensee-yt", type: "hover", over: isOver },
+          origin: new URL(frame.src).origin,
+          source: frame.contentWindow,
+        }),
+      );
+    }, over);
+  }
+
+  /** The caret in the note, put `fromEnd` characters before its end. */
+  async function caret(fromEnd) {
+    return browser.execute((back) => {
+      const view = document
+        .querySelector(".video-band")
+        .closest("[data-pane]")
+        .querySelector(".cm-content").cmTile.root.view;
+      if (back !== null) {
+        view.dispatch({ selection: { anchor: view.state.doc.length - back } });
+        view.focus();
+      }
+      return view.state.selection.main.head;
+    }, fromEnd);
+  }
+
+  /** Waits for a report the player page sent after `since` with its time
+   *  in [min, max]; returns the last one. */
+  async function reportAfter(since, [min, max], timeout, timeoutMsg) {
+    await browser.waitUntil(
+      async () =>
+        browser.execute(
+          (from, lo, hi) => window.__ytReports.slice(from).some((r) => r.t >= lo && r.t <= hi),
+          since,
+          min,
+          max,
+        ),
+      { timeout, timeoutMsg },
+    );
+    return browser.execute((from) => window.__ytReports.slice(from).at(-1), since);
+  }
+
+  it("YT-20 ← / → over the video skip it 5s; off it they move the caret", async function () {
+    // Measured from where the video is (an earlier journey may have played
+    // it): playing on can't add 3s within the 2.5s a skip is given, and
+    // never goes back.
+    const last = () => browser.execute(() => window.__ytReports.at(-1));
+    const at = await caret(2);
+    await hover(true);
+    const before = await last();
+    let since = await browser.execute(() => window.__ytReports.length);
+    await pressKey("ArrowRight", { inFocus: true });
+    const ahead = await reportAfter(
+      since,
+      [before.t + 3, before.t + 9],
+      before.playing ? 2_500 : 20_000,
+      "→ over the video didn't skip it 5s on",
+    );
+    equal(await caret(null), at, "→ over the video moved the caret");
+
+    since = await browser.execute(() => window.__ytReports.length);
+    await pressKey("ArrowLeft", { inFocus: true });
+    await reportAfter(since, [0, ahead.t - 3], 20_000, "← over the video didn't skip it back");
+    equal(await caret(null), at, "← over the video moved the caret");
+
+    await hover(false);
+    await pressKey("ArrowRight", { inFocus: true });
+    equal(await caret(null), at + 1, "→ off the video didn't move the caret");
   });
 });

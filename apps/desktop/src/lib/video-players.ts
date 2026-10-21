@@ -18,6 +18,9 @@ export interface VideoPlayer {
   playing: () => boolean;
   /** One step slower (-1) or faster (1) on YouTube's speed list. */
   speed: (step: -1 | 1) => void;
+  /** Jump `seconds` back (negative) or on, playing or paused as it was.
+   *  YouTube players only: ← / → while the pointer is over the video. */
+  skip?: (seconds: number) => void;
   /** The player on screen, for placing a pin's card beside it on a board. */
   rect: () => DOMRect;
   /** Whether it is on screen: an inactive tab keeps its player mounted but
@@ -31,6 +34,8 @@ const pendingSeeks = new Map<string, number>();
 /** The note whose player was last played or pinned from: the one the pin
  *  shortcut means when focus is not in a video's own note. */
 let lastUsed: string | null = null;
+/** The player under the pointer, as its page reports: ← / → skip it. */
+let hovered: VideoPlayer | null = null;
 
 export function registerVideoPlayer(player: VideoPlayer): () => void {
   players.set(player.notePath, [...(players.get(player.notePath) ?? []), player]);
@@ -41,6 +46,7 @@ export function registerVideoPlayer(player: VideoPlayer): () => void {
     lastUsed = player.notePath;
   }
   return () => {
+    if (hovered === player) hovered = null;
     const rest = (players.get(player.notePath) ?? []).filter((p) => p !== player);
     if (rest.length > 0) players.set(player.notePath, rest);
     else players.delete(player.notePath);
@@ -70,6 +76,16 @@ export function currentVideoPlayer(): VideoPlayer | null {
   if (shown.length === 1) return videoPlayerFor(shown[0]!);
   if (last) return last;
   return players.size === 1 ? videoPlayerFor([...players.keys()][0]!) : null;
+}
+
+export function setVideoHovered(player: VideoPlayer, over: boolean): void {
+  if (over) hovered = player;
+  else if (hovered === player) hovered = null;
+}
+
+/** The player the pointer is over, if it is on screen. */
+export function hoveredVideoPlayer(): VideoPlayer | null {
+  return hovered?.shown() ? hovered : null;
 }
 
 export function hasVideoPlayers(): boolean {

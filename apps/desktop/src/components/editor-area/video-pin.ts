@@ -17,6 +17,7 @@ import {
   currentVideoPlayer,
   disarmAutoPin,
   hasVideoPlayers,
+  hoveredVideoPlayer,
   markVideoUsed,
   seekVideo,
   videoPlayerFor,
@@ -260,6 +261,16 @@ export const PIN_SHORTCUT_LABEL = "⌘S";
 export const SLOWER_SHORTCUT_LABEL = "⇧,";
 export const FASTER_SHORTCUT_LABEL = "⇧.";
 export const SPEED_KEYSHORTCUTS = "Shift+, Shift+.";
+/** How far ← / → jump the video under the pointer, as on YouTube. */
+export const SKIP_SECONDS = 5;
+
+/** -1 / 1 for a bare ← / →, or null for any other key. */
+function skipStep(event: KeyboardEvent): -1 | 1 | null {
+  if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return null;
+  if (event.key === "ArrowLeft") return -1;
+  if (event.key === "ArrowRight") return 1;
+  return null;
+}
 
 /** -1 / 1 for slower / faster, or null for any other key. By character (`<`
  *  `>`, their own key on some layouts) or by key with Shift (⇧, ⇧. — what an
@@ -302,8 +313,8 @@ function pinKeyHere(): boolean {
 }
 
 /** ⌘S (pin and pause, or play on) where `pinKeyHere`, ⇧, / ⇧. (speed) in a
- *  video's note, and the focus tracking `returnFocus` needs. Installed once,
- *  by the first player. */
+ *  video's note, ← / → (skip) while the pointer is over a video, and the
+ *  focus tracking `returnFocus` needs. Installed once, by the first player. */
 export function installVideoPinShortcut(): void {
   if (installed) return;
   installed = true;
@@ -311,6 +322,16 @@ export function installVideoPinShortcut(): void {
     "keydown",
     (event) => {
       if (!hasVideoPlayers() || event.isComposing) return;
+      // Over a video ← / → move it, not the caret, wherever focus is.
+      const skip = skipStep(event);
+      if (skip !== null) {
+        const player = hoveredVideoPlayer();
+        if (!player?.skip) return;
+        event.preventDefault();
+        event.stopPropagation();
+        player.skip(skip * SKIP_SECONDS);
+        return;
+      }
       // In a video's note ⇧, / ⇧. never type.
       const step = speedStep(event);
       if (step !== null) {

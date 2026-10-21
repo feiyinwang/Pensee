@@ -55,6 +55,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+J           | Toggle the agent chat                    |
 | Cmd+S           | Pin the moment and pause; again, play¹   |
 | Shift+, / .     | Video slower / faster²                   |
+| Left / Right    | Video 5s back / on, over it⁵             |
 
 The composer's dated-today and Library presets are commands in Cmd+P
 (**New Note for Today**, **Add to Library…**), and its own Date and Type chips.
@@ -83,6 +84,10 @@ does now: Play while paused, Pin while playing. "Video" means the episode in a p
 while one is open), Shift+, and Shift+. change its speed instead of typing;
 elsewhere they type. They match by key as well as by character (`<` `>`), so
 they work with an input source such as Pinyin that types 《 》 there.
+
+⁵ Only while the pointer is over a YouTube video (its page reports enter and
+leave); then they skip it instead of moving the caret, wherever focus is.
+Handled in `video-pin.ts` with the other player keys.
 
 ³ Writing into a day's note (no title, a date) opens that note instead.
 

@@ -64,7 +64,7 @@
         bottom: 0;
         left: 0;
         z-index: 3;
-        padding: 28px 14px 8px;
+        padding: 20px 14px 8px;
         background: linear-gradient(to top, rgb(0 0 0 / 66%), transparent);
         color: #fff;
         font-size: 13px;
@@ -129,38 +129,87 @@
       #chapter[hidden] {
         display: none;
       }
-      /* The progress track, split where chapters start, like YouTube's. */
+      /* The progress track, split where chapters start, like YouTube's. The
+         hit area is the full 24px; under the pointer the line thickens, the
+         chapter there thickens more, and a knob marks the playhead, so it
+         reads as something to grab. */
       #track {
         position: relative;
-        height: 16px;
+        height: 24px;
         cursor: default;
       }
       .segment {
         position: absolute;
-        top: 6px;
+        top: 10px;
         height: 4px;
         overflow: hidden;
+        border-radius: 2px;
         background: rgb(255 255 255 / 28%);
+        transition: transform 100ms cubic-bezier(0.16, 1, 0.3, 1);
       }
+      #track[data-active] .segment {
+        transform: scaleY(1.5);
+      }
+      #track[data-active] .segment[data-hot] {
+        transform: scaleY(2.25);
+      }
+      .segment b,
       .segment i {
         position: absolute;
         inset: 0;
-        background: #fff;
+        transform: scaleX(0);
         transform-origin: left;
+      }
+      /* Where a click would land, lighter than what has played. */
+      .segment b {
+        background: rgb(255 255 255 / 40%);
+      }
+      .segment i {
+        background: #fff;
+      }
+      #knob {
+        position: absolute;
+        top: 6px;
+        width: 12px;
+        height: 12px;
+        margin-left: -6px;
+        border-radius: 50%;
+        background: #fff;
+        opacity: 0;
+        transform: scale(0.5);
+        transition:
+          opacity 100ms cubic-bezier(0.16, 1, 0.3, 1),
+          transform 100ms cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: none;
+      }
+      #track[data-active] #knob {
+        opacity: 1;
+        transform: none;
       }
       #tip {
         position: absolute;
-        bottom: 20px;
-        max-width: 240px;
-        padding: 4px 8px;
-        overflow: hidden;
+        bottom: 26px;
+        max-width: 260px;
+        padding: 5px 9px;
         border-radius: 6px;
         background: rgb(20 20 20 / 88%);
         font-size: 12px;
-        text-overflow: ellipsis;
+        text-align: center;
         transform: translateX(-50%);
-        white-space: nowrap;
         pointer-events: none;
+      }
+      /* A long chapter name wraps to a second line before it is cut. */
+      #tip strong {
+        display: -webkit-box;
+        overflow: hidden;
+        font-weight: 500;
+        text-wrap: balance;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+      #tip time {
+        display: block;
+        opacity: 0.7;
       }
       /* The speed, for a moment, after < / >: keys get no motion. */
       #badge {
@@ -233,7 +282,9 @@
       @media (prefers-reduced-motion: reduce) {
         #poster,
         #bar,
-        body[data-chrome] #bar {
+        body[data-chrome] #bar,
+        .segment,
+        #knob {
           transition: none;
         }
       }
@@ -251,11 +302,14 @@
     <div id="speeds" class="menu" role="menu" hidden></div>
     <div id="badge" hidden></div>
     <div id="bar">
-      <div id="track"><div id="tip" hidden></div></div>
+      <div id="track">
+        <div id="tip" hidden></div>
+        <div id="knob"></div>
+      </div>
       <div id="row">
         <button id="toggle" type="button" aria-label="Play"></button>
         <span id="time">0:00 / 0:00</span>
-        <button id="chapter" type="button" aria-haspopup="menu" hidden>
+        <button id="chapter" type="button" aria-haspopup="menu" title="Chapters" hidden>
           <span></span>
           <svg width="12" height="12" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6z" /></svg>
         </button>
@@ -292,6 +346,7 @@
       const speedButton = $("speed");
       const track = $("track");
       const tip = $("tip");
+      const knob = $("knob");
       const PLAY =
         '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>';
       const PAUSE =
@@ -335,7 +390,8 @@
           segment.style.width = total
             ? `calc(${share(to - from)}% - ${i + 1 < starts.length ? 2 : 0}px)`
             : "100%";
-          segment.append(document.createElement("i"));
+          // <b> fills to the hovered time, <i> (over it) to the playhead.
+          segment.append(document.createElement("b"), document.createElement("i"));
           track.insertBefore(segment, tip);
           return segment;
         });
@@ -351,8 +407,9 @@
           const from = Number(segment.dataset.from);
           const to = Number(segment.dataset.to) || total;
           const fill = to > from ? Math.min(1, Math.max(0, (t - from) / (to - from))) : 0;
-          segment.firstChild.style.transform = `scaleX(${fill})`;
+          segment.lastChild.style.transform = `scaleX(${fill})`;
         }
+        knob.style.left = `${total ? Math.min(1, t / total) * 100 : 0}%`;
         const index = chapterAt(t);
         chapterButton.hidden = index < 0;
         if (index >= 0) chapterButton.firstElementChild.textContent = chapters[index].title;
@@ -383,6 +440,27 @@
       function seek(t) {
         player.seekTo(Math.max(0, t), true);
         paint(t);
+      }
+
+      /** ← / →: `by` seconds back or on, playing or paused as it was; the
+       *  bar shows where it landed. */
+      function skip(by) {
+        if (!ready) return;
+        const total = duration();
+        const t = Math.min(Math.max(0, player.getCurrentTime() + by), total || Infinity);
+        const state = player.getPlayerState();
+        // Not started (the poster covers it): a seek would be dropped, so
+        // it plays from there, as a pin does.
+        if (state === YT.PlayerState.UNSTARTED || state === YT.PlayerState.CUED) {
+          run({ cmd: "seek", t });
+          post({ type: "state", t, playing: false, state });
+          return;
+        }
+        seek(t);
+        // Not report(): YouTube's own time lags the seek for a moment, and
+        // a paused video sends no later report to correct it.
+        post({ type: "state", t, playing: playing(), state: player.getPlayerState() });
+        wake();
       }
 
       // Subtitles: YouTube's captions module, on or off. The choice is the
@@ -442,22 +520,43 @@
           stepSpeed(message.step < 0 ? -1 : 1);
         } else if (message.cmd === "toggle") {
           toggle();
+        } else if (message.cmd === "skip") {
+          skip(Number(message.by) || 0);
         }
       }
 
       // Hover chrome: shown on movement, gone after 2s still or on leave,
-      // kept while a list is open or the track is held.
+      // kept while the pointer rests on the bar (reading a chapter's name),
+      // a list is open or the track is held.
+      let overBar = false;
       const menuOpen = () => !$("chapters").hidden || !$("speeds").hidden;
       function sleep() {
-        if (!scrubbing && !menuOpen()) delete document.body.dataset.chrome;
+        if (!scrubbing && !overBar && !menuOpen()) delete document.body.dataset.chrome;
       }
+      $("bar").addEventListener("pointerenter", () => (overBar = true));
+      $("bar").addEventListener("pointerleave", () => {
+        overBar = false;
+        wake();
+      });
       function wake() {
         document.body.dataset.chrome = "";
         clearTimeout(chromeTimer);
         chromeTimer = setTimeout(sleep, 2000);
       }
-      document.addEventListener("pointermove", wake);
+      // The app is told while the pointer is over the video: its ← / →
+      // then skip this video instead of moving the caret.
+      let hovering = false;
+      document.addEventListener("pointermove", () => {
+        if (!hovering) {
+          hovering = true;
+          post({ type: "hover", over: true });
+        }
+        wake();
+      });
       document.documentElement.addEventListener("pointerleave", () => {
+        hovering = false;
+        post({ type: "hover", over: false });
+        overBar = false;
         clearTimeout(chromeTimer);
         closeMenus();
         sleep();
@@ -531,39 +630,85 @@
       poster.addEventListener("click", toggle);
       toggleButton.addEventListener("click", toggle);
 
-      // The track: click or drag to a time; hover names the chapter there.
+      // The track: click or drag to a time; hover names the chapter there
+      // and fills the line up to it.
       function timeAt(event) {
         const box = track.getBoundingClientRect();
         const share = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
         return { t: share * duration(), x: share * box.width };
       }
+      /** Fill to `t` and thicken the chapter under it; null clears both. */
+      function hoverAt(t) {
+        const total = duration();
+        for (const [i, segment] of segments.entries()) {
+          const from = Number(segment.dataset.from);
+          const to = Number(segment.dataset.to) || total;
+          const fill =
+            t === null || to <= from ? 0 : Math.min(1, Math.max(0, (t - from) / (to - from)));
+          segment.firstChild.style.transform = `scaleX(${fill})`;
+          const last = i === segments.length - 1;
+          segment.toggleAttribute(
+            "data-hot",
+            segments.length > 1 && t !== null && t >= from && (t < to || last),
+          );
+        }
+      }
       function showTip(event) {
         const { t, x } = timeAt(event);
         const index = chapterAt(t);
-        tip.textContent = index >= 0 ? `${chapters[index].title} · ${clock(t)}` : clock(t);
-        tip.style.left = `${Math.min(Math.max(x, 60), track.clientWidth - 60)}px`;
+        const stamp = document.createElement("time");
+        stamp.textContent = clock(t);
+        if (index >= 0) {
+          const title = document.createElement("strong");
+          title.textContent = chapters[index].title;
+          tip.replaceChildren(title, stamp);
+        } else tip.replaceChildren(stamp);
         tip.hidden = false;
+        // Kept whole inside the track, however long the chapter's name.
+        const half = tip.offsetWidth / 2;
+        tip.style.left = `${Math.min(Math.max(x, half), track.clientWidth - half)}px`;
+        hoverAt(t);
       }
+      function leaveTrack() {
+        delete track.dataset.active;
+        tip.hidden = true;
+        hoverAt(null);
+      }
+      track.addEventListener("pointerenter", () => {
+        if (ready) track.dataset.active = "";
+      });
       track.addEventListener("pointerdown", (event) => {
         if (!ready) return;
         scrubbing = true;
+        track.dataset.active = "";
         track.setPointerCapture(event.pointerId);
         paint(timeAt(event).t);
       });
       track.addEventListener("pointermove", (event) => {
         if (!ready) return;
+        track.dataset.active = "";
         showTip(event);
         if (scrubbing) paint(timeAt(event).t);
       });
       track.addEventListener("pointerleave", () => {
-        if (!scrubbing) tip.hidden = true;
+        if (!scrubbing) leaveTrack();
       });
       track.addEventListener("pointerup", (event) => {
         if (!scrubbing) return;
         scrubbing = false;
-        tip.hidden = true;
         seek(timeAt(event).t);
+        // Released off the track: the drag carried it out, so let go of it.
+        if (!track.contains(document.elementFromPoint(event.clientX, event.clientY))) leaveTrack();
         wake();
+      });
+
+      // Focus is the note's (below), but should it be here, ← / → skip too.
+      document.addEventListener("keydown", (event) => {
+        if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+        const by = { ArrowLeft: -5, ArrowRight: 5 }[event.key];
+        if (by === undefined) return;
+        event.preventDefault();
+        skip(by);
       });
 
       // After any press, the app hands focus back to the note: typing goes

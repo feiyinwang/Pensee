@@ -2,8 +2,10 @@ import { afterEach, describe, expect, test } from "vite-plus/test";
 import {
   type VideoPlayer,
   currentVideoPlayer,
+  hoveredVideoPlayer,
   markVideoUsed,
   registerVideoPlayer,
+  setVideoHovered,
   videoPlayerFor,
 } from "../src/lib/video-players";
 
@@ -60,5 +62,30 @@ describe("the player the shortcuts mean", () => {
     expect(videoPlayerFor("a.md")).toBe(hidden);
     cleanups.pop()!();
     expect(videoPlayerFor("a.md")).toBe(hidden);
+  });
+});
+
+describe("the player the arrow keys skip", () => {
+  test("the one under the pointer, until it leaves", () => {
+    const a = mount("a.md", true);
+    const b = mount("b.md", true);
+    setVideoHovered(a, true);
+    expect(hoveredVideoPlayer()).toBe(a);
+    setVideoHovered(b, true);
+    // a's leave arriving after b's enter must not clear b.
+    setVideoHovered(a, false);
+    expect(hoveredVideoPlayer()).toBe(b);
+    setVideoHovered(b, false);
+    expect(hoveredVideoPlayer()).toBeNull();
+  });
+
+  test("none once it is hidden or unmounted", () => {
+    const a = mount("a.md", true);
+    setVideoHovered(a, true);
+    a.visible = false;
+    expect(hoveredVideoPlayer()).toBeNull();
+    a.visible = true;
+    cleanups.pop()!();
+    expect(hoveredVideoPlayer()).toBeNull();
   });
 });

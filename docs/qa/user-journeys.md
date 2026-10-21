@@ -341,7 +341,7 @@ caption languages from a menu), which shows as a teleprompter box that
 highlights the line being said, seeks, copies, folds and asks the Agent:
 beside the video and pinned with it in a wide pane, under it in a narrow one.
 **Spec:** SPECs/youtube-notes-spec.md
-**Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, player-keys.tsx, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`
+**Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, player-keys.tsx, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`, `src-tauri/src/commands/youtube-player.html`
 
 | ID    | Journey                                               | Expected                                                                                                                                                                                   | Check                     |
 | ----- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
@@ -364,6 +364,8 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-17 | ⌘S in a video note, then ⌘S in a plain note           | The video note's line gets a pin; in the plain note nothing happens                                                                                                                        | auto: podcast (POD-05)    |
 | YT-18 | Paste a Coursera link into Library's **+**            | It is guessed as a Video; Library has no Courses tab, `Type: Course` notes show under Videos                                                                                               | you                       |
 | YT-19 | Look at the row under the video                       | It starts with the keys in full, then **Transcript** on the same line: **Play ⌘S** while paused (**Pin ⌘S** while playing), **Slower ⇧,**, **Faster ⇧.**; there are no Play or Pin buttons | auto: youtube             |
+| YT-20 | Over the video press ← / →; off it, press →           | Over the video each press skips it 5s back or on and the caret stays put; off it, → moves the caret                                                                                        | auto: youtube             |
+| YT-21 | Hover the track of a video with chapters, rest 3s     | The line thickens, the chapter there more, a knob marks the playhead; the tooltip names the whole chapter and the time; the bar stays up                                                   | you                       |
 
 ## Podcast notes — POD
 

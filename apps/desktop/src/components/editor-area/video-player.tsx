@@ -10,6 +10,7 @@ import {
   disarmAutoPin,
   markVideoUsed,
   registerVideoPlayer,
+  setVideoHovered,
   videoPlayerOrigin,
 } from "@/lib/video-players";
 import { youtubeChapters } from "@/lib/tauri";
@@ -250,6 +251,10 @@ function VideoBand({
         markVideoUsed(filePath);
         send({ cmd: "speed", step });
       },
+      skip: (seconds) => {
+        markVideoUsed(filePath);
+        send({ cmd: "skip", by: seconds });
+      },
       rect: () => frameRef.current?.getBoundingClientRect() ?? new DOMRect(),
       shown: () => {
         const frame = frameRef.current;
@@ -274,6 +279,7 @@ function VideoBand({
         deltaX?: number;
         deltaY?: number;
         ctrlKey?: boolean;
+        over?: boolean;
       };
       if (message?.source !== "pensee-yt") return;
       if (message.type === "error") {
@@ -292,6 +298,12 @@ function VideoBand({
       }
       if (message.type === "wheel") {
         forwardWheel(message.deltaX ?? 0, message.deltaY ?? 0, message.ctrlKey === true);
+        return;
+      }
+      // The pointer over the page (the frame swallows its own pointer
+      // events): ← / → skip this video until it leaves.
+      if (message.type === "hover") {
+        setVideoHovered(player, message.over === true);
         return;
       }
       if (message.type !== "state") return;

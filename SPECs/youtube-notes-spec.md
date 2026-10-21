@@ -28,15 +28,23 @@ selected.
   and scrubber never wake. Its start and end screens sit under the video's
   thumbnail until it plays. Clicking the video plays or pauses it. Moving
   the pointer over it shows our own bar for 2s (longer while a list is
-  open):
+  open, or while the pointer rests on the bar):
   - play/pause and `m:ss / m:ss`;
   - the track, split into the video's chapters with a gap at each start.
-    Hover names the chapter and time there; click or drag seeks;
+    Under the pointer the line thickens, the chapter there thickens
+    more, it fills lighter up to the pointer, and a knob marks the
+    playhead. A tooltip names the chapter (in full, kept inside the
+    track) and the time there; click or drag seeks;
   - the current chapter's name, which opens the chapter list (current one
     marked, each with its time) to jump from;
   - **CC** (subtitles on/off) and the speed (0.25×–2×, YouTube's list).
     Both are remembered for the next video, in the app's `localStorage`
     under `writer.video-player`.
+- ← / → while the pointer is over the video skip it 5s back or on,
+  playing or paused as it was (a video not started yet plays from there),
+  instead of moving the caret. The page tells the app when the pointer
+  enters and leaves (`{type:"hover", over}`); the app sends
+  `{cmd:"skip", by}`.
 - Scrolling over the video scrolls the note; pinching over it reaches the
   tab columns' pinch like a pinch anywhere else.
 - Under the video is one row: the keys in full, each a label then its key
