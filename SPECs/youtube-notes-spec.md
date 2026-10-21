@@ -20,6 +20,11 @@ selected.
   `start=210` (`youtubeStartSeconds` in `lib/covers.ts`). The time is read
   when the player loads; editing it in the link takes effect the next time
   the note opens.
+- Pasting a link with a time to a video that already has a note (⌘N then
+  ⌘↵, or ⌘O's **Already in your Library** row) opens that note and plays
+  its video from the pasted time (`seekVideoToLinkTime` in
+  `lib/video-players.ts`; the seek waits for the player if the note wasn't
+  open). A pasted link without a time opens the note as it is.
 - The player sits under the properties, the full width of the pane, edge
   to edge: 16:9, but no taller than 60% of the window (past that, the frame
   keeps the width and YouTube letterboxes the picture). Its corners are

@@ -7,6 +7,7 @@
 import { equal, ok } from "node:assert/strict";
 import { execSync } from "node:child_process";
 import {
+  fillField,
   invoke,
   pressCmd,
   pressKey,
@@ -609,5 +610,79 @@ describe("YouTube notes: a link with a timestamp", function () {
       .catch(() => {
         throw new Error(`the video didn't play from 3:30; last report ${JSON.stringify(last)}`);
       });
+  });
+
+  /** The newest report from the player on screen: the note just opened.
+   *  Other notes' players stay mounted, hidden, in their tabs. */
+  async function frontReport() {
+    return browser.execute(() => {
+      const frame = [...document.querySelectorAll(".video-band iframe")].find((f) =>
+        f.checkVisibility(),
+      );
+      const mine = window.__ytStartSources
+        .map((source, i) => (source === frame?.contentWindow ? window.__ytStarts[i] : null))
+        .filter(Boolean);
+      return mine.at(-1) ?? null;
+    });
+  }
+
+  async function waitForPlayFrom(seconds, how) {
+    let last = null;
+    await browser
+      .waitUntil(
+        async () => {
+          last = await frontReport();
+          return !!last && last.playing && last.t >= seconds - 1 && last.t < seconds + 30;
+        },
+        { timeout: 30_000 },
+      )
+      .catch(() => {
+        throw new Error(
+          `${how}: the video didn't play from ${seconds}s; last report ${JSON.stringify(last)}`,
+        );
+      });
+  }
+
+  it("YT-23 ⌘N, a timestamped link to a video already in Library, ⌘↵ plays it from that time", async function () {
+    await browser.execute(() => {
+      window.__ytStartSources = [];
+      window.__ytStarts = [];
+      addEventListener("message", (e) => {
+        if (e.data?.source === "pensee-yt" && e.data.type === "state") {
+          window.__ytStartSources.push(e.source);
+          window.__ytStarts.push(e.data);
+        }
+      });
+    });
+    // Speech talk and Start at a time both link this video (the one that
+    // plays in the e2e app): Library opens whichever it finds first.
+    await openNote("Welcome");
+    await pressCmd("n");
+    const title = 'input.composer-title[aria-label="Title"]';
+    await $(title).waitForExist({ timeout: 5_000 });
+    await fillField(title, "https://youtu.be/aqz-KE-bpKQ?si=abc&t=95");
+    await browser.execute((sel) => {
+      document.querySelector(sel).dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }, title);
+    await waitForPlayFrom(95, "⌘N");
+  });
+
+  it("YT-24 ⌘O, the same link with another time, Already in your Library plays it from there", async function () {
+    await openNote("Welcome");
+    await pressCmd("o");
+    const input = await $("[cmdk-input]");
+    await input.waitForExist({ timeout: 5_000 });
+    await input.setValue("https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=2m30s");
+    const row = await $('//*[@cmdk-item][starts-with(@data-value,"library:open:")]');
+    await row.waitForExist({ timeout: 10_000 });
+    await row.click();
+    await waitForPlayFrom(150, "⌘O");
   });
 });

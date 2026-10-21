@@ -19,6 +19,7 @@ import { type LibraryKind, opensWhenAdded } from "@/lib/library-add";
 import { getFileStem } from "@/lib/paths";
 import { spaceFileStem } from "@/lib/spaces";
 import * as tauri from "@/lib/tauri";
+import { seekVideoToLinkTime } from "@/lib/video-players";
 import { useComposerStore } from "@/stores/composer-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -233,6 +234,7 @@ export async function submitComposer(target: ComposerTarget, open = true): Promi
   if (target.kind === "link" && target.existing) {
     if (draft.day) await linkIntoDay(draft.day, target.existing.path);
     await finish(target.existing.path, "", true);
+    seekVideoToLinkTime(target.existing.path, target.link.url);
     return;
   }
 

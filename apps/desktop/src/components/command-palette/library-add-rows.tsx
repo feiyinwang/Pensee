@@ -8,6 +8,7 @@ import {
   type LibraryKind,
 } from "@/lib/library-add";
 import type { TypedNote } from "@/lib/tauri";
+import { seekVideoToLinkTime } from "@/lib/video-players";
 
 // The palette's "Add to Library" rows (SPECs/add-to-library-spec.md): in ⌘O
 // when the query is a link. Titles and files are added from the composer.
@@ -75,7 +76,10 @@ export function libraryGroups({
             label: existing.title ?? existing.name,
             description: `${LIBRARY_KIND_LABELS[kindOfType(existing.note_type)]} · ${existing.relative_path}`,
             icon: KIND_ICONS[kindOfType(existing.note_type)],
-            run: () => actions.openNote(existing.path),
+            run: () => {
+              actions.openNote(existing.path);
+              seekVideoToLinkTime(existing.path, link.url);
+            },
           },
         ],
       },

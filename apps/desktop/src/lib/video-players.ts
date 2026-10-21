@@ -1,3 +1,4 @@
+import { youtubeStartSeconds } from "./covers";
 import * as tauri from "./tauri";
 
 // The YouTube players mounted in this window (SPECs/youtube-notes-spec.md),
@@ -103,6 +104,13 @@ export function seekVideo(notePath: string, seconds: number): boolean {
   lastUsed = notePath;
   player.seek(seconds);
   return true;
+}
+
+/** A link to `notePath`'s video pasted again with a time (`…&t=210`): play
+ *  it from there, as YouTube would. Nothing for a link without one. */
+export function seekVideoToLinkTime(notePath: string, address: string): void {
+  const seconds = youtubeStartSeconds(address);
+  if (seconds > 0) seekVideo(notePath, seconds);
 }
 
 /** How long after a pause the first words typed in the note still count as

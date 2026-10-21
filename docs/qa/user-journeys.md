@@ -343,7 +343,7 @@ caption languages from a menu), which shows as a teleprompter box that
 highlights the line being said, seeks, copies, folds and asks the Agent:
 beside the video and pinned with it in a wide pane, under it in a narrow one.
 **Spec:** SPECs/youtube-notes-spec.md
-**Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, player-keys.tsx, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`, `src-tauri/src/commands/youtube-player.html`
+**Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, player-keys.tsx, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/lib/covers.ts` (youtubeStartSeconds), `src/hooks/use-composer.ts` (a link already in Library), `src/components/command-palette/library-add-rows.tsx`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`, `src-tauri/src/commands/youtube-player.html`
 
 | ID    | Journey                                               | Expected                                                                                                                                                                                   | Check                     |
 | ----- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
@@ -369,6 +369,8 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-20 | Over the video press ← / →; off it, press →           | Over the video each press skips it 5s back or on and the caret stays put; off it, → moves the caret                                                                                        | auto: youtube             |
 | YT-21 | Hover the track of a video with chapters, rest 3s     | The line thickens, the chapter there more, a knob marks the playhead; the tooltip names the whole chapter and the time; the bar stays up                                                   | you                       |
 | YT-22 | Open a note whose link ends in `t=210`, press Play     | The video plays from 3:30, as the link does on YouTube (`t=3m30s`, `#t=` and an embed's `start=` too)                                                                                   | auto: youtube (YouTube)   |
+| YT-23 | ⌘N, paste a link with `t=95` to a video already in Library, ⌘↵ | Its note opens and the video plays from 1:35 | auto: youtube (YouTube) |
+| YT-24 | ⌘O, paste a link with `t=2m30s` to a video already in Library, pick **Already in your Library** | Its note opens and the video plays from 2:30 | auto: youtube (YouTube) |
 
 ## Podcast notes — POD
 
