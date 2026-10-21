@@ -241,21 +241,17 @@ describe("Journeys: core (smoke)", function () {
     strictEqual(await activeTitle(), "Welcome renamed");
   });
 
-  it("CMP-01 ⌘N, a title and text, ⌘⇧↵ makes the note and opens it", async function () {
+  it("CMP-01 ⌘N, a title and text, ⌘↵ makes the note and opens it", async function () {
     await pressCmd("n");
-    const dialog = await $('[role="dialog"][aria-label="New note"]');
-    await dialog.waitForExist({ timeout: 5_000 });
-    await fillField('[aria-label="New note"] input[aria-label="Title"]', "Composer note");
-    await fillField(
-      '[aria-label="New note"] textarea[aria-label="Text"]',
-      "Written in the composer.",
-    );
+    // The box has its dialog role only beside other UI: find it by its field.
+    await $("input.composer-title").waitForExist({ timeout: 5_000 });
+    await fillField('.composer input[aria-label="Title"]', "Composer note");
+    await fillField('.composer textarea[aria-label="Text"]', "Written in the composer.");
     await browser.execute(() => {
-      document.querySelector('[role="dialog"][aria-label="New note"] textarea').dispatchEvent(
+      document.querySelector(".composer textarea").dispatchEvent(
         new KeyboardEvent("keydown", {
           key: "Enter",
           metaKey: true,
-          shiftKey: true,
           bubbles: true,
           cancelable: true,
         }),
@@ -306,6 +302,8 @@ describe("Journeys: core (smoke)", function () {
     const button = await $('[aria-label="New note"] button.composer-submit');
     await button.waitForExist({ timeout: 5_000 });
     strictEqual((await button.getText()).replace("⌘↵", "").trim(), "Open today");
+    // A day's note always opens: there's no staying, so no chevron.
+    ok(!(await $('[aria-label="New note"] .composer-submit-menu').isExisting()), "no chevron");
     await browser.execute(() => {
       document.querySelector('[role="dialog"][aria-label="New note"] input').dispatchEvent(
         new KeyboardEvent("keydown", {
@@ -317,6 +315,91 @@ describe("Journeys: core (smoke)", function () {
       );
     });
     await waitForTitle(dayStamp());
+  });
+
+  it("CMP-02 ⌘N, a title, ⌘⇧↵ makes the note and stays, with an Added notice", async function () {
+    await openViaPalette("On writing");
+    await pressCmd("n");
+    const title = '[aria-label="New note"] input[aria-label="Title"]';
+    await $(title).waitForExist({ timeout: 5_000 });
+    await fillField(title, "Kept note");
+    await browser.execute((sel) => {
+      document.querySelector(sel).dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          metaKey: true,
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }, title);
+    await waitForFile(`${root}/Kept note.md`);
+    await $('//*[@role="status"][contains(., "Added Kept note")]').waitForExist({
+      timeout: 5_000,
+    });
+    strictEqual(await activeTitle(), "On writing");
+  });
+
+  it("CMP-07 the chevron beside the button offers open (⌘↵) and stay (⌘⇧↵)", async function () {
+    await openViaPalette("On writing");
+    await pressCmd("n");
+    const title = '[aria-label="New note"] input[aria-label="Title"]';
+    await $(title).waitForExist({ timeout: 5_000 });
+    // Radix opens its menu on pointerdown, which the WebDriver plugin's click
+    // does not send, so the press is dispatched the way a mouse sends it.
+    const openMenu = () =>
+      browser.execute(() => {
+        const trigger = document.querySelector('[aria-label="New note"] .composer-submit-menu');
+        const init = { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" };
+        trigger.dispatchEvent(new PointerEvent("pointerdown", init));
+      });
+    const menuItems = () =>
+      browser.execute(() =>
+        [...document.querySelectorAll('[role="menuitem"]')].map(
+          (item) => `${item.firstChild.textContent} ${item.querySelector("kbd")?.textContent}`,
+        ),
+      );
+
+    // A video the QA vault's Library doesn't have (one it has reads Open note).
+    await fillField(title, "https://www.youtube.com/watch?v=M7lc1UVf-VE");
+    // The chevron sits flush on the button's right, on the same line and height.
+    const [button, chevron] = await browser.execute(() =>
+      [".composer-submit:not(.composer-submit-menu)", ".composer-submit-menu"].map((sel) => {
+        const box = document
+          .querySelector(`[aria-label="New note"] ${sel}`)
+          .getBoundingClientRect();
+        return { top: box.top, height: box.height, left: box.left, right: box.right };
+      }),
+    );
+    strictEqual(chevron.top, button.top);
+    strictEqual(chevron.height, button.height);
+    strictEqual(chevron.left, button.right);
+    const iconWidth = await browser.execute(
+      () =>
+        document
+          .querySelector('[aria-label="New note"] .composer-submit-menu svg')
+          .getBoundingClientRect().width,
+    );
+    strictEqual(iconWidth, 14, "the chevron's icon shows at its full 14px");
+    await openMenu();
+    await $('[role="menuitem"]').waitForExist({ timeout: 3_000 });
+    const texts = await menuItems();
+    strictEqual(texts[0], "Add video and open it ⌘↵");
+    strictEqual(texts[1], "Add video and stay here ⌘⇧↵");
+    await pressKey("Escape");
+    await $('[role="menuitem"]').waitForExist({ timeout: 3_000, reverse: true });
+
+    await fillField(title, "Stay note");
+    await openMenu();
+    const stay = await $('//*[@role="menuitem" and contains(., "Create note and stay here")]');
+    await stay.waitForExist({ timeout: 3_000 });
+    await stay.click();
+    await waitForFile(`${root}/Stay note.md`);
+    await $('//*[@role="status"][contains(., "Added Stay note")]').waitForExist({
+      timeout: 5_000,
+    });
+    strictEqual(await activeTitle(), "On writing");
   });
 
   it("PRJ-01 Projects shows the projects by status", async function () {

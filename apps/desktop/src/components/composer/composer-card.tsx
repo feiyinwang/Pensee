@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEve
 import {
   BookOpen,
   CalendarDays,
+  ChevronDown,
   Clapperboard,
   File,
   FileText,
@@ -37,6 +38,7 @@ import {
   LIBRARY_KINDS,
   LIBRARY_KIND_LABELS,
   LIBRARY_NOTE_TYPES,
+  opensWhenAdded,
   parseLibraryLink,
 } from "@/lib/library-add";
 import { getFileName, getParentDir } from "@/lib/paths";
@@ -130,6 +132,12 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
   const now = new Date();
   const label = submitLabel(target, kind, Boolean(draft.body.trim()), now);
   const canSubmit = target.kind !== "empty" && !busy;
+  // A day's note, a link already in Library and a podcast always open: the
+  // writing went there, or the note is where the episode plays.
+  const canStay = !(
+    target.kind === "day" ||
+    (target.kind === "link" && (target.existing || opensWhenAdded(target.library)))
+  );
 
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -149,7 +157,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
     body.style.height = `${body.scrollHeight}px`;
   }, [draft.body]);
 
-  /** ⌘↵ (and the button) makes it and stays on the page; ⌘⇧↵ goes to it. */
+  /** ⌘↵ (and the button) makes it and goes to it; ⌘⇧↵ stays on the page. */
   function submit(open: boolean) {
     if (canSubmit) void submitComposer(target, open);
   }
@@ -157,7 +165,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
-      submit(event.shiftKey);
+      submit(!event.shiftKey);
     }
   }
 
@@ -334,16 +342,43 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
           </button>
         </div>
         <div className="composer-bar-group composer-bar-group--end">
-          <button
-            type="button"
-            className="composer-submit"
-            disabled={!canSubmit}
-            title="⌘⇧↵ also opens it"
-            onClick={() => submit(false)}
-          >
-            {label}
-            <kbd className="composer-kbd">⌘↵</kbd>
-          </button>
+          <div className="composer-split">
+            <button
+              type="button"
+              className="composer-submit"
+              disabled={!canSubmit}
+              onClick={() => submit(true)}
+            >
+              {label}
+              <kbd className="composer-kbd">⌘↵</kbd>
+            </button>
+            {canStay && (
+              <DropdownMenu
+                label="Open it or stay here"
+                align="end"
+                disabled={!canSubmit}
+                items={[
+                  { label: `${label} and open it`, shortcut: "⌘↵", onSelect: () => submit(true) },
+                  {
+                    label: `${label} and stay here`,
+                    shortcut: "⌘⇧↵",
+                    onSelect: () => submit(false),
+                  },
+                ]}
+                trigger={
+                  <button
+                    type="button"
+                    className="composer-submit composer-submit-menu"
+                    disabled={!canSubmit}
+                    aria-label="Open it or stay here"
+                    title="Open it or stay here"
+                  >
+                    <ChevronDown size={14} aria-hidden />
+                  </button>
+                }
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

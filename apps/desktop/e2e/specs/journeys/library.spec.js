@@ -61,7 +61,7 @@ async function openViaPalette(name) {
   await waitForTitle(name, 10_000);
 }
 
-/** ⌘N, `text` as the title, then ⌘⇧↵ (`open`) or ⌘↵. */
+/** ⌘N, `text` as the title, then ⌘↵ (`open`) or ⌘⇧↵. */
 async function addFromComposer(text, { open }) {
   // ⌘N goes unheard until the launch splash is gone (when run on its own).
   await $(".app-splash").waitForExist({ timeout: 10_000, reverse: true });
@@ -83,7 +83,7 @@ async function addFromComposer(text, { open }) {
       );
     },
     title,
-    open,
+    !open,
   );
 }
 
@@ -119,7 +119,7 @@ describe("Library journeys", () => {
     await waitForReaderBeside("a-paper.pdf", "A paper.md");
   });
 
-  it("LIB-08 ⌘N, a link to a PDF, ⌘⇧↵ makes a paper note with the PDF beside it", async function () {
+  it("LIB-08 ⌘N, a link to a PDF, ⌘↵ makes a paper note with the PDF beside it", async function () {
     const root = await workspaceRoot();
     await addFromComposer(`${address}/pubs/quiet-rooms.pdf`, { open: true });
     const note = `${root}/127.0.0.1 quiet-rooms.md`;
@@ -140,7 +140,7 @@ describe("Library journeys", () => {
     );
   });
 
-  it("LIB-10 ⌘N, a link to a PDF, ⌘↵, then Open on the notice opens the note with its PDF", async function () {
+  it("LIB-10 ⌘N, a link to a PDF, ⌘⇧↵, then Open on the notice opens the note with its PDF", async function () {
     const root = await workspaceRoot();
     await addFromComposer(`${address}/pubs/still-air.pdf`, { open: false });
     await waitForFile(`${root}/127.0.0.1 still-air-assets/127.0.0.1 still-air.pdf`, 20_000);

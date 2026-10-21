@@ -63,12 +63,16 @@ inert there and ⌘N keeps the palette's create field.
   already in Library) · Add to Library (an unpicked PDF). Disabled when
   there is nothing to make, and still named for the type chip ("Add book").
   It shows **⌘↵** inside it.
-- **⌘↵** (or the button) makes it and stays on the page: the box closes and
-  an "Added …" notice offers **Open**. **⌘⇧↵** makes it and opens it. A
-  day's note (Open today, Add to today), Open note (a link already in
-  Library) and a podcast link always open: the writing went there, or the
-  note is where the episode plays
-  ([podcast-notes-spec.md](podcast-notes-spec.md)), so that is where you land.
+- **⌘↵** (or the button) makes it and opens it: you paste a link to read or
+  watch it, so that is where you land. **⌘⇧↵** makes it and stays on the
+  page: the box closes and an "Added …" notice offers **Open**.
+- A **chevron** joined to the button's right opens a menu of the two:
+  "Add video and open it ⌘↵" and "Add video and stay here ⌘⇧↵" (the
+  button's own words, then where you end up). It isn't there when there is
+  no staying: a day's note (Open today, Add to today), Open note (a link
+  already in Library) and a podcast link always open, because the writing
+  went there, or the note is where the episode plays
+  ([podcast-notes-spec.md](podcast-notes-spec.md)).
 - Esc closes the box and keeps the draft for the next ⌘N.
 
 ⌘T is not a way in: it opens today's note itself, as the sidebar's **Today**

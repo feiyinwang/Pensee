@@ -94,8 +94,9 @@ function bodyText(body: string): string {
   return text ? `${text}\n` : "";
 }
 
-/** After a write the box closes and starts over. The page stays where it
- *  is, with an "Added …" notice to open the note, unless `open` (⌘⇧↵). */
+/** After a write the box closes and starts over, and the note opens; with
+ *  `open` false (⌘⇧↵) the page stays where it is, with an "Added …" notice
+ *  to open the note. */
 async function finish(path: string | null, name: string, open: boolean): Promise<void> {
   const store = useComposerStore.getState();
   store.setDraft({ ...EMPTY_DRAFT, folder: store.draft.folder });
@@ -205,12 +206,12 @@ async function writeDay(day: string, draft: ComposerDraft) {
   await finish(path, day, true);
 }
 
-/** Do what `target` says with the box's draft; `open` (⌘⇧↵) goes to the
- *  note (a day's note always opens). Notes and days are written before the
+/** Do what `target` says with the box's draft; `open` (⌘↵) goes to the
+ *  note, false (⌘⇧↵) stays on the page (a day's note always opens). Notes and days are written before the
  *  box lets go, so a name clash shows in it; Library adds read the web or
  *  copy a file, so the box lets go first and a notice follows. A date links
  *  the new note from that day. */
-export async function submitComposer(target: ComposerTarget, open = false): Promise<void> {
+export async function submitComposer(target: ComposerTarget, open = true): Promise<void> {
   const store = useComposerStore.getState();
   if (store.busy || target.kind === "empty") return;
   const { draft } = store;

@@ -36,8 +36,8 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+G, then L   | Go to Library⁴                           |
 | Cmd+G, then F   | Go to Files⁴                             |
 | Cmd+N           | New note (the composer)                  |
-| Cmd+Enter       | Composer: create, stay here³             |
-| Cmd+Shift+Enter | Composer: create and open it             |
+| Cmd+Enter       | Composer: create and open it             |
+| Cmd+Shift+Enter | Composer: create, stay here³             |
 | Cmd+W           | Close current tab                        |
 | Cmd+Shift+T     | Reopen the last closed tab               |
 | Cmd+\\          | Toggle sidebar                           |

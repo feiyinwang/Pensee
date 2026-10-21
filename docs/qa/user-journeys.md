@@ -98,12 +98,13 @@ Library item.
 
 | ID     | Journey                                                      | Expected                                                    | Check      |
 | ------ | ------------------------------------------------------------ | ----------------------------------------------------------- | ---------- |
-| CMP-01 | ★ ⌘N, type a title and text, ⌘⇧↵                             | The note is created with that text and opens                | auto: core |
-| CMP-02 | ⌘N, type a title, ⌘↵                                         | The note is created, you stay put, a notice offers **Open** | manual     |
+| CMP-01 | ★ ⌘N, type a title and text, ⌘↵                              | The note is created with that text and opens                | auto: core |
+| CMP-02 | ⌘N, type a title, ⌘⇧↵                                        | The note is created, you stay put, a notice offers **Open** | auto: core |
 | CMP-03 | ⌘P **New Note for Today**, type text with an empty title, ⌘↵ | The text lands at the end of today's note, which opens      | auto: core |
 | CMP-04 | ⌘P **Add to Library…**, paste a YouTube link in the title    | Type switches to Video; creating makes a Library video note | manual     |
 | CMP-05 | Type something, Esc, ⌘N again                                | The box reopens with the draft kept                         | manual     |
-| CMP-06 | ⌘P **New Note for Today**, leave everything empty, ⌘↵        | The button reads **Open today**; today's note opens         | auto: core |
+| CMP-06 | ⌘P **New Note for Today**, leave everything empty, ⌘↵        | The button reads **Open today**, with no chevron; today's note opens | auto: core |
+| CMP-07 | ⌘N, paste a YouTube link, click the chevron beside the button | A menu: **Add video and open it ⌘↵**, **Add video and stay here ⌘⇧↵**; **stay here** makes it, keeps your page and shows **Added …** | auto: core |
 
 ## Command palette and search — PAL
 
@@ -312,9 +313,9 @@ gallery with type tabs; items are added from a link, a file or a title.
 | LIB-03 | **+** at the top, paste a YouTube link                     | A video note named after the video is created and opens                                                                        | you                    |
 | LIB-06 | Library → Podcasts, a podcast with a YouTube link          | Its cover is the video's thumbnail                                                                                             | you                    |
 | LIB-07 | Library → Papers, click a paper whose note embeds a PDF    | Its note opens, and the PDF opens in the reader beside it                                                                      | auto: library          |
-| LIB-08 | ⌘N, paste a link to a PDF, ⌘⇧↵                             | A `Type: Paper` note opens with the PDF saved in its assets and embedded at the top, and the PDF opens in the reader beside it | auto: library          |
+| LIB-08 | ⌘N, paste a link to a PDF, ⌘↵                              | A `Type: Paper` note opens with the PDF saved in its assets and embedded at the top, and the PDF opens in the reader beside it | auto: library          |
 | LIB-09 | ⌘N, paste an arXiv abstract link, ⌘⇧↵                      | The note is named by the paper's title, and its PDF opens in the reader beside it                                              | you                    |
-| LIB-10 | ⌘N, paste a link to a PDF, ⌘↵, then **Open** on the notice | The paper's note opens with its PDF in the reader beside it                                                                    | auto: library          |
+| LIB-10 | ⌘N, paste a link to a PDF, ⌘⇧↵, then **Open** on the notice | The paper's note opens with its PDF in the reader beside it                                                                    | auto: library          |
 
 ## Book reader — BK
 

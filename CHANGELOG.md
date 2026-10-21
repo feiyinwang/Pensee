@@ -2,6 +2,7 @@
 
 ## 2026-10-21
 
+- Adding something with ⌘N now takes you to it. Paste a YouTube link, press ⌘↵, and its note opens, instead of a notice at the top asking whether to open it. To add it and keep your place, press ⌘⇧↵, or click the arrow beside the button and pick **… and stay here**; the menu lists both ways with their keys. The same goes for a plain note.
 - A YouTube link with a time in it now plays from that time, as it does on YouTube. Paste `https://youtu.be/…?t=210` and the video in its note starts at 3:30. Times written `t=3m30s` or `t=1h2m3s`, and an embed link's `start=`, work too.
 - Picking a page while typing a `[[link]]` in a bullet works again. With a suggestion highlighted, Enter now puts the whole link down, `[[Job-to-be-done]]`, instead of starting a new bullet and leaving `[[job-` behind. The same goes for `@today` and the `/` menu in a list.
 - A video's timeline is easier to use. Point at it and the line thickens, the chapter under the pointer thickens more, and a knob shows where the video is, so it's clear you can click or drag. The tooltip names the whole chapter and the time there, and the controls stay up while your pointer rests on them, so they no longer vanish while you read. With the pointer over the video, ← and → skip it 5 seconds back or on, as on YouTube, instead of moving the caret in your note.

@@ -26,6 +26,8 @@
 .highlight[data-tone="danger"] { background: color-mix(in oklab, var(--danger) 8%, var(--surface)); }
 .item { position: relative; display: flex; min-height: 36px; align-items: center; gap: 10px; padding: 0 11px; border-radius: calc(var(--radius-panel) - 6px); color: var(--foreground); font-size: var(--text-sm); cursor: pointer; outline: none; transition: color var(--duration-fast) var(--ease-standard), opacity var(--duration-standard) var(--ease-enter) calc(min(var(--i, 0), 4) * 35ms), transform var(--duration-standard) var(--ease-enter) calc(min(var(--i, 0), 4) * 35ms); }
 .icon { display: inline-flex; width: 17px; color: var(--text-secondary); }
+/* Pensée patch: an item's shortcut, at its end in the muted colour. */
+.shortcut { margin-left: auto; padding-left: var(--space-4); color: var(--text-muted); font: inherit; font-size: var(--text-xs); }
 .separator { height: 1px; margin: var(--space-1) calc(var(--space-1) * -1); background: var(--border-subtle); }
 .destructive { color: var(--danger); }
 .destructive .icon { color: var(--danger); }

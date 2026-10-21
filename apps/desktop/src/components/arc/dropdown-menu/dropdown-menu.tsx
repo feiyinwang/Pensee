@@ -8,8 +8,14 @@ import { ChevronDown } from "lucide-react";
 import { motionTokens } from "../lib/motion-tokens";
 import styles from "./dropdown-menu.module.css";
 
-export interface DropdownItem { label: string; onSelect?: () => void; disabled?: boolean; icon?: ReactNode; destructive?: boolean; separatorBefore?: boolean; }
+export interface DropdownItem { label: string; onSelect?: () => void; disabled?: boolean; icon?: ReactNode; destructive?: boolean; separatorBefore?: boolean;
+  /** Pensée patch: the item's keyboard shortcut, shown at its end. */
+  shortcut?: string; }
 export interface DropdownMenuProps { label: string; items: DropdownItem[]; icon?: ReactNode;
+  /** Pensée patch: a button of the caller's own to open the menu, in place of the labelled trigger (`label` then only names the menu). */
+  trigger?: ReactNode;
+  /** Pensée patch: the menu can't be opened (Radix reads this, not the trigger button's own `disabled`). */
+  disabled?: boolean;
   /** Pensée patch: which trigger edge the menu lines up with, and a shift along it (Radix align / alignOffset). */
   align?: "start" | "center" | "end"; alignOffset?: number; }
 
@@ -46,7 +52,7 @@ function TriggerLabel({ text }: { text: string }) {
   </motion.span>;
 }
 
-export function DropdownMenu({ label, items, icon, align = "end", alignOffset = 0 }: DropdownMenuProps) {
+export function DropdownMenu({ label, items, icon, trigger, disabled, align = "end", alignOffset = 0 }: DropdownMenuProps) {
   const reduced = useReducedMotion();
   const [highlight, setHighlight] = useState<Highlight | null>(null);
   const pointer = useRef(false);
@@ -66,11 +72,11 @@ export function DropdownMenu({ label, items, icon, align = "end", alignOffset = 
     setHighlight(current => ({ ...next, glide: glide && current !== null }));
   }
   return <DropdownPrimitive.Root onOpenChange={open => { if (open) { window.clearTimeout(clearTimer.current); setHighlight(null); } }}>
-    <DropdownPrimitive.Trigger className={styles.trigger} type="button">{icon && <span className={styles.triggerIcon} aria-hidden="true">{icon}</span>}<TriggerLabel text={label}/><ChevronDown className={styles.chevron} size={15} strokeWidth={1.8} aria-hidden="true"/></DropdownPrimitive.Trigger>
-    <DropdownPrimitive.Portal><DropdownPrimitive.Content className={styles.menu} sideOffset={6} align={align} alignOffset={alignOffset} collisionPadding={12} loop onFocus={onMenuFocus} onPointerMoveCapture={() => { pointer.current = true; }} onKeyDownCapture={() => { pointer.current = false; }}>
+    {trigger ? <DropdownPrimitive.Trigger asChild disabled={disabled}>{trigger}</DropdownPrimitive.Trigger> : <DropdownPrimitive.Trigger className={styles.trigger} type="button">{icon && <span className={styles.triggerIcon} aria-hidden="true">{icon}</span>}<TriggerLabel text={label}/><ChevronDown className={styles.chevron} size={15} strokeWidth={1.8} aria-hidden="true"/></DropdownPrimitive.Trigger>}
+    <DropdownPrimitive.Portal><DropdownPrimitive.Content className={styles.menu} aria-label={trigger ? label : undefined} sideOffset={6} align={align} alignOffset={alignOffset} collisionPadding={12} loop onFocus={onMenuFocus} onPointerMoveCapture={() => { pointer.current = true; }} onKeyDownCapture={() => { pointer.current = false; }}>
       {/* One highlight glides between items for the pointer and jumps instantly for the keyboard. */}
       <motion.span className={styles.highlight} data-tone={highlight?.danger ? "danger" : undefined} aria-hidden="true" initial={false} animate={highlight ? { y: highlight.top, height: highlight.height, opacity: 1 } : { opacity: 0 }} transition={{ default: highlight?.glide && !reduced ? motionTokens.spring.snappy : { duration: 0 }, opacity: { duration: reduced ? 0 : .08 } }}/>
-      {items.map((item, index) => <Fragment key={item.label}>{item.separatorBefore && <DropdownPrimitive.Separator className={styles.separator}/>}<DropdownPrimitive.Item className={[styles.item, item.destructive ? styles.destructive : ""].filter(Boolean).join(" ")} data-tone={item.destructive ? "danger" : undefined} style={{ "--i": index } as CSSProperties} disabled={item.disabled} onSelect={item.onSelect}>{item.icon && <span className={styles.icon} aria-hidden="true">{item.icon}</span>}{item.label}</DropdownPrimitive.Item></Fragment>)}
+      {items.map((item, index) => <Fragment key={item.label}>{item.separatorBefore && <DropdownPrimitive.Separator className={styles.separator}/>}<DropdownPrimitive.Item className={[styles.item, item.destructive ? styles.destructive : ""].filter(Boolean).join(" ")} data-tone={item.destructive ? "danger" : undefined} style={{ "--i": index } as CSSProperties} disabled={item.disabled} onSelect={item.onSelect}>{item.icon && <span className={styles.icon} aria-hidden="true">{item.icon}</span>}{item.label}{item.shortcut && <kbd className={styles.shortcut}>{item.shortcut}</kbd>}</DropdownPrimitive.Item></Fragment>)}
     </DropdownPrimitive.Content></DropdownPrimitive.Portal>
   </DropdownPrimitive.Root>;
 }

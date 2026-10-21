@@ -80,8 +80,9 @@ button.composer-chip:not(:disabled) {
   color: var(--text-secondary);
 }
 
-/* Arc's trigger, sized to the chip row. */
-.composer [aria-haspopup="menu"] {
+/* Arc's trigger, sized to the chip row (not the button's chevron, which
+   is its own size). */
+.composer [aria-haspopup="menu"]:not(.composer-submit-menu) {
   height: var(--control-height-sm);
   min-height: 0;
   padding: 0 12px;
@@ -251,6 +252,31 @@ button.composer-chip:not(:disabled) {
   transition:
     background-color var(--motion-hover) var(--ease-hover),
     scale var(--motion-fast) var(--ease-out);
+}
+
+/* The button and its menu's chevron read as one control: the chevron sits
+   flush on the button's right, a hairline of the page colour between. */
+.composer-split {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.composer-split > .composer-submit:not(:only-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.composer-submit-menu {
+  justify-content: center;
+  width: 24px;
+  padding: 0;
+  border-left: 1px solid var(--surface-primary);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.composer-submit-menu[data-state="open"] {
+  background: color-mix(in oklab, var(--text-primary) 80%, var(--surface-primary));
 }
 
 .composer-submit:active:not(:disabled) {
