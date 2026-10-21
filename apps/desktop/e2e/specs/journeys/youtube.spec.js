@@ -469,7 +469,7 @@ describe("YouTube notes: where the transcript shows", function () {
   });
 });
 
-describe("YouTube notes: the arrow keys over the video", function () {
+describe("YouTube notes: the arrow and speed keys over the video", function () {
   before(async function () {
     // The workspace first: ⌘O does nothing until it has loaded.
     await workspaceRoot();
@@ -477,9 +477,12 @@ describe("YouTube notes: the arrow keys over the video", function () {
     await $(".video-band iframe").waitForExist({ timeout: 15_000 });
     await browser.execute(() => {
       window.__ytReports = [];
+      window.__ytRates = [];
       addEventListener("message", (e) => {
         if (e.data?.source === "pensee-yt" && e.data.type === "state")
           window.__ytReports.push(e.data);
+        if (e.data?.source === "pensee-yt" && e.data.type === "prefs")
+          window.__ytRates.push(e.data.rate);
       });
     });
     await browser.waitUntil(async () => browser.execute(() => window.__ytReports.length > 0), {
@@ -560,6 +563,49 @@ describe("YouTube notes: the arrow keys over the video", function () {
     await hover(false);
     await pressKey("ArrowRight", { inFocus: true });
     equal(await caret(null), at + 1, "→ off the video didn't move the caret");
+  });
+
+  it("YT-25 ⇧, / ⇧. over the video change its speed; off it they type", async function () {
+    /** ⇧ and `code` pressed in the note; whether the app took the key. */
+    const press = (key, code) =>
+      browser.execute(
+        (key, code) => {
+          const event = new KeyboardEvent("keydown", {
+            key,
+            code,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true,
+          });
+          document.activeElement.dispatchEvent(event);
+          return event.defaultPrevented;
+        },
+        key,
+        code,
+      );
+    await caret(0);
+    await hover(false);
+    const rates = await browser.execute(() => window.__ytRates.length);
+    ok(!(await press(">", "Period")), "⇧. off the video didn't type");
+    ok(!(await press("<", "Comma")), "⇧, off the video didn't type");
+    equal(
+      await browser.execute(() => window.__ytRates.length),
+      rates,
+      "off the video the speed changed",
+    );
+
+    await hover(true);
+    ok(await press(">", "Period"), "⇧. over the video typed");
+    await browser.waitUntil(
+      async () => browser.execute((n) => window.__ytRates.length > n, rates),
+      {
+        timeout: 5_000,
+        timeoutMsg: "⇧. over the video didn't change its speed",
+      },
+    );
+    // Back to the speed it had, for the next video.
+    ok(await press("<", "Comma"), "⇧, over the video typed");
+    await hover(false);
   });
 });
 

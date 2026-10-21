@@ -315,30 +315,44 @@ describe("Podcast notes", function () {
     );
   });
 
-  it("POD-06 ⇧, / ⇧. in the note change the speed, also as Pinyin sends them (《 》)", async function () {
+  it("POD-06 ⇧, / ⇧. over the player change the speed, also as Pinyin sends them (《 》); off it they type", async function () {
     await addPodcast(link);
     await typeInEditor("Speed");
     const rate = () =>
       browser.execute(
         `return (${FRONT_BAND.toString()})()?.querySelector("audio")?.playbackRate ?? null;`,
       );
+    /** ⇧ and `code` pressed in the note; whether the app took the key. */
     const press = (key, code) =>
       browser.execute(
         (key, code) => {
-          document.activeElement.dispatchEvent(
-            new KeyboardEvent("keydown", {
-              key,
-              code,
-              shiftKey: true,
-              bubbles: true,
-              cancelable: true,
-            }),
-          );
+          const event = new KeyboardEvent("keydown", {
+            key,
+            code,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true,
+          });
+          document.activeElement.dispatchEvent(event);
+          return event.defaultPrevented;
         },
         key,
         code,
       );
+    /** The pointer onto the player's band, or off it (React's enter / leave
+     *  come from pointerover / pointerout). */
+    const hover = (over) =>
+      browser.execute(
+        `const band = (${FRONT_BAND.toString()})();
+         band.dispatchEvent(new PointerEvent(${JSON.stringify(over ? "pointerover" : "pointerout")}, {
+           bubbles: true,
+           relatedTarget: ${over ? "null" : "document.body"},
+         }));`,
+      );
     const start = await rate();
+    ok(!(await press(">", "Period")), "⇧. off the player didn't type");
+    strictEqual(await rate(), start, "⇧. off the player changed the speed");
+    await hover(true);
     await press(">", "Period");
     await browser.waitUntil(async () => (await rate()) > start, {
       timeout: 2_000,
@@ -355,5 +369,6 @@ describe("Podcast notes", function () {
       () => document.querySelector(".cm-editor .cm-content")?.textContent ?? "",
     );
     ok(!/[<>《》]/.test(text), `the keys typed into the note (${text})`);
+    await hover(false);
   });
 });

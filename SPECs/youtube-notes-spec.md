@@ -62,12 +62,11 @@ selected.
   **Faster ⇧.**), then **Transcript** when the video has captions not yet
   brought in. There are no Play or Pin buttons: ⌘S does both, the video's
   own bar plays and pauses with the mouse, and its bar sets the speed.
-- **⇧, / ⇧.** step the speed down or up YouTube's list in the video's note,
-  and the new speed shows on the video for a moment. They match by
-  character (`<` `>`, their own key on some layouts) or by key with Shift,
-  so they work with an input source such as Pinyin that types 《 》 there.
-  They never type there; with nothing editable focused they act on the last
-  video used; anywhere else they type.
+- **⇧, / ⇧.** step the speed down or up YouTube's list while the pointer
+  is over the video, as ← / → skip it, and the new speed shows on the video
+  for a moment. They match by character (`<` `>`, their own key on some
+  layouts) or by key with Shift, so they work with an input source such as
+  Pinyin that types 《 》 there. Off the video they type, in its note too.
 - **⌘S** ("save the moment", SPECs/obsidian-shortcuts-spec.md#the-system),
   in the video's note, on its player, or on a board: while the video plays
   it pins the moment and pauses, so you can write about it; while paused it

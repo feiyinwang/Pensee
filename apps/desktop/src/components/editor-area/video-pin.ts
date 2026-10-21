@@ -287,20 +287,6 @@ let installed = false;
  *  it can hand focus straight back (typing goes to the note, not YouTube). */
 let lastFocus: HTMLElement | null = null;
 
-/** The player ⇧, / ⇧. change the speed of: the focused note's, or with
- *  nothing editable focused, `currentVideoPlayer`'s. Null while typing anywhere
- *  else (another note, a field, a board), where they type. */
-function speedKeyTarget(): VideoPlayer | null {
-  const focused = focusedNote();
-  if (focused) return videoPlayerFor(focused.path);
-  const active = document.activeElement;
-  const editing =
-    active instanceof HTMLInputElement ||
-    active instanceof HTMLTextAreaElement ||
-    (active instanceof HTMLElement && active.isContentEditable);
-  return editing || boardHasFocus() ? null : currentVideoPlayer();
-}
-
 /** Whether ⌘S pins the moment here: in a note that plays a video or
  *  episode, on its player, or on a board while one is mounted (a board
  *  swallows ⌘S anyway). Everywhere else ⌘S does nothing. */
@@ -312,9 +298,9 @@ function pinKeyHere(): boolean {
   return boardHasFocus() && currentVideoPlayer() !== null;
 }
 
-/** ⌘S (pin and pause, or play on) where `pinKeyHere`, ⇧, / ⇧. (speed) in a
- *  video's note, ← / → (skip) while the pointer is over a video, and the
- *  focus tracking `returnFocus` needs. Installed once, by the first player. */
+/** ⌘S (pin and pause, or play on) where `pinKeyHere`, ← / → (skip) and ⇧, /
+ *  ⇧. (speed) while the pointer is over a player, and the focus tracking
+ *  `returnFocus` needs. Installed once, by the first player. */
 export function installVideoPinShortcut(): void {
   if (installed) return;
   installed = true;
@@ -332,10 +318,10 @@ export function installVideoPinShortcut(): void {
         player.skip(skip * SKIP_SECONDS);
         return;
       }
-      // In a video's note ⇧, / ⇧. never type.
+      // Over a player ⇧, / ⇧. change its speed; off it they type.
       const step = speedStep(event);
       if (step !== null) {
-        const player = speedKeyTarget();
+        const player = hoveredVideoPlayer();
         if (!player) return;
         event.preventDefault();
         event.stopPropagation();

@@ -371,6 +371,8 @@ beside the video and pinned with it in a wide pane, under it in a narrow one.
 | YT-22 | Open a note whose link ends in `t=210`, press Play     | The video plays from 3:30, as the link does on YouTube (`t=3m30s`, `#t=` and an embed's `start=` too)                                                                                   | auto: youtube (YouTube)   |
 | YT-23 | ⌘N, paste a link with `t=95` to a video already in Library, ⌘↵ | Its note opens and the video plays from 1:35 | auto: youtube (YouTube) |
 | YT-24 | ⌘O, paste a link with `t=2m30s` to a video already in Library, pick **Already in your Library** | Its note opens and the video plays from 2:30 | auto: youtube (YouTube) |
+| YT-25 | In the video's note press ⇧. off the video, then over it | Off it `>` is typed and the speed stays; over it the speed steps up and nothing is typed | auto: youtube (YouTube) |
+| YT-26 | Click the video, move the pointer off it, press → | The caret moves; the video doesn't skip | you |
 
 ## Podcast notes — POD
 
@@ -387,7 +389,7 @@ podcast opens the note, and ⌘S plays, pins and pauses as on a video.
 | POD-03 | Add an Apple Podcasts or Spotify episode link       | The player finds the episode and plays the whole episode, with its artwork, title and show                                                                                                                                   | you           |
 | POD-04 | Add an episode's page link; Back 15                 | The card shows the page's whole artwork (blurred fill around it), title and show, no Pin button, and under the card (outside it) the keys in full (Play ⌘S while paused, Slower ⇧,, Faster ⇧.); the playhead moves back 15 s | auto: podcast |
 | POD-05 | ⌘S in a plain note while a podcast is mounted       | No pin is drawn or written anywhere                                                                                                                                                                                          | auto: podcast |
-| POD-06 | ⇧. then ⇧, in the note, also with Pinyin on (《 》) | The episode speeds up, then slows down; nothing is typed into the note                                                                                                                                                       | auto: podcast |
+| POD-06 | In the note ⇧. off the player; then over it ⇧. and ⇧,, also with Pinyin on (《 》) | Off the player `>` is typed and the speed stays; over it the episode speeds up, then slows down, and nothing is typed | auto: podcast |
 
 ## Agent chat — AG
 

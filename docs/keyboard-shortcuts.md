@@ -80,13 +80,14 @@ a video, before **Transcript**, and under a podcast's card. They stand in for
 Play and Pin buttons, which the players don't have. ⌘S is named for what it
 does now: Play while paused, Pin while playing. "Video" means the episode in a podcast note.
 
-² In a note that plays a video or episode (or with nothing editable focused
-while one is open), Shift+, and Shift+. change its speed instead of typing;
-elsewhere they type. They match by key as well as by character (`<` `>`), so
+² Only while the pointer is over a video or a podcast's player, Shift+, and
+Shift+. change its speed instead of typing; off it they type, even in the
+video's own note. They match by key as well as by character (`<` `>`), so
 they work with an input source such as Pinyin that types 《 》 there.
 
 ⁵ Only while the pointer is over a YouTube video (its page reports enter and
 leave); then they skip it instead of moving the caret, wherever focus is.
+Off it they never skip, even with focus left in the player's page.
 Handled in `video-pin.ts` with the other player keys.
 
 ³ Writing into a day's note (no title, a date) opens that note instead.

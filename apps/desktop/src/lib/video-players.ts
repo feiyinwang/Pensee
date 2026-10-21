@@ -35,7 +35,8 @@ const pendingSeeks = new Map<string, number>();
 /** The note whose player was last played or pinned from: the one the pin
  *  shortcut means when focus is not in a video's own note. */
 let lastUsed: string | null = null;
-/** The player under the pointer, as its page reports: ← / → skip it. */
+/** The player under the pointer, as its page reports: ← / → skip it and
+ *  ⇧, / ⇧. change its speed. */
 let hovered: VideoPlayer | null = null;
 
 export function registerVideoPlayer(player: VideoPlayer): () => void {

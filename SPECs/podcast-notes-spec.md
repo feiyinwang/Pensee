@@ -91,7 +91,8 @@ player.
   paused (**Pin ⌘S** while playing, since ⌘S pins then), **Slower ⇧,**,
   **Faster ⇧.**. Speed: a click
   cycles 1× → 1.25× → 1.5× → 1.75× → 2× → 1×; **⇧, / ⇧.** step through 0.5×–3× (0.5,
-  0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3) the same way they step a video's.
+  0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3) the same way they step a video's: only
+  while the pointer is over the player, and off it they type.
   Volume: the speaker mutes and unmutes (back to the last volume), the slider
   sets it. Speed and volume are remembered across episodes and launches
   (`localStorage` `writer.podcast-player`).

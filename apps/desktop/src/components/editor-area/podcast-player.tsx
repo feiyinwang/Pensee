@@ -21,6 +21,7 @@ import {
   disarmAutoPin,
   markVideoUsed,
   registerVideoPlayer,
+  setVideoHovered,
 } from "@/lib/video-players";
 import { useEditorStore } from "@/stores/editor-store";
 import { useChromeTooltip } from "../chrome-tooltip";
@@ -35,8 +36,8 @@ import "./podcast-player.css";
 /**
  * A podcast note plays its episode here, under the properties, sticky at the
  * top of the note like a YouTube note's player (SPECs/podcast-notes-spec.md).
- * It joins the same player registry, so ⌘S, `<` / `>` and pins work
- * the same.
+ * It joins the same player registry, so ⌘S, `<` / `>` (over the player) and
+ * pins work the same.
  */
 export function PodcastPlayer({ filePath }: { filePath: string }) {
   const frontmatter = useEditorStore((s) => s.openFiles.get(filePath)?.frontmatter ?? null);
@@ -286,7 +287,14 @@ function PodcastBand({
   return (
     <>
       <div ref={sentinelRef} className="video-band-sentinel" aria-hidden />
-      <div ref={bandRef} className="video-band podcast-band" data-stuck={stuck || undefined}>
+      {/* ⇧, / ⇧. change the speed only with the pointer over the player. */}
+      <div
+        ref={bandRef}
+        className="video-band podcast-band"
+        data-stuck={stuck || undefined}
+        onPointerEnter={() => playerRef.current && setVideoHovered(playerRef.current, true)}
+        onPointerLeave={() => playerRef.current && setVideoHovered(playerRef.current, false)}
+      >
         {/* Always mounted, so the player's listeners hold from the start. */}
         <audio
           ref={audioRef}

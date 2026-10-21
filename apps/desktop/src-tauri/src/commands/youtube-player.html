@@ -544,7 +544,8 @@
         chromeTimer = setTimeout(sleep, 2000);
       }
       // The app is told while the pointer is over the video: its ← / →
-      // then skip this video instead of moving the caret.
+      // then skip this video instead of moving the caret, and ⇧, / ⇧.
+      // change its speed instead of typing.
       let hovering = false;
       document.addEventListener("pointermove", () => {
         if (!hovering) {
@@ -702,9 +703,10 @@
         wake();
       });
 
-      // Focus is the note's (below), but should it be here, ← / → skip too.
+      // Focus is the note's (below), but should it be here, ← / → skip too,
+      // still only with the pointer on the video.
       document.addEventListener("keydown", (event) => {
-        if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+        if (!hovering || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
         const by = { ArrowLeft: -5, ArrowRight: 5 }[event.key];
         if (by === undefined) return;
         event.preventDefault();
