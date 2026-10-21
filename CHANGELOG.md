@@ -2,6 +2,7 @@
 
 ## 2026-10-21
 
+- A note you open with ⌘O now comes into view. With several tabs side by side, if you had scrolled away from the one you were in, the note used to open in that tab off screen and nothing moved. Now the row of tabs slides over to it. The same goes for a note picked from the sidebar, and for Back and Forward.
 - Adding something with ⌘N now takes you to it. Paste a YouTube link, press ⌘↵, and its note opens, instead of a notice at the top asking whether to open it. To add it and keep your place, press ⌘⇧↵, or click the arrow beside the button and pick **… and stay here**; the menu lists both ways with their keys. The same goes for a plain note.
 - A YouTube link with a time in it now plays from that time, as it does on YouTube. Paste `https://youtu.be/…?t=210` and the video in its note starts at 3:30. Times written `t=3m30s` or `t=1h2m3s`, and an embed link's `start=`, work too.
 - Picking a page while typing a `[[link]]` in a bullet works again. With a suggestion highlighted, Enter now puts the whole link down, `[[Job-to-be-done]]`, instead of starting a new bullet and leaving `[[job-` behind. The same goes for `@today` and the `/` menu in a list.

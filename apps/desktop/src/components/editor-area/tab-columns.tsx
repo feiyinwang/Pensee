@@ -156,6 +156,13 @@ export function TabColumns() {
     for (const el of entering) delete el.dataset.entering;
   }, [tabs, isColumns]);
 
+  // A new page in the active tab (⌘O, the sidebar, Back/Forward all open in
+  // place) counts as a change too. Every navigation moves `back` by one; the
+  // kind catches a New tab page turning into a note. Not the path: a rename
+  // rewrites it, and that should not scroll the strip.
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  const activePageKey = activeTab ? `${activeTab.location.kind} ${activeTab.back.length}` : "";
+
   // Bring the active column fully into view when it changes by any route
   // other than a press inside it (tab bar, link, keyboard, restore).
   useLayoutEffect(() => {
@@ -178,7 +185,7 @@ export function TabColumns() {
     const smooth = didInitialScrollRef.current && !prefersReducedMotion();
     didInitialScrollRef.current = true;
     strip.scrollTo({ left: Math.max(0, target), behavior: smooth ? "smooth" : "auto" });
-  }, [activeTabId, isColumns, tabs.length]);
+  }, [activeTabId, activePageKey, isColumns, tabs.length]);
 
   // One tab ↔ all columns changes every shown editor's width: measure them
   // before this frame paints.

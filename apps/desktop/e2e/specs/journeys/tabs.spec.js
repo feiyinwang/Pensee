@@ -198,4 +198,64 @@ describe("Journeys: tabs", function () {
     );
     ok(after.lines > 0, "the long note's lines in view should be laid out");
   });
+
+  it("TAB-12 ⌘O into a column scrolled out of view brings it back into view", async function () {
+    // Starts on the columns TAB-11 left. Two more columns so the strip is
+    // wider than the window.
+    for (const name of ["Outline tour", "On writing"]) {
+      await browser.execute((title) => {
+        const link = [...document.querySelectorAll(".cm-wiki-link")].find(
+          (el) => el.textContent === title,
+        );
+        const r = link.getBoundingClientRect();
+        const at = { bubbles: true, cancelable: true, button: 0, clientX: r.left + 4 };
+        for (const type of ["mousedown", "mouseup", "click"]) {
+          link.dispatchEvent(new MouseEvent(type, { ...at, clientY: r.top + r.height / 2 }));
+        }
+      }, name);
+      await waitForTitle(name, 10_000);
+    }
+    const scrollable = await browser.execute(() => {
+      const strip = document.querySelector(".tab-columns[data-columns]");
+      return strip !== null && strip.scrollWidth > strip.clientWidth + 100;
+    });
+    if (!scrollable) this.skip();
+
+    // Press into the hub to make it the active column, then scroll the strip
+    // to its far end so the hub is out of view. The hidden window never runs
+    // a smooth scroll, so the strip's scrollTo lands at once here.
+    const outOfView = await browser.execute(() => {
+      const strip = document.querySelector(".tab-columns[data-columns]");
+      strip.scrollTo = (options) =>
+        Element.prototype.scrollTo.call(strip, { ...options, behavior: "auto" });
+      const hub = [...document.querySelectorAll(".tab-column")].find(
+        (el) => el.querySelector(".tab-column-title")?.textContent === "Pinch hub.md",
+      );
+      hub.dataset.qaHub = "";
+      hub
+        .querySelector(".tab-column-body")
+        .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      strip.scrollLeft = strip.scrollWidth;
+      const view = strip.getBoundingClientRect();
+      const box = hub.getBoundingClientRect();
+      return box.right <= view.left || box.left >= view.right;
+    });
+    ok(outOfView, "the hub's column should be scrolled out of view");
+
+    await openViaSearch("Welcome");
+    const shown = await browser.execute(() => {
+      const strip = document.querySelector(".tab-columns[data-columns]");
+      const column = document.querySelector("[data-qa-hub]");
+      const view = strip.getBoundingClientRect();
+      const box = column.getBoundingClientRect();
+      return {
+        focused: column.hasAttribute("data-focused"),
+        title: column.querySelector(".tab-column-title")?.textContent,
+        inView: box.left >= view.left - 1 && box.right <= view.right + 1,
+      };
+    });
+    ok(shown.focused, "the hub's column should still be the active one");
+    ok(shown.title?.startsWith("Welcome"), `the column should show Welcome, not ${shown.title}`);
+    ok(shown.inView, "the column ⌘O opened Welcome in should be scrolled fully into view");
+  });
 });
