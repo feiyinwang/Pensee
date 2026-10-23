@@ -114,6 +114,58 @@ button {
   margin-right: -0.34em;
 }
 
+.bar-end {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.bar-links {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+}
+
+.bar-links a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 150ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bar-links a:hover {
+    color: var(--text);
+  }
+}
+
+/* The homepage hides the bar's Download while the hero's is on screen. It
+   keeps its place, so the links don't move; visibility waits out the fade
+   on the way out, and keeps the hidden button out of tab order. */
+.bar-download {
+  display: flex;
+  transition:
+    opacity 160ms var(--ease-out),
+    translate 160ms var(--ease-out),
+    visibility 0s;
+}
+
+.bar-download[data-shown="false"] {
+  opacity: 0;
+  translate: 0 4px;
+  visibility: hidden;
+  transition:
+    opacity 120ms var(--ease-out),
+    translate 120ms var(--ease-out),
+    visibility 0s linear 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-download,
+  .bar-download[data-shown="false"] {
+    transition: none;
+  }
+}
+
 /* ---------- buttons and links ---------- */
 .btn {
   display: inline-flex;
@@ -194,6 +246,7 @@ button {
 .copy:focus-visible,
 .tlink:focus-visible,
 .lockup:focus-visible,
+.bar-links a:focus-visible,
 .foot a:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 3px;

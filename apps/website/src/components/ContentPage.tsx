@@ -6,9 +6,9 @@ import type { PageSummary, PaintingId } from "../pages/parse";
 import { indexPath, pagePath, PAGE_TYPES, type PageType } from "../pages/types";
 import { DownloadButton } from "./DownloadButton";
 import { InstallLine } from "./InstallLine";
-import { PenseeMark } from "./Mark";
 import { OnThisPage } from "./OnThisPage";
 import { Credit, Painting } from "./Painting";
+import { SiteBar } from "./SiteBar";
 import { SiteFooter } from "./SiteFooter";
 
 /**
@@ -186,13 +186,7 @@ function Shell({
 }) {
   return (
     <div className="page">
-      <header className="bar">
-        <a className="lockup" href="/" aria-label="Pensée, home">
-          <PenseeMark size={18} />
-          <span className="wordmark">PENSÉE</span>
-        </a>
-        <DownloadButton />
-      </header>
+      <SiteBar />
       {hero}
       <main className={wide ? "doc-main has-toc" : "doc-main"}>{children}</main>
       <SiteFooter />

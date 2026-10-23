@@ -5,7 +5,7 @@
  */
 export const PAGE_TYPES = {
   guides: {
-    name: "Guides",
+    name: "Articles",
     summary: "Doing one thing in Pensée, start to finish.",
   },
   docs: {

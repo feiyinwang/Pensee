@@ -3,9 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DownloadButton } from "../components/DownloadButton";
 import { FeatureCard } from "../components/FeatureCard";
 import { InstallLine } from "../components/InstallLine";
-import { PenseeMark } from "../components/Mark";
 import { Credit, Painting } from "../components/Painting";
+import { SiteBar } from "../components/SiteBar";
 import { SiteFooter } from "../components/SiteFooter";
+import { useScrolledPast } from "../components/useScrolledPast";
 import { FINE_PRINT, HEADLINE, INTRO, PAINTINGS, REQUIREMENTS, ROOMS, VERSION } from "../content";
 import { jsonLdScript } from "../pages/head";
 import { softwareApplication } from "../pages/jsonld";
@@ -29,15 +30,10 @@ const ROMAN = ["I", "II", "III", "IV"];
 
 /** One page, one action: Download for Mac (SPECs/website-homepage-spec.md). */
 function HomePage() {
+  const [heroActs, pastHero] = useScrolledPast<HTMLDivElement>();
   return (
     <div className="page">
-      <header className="bar">
-        <a className="lockup" href="#top" aria-label="Pensée, back to top">
-          <PenseeMark size={18} />
-          <span className="wordmark">PENSÉE</span>
-        </a>
-        <DownloadButton />
-      </header>
+      <SiteBar onHome downloadShown={pastHero} />
 
       <main id="top">
         {/* The philosopher sits left of centre, so the words take the dark stair on the right. */}
@@ -48,7 +44,7 @@ function HomePage() {
             <div className="eyebrow">Pensée for Mac · version {VERSION}</div>
             <h1>{HEADLINE}</h1>
             <p className="stand">{INTRO}</p>
-            <div className="acts">
+            <div className="acts" ref={heroActs}>
               <DownloadButton size="lg" tone="light" beta />
               <a className="tlink" href="#room-think">
                 See what it does

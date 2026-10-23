@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-23
+
+- The website's header now links to Articles, next to Download for Mac, once the first article is up; the footer link is called Articles too. On the homepage the header's Download for Mac button stays out of the way until you scroll past the big Download button at the top, then fades in.
+
 ## 2026-10-21
 
 - The keys that control a video now only work while your pointer is on it. ← and → skip it, and ⇧, and ⇧. (`<` `>`) change its speed, only with the pointer over the video; anywhere else ← and → move the caret and `<` `>` type, in the video's own note too. Clicking the video and moving away no longer leaves the arrows skipping it. The same goes for a podcast's player. ⌘S still plays and pins from anywhere in the note.

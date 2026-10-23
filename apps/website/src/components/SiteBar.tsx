@@ -1,0 +1,36 @@
+import { DownloadButton } from "./DownloadButton";
+import { PenseeMark } from "./Mark";
+import { SectionLinks } from "./SectionLinks";
+
+/**
+ * The sticky header on every page: the lockup, the section links and Download.
+ * The homepage passes `downloadShown={false}` while its hero's own Download
+ * button is on screen, so the page never shows two at once; the button keeps
+ * its place while hidden, so nothing in the bar moves when it fades in.
+ */
+export function SiteBar({
+  onHome,
+  downloadShown = true,
+}: {
+  onHome?: boolean;
+  downloadShown?: boolean;
+}) {
+  return (
+    <header className="bar">
+      <a
+        className="lockup"
+        href={onHome ? "#top" : "/"}
+        aria-label={onHome ? "Pensée, back to top" : "Pensée, home"}
+      >
+        <PenseeMark size={18} />
+        <span className="wordmark">PENSÉE</span>
+      </a>
+      <div className="bar-end">
+        <SectionLinks className="bar-links" />
+        <span className="bar-download" data-shown={downloadShown}>
+          <DownloadButton />
+        </span>
+      </div>
+    </header>
+  );
+}

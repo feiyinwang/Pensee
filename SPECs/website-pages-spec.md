@@ -71,7 +71,7 @@ A page with three or more `## ` sections lists them beside the text (`src/compon
 
 ## Sections appear with their first page
 
-A type's index (`/guides/` …) and its link in the footer exist only once the type has a page. With no pages, the footer is as it was and nothing new is built. The root route's loader tells the footer which types have pages.
+A type's index (`/guides/` …) and its link in the header and the footer exist only once the type has a page. With no pages, the bar and the footer are as they were and nothing new is built. The root route's loader tells both which types have pages (`SectionLinks`). The guides type is labelled **Articles** on the site; its folder and URL stay `guides`.
 
 ## URLs
 
