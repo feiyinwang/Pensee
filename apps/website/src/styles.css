@@ -114,13 +114,25 @@ button {
   margin-right: -0.34em;
 }
 
+/* The homepage hides the bar's Download while the hero's is on screen, and
+   then it takes no room: the section links sit at the right edge. Once the
+   hero's button scrolls under the bar, Download's column opens (0fr → 1fr, so
+   it grows to the button's own width) and the links slide left to make room
+   as the button comes in from the right. */
 .bar-end {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 24px;
+  transition: grid-template-columns 200ms var(--ease-out);
+}
+
+.bar-end[data-download="hidden"] {
+  grid-template-columns: auto 0fr;
+  transition-duration: 150ms;
 }
 
 .bar-links {
+  grid-column: 1;
   display: flex;
   gap: 20px;
   font-size: 14px;
@@ -138,30 +150,40 @@ button {
   }
 }
 
-/* The homepage hides the bar's Download while the hero's is on screen. It
-   keeps its place, so the links don't move; visibility waits out the fade
-   on the way out, and keeps the hidden button out of tab order. */
+/* The column clips the button while it opens, pinned to its right edge. The
+   button's left margin is the gap to the links, inside the clip so it closes
+   with the column; the 6px padding on the other sides, taken back by the
+   margins, keeps the focus ring inside the clip. Visibility waits out the
+   fade on the way out and keeps the hidden button out of tab order. */
 .bar-download {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
+  justify-content: flex-end;
+  padding: 6px 6px 6px 0;
+  margin: -6px -6px -6px 0;
   transition:
-    opacity 160ms var(--ease-out),
-    translate 160ms var(--ease-out),
+    opacity 200ms var(--ease-out),
     visibility 0s;
 }
 
-.bar-download[data-shown="false"] {
+.bar-download .btn {
+  margin-left: 24px;
+}
+
+.bar-end[data-download="hidden"] .bar-download {
   opacity: 0;
-  translate: 0 4px;
   visibility: hidden;
   transition:
-    opacity 120ms var(--ease-out),
-    translate 120ms var(--ease-out),
-    visibility 0s linear 120ms;
+    opacity 150ms var(--ease-out),
+    visibility 0s linear 150ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bar-end,
   .bar-download,
-  .bar-download[data-shown="false"] {
+  .bar-end[data-download="hidden"] .bar-download {
     transition: none;
   }
 }

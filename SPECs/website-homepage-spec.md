@@ -21,11 +21,13 @@ voice.
 ## Gallery, as built
 
 - **Header.** The lockup on the left; on the right the section links (once a
-  section has a page) and Download for Mac. The header's Download stays hidden
-  while the hero's own button is on screen, and fades in (160ms ease-out, 4px
-  rise; 120ms out; none with reduced motion) once that button has scrolled up
-  under the header, so the page never shows two Download buttons at once. It
-  keeps its place while hidden, so the links never move.
+  section has a page), then Download for Mac at the far right. On the homepage
+  the header's Download is hidden while the hero's own button is on screen,
+  and takes no room then, so the links sit at the right edge. Once the hero's
+  button has scrolled up under the header, Download's column opens (200ms
+  ease-out; 150ms back; none with reduced motion): the links slide left and
+  the button fades in on their right, so the page never shows two Download
+  buttons at once.
 - **Look.** Old-fashioned, like the app's What's new card: public-domain
   paintings of people reading, writing and thinking, each credited (artist,
   title, year, museum). Bodoni Moda for display, the system sans for text, the
