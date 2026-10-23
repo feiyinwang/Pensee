@@ -204,7 +204,7 @@ describe("feeds", () => {
     const llms = buildLlms(published);
     expect(llms).toMatch(/^# Pensée\n\n> /);
     expect(llms).toContain(
-      `## Articles\n\n- [An example page](${ORIGIN}/articles/example-page/): A page that exists only in this test.`,
+      `## Folios\n\n- [An example page](${ORIGIN}/articles/example-page/): A page that exists only in this test.`,
     );
     expect(llms).not.toContain("## Essays");
   });

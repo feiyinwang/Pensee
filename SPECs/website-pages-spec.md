@@ -71,7 +71,7 @@ A page with three or more `## ` sections lists them beside the text (`src/compon
 
 ## Sections appear with their first page
 
-A type's index (`/articles/` …) and its link in the header and the footer exist only once the type has a page. With no pages, the bar and the footer are as they were and nothing new is built. The root route's loader tells both which types have pages (`SectionLinks`).
+A type's index (`/articles/` …) and its link in the header and the footer exist only once the type has a page. With no pages, the bar and the footer are as they were and nothing new is built. The root route's loader tells both which types have pages (`SectionLinks`). Each type's label comes from `PAGE_TYPES` in `src/pages/types.ts`: articles show as **Folios** (an old book's leaves, to match the paintings), while the URL keeps the plain word `/articles/` that readers and search recognise.
 
 ## URLs
 

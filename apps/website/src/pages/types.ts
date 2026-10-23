@@ -5,7 +5,7 @@
  */
 export const PAGE_TYPES = {
   articles: {
-    name: "Articles",
+    name: "Folios",
     summary: "Doing one thing in Pensée, start to finish.",
   },
   docs: {
