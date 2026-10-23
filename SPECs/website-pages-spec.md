@@ -4,17 +4,17 @@ Status: built. No pages yet.
 
 ## What it does
 
-The website can hold more pages than the homepage: guides, docs and essays. Each page is one markdown file. The build turns it into a page in the site's look, with its own title, description, canonical URL and structured data, lists it on its type's index, and adds it to `sitemap.xml` and `llms.txt`. The site also serves `robots.txt`.
+The website can hold more pages than the homepage: articles, docs and essays. Each page is one markdown file. The build turns it into a page in the site's look, with its own title, description, canonical URL and structured data, lists it on its type's index, and adds it to `sitemap.xml` and `llms.txt`. The site also serves `robots.txt`.
 
 ## A page
 
 A markdown file at `apps/website/content/<type>/<slug>.md`. The types are a registry in `apps/website/src/pages/types.ts`:
 
-| Type     | URL               | Template    | Structured data                                                                           |
-| -------- | ----------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `guides` | `/guides/<slug>/` | `GuidePage` | SoftwareApplication; HowTo when it has numbered steps; FAQPage when it has `## Questions` |
-| `docs`   | `/docs/<slug>/`   | `DocPage`   | FAQPage when it has `## Questions`                                                        |
-| `essays` | `/essays/<slug>/` | `EssayPage` | the page tags only                                                                        |
+| Type       | URL                 | Template      | Structured data                                                                           |
+| ---------- | ------------------- | ------------- | ----------------------------------------------------------------------------------------- |
+| `articles` | `/articles/<slug>/` | `ArticlePage` | SoftwareApplication; HowTo when it has numbered steps; FAQPage when it has `## Questions` |
+| `docs`     | `/docs/<slug>/`     | `DocPage`     | FAQPage when it has `## Questions`                                                        |
+| `essays`   | `/essays/<slug>/`   | `EssayPage`   | the page tags only                                                                        |
 
 Frontmatter:
 
@@ -27,7 +27,7 @@ updated: 2026-10-21
 draft: true # optional
 painting: wright # optional: a key of PAINTINGS in src/content.ts
 cta: try # optional: how the page ends (below)
-next: /guides/other-page/ # needed by cta read-next and method
+next: /articles/other-page/ # needed by cta read-next and method
 ---
 ```
 
@@ -38,7 +38,7 @@ A **draft** shows only in `vite dev`, with a Draft mark. The build still parses 
 ## What the templates read from the markdown
 
 - **Questions:** an `## Questions` section whose `### ` headings are questions and whose text under each is the answer. It reads as ordinary prose and becomes FAQPage JSON-LD.
-- **Steps:** the first numbered list on a page is its steps, and becomes HowTo JSON-LD (guides only).
+- **Steps:** the first numbered list on a page is its steps, and becomes HowTo JSON-LD (articles only).
 - **Sections:** every `## ` heading gets an id from its words (`## What you need` → `#what-you-need`, a repeat gets `-2`) and a row in the page's **On this page** list.
 - **Demos:** `![what it shows](demo:youtube "Caption.")` is one of the README's demo GIFs (`assets/readme/<name>.gif`, the same files the homepage shows) as a captioned figure. `demo:youtube?crop=l,t,r,b&of=w,h` shows only that box of a `w`×`h` GIF, at most 1.5× the box's real width so its text stays sharp. An unknown name, a missing alt text or a box outside the GIF fails the build.
 - **Note files:** a code block whose info string is `md title="A note.md"` is shown as a note file with its name above it.
@@ -49,8 +49,8 @@ All of it comes from the page's own text, so nothing is written twice.
 
 ## How a page opens and ends
 
-- **Opens:** the page's painting edge to edge, its title, section, date and description laid on it over a scrim, and the painting's credit in the corner. A page with no `painting` uses its type's (guides: Caravaggio, docs: Antonello, essays: Fragonard). A post's own painting is one the homepage doesn't show.
-- **Ends**, by `cta` (default per type: guides `try`, docs `install`, essays `read-next`):
+- **Opens:** the page's painting edge to edge, its title, section, date and description laid on it over a scrim, and the painting's credit in the corner. A page with no `painting` uses its type's (articles: Caravaggio, docs: Antonello, essays: Fragonard). A post's own painting is one the homepage doesn't show.
+- **Ends**, by `cta` (default per type: articles `try`, docs `install`, essays `read-next`):
 
 | `cta`       | The page ends with                                                                      |
 | ----------- | --------------------------------------------------------------------------------------- |
@@ -71,12 +71,12 @@ A page with three or more `## ` sections lists them beside the text (`src/compon
 
 ## Sections appear with their first page
 
-A type's index (`/guides/` …) and its link in the header and the footer exist only once the type has a page. With no pages, the bar and the footer are as they were and nothing new is built. The root route's loader tells both which types have pages (`SectionLinks`). The guides type is labelled **Articles** on the site; its folder and URL stay `guides`.
+A type's index (`/articles/` …) and its link in the header and the footer exist only once the type has a page. With no pages, the bar and the footer are as they were and nothing new is built. The root route's loader tells both which types have pages (`SectionLinks`).
 
 ## URLs
 
 - Every absolute URL comes from `SITE_URL` in `apps/website/src/site.ts`. A custom domain is a one-line change there.
-- Pages end in `/` (`/guides/example-page/`): the build writes `guides/example-page/index.html`, and Cloudflare serves that folder at the slash URL and redirects the slashless one. Links and canonicals use the slash form. The router keeps whatever slash it's given (`trailingSlash: "preserve"`).
+- Pages end in `/` (`/articles/example-page/`): the build writes `articles/example-page/index.html`, and Cloudflare serves that folder at the slash URL and redirects the slashless one. Links and canonicals use the slash form. The router keeps whatever slash it's given (`trailingSlash: "preserve"`).
 
 ## Built files
 

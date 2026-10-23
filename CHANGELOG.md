@@ -2,7 +2,7 @@
 
 ## 2026-10-23
 
-- The website's header now links to Articles, next to Download for Mac, once the first article is up; the footer link is called Articles too. On the homepage the header's Download for Mac button stays out of the way until you scroll past the big Download button at the top, then fades in.
+- The website's header now links to Articles, next to Download for Mac, once the first article is up; the footer link is called Articles too, and articles live at `/articles/…`, in `apps/website/content/articles/`. On the homepage the header's Download for Mac button stays out of the way until you scroll past the big Download button at the top, then fades in.
 
 ## 2026-10-21
 

@@ -13,12 +13,16 @@ import { isPageType, pagePath, type PageType } from "./types";
 
 /**
  * How a page ends, matched to what its reader already knows: an essay hands
- * on to the next read, a guide offers the app, a doc the install line.
+ * on to the next read, an article offers the app, a doc the install line.
  */
 export const CTAS = ["read-next", "method", "try", "switch", "install"] as const;
 export type Cta = (typeof CTAS)[number];
 
-const DEFAULT_CTA: Record<PageType, Cta> = { guides: "try", docs: "install", essays: "read-next" };
+const DEFAULT_CTA: Record<PageType, Cta> = {
+  articles: "try",
+  docs: "install",
+  essays: "read-next",
+};
 /** These two hand the reader on to another page, so they need `next`. */
 const NEEDS_NEXT: readonly Cta[] = ["read-next", "method"];
 
@@ -45,7 +49,7 @@ export interface Page {
   /** The painting the page opens on; the type's own when the page names none. */
   painting?: PaintingId;
   cta: Cta;
-  /** The page `read-next` and `method` hand on to, as a path (`/guides/x/`). */
+  /** The page `read-next` and `method` hand on to, as a path (`/articles/x/`). */
   next?: string;
   html: string;
   /** From the `## Questions` section: each `###` heading and the text under it. */
@@ -73,7 +77,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** Link previews cut longer descriptions off mid-sentence. */
 const DESCRIPTION_MAX = 160;
 
-/** `content/guides/example-page.md` (or any path ending in `<type>/<slug>.md`) → page. */
+/** `content/articles/example-page.md` (or any path ending in `<type>/<slug>.md`) → page. */
 export function parsePage(file: string, raw: string, media: Media = {}): Page {
   // Annotated, so TypeScript narrows after each fail(…).
   const fail: (why: string) => never = (why) => {
@@ -120,7 +124,7 @@ export function parsePage(file: string, raw: string, media: Media = {}): Page {
   if (!isCta(cta)) fail(`cta "${cta}" must be one of ${CTAS.join(", ")}`);
   const next = optional("next");
   if (next !== undefined && !/^\/[a-z]+\/[a-z0-9-]+\/$/.test(next)) {
-    fail(`next "${next}" must be a page path like /guides/example-page/`);
+    fail(`next "${next}" must be a page path like /articles/example-page/`);
   }
   if (NEEDS_NEXT.includes(cta) && next === undefined) fail(`cta "${cta}" needs "next"`);
 

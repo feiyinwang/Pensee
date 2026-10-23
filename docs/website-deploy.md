@@ -37,7 +37,7 @@ vp run website#build
 
 ## Pages
 
-Besides the homepage, the site builds one page per markdown file in `apps/website/content/<type>/<slug>.md` (types: `guides`, `docs`, `essays`), an index per type that has pages, and `sitemap.xml`, `robots.txt` and `llms.txt` from the same list. Frontmatter, what the templates read from the markdown, drafts and the URL shape are in [SPECs/website-pages-spec.md](../SPECs/website-pages-spec.md).
+Besides the homepage, the site builds one page per markdown file in `apps/website/content/<type>/<slug>.md` (types: `articles`, `docs`, `essays`), an index per type that has pages, and `sitemap.xml`, `robots.txt` and `llms.txt` from the same list. Frontmatter, what the templates read from the markdown, drafts and the URL shape are in [SPECs/website-pages-spec.md](../SPECs/website-pages-spec.md).
 
 - **Add a page:** add the file, run `vp run website#build`, and check the prerender log lists `/<type>/<slug>/`. A missing field, a slug that isn't the file name, or a folder that isn't a type fails the build and names the file.
 - **A type's first page** also adds its index and its footer link.

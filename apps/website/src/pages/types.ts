@@ -4,7 +4,7 @@
  * here (SPECs/website-pages-spec.md).
  */
 export const PAGE_TYPES = {
-  guides: {
+  articles: {
     name: "Articles",
     summary: "Doing one thing in Pensée, start to finish.",
   },
@@ -26,7 +26,7 @@ export function isPageType(value: string): value is PageType {
   return Object.prototype.hasOwnProperty.call(PAGE_TYPES, value);
 }
 
-/** `/guides/`: indexes and pages end in a slash, the URL Cloudflare serves a folder's index.html at. */
+/** `/articles/`: indexes and pages end in a slash, the URL Cloudflare serves a folder's index.html at. */
 export function indexPath(type: PageType): string {
   return `/${type}/`;
 }

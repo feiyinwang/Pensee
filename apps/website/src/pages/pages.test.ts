@@ -4,7 +4,7 @@ import { buildLlms, buildRobots, buildSitemap } from "./feeds";
 import { parsePage, summarize } from "./parse";
 
 const ORIGIN = "https://pensee-website.zhhv5f4p77.workers.dev";
-const FILE = "../../content/guides/example-page.md";
+const FILE = "../../content/articles/example-page.md";
 const page = (fields: string, body = "Some words.") => `---\n${fields}\n---\n\n${body}\n`;
 const FIELDS = [
   "title: An example page",
@@ -17,9 +17,9 @@ describe("parsePage", () => {
   it("reads frontmatter and renders the body", () => {
     const parsed = parsePage(FILE, page(FIELDS, "## Hello\n\nWorld."));
     expect(parsed).toMatchObject({
-      type: "guides",
+      type: "articles",
       slug: "example-page",
-      path: "/guides/example-page/",
+      path: "/articles/example-page/",
       title: "An example page",
       updated: "2026-10-21",
       draft: false,
@@ -36,7 +36,7 @@ describe("parsePage", () => {
     ["a missing field", FILE, page(FIELDS.replace(/^title.*$/m, "")), /needs "title"/],
     [
       "a slug that isn't the file name",
-      "../../content/guides/other-page.md",
+      "../../content/articles/other-page.md",
       page(FIELDS),
       /match the file name/,
     ],
@@ -92,20 +92,20 @@ describe("parsePage", () => {
     ]);
   });
 
-  it("ends a guide with the app, an essay with the next read, unless the page says", () => {
+  it("ends an article with the app, an essay with the next read, unless the page says", () => {
     expect(parsePage(FILE, page(FIELDS)).cta).toBe("try");
     const essay = parsePage(
       "../../content/essays/example-page.md",
-      page(`${FIELDS}\nnext: /guides/other-page/`),
+      page(`${FIELDS}\nnext: /articles/other-page/`),
     );
-    expect(essay).toMatchObject({ cta: "read-next", next: "/guides/other-page/" });
+    expect(essay).toMatchObject({ cta: "read-next", next: "/articles/other-page/" });
     expect(parsePage(FILE, page(`${FIELDS}\ncta: install`)).cta).toBe("install");
   });
 
   it.each([
     ["an unknown closing", `${FIELDS}\ncta: buy-now`, /cta "buy-now"/],
     ["a closing that hands on with no next page", `${FIELDS}\ncta: method`, /needs "next"/],
-    ["a next that isn't a page path", `${FIELDS}\ncta: method\nnext: guides/x`, /page path/],
+    ["a next that isn't a page path", `${FIELDS}\ncta: method\nnext: articles/x`, /page path/],
     ["an unknown painting", `${FIELDS}\npainting: monet`, /painting "monet"/],
   ])("fails the build on %s", (_, fields, why) => {
     expect(() => parsePage(FILE, page(fields))).toThrow(why);
@@ -176,7 +176,13 @@ describe("feeds", () => {
 
   it("lists home, the indexes of types with pages, and every page, with absolute URLs", () => {
     const xml = buildSitemap(published);
-    for (const path of ["/", "/guides/", "/docs/", "/guides/example-page/", "/docs/second-page/"]) {
+    for (const path of [
+      "/",
+      "/articles/",
+      "/docs/",
+      "/articles/example-page/",
+      "/docs/second-page/",
+    ]) {
       expect(xml).toContain(`<loc>${ORIGIN}${path}</loc>`);
     }
     expect(xml).not.toContain("/essays/");
@@ -198,7 +204,7 @@ describe("feeds", () => {
     const llms = buildLlms(published);
     expect(llms).toMatch(/^# Pensée\n\n> /);
     expect(llms).toContain(
-      `## Articles\n\n- [An example page](${ORIGIN}/guides/example-page/): A page that exists only in this test.`,
+      `## Articles\n\n- [An example page](${ORIGIN}/articles/example-page/): A page that exists only in this test.`,
     );
     expect(llms).not.toContain("## Essays");
   });

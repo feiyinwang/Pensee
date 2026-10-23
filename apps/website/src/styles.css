@@ -675,7 +675,7 @@ button {
   color: var(--text);
 }
 
-/* ---------- pages: guides, docs, essays (SPECs/website-pages-spec.md) ---------- */
+/* ---------- pages: articles, docs, essays (SPECs/website-pages-spec.md) ---------- */
 .doc-main {
   max-width: 760px;
   margin: 0 auto;

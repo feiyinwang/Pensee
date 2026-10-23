@@ -6,7 +6,7 @@ export function getRouter() {
   return createRouter({
     routeTree,
     scrollRestoration: true,
-    // Pages are folders (`/guides/example-guide/index.html`), served at the slash URL: keep it.
+    // Pages are folders (`/articles/example-article/index.html`), served at the slash URL: keep it.
     trailingSlash: "preserve",
   });
 }

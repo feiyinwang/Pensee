@@ -7,7 +7,7 @@ export const SITE_URL = "https://pensee-website.zhhv5f4p77.workers.dev";
 
 export const SITE_NAME = "Pensée";
 
-/** `/guides/example-page/` → `https://…/guides/example-page/`. */
+/** `/articles/example-page/` → `https://…/articles/example-page/`. */
 export function absoluteUrl(path: string): string {
   return new URL(path, SITE_URL).toString();
 }

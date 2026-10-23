@@ -19,12 +19,12 @@ import { SiteFooter } from "./SiteFooter";
 
 /** A page that names no painting opens on its type's. */
 const TYPE_PAINTING: Record<PageType, PaintingId> = {
-  guides: "caravaggio",
+  articles: "caravaggio",
   docs: "antonello",
   essays: "fragonard",
 };
 
-export function GuidePage({ page }: { page: LoadedPage }) {
+export function ArticlePage({ page }: { page: LoadedPage }) {
   return <Article page={page} />;
 }
 
@@ -36,7 +36,7 @@ export function EssayPage({ page }: { page: LoadedPage }) {
   return <Article page={page} essay />;
 }
 
-/** `/guides/` and the others: every page of one type, newest first. */
+/** `/articles/` and the others: every page of one type, newest first. */
 export function PageIndex({ type, pages }: { type: PageType; pages: PageSummary[] }) {
   const { name, summary } = PAGE_TYPES[type];
   return (
@@ -112,7 +112,7 @@ function PageHero({ page, painting }: { page: LoadedPage; painting: PaintingData
 
 /**
  * How the page ends, by what its reader knows by now: an essay hands on to
- * the next read; a page about the problem hands on to the method; a guide
+ * the next read; a page about the problem hands on to the method; an article
  * offers the app to try it in; a page for someone choosing apps offers the
  * download and the install line; a doc, read by someone who has the app,
  * the install and update lines.
