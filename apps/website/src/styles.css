@@ -136,8 +136,7 @@ button {
 }
 
 .bar[data-dark] .lockup:focus-visible,
-.bar[data-dark] .bar-links a:focus-visible,
-.bar[data-dark] .btn:focus-visible {
+.bar[data-dark] .bar-links a:focus-visible {
   outline-color: #fff;
 }
 
@@ -148,9 +147,9 @@ button {
   margin-right: -0.34em;
 }
 
-/* The homepage hides the bar's Download while the hero's is on screen, and
+/* The homepage hides the bar's Download while the hero is under the bar, and
    then it takes no room: the section links sit at the right edge. Once the
-   hero's button scrolls under the bar, Download's column opens (0fr → 1fr, so
+   hero scrolls past, Download's column opens (0fr → 1fr, so
    it grows to the button's own width) and the links slide left to make room
    as the button comes in from the right. */
 .bar-end {
@@ -216,22 +215,6 @@ button {
 
 .bar-download .btn {
   margin-left: 24px;
-  transition:
-    background-color 200ms var(--ease-out),
-    color 200ms var(--ease-out),
-    scale 150ms var(--ease-out);
-}
-
-/* On the dark bar, Download takes the light tone, fading with the bar. */
-.bar[data-dark] .bar-download .btn {
-  background: var(--card);
-  color: var(--text);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .bar[data-dark] .bar-download .btn:hover {
-    background: #fff;
-  }
 }
 
 .bar-end[data-download="hidden"] .bar-download {

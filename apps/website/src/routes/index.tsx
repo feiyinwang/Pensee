@@ -30,11 +30,10 @@ const ROMAN = ["I", "II", "III", "IV"];
 
 /** One page, one action: Download for Mac (SPECs/website-homepage-spec.md). */
 function HomePage() {
-  const [heroActs, pastHero] = useScrolledPast<HTMLDivElement>();
-  const [heroEnd, pastHeroEnd] = useScrolledPast<HTMLDivElement>();
+  const [heroEnd, pastHero] = useScrolledPast<HTMLDivElement>();
   return (
     <div className="page">
-      <SiteBar onHome downloadShown={pastHero} dark={!pastHeroEnd} />
+      <SiteBar onHome downloadShown={pastHero} dark={!pastHero} />
 
       <main id="top">
         {/* The philosopher sits left of centre, so the words take the dark stair on the right. */}
@@ -45,7 +44,7 @@ function HomePage() {
             <div className="eyebrow">Pensée for Mac · version {VERSION}</div>
             <h1>{HEADLINE}</h1>
             <p className="stand">{INTRO}</p>
-            <div className="acts" ref={heroActs}>
+            <div className="acts">
               <DownloadButton size="lg" tone="light" beta />
               <a className="tlink" href="#room-think">
                 See what it does
@@ -57,7 +56,8 @@ function HomePage() {
             <Credit painting={PAINTINGS.rembrandt} /> · {PAINTINGS.rembrandt.at}
           </p>
         </section>
-        {/* The hero's bottom edge: the bar stays dark until it scrolls under it. */}
+        {/* The hero's bottom edge: the bar stays dark, without its Download,
+            until it scrolls under it. */}
         <div ref={heroEnd} aria-hidden="true" />
 
         {ROOMS.map((room, i) => (

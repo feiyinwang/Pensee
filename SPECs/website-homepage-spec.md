@@ -22,12 +22,13 @@ voice.
 
 - **Header.** The lockup on the left; on the right the section links (once a
   section has a page), then Download for Mac at the far right. On the homepage
-  the header's Download is hidden while the hero's own button is on screen,
-  and takes no room then, so the links sit at the right edge. Once the hero's
-  button has scrolled up under the header, Download's column opens (200ms
-  ease-out; 150ms back; none with reduced motion): the links slide left and
-  the button fades in on their right, so the page never shows two Download
-  buttons at once.
+  the header is almost black while the hero is under it, blending into the
+  painting, with light words and no Download: it takes no room then, so the
+  links sit at the right edge. Once the hero's bottom edge has scrolled up
+  under the header, the header turns cream (200ms ease-out) and Download's
+  column opens (200ms ease-out; 150ms back; none with reduced motion): the
+  links slide left and the button fades in on their right. The page never
+  shows two Download buttons at once.
 - **Look.** Old-fashioned, like the app's What's new card: public-domain
   paintings of people reading, writing and thinking, each credited (artist,
   title, year, museum). Bodoni Moda for display, the system sans for text, the

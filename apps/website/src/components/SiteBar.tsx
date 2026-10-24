@@ -8,8 +8,8 @@ import { SectionLinks } from "./SectionLinks";
  * The homepage passes `dark` while its hero painting is under the bar: the bar
  * is then almost black, blending into the painting, and turns cream once the
  * hero has scrolled past.
- * The homepage passes `downloadShown={false}` while its hero's own Download
- * button is on screen, so the page never shows two at once. Hidden, it takes
+ * The homepage also passes `downloadShown={false}` until the hero has scrolled
+ * past, so the page never shows two Download buttons at once. Hidden, it takes
  * no room, so the section links sit at the right edge until it comes in.
  */
 export function SiteBar({
