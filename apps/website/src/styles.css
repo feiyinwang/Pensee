@@ -100,11 +100,44 @@ button {
   box-shadow: 0 1px 0 var(--faint);
 }
 
+/* On the homepage, at the top, an almost-black layer covers the cream bar so
+   it blends into the hero painting's dark top edge. It fades out (opacity,
+   not a background-colour animation) once the page scrolls. */
+.bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #0b0b0b;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+
+.bar[data-on-painting]::after {
+  opacity: 1;
+}
+
 .lockup {
   display: flex;
   align-items: center;
   gap: 12px;
   text-decoration: none;
+  transition: color 200ms var(--ease-out);
+}
+
+/* On the dark bar the words turn light. */
+.bar[data-on-painting] .lockup {
+  color: #fff;
+}
+
+.bar[data-on-painting] .bar-links a {
+  color: rgb(255 255 255 / 78%);
+  transition-duration: 200ms;
+}
+
+.bar[data-on-painting] .lockup:focus-visible,
+.bar[data-on-painting] .bar-links a:focus-visible {
+  outline-color: #fff;
 }
 
 .wordmark {
@@ -148,6 +181,10 @@ button {
   .bar-links a:hover {
     color: var(--text);
   }
+
+  .bar[data-on-painting] .bar-links a:hover {
+    color: #fff;
+  }
 }
 
 /* Phones: the lockup, two links and Download need about 495px. What's new
@@ -189,6 +226,9 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bar::after,
+  .lockup,
+  .bar-links a,
   .bar-end,
   .bar-download,
   .bar-end[data-download="hidden"] .bar-download {
