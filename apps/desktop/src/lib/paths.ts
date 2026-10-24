@@ -214,6 +214,40 @@ export function getParentDir(path: string): string {
   return normalized.slice(0, lastSlash);
 }
 
+/** `to` expressed relative to directory `base` with `..` segments. */
+export function relativeTo(base: string, to: string): string {
+  const baseParts = base.split("/").filter(Boolean);
+  const toParts = to.split("/").filter(Boolean);
+  let shared = 0;
+  while (
+    shared < baseParts.length &&
+    shared < toParts.length &&
+    baseParts[shared] === toParts[shared]
+  ) {
+    shared++;
+  }
+  const ups = baseParts.slice(shared).map(() => "..");
+  return [...ups, ...toParts.slice(shared)].join("/");
+}
+
+/**
+ * The path an `![[...]]` embed of `absolutePath` should carry: workspace-relative
+ * when the file lives under the workspace, otherwise relative to the note, which
+ * is what the embed resolver probes. With neither, the absolute path.
+ */
+export function embedTargetFor(
+  absolutePath: string,
+  workspaceRoot: string | null | undefined,
+  notePath: string | null | undefined,
+): string {
+  const normalized = absolutePath.replace(/\\/g, "/");
+  if (workspaceRoot) {
+    const relative = getRelativePath(normalized, workspaceRoot);
+    if (relative !== normalized) return relative;
+  }
+  return notePath ? relativeTo(getParentDir(notePath), normalized) : normalized;
+}
+
 export function resolveImagePath(imageSrc: string, markdownDir: string): string {
   const normalizedSrc = normalizeMarkdownDestination(imageSrc);
   if (normalizedSrc.startsWith("http://") || normalizedSrc.startsWith("https://")) {

@@ -44,7 +44,8 @@ import {
 } from "@/lib/prosemark-core/main";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
 import { markdownFormatting } from "./markdown-formatting";
-import { formatMarkdownDestination } from "@/lib/paths";
+import { embedTargetFor, formatMarkdownDestination } from "@/lib/paths";
+import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as tauri from "@/lib/tauri";
 import { captureRenderedBand, reportBandEdit } from "./band-debug";
 import {
@@ -2551,7 +2552,7 @@ const stackNarrowRows = ViewPlugin.fromClass(
   },
 );
 
-/* --------------------------------------------- dropping image files onto it */
+/* ------------------------------------- dropping image and HTML files onto it */
 
 const IMAGE_EXTENSIONS = new Set([
   "png",
@@ -2570,8 +2571,30 @@ function extensionOf(path: string): string {
   return path.split(".").pop()?.toLowerCase() ?? "";
 }
 
+const HTML_EXTENSIONS = new Set(["html", "htm"]);
+
 function isImagePath(path: string): boolean {
   return IMAGE_EXTENSIONS.has(extensionOf(path));
+}
+
+function isHtmlPath(path: string): boolean {
+  return HTML_EXTENSIONS.has(extensionOf(path));
+}
+
+/** Files the editor takes from an OS drop: pictures and HTML pages. */
+function isDroppablePath(path: string): boolean {
+  return isImagePath(path) || isHtmlPath(path);
+}
+
+/** A dropped file as the column it lands as. A picture is copied next to the
+ *  note; an HTML page is embedded where it is (`![[page.html]]`, the same embed
+ *  `/html` inserts), because its relative `./style.css` and data files only
+ *  resolve beside the original. */
+async function columnForDroppedFile(notePath: string, path: string): Promise<Column | null> {
+  if (isHtmlPath(path)) {
+    return { md: `![[${embedTargetFor(path, getWorkspaceRoot(), notePath)}]]`, grow: 1 };
+  }
+  return importDroppedImage(notePath, path);
 }
 
 /** Copy a dropped file next to the note and hand back a column holding it.
@@ -2687,12 +2710,12 @@ function fileDropPlugin(getFilePath: () => string) {
         // lands even if channel A is silent on this platform.
         void listen<{ paths?: string[]; x?: number; y?: number }>("editor:file-drop", (event) => {
           const { paths = [], x = 0, y = 0 } = event.payload ?? {};
-          const images = paths.filter(isImagePath);
-          if (!images.length) return;
+          const files = paths.filter(isDroppablePath);
+          if (!files.length) return;
           this.trace("backend", "drop", { x, y });
           const point = this.point({ x, y });
           if (!this.inside(point.x, point.y)) return;
-          void this.commit(images, point.x, point.y);
+          void this.commit(files, point.x, point.y);
         })
           .then((unlisten) => {
             if (this.disposed) unlisten();
@@ -2761,7 +2784,7 @@ function fileDropPlugin(getFilePath: () => string) {
         const { x, y } = this.point(payload.position);
 
         if (payload.type === "enter" || payload.type === "drop") {
-          const seen = (payload.paths ?? []).filter(isImagePath);
+          const seen = (payload.paths ?? []).filter(isDroppablePath);
           if (seen.length) this.paths = seen;
         }
         if (!this.paths.length) return;
@@ -2810,7 +2833,7 @@ function fileDropPlugin(getFilePath: () => string) {
         if (!notePath) return;
         const columns: Column[] = [];
         for (const path of paths) {
-          const column = await importDroppedImage(notePath, path);
+          const column = await columnForDroppedFile(notePath, path);
           if (column) columns.push(column);
         }
         if (this.disposed || !columns.length || !view.dom.isConnected) return;

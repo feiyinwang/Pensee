@@ -28,7 +28,7 @@ import { serializeColumns } from "./columns-model";
 import { emptyFence } from "./board/board-model";
 import { createBoardFile, openBoardFile } from "./board/board-file-session";
 import * as tauri from "@/lib/tauri";
-import { formatMarkdownDestination, getParentDir, getRelativePath } from "@/lib/paths";
+import { embedTargetFor, formatMarkdownDestination } from "@/lib/paths";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as editorApi from "@/hooks/editor-api";
 import "./slash-menu.css";
@@ -162,7 +162,7 @@ function insertHtmlEmbed(view: EditorView, from: number, to: number): void {
     .pickFile({ name: "HTML", extensions: ["html", "htm"] })
     .then((picked) => {
       if (!picked) return;
-      const target = embedTargetFor(picked);
+      const target = embedTargetFor(picked, getWorkspaceRoot(), editorApi.getActiveFilePath());
       const at = view.state.selection.main.head;
       const insert = `![[${target}]]`;
       view.dispatch({
@@ -175,33 +175,6 @@ function insertHtmlEmbed(view: EditorView, from: number, to: number): void {
     .catch((error) => {
       console.error("[editor] Failed to pick HTML file:", error);
     });
-}
-
-function embedTargetFor(absolutePath: string): string {
-  const root = getWorkspaceRoot();
-  const normalized = absolutePath.replace(/\\/g, "/");
-  if (root) {
-    const relative = getRelativePath(normalized, root);
-    if (relative !== normalized) return relative;
-  }
-  const note = editorApi.getActiveFilePath();
-  return note ? relativeTo(getParentDir(note), normalized) : normalized;
-}
-
-/** `to` expressed relative to directory `base` with `..` segments. */
-function relativeTo(base: string, to: string): string {
-  const baseParts = base.split("/").filter(Boolean);
-  const toParts = to.split("/").filter(Boolean);
-  let shared = 0;
-  while (
-    shared < baseParts.length &&
-    shared < toParts.length &&
-    baseParts[shared] === toParts[shared]
-  ) {
-    shared++;
-  }
-  const ups = baseParts.slice(shared).map(() => "..");
-  return [...ups, ...toParts.slice(shared)].join("/");
 }
 
 /* ----------------------------------------------------------------- icons */

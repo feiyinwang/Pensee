@@ -4,6 +4,7 @@
 
 - A new project now starts empty. If your vault has a Templater project template, a project made in Pensée used to come with its headings, Dataview queries and properties, shown as raw code. Now it holds only its name and status, whether you add it from Projects or with **Add to Projects** in a note. It still goes in your projects folder.
 - What's new now only comes with an update to Pensée. The card used to read the changelog online, so it showed changes to the website, and changes not out yet, while your app stayed the same. Now it shows what changed in the version you have, once, after you update. If you skipped a few updates, it shows every day since you last looked in one card, titled with the days it covers ("October 16–18"). **Read all** opens a new What's new page on Pensée's website, at the day the card showed: every change, newest first, each day beside the painting the card gave it.
+- You can drop an HTML file into a note. Drag a `.html` page from Finder onto the writing area and it lands where you let go as an embed (`![[chart.html]]`), framed and running, the same as picking it with `/html`. Before, only pictures could be dropped, and an HTML file did nothing. The file stays where it is, so its own styles and data still load; a file under your workspace is linked from the workspace, one from elsewhere relative to the note.
 
 ## 2026-10-21
 

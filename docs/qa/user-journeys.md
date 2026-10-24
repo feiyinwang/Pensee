@@ -206,7 +206,7 @@ notes and edited in either place.
 **Feature:** Images, videos and HTML files embed inline; tables render and edit
 in place; LaTeX math and Mermaid diagrams render.
 **Spec:** SPECs/obsidian-image-embed-spec.md, SPECs/table-in-place-cell-editing-spec.md, SPECs/paste-tabular-data-as-table-spec.md, SPECs/latex-math-spec.md, SPECs/mermaid-canvas-widget-spec.md, SPECs/html-file-embed-spec.md
-**Code:** `src/components/editor-area/` (image-src-resolver.ts, table-decorations.ts, mermaid-_.ts, math-_.ts, html-\*.ts, video-embed-widget.ts), `src-tauri/src/commands/images.rs`
+**Code:** `src/components/editor-area/` (image-src-resolver.ts, table-decorations.ts, mermaid-_.ts, math-_.ts, html-\*.ts, video-embed-widget.ts, columns-decorations.ts (fileDropPlugin)), `src/lib/paths.ts` (embedTargetFor), `src-tauri/src/commands/images.rs`
 
 | ID     | Journey                                   | Expected                                                 | Check                   |
 | ------ | ----------------------------------------- | -------------------------------------------------------- | ----------------------- |
@@ -216,6 +216,7 @@ in place; LaTeX math and Mermaid diagrams render.
 | MED-04 | Paste tab-separated rows                  | A markdown table is inserted                             | manual                  |
 | MED-05 | `$x^2$` and a `$$` block                  | Both render as math                                      | legacy: latex-math      |
 | MED-06 | A ```mermaid block                        | Renders in a canvas with pan, zoom, reset, source toggle | manual                  |
+| MED-07 | Drop an `.html` file from Finder onto a note | `![[page.html]]` lands where you let go (workspace-relative, or note-relative from outside) and the page shows framed; the file is not copied | you |
 
 ## Calendar panel — CAL
 

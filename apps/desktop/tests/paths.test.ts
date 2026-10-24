@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
+  embedTargetFor,
   formatMarkdownDestination,
   getFileExtension,
   getFileName,
@@ -8,6 +9,7 @@ import {
   normalizeLocalMarkdownDestination,
   normalizeMarkdownDestination,
   normalizePath,
+  relativeTo,
   resolveLinkTarget,
 } from "../src/lib/paths";
 
@@ -353,5 +355,38 @@ describe("resolveLinkTarget", () => {
         path: "/vault/docs/guide",
       });
     });
+  });
+});
+
+describe("embedTargetFor", () => {
+  test("a file under the workspace is workspace-relative", () => {
+    expect(embedTargetFor("/vault/notes/assets/chart.html", "/vault", "/vault/notes/a.md")).toBe(
+      "notes/assets/chart.html",
+    );
+  });
+
+  test("a file outside the workspace is relative to the note", () => {
+    expect(
+      embedTargetFor(
+        "/Users/me/Desktop/chart.html",
+        "/Users/me/vault",
+        "/Users/me/vault/notes/a.md",
+      ),
+    ).toBe("../../Desktop/chart.html");
+  });
+
+  test("no workspace (compact window) is relative to the note", () => {
+    expect(embedTargetFor("/docs/demo/page.html", null, "/docs/notes/a.md")).toBe(
+      "../demo/page.html",
+    );
+  });
+
+  test("no workspace and no note keeps the absolute path", () => {
+    expect(embedTargetFor("/docs/page.html", null, null)).toBe("/docs/page.html");
+  });
+
+  test("relativeTo walks up to the shared directory", () => {
+    expect(relativeTo("/a/b/c", "/a/x/y.html")).toBe("../../x/y.html");
+    expect(relativeTo("/a/b", "/a/b/y.html")).toBe("y.html");
   });
 });
