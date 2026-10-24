@@ -387,6 +387,10 @@
   --shadow-drag-curl: var(--shadow-paper-curl);
   --shadow-swatch-knob: var(--shadow-knob);
   --shadow-swatch-ring: var(--shadow-knob-ring);
+  /* A 1px line down the left edge, drawn as a shadow so it takes no width:
+     the line the "On this page" outline rows hang off. data-theme sits on
+     :root, so the colour follows the theme. */
+  --shadow-outline-rail: inset 1px 0 0 var(--color-border-default);
 }
 
 [data-theme="light"] {
