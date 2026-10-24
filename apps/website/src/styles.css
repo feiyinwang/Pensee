@@ -85,19 +85,26 @@ button {
 }
 
 /* ---------- header ---------- */
+/* The bar floats: a rounded card held 12px off the top and sides, so the
+   page shows around it as it scrolls under. 12px + 56px puts its bottom at
+   68px, which useScrolledPast's BAR_BOTTOM and the scroll margins follow. */
 .bar {
   position: sticky;
-  top: 0;
+  top: 12px;
   z-index: 10;
   height: 56px;
-  padding: 0 28px;
+  margin: 12px 16px 0;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(244, 242, 238, 0.9);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 1px 0 var(--faint);
+  border-radius: 16px;
+  background: rgba(251, 250, 248, 0.82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 0 0 1px var(--faint),
+    0 8px 24px -12px rgba(15, 14, 13, 0.18);
 }
 
 /* While the homepage's hero is under the bar, an almost-black layer covers
@@ -108,6 +115,7 @@ button {
   position: absolute;
   inset: 0;
   z-index: -1;
+  border-radius: inherit;
   background: #0b0b0b;
   opacity: 0;
   transition: opacity 200ms var(--ease-out);
@@ -187,9 +195,10 @@ button {
   }
 }
 
-/* Phones: the lockup, two links and Download need about 495px. What's new
-   steps out of the bar there; the footer still links it. */
-@media (max-width: 519px) {
+/* Phones: the lockup, two links and Download need about 495px, plus the
+   bar's 16px of margin. What's new steps out of the bar there; the footer
+   still links it. */
+@media (max-width: 535px) {
   .bar-whats-new {
     display: none;
   }
@@ -488,8 +497,11 @@ button {
   text-wrap: pretty;
 }
 
+/* The hero slides up under the floating bar, so the painting shows around it. */
 .hero {
   align-items: center;
+  margin-top: -68px;
+  min-height: 100svh;
 }
 
 .hero .over {
@@ -1376,7 +1388,13 @@ button {
 
 @media (max-width: 640px) {
   .bar {
+    margin: 8px 8px 0;
     padding: 0 16px;
+    top: 8px;
+  }
+
+  .hero {
+    margin-top: -64px;
   }
 
   .doc-main {
@@ -2183,7 +2201,7 @@ html:has(.changelog) {
   margin-top: 56px;
   padding-top: 40px;
   border-top: 1px solid var(--faint);
-  scroll-margin-top: 56px;
+  scroll-margin-top: 80px;
 }
 
 .change-month-head {

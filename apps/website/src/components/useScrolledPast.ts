@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-/** The sticky bar's height: an element under it counts as scrolled past. */
-const BAR_HEIGHT = 56;
+/** The floating bar's bottom edge (12px inset + 56px tall): an element above
+    it counts as scrolled past. */
+const BAR_BOTTOM = 68;
 
 /**
  * Whether the element has scrolled up out of view, under the sticky bar.
@@ -17,9 +18,9 @@ export function useScrolledPast<T extends Element>() {
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setPast(!entry.isIntersecting && entry.boundingClientRect.bottom <= BAR_HEIGHT);
+        setPast(!entry.isIntersecting && entry.boundingClientRect.bottom <= BAR_BOTTOM);
       },
-      { rootMargin: `-${BAR_HEIGHT}px 0px 0px 0px` },
+      { rootMargin: `-${BAR_BOTTOM}px 0px 0px 0px` },
     );
     observer.observe(el);
     return () => observer.disconnect();

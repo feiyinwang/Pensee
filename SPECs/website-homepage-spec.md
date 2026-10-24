@@ -20,7 +20,10 @@ voice.
 
 ## Gallery, as built
 
-- **Header.** The lockup on the left; on the right the section links (once a
+- **Header.** A floating bar: a rounded card (16px corners) held 12px off the
+  top and sides (8px on phones), frosted cream, with the page showing around
+  it; the homepage hero slides up under it, so the painting frames it. The
+  lockup on the left; on the right the section links (once a
   section has a page), then Download for Mac at the far right. On the homepage
   the header is almost black while the hero is under it, blending into the
   painting, with light words and no Download: it takes no room then, so the
