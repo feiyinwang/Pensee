@@ -14,13 +14,13 @@ paragraphs). Ulysses doesn't publish its defaults, so every value is a ratio to
 the body font size, read off the pixels. The body size comes from SF Pro's cap
 height (0.705em) and x-height, which give 35.5–36.6px in the Mac shot.
 
-| Measure                                  | Ulysses           | Pensée before | Pensée now |
-| ---------------------------------------- | ----------------- | ------------- | ---------- |
-| Line pitch                               | 1.88em            | 1.7em         | 1.9em      |
-| Paragraph → next paragraph, baselines    | ≈3.93em (2.1 pitches) | 2.7em     | 3.9em      |
-| Heading → first body line, baselines     | 4.07em            | 2.91em        | 4.13em     |
-| Column width                             | 36–37.7em         | 37.8em        | 36.7em     |
-| Space above the first line               | ≈4.9em            | ≈5.8em        | unchanged  |
+| Measure                               | Ulysses               | Pensée before | Pensée now |
+| ------------------------------------- | --------------------- | ------------- | ---------- |
+| Line pitch                            | 1.88em                | 1.7em         | 1.9em      |
+| Paragraph → next paragraph, baselines | ≈3.93em (2.1 pitches) | 2.7em         | 3.9em      |
+| Heading → first body line, baselines  | 4.07em                | 2.91em        | 4.13em     |
+| Column width                          | 36–37.7em             | 37.8em        | 36.7em     |
+| Space above the first line            | ≈4.9em                | ≈5.8em        | unchanged  |
 
 The paragraph figure is measured twice and the two agree: on the iPad, where
 paragraphs follow each other (2.04 and 2.15 pitches), and on the Mac, from the

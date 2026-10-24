@@ -18,7 +18,7 @@ wrapped lines and AI-ink runs; **Guides** was picked.
   item (else the caret's item, while the editor has focus) is
   `--color-text-faint`: the line in that item's own bullet column, down its
   subtree. An item with no children has no guide, so nothing darkens.
-  (First shipped darkening the guide the item hangs *on*, one column to its
+  (First shipped darkening the guide the item hangs _on_, one column to its
   left; corrected the same day: it read as a different level.) The change is a colour fade on `--motion-hover` with
   `--ease-out`; nothing travels. Instant under reduced motion.
 - Rejected:

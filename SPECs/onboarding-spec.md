@@ -60,6 +60,7 @@ back on screens 1–2.
    - **Start a new folder** (`~/Documents/Pensée`), as quiet text.
 
    An Obsidian vault opens as it is.
+
 2. **Which AI should Pensée use?** Under it: _It runs on the plan you already
    have. Only the lines you ask about are sent._
    - Only CLIs found on this Mac get a button. A signed-in one reads
@@ -78,12 +79,12 @@ back on screens 1–2.
    is written into the vault. The writer's own sources come in later, from
    the Library.
 
-   | Sample | Capture move | Then ⌘. | Result |
-   | --- | --- | --- | --- |
-   | **Huberman on dopamine** (YouTube: Huberman Lab #39, "Controlling Your Dopamine For Motivation, Focus & Satisfaction", opened at Tool 7, 1:38) | A click on the empty first line and Pensée types the sample's line into it (_Rewarding yourself after studying can make studying feel worse._). The guide then says _Now ⌘P pins it to <time>_, so the writer only clicks and presses ⌘P. Typing over it stops the auto-write. After that, ↵ adds a line, ↑ ↓ or a click moves between them, and ⌘P pins the line you're on. Chapters show beside the player | `@` Check | For and Against, each with a real paper pill (Lepper 1973; Cameron 1994); _Your call_ line |
-   | **Atul Gawande on writing** (How I Write with David Perell, "How to Use Writing to Improve Your Thinking") | Same: a click writes _Why do most learning tools fail?_, then ⌘P pins it to the episode's time. ⌘. runs on whichever line you're on | `!` Answer | Sealed until the writer's take; then **Combine into one list `Tab`** |
-   | **Skip the Line** (James Altucher, "Idea Calculus") | Highlight the line about idea sex: select it, click it, or press H. It lands as a bullet | `[[` Connect | Echoes from other notes (Example, Supports, Another angle) |
-   | Just write | A sample question | `!` Answer | Same as the podcast |
+   | Sample                                                                                                                                         | Capture move                                                                                                                                                                                                                                                                                                                                                                                                 | Then ⌘.      | Result                                                                                     |
+   | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------ |
+   | **Huberman on dopamine** (YouTube: Huberman Lab #39, "Controlling Your Dopamine For Motivation, Focus & Satisfaction", opened at Tool 7, 1:38) | A click on the empty first line and Pensée types the sample's line into it (_Rewarding yourself after studying can make studying feel worse._). The guide then says _Now ⌘P pins it to <time>_, so the writer only clicks and presses ⌘P. Typing over it stops the auto-write. After that, ↵ adds a line, ↑ ↓ or a click moves between them, and ⌘P pins the line you're on. Chapters show beside the player | `@` Check    | For and Against, each with a real paper pill (Lepper 1973; Cameron 1994); _Your call_ line |
+   | **Atul Gawande on writing** (How I Write with David Perell, "How to Use Writing to Improve Your Thinking")                                     | Same: a click writes _Why do most learning tools fail?_, then ⌘P pins it to the episode's time. ⌘. runs on whichever line you're on                                                                                                                                                                                                                                                                          | `!` Answer   | Sealed until the writer's take; then **Combine into one list `Tab`**                       |
+   | **Skip the Line** (James Altucher, "Idea Calculus")                                                                                            | Highlight the line about idea sex: select it, click it, or press H. It lands as a bullet                                                                                                                                                                                                                                                                                                                     | `[[` Connect | Echoes from other notes (Example, Supports, Another angle)                                 |
+   | Just write                                                                                                                                     | A sample question                                                                                                                                                                                                                                                                                                                                                                                            | `!` Answer   | Same as the podcast                                                                        |
 
    The samples are real:
    - **YouTube:** the Huberman Lab video plays in the note through YouTube's
@@ -100,13 +101,13 @@ back on screens 1–2.
    Phosphor regular. The rest of the app uses lucide: decide which set wins
    before building.
 
-
    A guide pill at the bottom gives one instruction at a time, with its keys,
    and counts the steps (_1 of 3_). Its only exit during the loop is a quiet
    **Skip** text button. When the loop is done it says what just happened
    (_That's Pensée: your take first, then its answer._) and offers
    **Continue ↵**. That leads to the next screen; it never leaves the flow.
    With no AI connected, the loop runs as a preview, and the guide says so.
+
 4. **There's more when you need it.** A features carousel, laid out like
    Arc's carousel (uiarc.dev/components/carousel). One slide sits in the
    centre, with its neighbours peeking in smaller and dimmer. Under it, the
@@ -145,9 +146,9 @@ back on screens 1–2.
      fast, then ⌘A, ⌘ . # and ↵ turn them into an outline in your words.
      ↵ keeps it.
    - **Read a book beside its note** (⌘ L): the Library opens with real
-     covers (*The Creative Act*, *How to Take Smart Notes*, *Bird by Bird*,
-     *The Elements of Style*, *Building a Second Brain*, *Atomic Habits*).
-     Opening *The Elements of Style* puts its page in one column and its note
+     covers (_The Creative Act_, _How to Take Smart Notes_, _Bird by Bird_,
+     _The Elements of Style_, _Building a Second Brain_, _Atomic Habits_).
+     Opening _The Elements of Style_ puts its page in one column and its note
      in the other. Dragging across "Vigorous writing is concise." shows the
      reader's pill, **Highlight · Define**. Highlight marks the passage, and
      the bullet lands in the note with a pin at its end. Hovering the pin
@@ -188,11 +189,13 @@ back on screens 1–2.
 
   All three put several decisions on one screen and explained the pen
   rather than letting the writer use it. The user: "not so elegant".
+
 - **Round 2** (2026-10-16):
   - **Sentence**: one Bodoni sentence with inline pickers on cream.
   - **Practice**: setup chips in a banner over the blurred app.
 
   Sequence won: "the sequence one is great".
+
 - **⌘. as the whole first moment.** It showed the writing half of the
   product and not the bringing-in half, which undersold it. It now ends each
   medium's loop instead of standing alone.

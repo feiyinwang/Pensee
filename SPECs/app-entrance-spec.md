@@ -40,7 +40,7 @@ What ships:
   (`--ease-enter-write`, `cubic-bezier(0.65, 0, 0.35, 1)`), a pen's pace on
   something already on screen; the reveal is the app entering, so it eases
   out (`--ease-enter-reveal`, ease-out quart `cubic-bezier(0.165, 0.84, 0.44,
-  1)`) and runs faster than the writing.
+1)`) and runs faster than the writing.
 - **Skip on input.** A pointerdown or keydown anywhere during the splash
   finishes the tile and the writing and starts the reveal at once. The reveal
   still plays (280ms), so the app doesn't cut in. The click or key reaches the
@@ -61,14 +61,14 @@ What ships:
 
 ### The animation review (emil-animations)
 
-| Before (round 3 as first built) | After | Why |
-| --- | --- | --- |
-| 1.72s from launch to settled | 1.28s | The app opens several times a day; the holds were waiting, not information |
-| Tile in 280ms, ¶ writing from 200ms | 240ms, from 160ms | Modal-sized enters stay under 300ms |
-| Write 560ms, wordmark at 420ms | 480ms, at 320ms | Still read as handwriting, with less dead time between the two |
-| Hold 360ms | 200ms | Long enough to register the mark |
-| Reveal 380ms on the in-out writing curve | 280ms on ease-out quart | The reveal is an enter: ease-out, and faster than the writing |
-| Plays to the end whatever you do | A click or key skips to the reveal | Someone who reaches for the app has already decided |
+| Before (round 3 as first built)          | After                              | Why                                                                        |
+| ---------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| 1.72s from launch to settled             | 1.28s                              | The app opens several times a day; the holds were waiting, not information |
+| Tile in 280ms, ¶ writing from 200ms      | 240ms, from 160ms                  | Modal-sized enters stay under 300ms                                        |
+| Write 560ms, wordmark at 420ms           | 480ms, at 320ms                    | Still read as handwriting, with less dead time between the two             |
+| Hold 360ms                               | 200ms                              | Long enough to register the mark                                           |
+| Reveal 380ms on the in-out writing curve | 280ms on ease-out quart            | The reveal is an enter: ease-out, and faster than the writing              |
+| Plays to the end whatever you do         | A click or key skips to the reveal | Someone who reaches for the app has already decided                        |
 
 Checked and unchanged: only opacity, transform (`scale`) and `clip-path` on a
 small element animate; nothing enters from `scale(0)` (96%); the blur is

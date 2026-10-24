@@ -31,17 +31,17 @@ primaries, so each step lands on a measured value. A custom Background or
 Foreground still moves the ground and the title text; the steps in between
 stay. WCAG ratios against the ground / the raised surface:
 
-| Step           | Token(s)                                | Light     | ratio         | Dark      | ratio        |
-| -------------- | --------------------------------------- | --------- | ------------- | --------- | ------------ |
-| Text           | `--text-primary`                        | `#0F0E0D` | 18.5 / 17.1   | `#FAFAF9` | 18.5 / 16.5  |
-| Secondary      | `--text-secondary`, editor body copy    | `#33312C` | 12.4 / 11.5   | `#CCCAC6` | 11.8 / 10.5  |
-| Muted          | `--text-muted`, unchecked task box      | `#706D66` | 4.9 / 4.6     | `#8F8B85` | 5.7 / 5.1    |
-| Faint          | `--text-icon-muted`, `--text-faint`     | `#8F8B85` | 3.2 / 3.0     | `#706D66` | 3.7 / 3.3    |
-| Control edge   | `--color-border-strong`                 | `#8F8B85` | 3.2           | `#706D66` | 3.7          |
-| Hairline       | `--border-color`, `--line-subtle`       | `#CCCAC6` | decorative    | `#33312C` | decorative   |
-| Raised surface | `--color-bg-raised`: code, tags         | `#F2F1F0` |               | `#1C1B19` |              |
-| Card           | `--color-bg-canvas`: editor, board      | `#FAFAF9` |               | `#161513` |              |
-| Chrome         | `--color-bg-app`: window, sidebar       | `#F2F1F0` |               | `#0F0E0D` |              |
+| Step           | Token(s)                             | Light     | ratio       | Dark      | ratio       |
+| -------------- | ------------------------------------ | --------- | ----------- | --------- | ----------- |
+| Text           | `--text-primary`                     | `#0F0E0D` | 18.5 / 17.1 | `#FAFAF9` | 18.5 / 16.5 |
+| Secondary      | `--text-secondary`, editor body copy | `#33312C` | 12.4 / 11.5 | `#CCCAC6` | 11.8 / 10.5 |
+| Muted          | `--text-muted`, unchecked task box   | `#706D66` | 4.9 / 4.6   | `#8F8B85` | 5.7 / 5.1   |
+| Faint          | `--text-icon-muted`, `--text-faint`  | `#8F8B85` | 3.2 / 3.0   | `#706D66` | 3.7 / 3.3   |
+| Control edge   | `--color-border-strong`              | `#8F8B85` | 3.2         | `#706D66` | 3.7         |
+| Hairline       | `--border-color`, `--line-subtle`    | `#CCCAC6` | decorative  | `#33312C` | decorative  |
+| Raised surface | `--color-bg-raised`: code, tags      | `#F2F1F0` |             | `#1C1B19` |             |
+| Card           | `--color-bg-canvas`: editor, board   | `#FAFAF9` |             | `#161513` |             |
+| Chrome         | `--color-bg-app`: window, sidebar    | `#F2F1F0` |             | `#0F0E0D` |             |
 
 Faint is for icons and placeholders (non-text, 3:1). Hairlines divide; they are
 never the only edge of a control, which uses `--color-border-strong` or a
@@ -57,14 +57,14 @@ Fills that must read on both the chrome and a card (hover, selected, inputs,
 setting, whose description now says so. Hairlines and text no longer follow
 Contrast.
 
-| Surface      | Now                                                    |
-| ------------ | ------------------------------------------------------ |
-| Selection    | the accent's pastel (see Accent)                       |
-| Focus ring   | 2px accent; `--focus-border` is the accent             |
-| Checked task | accent fill, white tick                                |
-| Toggles      | accent track, white knob                               |
+| Surface      | Now                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| Selection    | the accent's pastel (see Accent)                                                            |
+| Focus ring   | 2px accent; `--focus-border` is the accent                                                  |
+| Checked task | accent fill, white tick                                                                     |
+| Toggles      | accent track, white knob                                                                    |
 | Code         | names in the foreground, strings secondary, comments muted italic, on `#F2F1F0` / `#1C1B19` |
-| Error text   | `#B23A2E` light (5.7:1), `#E57B6C` dark (6.8:1)        |
+| Error text   | `#B23A2E` light (5.7:1), `#E57B6C` dark (6.8:1)                                             |
 
 ## Dots
 
@@ -114,14 +114,14 @@ gray. The setting stores the hue's name; `cssFormat: "hue"` writes
 `var(--hue-<name>)` into `--accent-hue` (`lib/theme.ts`). It is the same in
 both modes.
 
-| Where                              | How                                               |
-| ---------------------------------- | ------------------------------------------------- |
-| Selected text (editor)             | the accent's pastel (`--color-selection`)         |
-| Keyboard focus ring                | 2px accent (`--color-focus`, also Arc's ring)     |
-| Checked task                       | accent box, white tick                            |
-| Settings switches                  | accent track, white knob                          |
-| Calendar's selected day            | the accent's pastel, number in the text colour (white on the accent is under 4.5:1) |
-| ¶ after a selected paragraph       | the accent                                        |
+| Where                        | How                                                                                 |
+| ---------------------------- | ----------------------------------------------------------------------------------- |
+| Selected text (editor)       | the accent's pastel (`--color-selection`)                                           |
+| Keyboard focus ring          | 2px accent (`--color-focus`, also Arc's ring)                                       |
+| Checked task                 | accent box, white tick                                                              |
+| Settings switches            | accent track, white knob                                                            |
+| Calendar's selected day      | the accent's pastel, number in the text colour (white on the accent is under 4.5:1) |
+| ¶ after a selected paragraph | the accent                                                                          |
 
 Links, filled buttons, titles, the drag count badge and board selection stay
 in the foreground. Boards keep their `accent` key as ink.

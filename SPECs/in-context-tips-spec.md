@@ -27,6 +27,7 @@ Decided from the prototype `apps/desktop/proto/in-context-tips/` (2026-10-19):
     under the calendar grid).
 
   It is a decoration and never written to the file.
+
 - **The keys go in the guide pill.** The pill is the practice loop's bottom
   pill (`.onb-guide`). Here it holds only the keys for the move, the move's
   name, and **Not now**: `⌘` `S` _Pin to 1:39:16_ · Not now. Each key presses
@@ -66,23 +67,23 @@ State lives in `preferences.json`: `tips.enabled`, and per tip
 The registry, in order. **Done when** means what the tip reads from the app's
 real state.
 
-| ID | Shows when | Line (where) | Pill keys | Done when |
-| --- | --- | --- | --- | --- |
-| `library-empty` | Library opens with no items | _Try one: The Elements of Style._ under the type tabs, with **Add it** as a quiet link (imports onboarding's sample book) | — | a book is added |
-| `library-open` | Library opens with books, no book read yet | _Open a book: it reads beside its note._ under the shelf | — | the reader opens |
-| `book-highlight` | A book opens in the reader | _Select a line in the book. Highlighted, it lands here._ on the note's empty last line | `H` _Highlight the selected line_ | `^bk-` in the note |
-| `video-pin` | A YouTube note opens | _What stuck? Write it here and pin it to this moment._ on the empty line under the player | `⌘` `S` _Play_ while paused, _Pin to <time>_ while playing | `^yt-` in the note |
-| `podcast-pin` | A podcast note opens | same as `video-pin` | same as `video-pin` | `^yt-` in the note |
-| `pen-answer` | The caret leaves a line ending in `?` | _Guess first, then see Pensée's answer._ after the line | `⌘` `.` `!` _Answer_ | `^ai-s-` |
-| `pen-check` | `pen-answer` is done, and the caret leaves a bullet with 6+ words that doesn't end in `?` | _Is it true? Pensée finds papers for and against._ after the line | `⌘` `.` `@` _Check_ | `^ai-p-` or `^ai-n-` |
-| `pen-connect` | The vault has 20+ notes, and the caret leaves a line with 6+ words | _Written about this before? Pensée finds your notes on it._ after the line | `⌘` `.` `[` _Connect_ | `^ai-e-` |
-| `pen-organize` | 3+ lines are selected | _Sort these into topics, in your words._ after the selection | `⌘` `.` `#` _Organize_ | `^ai-g-` |
-| `tabs-pinch` | 3+ tabs are open | _See them side by side._ in the tab strip's empty space | _Pinch in_ | columns mode turns on |
-| `board-dock` | A board opens | _Drag a card near another to join them._ in the canvas's empty space | — | a card docks |
-| `go-key` | A Space is clicked in the sidebar for the 3rd time | _From anywhere_ at the row's right end | `⌘` `G` `L` _Go to Library_ (the row's own letter) | a `⌘G` go is used |
-| `projects-move` | Projects opens with cards | _Drag a card to change its status._ under the column headers | — | a card's `Status:` is written |
-| `projects-empty` | Projects opens with no cards | _Select plans in any note, right-click, Add to Projects._ in the empty board | — | a project is created |
-| `calendar-period` | The calendar panel opens | _Click a week, month or year for its note._ under the grid | — | a period note opens |
+| ID                | Shows when                                                                                | Line (where)                                                                                                              | Pill keys                                                  | Done when                     |
+| ----------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------- |
+| `library-empty`   | Library opens with no items                                                               | _Try one: The Elements of Style._ under the type tabs, with **Add it** as a quiet link (imports onboarding's sample book) | —                                                          | a book is added               |
+| `library-open`    | Library opens with books, no book read yet                                                | _Open a book: it reads beside its note._ under the shelf                                                                  | —                                                          | the reader opens              |
+| `book-highlight`  | A book opens in the reader                                                                | _Select a line in the book. Highlighted, it lands here._ on the note's empty last line                                    | `H` _Highlight the selected line_                          | `^bk-` in the note            |
+| `video-pin`       | A YouTube note opens                                                                      | _What stuck? Write it here and pin it to this moment._ on the empty line under the player                                 | `⌘` `S` _Play_ while paused, _Pin to <time>_ while playing | `^yt-` in the note            |
+| `podcast-pin`     | A podcast note opens                                                                      | same as `video-pin`                                                                                                       | same as `video-pin`                                        | `^yt-` in the note            |
+| `pen-answer`      | The caret leaves a line ending in `?`                                                     | _Guess first, then see Pensée's answer._ after the line                                                                   | `⌘` `.` `!` _Answer_                                       | `^ai-s-`                      |
+| `pen-check`       | `pen-answer` is done, and the caret leaves a bullet with 6+ words that doesn't end in `?` | _Is it true? Pensée finds papers for and against._ after the line                                                         | `⌘` `.` `@` _Check_                                        | `^ai-p-` or `^ai-n-`          |
+| `pen-connect`     | The vault has 20+ notes, and the caret leaves a line with 6+ words                        | _Written about this before? Pensée finds your notes on it._ after the line                                                | `⌘` `.` `[` _Connect_                                      | `^ai-e-`                      |
+| `pen-organize`    | 3+ lines are selected                                                                     | _Sort these into topics, in your words._ after the selection                                                              | `⌘` `.` `#` _Organize_                                     | `^ai-g-`                      |
+| `tabs-pinch`      | 3+ tabs are open                                                                          | _See them side by side._ in the tab strip's empty space                                                                   | _Pinch in_                                                 | columns mode turns on         |
+| `board-dock`      | A board opens                                                                             | _Drag a card near another to join them._ in the canvas's empty space                                                      | —                                                          | a card docks                  |
+| `go-key`          | A Space is clicked in the sidebar for the 3rd time                                        | _From anywhere_ at the row's right end                                                                                    | `⌘` `G` `L` _Go to Library_ (the row's own letter)         | a `⌘G` go is used             |
+| `projects-move`   | Projects opens with cards                                                                 | _Drag a card to change its status._ under the column headers                                                              | —                                                          | a card's `Status:` is written |
+| `projects-empty`  | Projects opens with no cards                                                              | _Select plans in any note, right-click, Add to Projects._ in the empty board                                              | —                                                          | a project is created          |
+| `calendar-period` | The calendar panel opens                                                                  | _Click a week, month or year for its note._ under the grid                                                                | —                                                          | a period note opens           |
 
 All copy says Pensée, never "the pen" (onboarding-spec, 2026-10-16).
 

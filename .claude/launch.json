@@ -4,28 +4,19 @@
     {
       "name": "desktop-vite",
       "runtimeExecutable": "sh",
-      "runtimeArgs": [
-        "-c",
-        "cd apps/desktop && vp dev"
-      ],
+      "runtimeArgs": ["-c", "cd apps/desktop && vp dev"],
       "port": 1420
     },
     {
       "name": "desktop-proto",
       "runtimeExecutable": "sh",
-      "runtimeArgs": [
-        "-c",
-        "cd apps/desktop && vp dev --port 1431"
-      ],
+      "runtimeArgs": ["-c", "cd apps/desktop && vp dev --port 1431"],
       "port": 1431
     },
     {
       "name": "website",
       "runtimeExecutable": "sh",
-      "runtimeArgs": [
-        "-c",
-        "cd apps/website && vp exec vite dev"
-      ],
+      "runtimeArgs": ["-c", "cd apps/website && vp exec vite dev"],
       "port": 5173
     },
     {

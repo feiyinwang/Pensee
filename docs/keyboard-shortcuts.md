@@ -25,37 +25,37 @@ Every new key follows these ([the system](../SPECs/obsidian-shortcuts-spec.md#th
 
 These shortcuts are handled by the global `useKeyboardShortcuts` hook and work regardless of editor focus.
 
-| Shortcut        | Action                                   |
-| --------------- | ---------------------------------------- |
+| Shortcut        | Action                                    |
+| --------------- | ----------------------------------------- |
 | Cmd+O           | Find a note (recent notes until you type) |
-| Cmd+Shift+F     | Find a note, by name for now             |
-| Cmd+P           | Commands, each with its key              |
-| Cmd+T           | Today's note (made if missing)           |
-| Cmd+G, then T   | Today's note⁴                            |
-| Cmd+G, then P   | Go to Projects⁴                          |
-| Cmd+G, then L   | Go to Library⁴                           |
-| Cmd+G, then F   | Go to Files⁴                             |
-| Cmd+N           | New note (the composer)                  |
-| Cmd+Enter       | Composer: create and open it             |
-| Cmd+Shift+Enter | Composer: create, stay here³             |
-| Cmd+W           | Close current tab                        |
-| Cmd+Shift+T     | Reopen the last closed tab               |
-| Cmd+\\          | Toggle sidebar                           |
-| Cmd+[           | Toggle sidebar                           |
-| Cmd+]           | Toggle the calendar panel                |
-| Ctrl+Tab        | Next tab                                 |
-| Ctrl+Shift+Tab  | Previous tab                             |
-| Cmd+1 ... Cmd+8 | Jump to Nth tab                          |
-| Cmd+9           | Jump to the last tab                     |
-| Cmd+Alt+Left    | Navigate back                            |
-| Cmd+Alt+Right   | Navigate forward                         |
-| Cmd+= / Cmd++   | Zoom in                                  |
-| Cmd+-           | Zoom out                                 |
-| Cmd+0           | Actual size (100%)                       |
-| Cmd+J           | Toggle the agent chat                    |
-| Cmd+S           | Pin the moment and pause; again, play¹   |
-| Shift+, / .     | Video slower / faster²                   |
-| Left / Right    | Video 5s back / on, over it⁵             |
+| Cmd+Shift+F     | Find a note, by name for now              |
+| Cmd+P           | Commands, each with its key               |
+| Cmd+T           | Today's note (made if missing)            |
+| Cmd+G, then T   | Today's note⁴                             |
+| Cmd+G, then P   | Go to Projects⁴                           |
+| Cmd+G, then L   | Go to Library⁴                            |
+| Cmd+G, then F   | Go to Files⁴                              |
+| Cmd+N           | New note (the composer)                   |
+| Cmd+Enter       | Composer: create and open it              |
+| Cmd+Shift+Enter | Composer: create, stay here³              |
+| Cmd+W           | Close current tab                         |
+| Cmd+Shift+T     | Reopen the last closed tab                |
+| Cmd+\\          | Toggle sidebar                            |
+| Cmd+[           | Toggle sidebar                            |
+| Cmd+]           | Toggle the calendar panel                 |
+| Ctrl+Tab        | Next tab                                  |
+| Ctrl+Shift+Tab  | Previous tab                              |
+| Cmd+1 ... Cmd+8 | Jump to Nth tab                           |
+| Cmd+9           | Jump to the last tab                      |
+| Cmd+Alt+Left    | Navigate back                             |
+| Cmd+Alt+Right   | Navigate forward                          |
+| Cmd+= / Cmd++   | Zoom in                                   |
+| Cmd+-           | Zoom out                                  |
+| Cmd+0           | Actual size (100%)                        |
+| Cmd+J           | Toggle the agent chat                     |
+| Cmd+S           | Pin the moment and pause; again, play¹    |
+| Shift+, / .     | Video slower / faster²                    |
+| Left / Right    | Video 5s back / on, over it⁵              |
 
 The composer's dated-today and Library presets are commands in Cmd+P
 (**New Note for Today**, **Add to Library…**), and its own Date and Type chips.
@@ -186,28 +186,28 @@ box to type in.
 
 Standard editing shortcuts provided by CodeMirror's basic setup. Indent is rebound from CodeMirror's Cmd+[ / Cmd+] to Cmd+Shift+[ / Cmd+Shift+] in `editorDefaultKeymap` (`basicSetup.ts`), which every editor uses, so Cmd+[ can toggle the sidebar app-wide. Find is Cmd+Shift+F (`editor-search-extensions.ts`), since Cmd+F is search app-wide; a board's own find & replace is Cmd+Shift+F too.
 
-| Shortcut             | Action                         |
-| -------------------- | ------------------------------ |
-| Cmd+Z                | Undo                           |
-| Cmd+Shift+Z          | Redo                           |
-| Cmd+A                | Select all                     |
-| Cmd+ArrowUp          | Top of the page (⇧: select)    |
-| Cmd+ArrowDown        | Bottom of the page (⇧: select) |
-| Cmd+D                | Delete the line(s)             |
-| Alt+ArrowUp          | Move line up                   |
-| Alt+ArrowDown        | Move line down                 |
-| Alt+Shift+ArrowUp    | Copy line up                   |
-| Alt+Shift+ArrowDown  | Copy line down                 |
-| Cmd+Shift+K          | Delete line                    |
-| Cmd+Enter            | Insert line below              |
-| Tab                  | Indent / accept completion     |
-| Shift+Tab            | Dedent                         |
-| Cmd+Shift+]          | Indent more                    |
-| Cmd+Shift+[          | Indent less                    |
-| Cmd+F                | Find in the note               |
-| Cmd+Alt+F            | Find and replace               |
-| Enter / Cmd+G        | Find next (in the find bar)    |
+| Shortcut                  | Action                          |
+| ------------------------- | ------------------------------- |
+| Cmd+Z                     | Undo                            |
+| Cmd+Shift+Z               | Redo                            |
+| Cmd+A                     | Select all                      |
+| Cmd+ArrowUp               | Top of the page (⇧: select)     |
+| Cmd+ArrowDown             | Bottom of the page (⇧: select)  |
+| Cmd+D                     | Delete the line(s)              |
+| Alt+ArrowUp               | Move line up                    |
+| Alt+ArrowDown             | Move line down                  |
+| Alt+Shift+ArrowUp         | Copy line up                    |
+| Alt+Shift+ArrowDown       | Copy line down                  |
+| Cmd+Shift+K               | Delete line                     |
+| Cmd+Enter                 | Insert line below               |
+| Tab                       | Indent / accept completion      |
+| Shift+Tab                 | Dedent                          |
+| Cmd+Shift+]               | Indent more                     |
+| Cmd+Shift+[               | Indent less                     |
+| Cmd+F                     | Find in the note                |
+| Cmd+Alt+F                 | Find and replace                |
+| Enter / Cmd+G             | Find next (in the find bar)     |
 | Shift+Enter / Cmd+Shift+G | Find previous (in the find bar) |
-| Escape               | Close find                     |
-| Alt+Shift+ArrowLeft  | Extend selection by word left  |
-| Alt+Shift+ArrowRight | Extend selection by word right |
+| Escape                    | Close find                      |
+| Alt+Shift+ArrowLeft       | Extend selection by word left   |
+| Alt+Shift+ArrowRight      | Extend selection by word right  |

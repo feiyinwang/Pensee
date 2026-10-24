@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { rebaseMarkdownLinks, relativePathFrom } from "@/lib/rebase-markdown-links";
+import { rebaseMarkdownLinks, relativePathFrom } from "../src/lib/rebase-markdown-links";
 
 describe("relativePathFrom", () => {
   test("walks up and down from the shared prefix", () => {

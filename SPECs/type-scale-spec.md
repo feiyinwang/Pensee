@@ -12,10 +12,10 @@ editor default. Colours are out of scope (a separate change).
 
 **Nothing in the app UI is below 13px.** Chrome text takes one of three sizes:
 
-| Token            | Size | Line height | For                                                                                                                                                  |
-| ---------------- | ---- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--text-caption` | 13px | 1.4         | Counts, timestamps, badges, kbd hints, section labels (tracked caps), chips, tooltips' small print, secondary lines under a title, the status bar    |
-| `--text-label`   | 14px | 1.4         | Sidebar items, tabs, buttons (including tracked-caps buttons), segmented controls, menu items, settings row descriptions, card titles                      |
+| Token            | Size | Line height | For                                                                                                                                                |
+| ---------------- | ---- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--text-caption` | 13px | 1.4         | Counts, timestamps, badges, kbd hints, section labels (tracked caps), chips, tooltips' small print, secondary lines under a title, the status bar  |
+| `--text-label`   | 14px | 1.4         | Sidebar items, tabs, buttons (including tracked-caps buttons), segmented controls, menu items, settings row descriptions, card titles              |
 | `--text-ui`      | 15px | 1.5         | Running text in the chrome: search and text fields, palette items, settings row titles, chat messages, empty-state lines, banners, status messages |
 
 The tokens live once, in `App.css`'s `@theme static` block. Plain CSS reads
@@ -96,7 +96,6 @@ HTML embed headers whose heights `link-preview.ts` and
 `html-embed-widget.ts` hard-code) keep their heights; the larger text fits
 inside them with room to spare. The video Pin row stays 24px so its band's
 height doesn't move.
-
 
 A settings row's title is `text-ui` (15px, medium) and its description
 `text-label` (14px, muted): the title leads, the description never outsizes it.

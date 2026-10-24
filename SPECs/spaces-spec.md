@@ -26,11 +26,11 @@ Why: in the user's vault 4,165 of 5,540 notes sit in `4. Archive`, every new not
 
 ## Built-in spaces
 
-| Space        | Shows                                                                                                         | View                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Projects     | `Type: Project`                                                                                               | kanban ([project-views-spec.md](project-views-spec.md)) |
-| Library      | tabs: Books (`Book`), Videos (`YouTube`, `Video`, `Course`: courses are videos), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab                                          |
-| Files        | every file                                                                                                    | the folder tree (moved here from the sidebar's Everything section)        |
+| Space    | Shows                                                                                                                   | View                                                               |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Projects | `Type: Project`                                                                                                         | kanban ([project-views-spec.md](project-views-spec.md))            |
+| Library  | tabs: Books (`Book`), Videos (`YouTube`, `Video`, `Course`: courses are videos), Podcasts (`Podcast`), Papers (`Paper`) | gallery, one cover shape per tab                                   |
+| Files    | every file                                                                                                              | the folder tree (moved here from the sidebar's Everything section) |
 
 Library opens on Books. Its tabs are an Arc segmented control with the count of each tab. A gallery space (Library, or one you add with `View: gallery`) has no reading-width cap: its cover grid fills the width its tab has, adding a column for every cover's width of room.
 

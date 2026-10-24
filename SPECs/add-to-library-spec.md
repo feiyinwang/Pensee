@@ -10,13 +10,13 @@ tab (SPECs/spaces-spec.md).
 
 ## Ways in
 
-| Way in                                                                  | What it does                                                                     |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Paste a link in ⌘O                                                      | An **Add to Library** group goes on top of the results, the guess selected       |
-| **Add to Library…** in ⌘P                                               | The composer, type chip on Book until a link says otherwise                     |
-| **Add <noun>** in an empty Library tab, and **+** in the Library header | The composer with that tab's kind picked; not on Bookmarks, which X sync fills  |
+| Way in                                                                  | What it does                                                                   |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Paste a link in ⌘O                                                      | An **Add to Library** group goes on top of the results, the guess selected     |
+| **Add to Library…** in ⌘P                                               | The composer, type chip on Book until a link says otherwise                    |
+| **Add <noun>** in an empty Library tab, and **+** in the Library header | The composer with that tab's kind picked; not on Bookmarks, which X sync fills |
 | Drop a PDF or EPUB on the window                                        | As before (SPECs/book-reader-spec.md); attached to the composer when it's open |
-| Import Book…, Import Apple Books Highlights                             | Unchanged palette commands                                                       |
+| Import Book…, Import Apple Books Highlights                             | Unchanged palette commands                                                     |
 
 ## The palette rows (⌘O, a pasted link)
 

@@ -22,7 +22,7 @@ to explain or define something.
   download-site tags (`(z-library.sk, 1lib.sk, z-lib.sk)`, `[Z-Library]`, a
   bare `z-lib.sk`; `cleanBookTitle`). It tries the full title, then the title
   without bracketed asides such as the author (`Skip the Line (James
-  Altucher)` matches `Skip the line.md`), then the title before a subtitle.
+Altucher)` matches `Skip the line.md`), then the title before a subtitle.
   Opening a book whose page isn't known (a link) does the same before making
   one.
 - **Author decides between same-named pages.** The book's author comes from

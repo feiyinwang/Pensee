@@ -31,13 +31,13 @@ remember. The rules every key follows now:
 
 What changed in the app:
 
-| Before | Now | Why |
-| ------ | --- | --- |
-| ⌥P / ⌥L / ⌥F | ⌘G then P / L / F (T Today) | No ⌥ to learn; ⌥ + letter also typed π ¬ ƒ |
-| ⌘G / ⌘⇧G find next / previous | ↵ / ⇧↵ in the find bar (⌘G still, while it has focus) | ⌘G is the go key |
-| ⌘O and ⌘P open one list | ⌘O finds notes, ⌘P runs commands | Obsidian's split; each key does one thing |
-| ⌘S pins, ⌘⇧J plays / pauses | ⌘S pins and pauses, ⌘S again plays | One key for listen → pin → write → listen; J meant nothing |
-| ⌘⇧N / ⌘⇧L composer variants | ⌘P **New Note for Today** / **Add to Library…**, and the composer's Date and Type chips | ⇧ didn't mean "bigger"; ⌘⇧L had nothing to do with ⌘L. (Tab picking the kind, as in the prototype, would have broken Tab between the composer's fields.) |
+| Before                        | Now                                                                                     | Why                                                                                                                                                      |
+| ----------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ⌥P / ⌥L / ⌥F                  | ⌘G then P / L / F (T Today)                                                             | No ⌥ to learn; ⌥ + letter also typed π ¬ ƒ                                                                                                               |
+| ⌘G / ⌘⇧G find next / previous | ↵ / ⇧↵ in the find bar (⌘G still, while it has focus)                                   | ⌘G is the go key                                                                                                                                         |
+| ⌘O and ⌘P open one list       | ⌘O finds notes, ⌘P runs commands                                                        | Obsidian's split; each key does one thing                                                                                                                |
+| ⌘S pins, ⌘⇧J plays / pauses   | ⌘S pins and pauses, ⌘S again plays                                                      | One key for listen → pin → write → listen; J meant nothing                                                                                               |
+| ⌘⇧N / ⌘⇧L composer variants   | ⌘P **New Note for Today** / **Add to Library…**, and the composer's Date and Type chips | ⇧ didn't mean "bigger"; ⌘⇧L had nothing to do with ⌘L. (Tab picking the kind, as in the prototype, would have broken Tab between the composer's fields.) |
 
 Rejected, so it isn't discussed again:
 
@@ -62,31 +62,31 @@ find bar keeps it (find next) while they have focus.
 
 ## Keys that now follow Obsidian
 
-| Key       | Obsidian                       | Pensée now                                            | Pensée before           |
-| --------- | ------------------------------ | ----------------------------------------------------- | ----------------------- |
-| ⌘O        | Quick switcher                 | Find a note (recent notes until you type)             | Go to Files             |
-| ⌘P        | Command palette                | Commands only, each with its key                      | Go to Projects          |
-| ⌘⇧F       | Search in all files            | Search (the palette; names only, see Not yet)         | Find in the note        |
-| ⌘F        | Search current file            | Find in the note                                      | Search                  |
-| ⌥⌘F       | Search & replace current file  | Find in the note with Replace open                    | Nothing (⌘H in the docs, never bound) |
-| ⌘L        | Toggle checkbox status         | Toggle checkbox status (a plain line becomes `- [ ]`) | Go to Library           |
-| ⌘D        | Delete paragraph               | Delete the line(s) the selection touches              | Select next occurrence  |
-| ⌘⇧V       | Paste without formatting       | The webview's plain paste (Pensée's paste is text anyway) | Paste as linked block |
-| ⌥⌘← / ⌥⌘→ | Navigate back / forward        | Same, also with the cursor in a note                  | ⌥← / ⌥→, outside notes only |
-| ⌘⇧T       | Undo close tab                 | Reopen the last closed tab                            | Nothing                 |
-| ⌥Enter    | Follow link under cursor       | Follow the link under the caret (as a click does)     | Nothing                 |
-| ⌘Enter    | Open link under cursor in new tab | On a link: follow it (a click already opens beside); elsewhere unchanged | Insert line below |
-| ⌘9        | Last tab                       | Last tab                                              | Ninth tab               |
-| ⌘E        | Toggle reading view            | Nothing (Pensée has no reading view)                  | Inline code             |
+| Key       | Obsidian                          | Pensée now                                                               | Pensée before                         |
+| --------- | --------------------------------- | ------------------------------------------------------------------------ | ------------------------------------- |
+| ⌘O        | Quick switcher                    | Find a note (recent notes until you type)                                | Go to Files                           |
+| ⌘P        | Command palette                   | Commands only, each with its key                                         | Go to Projects                        |
+| ⌘⇧F       | Search in all files               | Search (the palette; names only, see Not yet)                            | Find in the note                      |
+| ⌘F        | Search current file               | Find in the note                                                         | Search                                |
+| ⌥⌘F       | Search & replace current file     | Find in the note with Replace open                                       | Nothing (⌘H in the docs, never bound) |
+| ⌘L        | Toggle checkbox status            | Toggle checkbox status (a plain line becomes `- [ ]`)                    | Go to Library                         |
+| ⌘D        | Delete paragraph                  | Delete the line(s) the selection touches                                 | Select next occurrence                |
+| ⌘⇧V       | Paste without formatting          | The webview's plain paste (Pensée's paste is text anyway)                | Paste as linked block                 |
+| ⌥⌘← / ⌥⌘→ | Navigate back / forward           | Same, also with the cursor in a note                                     | ⌥← / ⌥→, outside notes only           |
+| ⌘⇧T       | Undo close tab                    | Reopen the last closed tab                                               | Nothing                               |
+| ⌥Enter    | Follow link under cursor          | Follow the link under the caret (as a click does)                        | Nothing                               |
+| ⌘Enter    | Open link under cursor in new tab | On a link: follow it (a click already opens beside); elsewhere unchanged | Insert line below                     |
+| ⌘9        | Last tab                          | Last tab                                                                 | Ninth tab                             |
+| ⌘E        | Toggle reading view               | Nothing (Pensée has no reading view)                                     | Inline code                           |
 
 ## Keys that moved to make room
 
-| Action                 | New key      | Why                                                                 |
-| ---------------------- | ------------ | ------------------------------------------------------------------- |
-| Go to Projects         | ⌘G then P    | The go key; ⌘ + a number is a tab (was ⌥P).                         |
-| Go to Library          | ⌘G then L    | as above (was ⌥L)                                                   |
-| Go to Files            | ⌘G then F    | as above (was ⌥F)                                                   |
-| Paste as linked block  | ⌥⌘V          | ⌘⇧V is plain paste in Obsidian and macOS.                           |
+| Action                | New key   | Why                                         |
+| --------------------- | --------- | ------------------------------------------- |
+| Go to Projects        | ⌘G then P | The go key; ⌘ + a number is a tab (was ⌥P). |
+| Go to Library         | ⌘G then L | as above (was ⌥L)                           |
+| Go to Files           | ⌘G then F | as above (was ⌥F)                           |
+| Paste as linked block | ⌥⌘V       | ⌘⇧V is plain paste in Obsidian and macOS.   |
 
 ## Keys Pensée keeps
 
