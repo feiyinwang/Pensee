@@ -31,9 +31,10 @@ const ROMAN = ["I", "II", "III", "IV"];
 /** One page, one action: Download for Mac (SPECs/website-homepage-spec.md). */
 function HomePage() {
   const [heroActs, pastHero] = useScrolledPast<HTMLDivElement>();
+  const [heroEnd, pastHeroEnd] = useScrolledPast<HTMLDivElement>();
   return (
     <div className="page">
-      <SiteBar onHome downloadShown={pastHero} />
+      <SiteBar onHome downloadShown={pastHero} dark={!pastHeroEnd} />
 
       <main id="top">
         {/* The philosopher sits left of centre, so the words take the dark stair on the right. */}
@@ -56,6 +57,8 @@ function HomePage() {
             <Credit painting={PAINTINGS.rembrandt} /> · {PAINTINGS.rembrandt.at}
           </p>
         </section>
+        {/* The hero's bottom edge: the bar stays dark until it scrolls under it. */}
+        <div ref={heroEnd} aria-hidden="true" />
 
         {ROOMS.map((room, i) => (
           <section className="room" id={`room-${room.id}`} key={room.id}>

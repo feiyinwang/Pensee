@@ -100,9 +100,9 @@ button {
   box-shadow: 0 1px 0 var(--faint);
 }
 
-/* On the homepage, at the top, an almost-black layer covers the cream bar so
-   it blends into the hero painting's dark top edge. It fades out (opacity,
-   not a background-colour animation) once the page scrolls. */
+/* While the homepage's hero is under the bar, an almost-black layer covers
+   the cream bar so it blends into the painting. It fades out (opacity,
+   not a background-colour animation) once the hero has scrolled past. */
 .bar::after {
   content: "";
   position: absolute;
@@ -113,7 +113,7 @@ button {
   transition: opacity 200ms var(--ease-out);
 }
 
-.bar[data-on-painting]::after {
+.bar[data-dark]::after {
   opacity: 1;
 }
 
@@ -126,17 +126,18 @@ button {
 }
 
 /* On the dark bar the words turn light. */
-.bar[data-on-painting] .lockup {
+.bar[data-dark] .lockup {
   color: #fff;
 }
 
-.bar[data-on-painting] .bar-links a {
+.bar[data-dark] .bar-links a {
   color: rgb(255 255 255 / 78%);
   transition-duration: 200ms;
 }
 
-.bar[data-on-painting] .lockup:focus-visible,
-.bar[data-on-painting] .bar-links a:focus-visible {
+.bar[data-dark] .lockup:focus-visible,
+.bar[data-dark] .bar-links a:focus-visible,
+.bar[data-dark] .btn:focus-visible {
   outline-color: #fff;
 }
 
@@ -182,7 +183,7 @@ button {
     color: var(--text);
   }
 
-  .bar[data-on-painting] .bar-links a:hover {
+  .bar[data-dark] .bar-links a:hover {
     color: #fff;
   }
 }
@@ -215,6 +216,22 @@ button {
 
 .bar-download .btn {
   margin-left: 24px;
+  transition:
+    background-color 200ms var(--ease-out),
+    color 200ms var(--ease-out),
+    scale 150ms var(--ease-out);
+}
+
+/* On the dark bar, Download takes the light tone, fading with the bar. */
+.bar[data-dark] .bar-download .btn {
+  background: var(--card);
+  color: var(--text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bar[data-dark] .bar-download .btn:hover {
+    background: #fff;
+  }
 }
 
 .bar-end[data-download="hidden"] .bar-download {
