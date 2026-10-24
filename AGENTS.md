@@ -60,7 +60,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 **Cross-cutting**
 
 - [TODOS.md](./TODOS.md) — task backlog and work-in-progress tracking
-- [CHANGELOG.md](./CHANGELOG.md) — the app's user-visible changes (the What's new card and page read it); website changes go in [apps/website/CHANGELOG.md](./apps/website/CHANGELOG.md); Joel's changes from the project Pensée was forked from are kept in [docs/upstream-changelog.md](./docs/upstream-changelog.md)
+- [CHANGELOG.md](./CHANGELOG.md) — the app's user-visible changes, and only the app's (the What's new card and page read it); Joel's changes from the project Pensée was forked from are kept in [docs/upstream-changelog.md](./docs/upstream-changelog.md)
 - [SPECs/](./SPECs/) — human-written feature and bug specs
 
 ## Hard Rules
@@ -68,7 +68,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - Check [`TODOS.md`](./TODOS.md) before starting work to see current tasks.
 - Move tasks between sections (Up Next → In Progress → Done) as you work.
 - For non-trivial work, create a spec in [`SPECs/`](./SPECs/) and link it from the task.
-- Update [`CHANGELOG.md`](./CHANGELOG.md) when completing app work, and [`apps/website/CHANGELOG.md`](./apps/website/CHANGELOG.md) for website-only work. `CHANGELOG.md` is the app's: every build carries it into the What's new card, and the website's What's new page lists it, so a website line there would show in the app. The first line of a new month in `CHANGELOG.md` also needs that month's painting on the website's What's new page: one the site has never used ([SPECs/whats-new-card-spec.md](./SPECs/whats-new-card-spec.md)); the website build fails without it.
+- Update [`CHANGELOG.md`](./CHANGELOG.md) when completing app work. It holds what changed in the app and nothing else: every build carries it into the What's new card and the website's What's new page lists it. Website work gets no changelog line; its commit message says what changed. The first line of a new month in `CHANGELOG.md` also needs that month's painting on the website's What's new page: one the site has never used ([SPECs/whats-new-card-spec.md](./SPECs/whats-new-card-spec.md)); the website build fails without it.
 - Load only docs relevant to the current task and scope.
 - If a behavior or rule changes in practice, update the owning doc in the same task.
 - In autonomous/loop mode, complete exactly one task at a time and commit immediately. Do not batch unless the user explicitly asks.

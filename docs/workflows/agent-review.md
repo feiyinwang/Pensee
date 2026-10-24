@@ -86,7 +86,7 @@ If there are no findings, explicitly say so and list residual risks/testing gaps
 - Relevant docs updated when behavior or rules changed.
 - Reviewers should recommend updates to their own persona's docs whenever they notice gaps, stale info, unclear language, or missing coverage.
 - Commit cadence verified: in loop mode, one commit per completed task (unless user explicitly requested batching).
-- For user-visible work, [`CHANGELOG.md`](../../CHANGELOG.md) (app) or [`apps/website/CHANGELOG.md`](../../apps/website/CHANGELOG.md) (website only) updated in the same task/commit.
+- For user-visible app work, [`CHANGELOG.md`](../../CHANGELOG.md) updated in the same task/commit (website work gets no changelog line).
 - `vp check` passes (format, lint, TypeScript).
 - `cargo clippy` and `cargo fmt --check` clean for changed Rust files.
 - No unused variables or dead-code declarations remain in changed files.

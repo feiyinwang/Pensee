@@ -544,7 +544,7 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 
 ## What's new — WN
 
-**Feature:** When Pensée is updated, a card in the bottom-right corner shows once what changed since the writer last looked: every day of the CHANGELOG.md the app was built with that is newer than the last one seen (website changes live in `apps/website/CHANGELOG.md` and never show). It has a painting with its credit, `What's new · N changes`, the day or run of days, and the first sentence of each change (three, then **N more**). **Got it** or **Read all** (the website's What's new page, on the newest day) closes it until the next update; ⌘P → **Show What's New** brings back the newest day.
+**Feature:** When Pensée is updated, a card in the bottom-right corner shows once what changed since the writer last looked: every day of the CHANGELOG.md the app was built with that is newer than the last one seen (it holds the app's changes only). It has a painting with its credit, `What's new · N changes`, the day or run of days, and the first sentence of each change (three, then **N more**). **Got it** or **Read all** (the website's What's new page, on the newest day) closes it until the next update; ⌘P → **Show What's New** brings back the newest day.
 **Spec:** SPECs/whats-new-card-spec.md
 **Code:** `src/components/whats-new/`, `src/lib/whats-new.ts`, `src/App.tsx`, `src/components/command-palette/index.tsx` (show-whats-new), `src/lib/tauri.ts` (readChangelog), `src-tauri/src/commands/changelog.rs`, `e2e/qa/seed-vault.mjs` (seedWhatsNew, the changelog fixture), `e2e/qa/run.sh` (PENSEE_CHANGELOG_FILE)
 

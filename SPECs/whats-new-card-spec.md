@@ -25,12 +25,12 @@ how they work, like a new shortcut or a fix to something that annoyed them.
 
 ## Behaviour
 
-- **Source.** `CHANGELOG.md` is the app's changelog and only the app's: a
-  website change goes in `apps/website/CHANGELOG.md`. The app reads the
+- **Source.** `CHANGELOG.md` is the app's changelog and only the app's:
+  website work gets no line in it. The app reads the
   `CHANGELOG.md` it was built with (`read_changelog`, `include_str!` in
   Rust), once at launch, so the card only has news after an update. Until
   2026-10-24 it fetched `master` on GitHub every 6 hours, which showed
-  website changes and changes not yet released.
+  changes not yet released.
 - **Unseen days.** Every `## YYYY-MM-DD` section after `whatsNew.lastSeen`
   (preferences.json) is new, and the card shows them all, newest first. If
   `whatsNew.lastSeen` was never set, the newest date is recorded and nothing
@@ -88,10 +88,10 @@ from are in `docs/upstream-changelog.md`, which nothing displays.
   page).
 - Repo-relative links (`./docs/brand.md`) point into the repo on GitHub.
 - It ends on the install line and `brew upgrade --cask pensee`.
-- The header links it as **What's new**, after Folios, on every page, and so
-  does the footer. Under 520px the header has no room beside Download, so it's
-  only in the footer. It keeps its plain name, not an archaic one like Folios:
-  people look for a changelog by the name they know.
+- The header links it as **What's new** on every page, and so does the
+  footer. Under 520px the header has no room beside Download, so it's only in
+  the footer. It keeps its plain name: people look for a changelog by the name
+  they know.
 
 ## Paintings
 
