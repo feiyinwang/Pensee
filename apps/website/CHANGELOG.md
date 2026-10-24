@@ -4,6 +4,7 @@ Changes to the website (`apps/website/`). The app's own changes are in the repo'
 
 ## 2026-10-24
 
+- The header now links to What's new, after Folios, on every page. On phones it stays in the footer, where it fits.
 - The website has a What's new page, `/changelog/`, linked from the footer: every change to the app, newest first, read from the repo's `CHANGELOG.md` at build. Each day sits beside the painting the app's What's new card gave it, with its date held in view while its changes scroll by; each change opens on its first sentence in bold. The app's **Read all** opens it at the card's day. Website changes now go in this file, `apps/website/CHANGELOG.md`, so they never show in the app.
 - The install line at the end of a page is readable again: its **Copy** button was white on the light page. On phones it no longer makes the page wider than the screen.
 

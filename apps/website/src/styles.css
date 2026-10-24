@@ -150,6 +150,14 @@ button {
   }
 }
 
+/* Phones: the lockup, two links and Download need about 495px. What's new
+   steps out of the bar there; the footer still links it. */
+@media (max-width: 519px) {
+  .bar-whats-new {
+    display: none;
+  }
+}
+
 /* The column clips the button while it opens, pinned to its right edge. The
    button's left margin is the gap to the links, inside the clip so it closes
    with the column; the 6px padding on the other sides, taken back by the

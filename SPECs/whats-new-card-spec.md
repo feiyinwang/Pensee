@@ -74,8 +74,11 @@ changes`, held in view while the day's changes scroll by. On the right each
   to it instantly (the site's smooth scroll would be cut off on so long a
   page).
 - Repo-relative links (`./docs/brand.md`) point into the repo on GitHub.
-- It ends on the install line and `brew upgrade --cask pensee`. The footer
-  links it as **What's new**.
+- It ends on the install line and `brew upgrade --cask pensee`.
+- The header links it as **What's new**, after Folios, on every page, and so
+  does the footer. Under 520px the header has no room beside Download, so it's
+  only in the footer. It keeps its plain name, not an archaic one like Folios:
+  people look for a changelog by the name they know.
 
 ## Paintings
 
