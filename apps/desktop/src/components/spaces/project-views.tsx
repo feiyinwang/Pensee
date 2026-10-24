@@ -21,7 +21,7 @@ import {
   searchNotes,
   type TypedNote,
 } from "@/hooks/use-spaces";
-import { loadProjectTemplate } from "@/hooks/vault-templates";
+import { loadProjectFolder } from "@/hooks/vault-templates";
 import { useWorkspaceRoot } from "@/hooks/use-workspace";
 import { getFileStem } from "@/lib/paths";
 import type { SearchResult } from "@/types/fs";
@@ -49,11 +49,11 @@ import { StatusTag, Tag } from "./project-tag";
  *  column per status. Edits write the project note's frontmatter. */
 export default function ProjectViews({ notes }: { notes: TypedNote[] }) {
   ensureArcTokens();
-  // Read the project template now, so a new project doesn't wait on it (in an
-  // iCloud vault its first read can take seconds).
+  // Find the project folder now, so a new project doesn't wait on it (in an
+  // iCloud vault the template's first read can take seconds).
   const root = useWorkspaceRoot();
   useEffect(() => {
-    if (root) void loadProjectTemplate(root);
+    if (root) void loadProjectFolder(root);
   }, [root]);
   const { projects, columns, edit, add } = useProjects(notes);
   return (
@@ -222,9 +222,8 @@ function useProjects(notes: TypedNote[]) {
   // A note that exists is used, never duplicated: a project already here
   // moves to where it was added, any other note becomes a project (asking
   // first when it has another type). A typed name takes the note it names;
-  // only a name no note has writes a new project note, from the vault's
-  // template, with No status unless the place sets one (the template's own
-  // status would put it anywhere).
+  // only a name no note has writes a new project note, holding only its
+  // fields, with No status unless the place sets one.
   const add = useCallback<AddProject>(
     async (choice, change) => {
       let found: string | null;

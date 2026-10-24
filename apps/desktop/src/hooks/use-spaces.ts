@@ -20,11 +20,10 @@ import {
   type ProjectEdit,
 } from "@/lib/projects";
 import { getFileStem } from "@/lib/paths";
-import { parseFrontmatter, serializeFile } from "@/lib/frontmatter";
-import { fillTemplate, inFolders } from "@/lib/project-template";
+import { inFolders } from "@/lib/project-template";
 import {
   knownTemplateFolders,
-  loadProjectTemplate,
+  loadProjectFolder,
   loadTemplateFolders,
   useTemplateFolders,
 } from "@/hooks/vault-templates";
@@ -260,10 +259,10 @@ export async function adoptProjectNote(
 }
 
 /** Write a project note named `name` with `edit`'s fields set; opens nothing.
- *  For a name no note has yet (see `findNoteNamed`). It is made from the
- *  vault's project template when Templater has one, in that template's folder
- *  (lib/project-template.ts); otherwise it is just the fields, at the root.
- *  `intro`, when given, starts the body, above the template's. */
+ *  For a name no note has yet (see `findNoteNamed`). It goes in the folder of
+ *  the vault's project template when Templater has one, else at the root, and
+ *  holds only the fields: none of the template's properties or sections.
+ *  `intro`, when given, is the body. */
 export async function createProjectNote(
   name: string,
   edit: ProjectEdit,
@@ -271,16 +270,8 @@ export async function createProjectNote(
 ): Promise<{ path: string; stem: string }> {
   const lead = intro.trim() === "" ? "" : `${intro.trim()}\n`;
   const root = useWorkspaceStore.getState().root;
-  const template = root ? await loadProjectTemplate(root) : null;
-  if (!template) return createRootNote(name, () => `${projectNoteContent(edit)}${lead}`);
-  return createNoteIn(template.folder, name, (stem) => {
-    const { frontmatter, body } = parseFrontmatter(
-      fillTemplate(template.content, stem, new Date()),
-    );
-    const rest = body.replace(/^\n+/, "");
-    const withIntro = lead === "" ? body : rest === "" ? lead : `${lead}\n${rest}`;
-    return serializeFile(asProjectFrontmatter(frontmatter, edit), withIntro);
-  });
+  const folder = root ? await loadProjectFolder(root) : null;
+  return createNoteIn(folder, name, () => `${projectNoteContent(edit)}${lead}`);
 }
 
 /** The Files space tree's inline-rename target, shared with the sidebar's

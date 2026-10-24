@@ -33,7 +33,7 @@ const OPEN_PROJECTS = {
 type Outcome = "added" | "already" | "declined";
 
 /** Every project added here lands in No status: an empty `Status`, which also
- *  clears a status the template or the note had. */
+ *  clears a status an adopted note had. */
 const NO_STATUS_EDIT = { status: "" };
 
 /** Add one project: the note it names when there is one, else a new note

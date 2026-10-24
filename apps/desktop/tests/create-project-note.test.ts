@@ -75,7 +75,7 @@ describe("createProjectNote", () => {
   });
 });
 
-describe("createProjectNote from the vault's template", () => {
+describe("createProjectNote with the vault's template", () => {
   const settings = "/vault/.obsidian/plugins/templater-obsidian/data.json";
   const template = [
     "---",
@@ -110,27 +110,19 @@ describe("createProjectNote from the vault's template", () => {
     files.set("/vault/T/Project.md", template);
   });
 
-  test("is made in the template's folder with its properties and sections", async () => {
+  test("is made in the template's folder with only the fields", async () => {
     const created = await createProjectNote("Trip", { status: "Ongoing" });
     expect(created.path).toBe("/vault/1. Project/Trip.md");
-    const content = files.get("/vault/1. Project/Trip.md")!;
-    expect(content).toMatch(
-      /^---\nType: Project\nOrganization: Container Living\nCreation Dates: \d{4}-\d{2}-\d{2} \d{2}:\d{2}\nDeadline: \nStatus: Ongoing\ncssclasses:\n {2}- cards\n---\n# Tasks\n/,
+    expect(files.get("/vault/1. Project/Trip.md")).toBe(
+      "---\nType: Project\nStatus: Ongoing\n---\n",
     );
-    expect(content).toContain('contains(Project, "Trip")');
-    expect(content).not.toContain("<%");
   });
 
-  test("an intro starts the body, above the template's sections", async () => {
+  test("an intro is the whole body", async () => {
     await createProjectNote("Trip", { status: "" }, "Book flights and a hotel.");
-    expect(files.get("/vault/1. Project/Trip.md")).toMatch(
-      /\n---\nBook flights and a hotel\.\n\n# Tasks\n/,
+    expect(files.get("/vault/1. Project/Trip.md")).toBe(
+      "---\nType: Project\nStatus:\n---\nBook flights and a hotel.\n",
     );
-  });
-
-  test("No status empties the template's status", async () => {
-    await createProjectNote("Trip", { status: "" });
-    expect(files.get("/vault/1. Project/Trip.md")).toContain("\nStatus:\ncssclasses:");
   });
 
   test("without a project template it is just the fields, at the root", async () => {
@@ -172,15 +164,15 @@ describe("reading the vault's templates", () => {
     await createProjectNote("Trip", { status: "" });
     await createProjectNote("Garden", { status: "" });
     expect(reads()).toEqual([settings, "/vault/T/Project template.md"]);
-    expect(files.get("/vault/1. Project/Garden.md")).toContain("# Tasks");
+    expect(files.has("/vault/1. Project/Garden.md")).toBe(true);
   });
 
   test("a changed template is read again", async () => {
     await createProjectNote("Trip", { status: "" });
-    files.set("/vault/T/Project template.md", "---\nType: Project\n---\n# Plan\n");
+    files.set("/vault/T/Project template.md", "---\nType: People\n---\n");
     forgetVaultTemplates("/vault/T/Project template.md");
     await createProjectNote("Garden", { status: "" });
-    expect(files.get("/vault/1. Project/Garden.md")).toContain("# Plan");
+    expect(files.has("/vault/Garden.md")).toBe(true);
   });
 
   test("without one named for projects, the rest are read to find it", async () => {

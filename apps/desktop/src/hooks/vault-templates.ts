@@ -14,22 +14,14 @@ import * as tauri from "@/lib/tauri";
 // of these files can be a placeholder whose first read waits on a download,
 // so reading them per list, per keystroke or per new project made all three
 // wait. Nothing here waits on them: the folders filter what is shown as soon
-// as they're known, and the project template is asked for when Projects opens.
-
-export interface ProjectTemplate {
-  /** Vault-relative folder a new project goes in. */
-  folder: string;
-  /** Vault-relative path of the template note. */
-  template: string;
-  content: string;
-}
+// as they're known, and the project folder is asked for when Projects opens.
 
 interface Entry {
   root: string;
   /** Template folders, once read. */
   folders: string[] | null;
   foldersLoad: Promise<string[]> | null;
-  projectLoad: Promise<ProjectTemplate | null> | null;
+  projectLoad: Promise<string | null> | null;
   /** Vault-relative files whose change makes this entry stale. */
   watched: Set<string>;
 }
@@ -103,20 +95,21 @@ export function useTemplateFolders(root: string | null): string[] {
   return useSyncExternalStore(subscribe, () => (root ? knownTemplateFolders(root) : NO_FOLDERS));
 }
 
-/** The Templater folder template that makes project notes (its note is
- *  `Type: Project`); null when there is none. Templates named for projects
- *  are read first, so a vault of placeholders downloads one file, not all. */
-export function loadProjectTemplate(root: string): Promise<ProjectTemplate | null> {
+/** The vault-relative folder new projects go in: that of the Templater
+ *  folder template whose note is `Type: Project`; null when there is none.
+ *  Templates named for projects are read first, so a vault of placeholders
+ *  downloads one file, not all. */
+export function loadProjectFolder(root: string): Promise<string | null> {
   const current = entryFor(root);
   current.projectLoad ??= (async () => {
     const settings = await readOptional(root, TEMPLATER_SETTINGS);
     if (settings === null) return null;
     const pairs = folderTemplates(settings);
     const likely = (p: FolderTemplate) => /project/i.test(`${p.folder}/${p.template}`);
-    const read = async (pair: FolderTemplate): Promise<ProjectTemplate | null> => {
+    const read = async (pair: FolderTemplate): Promise<string | null> => {
       current.watched.add(pair.template.normalize("NFC"));
       const content = await readOptional(root, pair.template);
-      return content !== null && isProjectTemplate(content) ? { ...pair, content } : null;
+      return content !== null && isProjectTemplate(content) ? pair.folder : null;
     };
     for (const pair of pairs.filter(likely)) {
       const found = await read(pair);

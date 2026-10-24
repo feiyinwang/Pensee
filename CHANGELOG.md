@@ -2,6 +2,7 @@
 
 ## 2026-10-24
 
+- A new project now starts empty. If your vault has a Templater project template, a project made in Pensée used to come with its headings, Dataview queries and properties, shown as raw code. Now it holds only its name and status, whether you add it from Projects or with **Add to Projects** in a note. It still goes in your projects folder.
 - What's new now only comes with an update to Pensée. The card used to read the changelog online, so it showed changes to the website, and changes not out yet, while your app stayed the same. Now it shows what changed in the version you have, once, after you update. If you skipped a few updates, it shows every day since you last looked in one card, titled with the days it covers ("October 16–18"). **Read all** opens a new What's new page on Pensée's website, at the day the card showed: every change, newest first, each day beside the painting the card gave it.
 
 ## 2026-10-21

@@ -42,7 +42,7 @@ Each project goes through the same path as **Add project** on the board, so noth
 
 - A project note with that name already in the vault is left as it is and counted as already in Projects.
 - Any other note with that name becomes a project (`adoptProjectNote`); one with another `Type` is only taken after the same confirm the board asks.
-- Only a name no note has makes a new note (`createProjectNote`), from the vault's project template when it has one. The new note's body starts with the writer's own words, unchanged (one item as written, several as a list), then the template's body.
+- Only a name no note has makes a new note (`createProjectNote`), in the vault's project folder when it has one, holding only its fields: none of the template's properties or sections. Its body is the writer's own words, unchanged (one item as written, several as a list).
 - Every project added here lands in **No status**: an empty `Status`, which also clears a status the template or an adopted note had. A note that is already a project keeps its column.
 
 The note the selection came from is not changed.
