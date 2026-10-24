@@ -23,7 +23,12 @@ function fromCard(by: string, title: string): MonthPainting {
   return { src: painting.src, focus: painting.focus, by, title, year: painting.year };
 }
 
-/** `YYYY-MM` → its painting. Add the next month's when its first changelog day lands. */
+/**
+ * `YYYY-MM` → its painting. Add the next month's when its first changelog day
+ * lands. Still unused on the site, from the card's own set: Dürer's "Saint
+ * Jerome in His Study", Carpaccio's "The Vision of Saint Augustine", Chardin's
+ * "The Philosopher Reading" and ter Borch's "Woman Writing a Letter".
+ */
 export const MONTH_PAINTINGS: Record<string, MonthPainting> = {
   "2026-10": {
     src: "/paintings/metsu.webp",
@@ -34,10 +39,6 @@ export const MONTH_PAINTINGS: Record<string, MonthPainting> = {
   },
   "2026-09": fromCard("Johannes Vermeer", "Woman in Blue Reading a Letter"),
   "2026-08": fromCard("Vilhelm Hammershøi", "Dust Motes Dancing in the Sunbeams"),
-  "2026-07": fromCard("Gerard ter Borch", "Woman Writing a Letter"),
-  "2026-06": fromCard("Jean-Baptiste Siméon Chardin", "The Philosopher Reading"),
-  "2026-05": fromCard("Vittore Carpaccio", "The Vision of Saint Augustine"),
-  "2026-04": fromCard("Albrecht Dürer", "Saint Jerome in His Study"),
 };
 
 /** A painting is the same painting under any spelling of its painter: "Rembrandt" and "Rembrandt van Rijn". */

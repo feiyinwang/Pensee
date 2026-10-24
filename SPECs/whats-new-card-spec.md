@@ -62,7 +62,8 @@ date>`) in the browser, then does the same. Both record the newest day.
 `/changelog/` on the website (`apps/website/src/routes/changelog/`) lists every
 day of `CHANGELOG.md`, newest first and grouped by month, read at build with
 the app's own parser (`src/lib/whats-new.ts`), so the page and the card list
-the same days.
+the same days. Only Pensée's own changes: Joel's from the project it was forked
+from are in `docs/upstream-changelog.md`, which nothing displays.
 
 - A header like the site's indexes: `Pensée · N changes`, **What's new**, and
   a line on what the page is.
@@ -77,8 +78,9 @@ the same days.
   none, when two months share one, or when one already hangs elsewhere on the
   site. A new month needs a newly found painting: public domain, someone
   absorbed in reading, writing or thinking, or an empty room, downscaled to
-  800px into `apps/website/public/paintings/`. The months up to September 2026
-  use the six card paintings the site didn't already show; October is Gabriel
+  800px into `apps/website/public/paintings/` (or one of the card's own the
+  site doesn't show yet, listed in that file). August and September 2026 hang
+  Hammershøi's _Dust Motes_ and Vermeer's _Woman in Blue_; October is Gabriel
   Metsu's _Man Writing a Letter_ (c. 1664–66, National Gallery of Ireland,
   Wikimedia Commons, public domain). The card still picks from its own ten.
 - Each day is an anchor (`#2026-10-21`); the date links to it. The page jumps

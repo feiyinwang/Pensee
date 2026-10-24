@@ -60,7 +60,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 **Cross-cutting**
 
 - [TODOS.md](./TODOS.md) — task backlog and work-in-progress tracking
-- [CHANGELOG.md](./CHANGELOG.md) — the app's user-visible changes (the What's new card and page read it); website changes go in [apps/website/CHANGELOG.md](./apps/website/CHANGELOG.md)
+- [CHANGELOG.md](./CHANGELOG.md) — the app's user-visible changes (the What's new card and page read it); website changes go in [apps/website/CHANGELOG.md](./apps/website/CHANGELOG.md); Joel's changes from the project Pensée was forked from are kept in [docs/upstream-changelog.md](./docs/upstream-changelog.md)
 - [SPECs/](./SPECs/) — human-written feature and bug specs
 
 ## Hard Rules

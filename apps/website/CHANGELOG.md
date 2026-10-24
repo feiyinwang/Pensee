@@ -4,7 +4,8 @@ Changes to the website (`apps/website/`). The app's own changes are in the repo'
 
 ## 2026-10-24
 
-- What's new is laid out by month, each under a painting no other month or page on the site uses: October hangs Gabriel Metsu's _Man Writing a Letter_, new to the site, and the six before it the What's new card's paintings that weren't already on the site. Each month's painting, name and count stay in view while its days scroll by. A month with no painting of its own fails the build, so the next one is always chosen fresh.
+- What's new shows only Pensée's own changes, from August 13, 2026 on. The entries Joel wrote in the project Pensée was forked from moved to `docs/upstream-changelog.md`, with his old website's entries from this file.
+- What's new is laid out by month, each under a painting no other month or page on the site uses: October hangs Gabriel Metsu's _Man Writing a Letter_, new to the site; August and September two of the What's new card's paintings that weren't already on the site. Each month's painting, name and count stay in view while its days scroll by. A month with no painting of its own fails the build, so the next one is always chosen fresh.
 - The header now links to What's new, after Folios, on every page. On phones it stays in the footer, where it fits.
 - The website has a What's new page, `/changelog/`, linked from the footer: every change to the app, newest first, read from the repo's `CHANGELOG.md` at build. Each change opens on its first sentence in bold. The app's **Read all** opens it at the card's day. Website changes now go in this file, `apps/website/CHANGELOG.md`, so they never show in the app.
 - The install line at the end of a page is readable again: its **Copy** button was white on the light page. On phones it no longer makes the page wider than the screen.
@@ -21,16 +22,3 @@ Changes to the website (`apps/website/`). The app's own changes are in the repo'
 ## 2026-10-19
 
 - The website is now one page you can download Pensée from. It opens on Rembrandt's _Philosopher in Meditation_ and the README's opening, for people who are neurodivergent, with ADHD or a brain that works a little differently. **Download for Mac** (marked Beta) gets the newest release's zip straight away. Below it, four rooms, each opening with an old painting, show all 15 features with their shortcuts: the README's GIFs, and small demos that repeat while you look at them. It ends on Hammershøi's interior with the download again and the Homebrew line to copy.
-
-## 2026-09-13
-
-- Fix the marketing site's demo-video strip scrolling over the feature list on phones and tablets. The hero column's desktop-only `position: sticky` was still active in the stacked mobile layout, so the hero stayed pinned while the video strip slid up underneath the features. Below 900px the hero now scrolls with the page and grows to at least one screen (`100svh`) instead of exactly one, so it can never overflow into the strip; the features still sit at the bottom of the first screen.
-
-## 2026-09-10
-
-- Move the website's analytics from a self-hosted Umami instance to PostHog, so the website and the app report to one place. The site records four things and nothing else: a page view, the Updates link, the GitHub link, and the macOS download (which carries the advertised version). Autocapture, session replay, surveys, heatmaps, and exception capture are all switched off, and visitors stay anonymous. The project key is supplied at build time, so a build made from a clone of this repo initializes nothing and sends nothing. One change to be aware of: PostHog stores a cookie where Umami did not. See [docs/website-analytics.md](./docs/website-analytics.md).
-
-## 2026-06-05
-
-- Refactor the marketing website from a plain Vite React app to TanStack Start. The homepage now lives in Start file routes with a root document for metadata, favicon, stylesheet, and analytics script handling; the build prerenders `/` into `apps/website/dist/client` for the existing Cloudflare static assets Worker.
-- Keep marketing-site demo videos visible in prerendered output instead of relying on a hydration-time `loadeddata` event to reveal them.
