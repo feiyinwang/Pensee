@@ -120,6 +120,48 @@
   opacity: 0.6;
 }
 
+/* Expanded: the frame floats over its note's scroll area (placed from JS,
+   html-embed-widget.ts `placeExpanded`) and the page fills it below the
+   header. The iframe's inline height is the note's `|N`, kept for when it
+   shrinks back, so it is overridden here rather than rewritten. */
+.cm-html-embed-frame.is-expanded {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lift);
+}
+
+.cm-html-embed-frame.is-expanded .cm-html-embed-iframe {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto !important;
+}
+
+.cm-html-embed-frame.is-expanded .cm-html-embed-button {
+  opacity: 1;
+}
+
+.cm-html-embed-frame.is-expanded .cm-html-embed-resize {
+  display: none;
+}
+
+/* Measures where a fixed box lands (html-embed-widget.ts `placeExpanded`). */
+.cm-html-embed-probe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+}
+
+/* The scroller clips its content to the text column (prosemark-theme.css),
+   and that clip-path would cut the expanded frame off too. */
+.cm-editor .cm-scroller.cm-has-expanded-embed {
+  clip-path: none;
+}
+
 .cm-html-embed-unresolved {
   color: var(--text-muted);
   cursor: text;

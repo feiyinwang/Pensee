@@ -167,6 +167,8 @@ Learned the hard way; each one cost a failed run.
 - React-controlled inputs: `fillField(selector, text)`. CodeMirror text:
   `typeInEditor(text)`. `browser.keys` does not reach either.
 - `waitForClickable` fails on visible elements; use `waitForExist`.
+- WebDriver's `click()` can scroll the note a few pixels before it presses, even with the target in view (17px on MED-08). To check that text didn't move, compare positions in the note (`top + scroller.scrollTop`), not on screen.
+- With one note open there is no `[data-column-tab][data-focused]` column: a selector scoped to it finds nothing. Scope to it only when the spec opens several notes.
 - A CodeMirror list line's `textContent` starts with its bullet (`- ` sits in
   a `cm-list-prefix` span) and a heading's with its hidden `## `: match
   `/^-?\s*Key: /`, and read a style off the text node holding the words, not

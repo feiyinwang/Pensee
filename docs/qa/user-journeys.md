@@ -217,6 +217,7 @@ in place; LaTeX math and Mermaid diagrams render.
 | MED-05 | `$x^2$` and a `$$` block                  | Both render as math                                      | legacy: latex-math      |
 | MED-06 | A ```mermaid block                        | Renders in a canvas with pan, zoom, reset, source toggle | manual                  |
 | MED-07 | Drop an `.html` file from Finder onto a note | `![[page.html]]` lands where you let go (workspace-relative, or note-relative from outside) and the page shows framed; the file is not copied | you |
+| MED-08 | ★ Press **Expand** on an embedded HTML page, then Esc | The page grows over its note in place, filling the note's area, without reloading; the text around it stays put; Esc (or **Shrink back**) puts it back where it was; the file is unchanged | auto: media |
 
 ## Calendar panel — CAL
 

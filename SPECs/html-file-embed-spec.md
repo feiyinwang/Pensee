@@ -39,7 +39,7 @@ In:
 
 - `![[page.html]]`, `![[page.htm]]`, `![[folder/page.html]]`, resolved with the same rules as image embeds (workspace-relative first for paths with `/`, then note-relative, bare basenames fall back to the workspace basename search).
 - `![[page.html|480]]` sets the frame height in pixels. No modifier means the default height.
-- A framed block: thin header with the file name and three buttons (Reload, Open in browser, Edit source), a sandboxed `<iframe>` under it, and a drag handle on the bottom edge to change the height. Dragging writes the new height back into the source text as the `|N` modifier.
+- A framed block: thin header with the file name and four buttons (Expand, Reload, Open in browser, Edit source), a sandboxed `<iframe>` under it, and a drag handle on the bottom edge to change the height. Dragging writes the new height back into the source text as the `|N` modifier.
 - Caret on the embed shows the raw `![[...]]` text, same as image embeds. Leaving it re-renders.
 - Unresolved target renders a muted placeholder with the raw text and "file not found".
 - `/html` in the slash menu opens a file picker filtered to `.html`/`.htm` and inserts the embed with a path relative to the workspace (or the note, when the file is outside the workspace).
@@ -66,7 +66,8 @@ Out (explicitly not doing now):
 
 **Frame**
 
-- Header: file name (basename), muted, 12px UI font. Buttons on the right: Reload (↻), Open in browser (↗, uses the system opener), Edit source (`</>`).
+- Header: file name (basename), muted, 12px UI font. Buttons on the right: Reload (↻), Open in browser (↗, uses the system opener), Edit source (`</>`); Expand (⤢) comes first.
+- Expand grows the page over its note in place: the frame floats over the note's scroll area (12px in from its edges) and the page fills it under the header, which keeps its buttons showing. The page is not reloaded (the iframe never changes parent), the frame's line in the note keeps its height so no text moves, and nothing is written to the file. **Shrink back** (the same button) or Esc puts it back; Esc only reaches the app when focus is outside the page, since the sandboxed page keeps its own keys. One page is expanded at a time. It grows on `--motion-base` and shrinks on `--motion-fast`, both `--ease-out`, the frame itself scaling from where it was; instant under reduced motion.
 - Body: `<iframe>` filling the width of the editor column. Default height 400px. Minimum 120px, maximum 2000px.
 - Resize handle: 6px strip on the bottom edge, `cursor: ns-resize`. While dragging, the iframe gets `pointer-events: none` so the page under it cannot steal the pointer. Height is applied live; the source is rewritten once on pointer up, and only if the height changed.
 - The frame never places the caret. Clicks inside it are swallowed (`ignoreEvent` returns true), matching the Mermaid canvas.

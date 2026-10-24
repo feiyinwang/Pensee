@@ -125,6 +125,13 @@ const NOTES = {
 NOTES["Library/A paper.md"] = "---\nType: Paper\nAuthor: Someone\n---\n\n![[a-paper.pdf]]\n";
 NOTES["Library/assets/a-paper.pdf"] = onePagePdf("A paper");
 
+// A note with an embedded HTML page between two lines of text, to grow over
+// the note and shrink back (MED-08).
+NOTES["Notes/Embed page.md"] =
+  "# Embed page\n\nA line above the page.\n\n![[Notes/assets/page.html|240]]\n\nA line below the page.\n";
+NOTES["Notes/assets/page.html"] =
+  '<!doctype html><meta charset="utf-8"><title>Page</title><h1>An embedded page</h1>\n';
+
 // A board with two cards far apart, for docking one after the other (BRD-07,
 // PERF-07). A legacy ```board fence: opening it writes the .board.svg.
 NOTES["Notes/Dock board.md"] = [

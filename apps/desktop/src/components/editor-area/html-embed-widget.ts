@@ -10,6 +10,7 @@ import {
   findWikiLinkAt,
   withWikiEmbedHeight,
 } from "@/lib/wiki-links";
+import { findOuterScroller } from "./editor-scroll";
 import { resolveEmbedPath } from "./wiki-embed-resolver";
 import "./html-embed.css";
 
@@ -24,6 +25,8 @@ const FRAME_CHROME = 2 + 12;
 const SANDBOX = "allow-scripts allow-forms";
 
 const ICONS = {
+  expand: ["M15 4h5v5", "M9 20H4v-5", "M20 4l-6 6", "M4 20l6-6"],
+  collapse: ["M4 14h6v6", "M20 10h-6V4", "M10 14l-6 6", "M14 10l6-6"],
   reload: ["M20 12a8 8 0 11-2.3-5.7", "M20 4v4.3h-4.3"],
   open: ["M14 5h5v5", "M19 5l-8 8", "M17 13v6H5V7h6"],
   edit: ["M9 8l-4 4 4 4", "M15 8l4 4-4 4"],
@@ -34,6 +37,7 @@ interface FrameParts {
   iframe: HTMLIFrameElement;
   title: HTMLElement;
   absolutePath: string | null;
+  expandButton: HTMLButtonElement | null;
 }
 
 // Live frame DOM per widget root, so `updateDOM` can apply a new height in
@@ -132,15 +136,161 @@ function clampHeight(height: number) {
 }
 
 // ---------------------------------------------------------------------------
+// Expand: the page grows over its note, in place, and shrinks back. The
+// iframe is never moved to another parent (that would reload the page): the
+// frame switches to `position: fixed` over the note's scroll area while its
+// root keeps the height it had, so the text around it does not move.
+// ---------------------------------------------------------------------------
+
+/** Grows on `--motion-base` (160ms), shrinks on `--motion-fast` (100ms), both
+ *  on `--ease-out`: JS-driven, so the tokens' values, named here. */
+const EXPAND_MS = 160;
+const COLLAPSE_MS = 100;
+const EXPAND_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
+/** Gap between the expanded frame and the edges of the note's area. */
+const EXPAND_INSET = 12;
+
+interface Expanded {
+  view: EditorView;
+  root: HTMLElement;
+  parts: FrameParts;
+  scroller: HTMLElement;
+  observer: ResizeObserver;
+  onKey: (event: KeyboardEvent) => void;
+  onWheel: (event: WheelEvent) => void;
+}
+
+/** One page is expanded at a time: expanding another shrinks this one. */
+let expanded: Expanded | null = null;
+
+function reducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Animate `frame` from the box it had (`from`) to where it is now. */
+function flip(frame: HTMLElement, from: DOMRect, duration: number) {
+  if (reducedMotion()) return;
+  const to = frame.getBoundingClientRect();
+  if (!to.width || !to.height) return;
+  const dx = from.left - to.left;
+  const dy = from.top - to.top;
+  const sx = from.width / to.width;
+  const sy = from.height / to.height;
+  frame.animate(
+    [
+      { transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+      { transformOrigin: "0 0", transform: "none" },
+    ],
+    { duration, easing: EXPAND_EASE },
+  );
+}
+
+/** Put the fixed frame over the note's scroll area. A transformed ancestor
+ *  (the tab row slides, the shell scales in on launch) becomes the containing
+ *  block of a fixed element, so its origin and scale are measured rather than
+ *  assumed to be the viewport's: a probe beside the frame, at 0 and at 100px.
+ *  Not the frame itself, whose grow animation's transform would be measured
+ *  too when the resize observer places it mid-animation. */
+function placeExpanded(state: Expanded) {
+  const { frame } = state.parts;
+  const area = state.scroller.getBoundingClientRect();
+  const probe = document.createElement("div");
+  probe.className = "cm-html-embed-probe";
+  state.root.append(probe);
+  const origin = probe.getBoundingClientRect();
+  probe.style.top = "100px";
+  probe.style.left = "100px";
+  const moved = probe.getBoundingClientRect();
+  probe.remove();
+  const scaleX = (moved.left - origin.left) / 100 || 1;
+  const scaleY = (moved.top - origin.top) / 100 || 1;
+  frame.style.top = `${(area.top + EXPAND_INSET - origin.top) / scaleY}px`;
+  frame.style.left = `${(area.left + EXPAND_INSET - origin.left) / scaleX}px`;
+  frame.style.width = `${Math.max(0, area.width - EXPAND_INSET * 2) / scaleX}px`;
+  frame.style.height = `${Math.max(0, area.height - EXPAND_INSET * 2) / scaleY}px`;
+}
+
+function setExpandButton(button: HTMLButtonElement | null, isExpanded: boolean) {
+  if (!button) return;
+  const label = isExpanded ? "Shrink back" : "Expand";
+  button.title = isExpanded ? `${label} (Esc)` : label;
+  button.setAttribute("aria-label", label);
+  button.setAttribute("aria-pressed", String(isExpanded));
+  button.querySelector("svg")?.replaceWith(iconSvg(isExpanded ? ICONS.collapse : ICONS.expand));
+}
+
+function expandFrame(view: EditorView, root: HTMLElement, parts: FrameParts) {
+  if (expanded) collapseFrame({ animate: expanded.root !== root });
+  const scroller = findOuterScroller(view.dom);
+  if (!scroller) return;
+  const { frame } = parts;
+  const from = frame.getBoundingClientRect();
+
+  // Hold the line the frame sat on, so the note does not reflow under it.
+  root.style.height = `${root.offsetHeight}px`;
+  view.scrollDOM.classList.add("cm-has-expanded-embed");
+  frame.classList.add("is-expanded");
+
+  const state: Expanded = {
+    view,
+    root,
+    parts,
+    scroller,
+    observer: new ResizeObserver(() => {
+      if (expanded === state) placeExpanded(state);
+    }),
+    // Esc from the editor or the frame's header. A key pressed inside the
+    // page goes to its own document, which the sandbox keeps from us; the
+    // header button shrinks it from there.
+    onKey: (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      collapseFrame({ animate: true });
+    },
+    // A wheel on the header would scroll the note hidden behind the page.
+    onWheel: (event) => event.preventDefault(),
+  };
+  expanded = state;
+  placeExpanded(state);
+  state.observer.observe(scroller);
+  window.addEventListener("keydown", state.onKey, true);
+  frame.addEventListener("wheel", state.onWheel, { passive: false });
+  setExpandButton(parts.expandButton, true);
+  flip(frame, from, EXPAND_MS);
+}
+
+function collapseFrame({ animate }: { animate: boolean }) {
+  const state = expanded;
+  if (!state) return;
+  expanded = null;
+  const { frame } = state.parts;
+  const from = frame.getBoundingClientRect();
+  state.observer.disconnect();
+  window.removeEventListener("keydown", state.onKey, true);
+  frame.removeEventListener("wheel", state.onWheel);
+  frame.classList.remove("is-expanded");
+  frame.style.removeProperty("top");
+  frame.style.removeProperty("left");
+  frame.style.removeProperty("width");
+  frame.style.removeProperty("height");
+  state.view.scrollDOM.classList.remove("cm-has-expanded-embed");
+  state.root.style.removeProperty("height");
+  setExpandButton(state.parts.expandButton, false);
+  if (animate && frame.isConnected) flip(frame, from, COLLAPSE_MS);
+  state.view.requestMeasure();
+}
+
+function toggleExpanded(view: EditorView, root: HTMLElement, parts: FrameParts) {
+  if (expanded?.root === root) collapseFrame({ animate: true });
+  else expandFrame(view, root, parts);
+}
+
+// ---------------------------------------------------------------------------
 // DOM
 // ---------------------------------------------------------------------------
 
-function makeButton(icon: string[], title: string, onClick: () => void): HTMLButtonElement {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "cm-html-embed-button";
-  button.title = title;
-  button.setAttribute("aria-label", title);
+function iconSvg(icon: string[]): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
@@ -149,7 +299,16 @@ function makeButton(icon: string[], title: string, onClick: () => void): HTMLBut
     path.setAttribute("d", d);
     svg.append(path);
   }
-  button.append(svg);
+  return svg;
+}
+
+function makeButton(icon: string[], title: string, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "cm-html-embed-button";
+  button.title = title;
+  button.setAttribute("aria-label", title);
+  button.append(iconSvg(icon));
   // Keep the editor focused: without this the button takes focus on press
   // and the editor loses its selection highlight for the click.
   button.addEventListener("mousedown", (event) => event.preventDefault());
@@ -207,7 +366,7 @@ function attachResizeHandle(
 
 /** Obsidian-style HTML file embed `![[page.html]]` / `![[page.html|480]]`.
  *  Renders the resolved file in a sandboxed frame with a header (file name,
- *  reload, open externally, edit source) and a bottom drag handle whose
+ *  expand, reload, open externally, edit source) and a bottom drag handle whose
  *  release writes the new height back as the `|N` modifier. Unresolved
  *  targets render the raw source text as a muted placeholder. Identity is
  *  the visual state only; positions are derived at click time. */
@@ -259,10 +418,17 @@ export class HtmlEmbedWidget extends WidgetType {
     iframe.dataset.target = this.target;
     iframe.style.height = `${this.height}px`;
 
-    const parts: FrameParts = { frame, iframe, title, absolutePath: null };
+    const parts: FrameParts = { frame, iframe, title, absolutePath: null, expandButton: null };
     frameParts.set(root, parts);
 
+    const expandButton = makeButton(ICONS.expand, "Expand", () =>
+      toggleExpanded(view, root, parts),
+    );
+    expandButton.setAttribute("aria-pressed", "false");
+    parts.expandButton = expandButton;
+
     header.append(
+      expandButton,
       makeButton(ICONS.reload, "Reload", () => reloadFrame(iframe)),
       makeButton(ICONS.open, "Open in browser", () => {
         if (!parts.absolutePath) return;
@@ -300,6 +466,7 @@ export class HtmlEmbedWidget extends WidgetType {
   }
 
   private renderPlaceholder(view: EditorView, root: HTMLElement) {
+    if (expanded?.root === root) collapseFrame({ animate: false });
     frameParts.delete(root);
     root.replaceChildren();
     root.classList.add("cm-html-embed-unresolved");
@@ -325,6 +492,7 @@ export class HtmlEmbedWidget extends WidgetType {
   }
 
   destroy(dom: HTMLElement): void {
+    if (expanded?.root === dom) collapseFrame({ animate: false });
     const parts = frameParts.get(dom);
     if (parts?.absolutePath) unregisterFrame(parts.absolutePath, parts.iframe);
     frameParts.delete(dom);
