@@ -25,10 +25,10 @@ voice.
   it; the homepage hero slides up under it, so the painting frames it. The
   lockup on the left; on the right the section links (once a
   section has a page), then Download for Mac at the far right. On the homepage
-  the header is almost black while the hero is under it, blending into the
-  painting, with light words and no Download: it takes no room then, so the
+  the header has no card while the hero is under it, only light words on the
+  painting, and no Download: it takes no room then, so the
   links sit at the right edge. Once the hero's bottom edge has scrolled up
-  under the header, the header turns cream (200ms ease-out) and Download's
+  under the header, the cream card fades in (200ms ease-out) and Download's
   column opens (200ms ease-out; 150ms back; none with reduced motion): the
   links slide left and the button fades in on their right. The page never
   shows two Download buttons at once.

@@ -6,8 +6,8 @@ import { SectionLinks } from "./SectionLinks";
  * The sticky header on every page: the lockup, the section links, What's new
  * and Download.
  * The homepage passes `dark` while its hero painting is under the bar: the bar
- * is then almost black, blending into the painting, and turns cream once the
- * hero has scrolled past.
+ * then has no card, only light words on the painting, and its cream card fades
+ * in once the hero has scrolled past.
  * The homepage also passes `downloadShown={false}` until the hero has scrolled
  * past, so the page never shows two Download buttons at once. Hidden, it takes
  * no room, so the section links sit at the right edge until it comes in.
