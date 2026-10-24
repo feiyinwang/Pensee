@@ -521,9 +521,9 @@ export function obsidianVaults(): Promise<ObsidianVault[]> {
   return invoke("obsidian_vaults");
 }
 
-/** The top of CHANGELOG.md on GitHub, for the What's new card (commands/changelog.rs). */
-export function fetchChangelog(): Promise<string> {
-  return invoke("fetch_changelog");
+/** The CHANGELOG.md this build was made with, for the What's new card (commands/changelog.rs). */
+export function readChangelog(): Promise<string> {
+  return invoke("read_changelog");
 }
 
 /** Whether Claude Code's `claude` binary can be found on this Mac. */

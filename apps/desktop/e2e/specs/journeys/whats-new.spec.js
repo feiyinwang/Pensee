@@ -1,6 +1,6 @@
 // What's new (docs/qa/user-journeys.md § What's new — WN). wdio.conf.js seeds
-// this file with `seedWhatsNew`: the changelog fixture's newest day is
-// 2026-10-18 and the writer last saw 2026-10-17, so the card shows at launch.
+// this file with `seedWhatsNew`: the changelog fixture has 2026-10-17 and
+// 2026-10-18 and the writer last saw 2026-10-16, so the card shows both at launch.
 import { deepEqual, equal, ok } from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -48,40 +48,42 @@ async function clickCardButton(label) {
 describe("What's new", function () {
   this.timeout(60_000);
 
-  it("WN-01 ★ an unseen changelog day shows once, in the corner, with its painting", async () => {
+  it("WN-01 ★ the days since the writer last looked show once, in the corner, with a painting", async () => {
     await waitForCard();
     await browser.waitUntil(async () => (await card()).painted, {
       timeout: 5_000,
       timeoutMsg: "the painting never loaded",
     });
     const shown = await card();
-    equal(shown.eyebrow, "What's new · 5 changes");
-    equal(shown.title, "October 18");
-    // First sentences only, three of five.
+    // Both unseen days in one card, newest first.
+    equal(shown.eyebrow, "What's new · 6 changes");
+    equal(shown.title, "October 17–18");
+    // First sentences only, three of six.
     deepEqual(shown.items, [
       "Pensée now welcomes you on first launch.",
       "Pensée can now be installed with one line: brew install --cask feiyinwang/tap/pensee, or the install script.",
       "Adding a paper from a link now brings in its PDF.",
     ]);
-    equal(shown.more, "2 more");
+    equal(shown.more, "3 more");
     ok(/^[^,]+, .+/.test(shown.credit), `the painting is credited: ${shown.credit}`);
     // Bottom-right, and it never takes the writer's focus.
     ok(shown.viewport.w - shown.rect.right <= 24 && shown.viewport.h - shown.rect.bottom <= 24);
     equal(shown.focused, false);
   });
 
-  it("WN-02 N more shows the rest of the day in place", async () => {
-    await clickCardButton("2 more");
+  it("WN-02 N more shows the rest in place, the older day's last", async () => {
+    await clickCardButton("3 more");
     const shown = await card();
-    equal(shown.items.length, 5);
+    equal(shown.items.length, 6);
     equal(
       shown.items[4],
       "When Add to Projects finds a line that looks like a project you already have, it now asks first.",
     );
+    equal(shown.items[5], "⌘↓ now takes you to the very bottom of a note and ⌘↑ to the very top.");
     equal(shown.more, null);
   });
 
-  it("WN-03 Got it closes it and remembers the day", async () => {
+  it("WN-03 Got it closes it and remembers the newest day", async () => {
     await clickCardButton("Got it");
     await waitForCard(false);
     await browser.waitUntil(

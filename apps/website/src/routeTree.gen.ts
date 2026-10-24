@@ -15,6 +15,7 @@ import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EssaysIndexRouteImport } from './routes/essays/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as ChangelogIndexRouteImport } from './routes/changelog/index'
 import { Route as ArticlesIndexRouteImport } from './routes/articles/index'
 import { Route as EssaysSlugRouteImport } from './routes/essays/$slug'
 import { Route as DocsSlugRouteImport } from './routes/docs/$slug'
@@ -50,6 +51,11 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
   path: '/docs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChangelogIndexRoute = ChangelogIndexRouteImport.update({
+  id: '/changelog/',
+  path: '/changelog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArticlesIndexRoute = ArticlesIndexRouteImport.update({
   id: '/articles/',
   path: '/articles/',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/docs/$slug': typeof DocsSlugRoute
   '/essays/$slug': typeof EssaysSlugRoute
   '/articles/': typeof ArticlesIndexRoute
+  '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/essays/': typeof EssaysIndexRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/docs/$slug': typeof DocsSlugRoute
   '/essays/$slug': typeof EssaysSlugRoute
   '/articles': typeof ArticlesIndexRoute
+  '/changelog': typeof ChangelogIndexRoute
   '/docs': typeof DocsIndexRoute
   '/essays': typeof EssaysIndexRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/docs/$slug': typeof DocsSlugRoute
   '/essays/$slug': typeof EssaysSlugRoute
   '/articles/': typeof ArticlesIndexRoute
+  '/changelog/': typeof ChangelogIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/essays/': typeof EssaysIndexRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/docs/$slug'
     | '/essays/$slug'
     | '/articles/'
+    | '/changelog/'
     | '/docs/'
     | '/essays/'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/docs/$slug'
     | '/essays/$slug'
     | '/articles'
+    | '/changelog'
     | '/docs'
     | '/essays'
   id:
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/docs/$slug'
     | '/essays/$slug'
     | '/articles/'
+    | '/changelog/'
     | '/docs/'
     | '/essays/'
   fileRoutesById: FileRoutesById
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   DocsSlugRoute: typeof DocsSlugRoute
   EssaysSlugRoute: typeof EssaysSlugRoute
   ArticlesIndexRoute: typeof ArticlesIndexRoute
+  ChangelogIndexRoute: typeof ChangelogIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   EssaysIndexRoute: typeof EssaysIndexRoute
 }
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/changelog/': {
+      id: '/changelog/'
+      path: '/changelog'
+      fullPath: '/changelog/'
+      preLoaderRoute: typeof ChangelogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/articles/': {
       id: '/articles/'
       path: '/articles'
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsSlugRoute: DocsSlugRoute,
   EssaysSlugRoute: EssaysSlugRoute,
   ArticlesIndexRoute: ArticlesIndexRoute,
+  ChangelogIndexRoute: ChangelogIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   EssaysIndexRoute: EssaysIndexRoute,
 }

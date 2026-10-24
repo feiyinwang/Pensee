@@ -3,21 +3,18 @@ import { Fragment, useEffect, useState } from "react";
 import { useOnboardingStore } from "@/components/onboarding/onboarding-store";
 import {
   firstSentence,
-  formatDay,
+  formatDays,
   inlineParts,
   paintingIndex,
   type ChangelogDay,
 } from "@/lib/whats-new";
 import { PAINTINGS } from "./paintings";
-import {
-  CHECK_EVERY_MS,
-  checkWhatsNew,
-  dismissWhatsNew,
-  useWhatsNewStore,
-} from "./whats-new-store";
+import { checkWhatsNew, dismissWhatsNew, useWhatsNewStore } from "./whats-new-store";
 import "./whats-new.css";
 
-const CHANGELOG_PAGE = "https://github.com/feiyinwang/Pensee/blob/master/CHANGELOG.md";
+/** The website's What's new page (apps/website/src/routes/changelog.tsx);
+ *  the host is the site's SITE_URL (apps/website/src/site.ts). */
+const CHANGELOG_PAGE = "https://pensee-website.zhhv5f4p77.workers.dev/changelog/";
 
 /** Entries shown before "N more". */
 const SHOWN = 3;
@@ -25,28 +22,29 @@ const SHOWN = 3;
 /** The card's fade-out: --motion-fast (App.css). */
 const LEAVE_MS = 100;
 
-/** The What's new card (SPECs/whats-new-card-spec.md): a day of changes in
- *  the corner, once per update. It waits while onboarding is open. */
+/** The What's new card (SPECs/whats-new-card-spec.md): the changes since the
+ *  writer last looked, in the corner, once per app update. It waits while
+ *  onboarding is open. */
 export function WhatsNew() {
   useEffect(() => {
     void checkWhatsNew();
-    const timer = window.setInterval(() => void checkWhatsNew(), CHECK_EVERY_MS);
-    return () => window.clearInterval(timer);
   }, []);
 
-  const day = useWhatsNewStore((s) => s.day);
+  const days = useWhatsNewStore((s) => s.days);
   const onboardingOpen = useOnboardingStore((s) => s.open);
-  if (!day || onboardingOpen) return null;
-  return <WhatsNewCard key={day.date} day={day} />;
+  if (!days || onboardingOpen) return null;
+  return <WhatsNewCard key={days[0].date} days={days} />;
 }
 
-function WhatsNewCard({ day }: { day: ChangelogDay }) {
+function WhatsNewCard({ days }: { days: ChangelogDay[] }) {
   const [all, setAll] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const painting = PAINTINGS[paintingIndex(day.date, PAINTINGS.length)];
-  const count = day.entries.length;
+  const newest = days[0].date;
+  const painting = PAINTINGS[paintingIndex(newest, PAINTINGS.length)];
+  const changes = days.flatMap((day) => day.entries);
+  const count = changes.length;
   const rest = count - SHOWN;
-  const entries = all ? day.entries : day.entries.slice(0, SHOWN);
+  const entries = all ? changes : changes.slice(0, SHOWN);
 
   // The card fades out on --motion-fast, then closes. A timer, not
   // transitionend: a hidden window sends no transition events.
@@ -60,7 +58,7 @@ function WhatsNewCard({ day }: { day: ChangelogDay }) {
   };
 
   const readAll = () => {
-    void openUrl(CHANGELOG_PAGE).catch((error: unknown) =>
+    void openUrl(`${CHANGELOG_PAGE}#${newest}`).catch((error: unknown) =>
       console.error("[whats-new] Failed to open the changelog:", error),
     );
     close();
@@ -83,7 +81,7 @@ function WhatsNewCard({ day }: { day: ChangelogDay }) {
           What's new · {count === 1 ? "1 change" : `${count} changes`}
         </div>
         <h2 id="whats-new-title" className="whats-new-title">
-          {formatDay(day.date)}
+          {formatDays(days)}
         </h2>
         <ul className="whats-new-list" data-all={all || undefined}>
           {entries.map((entry, i) => (

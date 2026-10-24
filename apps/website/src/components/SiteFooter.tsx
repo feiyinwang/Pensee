@@ -11,6 +11,7 @@ export function SiteFooter() {
       <span>Pensée is GPL v3. Neither the app nor this site collects usage data.</span>
       <SectionLinks />
       <nav aria-label="Project">
+        <a href="/changelog/">What's new</a>
         <a href={REPO}>GitHub</a>
         <a href={`${REPO}/releases`}>Releases</a>
         <a href={`${REPO}/blob/master/LICENSE`}>License</a>

@@ -2,10 +2,11 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   firstSentence,
   formatDay,
+  formatDays,
   inlineParts,
   paintingIndex,
   parseChangelog,
-  unseenDay,
+  unseenDays,
 } from "../src/lib/whats-new";
 
 const CHANGELOG = `# Changelog
@@ -76,26 +77,37 @@ describe("inlineParts", () => {
   });
 });
 
-describe("unseenDay", () => {
+describe("unseenDays", () => {
   const days = parseChangelog(CHANGELOG);
 
   it("on a first run records the newest day and shows nothing", () => {
-    expect(unseenDay(days, null)).toEqual({ record: "2026-10-18" });
+    expect(unseenDays(days, null)).toEqual({ record: "2026-10-18" });
   });
 
   it("shows the newest day when it's after the last one seen", () => {
-    expect(unseenDay(days, "2026-10-17")).toEqual({ show: days[0] });
+    expect(unseenDays(days, "2026-10-17")).toEqual({ show: [days[0]] });
+  });
+
+  it("shows every day since the last one seen, newest first", () => {
+    expect(unseenDays(days, "2026-10-01")).toEqual({ show: days });
   });
 
   it("shows nothing once the newest day is seen", () => {
-    expect(unseenDay(days, "2026-10-18")).toBeNull();
-    expect(unseenDay([], "2026-10-18")).toBeNull();
+    expect(unseenDays(days, "2026-10-18")).toBeNull();
+    expect(unseenDays([], "2026-10-18")).toBeNull();
   });
 });
 
 describe("formatDay and paintingIndex", () => {
   it("names the day", () => {
     expect(formatDay("2026-10-18")).toBe("October 18");
+  });
+
+  it("names a run of days by its first and last", () => {
+    const day = (date: string) => ({ date, entries: ["x"] });
+    expect(formatDays([day("2026-10-18")])).toBe("October 18");
+    expect(formatDays([day("2026-10-18"), day("2026-10-16")])).toBe("October 16–18");
+    expect(formatDays([day("2026-10-02"), day("2026-09-30")])).toBe("September 30 – October 2");
   });
 
   it("gives a day the same painting every time, within range", () => {

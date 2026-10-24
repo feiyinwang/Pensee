@@ -94,7 +94,7 @@ Run the `pensee-qa` skill ([`docs/qa/qa-checklist.md`](../qa/qa-checklist.md)): 
 ## Step 7: Document and Wrap Up
 
 1. Update relevant docs if behavior or rules changed.
-2. Update [`CHANGELOG.md`](../../CHANGELOG.md) if the work is user-visible.
+2. Update [`CHANGELOG.md`](../../CHANGELOG.md) if the work is user-visible in the app, or [`apps/website/CHANGELOG.md`](../../apps/website/CHANGELOG.md) if it only changes the website (the app's What's new card shows every line of `CHANGELOG.md`).
 3. Move the task from **In Progress** to **Done** in [`TODOS.md`](../../TODOS.md), with a shortened commit hash.
 4. Add follow-up TODOs if you found adjacent issues.
 5. Commit with a clear message as soon as QA passes — one commit per completed task, holding only your own lines (other sessions share this checkout). See the existing commit history for style.

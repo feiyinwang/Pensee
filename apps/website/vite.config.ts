@@ -18,6 +18,7 @@ export default defineConfig({
       // Nothing links these, so they're named. Built from the content list (src/pages/feeds.ts).
       pages: [
         { path: "/" },
+        { path: "/changelog/" },
         { path: "/sitemap.xml" },
         { path: "/robots.txt" },
         { path: "/llms.txt" },

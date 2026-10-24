@@ -68,28 +68,40 @@ export function inlineParts(markdown: string): InlinePart[] {
 }
 
 export type UnseenResult =
-  /** Show this day. */
-  | { show: ChangelogDay }
+  /** Show these days, newest first. */
+  | { show: ChangelogDay[] }
   /** Nothing to show; remember this date as seen (a first run). */
   | { record: string }
   | null;
 
-/** The day the card should show, given the last day the writer saw. A first
- *  run (nothing seen yet) shows nothing and starts from today's newest day. */
-export function unseenDay(days: ChangelogDay[], lastSeen: string | null): UnseenResult {
+/** The days the card should show: every day after the last one the writer
+ *  saw, so an update that skipped a week still shows the whole week. A first
+ *  run (nothing seen yet) shows nothing and starts from the newest day. */
+export function unseenDays(days: ChangelogDay[], lastSeen: string | null): UnseenResult {
   const newest = days[0];
   if (!newest) return null;
   if (lastSeen === null) return { record: newest.date };
-  return newest.date > lastSeen ? { show: newest } : null;
+  const unseen = days.filter((day) => day.date > lastSeen);
+  return unseen.length > 0 ? { show: unseen } : null;
 }
+
+const MONTH_DAY = { month: "long", day: "numeric", timeZone: "UTC" } as const;
 
 /** "2026-10-18" → "October 18". */
 export function formatDay(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", MONTH_DAY);
+}
+
+/** Days, newest first, as one title: "October 18", "October 16–18",
+ *  "September 30 – October 2". */
+export function formatDays(days: ChangelogDay[]): string {
+  const newest = days[0].date;
+  const oldest = days[days.length - 1].date;
+  if (newest === oldest) return formatDay(newest);
+  const sameMonth = oldest.slice(0, 7) === newest.slice(0, 7);
+  return sameMonth
+    ? `${formatDay(oldest)}–${Number(newest.slice(8))}`
+    : `${formatDay(oldest)} – ${formatDay(newest)}`;
 }
 
 /** Which of `count` paintings a day gets: the same day always gets the same one. */

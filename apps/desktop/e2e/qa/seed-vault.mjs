@@ -225,8 +225,8 @@ export function seedVault() {
 }
 
 /** The changelog the What's new card reads (run.sh points the app at this
- *  file with PENSEE_CHANGELOG_FILE), so no journey reads GitHub. Its newest
- *  day has five changes: three show, two wait behind "2 more". */
+ *  file with PENSEE_CHANGELOG_FILE) in place of the one built into the app.
+ *  Its two days hold six changes: three show, three wait behind "3 more". */
 export const CHANGELOG_FILE = join(APP_DATA, "changelog.md");
 const CHANGELOG = [
   "# Changelog",
@@ -245,13 +245,13 @@ const CHANGELOG = [
   "",
 ].join("\n");
 
-/** The What's new journeys: the writer last saw 2026-10-17, so the
- *  changelog's 2026-10-18 is new and the card shows at launch. */
+/** The What's new journeys: the writer last saw 2026-10-16, so the
+ *  changelog's 2026-10-17 and 2026-10-18 are new and the card shows them at launch. */
 export function seedWhatsNew() {
   seedVault();
   writeFileSync(
     join(APP_DATA, "preferences.json"),
-    JSON.stringify({ "whatsNew.lastSeen": "2026-10-17" }),
+    JSON.stringify({ "whatsNew.lastSeen": "2026-10-16" }),
   );
 }
 

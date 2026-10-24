@@ -15,56 +15,84 @@ how they work, like a new shortcut or a fix to something that annoyed them.
 - As a writer, once I've dismissed it, the card stays gone until the next
   update.
 - As a new writer, my first launch shows onboarding, not a backlog of changes.
-- As a writer away for a week, I see the newest day, not a stack of cards.
+- As a writer who updates after a week, I see the whole week in one card,
+  not a stack of cards.
+- As a writer, the card only comes with an update to the app: a change to the
+  website never shows in it.
+- As a writer, **Read all** takes me to a page on the website that lists every
+  change, opened at the day the card showed.
 - As a writer who closed it too fast, I can bring it back from ⌘P.
 
 ## Behaviour
 
-- **Source.** Pensée reads `CHANGELOG.md` from the repo's `master` on GitHub
-  (`fetch_changelog`, in Rust: the webview's CSP allows no outside fetches).
-  It reads it once the app has started and again every 6 hours while it
-  stays open. A failed read is logged and tried again next time. Nothing is
-  shown about it.
-- **Unseen day.** The newest `## YYYY-MM-DD` section is the update. The card
-  shows it when its date is after `whatsNew.lastSeen` (preferences.json). If
+- **Source.** `CHANGELOG.md` is the app's changelog and only the app's: a
+  website change goes in `apps/website/CHANGELOG.md`. The app reads the
+  `CHANGELOG.md` it was built with (`read_changelog`, `include_str!` in
+  Rust), once at launch, so the card only has news after an update. Until
+  2026-10-24 it fetched `master` on GitHub every 6 hours, which showed
+  website changes and changes not yet released.
+- **Unseen days.** Every `## YYYY-MM-DD` section after `whatsNew.lastSeen`
+  (preferences.json) is new, and the card shows them all, newest first. If
   `whatsNew.lastSeen` was never set, the newest date is recorded and nothing
   shows, so a first run stays with onboarding. While onboarding is open the
   card waits.
 - **Card.** Bottom-right of the window, over the canvas. From top to bottom:
   - A painting with its credit (artist, _title_, year) on a dark fade.
   - `What's new · N changes`.
-  - The day as a Didone title ("October 18").
+  - The day as a Didone title ("October 18"), or the run of days
+    ("October 16–18", "September 30 – October 2").
   - The first sentence of the first three entries, each clamped to two lines,
     then `N more`, which opens the rest in place, scrollable.
   - **Got it** and **Read all**.
 - **Dismiss.** **Got it** closes the card and records the day as seen.
-  **Read all** opens the changelog on GitHub in the browser, then does the same.
+  **Read all** opens the website's What's new page (`/changelog/#<newest
+date>`) in the browser, then does the same. Both record the newest day.
   The card doesn't take focus and has no Esc, so typing in a note never
   reaches it.
 - **⌘P → Show What's New** shows the newest day at any time, seen or not.
 - **Painting.** Ten public-domain paintings of reading, writing and thinking
-  rooms, bundled in `src/components/whats-new/paintings/`. The day picks one (a hash of its
+  rooms, bundled in `src/components/whats-new/paintings/`. The newest day picks one (a hash of its
   date), so each update has its own and the same day always shows the same one.
 - **Motion.** The card rises 12px and fades in on `--motion-settle` /
   `--ease-out`, and its rows follow `--motion-stagger` apart. It leaves on
   `--motion-fast`. Under reduced motion it appears and goes still.
 
+## The website's What's new page
+
+`/changelog/` on the website (`apps/website/src/routes/changelog/`) lists every
+day of `CHANGELOG.md`, newest first, read at build with the app's own parser
+(`src/lib/whats-new.ts`), so the page and the card list the same days.
+
+- A header like the site's indexes: `Pensée · N changes`, **What's new**, and
+  a line on what the page is.
+- A day per row: on the left its painting (the one the card gives that day,
+  from the same files), credited, then the date in Bodoni and `2026 · N
+changes`, held in view while the day's changes scroll by. On the right each
+  change in full, its first sentence (the card's line) in bold. Under 860px
+  the date sits above the changes and the painting is left out.
+- Each day is an anchor (`#2026-10-21`); the date links to it. The page jumps
+  to it instantly (the site's smooth scroll would be cut off on so long a
+  page).
+- Repo-relative links (`./docs/brand.md`) point into the repo on GitHub.
+- It ends on the install line and `brew upgrade --cask pensee`. The footer
+  links it as **What's new**.
+
 ## Paintings
 
 All from Wikimedia Commons, public domain or CC0, downscaled to 800px wide.
 
-| File                              | Credit                                                      |
-| --------------------------------- | ----------------------------------------------------------- |
-| `durer-saint-jerome.jpg`          | Albrecht Dürer, _Saint Jerome in His Study_, 1514 (NGA)     |
-| `rembrandt-philosopher.jpg`       | Rembrandt, _Philosopher in Meditation_, 1632 (Louvre)       |
+| File                              | Credit                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `durer-saint-jerome.jpg`          | Albrecht Dürer, _Saint Jerome in His Study_, 1514 (NGA)                 |
+| `rembrandt-philosopher.jpg`       | Rembrandt, _Philosopher in Meditation_, 1632 (Louvre)                   |
 | `hammershoi-interior.jpg`         | Vilhelm Hammershøi, _Interior with a Woman Seen from the Back_, 1903–04 |
-| `ter-borch-woman-writing.jpg`     | Gerard ter Borch, _Woman Writing a Letter_, c. 1655         |
-| `vermeer-woman-in-blue.jpg`       | Johannes Vermeer, _Woman in Blue Reading a Letter_, c. 1663 |
-| `vermeer-geographer.jpg`          | Johannes Vermeer, _The Geographer_, 1669 (Städel)           |
-| `hammershoi-dust-motes.jpg`       | Vilhelm Hammershøi, _Dust Motes Dancing in the Sunbeams_, 1900 |
-| `antonello-saint-jerome.jpg`      | Antonello da Messina, _Saint Jerome in His Study_, c. 1475  |
-| `chardin-philosopher-reading.jpg` | Jean-Baptiste Siméon Chardin, _The Philosopher Reading_, 1734 |
-| `carpaccio-saint-augustine.jpg`   | Vittore Carpaccio, _The Vision of Saint Augustine_, 1502    |
+| `ter-borch-woman-writing.jpg`     | Gerard ter Borch, _Woman Writing a Letter_, c. 1655                     |
+| `vermeer-woman-in-blue.jpg`       | Johannes Vermeer, _Woman in Blue Reading a Letter_, c. 1663             |
+| `vermeer-geographer.jpg`          | Johannes Vermeer, _The Geographer_, 1669 (Städel)                       |
+| `hammershoi-dust-motes.jpg`       | Vilhelm Hammershøi, _Dust Motes Dancing in the Sunbeams_, 1900          |
+| `antonello-saint-jerome.jpg`      | Antonello da Messina, _Saint Jerome in His Study_, c. 1475              |
+| `chardin-philosopher-reading.jpg` | Jean-Baptiste Siméon Chardin, _The Philosopher Reading_, 1734           |
+| `carpaccio-saint-augustine.jpg`   | Vittore Carpaccio, _The Vision of Saint Augustine_, 1502                |
 
 ## Decision (from the 2026-10-19 prototype)
 
