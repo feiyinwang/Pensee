@@ -8,6 +8,7 @@ import {
   joinBands,
   withBand,
   appendToBand,
+  dropPositionToViewport,
   type Column,
 } from "../src/components/editor-area/columns-decorations";
 
@@ -234,5 +235,16 @@ describe("appendToBand", () => {
 
   test("an empty column takes the drop as its only content", () => {
     expect(appendToBand("", "below", "hi")).toBe("hi");
+  });
+});
+
+describe("dropPositionToViewport", () => {
+  test("macOS and Linux send CSS pixels already, on Retina too", () => {
+    expect(dropPositionToViewport({ x: 640, y: 300 }, "macos", 2)).toEqual({ x: 640, y: 300 });
+    expect(dropPositionToViewport({ x: 640, y: 300 }, "linux", 2)).toEqual({ x: 640, y: 300 });
+  });
+
+  test("Windows sends device pixels", () => {
+    expect(dropPositionToViewport({ x: 1280, y: 600 }, "windows", 2)).toEqual({ x: 640, y: 300 });
   });
 });

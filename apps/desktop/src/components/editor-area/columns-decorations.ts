@@ -47,6 +47,7 @@ import { markdownFormatting } from "./markdown-formatting";
 import { embedTargetFor, formatMarkdownDestination } from "@/lib/paths";
 import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import * as tauri from "@/lib/tauri";
+import { detectPlatform, type Platform } from "@/lib/platform";
 import { captureRenderedBand, reportBandEdit } from "./band-debug";
 import {
   BAND_ORDER,
@@ -2669,11 +2670,11 @@ function targetStillValid(view: EditorView, resolved: ResolvedTarget): boolean {
 
 /**
  * `localStorage.setItem("pensee.dropDebug", "1")` turns on one line of console
- * output per drag-drop event, per channel. It exists because the two channels
- * (the webview's `onDragDropEvent` and Rust's `WindowEvent::DragDrop`) may not
- * agree on units or origin, and the only way to know is to read what each one
- * actually sends — focused and unfocused, Retina and 1x. Cheap enough to leave
- * in: one `localStorage` read per event, nothing when it is off.
+ * output per drag-drop event, per channel (the webview's `onDragDropEvent` and
+ * Rust's `WindowEvent::DragDrop`, which carry the same wry numbers), so a drop
+ * that lands in the wrong place can be read rather than guessed at: raw,
+ * converted, and the editor's rect. Cheap enough to leave in: one
+ * `localStorage` read per event, nothing when it is off.
  */
 function dropDebugEnabled(): boolean {
   try {
@@ -2681,6 +2682,27 @@ function dropDebugEnabled(): boolean {
   } catch {
     return false;
   }
+}
+
+const PLATFORM = detectPlatform();
+
+/**
+ * A drag-drop position, as both channels send it, in CSS viewport pixels.
+ *
+ * Tauri types the position as physical pixels, but only WebView2 (Windows)
+ * sends device pixels. WKWebView (macOS) sends `draggingLocation`, which is in
+ * points, and WebKitGTK sends widget coordinates, both already CSS pixels; Tauri
+ * passes them through unscaled (tauri-runtime-wry's drag handler). Dividing
+ * them by `devicePixelRatio` put a Retina drop at half its coordinates, outside
+ * the editor, so the drop was ignored.
+ */
+export function dropPositionToViewport(
+  position: { x: number; y: number },
+  platform: Platform,
+  devicePixelRatio: number,
+): { x: number; y: number } {
+  if (platform !== "windows") return { x: position.x, y: position.y };
+  return { x: position.x / devicePixelRatio, y: position.y / devicePixelRatio };
 }
 
 function fileDropPlugin(getFilePath: () => string) {
@@ -2728,24 +2750,8 @@ function fileDropPlugin(getFilePath: () => string) {
         return drag?.view === this.view && drag.source.kind === "external";
       }
 
-      /**
-       * Physical window coordinates to CSS viewport coordinates.
-       *
-       * Both drop channels feed this one converter, which quietly assumes they
-       * report in the same unit and from the same origin — an assumption that
-       * has never been checked, and the prime suspect for "the picture does not
-       * land where I let go when the window was not focused" (the webview
-       * channel sends no hover events until macOS activates the window, so an
-       * unfocused drop is the one case that relies purely on the Rust channel).
-       *
-       * Deliberately unchanged until there is data: guessing an offset or
-       * dropping the divide would be exactly the hardcode this project keeps
-       * banning. `wrDropDebug()` below prints what each channel actually sends;
-       * one drag with it on settles it.
-       */
       private point(position: { x: number; y: number }) {
-        const ratio = window.devicePixelRatio || 1;
-        return { x: position.x / ratio, y: position.y / ratio };
+        return dropPositionToViewport(position, PLATFORM, window.devicePixelRatio || 1);
       }
 
       /** Raw numbers for one drop, per channel. Off unless asked for. */
