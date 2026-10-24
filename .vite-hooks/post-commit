@@ -1,17 +1,21 @@
 #!/usr/bin/env sh
-# 提交成功后，后台重新编译并替换 /Applications 里的本地版 Pensée。
+# After a commit that changes the app, rebuild it in the background and open
+# the new build from /Applications. PENSEE_SKIP_AUTOBUILD=1 skips it.
 [ -n "${PENSEE_SKIP_AUTOBUILD:-}" ] && exit 0
 
-ROOT="$(git rev-parse --show-toplevel)"
-[ -d "$ROOT/.git/rebase-merge" ] && exit 0
-[ -d "$ROOT/.git/rebase-apply" ] && exit 0
+# Only the main checkout: a worktree's branch isn't the app the user runs.
+GIT_DIR_ABS=$(git rev-parse --absolute-git-dir)
+[ "$GIT_DIR_ABS" = "$(git rev-parse --path-format=absolute --git-common-dir)" ] || exit 0
+if [ -d "$GIT_DIR_ABS/rebase-merge" ] || [ -d "$GIT_DIR_ABS/rebase-apply" ]; then exit 0; fi
 
-BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-case "$BRANCH" in
-  mine|mine/*) ;;
-  *) echo "[post-commit] 分支 $BRANCH 不是个人分支，跳过自动构建"; exit 0 ;;
-esac
+# The build is made from apps/desktop/ (not its tests or prototypes) and
+# embeds CHANGELOG.md.
+git diff --quiet HEAD^ HEAD -- apps/desktop CHANGELOG.md ':(exclude)apps/desktop/e2e' \
+  ':(exclude)apps/desktop/tests' ':(exclude)apps/desktop/proto' 2>/dev/null && exit 0
 
-nohup "$ROOT/scripts/ship-local.sh" >/tmp/pensee-ship-local.log 2>&1 &
-echo "[post-commit] 后台构建已启动"
+ROOT=$(git rev-parse --show-toplevel)
+unset GIT_DIR GIT_INDEX_FILE GIT_PREFIX GIT_WORK_TREE
+# Appends: a run that finds a build going leaves its line in the same log.
+nohup "$ROOT/scripts/ship-local.sh" >>/tmp/pensee-ship-local.log 2>&1 &
+echo "[post-commit] rebuilding the app in the background - tail -f /tmp/pensee-ship-local.log"
 exit 0

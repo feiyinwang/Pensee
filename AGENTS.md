@@ -104,6 +104,12 @@ Rust (from `apps/desktop/src-tauri/`):
 - `cargo clippy`
 - `cargo fmt --check`
 
+Hooks and CI (`.vite-hooks/`, set up by `vp install`):
+
+- pre-commit refuses app files no green QA run saw ([the commit gate](./docs/qa/qa-checklist.md#the-commit-gate)), then runs `vp staged`
+- post-commit, in the main checkout only, rebuilds and opens the app (`scripts/ship-local.sh`; commits that land mid-build are folded into one more build). `PENSEE_SKIP_AUTOBUILD=1` skips it
+- `.github/workflows/ci.yml` runs the checks above (not the QA journeys) on every push, on GitHub's runners
+
 ## Session Wrap
 
 Wrap per [agent-loop.md](./docs/workflows/agent-loop.md). One commit per completed task with a clear message. See the existing commit history for style.

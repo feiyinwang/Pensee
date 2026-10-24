@@ -69,3 +69,6 @@ Strict points that are easy to get wrong:
 
 The pass ends with the report block from checklist step 6, and the `QA:` and
 `Speed:` lines go in the commit message.
+A green `run.sh` leaves the receipt the pre-commit hook asks for; a pass with
+no automated run records why with `receipt.sh manual` (checklist: The commit
+gate).

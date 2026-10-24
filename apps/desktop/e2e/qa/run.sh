@@ -39,9 +39,14 @@ if [[ -n $only ]]; then
   grep_args=(--mochaOpts.grep "$pattern")
 fi
 
+# What the build was made from, for the QA receipt (qa/receipt.sh).
+BUILD_SNAPSHOT="$TAURI_DIR/target/debug/qa-build-snapshot"
 if [[ $build == 1 || ! -x "$APP" ]]; then
+  snapshot=$("$E2E_DIR/qa/receipt.sh" snapshot apps/desktop ":(exclude)apps/desktop/e2e")
+  rm -f "$BUILD_SNAPSHOT"
   (cd "$TAURI_DIR" && vp exec tauri build --debug --features e2e --bundles app \
     --config '{"identifier":"com.pensee.app.e2e"}')
+  printf '%s\n' "$snapshot" >"$BUILD_SNAPSHOT"
 fi
 
 specs=()
@@ -64,3 +69,9 @@ cd "$E2E_DIR"
 PENSEE_OBSIDIAN_CONFIG="$HOME/Library/Application Support/com.pensee.app.e2e/obsidian.json" \
   PENSEE_CHANGELOG_FILE="$HOME/Library/Application Support/com.pensee.app.e2e/changelog.md" \
   PENSEE_QA_SEED=1 PENSEE_E2E_APP="$APP" pnpm exec wdio run ./wdio.conf.js "${specs[@]}" ${grep_args[@]+"${grep_args[@]}"}
+
+# Green: the app as built, and the specs as they are now, have passed QA.
+if [[ -f $BUILD_SNAPSHOT ]]; then
+  "$E2E_DIR/qa/receipt.sh" record "$BUILD_SNAPSHOT" <("$E2E_DIR/qa/receipt.sh" snapshot apps/desktop/e2e)
+  echo "QA receipt recorded: these files can be committed."
+fi

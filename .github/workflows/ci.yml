@@ -1,0 +1,44 @@
+# The checks a machine without the app can run, on every push to any branch
+# (cloud sessions push theirs). The QA journeys need the real app on a Mac and
+# stay with the pensee-qa pass (docs/qa/qa-checklist.md).
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+      - run: vp install
+      - run: vp check
+      - run: vp test
+      # Also fails when a month in CHANGELOG.md has no painting on What's new.
+      - run: vp run website#build
+
+  rust:
+    # The app is macOS-only (objc2, FSEvents), so its crate builds on macOS.
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      # tauri's build script wants frontendDist to exist; tests don't need the frontend in it.
+      - run: mkdir -p ../dist
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets
+      - run: cargo test

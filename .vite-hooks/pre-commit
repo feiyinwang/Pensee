@@ -1,1 +1,24 @@
+#!/usr/bin/env sh
+# Before the formatter runs, so a reformat after QA doesn't void the receipt.
+apps/desktop/e2e/qa/receipt.sh check || exit 1
+
+staged=$(git diff --cached --name-only --no-renames)
+
+# A journey spec's new it("XX-NN …") needs its row in user-journeys.md.
+missing=""
+for id in $(git diff --cached -U0 -- 'apps/desktop/e2e/specs/journeys/*.spec.js' |
+  grep '^+' | grep -o 'it("[A-Z][A-Z]*-[0-9][0-9]*' | cut -c5- | sort -u); do
+  git show :docs/qa/user-journeys.md 2>/dev/null | grep -q "^| $id |" || missing="$missing $id"
+done
+if [ -n "$missing" ]; then
+  echo "[pre-commit] New journeys with no row in docs/qa/user-journeys.md:$missing" >&2
+  exit 1
+fi
+
+# An app change usually has a CHANGELOG line; refactors and test-only changes don't.
+if echo "$staged" | grep -v -e '^apps/desktop/e2e/' -e '^apps/desktop/proto/' -e '\.md$' | grep -q '^apps/desktop/' &&
+  ! echo "$staged" | grep -qx 'CHANGELOG.md'; then
+  echo "[pre-commit] warning: app files staged without a CHANGELOG.md line. Fine for a refactor or a fix nobody saw." >&2
+fi
+
 vp staged

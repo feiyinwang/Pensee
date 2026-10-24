@@ -140,6 +140,25 @@ Speed: PERF-01 3.4ms (was 3.2), PERF-02 18ms (was 21, baseline updated), … all
 
 Put the same `QA:` and `Speed:` lines in the commit message body.
 
+## The commit gate
+
+The pre-commit hook (`.vite-hooks/pre-commit`) lets staged files under
+`apps/desktop/` in only when a green `run.sh` saw them with exactly the
+content being committed. On every green run, `run.sh` records a receipt: the
+content hash of each app file that differed from HEAD when the app was built,
+plus the e2e files as they were when the specs ran (`e2e/qa/receipt.sh`,
+stored in `.git/pensee-qa-receipts`, shared by all worktrees). Prototypes
+(`proto/`), the README GIF scripts and `.md` files need none.
+
+- An edit after the run, even a one-line fix, needs another green run.
+- A pass that ran no automated journey for a reason (PERF failing on machine
+  load only, a change no journey reaches) says why:
+  `apps/desktop/e2e/qa/receipt.sh manual "<what you checked, or why nothing>"`.
+  The reason goes to `.git/pensee-qa-manual.log`.
+- The hook also refuses a new `it("XX-NN …")` journey with no row in
+  user-journeys.md, and warns when app code is staged without a CHANGELOG.md
+  line.
+
 ## Harness notes
 
 Learned the hard way; each one cost a failed run.
