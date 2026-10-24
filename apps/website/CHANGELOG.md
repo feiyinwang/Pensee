@@ -4,8 +4,9 @@ Changes to the website (`apps/website/`). The app's own changes are in the repo'
 
 ## 2026-10-24
 
+- What's new is laid out by month, each under a painting no other month or page on the site uses: October hangs Gabriel Metsu's _Man Writing a Letter_, new to the site, and the six before it the What's new card's paintings that weren't already on the site. Each month's painting, name and count stay in view while its days scroll by. A month with no painting of its own fails the build, so the next one is always chosen fresh.
 - The header now links to What's new, after Folios, on every page. On phones it stays in the footer, where it fits.
-- The website has a What's new page, `/changelog/`, linked from the footer: every change to the app, newest first, read from the repo's `CHANGELOG.md` at build. Each day sits beside the painting the app's What's new card gave it, with its date held in view while its changes scroll by; each change opens on its first sentence in bold. The app's **Read all** opens it at the card's day. Website changes now go in this file, `apps/website/CHANGELOG.md`, so they never show in the app.
+- The website has a What's new page, `/changelog/`, linked from the footer: every change to the app, newest first, read from the repo's `CHANGELOG.md` at build. Each change opens on its first sentence in bold. The app's **Read all** opens it at the card's day. Website changes now go in this file, `apps/website/CHANGELOG.md`, so they never show in the app.
 - The install line at the end of a page is readable again: its **Copy** button was white on the light page. On phones it no longer makes the page wider than the screen.
 
 ## 2026-10-23

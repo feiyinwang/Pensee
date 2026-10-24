@@ -8,5 +8,5 @@ export const Route = createFileRoute("/changelog/")({
   loader: () => loadChangelog(),
   head: () =>
     pageHead({ title: TITLE, description: DESCRIPTION, path: "/changelog/", ogType: "website" }),
-  component: () => <ChangelogPage days={Route.useLoaderData()} />,
+  component: () => <ChangelogPage months={Route.useLoaderData()} />,
 });

@@ -60,16 +60,27 @@ date>`) in the browser, then does the same. Both record the newest day.
 ## The website's What's new page
 
 `/changelog/` on the website (`apps/website/src/routes/changelog/`) lists every
-day of `CHANGELOG.md`, newest first, read at build with the app's own parser
-(`src/lib/whats-new.ts`), so the page and the card list the same days.
+day of `CHANGELOG.md`, newest first and grouped by month, read at build with
+the app's own parser (`src/lib/whats-new.ts`), so the page and the card list
+the same days.
 
 - A header like the site's indexes: `Pensée · N changes`, **What's new**, and
   a line on what the page is.
-- A day per row: on the left its painting (the one the card gives that day,
-  from the same files), credited, then the date in Bodoni and `2026 · N
-changes`, held in view while the day's changes scroll by. On the right each
+- A month per row, newest first: on the left its painting, credited, the
+  month in Bodoni and `2026 · N changes`, held in view while its days scroll
+  by. On the right each day, its date in Bodoni and `N changes`, then each
   change in full, its first sentence (the card's line) in bold. Under 860px
-  the date sits above the changes and the painting is left out.
+  the month's painting and name sit above its days.
+- **One painting per month, used once on the whole site** (the user's rule,
+  2026-10-24). `MONTH_PAINTINGS` in `apps/website/src/changelog-paintings.ts`
+  maps each month to its painting; the build fails when a changelog month has
+  none, when two months share one, or when one already hangs elsewhere on the
+  site. A new month needs a newly found painting: public domain, someone
+  absorbed in reading, writing or thinking, or an empty room, downscaled to
+  800px into `apps/website/public/paintings/`. The months up to September 2026
+  use the six card paintings the site didn't already show; October is Gabriel
+  Metsu's _Man Writing a Letter_ (c. 1664–66, National Gallery of Ireland,
+  Wikimedia Commons, public domain). The card still picks from its own ten.
 - Each day is an anchor (`#2026-10-21`); the date links to it. The page jumps
   to it instantly (the site's smooth scroll would be cut off on so long a
   page).

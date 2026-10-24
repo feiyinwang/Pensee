@@ -9,7 +9,7 @@
 import { notFound } from "@tanstack/react-router";
 import { createServerOnlyFn } from "@tanstack/react-start";
 
-import { changelogDays, type ChangeDay } from "./changelog.server";
+import { changelogMonths, type ChangeMonth } from "./changelog.server";
 import { findPage, findPath, listPages, typesWithPages } from "./content.server";
 import { summarize, type Page, type PageSummary } from "./parse";
 import type { PageType } from "./types";
@@ -36,4 +36,4 @@ export const loadPageList = createServerOnlyFn((type: PageType): PageSummary[] =
 
 export const loadSections = createServerOnlyFn((): PageType[] => typesWithPages());
 
-export const loadChangelog = createServerOnlyFn((): ChangeDay[] => changelogDays());
+export const loadChangelog = createServerOnlyFn((): ChangeMonth[] => changelogMonths());

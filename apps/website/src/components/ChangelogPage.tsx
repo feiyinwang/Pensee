@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 
-import { PAINTINGS } from "../../../desktop/src/components/whats-new/paintings";
-import { formatDay, paintingIndex } from "../../../desktop/src/lib/whats-new";
-import type { ChangeDay } from "../pages/changelog.server";
+import { formatDay } from "../../../desktop/src/lib/whats-new";
+import { MONTH_PAINTINGS } from "../changelog-paintings";
+import type { ChangeDay, ChangeMonth } from "../pages/changelog.server";
 import { InstallLine } from "./InstallLine";
 import { SiteBar } from "./SiteBar";
 import { SiteFooter } from "./SiteFooter";
@@ -11,13 +11,20 @@ export const TITLE = "What's new";
 export const DESCRIPTION =
   "Every change to Pensée, newest first: the same days the app's What's new card shows when it updates.";
 
+const MONTH = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" });
+
+const changes = (n: number) => (n === 1 ? "1 change" : `${n} changes`);
+
 /**
- * Every day of the app's changelog, newest first (SPECs/whats-new-card-spec.md).
- * Each day hangs beside the painting the app's card gave it, so a reader who
- * came from Read all finds the same painting by the same day.
+ * Every day of the app's changelog, newest first, by month
+ * (SPECs/whats-new-card-spec.md). Each month hangs its own painting, never
+ * shown twice on the site (src/changelog-paintings.ts).
  */
-export function ChangelogPage({ days }: { days: ChangeDay[] }) {
-  const count = days.reduce((sum, day) => sum + day.changes.length, 0);
+export function ChangelogPage({ months }: { months: ChangeMonth[] }) {
+  const count = months.reduce(
+    (sum, m) => sum + m.days.reduce((n, day) => n + day.changes.length, 0),
+    0,
+  );
   return (
     <div className="page">
       <SiteBar />
@@ -30,8 +37,8 @@ export function ChangelogPage({ days }: { days: ChangeDay[] }) {
             what changed since you last looked; this is the whole list.
           </p>
         </header>
-        {days.map((day) => (
-          <Day key={day.date} day={day} />
+        {months.map((m) => (
+          <Month key={m.month} month={m} />
         ))}
         <aside className="doc-cta doc-cta-app">
           <h2>Get the newest</h2>
@@ -46,12 +53,12 @@ export function ChangelogPage({ days }: { days: ChangeDay[] }) {
   );
 }
 
-function Day({ day }: { day: ChangeDay }) {
-  const painting = PAINTINGS[paintingIndex(day.date, PAINTINGS.length)];
-  const n = day.changes.length;
+function Month({ month: { month, days } }: { month: ChangeMonth }) {
+  const painting = MONTH_PAINTINGS[month];
+  const n = days.reduce((sum, day) => sum + day.changes.length, 0);
   return (
-    <section className="change-day" id={day.date} aria-labelledby={`${day.date}-title`}>
-      <header className="change-date">
+    <section className="change-month" id={month} aria-labelledby={`${month}-title`}>
+      <header className="change-month-head">
         <figure className="change-art">
           <img
             src={painting.src}
@@ -61,15 +68,31 @@ function Day({ day }: { day: ChangeDay }) {
             style={{ "--focus": painting.focus } as CSSProperties}
           />
           <figcaption>
-            {painting.artist}, <i>{painting.title}</i>
+            {painting.by}, <i>{painting.title}</i>, {painting.year}
           </figcaption>
         </figure>
-        <h2 id={`${day.date}-title`}>
-          <a href={`#${day.date}`}>{formatDay(day.date)}</a>
-        </h2>
+        <h2 id={`${month}-title`}>{MONTH.format(new Date(`${month}-01T00:00:00Z`))}</h2>
         <p className="change-meta">
-          {day.date.slice(0, 4)} · {n === 1 ? "1 change" : `${n} changes`}
+          {month.slice(0, 4)} · {changes(n)}
         </p>
+      </header>
+      <div className="change-days">
+        {days.map((day) => (
+          <Day key={day.date} day={day} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Day({ day }: { day: ChangeDay }) {
+  return (
+    <section className="change-day" id={day.date} aria-labelledby={`${day.date}-title`}>
+      <header className="change-day-head">
+        <h3 id={`${day.date}-title`}>
+          <a href={`#${day.date}`}>{formatDay(day.date)}</a>
+        </h3>
+        <span className="change-meta">{changes(day.changes.length)}</span>
       </header>
       <ul className="change-list">
         {day.changes.map((change, i) => (

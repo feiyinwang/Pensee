@@ -8,7 +8,15 @@ import { Marked } from "marked";
 
 import changelog from "../../../../CHANGELOG.md?raw";
 import { firstSentence, parseChangelog } from "../../../desktop/src/lib/whats-new";
+import { checkMonthPaintings } from "../changelog-paintings";
 import { REPO } from "../content";
+
+/** A month of days, newest first, under its one painting (src/changelog-paintings.ts). */
+export interface ChangeMonth {
+  /** `YYYY-MM`, the key of its painting and its anchor. */
+  month: string;
+  days: ChangeDay[];
+}
 
 export interface ChangeDay {
   /** `YYYY-MM-DD`, also the day's anchor: the card's Read all opens `/changelog/#<date>`. */
@@ -22,7 +30,19 @@ export interface Change {
   rest: string;
 }
 
-export function changelogDays(): ChangeDay[] {
+/** The changelog by month, newest first. Fails the build when a month has no painting of its own. */
+export function changelogMonths(): ChangeMonth[] {
+  const months: ChangeMonth[] = [];
+  for (const day of changelogDays()) {
+    const month = day.date.slice(0, 7);
+    if (months[months.length - 1]?.month !== month) months.push({ month, days: [] });
+    months[months.length - 1].days.push(day);
+  }
+  checkMonthPaintings(months.map((m) => m.month));
+  return months;
+}
+
+function changelogDays(): ChangeDay[] {
   return parseChangelog(changelog).map((day) => ({
     date: day.date,
     changes: day.entries.map((entry) => {

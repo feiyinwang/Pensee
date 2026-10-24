@@ -2118,9 +2118,8 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- What's new: the app's changelog (SPECs/whats-new-card-spec.md) ----------
-   A day per row: its date beside its changes, the date and the painting the
-   app's card gave that day held in view while the day's changes scroll by. */
+/* ---------- What's new: the app's changelog (SPECs/whats-new-card-spec.md) ---------- */
+
 /* Read all lands on a day thousands of pixels down: jump there, don't glide. */
 html:has(.changelog) {
   scroll-behavior: auto;
@@ -2134,7 +2133,9 @@ html:has(.changelog) {
   max-width: 760px;
 }
 
-.change-day {
+/* A month per row: its painting, name and count held in view on the left
+   while its days scroll by on the right. */
+.change-month {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 56px;
@@ -2142,11 +2143,10 @@ html:has(.changelog) {
   margin-top: 56px;
   padding-top: 40px;
   border-top: 1px solid var(--faint);
-  /* Read all lands here: clear the sticky bar. */
   scroll-margin-top: 56px;
 }
 
-.change-date {
+.change-month-head {
   position: sticky;
   top: 96px;
 }
@@ -2158,7 +2158,7 @@ html:has(.changelog) {
 .change-art img {
   display: block;
   width: 100%;
-  aspect-ratio: 11 / 7;
+  aspect-ratio: 4 / 5;
   object-fit: cover;
   object-position: var(--focus, 50% 50%);
   border-radius: 8px;
@@ -2173,37 +2173,67 @@ html:has(.changelog) {
   text-wrap: pretty;
 }
 
-.change-date h2 {
+.change-month-head h2 {
   margin: 0;
   font-family: var(--serif);
   font-weight: 400;
-  font-size: 30px;
+  font-size: 34px;
   line-height: 1.1;
   letter-spacing: -0.01em;
-}
-
-.change-date h2 a {
-  text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .change-date h2 a:hover {
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 5px;
-  }
-}
-
-.change-date h2 a:focus-visible {
-  outline: 2px solid var(--text);
-  outline-offset: 4px;
-  border-radius: 2px;
 }
 
 .change-meta {
   margin: 8px 0 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+.change-days {
+  display: grid;
+  gap: 48px;
+}
+
+/* Read all lands on a day: clear the sticky bar. */
+.change-day {
+  scroll-margin-top: 88px;
+}
+
+.change-day-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-bottom: 16px;
+}
+
+.change-day-head .change-meta {
+  margin: 0;
+}
+
+.change-day h3 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.change-day h3 a {
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .change-day h3 a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+  }
+}
+
+.change-day h3 a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 4px;
+  border-radius: 2px;
 }
 
 .change-list {
@@ -2244,26 +2274,18 @@ html:has(.changelog) {
   text-underline-offset: 3px;
 }
 
-/* Narrow: the date sits above its changes and the painting steps aside. */
+/* Narrow: the month's painting, name and count sit above its days. */
 @media (max-width: 860px) {
-  .change-day {
+  .change-month {
     grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
+    gap: 32px;
   }
 
-  .change-date {
+  .change-month-head {
     position: static;
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 4px 14px;
   }
 
-  .change-art {
-    display: none;
-  }
-
-  .change-meta {
-    margin: 0;
+  .change-art img {
+    aspect-ratio: 3 / 2;
   }
 }
