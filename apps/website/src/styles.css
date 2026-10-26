@@ -467,6 +467,11 @@ button {
   color: rgb(255 255 255 / 68%);
 }
 
+/* The requirements line breaks between platforms, never inside one. */
+.req {
+  white-space: nowrap;
+}
+
 .full .tlink {
   color: #fff;
 }

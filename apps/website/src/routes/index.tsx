@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DownloadButton } from "../components/DownloadButton";
+import { DownloadButton, Requirements } from "../components/DownloadButton";
 import { FeatureCard } from "../components/FeatureCard";
 import { InstallLine } from "../components/InstallLine";
 import { Credit, Painting } from "../components/Painting";
 import { SiteBar } from "../components/SiteBar";
 import { SiteFooter } from "../components/SiteFooter";
 import { useScrolledPast } from "../components/useScrolledPast";
-import { FINE_PRINT, HEADLINE, INTRO, PAINTINGS, REQUIREMENTS, ROOMS, VERSION } from "../content";
+import { FINE_PRINT, HEADLINE, INTRO, PAINTINGS, ROOMS, VERSION } from "../content";
 import { jsonLdScript } from "../pages/head";
 import { softwareApplication } from "../pages/jsonld";
 import { absoluteUrl } from "../site";
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
 
 const ROMAN = ["I", "II", "III", "IV"];
 
-/** One page, one action: Download for Mac (SPECs/website-homepage-spec.md). */
+/** One page, one action: Download, for the visitor's Mac or Windows PC (SPECs/website-homepage-spec.md). */
 function HomePage() {
   const [heroEnd, pastHero] = useScrolledPast<HTMLDivElement>();
   return (
@@ -41,7 +41,7 @@ function HomePage() {
           <Painting painting={PAINTINGS.rembrandt} eager />
           <div className="scrim" aria-hidden="true" />
           <div className="over">
-            <div className="eyebrow">Pensée for Mac · version {VERSION}</div>
+            <div className="eyebrow">Pensée for Mac and Windows · version {VERSION}</div>
             <h1>{HEADLINE}</h1>
             <p className="stand">{INTRO}</p>
             <div className="acts">
@@ -50,7 +50,9 @@ function HomePage() {
                 See what it does
               </a>
             </div>
-            <div className="meta">{REQUIREMENTS}</div>
+            <div className="meta">
+              <Requirements />
+            </div>
           </div>
           <p className="credit">
             <Credit painting={PAINTINGS.rembrandt} /> · {PAINTINGS.rembrandt.at}
@@ -94,7 +96,9 @@ function HomePage() {
             <div className="acts">
               <DownloadButton size="lg" tone="light" />
             </div>
-            <div className="meta">{REQUIREMENTS}</div>
+            <div className="meta">
+              <Requirements />
+            </div>
             <InstallLine />
             <p className="fine">{FINE_PRINT}</p>
           </div>

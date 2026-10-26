@@ -8,7 +8,7 @@ import styles from "../styles.css?url";
 
 const TITLE = "Pensée — Thinking, made by writing";
 const DESCRIPTION =
-  "A markdown notes app for the Mac, made for neurodivergent minds: what you collect becomes what you understand, and the AI is a second pen, not a ghostwriter.";
+  "A markdown notes app for Mac and Windows, made for neurodivergent minds: what you collect becomes what you understand, and the AI is a second pen, not a ghostwriter.";
 
 export const Route = createRootRoute({
   // Which page types have pages, for the footer on every page.

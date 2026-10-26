@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { BREW } from "../content";
+import { useVisitorOs } from "../visitor-os";
 
 type CopyState = "idle" | "copied" | "failed";
 const LABEL: Record<CopyState, string> = {
@@ -9,9 +10,11 @@ const LABEL: Record<CopyState, string> = {
   failed: "Select and copy",
 };
 
-/** The Homebrew line with a Copy button that confirms for 1.5s. */
+/** The Homebrew line with a Copy button that confirms for 1.5s. Homebrew is
+ *  the Mac's, so a Windows visitor doesn't see it. */
 export function InstallLine() {
   const [state, setState] = useState<CopyState>("idle");
+  const windows = useVisitorOs() === "windows";
 
   useEffect(() => {
     if (state === "idle") return;
@@ -28,6 +31,7 @@ export function InstallLine() {
     }
   };
 
+  if (windows) return null;
   return (
     <div className="line">
       <code>{BREW}</code>

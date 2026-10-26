@@ -20,15 +20,16 @@ export const VERSION = "0.6.0";
 export const REPO = "https://github.com/feiyinwang/Pensee";
 /** The newest release's zip, straight to the browser. scripts/release.sh uploads it under this fixed name. */
 export const DOWNLOAD = `${REPO}/releases/latest/download/Pensee-arm64.zip`;
+/** The newest release's Windows installer, under the fixed name .github/workflows/release-windows.yml uploads. */
+export const DOWNLOAD_WINDOWS = `${REPO}/releases/latest/download/Pensee-windows-x64-setup.exe`;
 export const BREW = "brew install --cask feiyinwang/tap/pensee";
 
 export const HEADLINE = "Thinking, made by writing.";
 /** The README's first paragraph, with "neurodivergent" added. */
 export const INTRO =
   "I’m making Pensée for people like me: neurodivergent, with ADHD or a brain that works a little differently. We collect everything: the article, the video, the book a friend mentioned, the idea that shows up at 2am. Very little of it gets digested, and we wish it did, because digesting is how you come to understand the world and yourself.";
-export const REQUIREMENTS = "Free and open source · Macs with Apple Silicon";
 export const FINE_PRINT =
-  "The second pen and the Agent run on Claude Code; Pensée signs you in from Settings. Pensée isn’t notarized by Apple yet, so if macOS won’t open the download, use the install line: it clears the flag macOS puts on downloads.";
+  "The second pen and the Agent run on Claude Code; Pensée signs you in from Settings. Pensée isn’t notarized by Apple yet, so if macOS won’t open the download, use the install line: it clears the flag macOS puts on downloads. On Windows, SmartScreen may warn the first time you run the installer, as it isn’t signed yet: choose More info, then Run anyway.";
 
 /** Public-domain paintings, downloaded from Wikimedia Commons into public/paintings. */
 export interface Painting {
@@ -265,7 +266,7 @@ export const ROOMS: Room[] = [
     id: "own",
     name: "Keep it yours",
     intro:
-      "Calm enough to get into the zone, and safe: every note is a markdown file in a folder on your own computer. Pensée opens your Obsidian vault as it is, and nothing you write leaves the Mac unless you ask the pen or the Agent.",
+      "Calm enough to get into the zone, and safe: every note is a markdown file in a folder on your own computer. Pensée opens your Obsidian vault as it is, and nothing you write leaves it unless you ask the pen or the Agent.",
     painting: PAINTINGS.antonello,
     features: [
       {

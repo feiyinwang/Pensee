@@ -2,7 +2,7 @@
  * schema.org JSON-LD for the site's pages. Each helper describes only what the
  * page shows: FAQPage from its `## Questions`, HowTo from its numbered steps.
  */
-import { DOWNLOAD, REPO, VERSION } from "../content";
+import { DOWNLOAD, DOWNLOAD_WINDOWS, REPO, VERSION } from "../content";
 import { absoluteUrl, SITE_NAME } from "../site";
 import type { Page } from "./parse";
 
@@ -41,10 +41,10 @@ export function softwareApplication(): JsonLd {
     "@type": "SoftwareApplication",
     name: SITE_NAME,
     applicationCategory: "ProductivityApplication",
-    operatingSystem: "macOS (Apple Silicon)",
+    operatingSystem: "macOS (Apple Silicon), Windows 10, Windows 11",
     softwareVersion: VERSION,
     url: absoluteUrl("/"),
-    downloadUrl: DOWNLOAD,
+    downloadUrl: [DOWNLOAD, DOWNLOAD_WINDOWS],
     sameAs: REPO,
     license: "https://www.gnu.org/licenses/gpl-3.0.html",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },

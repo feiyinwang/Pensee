@@ -11,7 +11,7 @@ import { indexPath, PAGE_TYPE_IDS, PAGE_TYPES } from "./types";
 export const NAMED_CRAWLERS = ["GPTBot", "ClaudeBot", "PerplexityBot"] as const;
 
 const SUMMARY =
-  "A free, open-source markdown notes app for the Mac, made for neurodivergent writers. Notes are plain markdown files in a folder of your own, and the AI is a second pen that helps you think in writing, not a ghostwriter.";
+  "A free, open-source markdown notes app for Mac and Windows, made for neurodivergent writers. Notes are plain markdown files in a folder of your own, and the AI is a second pen that helps you think in writing, not a ghostwriter.";
 
 export function buildSitemap(pages: PageSummary[]): string {
   const newest = (list: PageSummary[]) =>

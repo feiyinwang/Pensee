@@ -5,7 +5,8 @@ deleted once built). Seven directions were tried in two rounds; **Gallery** won.
 
 ## Goal
 
-One page. Its one action is **Download for Mac**. It shows every feature, and
+One page. Its one action is **Download**, for the computer the visitor is on:
+**Download for Mac**, or **Download for Windows** on Windows. It shows every feature, and
 the first screen speaks to the person Pensée is made for, in the README's own
 voice.
 
@@ -24,7 +25,7 @@ voice.
   top and sides (8px on phones), frosted cream, with the page showing around
   it; the homepage hero slides up under it, so the painting frames it. The
   lockup on the left; on the right the section links (once a
-  section has a page), then Download for Mac at the far right. On the homepage
+  section has a page), then Download at the far right. On the homepage
   the header has no card while the hero is under it, only light words on the
   painting, and no Download: it takes no room then, so the
   links sit at the right edge. Once the hero's bottom edge has scrolled up
@@ -62,11 +63,18 @@ voice.
   rest near flat (hairline ring, 1px shadow); a deeper shadow fades in on hover
   (160ms, opacity only).
 - **Closing.** Hammershøi's interior fills the screen: _Start writing what you
-  think._, the download button, the brew line with **Copy**, and the honest fine
-  print (Claude Code for the pen; not notarized yet).
+  think._, the download button, the brew line with **Copy** (hidden on Windows:
+  Homebrew is the Mac's), and the honest fine print (Claude Code for the pen;
+  not notarized on the Mac, not signed on Windows yet).
 - **Download.** The button links to
   `releases/latest/download/Pensee-arm64.zip`, so the browser gets the newest
-  zip directly. `scripts/release.sh` uploads the zip under that fixed name.
+  zip directly. `scripts/release.sh` uploads the zip under that fixed name. On
+  a Windows visitor's screen (`src/visitor-os.ts`; pages are prerendered as
+  Mac, the button switches as the page hydrates) it reads **Download for
+  Windows** and links to `releases/latest/download/Pensee-windows-x64-setup.exe`,
+  which `.github/workflows/release-windows.yml` attaches to each release. The
+  line under it names both, each a link to its own download, so a visitor can
+  fetch the other computer's build.
 
 ## Rejected, and why
 

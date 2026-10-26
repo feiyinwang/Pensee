@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-import { PAINTINGS, REPO, REQUIREMENTS, type Painting as PaintingData } from "../content";
+import { PAINTINGS, REPO, type Painting as PaintingData } from "../content";
 import type { LoadedPage } from "../pages/load";
 import type { PageSummary, PaintingId } from "../pages/parse";
 import { indexPath, pagePath, PAGE_TYPES, type PageType } from "../pages/types";
-import { DownloadButton } from "./DownloadButton";
+import { DownloadButton, Requirements } from "./DownloadButton";
 import { InstallLine } from "./InstallLine";
 import { OnThisPage } from "./OnThisPage";
 import { Credit, Painting } from "./Painting";
@@ -134,7 +134,7 @@ function Closing({ page }: { page: LoadedPage }) {
         <aside className="doc-cta">
           {next && <NextRead label="Try the method" page={next} />}
           <p className="doc-cta-quiet">
-            Or go straight to the app: <a href="/">Pensée</a>, free for the Mac.
+            Or go straight to the app: <a href="/">Pensée</a>, free for Mac and Windows.
           </p>
         </aside>
       );
@@ -145,7 +145,9 @@ function Closing({ page }: { page: LoadedPage }) {
           <h2>{page.cta === "switch" ? "Open your notes in Pensée" : "Try it in Pensée"}</h2>
           <div className="doc-cta-row">
             <DownloadButton />
-            <span>{REQUIREMENTS}</span>
+            <span>
+              <Requirements />
+            </span>
           </div>
           <InstallLine />
         </aside>
