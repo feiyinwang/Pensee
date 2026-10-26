@@ -8,7 +8,7 @@ import type { AgentOpenFile, AgentPeriodNote } from "@/lib/agent-context";
 import { resolveDailyNoteFile } from "@/lib/daily-note";
 import { PERIOD_KINDS, periodNoteStem } from "@/lib/periodic-notes";
 import { serializeDocument } from "@/lib/frontmatter";
-import { getParentDir, resolveImagePath } from "@/lib/paths";
+import { getParentDir, isAbsolutePath, resolveImagePath } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
 import { visibleEditorLines } from "@/lib/editor-views";
 
@@ -26,7 +26,7 @@ export function isBoardPath(path: string): boolean {
 export function embeddedBoardPaths(pagePath: string, text: string): string[] {
   const dir = getParentDir(pagePath);
   const paths = [...text.matchAll(BOARD_IMAGE)].map((match) => resolveImagePath(match[1], dir));
-  return [...new Set(paths.filter((path) => path.startsWith("/")))];
+  return [...new Set(paths.filter(isAbsolutePath))];
 }
 
 async function boardSceneText(raw: string): Promise<string> {

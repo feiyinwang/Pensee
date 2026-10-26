@@ -7,6 +7,7 @@
 
 use crate::commands::fs::markdown_file_entry;
 use crate::error::AppError;
+use crate::path_ext::PathExt;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -118,11 +119,7 @@ pub fn record_recent_file(path: String, app: tauri::AppHandle) -> Result<(), App
     if !is_markdown_file(&file) {
         return Ok(());
     }
-    let canonical = file
-        .canonicalize()
-        .unwrap_or(file)
-        .to_string_lossy()
-        .to_string();
+    let canonical = file.canonical().unwrap_or(file).to_ipc_lossy().to_string();
 
     let state = app.state::<AppState>();
     let _guard = state.recent_files_lock.lock();

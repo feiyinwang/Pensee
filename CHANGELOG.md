@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-26
+
+- Pensée now builds for Windows too, from the same code as the Mac app. Windows has its own title bar, uses Ctrl where the Mac uses ⌘ (labels and tooltips say Ctrl+O, Ctrl+Shift+Z), and opens Obsidian vaults and finds Claude Code where Windows keeps them. Apple Books import and window translucency stay Mac-only. Each release now comes with a Windows installer next to the Mac download. On the Mac, nothing changes.
+
 ## 2026-10-24
 
 - A new project now starts empty. If your vault has a Templater project template, a project made in Pensée used to come with its headings, Dataview queries and properties, shown as raw code. Now it holds only its name and status, whether you add it from Projects or with **Add to Projects** in a note. It still goes in your projects folder.

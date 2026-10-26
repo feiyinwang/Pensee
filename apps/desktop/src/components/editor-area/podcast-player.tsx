@@ -32,6 +32,7 @@ import { SPEED_KEYSHORTCUTS, installVideoPinShortcut } from "./video-pin";
 import { isInHiddenTab } from "./hidden-tab";
 import "./video-player.css";
 import "./podcast-player.css";
+import { IS_MAC } from "@/lib/platform";
 
 /**
  * A podcast note plays its episode here, under the properties, sticky at the
@@ -349,7 +350,7 @@ function PodcastBand({
                       className="podcast-play"
                       data-playing={playing || undefined}
                       aria-label={playing ? "Pause" : "Play"}
-                      aria-keyshortcuts={playing ? undefined : "Meta+S"}
+                      aria-keyshortcuts={playing ? undefined : IS_MAC ? "Meta+S" : "Control+S"}
                       disabled={!audioSrc}
                       {...playTip.triggerProps}
                       onMouseDown={keepFocus}

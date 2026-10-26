@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Mic, Play } from "lucide-react";
-import { getParentDir } from "@/lib/paths";
+import { getParentDir, isAbsolutePath } from "@/lib/paths";
 import { liveCoverSrc } from "@/lib/covers";
 import { TONES, bylineOf, titleHash, type CoverKind } from "@/lib/spaces";
 import type { TypedNote } from "@/lib/tauri";
@@ -29,7 +29,7 @@ function noteFile(notePath: string, raw: string | undefined): string | null {
     ?.trim();
   if (!value) return null;
   if (/^https?:\/\//i.test(value)) return value;
-  return value.startsWith("/") ? value : `${getParentDir(notePath)}/${value}`;
+  return isAbsolutePath(value) ? value : `${getParentDir(notePath)}/${value}`;
 }
 
 /** `path` scaled down to `kind`'s box by the `thumb` protocol

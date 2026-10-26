@@ -1,6 +1,11 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { imageSrcResolverFacet } from "@/lib/prosemark-core/imageSrc";
-import { decodeLinkPath, getParentDir, normalizeMarkdownDestination } from "@/lib/paths";
+import {
+  decodeLinkPath,
+  getParentDir,
+  isAbsolutePath,
+  normalizeMarkdownDestination,
+} from "@/lib/paths";
 
 const PASSTHROUGH_PREFIXES = ["http://", "https://", "asset:", "data:", "blob:"];
 
@@ -12,7 +17,7 @@ export function resolveLocalImageSrc(rawSrc: string, markdownDir: string | null)
   if (!src || !markdownDir) return rawSrc;
   if (PASSTHROUGH_PREFIXES.some((prefix) => src.startsWith(prefix))) return src;
   const localSrc = decodeLinkPath(src);
-  const absolute = localSrc.startsWith("/") ? localSrc : `${markdownDir}/${localSrc}`;
+  const absolute = isAbsolutePath(localSrc) ? localSrc : `${markdownDir}/${localSrc}`;
   return convertFileSrc(absolute);
 }
 

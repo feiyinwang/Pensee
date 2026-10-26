@@ -6,6 +6,7 @@ import {
   type SettingDef,
   type ThemeMode,
 } from "./settings-schema";
+import { IS_MAC } from "./platform";
 
 export type ThemePreference = "system" | "light" | "dark";
 
@@ -31,6 +32,9 @@ function resolveMode(preference: ThemePreference): ThemeMode {
  *  than as a 1:1 cssVar binding. */
 const DERIVED_PRIMARIES: Partial<Record<PrimarySuffix, (v: unknown) => [string, string]>> = {
   translucent: (v) => {
+    // Only macOS draws the window's vibrancy behind a see-through backdrop;
+    // elsewhere the window is opaque and a lower opacity shows bare webview.
+    if (!IS_MAC) return ["--bg-opacity", "1"];
     const t = clamp(Number(v) || 0, 0, 100);
     return ["--bg-opacity", String(1 - (t / 100) * 0.95)];
   },

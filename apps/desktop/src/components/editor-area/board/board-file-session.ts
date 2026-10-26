@@ -10,7 +10,12 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { type EditorView, ViewPlugin } from "@codemirror/view";
 import { imageWidgetEnhancerFacet } from "@/lib/prosemark-core/main";
-import { decodeLinkPath, getParentDir, normalizeMarkdownDestination } from "@/lib/paths";
+import {
+  decodeLinkPath,
+  getParentDir,
+  isAbsolutePath,
+  normalizeMarkdownDestination,
+} from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
 import { type BoardScene, emptyScene } from "./board-model";
 import { mermaidToElements } from "./board-mermaid";
@@ -33,7 +38,7 @@ const PASSTHROUGH = /^(https?:|data:|blob:|asset:)/;
 
 export function absoluteFrom(dir: string, src: string): string {
   const local = decodeLinkPath(normalizeMarkdownDestination(src));
-  return local.startsWith("/") ? local : `${dir.replace(/\/$/, "")}/${local}`;
+  return isAbsolutePath(local) ? local : `${dir.replace(/\/$/, "")}/${local}`;
 }
 
 /** Resolves a board picture for the live editor (an `asset:` URL). */

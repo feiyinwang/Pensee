@@ -11,16 +11,15 @@ import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { openSpace, spaceLocationOf } from "@/hooks/use-spaces";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 import { goTargetForKey } from "@/lib/spaces";
+import { isModKey } from "@/lib/platform";
 
-const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
 /** How long ⌘G waits for its letter. */
 const GO_KEY_WAIT_MS = 1500;
 const MODIFIER_KEYS = new Set(["Meta", "Control", "Shift", "Alt"]);
 
 /** ⌘G alone (Ctrl+G off a Mac), by physical key. */
 function isGoKey(e: KeyboardEvent): boolean {
-  const mod = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
-  return mod && !e.shiftKey && !e.altKey && e.code === "KeyG";
+  return isModKey(e) && !e.shiftKey && !e.altKey && e.code === "KeyG";
 }
 
 let goKeyTimer: number | undefined;

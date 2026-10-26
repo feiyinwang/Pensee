@@ -4,6 +4,7 @@ import { useOpenCommandPalette } from "@/hooks/use-command-palette";
 import { useBooleanSetting } from "@/hooks/use-settings";
 import { ScrollFade } from "@/components/scroll-fade";
 import { SidebarNavigator } from "./sidebar-navigator";
+import { keyLabel } from "@/lib/platform";
 
 export function FileBrowser() {
   const openCommandPalette = useOpenCommandPalette();
@@ -33,7 +34,8 @@ export function FileBrowser() {
             </span>
             Search
             <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-caption text-current">
-              ⌘<span className="ml-0.5">O</span>
+              {keyLabel("⌘")}
+              <span className="ml-0.5">O</span>
             </kbd>
           </button>
         </div>

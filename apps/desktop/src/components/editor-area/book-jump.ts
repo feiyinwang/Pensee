@@ -5,6 +5,7 @@ import { BLOCK_ID_AT_END_RE } from "@/lib/block-refs";
 import { type BookLocation, parseBookHighlightId } from "@/lib/book-highlights";
 import { bookPlaceName, isBookOpenFor, jumpToHighlight, requestJump } from "@/lib/book-readers";
 import { pinIcon } from "./video-pin";
+import { IS_MAC } from "@/lib/platform";
 
 // A book page's highlight blocks lead back into the book
 // (SPECs/book-reader-spec.md): the caret landing on one scrolls the open book
@@ -36,7 +37,7 @@ export function bookJump(getFilePath: () => string): Extension {
     ),
     EditorView.domEventHandlers({
       mousedown(event, view) {
-        if (!event.metaKey || event.button !== 0) return false;
+        if (!(IS_MAC ? event.metaKey : event.ctrlKey) || event.button !== 0) return false;
         const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
         const id = pos === null ? null : bookIdOnLine(view, pos);
         if (!id) return false;

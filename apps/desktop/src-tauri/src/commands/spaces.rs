@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::file_cache::FileCache;
+use crate::path_ext::PathExt;
 use crate::state::{AppState, IndexedFile};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -185,7 +186,7 @@ fn note_from_meta(file: &IndexedFile, meta: &NoteMeta, wanted: &[String]) -> Opt
         return None;
     }
     Some(TypedNote {
-        path: file.path.to_string_lossy().into_owned(),
+        path: file.path.to_ipc_lossy().into_owned(),
         relative_path: file.relative_path.clone(),
         name: file
             .path

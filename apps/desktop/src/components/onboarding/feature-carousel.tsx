@@ -9,6 +9,7 @@ import {
   type FeatureId,
 } from "./feature-scenes";
 import type { SampleId } from "./onboarding-store";
+import { keyLabel } from "@/lib/platform";
 
 const GAP = 22;
 const VIEW = 1100;
@@ -172,7 +173,7 @@ export function FeatureCarousel({ tried }: { tried: SampleId | null }) {
                 <div
                   className="onb-scene"
                   role="img"
-                  aria-label={`${f.title}: ${f.d}`}
+                  aria-label={`${f.title}: ${keyLabel(f.d)}`}
                   ref={(el) => {
                     sceneRefs.current[j] = el;
                   }}
@@ -199,12 +200,12 @@ export function FeatureCarousel({ tried }: { tried: SampleId | null }) {
       <div className="onb-cr-cap" aria-live="polite">
         <div className="onb-cr-text">
           <b>{feature.title}</b>
-          <span>{feature.d}</span>
+          <span>{keyLabel(feature.d)}</span>
           {tried && TRIED[tried] === feature.id && <em>✓ You just tried this</em>}
         </div>
         <div className="onb-cr-keys">
           {feature.keys.map((k) => (
-            <kbd key={k}>{k}</kbd>
+            <kbd key={k}>{keyLabel(k)}</kbd>
           ))}
         </div>
       </div>

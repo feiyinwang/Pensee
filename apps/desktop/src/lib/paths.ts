@@ -207,6 +207,11 @@ export function getRelativePath(fullPath: string, root: string): string {
   return normalized;
 }
 
+/** "/x" on macOS and Linux, "C:/x" or "C:\\x" on Windows, as `resolvePath` reads them. */
+export function isAbsolutePath(path: string): boolean {
+  return path.startsWith("/") || WINDOWS_ABSOLUTE_PATH.test(path);
+}
+
 export function getParentDir(path: string): string {
   const normalized = path.replace(/\\/g, "/");
   const lastSlash = normalized.lastIndexOf("/");
@@ -254,6 +259,6 @@ export function resolveImagePath(imageSrc: string, markdownDir: string): string 
     return normalizedSrc;
   }
   const localSrc = decodeLinkPath(normalizedSrc);
-  if (localSrc.startsWith("/")) return localSrc;
+  if (isAbsolutePath(localSrc)) return localSrc;
   return `${markdownDir.replace(/\/$/, "")}/${localSrc}`;
 }

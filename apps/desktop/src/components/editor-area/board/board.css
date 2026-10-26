@@ -616,8 +616,8 @@
   position: absolute;
   top: 10px;
   /* Clears the macOS window buttons, which sit over the full-window board;
-     same as TRAFFIC_LIGHTS_CLEARANCE in app-layout.tsx. */
-  left: 88px;
+     4px short of WINDOW_CONTROLS_INSET in lib/platform.ts. */
+  left: calc(var(--window-controls-inset) - 4px);
   display: flex;
   gap: 4px;
   align-items: center;

@@ -34,6 +34,7 @@ import { Dock, type DockItem } from "@/components/arc/dock/dock";
 import type { ShapeKind } from "./board-model";
 import { DOCK_SPEC, type DockSpec } from "./board-dock-items";
 import { ensureArcTokens } from "./arc-tokens";
+import { keyLabel } from "@/lib/platform";
 
 export interface ToolDockHandle {
   setValue: (id: string) => void;
@@ -81,7 +82,7 @@ function iconFor(id: string): ReactNode {
 const withIcons = (spec: DockSpec): DockItem => ({
   id: spec.id,
   label: spec.label,
-  shortcut: spec.shortcut,
+  shortcut: spec.shortcut && keyLabel(spec.shortcut),
   icon: iconFor(spec.id),
   items: spec.items?.map(withIcons),
 });

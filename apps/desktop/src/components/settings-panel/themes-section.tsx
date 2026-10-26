@@ -6,6 +6,7 @@ import {
   type PrimarySuffix,
   type ThemeMode,
 } from "@/lib/settings-schema";
+import { IS_MAC } from "@/lib/platform";
 import { SettingControl } from "./setting-control";
 
 export function ThemesSection() {
@@ -21,7 +22,12 @@ function ThemeCard({ mode }: { mode: ThemeMode }) {
   const settings = useAllSettings();
   const setSetting = useSetSetting();
 
-  const primaryDefs = useMemo(() => getPrimaryDefs(mode), [mode]);
+  // Translucency shows the macOS window's vibrancy; other platforms draw an
+  // opaque window and pin the backdrop at full opacity (lib/theme.ts).
+  const primaryDefs = useMemo(
+    () => getPrimaryDefs(mode).filter((def) => IS_MAC || suffixOf(mode, def.key) !== "translucent"),
+    [mode],
+  );
 
   return (
     <section className="mb-10">

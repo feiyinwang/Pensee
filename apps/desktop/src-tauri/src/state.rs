@@ -69,6 +69,7 @@ pub struct WorkspaceState {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct IndexedFile {
+    #[serde(serialize_with = "crate::path_ext::serialize")]
     pub path: PathBuf,
     pub relative_path: String,
     pub name: String,
@@ -220,6 +221,8 @@ impl WorkspaceState {
         *self.startup_open.lock() = Some(payload);
     }
 
+    // Only the macOS open-file event races the first window for the slot.
+    #[cfg(any(target_os = "macos", test))]
     pub fn try_set_startup_open(
         &self,
         payload: PendingOpenPayload,

@@ -44,6 +44,7 @@ All docs except CLAUDE.md, AGENTS.md, TODOS.md, and CHANGELOG.md live in `./docs
 - [docs/arc.md](./docs/arc.md) — Arc UI (React + motion) registry installs, Pro token, and why `foundation.css` must never be imported globally
 - [docs/motion.md](./docs/motion.md) — animation tokens and rules: ease-out under 180ms, springs for gesture settles, global button press scale
 - [docs/design-tokens.md](./docs/design-tokens.md) — the one place every colour, font, type size, radius and shadow is set (`src/styles/tokens.css`): primitives → semantic tokens → legacy aliases, how to swap a value, `lib/design-tokens.ts` for JS that needs literals, and the test that fails on a raw value anywhere else
+- [docs/platforms.md](./docs/platforms.md) — macOS and Windows from one codebase: where every platform difference lives (`tauri.windows.conf.json`, `cfg` gates, `path_ext.rs` for paths sent over IPC, `lib/platform.ts`, `data-platform` CSS), what differs on Windows and why, and how to cross-check the Windows build from a Mac. macOS behaviour never changes for Windows
 - [docs/brand.md](./docs/brand.md) — the logo (a Thick–Thin ¶ in a fashion-house serif cut): its two cuts, Ink/Cream colours, wordmark and lockups, the don'ts, and how to regenerate the app icon and favicon from `assets/brand/`
 
 **QA**

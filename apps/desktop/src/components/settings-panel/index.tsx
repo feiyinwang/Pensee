@@ -4,6 +4,7 @@ import { SETTINGS_SCHEMA, type SettingDef } from "@/lib/settings-schema";
 import { SettingControl } from "./setting-control";
 import { ThemesSection } from "./themes-section";
 import { ClaudeAccountRow } from "./claude-account-row";
+import { IS_MAC } from "@/lib/platform";
 
 /** Account rows, each after the setting it belongs with: the Claude sign-in
  *  after the model the Agent uses. */
@@ -27,6 +28,9 @@ export function SettingsPanel({ isShown = true }: { isShown?: boolean }) {
     for (const def of SETTINGS_SCHEMA) {
       // Theme settings are owned by ThemesSection; keep them out of the generic renderer.
       if (def.category === "Theme") continue;
+      // The Apple Books import exists only on macOS. `apple-books.folder` stays:
+      // every book import (lib/book-import.ts) makes its pages there.
+      if (!IS_MAC && def.key === "apple-books.sync") continue;
       const existing = map.get(def.category) ?? [];
       existing.push(def);
       map.set(def.category, existing);

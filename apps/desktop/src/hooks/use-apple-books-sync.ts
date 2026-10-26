@@ -12,6 +12,7 @@ import { useBooleanSetting } from "@/hooks/use-settings";
 import { openFullDiskAccessGuide } from "@/stores/full-disk-access-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { IS_MAC } from "@/lib/platform";
 
 // Binds the Apple Books import (`lib/apple-books.ts`) to the stores, per
 // SPECs/apple-books-highlights-spec.md: on a schedule while the
@@ -104,6 +105,8 @@ async function run(root: string, manual: boolean): Promise<void> {
 
 /** Sync now. Overlapping calls share the run already going. */
 export function syncAppleBooksNow(manual = true): Promise<void> {
+  // Apple Books and Full Disk Access exist only on macOS.
+  if (!IS_MAC) return Promise.resolve();
   const { root } = useWorkspaceStore.getState();
   if (!root) return Promise.resolve();
   running ??= run(root, manual).finally(() => {
@@ -121,7 +124,7 @@ export function useAppleBooksSync(): void {
   const isIndexing = useWorkspaceStore((state) => state.isIndexing);
 
   useEffect(() => {
-    if (!enabled || !root || isIndexing) return;
+    if (!IS_MAC || !enabled || !root || isIndexing) return;
     void syncAppleBooksNow(false);
     const timer = window.setInterval(() => void syncAppleBooksNow(false), SYNC_INTERVAL_MS);
     return () => window.clearInterval(timer);

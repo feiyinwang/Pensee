@@ -4,6 +4,7 @@
 
 use super::link_preview::client;
 use crate::error::AppError;
+use crate::path_ext::PathExt;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
@@ -81,8 +82,16 @@ fn obsidian_config() -> Option<PathBuf> {
     if let Ok(path) = std::env::var("PENSEE_OBSIDIAN_CONFIG") {
         return Some(PathBuf::from(path));
     }
-    let home = std::env::var_os("HOME")?;
-    Some(PathBuf::from(home).join("Library/Application Support/obsidian/obsidian.json"))
+    #[cfg(windows)]
+    {
+        let app_data = std::env::var_os("APPDATA")?;
+        Some(PathBuf::from(app_data).join(r"obsidian\obsidian.json"))
+    }
+    #[cfg(not(windows))]
+    {
+        let home = std::env::var_os("HOME")?;
+        Some(PathBuf::from(home).join("Library/Application Support/obsidian/obsidian.json"))
+    }
 }
 
 /// The writer's Obsidian vaults, newest first, each with its note count.
@@ -106,7 +115,7 @@ pub async fn obsidian_vaults() -> Result<Vec<ObsidianVault>, AppError> {
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_default(),
                 notes: count_notes(&path),
-                path: path.to_string_lossy().into_owned(),
+                path: path.to_ipc_lossy().into_owned(),
             })
             .collect()
     })
@@ -132,7 +141,7 @@ pub fn create_starter_folder(app: tauri::AppHandle) -> Result<String, AppError> 
         .map_err(|e| AppError::Io(e.to_string()))?
         .join("Pensée");
     std::fs::create_dir_all(&dir).map_err(|e| AppError::Io(e.to_string()))?;
-    Ok(dir.to_string_lossy().into_owned())
+    Ok(dir.to_ipc_lossy().into_owned())
 }
 
 /// Downloads the sample book into the app's cache and returns its path, for
@@ -146,7 +155,7 @@ pub async fn download_sample_book(app: tauri::AppHandle) -> Result<String, AppEr
         .join("samples");
     let dest = dir.join(SAMPLE_BOOK_FILE);
     if dest.is_file() {
-        return Ok(dest.to_string_lossy().into_owned());
+        return Ok(dest.to_ipc_lossy().into_owned());
     }
     let response = client()?
         .get(SAMPLE_BOOK_URL)
@@ -167,7 +176,7 @@ pub async fn download_sample_book(app: tauri::AppHandle) -> Result<String, AppEr
     let partial = dir.join(format!("{SAMPLE_BOOK_FILE}.part"));
     std::fs::write(&partial, &bytes).map_err(|e| AppError::Io(e.to_string()))?;
     std::fs::rename(&partial, &dest).map_err(|e| AppError::Io(e.to_string()))?;
-    Ok(dest.to_string_lossy().into_owned())
+    Ok(dest.to_ipc_lossy().into_owned())
 }
 
 #[cfg(test)]

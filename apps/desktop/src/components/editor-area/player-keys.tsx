@@ -1,4 +1,5 @@
 import { PIN_SHORTCUT_LABEL, SLOWER_SHORTCUT_LABEL, FASTER_SHORTCUT_LABEL } from "./video-pin";
+import { keyLabel } from "@/lib/platform";
 
 /**
  * The line under a YouTube or podcast player naming its keys in full, each a
@@ -10,15 +11,15 @@ export function PlayerKeys({ playing }: { playing: boolean }) {
     <div className="player-keys" aria-hidden>
       <span className="player-key">
         {playing ? "Pin" : "Play"}
-        <kbd>{PIN_SHORTCUT_LABEL}</kbd>
+        <kbd>{keyLabel(PIN_SHORTCUT_LABEL)}</kbd>
       </span>
       <span className="player-key">
         Slower
-        <kbd>{SLOWER_SHORTCUT_LABEL}</kbd>
+        <kbd>{keyLabel(SLOWER_SHORTCUT_LABEL)}</kbd>
       </span>
       <span className="player-key">
         Faster
-        <kbd>{FASTER_SHORTCUT_LABEL}</kbd>
+        <kbd>{keyLabel(FASTER_SHORTCUT_LABEL)}</kbd>
       </span>
     </div>
   );

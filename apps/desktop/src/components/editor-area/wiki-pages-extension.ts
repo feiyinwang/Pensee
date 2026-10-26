@@ -23,6 +23,7 @@ import { getWorkspaceRoot } from "@/hooks/workspace-api";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUIStore } from "@/stores/ui-store";
 import { showEditorNotice } from "./editor-notice-store";
+import { isModKey } from "@/lib/platform";
 
 // Pages behind `[[wiki links]]`, from the editor's side:
 //
@@ -49,8 +50,6 @@ export const tauriWikiPageDeps: WikiPageDeps = {
  *  `isMoveToPageKey`. */
 export const MOVE_SELECTION_TO_PAGE_CHORD = "Mod-Alt-n";
 
-const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
-
 /** Cmd+Alt+N (Ctrl+Alt+N elsewhere), matched on the physical key.
  *
  *  A `keymap` binding for `Mod-Alt-n` never fires on a Mac: Option+N is a dead
@@ -60,8 +59,7 @@ const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform
  *  work and this one did not. `event.code` names the key, not what it types,
  *  so it is also immune to the active input source (Pinyin included). */
 export function isMoveToPageKey(event: KeyboardEvent): boolean {
-  const mod = IS_MAC ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-  return mod && event.altKey && !event.shiftKey && event.code === "KeyN";
+  return isModKey(event) && event.altKey && !event.shiftKey && event.code === "KeyN";
 }
 
 function errorText(error: unknown): string {

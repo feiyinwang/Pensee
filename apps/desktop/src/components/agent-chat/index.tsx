@@ -4,6 +4,7 @@ import { Cursor02Icon } from "@hugeicons/core-free-icons";
 import { useAgentStore } from "@/stores/agent-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import "./agent-chat.css";
+import { keyLabel } from "@/lib/platform";
 
 // The panel pulls in Arc (and `motion`), so it loads on first open, never at
 // startup (docs/arc.md). Once loaded it stays mounted to keep scroll and draft.
@@ -40,7 +41,7 @@ export function AgentChat() {
         aria-expanded={isOpen}
         onMouseDown={(event) => event.preventDefault()}
         onClick={toggle}
-        title="Agent (⌘J)"
+        title={keyLabel("Agent (⌘J)")}
         className="agent-launcher fixed z-40 flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-label font-medium whitespace-nowrap text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] aria-expanded:bg-[var(--item-active-bg)] aria-expanded:text-[var(--text-primary)]"
       >
         <HugeiconsIcon icon={Cursor02Icon} size={16} color="currentColor" strokeWidth={2} />

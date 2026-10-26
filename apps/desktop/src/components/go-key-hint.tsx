@@ -1,6 +1,7 @@
 import { useUIStore } from "@/stores/ui-store";
 import { goKeyPlaces } from "@/lib/spaces";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { keyLabel } from "@/lib/platform";
 
 /** Same box as the sidebar rows' letters (sidebar-spaces.tsx): one meaning, one look. */
 const KEYCAP =
@@ -27,7 +28,7 @@ export function GoKeyHint() {
       className="pointer-events-none fixed bottom-14 left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-0.5 whitespace-nowrap rounded-[var(--radius-menu)] border border-[var(--color-border-floating)] bg-[var(--color-bg-popover)] p-1 text-caption text-[var(--color-text-primary)] shadow-[var(--shadow-popover)]"
     >
       <span className="flex h-[30px] items-center gap-1 px-2 text-[var(--color-text-muted)]">
-        <kbd className={KEYCAP}>⌘</kbd>
+        <kbd className={KEYCAP}>{keyLabel("⌘")}</kbd>
         <kbd className={KEYCAP}>G</kbd>
         then
       </span>

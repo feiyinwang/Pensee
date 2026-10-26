@@ -1,6 +1,7 @@
 //! Book files (PDF, EPUB) brought into the workspace beside their book page.
 //! See SPECs/book-reader-spec.md.
 
+use crate::path_ext::PathExt;
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -42,7 +43,7 @@ pub fn import_book_impl(source: &Path, dir: &Path, stem: &str) -> Result<PathBuf
         return Ok(dest);
     }
     Err(AppError::AlreadyExists(
-        dir.join(stem).to_string_lossy().to_string(),
+        dir.join(stem).to_ipc_lossy().to_string(),
     ))
 }
 
@@ -54,7 +55,7 @@ pub async fn import_book(
 ) -> Result<String, AppError> {
     tauri::async_runtime::spawn_blocking(move || {
         import_book_impl(Path::new(&source_path), Path::new(&dir), &stem)
-            .map(|p| p.to_string_lossy().to_string())
+            .map(|p| p.to_ipc_lossy().to_string())
     })
     .await
     .map_err(|e| AppError::Io(e.to_string()))?

@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::file_cache::FileCache;
+use crate::path_ext::PathExt;
 use crate::state::{self, AppState, IndexedFile};
 use ignore::WalkBuilder;
 use parking_lot::Mutex;
@@ -130,7 +131,7 @@ fn fuzzy_search_from(
                 .collect();
 
             Some(SearchResult {
-                path: file.path.to_string_lossy().to_string(),
+                path: file.path.to_ipc_lossy().to_string(),
                 filename: file.name.clone(),
                 relative_path: file.relative_path.clone(),
                 score,
@@ -199,7 +200,7 @@ pub fn index_workspace_impl(
                         .path()
                         .strip_prefix(&root)
                         .unwrap_or(entry.path())
-                        .to_string_lossy()
+                        .to_ipc_lossy()
                         .to_string();
                     results.lock().push(IndexedFile {
                         path: entry.path().to_path_buf(),
@@ -290,7 +291,7 @@ pub async fn find_file_by_name(
 ) -> Result<Option<String>, AppError> {
     tauri::async_runtime::spawn_blocking(move || {
         Ok(find_file_by_name_impl(Path::new(&root), &file_name)
-            .map(|path| path.to_string_lossy().to_string()))
+            .map(|path| path.to_ipc_lossy().to_string()))
     })
     .await
     .map_err(|e| AppError::Io(e.to_string()))?
@@ -358,7 +359,7 @@ pub fn find_block_references_impl(paths: &[PathBuf], ids: &[String]) -> Vec<Bloc
                         if !text.contains("#^") {
                             continue;
                         }
-                        references_in_text(&text, needles, &path.to_string_lossy(), &mut found);
+                        references_in_text(&text, needles, &path.to_ipc_lossy(), &mut found);
                     }
                     found
                 })
@@ -542,7 +543,7 @@ fn line_index_files(
     let files = state.file_index.read();
     files
         .iter()
-        .filter(|f| exclude != Some(&*f.path.to_string_lossy()))
+        .filter(|f| exclude != Some(&*f.path.to_ipc_lossy()))
         .map(|f| (f.path.clone(), f.modified_at))
         .collect()
 }
@@ -607,7 +608,7 @@ pub fn find_lines_mentioning_impl(
                 .unwrap_or_default();
             found.push((
                 MentioningLine {
-                    path: path.to_string_lossy().to_string(),
+                    path: path.to_ipc_lossy().to_string(),
                     stem,
                     line: line.line,
                     text,

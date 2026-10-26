@@ -8,6 +8,7 @@ import {
   type FooterItemSettingKey,
 } from "./footer-context-menu";
 import { PageWidthPresets } from "./page-width-presets";
+import { keyLabel } from "@/lib/platform";
 
 function FooterMetric({ label, value }: { label: string; value: number }) {
   return (
@@ -29,7 +30,7 @@ function PenHintLine({ hint }: { hint: PenHint }) {
     >
       {hint.parts.map((part, i) =>
         "key" in part ? (
-          <kbd key={i}>{part.key}</kbd>
+          <kbd key={i}>{keyLabel(part.key)}</kbd>
         ) : "strong" in part ? (
           <b key={i}>{part.strong}</b>
         ) : "gap" in part ? (

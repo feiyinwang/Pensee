@@ -21,6 +21,7 @@ import {
 } from "@/hooks/use-tabs";
 import { openStandaloneFile } from "@/hooks/use-open-drop";
 import { getFileName } from "@/lib/paths";
+import { WINDOW_CONTROLS_INSET } from "@/lib/platform";
 
 const PICKER_POPUP_ID = "compact-file-picker-popup";
 // Matches --motion-base in App.css; the CSS-driven picker fades share it.
@@ -326,7 +327,7 @@ export function CompactFileLayout() {
         className="pointer-events-none absolute left-0 top-0 z-50 flex items-center"
         style={{
           height: "calc(var(--chrome-control-height) + var(--chrome-control-padding) * 2)",
-          padding: "var(--chrome-control-padding) 12px var(--chrome-control-padding) 92px",
+          padding: `var(--chrome-control-padding) 12px var(--chrome-control-padding) ${WINDOW_CONTROLS_INSET}px`,
         }}
       >
         <CompactNavControls />

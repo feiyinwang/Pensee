@@ -164,6 +164,8 @@
   --chrome-control-height: 32px;
   --chrome-control-padding: 12px;
   --chrome-drag-height: 72px;
+  /* WINDOW_CONTROLS_INSET in lib/platform.ts. */
+  --window-controls-inset: 92px;
   --pensee-editor-max-width: 660px;
   --pensee-editor-side-padding: clamp(1.5rem, 4vw, 4rem);
   --pensee-editor-outer-width: calc(
@@ -317,6 +319,21 @@ input {
 *:hover::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   background-clip: padding-box;
+}
+
+/* Windows and Linux: a native title bar holds the window buttons, so the
+   chrome only keeps its edge inset. Chromium (WebView2) ignores the
+   ::-webkit-scrollbar rules above while scrollbar-color is set, and would
+   draw its own classic bars; back to auto, the rules above apply as on macOS. */
+:root[data-platform="windows"],
+:root[data-platform="linux"] {
+  --window-controls-inset: 12px;
+}
+
+:root[data-platform="windows"] *,
+:root[data-platform="windows"] *:hover,
+:root[data-platform="windows"] *:active {
+  scrollbar-color: auto;
 }
 
 /* While dragging a sidebar item, force the grabbing-hand cursor everywhere so

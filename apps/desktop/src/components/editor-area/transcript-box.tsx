@@ -20,6 +20,7 @@ import { ensureArcTokens } from "./board/arc-tokens";
 import { useTranscriptView } from "./transcript-view";
 import { captionLanguagesOf, changeTranscriptLanguage } from "./video-transcript";
 import "./transcript-box.css";
+import { keyLabel } from "@/lib/platform";
 
 // The transcript toggle of a video note, shown as a teleprompter
 // (SPECs/youtube-notes-spec.md#transcript-box): the line being said is
@@ -245,7 +246,7 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
           <button
             type="button"
             className="transcript-box-button"
-            title="Ask the Agent about this video (⌘J)"
+            title={keyLabel("Ask the Agent about this video (⌘J)")}
             aria-label="Ask"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => useAgentStore.getState().open()}

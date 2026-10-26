@@ -13,6 +13,7 @@ import * as tauri from "@/lib/tauri";
 import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import "./calendar-panel.css";
+import { IS_MAC } from "@/lib/platform";
 
 type View = "days" | "months" | "years";
 
@@ -23,8 +24,6 @@ const VIEWS: { value: View; label: string }[] = [
 ];
 
 const DAY_STEM = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-const IS_MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
 
 /** Cmd+click (Ctrl+click off the Mac) opens the note in a column to the right. */
 function wantsBeside(event: { metaKey: boolean; ctrlKey: boolean }): boolean {

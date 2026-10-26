@@ -6,6 +6,7 @@ import {
   deleteLineBoundaryBackward,
   deleteLineBoundaryForward,
 } from "@codemirror/commands";
+import { IS_MAC } from "@/lib/platform";
 
 /**
  * The macOS delete shortcuts, bound explicitly so they do not depend on
@@ -31,16 +32,18 @@ import {
  * "each editor fills in its own missing keys" is the same shape as the global
  * focus-ring whitelist that kept growing — see PRD lesson 15 and 19.
  *
- * Windows/Linux note: `Alt-Backspace` is conventionally undo there. Pensée
- * ships macOS-only (Tauri dock menu, CLI installer), so the collision is
- * theoretical; if that changes, gate this list on the platform *here*, in one
- * place, rather than per editor.
+ * Windows/Linux: `Alt-Backspace` is conventionally undo there and the Meta
+ * key is the Windows key, so the list is gated on the platform here, in one
+ * place, rather than per editor. Off a Mac it is empty and CodeMirror's
+ * defaults (`Ctrl-Backspace` deletes a word) apply.
  */
-export const platformDeleteKeymap: Extension = Prec.high(
-  keymap.of([
-    { key: "Alt-Backspace", run: deleteGroupBackward, preventDefault: true },
-    { key: "Alt-Delete", run: deleteGroupForward, preventDefault: true },
-    { key: "Meta-Backspace", run: deleteLineBoundaryBackward, preventDefault: true },
-    { key: "Meta-Delete", run: deleteLineBoundaryForward, preventDefault: true },
-  ]),
-);
+export const platformDeleteKeymap: Extension = IS_MAC
+  ? Prec.high(
+      keymap.of([
+        { key: "Alt-Backspace", run: deleteGroupBackward, preventDefault: true },
+        { key: "Alt-Delete", run: deleteGroupForward, preventDefault: true },
+        { key: "Meta-Backspace", run: deleteLineBoundaryBackward, preventDefault: true },
+        { key: "Meta-Delete", run: deleteLineBoundaryForward, preventDefault: true },
+      ]),
+    )
+  : [];

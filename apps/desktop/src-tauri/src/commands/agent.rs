@@ -14,10 +14,13 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::{Arc, OnceLock};
+#[cfg(not(windows))]
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 
+#[cfg(not(windows))]
 const PATH_MARKER: &str = "__PENSEE_AGENT_PATH__=";
+#[cfg(not(windows))]
 const SHELL_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 const STDERR_TAIL_LINES: usize = 8;
 /** The built-in tools the chat needs to read, find and edit pages. */
@@ -84,7 +87,10 @@ fn claude_env() -> &'static ClaudeEnv {
     static ENV: OnceLock<ClaudeEnv> = OnceLock::new();
     ENV.get_or_init(|| {
         let path = probe_login_path();
-        let home = std::env::var_os("HOME").map(PathBuf::from);
+        // Windows sets USERPROFILE, not HOME.
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(PathBuf::from);
         let binary = resolve_claude_binary(path.as_deref(), home.as_deref(), |p| p.is_file());
         ClaudeEnv { path, binary }
     })
@@ -104,9 +110,24 @@ pub(crate) fn claude_command() -> Result<Command, AppError> {
     if let Some(path) = &env.path {
         command.env("PATH", path);
     }
+    // A GUI app's console child opens a console window of its own on Windows.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
     Ok(command)
 }
 
+/// Windows apps inherit the user's full PATH (there is no launchd), and there
+/// is no `$SHELL` to ask.
+#[cfg(windows)]
+fn probe_login_path() -> Option<OsString> {
+    std::env::var_os("PATH")
+}
+
+#[cfg(not(windows))]
 fn probe_login_path() -> Option<OsString> {
     let shell = std::env::var_os("SHELL").unwrap_or_else(|| "/bin/zsh".into());
     let mut child = Command::new(shell)
@@ -135,6 +156,7 @@ fn probe_login_path() -> Option<OsString> {
     parse_path_probe(&String::from_utf8_lossy(&output.stdout)).map(OsString::from)
 }
 
+#[cfg(not(windows))]
 fn parse_path_probe(stdout: &str) -> Option<String> {
     stdout
         .lines()
@@ -150,19 +172,29 @@ fn resolve_claude_binary(
     home: Option<&Path>,
     exists: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
+    // Windows: the native installer's `claude.exe`, or npm's `claude.cmd`.
+    let names: &[&str] = if cfg!(windows) {
+        &["claude.exe", "claude.cmd"]
+    } else {
+        &["claude"]
+    };
     let mut candidates: Vec<PathBuf> = login_path
         .map(|path| {
             std::env::split_paths(path)
-                .map(|dir| dir.join("claude"))
+                .flat_map(|dir| names.iter().map(move |name| dir.join(name)))
                 .collect()
         })
         .unwrap_or_default();
     if let Some(home) = home {
-        candidates.push(home.join(".local/bin/claude"));
-        candidates.push(home.join(".claude/local/claude"));
+        for name in names {
+            candidates.push(home.join(".local/bin").join(name));
+            candidates.push(home.join(".claude/local").join(name));
+        }
     }
-    candidates.push(PathBuf::from("/opt/homebrew/bin/claude"));
-    candidates.push(PathBuf::from("/usr/local/bin/claude"));
+    if !cfg!(windows) {
+        candidates.push(PathBuf::from("/opt/homebrew/bin/claude"));
+        candidates.push(PathBuf::from("/usr/local/bin/claude"));
+    }
     candidates.into_iter().find(|candidate| exists(candidate))
 }
 
@@ -579,6 +611,7 @@ mod tests {
         assert_eq!(value["message"]["content"], "two\nlines \"quoted\"");
     }
 
+    #[cfg(not(windows))]
     #[test]
     fn path_probe_ignores_rc_noise() {
         let out = format!("welcome!\n\n{PATH_MARKER}/a/bin:/b/bin\n");
@@ -587,6 +620,7 @@ mod tests {
         assert_eq!(parse_path_probe(&format!("{PATH_MARKER}\n")), None);
     }
 
+    #[cfg(not(windows))]
     #[test]
     fn binary_prefers_login_path_then_fallbacks() {
         let path = OsString::from("/x/bin:/y/bin");
@@ -602,5 +636,24 @@ mod tests {
         assert_eq!(found, Some(PathBuf::from("/home/me/.local/bin/claude")));
 
         assert_eq!(resolve_claude_binary(None, None, |_| false), None);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn binary_finds_windows_installs() {
+        let path = OsString::from(r"C:\x\bin;C:\npm");
+        let home = Path::new(r"C:\Users\me");
+        let found = resolve_claude_binary(Some(&path), Some(home), |p| {
+            p == Path::new(r"C:\npm\claude.cmd")
+        });
+        assert_eq!(found, Some(PathBuf::from(r"C:\npm\claude.cmd")));
+
+        let found = resolve_claude_binary(None, Some(home), |p| {
+            p == Path::new(r"C:\Users\me\.local\bin\claude.exe")
+        });
+        assert_eq!(
+            found,
+            Some(PathBuf::from(r"C:\Users\me\.local\bin\claude.exe"))
+        );
     }
 }

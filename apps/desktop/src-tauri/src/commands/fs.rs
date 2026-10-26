@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::ignore::WorkspaceIgnore;
+use crate::path_ext::PathExt;
 use crate::state::{AppState, WorkspaceState};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
@@ -266,7 +267,7 @@ pub fn read_directory_impl(
             if directory_is_sidebar_visible(&entry_path, state)? {
                 dirs.push(DirEntry {
                     name,
-                    path: entry_path.to_string_lossy().to_string(),
+                    path: entry_path.to_ipc_lossy().to_string(),
                     is_dir: true,
                     is_markdown: false,
                     modified_at: modified_time(&entry_path),
@@ -279,7 +280,7 @@ pub fn read_directory_impl(
                 let title = extract_title(&entry_path);
                 files.push(DirEntry {
                     name,
-                    path: entry_path.to_string_lossy().to_string(),
+                    path: entry_path.to_ipc_lossy().to_string(),
                     is_dir: false,
                     is_markdown: true,
                     modified_at: modified_time(&entry_path),
@@ -417,7 +418,7 @@ pub(crate) fn markdown_file_entry(path: &Path) -> Option<DirEntry> {
     let name = path.file_name()?.to_string_lossy().to_string();
     Some(DirEntry {
         name,
-        path: path.to_string_lossy().to_string(),
+        path: path.to_ipc_lossy().to_string(),
         is_dir: false,
         is_markdown: true,
         modified_at: modified_time(path),
@@ -600,10 +601,10 @@ fn create_sidebar_entry_with(
     mut create_candidate: impl FnMut(&Path, SidebarEntryKind) -> Result<DirEntry, AppError>,
 ) -> Result<DirEntry, AppError> {
     let root = workspace_root
-        .canonicalize()
+        .canonical()
         .map_err(|error| AppError::Io(error.to_string()))?;
     let parent = parent_path
-        .canonicalize()
+        .canonical()
         .map_err(|_| AppError::NotFound(parent_path.to_string_lossy().to_string()))?;
     if !parent.is_dir() || !parent.starts_with(&root) {
         return Err(AppError::InvalidPath(
@@ -657,7 +658,7 @@ fn create_sidebar_entry_for_snapshot(
         state
             .with_workspace_snapshot(workspace_root, workspace_epoch, || {
                 let live_root = workspace_root
-                    .canonicalize()
+                    .canonical()
                     .map_err(|error| AppError::Io(error.to_string()))?;
                 if live_root != workspace_root {
                     return Err(AppError::InvalidPath(
@@ -665,7 +666,7 @@ fn create_sidebar_entry_for_snapshot(
                     ));
                 }
                 let live_parent = parent_path
-                    .canonicalize()
+                    .canonical()
                     .map_err(|_| AppError::NotFound(parent_path.to_string_lossy().into_owned()))?;
                 if !live_parent.is_dir() || !live_parent.starts_with(&live_root) {
                     return Err(AppError::InvalidPath(

@@ -8,18 +8,22 @@ mod ignore;
 #[cfg(target_os = "macos")]
 mod macos;
 pub mod open_target;
+mod path_ext;
 pub mod pensee_cli;
 mod state;
 mod thumbs;
 #[cfg(desktop)]
 mod watcher;
 
+use crate::path_ext::PathExt;
 use commands::settings::init_window_settings;
 use error::AppError;
 use open_target::resolve_path;
 pub use open_target::PendingOpenPayload;
 use state::AppState;
-use std::path::{Path, PathBuf};
+#[cfg(target_os = "macos")]
+use std::path::Path;
+use std::path::PathBuf;
 #[cfg(target_os = "macos")]
 use tauri::menu::MenuItem;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
@@ -84,7 +88,7 @@ fn attach_window_handlers(app: &tauri::AppHandle, window: &WebviewWindow) {
                 let payload = serde_json::json!({
                     "paths": paths
                         .iter()
-                        .map(|p| p.to_string_lossy().to_string())
+                        .map(|p| p.to_ipc_lossy().to_string())
                         .collect::<Vec<_>>(),
                     "x": position.x as f64,
                     "y": position.y as f64,
@@ -128,9 +132,9 @@ pub(crate) fn open_new_workspace_window(
     // duplicate windows and the watcher's canonical workspace_root matches
     // the pending-open record.
     let workspace = raw_workspace
-        .canonicalize()
+        .canonical()
         .map_err(|e| AppError::Io(e.to_string()))?;
-    let workspace_str = workspace.to_string_lossy().to_string();
+    let workspace_str = workspace.to_ipc_lossy().to_string();
 
     if let Some(existing_label) = app.state::<AppState>().find_by_workspace(&workspace) {
         if let Some(window) = app.get_webview_window(&existing_label) {
@@ -172,9 +176,7 @@ pub(crate) fn open_standalone_file_window(
 
     // Canonicalize so lookup, pending-open dedupe, and the watcher's path
     // equality all agree (`/var` vs. `/private/var` aliasing).
-    let file = raw
-        .canonicalize()
-        .map_err(|e| AppError::Io(e.to_string()))?;
+    let file = raw.canonical().map_err(|e| AppError::Io(e.to_string()))?;
 
     if let Some(existing_label) = app.state::<AppState>().find_by_standalone_file(&file) {
         if let Some(window) = app.get_webview_window(&existing_label) {
@@ -188,7 +190,7 @@ pub(crate) fn open_standalone_file_window(
     init_window_settings(app, &state)?;
     state.set_startup_open(PendingOpenPayload {
         workspace: None,
-        file: Some(file.to_string_lossy().to_string()),
+        file: Some(file.to_ipc_lossy().to_string()),
     });
 
     build_secondary_window(app, label)
@@ -298,23 +300,31 @@ fn install_app_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Er
     #[cfg(target_os = "macos")]
     let cli_item = MenuItemBuilder::with_id("cli.toggle", CLI_MENU_INSTALL_LABEL).build(app)?;
 
-    let app_submenu = {
-        let b = SubmenuBuilder::new(app, "Pensée")
-            .item(&PredefinedMenuItem::about(app, Some("About Pensée"), None)?)
-            .separator()
-            .item(&preferences_item);
-        #[cfg(target_os = "macos")]
-        let b = b.item(&cli_item);
-        b.separator()
-            .item(&PredefinedMenuItem::services(app, None)?)
-            .separator()
-            .item(&PredefinedMenuItem::hide(app, None)?)
-            .item(&PredefinedMenuItem::hide_others(app, None)?)
-            .item(&PredefinedMenuItem::show_all(app, None)?)
-            .separator()
-            .item(&PredefinedMenuItem::quit(app, None)?)
-            .build()?
-    };
+    #[cfg(target_os = "macos")]
+    let app_submenu = SubmenuBuilder::new(app, "Pensée")
+        .item(&PredefinedMenuItem::about(app, Some("About Pensée"), None)?)
+        .separator()
+        .item(&preferences_item)
+        .item(&cli_item)
+        .separator()
+        .item(&PredefinedMenuItem::services(app, None)?)
+        .separator()
+        .item(&PredefinedMenuItem::hide(app, None)?)
+        .item(&PredefinedMenuItem::hide_others(app, None)?)
+        .item(&PredefinedMenuItem::show_all(app, None)?)
+        .separator()
+        .item(&PredefinedMenuItem::quit(app, None)?)
+        .build()?;
+    // Windows and Linux have no app menu, no Services and no Hide: the
+    // first menu is File, and Exit closes the app.
+    #[cfg(not(target_os = "macos"))]
+    let app_submenu = SubmenuBuilder::new(app, "File")
+        .item(&preferences_item)
+        .separator()
+        .item(&PredefinedMenuItem::about(app, Some("About Pensée"), None)?)
+        .separator()
+        .item(&PredefinedMenuItem::quit(app, Some("Exit"))?)
+        .build()?;
 
     let edit_submenu = SubmenuBuilder::new(app, "Edit")
         .undo()
@@ -346,9 +356,12 @@ fn install_app_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Er
         .item(&zoom_reset_item)
         .build()?;
 
-    let window_submenu = SubmenuBuilder::new(app, "Window")
-        .minimize()
-        .item(&PredefinedMenuItem::fullscreen(app, None)?)
+    // Full screen is a macOS menu item only; elsewhere the window's own
+    // maximize button does it.
+    let window_submenu = SubmenuBuilder::new(app, "Window").minimize();
+    #[cfg(target_os = "macos")]
+    let window_submenu = window_submenu.item(&PredefinedMenuItem::fullscreen(app, None)?);
+    let window_submenu = window_submenu
         .item(&PredefinedMenuItem::close_window(app, None)?)
         .build()?;
 

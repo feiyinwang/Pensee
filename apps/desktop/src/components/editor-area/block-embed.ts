@@ -74,6 +74,7 @@ import { BacklinkBadge, backlinksField, blockBacklinks } from "./block-backlinks
 import { BookPinWidget } from "./book-jump";
 import { VideoPinWidget } from "./video-pin";
 import "./block-embed.css";
+import { keyLabel } from "@/lib/platform";
 
 // `![[Page#^id]]` shows block `id` of Page, live and editable where it is
 // embedded; typing there edits Page. Per SPECs/block-embed-spec.md.
@@ -676,7 +677,9 @@ export function copyBlockLink(view: EditorView, target: ActionTarget): boolean {
 function copyReference(link: string) {
   writeText(link).then(
     () =>
-      showEditorNotice("Reference copied. Press ⌥⌘V in any page to paste it as a linked block."),
+      showEditorNotice(
+        keyLabel("Reference copied. Press ⌥⌘V in any page to paste it as a linked block."),
+      ),
     (error) => {
       console.error("[editor] Failed to copy block reference:", error);
       showEditorNotice("Couldn't copy the block reference.");
@@ -716,7 +719,7 @@ export function pasteBlockReference(view: EditorView, isDisposed: () => boolean 
       if (isDisposed()) return;
       const embed = text ? referenceFromClipboard(text) : null;
       if (!embed) {
-        showEditorNotice("Nothing to paste as a reference. Copy a block with ⌘⇧C first.");
+        showEditorNotice(keyLabel("Nothing to paste as a reference. Copy a block with ⌘⇧C first."));
         return;
       }
       const line = view.state.doc.lineAt(view.state.selection.main.head);

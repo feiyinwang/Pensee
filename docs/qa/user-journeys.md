@@ -558,6 +558,22 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 | WN-06 | **Read all**                                             | The website's What's new page opens in the browser at the card's newest day, and the card closes                                                        | you             |
 | WN-07 | Change only the website, rebuild nothing                 | No card: the installed app's changelog is the one it was built with                                                                                     | you             |
 
+## Windows — WIN
+
+**Feature:** Pensée runs on Windows as well as the Mac, from the same code. On Windows it has the native title bar, Ctrl in place of ⌘ (in keys and in every label), and no Mac-only features (Apple Books import, translucency, the `pensee` command). On the Mac nothing changes. How each difference is made: [docs/platforms.md](../platforms.md).
+**Code:** `src-tauri/tauri.windows.conf.json`, `src-tauri/src/path_ext.rs` (and every `to_ipc_lossy` / `canonical` call), `src-tauri/src/commands/agent.rs` (resolve_claude_binary, probe_login_path), `src-tauri/src/commands/onboarding.rs` (obsidian_config), `src-tauri/src/lib.rs` (install_app_menu), `src/lib/platform.ts`, `src/main.tsx` (data-platform), `src/App.css` (`[data-platform="windows"]`), `.github/workflows/ci.yml`, `.github/workflows/release-windows.yml`
+
+| ID     | Journey                                                       | Expected                                                                                                        | Check |
+| ------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----- |
+| WIN-01 | ★ On Windows, install from the release's setup.exe and launch | Pensée opens with a native title bar; onboarding (or the last folder) shows, the chrome starts at the left edge | you   |
+| WIN-02 | Open a folder, open a note, rename it, move it into a folder  | The note opens once (no duplicate tab), the rename and move land on disk, Files shows the new place             | you   |
+| WIN-03 | Change a note in the folder from Explorer or Notepad          | The open note updates within a couple of seconds                                                                | you   |
+| WIN-04 | Ctrl+O, Ctrl+N, Ctrl+[; hover the sidebar button              | Each does what ⌘ does on the Mac; the tooltip reads `Hide sidebar Ctrl+[`                                       | you   |
+| WIN-05 | Paste a picture into a note                                   | It is saved next to the note and shows inline                                                                   | you   |
+| WIN-06 | Ctrl+wheel with a mouse over a board                          | The board zooms one step a notch, not two or three                                                              | you   |
+| WIN-07 | With Claude Code installed, send the Agent a message          | It answers; no console window flashes                                                                           | you   |
+| WIN-08 | ⌘P on the Mac and Ctrl+P on Windows → type "Apple Books"      | Mac: the import command is listed. Windows: it is not, and Settings has no Apple Books sync or Translucency     | you   |
+
 ---
 
 ## Template for a new feature

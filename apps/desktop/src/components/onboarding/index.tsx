@@ -21,6 +21,7 @@ import {
 import { PracticeGuide } from "./practice-guide";
 import { SAMPLES, SAMPLES_FOLDER, openSample } from "./samples";
 import "./onboarding.css";
+import { IS_MAC, keyLabel } from "@/lib/platform";
 
 /** First-run onboarding (SPECs/onboarding-spec.md): one question per screen,
  *  then a practice loop in the real app, then the features carousel. */
@@ -201,7 +202,7 @@ function NotesScreen() {
 
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.metaKey && event.key.toLowerCase() === "o") {
+      if ((IS_MAC ? event.metaKey : event.ctrlKey) && event.key.toLowerCase() === "o") {
         event.preventDefault();
         event.stopPropagation();
         pickFolder();
@@ -227,7 +228,7 @@ function NotesScreen() {
           Open {vault.name}
         </Choice>
       ))}
-      <Choice onSelect={pickFolder} meta="⌘O">
+      <Choice onSelect={pickFolder} meta={keyLabel("⌘O")}>
         Open a folder…
       </Choice>
       <div className="onb-alt">

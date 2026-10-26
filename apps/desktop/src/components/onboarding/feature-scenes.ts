@@ -14,6 +14,7 @@ import dwarkesh from "./assets/dwarkesh.jpg";
 import secondBrain from "./assets/second-brain.jpg";
 import smartNotes from "./assets/smart-notes.jpg";
 import strunk from "./assets/strunk.jpg";
+import { keyLabel } from "@/lib/platform";
 
 export const SCENE_W = 600;
 const SCENE_H = 360;
@@ -179,6 +180,7 @@ function timeline(root: SceneRoot, instant: boolean): Timeline {
       at(t, () => {
         const k = kv();
         k.querySelector(".sc-kk")!.innerHTML = list
+          .map((x) => keyLabel(x))
           .map((x) => `<span class="sc-kc${x.length > 2 ? " g" : ""}">${x}</span>`)
           .join("");
         k.querySelector(".sc-kl")!.textContent = label;
@@ -560,7 +562,7 @@ const podHTML = () => `<div class="sc-pod"><div class="art"><img src="${dwarkesh
   <div class="main"><div class="now"><div class="hd"><div class="ti">Andy Matuschak — The reason most learning tools fail</div><div class="sh">Dwarkesh Podcast</div></div>
     <div class="tr"><span class="ib">${ic.back}</span><span class="play">${ic.pause}</span><span class="ib">${ic.fwd}</span></div></div>
     <div class="tl"><span data-r="time">${fmt(721)}</span><span class="bar"><i data-r="bar" style="width:${((721 / 8560) * 100).toFixed(2)}%"></i></span><span>${fmt(8560)}</span></div>
-    <div class="tools"><span class="tb">1× <kbd>&lt; &gt;</kbd></span><span class="tb">${ic.vol}<i class="vr"></i></span><span class="tb pin" data-r="pinb">${ic.pin}Pin<kbd>⌘S</kbd></span></div>
+    <div class="tools"><span class="tb">1× <kbd>&lt; &gt;</kbd></span><span class="tb">${ic.vol}<i class="vr"></i></span><span class="tb pin" data-r="pinb">${ic.pin}Pin<kbd>${keyLabel("⌘S")}</kbd></span></div>
   </div></div>`;
 
 function flashPin(r: R) {

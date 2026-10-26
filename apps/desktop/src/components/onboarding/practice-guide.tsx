@@ -9,6 +9,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useClaudeSignInStore } from "@/stores/claude-sign-in-store";
 import { goToScreen, useOnboardingStore } from "./onboarding-store";
 import { SAMPLES, type Sample } from "./samples";
+import { keyLabel } from "@/lib/platform";
 
 /** Where the writer is in the practice loop, read from the note itself: the
  *  pin or highlight they brought in, then the pen's lines by their ids. */
@@ -31,7 +32,7 @@ function stepOf(sample: Sample, body: string): Step {
 const Keys = ({ keys }: { keys: string[] }) => (
   <>
     {keys.map((k) => (
-      <kbd key={k}>{k}</kbd>
+      <kbd key={k}>{keyLabel(k)}</kbd>
     ))}
   </>
 );

@@ -3,6 +3,7 @@ use crate::commands::search::index_workspace_impl;
 use crate::commands::settings::get_global_string_setting;
 use crate::error::AppError;
 use crate::ignore::WorkspaceIgnore;
+use crate::path_ext::PathExt;
 use crate::state::{AppState, WorkspaceRuntimeDrop, WorkspaceState};
 use crate::watcher::drop_watcher_off_thread;
 use crate::PendingOpenPayload;
@@ -150,7 +151,7 @@ fn validate_workspace_launch_root(path: &Path) -> Result<PathBuf, AppError> {
     if !path.is_dir() {
         return Err(AppError::NotFound(path.to_string_lossy().to_string()));
     }
-    path.canonicalize()
+    path.canonical()
         .map_err(|error| AppError::Io(error.to_string()))
 }
 
@@ -197,7 +198,7 @@ fn validate_terminal_launch_snapshot(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn validate_terminal_launch_boundary(
     state: &WorkspaceState,
     captured_root: &Path,
@@ -422,7 +423,7 @@ pub(crate) fn canonicalize_workspace_root(path: &str) -> Result<PathBuf, AppErro
         return Err(AppError::NotFound(path.to_string()));
     }
     raw_root
-        .canonicalize()
+        .canonical()
         .map_err(|e| AppError::Io(e.to_string()))
 }
 
@@ -432,7 +433,7 @@ fn prepare_workspace_state(
     path: &str,
 ) -> Result<WorkspaceInfo, AppError> {
     let root = canonicalize_workspace_root(path)?;
-    let canonical_path = root.to_string_lossy().to_string();
+    let canonical_path = root.to_ipc_lossy().to_string();
 
     let name = root
         .file_name()
@@ -519,7 +520,7 @@ fn run_workspace_bootstrap(
     {
         return;
     }
-    let root_string = root.to_string_lossy().into_owned();
+    let root_string = root.to_ipc_lossy().into_owned();
     let _ = handle.emit_to(
         label.clone(),
         "fs:directory-changed",
@@ -791,9 +792,7 @@ pub(crate) fn watch_standalone_file_impl(
     if !raw.is_file() {
         return Err(AppError::NotFound(path.to_string()));
     }
-    let file = raw
-        .canonicalize()
-        .map_err(|e| AppError::Io(e.to_string()))?;
+    let file = raw.canonical().map_err(|e| AppError::Io(e.to_string()))?;
 
     let state = app.state::<AppState>().get_or_create(label);
     let epoch = state.workspace_epoch.fetch_add(1, Ordering::SeqCst) + 1;

@@ -48,6 +48,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import "./composer.css";
+import { keyLabel } from "@/lib/platform";
 
 // The composer card (SPECs/composer-spec.md): Linear's new-issue layout on
 // Pensée's card, with Arc controls. Lazy, so Arc and motion load on first use.
@@ -350,7 +351,7 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
               onClick={() => submit(true)}
             >
               {label}
-              <kbd className="composer-kbd">⌘↵</kbd>
+              <kbd className="composer-kbd">{keyLabel("⌘↵")}</kbd>
             </button>
             {canStay && (
               <DropdownMenu
@@ -358,10 +359,14 @@ export default function ComposerCard({ variant, onClose }: ComposerCardProps) {
                 align="end"
                 disabled={!canSubmit}
                 items={[
-                  { label: `${label} and open it`, shortcut: "⌘↵", onSelect: () => submit(true) },
+                  {
+                    label: `${label} and open it`,
+                    shortcut: keyLabel("⌘↵"),
+                    onSelect: () => submit(true),
+                  },
                   {
                     label: `${label} and stay here`,
-                    shortcut: "⌘⇧↵",
+                    shortcut: keyLabel("⌘⇧↵"),
                     onSelect: () => submit(false),
                   },
                 ]}

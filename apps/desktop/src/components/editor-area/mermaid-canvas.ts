@@ -5,6 +5,7 @@
 // right half. The canvas frame is mounted by the CodeMirror MermaidWidget
 // once the SVG has been rendered.
 
+import { isPinchWheel } from "@/lib/platform";
 import { EditorState } from "@codemirror/state";
 import { EditorView, drawSelection, keymap } from "@codemirror/view";
 import { history, historyKeymap } from "@codemirror/commands";
@@ -348,7 +349,7 @@ export function mountMermaidCanvas(
     (e) => {
       if (!(e.metaKey || e.ctrlKey)) return;
       e.preventDefault();
-      const sensitivity = e.ctrlKey && !e.metaKey ? PINCH_ZOOM_SENSITIVITY : WHEEL_ZOOM_SENSITIVITY;
+      const sensitivity = isPinchWheel(e) ? PINCH_ZOOM_SENSITIVITY : WHEEL_ZOOM_SENSITIVITY;
       const factor = Math.exp(-e.deltaY * sensitivity);
       zoomAt(e.clientX, e.clientY, factor);
     },

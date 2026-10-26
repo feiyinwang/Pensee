@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::path_ext::PathExt;
 use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
@@ -91,7 +92,7 @@ pub fn save_clipboard_image_impl(
 
     Ok(ImageSaveResult {
         relative_path,
-        absolute_path: abs_path.to_string_lossy().to_string(),
+        absolute_path: abs_path.to_ipc_lossy().to_string(),
     })
 }
 

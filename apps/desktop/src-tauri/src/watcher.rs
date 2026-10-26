@@ -1,4 +1,5 @@
 use crate::ignore::{is_gitignore_path, WorkspaceIgnore};
+use crate::path_ext::PathExt;
 use crate::state::{self, AppState, WorkspaceState};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
@@ -154,7 +155,7 @@ fn add_to_index_with_modified(state: &WorkspaceState, path: &Path, root: &Path, 
     let rel = path
         .strip_prefix(root)
         .unwrap_or(path)
-        .to_string_lossy()
+        .to_ipc_lossy()
         .to_string();
     let name = path
         .file_name()
@@ -305,7 +306,7 @@ fn prepare_subtree_merge(
             .path
             .strip_prefix(root)
             .unwrap_or(&file.path)
-            .to_string_lossy()
+            .to_ipc_lossy()
             .to_string();
         index.push(crate::state::IndexedFile {
             path: file.path,
@@ -548,10 +549,10 @@ pub fn start_watcher(
                     };
 
                     let payload = FileChangeEvent {
-                        path: path.to_string_lossy().to_string(),
+                        path: path.to_ipc_lossy().to_string(),
                         kind: kind_str.to_string(),
                         workspace: Some(WorkspaceIdentity {
-                            root: watched_root.to_string_lossy().into_owned(),
+                            root: watched_root.to_ipc_lossy().into_owned(),
                             epoch: captured_epoch,
                         }),
                     };
@@ -587,7 +588,7 @@ pub fn start_watcher(
                                 label.clone(),
                                 "settings:changed",
                                 WorkspaceIdentity {
-                                    root: watched_root.to_string_lossy().into_owned(),
+                                    root: watched_root.to_ipc_lossy().into_owned(),
                                     epoch: captured_epoch,
                                 },
                             );
@@ -679,10 +680,10 @@ pub fn start_watcher(
                         if let Some(parent) = path.parent() {
                             wlog!("emit fs:directory-changed (parent) {}", parent.display());
                             let parent_payload = FileChangeEvent {
-                                path: parent.to_string_lossy().to_string(),
+                                path: parent.to_ipc_lossy().to_string(),
                                 kind: "modified".to_string(),
                                 workspace: Some(WorkspaceIdentity {
-                                    root: watched_root.to_string_lossy().into_owned(),
+                                    root: watched_root.to_ipc_lossy().into_owned(),
                                     epoch: captured_epoch,
                                 }),
                             };
@@ -798,7 +799,7 @@ pub fn start_file_watcher(
                         label.clone(),
                         "fs:file-changed",
                         &FileChangeEvent {
-                            path: path.to_string_lossy().to_string(),
+                            path: path.to_ipc_lossy().to_string(),
                             kind: kind_str.to_string(),
                             workspace: None,
                         },
@@ -840,10 +841,10 @@ fn spawn_ignore_rebuild(
             window_label,
             "fs:directory-changed",
             FileChangeEvent {
-                path: root.to_string_lossy().to_string(),
+                path: root.to_ipc_lossy().to_string(),
                 kind: "modified".to_string(),
                 workspace: Some(WorkspaceIdentity {
-                    root: root.to_string_lossy().into_owned(),
+                    root: root.to_ipc_lossy().into_owned(),
                     epoch: captured_epoch,
                 }),
             },

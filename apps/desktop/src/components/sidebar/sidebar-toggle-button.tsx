@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useChromeTooltip } from "@/components/chrome-tooltip";
+import { IS_MAC } from "@/lib/platform";
 
 export function SidebarToggleButton() {
   const { isSidebarVisible, toggleSidebar } = useSidebar();
@@ -17,7 +18,7 @@ export function SidebarToggleButton() {
         onMouseDown={(event) => event.preventDefault()}
         onClick={toggleSidebar}
         aria-label={label}
-        aria-keyshortcuts="Meta+["
+        aria-keyshortcuts={IS_MAC ? "Meta+[" : "Control+["}
         {...triggerProps}
         className="flex h-[var(--chrome-control-height)] w-7 items-center justify-center rounded-lg text-[var(--text-icon-muted)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--text-secondary)]"
       >

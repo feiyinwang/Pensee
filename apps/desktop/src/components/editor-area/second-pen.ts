@@ -87,6 +87,7 @@ import { hoverCard } from "./hover-card";
 import type { PenPill } from "./pen-box";
 import { type PenHint, type PenHintPart, setPenHint } from "./pen-hint-store";
 import "./second-pen.css";
+import { keyLabel } from "@/lib/platform";
 
 // The second pen in the editor (SPECs/second-pen-spec.md): ⌘. opens its box
 // on the selection or the caret's line; it answers only after your take
@@ -219,7 +220,7 @@ class PendingWidget extends WidgetType {
       hint.className = "cm-pen-pending-keys";
       for (const [key, what] of keys) {
         const kbd = document.createElement("kbd");
-        kbd.textContent = key;
+        kbd.textContent = keyLabel(key);
         hint.append(kbd, ` ${what} `);
       }
       row.append(hint);
@@ -504,7 +505,7 @@ class WaitingWidget extends WidgetType {
       button.className = "cm-pen-waiting-act";
       button.append(label);
       const kbd = document.createElement("kbd");
-      kbd.textContent = key;
+      kbd.textContent = keyLabel(key);
       button.append(kbd);
       // Keep the editor's focus: the click acts, the caret stays (docs/editor.md).
       button.addEventListener("mousedown", (event) => {
@@ -535,7 +536,7 @@ class SealWidget extends WidgetType {
   toDOM(): HTMLElement {
     const span = document.createElement("span");
     span.className = "cm-pen-seal";
-    span.textContent = SEALED_LABEL;
+    span.textContent = keyLabel(SEALED_LABEL);
     return span;
   }
 
@@ -1156,7 +1157,7 @@ class PenPlugin {
       if (this.conversation) return true;
       if (alt) void this.open(sealed, i, false);
       else if (!itemText(lines[i]!))
-        this.say("A wrong guess counts. Write anything first, or ⌥↵ to open it now.");
+        this.say(keyLabel("A wrong guess counts. Write anything first, or ⌥↵ to open it now."));
       else void this.open(sealed, i, true);
       return true;
     }

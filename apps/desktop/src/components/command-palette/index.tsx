@@ -54,6 +54,7 @@ import {
 } from "@/components/editor-area/wiki-pages-extension";
 import * as tauri from "@/lib/tauri";
 import type { RecentFile } from "@/lib/tauri";
+import { keyLabel, IS_MAC } from "@/lib/platform";
 
 // Read no notes when nothing in the palette needs Library's.
 const NO_TYPES: readonly string[] = [];
@@ -291,14 +292,15 @@ export function CommandPalette() {
           );
         },
       },
-    root && {
-      id: "sync-apple-books",
-      label: "Import Apple Books Highlights",
-      run: () => {
-        void syncAppleBooksNow();
-        close();
+    IS_MAC &&
+      root && {
+        id: "sync-apple-books",
+        label: "Import Apple Books Highlights",
+        run: () => {
+          void syncAppleBooksNow();
+          close();
+        },
       },
-    },
     root &&
       activeFilePath && {
         id: "open-in-compact-window",
@@ -572,7 +574,7 @@ export function CommandPalette() {
                               key={key}
                               className="flex h-[18px] min-w-[18px] items-center justify-center rounded-[var(--radius-button)] bg-[var(--color-bg-kbd)] px-1 font-[inherit] text-caption text-[var(--color-text-muted)]"
                             >
-                              {key}
+                              {keyLabel(key)}
                             </kbd>
                           ))}
                         </span>

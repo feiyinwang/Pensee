@@ -12,6 +12,7 @@
  *     converter" is how the two-renderer height bug happened elsewhere.
  */
 
+import { isPinchWheel } from "@/lib/platform";
 import { attachLinkCompletion } from "./board-link-complete";
 import {
   type BoardEl,
@@ -3150,7 +3151,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (zoom) {
       // WebKit sends a trackpad pinch as Ctrl-wheel with small deltas, so it
       // gets twice the gain of a Cmd-scroll on a mouse wheel.
-      const gain = e.ctrlKey && !e.metaKey ? PINCH_ZOOM_GAIN : WHEEL_ZOOM_GAIN;
+      const gain = isPinchWheel(e) ? PINCH_ZOOM_GAIN : WHEEL_ZOOM_GAIN;
       zoomGesture(Math.exp(-e.deltaY * gain), { x: e.clientX, y: e.clientY });
       return;
     }

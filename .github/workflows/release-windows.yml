@@ -1,0 +1,48 @@
+# Builds the Windows installer and attaches it to the GitHub Release that
+# scripts/release.sh publishes for the Mac, so each release ships both. Run
+# it by hand (Actions → Release Windows) to rebuild one.
+name: Release Windows
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the installer to (e.g. v0.6.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: vp install
+      - name: Build the installer
+        working-directory: apps/desktop
+        run: vp exec tauri build --bundles nsis
+      - name: Attach it to the release
+        shell: bash
+        run: |
+          VERSION="${TAG#v}"
+          SRC=$(ls apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe | head -1)
+          # A versioned name for the release, and one that never changes so a
+          # Download link can point at releases/latest/download/Pensee-windows-x64-setup.exe.
+          cp "$SRC" "Pensee-$VERSION-windows-x64-setup.exe"
+          cp "$SRC" "Pensee-windows-x64-setup.exe"
+          gh release upload "$TAG" "Pensee-$VERSION-windows-x64-setup.exe" "Pensee-windows-x64-setup.exe" --clobber

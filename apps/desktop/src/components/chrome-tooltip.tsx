@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent, PointerEvent } from "react";
 import { createPortal } from "react-dom";
+import { keyLabel } from "@/lib/platform";
 
 const DELAY_MS = 400;
 /** After a tooltip closes, the next one within this window opens at once. */
@@ -47,7 +48,7 @@ export function useChromeTooltip(
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   // Centre on the trigger's side, then clamp inside the window once the size is known.
-  const keyLabel = keys.join(" ");
+  const keysText = keys.join(" ");
   useLayoutEffect(() => {
     const bubble = bubbleRef.current;
     if (!anchor || !bubble) return;
@@ -65,7 +66,7 @@ export function useChromeTooltip(
             left: clamp(anchor.left + anchor.width / 2 - width / 2, width, window.innerWidth),
           },
     );
-  }, [anchor, text, keyLabel, side]);
+  }, [anchor, text, keysText, side]);
 
   const triggerProps = {
     ref: (node: HTMLElement | null) => {
@@ -99,7 +100,7 @@ export function useChromeTooltip(
                   key={key}
                   className="flex h-[18px] min-w-[18px] items-center justify-center rounded-[var(--radius-button)] border border-[color-mix(in_oklch,var(--color-text-inverse)_20%,transparent)] px-1 font-[inherit] opacity-70"
                 >
-                  {key}
+                  {keyLabel(key)}
                 </kbd>
               ))}
             </span>

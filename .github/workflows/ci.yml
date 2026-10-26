@@ -27,10 +27,17 @@ jobs:
       - run: vp run website#build
 
   rust:
-    # The app is macOS-only (objc2, FSEvents), so its crate builds on macOS.
-    runs-on: macos-15
+    # Mac and Windows builds of the same crate: Mac-only code (objc2, Apple
+    # Books, the dock menu) sits behind cfg(target_os = "macos"), and this
+    # keeps the Windows build compiling and its tests passing.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
+        shell: bash
         working-directory: apps/desktop/src-tauri
     steps:
       - uses: actions/checkout@v4

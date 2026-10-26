@@ -17,11 +17,11 @@ import {
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useWorkspaceChromeMode, useWorkspaceRoot } from "@/hooks/use-workspace";
 import { resolveAppView } from "@/lib/app-view";
+import { WINDOW_CONTROLS_INSET } from "@/lib/platform";
 
 // The sidebar edge never animates. A resize drag follows the pointer and
 // releases at its final width, and the collapse toggle snaps so Cmd+[ lands
 // on the same frame as the keypress (see docs/motion.md).
-const TRAFFIC_LIGHTS_CLEARANCE = 92;
 const SIDEBAR_EDGE_INSET = 12;
 /** The editor glass panel's outer margin (`.glass-panel` in App.css). */
 const EDITOR_PANEL_MARGIN = 8;
@@ -67,10 +67,10 @@ function WorkspaceLayout({ showWelcome }: { showWelcome: boolean }) {
   // the sidebar collapsed there is no header, so it drops in beside the
   // traffic lights and the tab chrome starts after it.
   const toggleLeft = isSidebarCollapsed
-    ? TRAFFIC_LIGHTS_CLEARANCE
+    ? WINDOW_CONTROLS_INSET
     : draftSidebarWidth - SIDEBAR_EDGE_INSET - TOGGLE_WIDTH;
   const tabChromeLeft = isSidebarCollapsed
-    ? TRAFFIC_LIGHTS_CLEARANCE + TOGGLE_WIDTH + 4
+    ? WINDOW_CONTROLS_INSET + TOGGLE_WIDTH + 4
     : draftSidebarWidth + SIDEBAR_EDGE_INSET;
 
   const setClampedSidebarWidth = useCallback(

@@ -12,6 +12,7 @@ import { openSpace, spaceLocationOf, useActiveSpaceKey, useSpaces } from "@/hook
 import { GO_TODAY_KEY, type SpaceIcon } from "@/lib/spaces";
 import { useUIStore } from "@/stores/ui-store";
 import { SIDEBAR_SECTION_LABEL_CLASS } from "./sidebar-section";
+import { IS_MAC } from "@/lib/platform";
 
 const ICONS: Record<SpaceIcon, IconSvgElement> = {
   projects: Target02Icon,
@@ -111,7 +112,7 @@ export function SidebarSpaces() {
           label="Today"
           tooltip="Open today's note"
           keys={["⌘", "T"]}
-          keyshortcuts="Meta+T"
+          keyshortcuts={IS_MAC ? "Meta+T" : "Control+T"}
           goKey={GO_TODAY_KEY}
           onClick={openToday}
         />
@@ -128,7 +129,11 @@ export function SidebarSpaces() {
               active={activeKey === space.key}
               tooltip={`Go to ${space.name}`}
               keys={space.goKey ? ["⌘", "G", space.goKey.toUpperCase()] : undefined}
-              keyshortcuts={space.goKey ? `Meta+G ${space.goKey.toUpperCase()}` : undefined}
+              keyshortcuts={
+                space.goKey
+                  ? `${IS_MAC ? "Meta" : "Control"}+G ${space.goKey.toUpperCase()}`
+                  : undefined
+              }
               goKey={space.goKey}
               onClick={() => openSpace(spaceLocationOf(space))}
             />

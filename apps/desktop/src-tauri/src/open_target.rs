@@ -13,6 +13,7 @@
 //! Both paths share one canonicalization + classification routine so the two
 //! entry surfaces can never drift.
 
+use crate::path_ext::PathExt;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
@@ -70,18 +71,18 @@ fn classify(path: &Path) -> Result<PendingOpenPayload, OpenTargetError> {
     let metadata = path.metadata().map_err(OpenTargetError::Io)?;
 
     if metadata.is_dir() {
-        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let canonical = path.canonical().unwrap_or_else(|_| path.to_path_buf());
         return Ok(PendingOpenPayload {
-            workspace: Some(canonical.to_string_lossy().to_string()),
+            workspace: Some(canonical.to_ipc_lossy().to_string()),
             file: None,
         });
     }
 
     if metadata.is_file() && is_markdown(path) {
-        let canonical_file = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let canonical_file = path.canonical().unwrap_or_else(|_| path.to_path_buf());
         return Ok(PendingOpenPayload {
             workspace: None,
-            file: Some(canonical_file.to_string_lossy().to_string()),
+            file: Some(canonical_file.to_ipc_lossy().to_string()),
         });
     }
 

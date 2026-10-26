@@ -9,6 +9,7 @@
  */
 
 import { type FramePreset, type LinkerShape, type ShapeKind, SHAPE_KINDS } from "./board-model";
+import { keyLabel } from "@/lib/platform";
 
 export type ToolId = "select" | "hand" | "shape" | "text" | "linker" | "pen" | "frame" | "image";
 
@@ -350,7 +351,7 @@ export function buildToolbar(state: ToolState, cb: ToolbarCallbacks): Toolbar {
   const zoomLabel = document.createElement("button");
   zoomLabel.type = "button";
   zoomLabel.className = "wr-board-zoom-label";
-  zoomLabel.title = "Reset zoom (⌘0)";
+  zoomLabel.title = keyLabel("Reset zoom (⌘0)");
   zoomLabel.textContent = "100%";
   zoomLabel.addEventListener("click", () => cb.onZoomReset());
   const fitBtn = button("Zoom to fit (⌘1)", ICON.fit, () => cb.onZoomFit());
@@ -396,8 +397,8 @@ function button(title: string, paths: string[], onClick: () => void): HTMLButton
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "wr-board-btn";
-  btn.title = title;
-  btn.setAttribute("aria-label", title);
+  btn.title = keyLabel(title);
+  btn.setAttribute("aria-label", keyLabel(title));
   btn.append(icon(paths));
   btn.addEventListener("click", (e) => {
     e.preventDefault();
@@ -421,7 +422,7 @@ function flyout(title: string, hint: string): HTMLElement {
   const name = document.createElement("span");
   name.textContent = title;
   const key = document.createElement("kbd");
-  key.textContent = hint;
+  key.textContent = keyLabel(hint);
   header.append(name, key);
   panel.append(header);
   return panel;
