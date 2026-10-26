@@ -925,6 +925,7 @@ pub fn load_session(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::path_ext::PathExt;
     use tempfile::TempDir;
 
     #[test]
@@ -948,7 +949,7 @@ mod tests {
         let raw = dir.path().to_string_lossy().to_string();
         let canonical = canonicalize_workspace_root(&raw).unwrap();
         assert!(canonical.is_absolute());
-        assert_eq!(canonical, std::fs::canonicalize(&raw).unwrap());
+        assert_eq!(canonical, Path::new(&raw).canonical().unwrap());
     }
 
     #[test]
@@ -1084,12 +1085,12 @@ mod tests {
         let workspace = TempDir::new().unwrap();
         let nested = workspace.path().join("drafts").join("chapter one");
         std::fs::create_dir_all(&nested).unwrap();
-        let root = workspace.path().canonicalize().unwrap();
+        let root = workspace.path().canonical().unwrap();
 
         assert_eq!(validate_terminal_target(&root, None).unwrap(), root);
         assert_eq!(
             validate_terminal_target(&root, Some(&nested)).unwrap(),
-            nested.canonicalize().unwrap()
+            nested.canonical().unwrap()
         );
     }
 
@@ -1099,7 +1100,7 @@ mod tests {
         let sibling = TempDir::new().unwrap();
         let file = workspace.path().join("note.md");
         std::fs::write(&file, "# Note").unwrap();
-        let root = workspace.path().canonicalize().unwrap();
+        let root = workspace.path().canonical().unwrap();
 
         assert!(matches!(
             validate_terminal_target(&root, Some(&file)).unwrap_err(),
@@ -1129,11 +1130,11 @@ mod tests {
         let outside = TempDir::new().unwrap();
         let external_link = workspace.path().join("external-link");
         symlink(outside.path(), &external_link).unwrap();
-        let root = workspace.path().canonicalize().unwrap();
+        let root = workspace.path().canonical().unwrap();
 
         assert_eq!(
             validate_terminal_target(&root, Some(&internal_link)).unwrap(),
-            nested.canonicalize().unwrap()
+            nested.canonical().unwrap()
         );
         assert!(matches!(
             validate_terminal_target(&root, Some(&external_link)).unwrap_err(),
@@ -1149,7 +1150,7 @@ mod tests {
         let parent = TempDir::new().unwrap();
         let root_path = parent.path().join("workspace");
         std::fs::create_dir(&root_path).unwrap();
-        let captured_root = root_path.canonicalize().unwrap();
+        let captured_root = root_path.canonical().unwrap();
         std::fs::rename(&root_path, parent.path().join("moved-workspace")).unwrap();
         let outside = TempDir::new().unwrap();
         symlink(outside.path(), &root_path).unwrap();
@@ -1169,7 +1170,7 @@ mod tests {
         let root_path = parent.path().join("workspace");
         let selected_path = root_path.join("drafts");
         std::fs::create_dir_all(&selected_path).unwrap();
-        let root = root_path.canonicalize().unwrap();
+        let root = root_path.canonical().unwrap();
         let target = validate_terminal_target(&root, Some(&selected_path)).unwrap();
         let state = WorkspaceState::default();
         let epoch = state.replace_workspace_root(root.clone());
@@ -1198,8 +1199,8 @@ mod tests {
     fn terminal_launch_snapshot_rejects_workspace_switches_and_epoch_aba() {
         let first = TempDir::new().unwrap();
         let second = TempDir::new().unwrap();
-        let first_root = first.path().canonicalize().unwrap();
-        let second_root = second.path().canonicalize().unwrap();
+        let first_root = first.path().canonical().unwrap();
+        let second_root = second.path().canonical().unwrap();
         let state = WorkspaceState::default();
         let first_epoch = state.replace_workspace_root(first_root.clone());
         let (snapshotted_root, snapshotted_epoch) = state.workspace_snapshot().unwrap();
@@ -1227,7 +1228,7 @@ mod tests {
     fn guarded_launch_helpers_reject_stale_callbacks_and_hold_the_workspace_read_guard() {
         let first = TempDir::new().unwrap();
         let second = TempDir::new().unwrap();
-        let first_root = first.path().canonicalize().unwrap();
+        let first_root = first.path().canonical().unwrap();
         let state = WorkspaceState::default();
         let epoch = state.replace_workspace_root(first_root.clone());
 
@@ -1240,7 +1241,7 @@ mod tests {
         .unwrap();
         assert!(terminal_ran.get());
 
-        state.replace_workspace_root(second.path().canonicalize().unwrap());
+        state.replace_workspace_root(second.path().canonical().unwrap());
         terminal_ran.set(false);
         assert!(matches!(
             with_terminal_launch_snapshot(&state, &first_root, epoch, None, &first_root, || {

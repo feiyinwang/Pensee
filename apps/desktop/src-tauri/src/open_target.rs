@@ -97,6 +97,7 @@ fn is_markdown(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::path_ext::PathExt;
     use std::fs;
     use tempfile::tempdir;
 
@@ -107,7 +108,7 @@ mod tests {
         assert!(payload.file.is_none());
         assert_eq!(
             payload.workspace.unwrap(),
-            dir.path().canonicalize().unwrap().to_string_lossy()
+            dir.path().canonical().unwrap().to_ipc_lossy()
         );
     }
 
@@ -124,7 +125,7 @@ mod tests {
         );
         assert_eq!(
             payload.file.unwrap(),
-            file.canonicalize().unwrap().to_string_lossy()
+            file.canonical().unwrap().to_ipc_lossy()
         );
     }
 

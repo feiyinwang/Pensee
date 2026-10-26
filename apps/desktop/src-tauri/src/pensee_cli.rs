@@ -255,6 +255,7 @@ fn fail_runtime(err: &dyn std::fmt::Display) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::path_ext::PathExt;
     use std::cell::RefCell;
     use std::fs;
     use tempfile::tempdir;
@@ -381,7 +382,7 @@ mod tests {
 
         let calls = launcher.calls.borrow();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].as_ref().unwrap(), &target.canonicalize().unwrap());
+        assert_eq!(calls[0].as_ref().unwrap(), &target.canonical().unwrap());
     }
 
     #[test]
@@ -394,7 +395,7 @@ mod tests {
         let _ = run(argv(&["pensee", "note.md"]), cwd.path(), &launcher);
 
         let calls = launcher.calls.borrow();
-        assert_eq!(calls[0].as_ref().unwrap(), &md.canonicalize().unwrap());
+        assert_eq!(calls[0].as_ref().unwrap(), &md.canonical().unwrap());
     }
 
     #[test]

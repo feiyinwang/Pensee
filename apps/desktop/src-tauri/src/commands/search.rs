@@ -707,6 +707,7 @@ fn is_pen_line(line: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::path_ext::PathExt;
     use std::fs;
     use tempfile::TempDir;
 
@@ -741,7 +742,7 @@ mod tests {
         assert_eq!(refs[1].line, 3);
         assert!(refs
             .iter()
-            .all(|r| r.id == "abc" && r.path == a.to_string_lossy()));
+            .all(|r| r.id == "abc" && r.path == a.to_ipc_lossy()));
     }
 
     #[test]

@@ -589,6 +589,8 @@ mod tests {
         );
     }
 
+    // A Mac path; on Windows the URL holds `C:/…` (the next test).
+    #[cfg(not(windows))]
     #[test]
     fn parses_the_path_and_box() {
         let request = Request::builder()
@@ -597,6 +599,18 @@ mod tests {
             .unwrap();
         let (path, size) = parse(&request).unwrap();
         assert_eq!(path, PathBuf::from("/Users/me/My vault/cover.jpg"));
+        assert_eq!(size, (320, 480));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn parses_a_windows_path_and_box() {
+        let request = Request::builder()
+            .uri("http://thumb.localhost/C%3A%2FUsers%2Fme%2FMy%20vault%2Fcover.jpg?w=320&h=480")
+            .body(Vec::new())
+            .unwrap();
+        let (path, size) = parse(&request).unwrap();
+        assert_eq!(path, PathBuf::from(r"C:\Users\me\My vault\cover.jpg"));
         assert_eq!(size, (320, 480));
     }
 
