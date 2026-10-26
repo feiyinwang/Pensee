@@ -58,8 +58,13 @@
   transform: scale(0.96);
 }
 
-.talk-dock-record {
+.talk-dock-record,
+.talk-dock-primary {
   color: var(--color-text-primary);
+}
+
+.talk-dock-primary {
+  background: var(--color-bg-input);
 }
 
 .talk-dock-dot {

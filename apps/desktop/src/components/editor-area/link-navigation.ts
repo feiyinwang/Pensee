@@ -37,6 +37,14 @@ function scrollSameDocAnchor(view: EditorView, filePath: string, anchor: string)
 export async function followLink(href: string | null, view: EditorView, filePath: string) {
   if (!href) return;
 
+  // A transcript's time link plays its take from that moment, in the player
+  // in this note (SPECs/talk-notes-spec.md#the-note-after-a-stop).
+  const time = recordingTime(href);
+  if (time) {
+    const { playRecordingAt } = await import("./audio-embed-widget");
+    if (playRecordingAt(time.path, time.seconds)) return;
+  }
+
   const target = await resolveLinkTarget(href, filePath, getWorkspaceRoot(), (path) =>
     tauri.fileExists(path),
   );
@@ -75,6 +83,21 @@ export async function followLink(href: string | null, view: EditorView, filePath
   }
 
   await openPath(target.path);
+}
+
+/** `Recordings/x.m4a#t=75` → the take and the second to play it from; null for any other link. */
+export function recordingTime(href: string): { path: string; seconds: number } | null {
+  const m = /^<?([^<>#]+\.(?:m4a|mp3|wav|ogg|oga|aac|flac|webm|mp4))#t=(\d+(?:\.\d+)?)>?$/i.exec(
+    href.trim(),
+  );
+  if (!m) return null;
+  let path = m[1]!;
+  try {
+    path = decodeURI(path);
+  } catch {
+    // Not percent-encoded: keep it as written.
+  }
+  return { path, seconds: Number(m[2]) };
 }
 
 /** Link href under a document position, whether rendered or a bare URL. */

@@ -46,7 +46,16 @@ export function TalkDock({ path, isActive }: { path: string; isActive: boolean }
   const notePath = useTalkStore((s) => s.notePath);
   const startedAt = useTalkStore((s) => s.startedAt);
   const error = useTalkStore((s) => s.error);
-  const busy = phase === "starting" || phase === "recording" || phase === "saving";
+  const progress = useTalkStore((s) => s.progress);
+  const model = useTalkStore((s) => s.model);
+  const busy = [
+    "starting",
+    "recording",
+    "saving",
+    "needs-model",
+    "downloading",
+    "transcribing",
+  ].includes(phase);
   const mine = notePath === path;
   // A take shows on its own note; otherwise Record shows on the note you're in.
   if (busy ? !mine : !isActive) return null;
@@ -66,9 +75,39 @@ export function TalkDock({ path, isActive }: { path: string; isActive: boolean }
             Stop
           </button>
         </div>
-      ) : phase === "starting" || phase === "saving" ? (
+      ) : phase === "starting" || phase === "saving" || phase === "transcribing" ? (
         <div className="talk-dock-pill" aria-live="polite">
-          <span className="talk-dock-note">{phase === "starting" ? "Starting…" : "Saving…"}</span>
+          <span className="talk-dock-note">
+            {phase === "starting" ? "Starting…" : phase === "saving" ? "Saving…" : "Transcribing…"}
+          </span>
+        </div>
+      ) : phase === "needs-model" && model ? (
+        <div className="talk-dock-pill" role="dialog" aria-label="Transcribe on this Mac">
+          <span className="talk-dock-note">
+            Saved. To transcribe it on this Mac, Pensée downloads {model.name} once (
+            {Math.round(model.bytes / 1e6)} MB).
+          </span>
+          <button
+            type="button"
+            className="talk-dock-button talk-dock-primary"
+            onClick={() => void useTalkStore.getState().download()}
+          >
+            Download
+          </button>
+          <button
+            type="button"
+            className="talk-dock-button"
+            onClick={() => useTalkStore.getState().skipTranscript()}
+          >
+            Not now
+          </button>
+        </div>
+      ) : phase === "downloading" && model ? (
+        <div className="talk-dock-pill" aria-live="polite">
+          <span className="talk-dock-note">
+            Downloading {model.name} ·{" "}
+            <span className="talk-dock-time">{Math.floor(progress * 100)}%</span>
+          </span>
         </div>
       ) : phase === "error" && mine ? (
         <div className="talk-dock-pill talk-dock-error" role="alert">

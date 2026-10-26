@@ -21,4 +21,5 @@ pub mod startup;
 pub mod talk;
 pub mod video_player;
 pub mod web_pdf;
+pub mod whisper;
 pub mod workspace;

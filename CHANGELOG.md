@@ -2,6 +2,7 @@
 
 ## 2026-10-26
 
+- A talk you record is now written out for you, on your Mac. After **Stop**, Pensée downloads Whisper Small once (488 MB, the model Superwhisper's free plan uses) and transcribes the take without sending it anywhere. The transcript goes under the player, folded; open it to read every line with its time, and click a time to hear that moment. Notes with Obsidian callouts (`> [!note]`, `> [!tip]-`) now show them with a header you can fold.
 - You can record a talk in a note. Press **Record** at the bottom of the note and talk; **Stop** saves the audio in a `Recordings` folder in your vault and adds a `Talk` heading with a player under the line you were on. The first time, your Mac asks to use the microphone. Play, pause and drag along the bar to listen back.
 - Diagrams in your notes look new. A ` ```mermaid ` block is now drawn by Pele, which reads all 32 kinds of Mermaid diagram, in the same style as Pensée's other charts: soft shapes with a thin outline, colours by group, quiet labels. Pies, bar and line charts, Sankey flows, radar charts, treemaps, file trees and kanban boards become live charts you can point at for their numbers. The text stays plain Mermaid, so the note opens the same anywhere. A diagram with a mistake says what's wrong.
 - On Windows, Pensée finds Claude Code even when it was installed after Pensée or by npm or WinGet, so onboarding no longer says it's missing. Ctrl+, opens Preferences, the first launch fills the screen, and Settings and onboarding say Ctrl and touchpad, not Cmd and trackpad.

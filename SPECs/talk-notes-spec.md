@@ -81,8 +81,8 @@ quadrantChart
 ### Transcription
 
 - **Free by default, on the Mac:** OpenAI's Whisper through whisper.cpp, the engine Superwhisper's free plan runs.
-  Works offline; audio never leaves the Mac. Whisper Small (466 MB) downloads on first use; Whisper Large v3 Turbo
-  (1.6 GB) is an optional download.
+  Works offline; audio never leaves the Mac. Whisper Small (488 MB) downloads on first use; Whisper Large v3 Turbo
+  (1.62 GB) is an optional download.
 - **ElevenLabs Scribe** is opt-in in Settings with your API key (kept in the system keychain). The live view while
   you talk still uses Whisper; the saved transcript of each take comes from Scribe. Until a key checks out, takes
   use Whisper.

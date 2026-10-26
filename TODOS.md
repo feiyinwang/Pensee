@@ -10,7 +10,7 @@
 - Talk notes: Record in a note, the pen asks before each new topic, live Pele diagrams drawn with Arc, Whisper on the Mac (ElevenLabs optional), audio + transcript in the note, Continue, Recordings space. Spec: [SPECs/talk-notes-spec.md](./SPECs/talk-notes-spec.md)
   - [x] 1. Pele + Arc for mermaid blocks
   - [x] 2. Record to Recordings/ and the audio embed
-  - [ ] 3. Whisper transcription and the transcript callout
+  - [x] 3. Whisper transcription and the transcript callout
   - [ ] 4. Ask: live topics and diagrams
   - [ ] 5. Continue, Recordings space, Settings, ElevenLabs
 

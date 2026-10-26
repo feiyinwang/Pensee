@@ -32,6 +32,7 @@ import { pageTitleArrowUp } from "./page-title";
 import { paragraphSelection } from "./paragraph-selection";
 import { mathDecorations } from "./math-decorations";
 import { mermaidDecorations } from "./mermaid-decorations";
+import { calloutDecorations } from "./callout-decorations";
 import { bookJump } from "./book-jump";
 import { secondPen } from "./second-pen";
 import { tableDecorations } from "./table-decorations";
@@ -155,6 +156,7 @@ export function createEditorExtensions(
     // land in this note's assets folder instead of being inlined.
     boardDecorations(getFilePath),
     mathDecorations(),
+    calloutDecorations(),
     linkPreviews(),
     linkChips(),
     headingDecorations,

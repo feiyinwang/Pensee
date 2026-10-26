@@ -1,0 +1,53 @@
+/* Obsidian callouts (callout-decorations.ts). The blockquote bar stays; the
+   header gets a chevron and the type's label. */
+.cm-editor .cm-line.cm-callout-head {
+  font-family: var(--font-ui);
+  font-size: var(--font-size-label);
+  color: var(--color-text-secondary);
+}
+
+.cm-callout-chevron {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-end: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  vertical-align: baseline;
+  cursor: pointer;
+}
+
+/* The chevron: a small right-pointing caret that turns down when open. */
+.cm-callout-chevron::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  rotate: -45deg;
+  transition: rotate var(--motion-fast) var(--ease-out);
+}
+
+.cm-callout-chevron[aria-expanded="true"]::before {
+  rotate: 45deg;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cm-callout-chevron:hover {
+    color: var(--color-text-primary);
+  }
+}
+
+.cm-editor .cm-line.cm-callout-line[data-callout="transcript"] {
+  font-size: var(--font-size-label);
+  color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-callout-chevron::before {
+    transition: none;
+  }
+}

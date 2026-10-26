@@ -135,6 +135,45 @@ NOTES["Notes/assets/page.html"] =
 // A note to record a talk into (TALK-01, TALK-02).
 NOTES["Notes/Talk note.md"] = "# Talk note\n\nWhat I want to think through today.\n";
 
+// A saved talk with its transcript (TALK-05, TALK-06): three seconds of a
+// quiet tone as a WAV, so the player has something to play, and a folded
+// transcript callout whose time links point into it.
+function toneWav(seconds) {
+  const rate = 16000;
+  const n = rate * seconds;
+  const buf = Buffer.alloc(44 + n * 2);
+  buf.write("RIFF", 0);
+  buf.writeUInt32LE(36 + n * 2, 4);
+  buf.write("WAVEfmt ", 8);
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(rate, 24);
+  buf.writeUInt32LE(rate * 2, 28);
+  buf.writeUInt16LE(2, 32);
+  buf.writeUInt16LE(16, 34);
+  buf.write("data", 36);
+  buf.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++)
+    buf.writeInt16LE(Math.round(800 * Math.sin((2 * Math.PI * 220 * i) / rate)), 44 + i * 2);
+  return buf;
+}
+NOTES["Recordings/2026-10-20 08.30.wav"] = toneWav(3);
+NOTES["Notes/Talk transcript.md"] = [
+  "# Talk transcript",
+  "",
+  "## Talk · 08:30",
+  "",
+  "![[Recordings/2026-10-20 08.30.wav]]",
+  "",
+  "> [!transcript]- Transcript · 2 lines · On this Mac · Whisper Small",
+  "> [0:00](<Recordings/2026-10-20 08.30.wav#t=0>) Okay, a few things today.",
+  "> [0:02](<Recordings/2026-10-20 08.30.wav#t=2>) First, what to build next quarter.",
+  "",
+  "A line after the talk.",
+  "",
+].join("\n");
+
 // Mermaid blocks (MED-06, MED-09, MED-10): a flowchart Pele draws in Arc's
 // style, a pie an Arc donut draws, and a block with a typo.
 NOTES["Notes/Diagrams.md"] = [
