@@ -15,6 +15,10 @@ describe("keyLabel", () => {
     expect(keyLabel("⌘↩", "windows")).toBe("Ctrl+Enter");
     expect(keyLabel("⌥⌘N", "windows")).toBe("Alt+Ctrl+N");
     expect(keyLabel("⌥ ↵", "windows")).toBe("Alt+Enter");
+    expect(keyLabel("Cmd+= zooms in, Cmd+0 returns to 100", "windows")).toBe(
+      "Ctrl+= zooms in, Ctrl+0 returns to 100",
+    );
+    expect(keyLabel("Show the calendar (Cmd+])", "macos")).toBe("Show the calendar (Cmd+])");
   });
 
   it("rewrites a chord inside a sentence and keeps the rest", () => {

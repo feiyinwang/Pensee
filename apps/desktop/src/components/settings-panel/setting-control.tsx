@@ -3,6 +3,7 @@ import { tokenValue } from "@/lib/design-tokens";
 import type { SettingDef } from "@/lib/settings-schema";
 import { FontControl } from "./font-control";
 import { SelectControl } from "./select-control";
+import { keyLabel } from "@/lib/platform";
 
 interface SettingControlProps {
   def: SettingDef;
@@ -284,7 +285,9 @@ export function SettingControl({ def, value, onChange, onReset, isModified }: Se
       <div className="min-w-0 flex-1">
         <div className="text-ui font-medium text-[var(--text-primary)]">{def.label}</div>
         {def.description && (
-          <div className="mt-0.5 text-label text-[var(--text-muted)]">{def.description}</div>
+          <div className="mt-0.5 text-label text-[var(--text-muted)]">
+            {keyLabel(def.description)}
+          </div>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">

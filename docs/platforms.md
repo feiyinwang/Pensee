@@ -22,9 +22,12 @@ The rule: **macOS behaviour never changes for Windows.** Every Windows differenc
 - **Scrollbars.** Chromium ignores `::-webkit-scrollbar` while `scrollbar-color` is set and would draw classic bars. On Windows `scrollbar-color` goes back to `auto`, so the same thin hover-only bars apply.
 - **Ctrl-wheel.** WebKit sends a trackpad pinch as a Ctrl-wheel. On Windows a mouse's Ctrl-wheel is one too, at about 100px a notch, so only small deltas get the pinch gain.
 - **Asset URLs.** Tauri serves `asset:` as `http://asset.localhost` on Windows, so the CSP allows that origin beside `https://asset.localhost`.
-- **Claude Code.** No login shell to ask for PATH: the app's own PATH is used, and `claude.exe` (native installer) or `claude.cmd` (npm) is found. Child processes start with `CREATE_NO_WINDOW` so no console flashes.
+- **Claude Code.** No login shell to ask for PATH, and the app's own PATH is its launcher's (an installer or a browser opened before Claude Code was installed hands down one without it). So the PATH comes from the registry (user, then machine, as a new sign-in would get it), then the app's own, then npm's and WinGet's folders, and `claude.exe` (native installer) or `claude.cmd` (npm) is found there or in `~/.local/bin`. Child processes start with `CREATE_NO_WINDOW` so no console flashes.
 - **Obsidian vaults.** Read from `%APPDATA%\obsidian\obsidian.json`.
 - **Menu.** No app menu, Services or Hide on Windows: the first menu is File (Preferences, About, Exit).
+- **Ctrl+,.** A focused WebView2 keeps keys from the native menu, so its accelerators don't fire. Preferences' Ctrl+, is bound in the page (`use-keyboard-shortcuts.ts`) off macOS; zoom was already bound there. A new menu item with a shortcut needs the same.
+- **First run.** The window opens maximized, as Windows apps do, while onboarding's first screen shows (`onboarding-store.ts`). The Mac keeps its centred window.
+- **Words.** Labels say Ctrl, Alt and Shift, and "touchpad" where the Mac says "trackpad". A setting's description that spells out "Cmd+" goes through `keyLabel` too.
 
 ## Checking a change on both
 

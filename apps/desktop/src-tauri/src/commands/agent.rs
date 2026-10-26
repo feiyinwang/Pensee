@@ -120,11 +120,85 @@ pub(crate) fn claude_command() -> Result<Command, AppError> {
     Ok(command)
 }
 
-/// Windows apps inherit the user's full PATH (there is no launchd), and there
-/// is no `$SHELL` to ask.
+/// Windows has no `$SHELL` to ask, and an app's own PATH is whatever its
+/// launcher had: an installer or a browser started before Claude Code was
+/// installed hands down a PATH without it. The registry holds the PATH a new
+/// sign-in would get, so it comes first, then the app's own, then the places
+/// npm and WinGet put `claude` when their folder isn't on PATH yet.
 #[cfg(windows)]
 fn probe_login_path() -> Option<OsString> {
-    std::env::var_os("PATH")
+    const MACHINE: &str = r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment";
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    for value in [
+        registry_path(
+            windows_sys::Win32::System::Registry::HKEY_CURRENT_USER,
+            "Environment",
+        ),
+        registry_path(
+            windows_sys::Win32::System::Registry::HKEY_LOCAL_MACHINE,
+            MACHINE,
+        ),
+        std::env::var_os("PATH"),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        dirs.extend(std::env::split_paths(&value));
+    }
+    if let Some(app_data) = std::env::var_os("APPDATA") {
+        dirs.push(PathBuf::from(app_data).join("npm"));
+    }
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        dirs.push(PathBuf::from(local).join(r"Microsoft\WinGet\Links"));
+    }
+    std::env::join_paths(dirs).ok()
+}
+
+/// A key's `Path` value, with `%VARIABLES%` expanded (RegGetValueW expands a
+/// REG_EXPAND_SZ asked for as REG_SZ).
+#[cfg(windows)]
+fn registry_path(root: windows_sys::Win32::System::Registry::HKEY, key: &str) -> Option<OsString> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    use windows_sys::Win32::Foundation::ERROR_SUCCESS;
+    use windows_sys::Win32::System::Registry::{RegGetValueW, RRF_RT_REG_SZ};
+
+    let wide = |s: &str| -> Vec<u16> { std::ffi::OsStr::new(s).encode_wide().chain([0]).collect() };
+    let (key, value) = (wide(key), wide("Path"));
+    let mut bytes = 0u32;
+    // SAFETY: both names are NUL-terminated UTF-16, and a null buffer asks
+    // only for the size.
+    let status = unsafe {
+        RegGetValueW(
+            root,
+            key.as_ptr(),
+            value.as_ptr(),
+            RRF_RT_REG_SZ,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut bytes,
+        )
+    };
+    if status != ERROR_SUCCESS || bytes == 0 {
+        return None;
+    }
+    let mut buffer = vec![0u16; (bytes as usize).div_ceil(2)];
+    // SAFETY: `buffer` holds `bytes` bytes, as the first call asked for.
+    let status = unsafe {
+        RegGetValueW(
+            root,
+            key.as_ptr(),
+            value.as_ptr(),
+            RRF_RT_REG_SZ,
+            std::ptr::null_mut(),
+            buffer.as_mut_ptr().cast(),
+            &mut bytes,
+        )
+    };
+    if status != ERROR_SUCCESS {
+        return None;
+    }
+    let len = buffer.iter().position(|&c| c == 0).unwrap_or(buffer.len());
+    Some(OsString::from_wide(&buffer[..len]))
 }
 
 #[cfg(not(windows))]

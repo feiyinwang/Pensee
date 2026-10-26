@@ -56,16 +56,20 @@ const KEY_WORDS: Record<string, string> = {
 /**
  * A shortcut label as this platform writes it. Labels are written the macOS
  * way ("⌘⇧Z", "⌘ K"); on macOS they come back unchanged, elsewhere the
- * modifier glyphs become words joined by "+" ("Ctrl+Shift+Z").
+ * modifier glyphs become words joined by "+" ("Ctrl+Shift+Z"), and a
+ * spelled-out "Cmd+" or "Option+" becomes "Ctrl+" or "Alt+".
  */
 export function keyLabel(label: string, platform: Platform = PLATFORM): string {
   if (platform === "macos") return label;
-  return label.replace(/(?:[⌘⌃⌥⇧]\s*)+(?:[↩↵⏎⌫⌦⎋]|[^\s⌘⌃⌥⇧])?/gu, (chord) => {
-    const parts: string[] = [];
-    for (const char of chord.replace(/\s+/g, "")) parts.push(KEY_WORDS[char] ?? char);
-    // ⌘ and ⌃ both become Ctrl; say it once.
-    return parts
-      .filter((part, index) => part !== "Ctrl" || parts.indexOf("Ctrl") === index)
-      .join("+");
-  });
+  return label
+    .replace(/\bCmd\+/g, "Ctrl+")
+    .replace(/\bOption\+/g, "Alt+")
+    .replace(/(?:[⌘⌃⌥⇧]\s*)+(?:[↩↵⏎⌫⌦⎋]|[^\s⌘⌃⌥⇧])?/gu, (chord) => {
+      const parts: string[] = [];
+      for (const char of chord.replace(/\s+/g, "")) parts.push(KEY_WORDS[char] ?? char);
+      // ⌘ and ⌃ both become Ctrl; say it once.
+      return parts
+        .filter((part, index) => part !== "Ctrl" || parts.indexOf("Ctrl") === index)
+        .join("+");
+    });
 }

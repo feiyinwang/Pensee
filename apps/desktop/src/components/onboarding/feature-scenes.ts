@@ -15,7 +15,7 @@ import secondBrain from "./assets/second-brain.jpg";
 import smartNotes from "./assets/smart-notes.jpg";
 import strunk from "./assets/strunk.jpg";
 // Relative, not "@/": the website imports this file and has no "@" alias.
-import { keyLabel } from "../../lib/platform";
+import { IS_MAC, keyLabel } from "../../lib/platform";
 
 export const SCENE_W = 600;
 const SCENE_H = 360;
@@ -33,7 +33,8 @@ export const FEATURES: Feature[] = [
   {
     id: "tabs",
     title: "See every tab at once",
-    d: "Pinch in on the trackpad and every open tab sits side by side. Pinch out on one to read it alone.",
+    // Windows calls it a touchpad.
+    d: `Pinch in on the ${IS_MAC ? "trackpad" : "touchpad"} and every open tab sits side by side. Pinch out on one to read it alone.`,
     keys: ["Pinch"],
   },
   {

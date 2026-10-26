@@ -50,6 +50,11 @@ tauri-plugin-webdriver = { version = "0.2", optional = true }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 
+# Reads the user's current PATH from the registry (commands/agent.rs). Already
+# in Cargo.lock through tauri.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_System_Registry"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
 rusqlite = "0.40.2"

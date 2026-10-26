@@ -15,6 +15,7 @@
     "clipboard-manager:allow-read-text",
     "store:default",
     "core:window:allow-show",
+    "core:window:allow-maximize",
     "core:window:allow-start-dragging",
     "core:webview:allow-set-webview-zoom"
   ]

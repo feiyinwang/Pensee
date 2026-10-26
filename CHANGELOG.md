@@ -2,6 +2,7 @@
 
 ## 2026-10-26
 
+- On Windows, Pensée finds Claude Code even when it was installed after Pensée or by npm or WinGet, so onboarding no longer says it's missing. Ctrl+, opens Preferences, the first launch fills the screen, and Settings and onboarding say Ctrl and touchpad, not Cmd and trackpad.
 - Pensée now builds for Windows too, from the same code as the Mac app. Windows has its own title bar, uses Ctrl where the Mac uses ⌘ (labels and tooltips say Ctrl+O, Ctrl+Shift+Z), and opens Obsidian vaults and finds Claude Code where Windows keeps them. Apple Books import and window translucency stay Mac-only. Each release now comes with a Windows installer next to the Mac download. On the Mac, nothing changes.
 
 ## 2026-10-24

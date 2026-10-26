@@ -11,7 +11,8 @@ import { resetZoom, zoomIn, zoomOut } from "@/hooks/use-zoom";
 import { openSpace, spaceLocationOf } from "@/hooks/use-spaces";
 import { getWorkspaceChromeMode } from "@/lib/compact-mode";
 import { goTargetForKey } from "@/lib/spaces";
-import { isModKey } from "@/lib/platform";
+import { IS_MAC, isModKey } from "@/lib/platform";
+import { openPreferences } from "@/hooks/use-menu-events";
 
 /** How long ⌘G waits for its letter. */
 const GO_KEY_WAIT_MS = 1500;
@@ -91,6 +92,15 @@ export function useKeyboardShortcuts() {
       if (historyKey && e.key === "ArrowRight") {
         e.preventDefault();
         void navigateForward();
+        return;
+      }
+
+      // Ctrl+, — Preferences. On macOS the app menu's accelerator opens it;
+      // on Windows a focused WebView2 keeps the key from the menu, so the
+      // page binds it itself.
+      if (!IS_MAC && isModKey(e) && !e.altKey && !e.shiftKey && e.key === ",") {
+        e.preventDefault();
+        openPreferences();
         return;
       }
 

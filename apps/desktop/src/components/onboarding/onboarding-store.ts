@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getPreference, setPreference } from "@/lib/preferences";
+import { IS_MAC } from "@/lib/platform";
 
 /** The four screens (SPECs/onboarding-spec.md), plus the practice loop that
  *  runs in the real app between the third and the last. */
@@ -30,6 +32,9 @@ const STARTED_KEY = "onboarding.started";
 export async function maybeStartOnboarding(root: string | null): Promise<void> {
   if (await getPreference(DONE_KEY, false)) return;
   if (root === null) {
+    // A first run on Windows fills the screen, as Windows apps open there;
+    // the Mac keeps its centred window.
+    if (!IS_MAC) void getCurrentWindow().maximize();
     showOnboarding("notes");
   } else if (await getPreference(STARTED_KEY, false)) {
     showOnboarding("ai");
