@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 
 import { loadSections } from "../pages/load";
+import { ANALYTICS_HOST, ANALYTICS_SITE_ID } from "../site";
 import styles from "../styles.css?url";
 
 const TITLE = "Pensée — Thinking, made by writing";
@@ -35,6 +36,10 @@ export const Route = createRootRoute({
       },
       { rel: "stylesheet", href: styles },
     ],
+    scripts:
+      ANALYTICS_HOST && ANALYTICS_SITE_ID
+        ? [{ src: `${ANALYTICS_HOST}/script.js?siteId=${ANALYTICS_SITE_ID}`, defer: true }]
+        : [],
   }),
   component: RootComponent,
 });

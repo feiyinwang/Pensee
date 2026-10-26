@@ -66,7 +66,7 @@ Verify a deployment by opening the Worker's URL.
 
 ## Notes
 
-- The site sends no analytics.
+- Analytics: OpenAnalytics ([every-app/open-analytics](https://github.com/every-app/open-analytics)), self-hosted on our Cloudflare account behind an Every App gateway (Workers Paid). No cookies and no stored IPs, so the site needs no consent banner. The tag is on only when `ANALYTICS_HOST` and `ANALYTICS_SITE_ID` in `apps/website/src/site.ts` are both set; until then the site sends no analytics.
 - Do not use GitHub Pages for this website.
 - Keep `wrangler.jsonc` at the repository root so Git builds and manual deploys use the same Worker settings.
 - Run `vp check` before pushing website source changes when practical.
