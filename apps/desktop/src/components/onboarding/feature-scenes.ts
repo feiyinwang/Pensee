@@ -14,7 +14,8 @@ import dwarkesh from "./assets/dwarkesh.jpg";
 import secondBrain from "./assets/second-brain.jpg";
 import smartNotes from "./assets/smart-notes.jpg";
 import strunk from "./assets/strunk.jpg";
-import { keyLabel } from "@/lib/platform";
+// Relative, not "@/": the website imports this file and has no "@" alias.
+import { keyLabel } from "../../lib/platform";
 
 export const SCENE_W = 600;
 const SCENE_H = 360;

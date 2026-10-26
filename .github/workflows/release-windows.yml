@@ -1,6 +1,8 @@
 # Builds the Windows installer and attaches it to the GitHub Release that
 # scripts/release.sh publishes for the Mac, so each release ships both. Run
-# it by hand (Actions → Release Windows) to rebuild one.
+# by hand (Actions → Release Windows), it builds the branch it is run on and
+# attaches the installer to the tag given, e.g. to add Windows to a release
+# made before this workflow existed.
 name: Release Windows
 
 on:
@@ -24,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TAG }}
+          ref: ${{ github.event.release.tag_name || github.ref }}
       - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: "24"
