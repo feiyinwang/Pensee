@@ -2,6 +2,7 @@
 
 ## 2026-10-26
 
+- Diagrams in your notes look new. A ` ```mermaid ` block is now drawn by Pele, which reads all 32 kinds of Mermaid diagram, in the same style as Pensée's other charts: soft shapes with a thin outline, colours by group, quiet labels. Pies, bar and line charts, Sankey flows, radar charts, treemaps, file trees and kanban boards become live charts you can point at for their numbers. The text stays plain Mermaid, so the note opens the same anywhere. A diagram with a mistake says what's wrong.
 - On Windows, Pensée finds Claude Code even when it was installed after Pensée or by npm or WinGet, so onboarding no longer says it's missing. Ctrl+, opens Preferences, the first launch fills the screen, and Settings and onboarding say Ctrl and touchpad, not Cmd and trackpad.
 - Pensée now builds for Windows too, from the same code as the Mac app. Windows has its own title bar, uses Ctrl where the Mac uses ⌘ (labels and tooltips say Ctrl+O, Ctrl+Shift+Z), and opens Obsidian vaults and finds Claude Code where Windows keeps them. Apple Books import and window translucency stay Mac-only. Each release now comes with a Windows installer next to the Mac download. On the Mac, nothing changes.
 

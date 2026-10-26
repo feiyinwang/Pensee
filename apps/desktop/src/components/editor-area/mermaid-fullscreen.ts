@@ -10,7 +10,8 @@ import { renderMermaid } from "./mermaid-renderer";
 
 export function openMermaidFullscreen(source: string, ariaLabel: string): void {
   const result = renderMermaid(source);
-  if (!result.svg) return;
+  // The inline canvas has already drawn this diagram, so its type is loaded.
+  if (!result.svg && !result.chart) return;
 
   const overlay = document.createElement("div");
   overlay.className = "cm-mermaid-fullscreen";
@@ -47,6 +48,7 @@ export function openMermaidFullscreen(source: string, ariaLabel: string): void {
     const finalize = () => {
       if (removed) return;
       removed = true;
+      canvas.destroy(); // a chart's React root goes with the overlay
       overlay.remove();
     };
     host.addEventListener("transitionend", finalize, { once: true });
@@ -72,8 +74,9 @@ export function openMermaidFullscreen(source: string, ariaLabel: string): void {
     if (e.target === overlay) close();
   });
 
-  mountMermaidCanvas(host, {
-    svgHtml: result.svg,
+  const canvas = mountMermaidCanvas(host, {
+    svgHtml: result.svg ?? "",
+    chart: result.chart,
     ariaLabel,
     onClose: close,
   });

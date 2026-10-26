@@ -14,6 +14,7 @@ import { StreamLanguage } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import DOMPurify from "dompurify";
+import type { ChartSpec } from "./pele-charts";
 import {
   baseSyntaxHighlights,
   generalSyntaxHighlights,
@@ -49,6 +50,10 @@ const RESET_ICON_PATHS = ["M3 12a9 9 0 1 0 2.64-6.36L3 8", "M3 3v5h5"] as const;
 
 export type MermaidCanvasOptions = {
   svgHtml: string;
+  // An Arc chart drawn in place of the SVG (pie, xychart, sankey, radar,
+  // treemap, treeView, kanban). The chart owns its own interaction, so the
+  // frame shows it at its size with no pan or zoom.
+  chart?: ChartSpec;
   ariaLabel: string;
   // Pass `source` + `onSourceChange` together to enable the Edit-code toggle
   // and the inline source editor. Omit both in fullscreen mode (read-only).
@@ -66,7 +71,7 @@ export type MermaidCanvasHandle = {
   // Replace the rendered SVG when the source has changed. Re-fits the new
   // diagram into the viewport. Idempotent — calling with the same source is
   // a no-op.
-  updateSource(svgHtml: string, sourceText: string, error?: string): void;
+  updateSource(svgHtml: string, sourceText: string, error?: string, chart?: ChartSpec): void;
   destroy(): void;
 };
 
@@ -100,6 +105,40 @@ export function mountMermaidCanvas(
 
   let svg = stage.querySelector("svg") as SVGSVGElement | null;
   decorateSvg(svg, opts.ariaLabel);
+
+  // The chart's React root, loaded on first use (pele-chart-view.tsx). A
+  // newer chart or an SVG replaces it; `chartRun` drops a load that finished
+  // after the frame moved on.
+  let unmountChart: (() => void) | null = null;
+  let chartRun = 0;
+  function clearChart(): void {
+    chartRun++;
+    unmountChart?.();
+    unmountChart = null;
+    host.classList.remove("is-chart");
+  }
+  function showChart(spec: ChartSpec): void {
+    clearChart();
+    const run = chartRun;
+    host.classList.add("is-chart");
+    stage.innerHTML = "";
+    stage.style.transform = "none";
+    stage.style.width = "";
+    stage.style.height = "";
+    svg = null;
+    naturalW = 0;
+    naturalH = 0;
+    const box = document.createElement("div");
+    box.className = "cm-mermaid-canvas-chart";
+    box.setAttribute("role", "figure");
+    box.setAttribute("aria-label", opts.ariaLabel);
+    stage.append(box);
+    void import("./pele-chart-view").then(({ mountChart }) => {
+      if (run !== chartRun) return;
+      unmountChart = mountChart(box, spec);
+      stage.style.opacity = "1";
+    });
+  }
 
   viewport.append(stage);
   if (editingEnabled) host.append(editorPanel);
@@ -308,8 +347,11 @@ export function mountMermaidCanvas(
   let dragStartPanX = 0;
   let dragStartPanY = 0;
 
+  // A chart takes its own clicks, drags and keys; pan and zoom are for SVGs.
+  const isChart = () => host.classList.contains("is-chart");
+
   viewport.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || isChart()) return;
     dragPointerId = e.pointerId;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -347,7 +389,7 @@ export function mountMermaidCanvas(
   viewport.addEventListener(
     "wheel",
     (e) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
+      if (!(e.metaKey || e.ctrlKey) || isChart()) return;
       e.preventDefault();
       const sensitivity = isPinchWheel(e) ? PINCH_ZOOM_SENSITIVITY : WHEEL_ZOOM_SENSITIVITY;
       const factor = Math.exp(-e.deltaY * sensitivity);
@@ -359,7 +401,7 @@ export function mountMermaidCanvas(
   host.addEventListener("keydown", (e) => {
     // Don't hijack keys typed inside the inline source editor.
     if (editing && editorPanel.contains(e.target as Node)) return;
-    if (e.target instanceof HTMLButtonElement) return;
+    if (e.target instanceof HTMLButtonElement || isChart()) return;
     let handled = true;
     switch (e.key) {
       case "ArrowUp":
@@ -405,12 +447,15 @@ export function mountMermaidCanvas(
   // First paint: fit the diagram once the layout has settled. Wait one frame
   // so the wrapper has its final width inside CodeMirror's content layout,
   // then reveal the stage.
-  requestAnimationFrame(() => {
-    fitToViewport();
-    stage.style.opacity = "1";
-  });
+  if (opts.chart) showChart(opts.chart);
+  else
+    requestAnimationFrame(() => {
+      fitToViewport();
+      stage.style.opacity = "1";
+    });
 
   function showError(message: string): void {
+    clearChart();
     stage.innerHTML = "";
     stage.style.transform = "none";
     stage.style.opacity = "1";
@@ -428,7 +473,12 @@ export function mountMermaidCanvas(
     naturalH = 0;
   }
 
-  function updateSource(svgHtml: string, sourceText: string, error?: string): void {
+  function updateSource(
+    svgHtml: string,
+    sourceText: string,
+    error?: string,
+    chart?: ChartSpec,
+  ): void {
     // Always sync inner editor if source diverges (handles external doc
     // edits — undo, multi-cursor edits, collaborators, etc.). When the
     // change originated *here* from the inline editor, the strings already
@@ -450,8 +500,13 @@ export function mountMermaidCanvas(
       showError(error);
       return;
     }
+    if (chart) {
+      showChart(chart);
+      return;
+    }
 
     // Re-render: replace stage's SVG, reset measurement cache, refit.
+    clearChart();
     stage.style.width = "";
     stage.style.height = "";
     stage.innerHTML = sanitizeSvgHtml(svgHtml);
@@ -466,6 +521,7 @@ export function mountMermaidCanvas(
   }
 
   function destroy(): void {
+    clearChart();
     if (sourceChangeTimer) {
       clearTimeout(sourceChangeTimer);
       sourceChangeTimer = null;
@@ -489,13 +545,19 @@ function sanitizeSvgHtml(svgHtml: string): string {
 
 function decorateSvg(svg: SVGSVGElement | null, ariaLabel: string): void {
   if (!svg) return;
-  // Keep the SVG's existing `style` attribute — beautiful-mermaid uses it
-  // to declare the CSS custom properties (--bg, --fg, --_line, …) that the
-  // inner <style> block references for every fill/stroke. Stripping it
-  // collapses all the theming. Width/height for zoom are set via individual
-  // style properties below, which merge with whatever's already there.
+  // Keep the SVG's existing `style` attribute: width/height for zoom are set
+  // via individual style properties, which merge with whatever's there.
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", ariaLabel);
+  // Arc tints by category (mermaid-canvas.css): a section's shapes share a
+  // series hue, and each quadrant takes one.
+  svg.querySelectorAll<SVGElement>("[class*='pele-section-']").forEach((g) => {
+    const n = Number(/pele-section-(\d+)/.exec(g.getAttribute("class") ?? "")?.[1] ?? 0);
+    g.dataset.hue = String((n % 4) + 1);
+  });
+  svg
+    .querySelectorAll<SVGElement>(".pele-quadrant")
+    .forEach((g, i) => (g.dataset.hue = String((i % 4) + 1)));
 }
 
 function setCodeButtonIcon(button: HTMLButtonElement): void {

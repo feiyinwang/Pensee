@@ -33,7 +33,6 @@ catalog:
   "@types/katex": ^0.16.7
   "@types/node": ^24
   "@welldone-software/why-did-you-render": ^10.0.1
-  beautiful-mermaid: ^1.1.3
   cmdk: ^1.1.1
   dompurify: ^3.4.7
   fflate: ^0.8.3
@@ -41,6 +40,7 @@ catalog:
   lucide-react: ^1.51.0
   marked: ^18.1.1
   motion: ^12.43.0
+  pele: 1.11.0
   node-emoji: ^2.2.0
   pdfjs-dist: ^6.3.289
   react-resizable-panels: ^4.7.4

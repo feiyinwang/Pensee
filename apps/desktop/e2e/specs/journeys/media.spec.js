@@ -58,11 +58,111 @@ const embedLayout = () =>
 
 const near = (a, b, slack = 2) => Math.abs(a - b) <= slack;
 
+/** CodeMirror draws a widget only near the viewport: bring the nth block on screen. */
+const showBlock = (word) =>
+  browser.execute((w) => {
+    const block = [...document.querySelectorAll(".cm-mermaid-widget")].find((b) =>
+      b.dataset.fence?.includes(w),
+    );
+    if (block) block.scrollIntoView({ block: "center" });
+    else document.querySelector(".cm-scroller")?.scrollBy(0, 600);
+  }, word);
+
+/** What each mermaid block on screen shows: Pele's SVG, an Arc chart, or an error. */
+const diagrams = () =>
+  browser.execute(() =>
+    [...document.querySelectorAll(".cm-mermaid-widget .cm-mermaid-canvas")].map((host) => {
+      const svg = host.querySelector(".cm-mermaid-canvas-stage svg");
+      const node = svg?.querySelector(".pele-node > rect, .pele-node > path");
+      return {
+        fence: host.closest(".cm-mermaid-widget")?.dataset.fence ?? "",
+        pele: !!svg && svg.classList.contains("pele"),
+        nodeStroke: node ? getComputedStyle(node).strokeWidth : null,
+        chart: host.classList.contains("is-chart"),
+        legend: [
+          ...host.querySelectorAll(
+            ".cm-mermaid-canvas-chart li, .cm-mermaid-canvas-chart [role=row]",
+          ),
+        ].map((r) => r.textContent.replace(/\s+/g, " ").trim()),
+        chartText: host.querySelector(".cm-mermaid-canvas-chart")?.textContent ?? "",
+        error: host.querySelector(".cm-mermaid-canvas-error-msg")?.textContent ?? null,
+        buttons: [...host.querySelectorAll("button")]
+          .filter((b) => getComputedStyle(b).display !== "none")
+          .map((b) => b.getAttribute("aria-label")),
+      };
+    }),
+  );
+
+const flowBlock = (all) => all.find((d) => d.fence.includes("flowchart LR"));
+const pieBlock = (all) => all.find((d) => d.fence.includes("pie title"));
+const brokenBlock = (all) => all.find((d) => d.fence.includes("flowchrt"));
+
 describe("Journeys: rich content", () => {
   let root;
 
   before(async () => {
     root = await workspaceRoot();
+  });
+
+  it("MED-06 A flowchart block renders with Pele in a canvas with pan, zoom, reset and source toggle", async () => {
+    await openNote("Diagrams");
+    await browser.waitUntil(
+      async () => (await showBlock("flowchart LR"), flowBlock(await diagrams())?.pele),
+      { timeout: 8_000, timeoutMsg: "the flowchart never rendered with Pele" },
+    );
+    const flow = flowBlock(await diagrams());
+    strictEqual(flow.nodeStroke, "1px", "Pele's shapes should take Arc's hairline ring");
+    for (const label of [
+      "Edit code",
+      "Open in fullscreen",
+      "Reset zoom and pan",
+      "Zoom in",
+      "Zoom out",
+    ])
+      ok(flow.buttons.includes(label), `missing ${label}: ${flow.buttons}`);
+  });
+
+  it("MED-09 A pie block renders as an Arc donut chart with its slices", async () => {
+    await openNote("Diagrams");
+    await browser
+      .waitUntil(
+        async () => (
+          await showBlock("pie"),
+          pieBlock(await diagrams())?.chartText.includes("Writing")
+        ),
+        {
+          timeout: 8_000,
+          timeoutMsg: "the pie never became an Arc chart",
+        },
+      )
+      .catch(async (e) => {
+        console.log("DEBUG diagrams", JSON.stringify(await diagrams()));
+        throw e;
+      });
+    const pie = pieBlock(await diagrams());
+    ok(pie.chart, "the frame should hold a chart");
+    ok(
+      pie.chartText.includes("QA") && pie.chartText.includes("20") && pie.chartText.includes("12"),
+      `slices missing: ${pie.chartText.slice(0, 200)}`,
+    );
+    ok(
+      pie.buttons.includes("Edit code") && !pie.buttons.includes("Zoom in"),
+      `a chart keeps the source toggle and drops zoom: ${pie.buttons}`,
+    );
+  });
+
+  it("MED-10 A block with a mistake shows Pele's message", async () => {
+    await openNote("Diagrams");
+    await browser
+      .waitUntil(async () => (await showBlock("flowchrt"), brokenBlock(await diagrams())?.error), {
+        timeout: 8_000,
+        timeoutMsg: "no error shown for the broken block",
+      })
+      .catch(async (e) => {
+        console.log("DEBUG diagrams", JSON.stringify(await diagrams()));
+        throw e;
+      });
+    ok(/Diagram error/.test(brokenBlock(await diagrams()).error));
   });
 
   it("MED-08 Expand grows an embedded page over its note, Esc shrinks it back", async () => {

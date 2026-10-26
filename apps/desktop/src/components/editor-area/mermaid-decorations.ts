@@ -47,6 +47,7 @@ class MermaidWidget extends WidgetType {
   toDOM(view: EditorView): HTMLElement {
     const wrapper = document.createElement("div");
     wrapper.className = "cm-mermaid-widget";
+    wrapper.dataset.fence = this.fenceText;
     wrapper.contentEditable = "false";
 
     const host = document.createElement("div");
@@ -58,14 +59,15 @@ class MermaidWidget extends WidgetType {
     const onExpand = () => openMermaidFullscreen(this.body, ariaLabel);
     const onSourceChange = (next: string) => writeFenceText(view, host, next);
 
-    // Synchronous render. beautiful-mermaid is sync and the SVG cache makes
-    // repeat calls O(map lookup), so the wrapper paints with its final SVG in
-    // the same frame it enters the DOM — no IntersectionObserver, no async
-    // gap that can leave the user stuck on a placeholder.
+    // Synchronous render once the diagram's type has loaded: the cache makes
+    // repeat calls a map lookup, so the wrapper paints with its final picture
+    // in the frame it enters the DOM. The first diagram of a type renders
+    // again when Pele has loaded it.
     const result = renderMermaid(this.body);
     const convertible = Boolean(this.getFilePath()) && mermaidToElements(this.body) !== null;
     const handle = mountMermaidCanvas(host, {
       svgHtml: result.svg ?? "",
+      chart: result.chart,
       ariaLabel,
       source: this.fenceText,
       onSourceChange,
@@ -74,6 +76,7 @@ class MermaidWidget extends WidgetType {
     });
     if (result.error) handle.updateSource("", this.fenceText, result.error);
     widgetHandles.set(wrapper, handle);
+    this.whenLoaded(result, wrapper);
 
     return wrapper;
   }
@@ -84,9 +87,34 @@ class MermaidWidget extends WidgetType {
   updateDOM(dom: HTMLElement, _view: EditorView): boolean {
     const handle = widgetHandles.get(dom);
     if (!handle) return false;
+    dom.dataset.fence = this.fenceText;
     const result = renderMermaid(this.body);
-    handle.updateSource(result.svg ?? "", this.fenceText, result.error);
+    handle.updateSource(result.svg ?? "", this.fenceText, result.error, result.chart);
+    this.whenLoaded(result, dom);
     return true;
+  }
+
+  // The first diagram of a type: draw it once Pele has loaded the type, if
+  // this widget still holds the same text and is still mounted.
+  private whenLoaded(result: ReturnType<typeof renderMermaid>, dom: HTMLElement): void {
+    if (!result.pending) return;
+    result.pending.then(
+      () => {
+        const handle = widgetHandles.get(dom);
+        if (!handle || dom.dataset.fence !== this.fenceText) return;
+        const next = renderMermaid(this.body);
+        handle.updateSource(next.svg ?? "", this.fenceText, next.error, next.chart);
+      },
+      (err: unknown) => {
+        const handle = widgetHandles.get(dom);
+        if (!handle || dom.dataset.fence !== this.fenceText) return;
+        handle.updateSource(
+          "",
+          this.fenceText,
+          `Couldn't load the renderer: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      },
+    );
   }
 
   destroy(dom: HTMLElement): void {

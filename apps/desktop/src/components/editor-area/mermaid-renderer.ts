@@ -1,33 +1,27 @@
-import { renderMermaidSVG } from "beautiful-mermaid";
+import { detectType, load, parse, render, supports } from "pele/lazy";
 import { LruCache } from "@/lib/lru";
+import { chartFor, type ChartSpec } from "./pele-charts";
 
-const svgCache = new LruCache<string>(50);
+// Mermaid text → what the canvas shows (SPECs/talk-notes-spec.md#diagrams-pele-drawn-with-arc):
+// an Arc chart for the types one draws, otherwise Pele's SVG, which
+// `mermaid-canvas.css` draws in Arc's style through Pele's classes and CSS
+// variables. Pele loads each diagram type on first use (`pele/lazy`), so a
+// note without diagrams never parses the renderers; until a type has loaded
+// the result is `pending` and the widget renders again when it resolves.
 
-export interface RenderResult {
-  svg: string;
-  error?: undefined;
-}
+export type MermaidResult =
+  | { svg: string; chart?: undefined; error?: undefined; pending?: undefined }
+  | { chart: ChartSpec; svg?: undefined; error?: undefined; pending?: undefined }
+  | { error: string; svg?: undefined; chart?: undefined; pending?: undefined }
+  | { pending: Promise<void>; svg?: undefined; chart?: undefined; error?: undefined };
 
-export interface RenderError {
-  svg?: undefined;
-  error: string;
-}
-
-// beautiful-mermaid resolves colours from CSS custom properties at paint time,
-// so passing the app's `--bg-base` / `--fg-base` lets a single cached SVG work
-// in both light and dark themes. `transparent: true` skips the explicit
-// background fill on the SVG root — the canvas frame already shows through.
-const RENDER_OPTIONS = {
-  bg: "var(--bg-base)",
-  fg: "var(--fg-base)",
-  transparent: true,
-} as const;
+type Rendered = { svg: string } | { chart: ChartSpec };
+const cache = new LruCache<Rendered>(50);
 
 // Defense-in-depth: strip <script> blocks and on*= event-handler attributes
-// before the SVG reaches innerHTML. beautiful-mermaid escapes label text, but
-// documents come from external sources (Obsidian vaults, repos) and the
-// third-party renderer is young — a belt-and-suspenders pass on the output
-// protects against future regressions in either the library or its inputs.
+// before the SVG reaches innerHTML. Pele escapes label text, but documents
+// come from external sources (Obsidian vaults, repos); the canvas also runs
+// DOMPurify at the innerHTML sink.
 function sanitizeSvg(svg: string): string {
   return svg
     .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
@@ -37,24 +31,68 @@ function sanitizeSvg(svg: string): string {
     .replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, "");
 }
 
-// Synchronous on purpose: beautiful-mermaid is itself synchronous and the
-// cache makes repeat renders O(map lookup). Calling this from `toDOM` lets the
-// widget paint with its rendered SVG in the same frame the wrapper enters the
-// DOM — there's no async gap that can leave the user stuck on a placeholder.
-export function renderMermaid(source: string): RenderResult | RenderError {
-  const cached = svgCache.get(source);
-  if (cached !== undefined) return { svg: cached };
+// Ids inside one SVG (markers, gradients) must not collide with another
+// diagram's on the same page: prefix them with a hash of the source.
+function idPrefix(source: string): string {
+  let h = 5381;
+  for (let i = 0; i < source.length; i++) h = ((h << 5) + h + source.charCodeAt(i)) | 0;
+  return `m${(h >>> 0).toString(36)}`;
+}
+
+// Pele measures labels to size its shapes, so it needs the font they are
+// drawn in: the UI font, read from the document.
+function uiFont(): string {
+  if (typeof document === "undefined" || !document.body) return "sans-serif";
+  return getComputedStyle(document.body).fontFamily || "sans-serif";
+}
+
+const loading = new Map<string, Promise<void>>();
+
+/**
+ * Synchronous once the diagram's type has loaded (the cache makes repeats a
+ * map lookup), so `toDOM` paints the final picture in the frame the widget
+ * enters the DOM. The first diagram of a type returns `pending`.
+ */
+export function renderMermaid(source: string): MermaidResult {
+  const cached = cache.get(source);
+  if (cached !== undefined) return cached;
+
+  const type = detectType(source);
+  if (!type)
+    return { error: "Unknown diagram type. The first line names it, such as flowchart or pie." };
+  if (!supports(source)) {
+    let pending = loading.get(type);
+    if (!pending) {
+      pending = load(type).then(
+        () => void loading.delete(type),
+        (err: unknown) => {
+          loading.delete(type);
+          throw err;
+        },
+      );
+      loading.set(type, pending);
+    }
+    return { pending };
+  }
 
   try {
-    const svg = sanitizeSvg(renderMermaidSVG(source, RENDER_OPTIONS));
-    svgCache.set(source, svg);
-    return { svg };
+    const model = parse(source);
+    const chart = chartFor(model);
+    const result: Rendered = chart
+      ? { chart }
+      : {
+          svg: sanitizeSvg(
+            render(model, { fontFamily: uiFont(), idPrefix: idPrefix(source), responsive: false })
+              .svg,
+          ),
+        };
+    cache.set(source, result);
+    return result;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: message };
+    return { error: err instanceof Error ? err.message : String(err) };
   }
 }
 
 export function clearMermaidCache() {
-  svgCache.clear();
+  cache.clear();
 }

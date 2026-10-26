@@ -1,0 +1,60 @@
+.figure { position: relative; display: grid; min-width: 0; gap: var(--space-4); margin: 0; color: var(--foreground); font-family: var(--font-body); letter-spacing: var(--tracking-body); }
+
+/* Series colors (--series-1 to --series-4) come from registry/foundation.css. */
+
+.stage { position: relative; min-width: 0; min-height: 200px; outline: none; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.svg { position: absolute; top: 0; display: block; overflow: visible; }
+
+/* Hairline web: rings and spokes stay one step off the surface. */
+.web { opacity: 0; transition: opacity var(--duration-considered) var(--ease-standard); }
+.web[data-shown] { opacity: 1; }
+.ring { fill: none; stroke: var(--border); stroke-width: 1; }
+.spoke { stroke: var(--border); stroke-width: 1; transition: stroke var(--duration-fast) var(--ease-standard); }
+.spoke[data-on] { stroke: color-mix(in oklab, var(--foreground) 45%, transparent); }
+
+/* Profiles take the series palette in order, the first derived from the accent. Text never takes these colours. */
+.shape { --ink: var(--series-2); fill: var(--ink); fill-opacity: .06; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; transition: opacity var(--duration-fast) var(--ease-standard), fill-opacity var(--duration-fast) var(--ease-standard); }
+.shape[data-slot="0"] { --ink: var(--series-1); fill-opacity: .12; }
+.shape[data-slot="2"] { --ink: var(--series-3); }
+.shape[data-on] { fill-opacity: .2; }
+.shape[data-dim] { opacity: .22; }
+
+.marker { --ink: var(--series-2); fill: var(--ink); stroke: var(--surface); stroke-width: 2; opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); pointer-events: none; }
+.marker[data-slot="0"] { --ink: var(--series-1); }
+.marker[data-slot="2"] { --ink: var(--series-3); }
+.stage[data-active] .marker { opacity: 1; }
+
+.axisLabel { position: absolute; max-width: 96px; color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.25; pointer-events: none; transition: color var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard); }
+.axisLabel[data-anchor="center"] { text-align: center; }
+.axisLabel[data-anchor="end"] { text-align: right; }
+.stage[data-active] .axisLabel:not([data-on]) { opacity: .55; }
+.axisLabel[data-on] { color: var(--foreground); }
+
+.tooltip { position: absolute; top: 0; left: 0; z-index: 2; display: grid; min-width: 164px; max-width: min(240px, 100%); gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-raised); box-shadow: var(--shadow-floating); opacity: 0; pointer-events: none; scale: .96; transition: opacity var(--duration-fast) var(--ease-standard), scale var(--duration-fast) var(--ease-standard); }
+.stage[data-active] .tooltip { opacity: 1; scale: 1; }
+.tipTitle { margin: 0 0 2px; color: var(--text-secondary); font-size: var(--text-xs); line-height: var(--leading-body); white-space: nowrap; }
+.tipRow { display: flex; min-width: 0; align-items: center; gap: 8px; margin: 0; font-size: var(--text-sm); line-height: 1.3; }
+.tipKey { --ink: var(--series-2); width: 10px; height: 2.5px; flex: none; border-radius: 2px; background: var(--ink); }
+.tipRow[data-slot="0"] .tipKey { --ink: var(--series-1); }
+.tipRow[data-slot="2"] .tipKey { --ink: var(--series-3); }
+.tipName { min-width: 0; flex: 1; overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.tipValue { flex: none; margin-left: 8px; color: var(--foreground); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tipGap { flex: none; min-width: 2.6em; color: var(--text-muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; text-align: right; }
+
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 4px; }
+.key { --ink: var(--series-2); display: inline-flex; min-height: 32px; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: var(--text-sm); -webkit-tap-highlight-color: transparent; transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard), scale var(--duration-instant) var(--ease-standard); }
+.key[data-slot="0"] { --ink: var(--series-1); }
+.key[data-slot="2"] { --ink: var(--series-3); }
+.key:active { scale: .97; }
+.key[aria-pressed="true"] { color: var(--foreground); background: color-mix(in oklab, var(--foreground) 5%, transparent); }
+.key[data-dim] { opacity: .5; }
+@media (hover: hover) and (pointer: fine) { .key:hover { color: var(--foreground); } }
+.keyLine { width: 14px; height: 2.5px; border-radius: 2px; background: var(--ink); }
+.keyLabel { white-space: nowrap; }
+
+.message { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .web, .spoke, .shape, .marker, .axisLabel, .tooltip, .key { transition: none; }
+}

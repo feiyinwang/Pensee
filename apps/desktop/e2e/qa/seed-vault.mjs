@@ -132,6 +132,30 @@ NOTES["Notes/Embed page.md"] =
 NOTES["Notes/assets/page.html"] =
   '<!doctype html><meta charset="utf-8"><title>Page</title><h1>An embedded page</h1>\n';
 
+// Mermaid blocks (MED-06, MED-09, MED-10): a flowchart Pele draws in Arc's
+// style, a pie an Arc donut draws, and a block with a typo.
+NOTES["Notes/Diagrams.md"] = [
+  "# Diagrams",
+  "",
+  "```mermaid",
+  "flowchart LR",
+  "  Talk --> Topic",
+  "  Topic --> Diagram",
+  "```",
+  "",
+  "```mermaid",
+  "pie title Where my week goes",
+  '  "Writing" : 20',
+  '  "QA" : 12',
+  "```",
+  "",
+  "```mermaid",
+  "flowchrt LR",
+  "  A --> B",
+  "```",
+  "",
+].join("\n");
+
 // A board with two cards far apart, for docking one after the other (BRD-07,
 // PERF-07). A legacy ```board fence: opening it writes the .board.svg.
 NOTES["Notes/Dock board.md"] = [

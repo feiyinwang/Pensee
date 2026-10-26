@@ -1,14 +1,20 @@
 import { describe, expect, test, vi, beforeEach } from "vite-plus/test";
 
-// Mock beautiful-mermaid before importing the renderer
-vi.mock("beautiful-mermaid", () => {
-  const renderMermaidSVG = vi
-    .fn()
-    .mockReturnValue('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>');
-  return { renderMermaidSVG };
-});
+// Pele is mocked so these tests cover the renderer's own logic: lazy loading,
+// the cache, the chart/SVG split, errors and sanitising.
+const pele = vi.hoisted(() => ({
+  loaded: new Set<string>(),
+  detectType: vi.fn((text: string) => /^(\w+)/.exec(text.trim())?.[1] ?? null),
+  supports: vi.fn((text: string) => pele.loaded.has(/^(\w+)/.exec(text.trim())?.[1] ?? "")),
+  load: vi.fn(async (type: string) => {
+    pele.loaded.add(type);
+    return true;
+  }),
+  parse: vi.fn((text: string) => ({ type: /^(\w+)/.exec(text.trim())?.[1] })),
+  render: vi.fn(() => ({ svg: '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>' })),
+}));
+vi.mock("pele/lazy", () => pele);
 
-// Import after mock setup
 const { renderMermaid, clearMermaidCache } =
   await import("../src/components/editor-area/mermaid-renderer");
 
@@ -16,90 +22,74 @@ describe("renderMermaid", () => {
   beforeEach(() => {
     clearMermaidCache();
     vi.clearAllMocks();
+    pele.loaded = new Set(["graph", "pie"]);
   });
 
-  test("renders valid mermaid source and returns SVG", () => {
+  test("renders a diagram whose type has loaded, as SVG", () => {
     const result = renderMermaid("graph TD;\n  A-->B;");
-    expect(result.svg).toBeDefined();
-    expect(result.error).toBeUndefined();
     expect(result.svg).toContain("<svg");
+    expect(result.error).toBeUndefined();
   });
 
-  test("returns cached SVG on second call with same source", async () => {
-    const { renderMermaidSVG } = await import("beautiful-mermaid");
-
-    const result1 = renderMermaid("graph TD;\n  A-->B;");
-    expect(result1.svg).toBeDefined();
-
-    const result2 = renderMermaid("graph TD;\n  A-->B;");
-    expect(result2.svg).toBe(result1.svg);
-
-    expect(renderMermaidSVG).toHaveBeenCalledTimes(1);
+  test("returns the cached result on a second call with the same source", () => {
+    const first = renderMermaid("graph TD;\n  A-->B;");
+    const second = renderMermaid("graph TD;\n  A-->B;");
+    expect(second).toBe(first);
+    expect(pele.render).toHaveBeenCalledTimes(1);
   });
 
-  test("returns error result when the renderer throws", async () => {
-    const { renderMermaidSVG } = await import("beautiful-mermaid");
-    vi.mocked(renderMermaidSVG).mockImplementationOnce(() => {
-      throw new Error("Parse error in mermaid");
+  test("the first diagram of a type is pending until Pele loads it, then renders", async () => {
+    const result = renderMermaid("sequenceDiagram\n  A->>B: Hi");
+    expect(result.pending).toBeInstanceOf(Promise);
+    await result.pending;
+    expect(pele.load).toHaveBeenCalledWith("sequenceDiagram");
+    expect(renderMermaid("sequenceDiagram\n  A->>B: Hi").svg).toContain("<svg");
+  });
+
+  test("a type with an Arc chart becomes a chart, not an SVG", () => {
+    pele.parse.mockReturnValueOnce({
+      type: "pie",
+      title: "Hours",
+      sections: new Map([["Writing", 20]]),
+    } as never);
+    const result = renderMermaid('pie title Hours\n  "Writing" : 20');
+    expect(result.chart).toEqual({
+      chart: "donut",
+      props: { label: "Hours", data: [{ key: "Writing", label: "Writing", value: 20 }] },
     });
+    expect(pele.render).not.toHaveBeenCalled();
+  });
 
-    const result = renderMermaid("not valid mermaid");
-    expect(result.error).toBeDefined();
-    expect(result.error).toBe("Parse error in mermaid");
+  test("text with no diagram type is an error", () => {
+    pele.detectType.mockReturnValueOnce(null);
+    expect(renderMermaid("hello").error).toMatch(/Unknown diagram type/);
+  });
+
+  test("returns an error when Pele throws", () => {
+    pele.parse.mockImplementationOnce(() => {
+      throw new Error("Parse error on line 2");
+    });
+    const result = renderMermaid("graph TD;\n  A-->");
+    expect(result.error).toBe("Parse error on line 2");
     expect(result.svg).toBeUndefined();
   });
 
-  test("handles non-Error thrown values", async () => {
-    const { renderMermaidSVG } = await import("beautiful-mermaid");
-    vi.mocked(renderMermaidSVG).mockImplementationOnce(() => {
-      throw "string error";
+  test("strips <script> blocks, self-closing scripts and on*= handlers from the SVG", () => {
+    pele.render.mockReturnValueOnce({
+      svg: '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><script src="evil.js"/><rect onclick="alert(1)" onmouseover=\'evil()\' onload=stealCookies() /></svg>',
     });
-
-    const result = renderMermaid("bad source");
-    expect(result.error).toBe("string error");
-    expect(result.svg).toBeUndefined();
-  });
-
-  test("strips <script> blocks from the rendered SVG", async () => {
-    const { renderMermaidSVG } = await import("beautiful-mermaid");
-    vi.mocked(renderMermaidSVG).mockReturnValueOnce(
-      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><rect/></svg>',
-    );
-
-    const result = renderMermaid("xss-script");
-    expect(result.svg).toBeDefined();
-    expect(result.svg).not.toContain("<script");
-    expect(result.svg).not.toContain("alert(1)");
-    expect(result.svg).toContain("<rect");
-  });
-
-  test("strips self-closing <script/> tags from the rendered SVG", async () => {
-    const { renderMermaidSVG } = await import("beautiful-mermaid");
-    vi.mocked(renderMermaidSVG).mockReturnValueOnce(
-      '<svg xmlns="http://www.w3.org/2000/svg"><script src="evil.js"/><rect/></svg>',
-    );
-
-    const result = renderMermaid("xss-script-selfclosing");
-    expect(result.svg).toBeDefined();
-    expect(result.svg).not.toContain("<script");
-    expect(result.svg).not.toContain("evil.js");
-  });
-
-  test("strips on*= event handler attributes from the rendered SVG", async () => {
-    const { renderMermaidSVG } = await import("beautiful-mermaid");
-    vi.mocked(renderMermaidSVG).mockReturnValueOnce(
-      '<svg xmlns="http://www.w3.org/2000/svg"><rect onclick="alert(1)" onmouseover=\'evil()\' onload=stealCookies() /></svg>',
-    );
-
-    const result = renderMermaid("xss-handlers");
-    expect(result.svg).toBeDefined();
-    expect(result.svg).not.toContain("onclick");
-    expect(result.svg).not.toContain("onmouseover");
-    expect(result.svg).not.toContain("onload");
-    expect(result.svg).not.toContain("alert(1)");
-    expect(result.svg).not.toContain("evil()");
-    expect(result.svg).not.toContain("stealCookies");
-    expect(result.svg).toContain("<rect");
+    const svg = renderMermaid("graph xss").svg ?? "";
+    for (const bad of [
+      "<script",
+      "alert(1)",
+      "evil.js",
+      "onclick",
+      "onmouseover",
+      "onload",
+      "stealCookies",
+    ])
+      expect(svg).not.toContain(bad);
+    expect(svg).toContain("<rect");
   });
 });
 

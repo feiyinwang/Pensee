@@ -204,9 +204,10 @@ notes and edited in either place.
 ## Rich content — MED
 
 **Feature:** Images, videos and HTML files embed inline; tables render and edit
-in place; LaTeX math and Mermaid diagrams render.
-**Spec:** SPECs/obsidian-image-embed-spec.md, SPECs/table-in-place-cell-editing-spec.md, SPECs/paste-tabular-data-as-table-spec.md, SPECs/latex-math-spec.md, SPECs/mermaid-canvas-widget-spec.md, SPECs/html-file-embed-spec.md
-**Code:** `src/components/editor-area/` (image-src-resolver.ts, table-decorations.ts, mermaid-_.ts, math-_.ts, html-\*.ts, video-embed-widget.ts, columns-decorations.ts (fileDropPlugin)), `src/lib/paths.ts` (embedTargetFor), `src-tauri/src/commands/images.rs`
+in place; LaTeX math and Mermaid diagrams render (Pele, drawn in Arc's style;
+charts as Arc charts).
+**Spec:** SPECs/obsidian-image-embed-spec.md, SPECs/table-in-place-cell-editing-spec.md, SPECs/paste-tabular-data-as-table-spec.md, SPECs/latex-math-spec.md, SPECs/mermaid-canvas-widget-spec.md, SPECs/html-file-embed-spec.md, SPECs/talk-notes-spec.md
+**Code:** `src/components/editor-area/` (image-src-resolver.ts, table-decorations.ts, mermaid-_.ts, pele-chart\*.ts(x), math-_.ts, html-\*.ts, video-embed-widget.ts, columns-decorations.ts (fileDropPlugin)), `src/components/arc/` (donut-chart, bar-chart, line-chart, treemap, tree-view, sankey-flow, radar-chart), `src/lib/paths.ts` (embedTargetFor), `src-tauri/src/commands/images.rs`
 
 | ID     | Journey                                               | Expected                                                                                                                                                                                   | Check                   |
 | ------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
@@ -215,9 +216,11 @@ in place; LaTeX math and Mermaid diagrams render.
 | MED-03 | Click a cell in a rendered table and type             | The cell edits in place; the table stays rendered                                                                                                                                          | legacy: table-cell-edit |
 | MED-04 | Paste tab-separated rows                              | A markdown table is inserted                                                                                                                                                               | manual                  |
 | MED-05 | `$x^2$` and a `$$` block                              | Both render as math                                                                                                                                                                        | legacy: latex-math      |
-| MED-06 | A ```mermaid block                                    | Renders in a canvas with pan, zoom, reset, source toggle                                                                                                                                   | manual                  |
+| MED-06 | A ```mermaid flowchart                                | Pele draws it in Arc's style (hairline-ringed shapes) in a canvas with pan, zoom, reset, fullscreen and the source toggle                                                                  | auto: media             |
 | MED-07 | Drop an `.html` file from Finder onto a note          | `![[page.html]]` lands where you let go (workspace-relative, or note-relative from outside) and the page shows framed; the file is not copied                                              | you                     |
 | MED-08 | ★ Press **Expand** on an embedded HTML page, then Esc | The page grows over its note in place, filling the note's area, without reloading; the text around it stays put; Esc (or **Shrink back**) puts it back where it was; the file is unchanged | auto: media             |
+| MED-09 | A ```mermaid pie                                      | An Arc donut chart shows each slice and its value in the frame; the source toggle and fullscreen stay, the zoom buttons go                                                                 | auto: media             |
+| MED-10 | A ```mermaid block with a mistake                     | The frame shows Pele's message ("Diagram error: …") instead of a picture                                                                                                                   | auto: media             |
 
 ## Calendar panel — CAL
 
