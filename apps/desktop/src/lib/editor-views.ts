@@ -26,6 +26,12 @@ export function editorPath(view: EditorView): string | null {
   return views.get(view)?.path() ?? null;
 }
 
+/** A mounted editor showing `path` now, or null when no editor shows it. */
+export function editorViewFor(path: string): EditorView | null {
+  for (const [view, entry] of views) if (entry.path() === path && view.dom.isConnected) return view;
+  return null;
+}
+
 /** The part of a note's body on screen: whole lines, 0-based, end exclusive. */
 export interface VisibleLines {
   fromLine: number;

@@ -1,0 +1,117 @@
+/* Record at the bottom centre of the note (SPECs/talk-notes-spec.md#recording). */
+.talk-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  z-index: 20;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.talk-dock-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-popover);
+  box-shadow:
+    var(--shadow-popover),
+    inset 0 0 0 1px var(--color-border-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-label);
+  pointer-events: auto;
+}
+
+.talk-dock-pill[data-recording] {
+  padding-left: 14px;
+}
+
+.talk-dock-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-hover) var(--ease-hover),
+    color var(--motion-hover) var(--ease-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .talk-dock-button:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+  }
+}
+
+.talk-dock-button:active {
+  transform: scale(0.96);
+}
+
+.talk-dock-record {
+  color: var(--color-text-primary);
+}
+
+.talk-dock-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  background: var(--hue-red);
+}
+
+.talk-dock-pill[data-recording] .talk-dock-dot {
+  animation: talk-dock-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes talk-dock-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.talk-dock-meter {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+}
+
+.talk-dock-meter span {
+  width: 3px;
+  height: 100%;
+  border-radius: var(--radius-button);
+  background: var(--hue-red);
+  transform: scaleY(0.15);
+}
+
+.talk-dock-time {
+  min-width: 3ch;
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.talk-dock-note {
+  padding: 0 4px 0 12px;
+  color: var(--color-text-muted);
+}
+
+.talk-dock-error .talk-dock-note {
+  color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talk-dock-pill[data-recording] .talk-dock-dot {
+    animation: none;
+  }
+}

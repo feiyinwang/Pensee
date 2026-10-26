@@ -206,6 +206,21 @@ export function parseWikiImageEmbedTarget(raw: string): string | null {
 // GIF saved as video (X serves GIFs that way) and plays like one: looping,
 // muted, no controls. Per SPECs/x-bookmarks-spec.md.
 const WIKI_VIDEO_EXTENSIONS = new Set(["mp4", "m4v", "mov", "webm"]);
+const WIKI_AUDIO_EXTENSIONS = new Set(["m4a", "mp3", "wav", "ogg", "oga", "aac", "flac"]);
+
+/**
+ * `![[take.m4a]]` as an audio player (SPECs/talk-notes-spec.md). A take in
+ * `Recordings/` is audio even as `.webm` or `.mp4` (what a web view records
+ * on Windows), so it isn't drawn as a video.
+ */
+export function parseWikiAudioEmbedTarget(raw: string): { path: string } | null {
+  const { target } = splitAlias(raw.trim());
+  const parsed = embedPathWithExtension(target);
+  if (!parsed) return null;
+  const recording = parsed.path.startsWith("Recordings/") && ["webm", "mp4"].includes(parsed.ext);
+  if (!WIKI_AUDIO_EXTENSIONS.has(parsed.ext) && !recording) return null;
+  return { path: parsed.path };
+}
 
 export interface WikiVideoEmbed {
   path: string;

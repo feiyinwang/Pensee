@@ -18,6 +18,7 @@ pub mod settings;
 pub mod shell_install;
 pub mod spaces;
 pub mod startup;
+pub mod talk;
 pub mod video_player;
 pub mod web_pdf;
 pub mod workspace;

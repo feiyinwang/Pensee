@@ -31,12 +31,14 @@ import {
   parseWikiLink,
   parseWikiImageEmbedTarget,
   parseWikiVideoEmbedTarget,
+  parseWikiAudioEmbedTarget,
 } from "@/lib/wiki-links";
 import { attachStableImageHeight } from "@/lib/prosemark-core/fold/image";
 import { selectionInertFacet } from "@/lib/prosemark-core/main";
 import { parseBlockEmbedTarget } from "@/lib/block-refs";
 import { HtmlEmbedWidget } from "./html-embed-widget";
 import { VideoEmbedWidget } from "./video-embed-widget";
+import { AudioEmbedWidget } from "./audio-embed-widget";
 import { blockEmbedHost } from "./linked-block-sync";
 import { resolveEmbedPath } from "./wiki-embed-resolver";
 import { followWikiLink } from "./wiki-pages-extension";
@@ -183,12 +185,18 @@ function buildDecorations(view: EditorView, getFilePath: () => string): Decorati
       if (match[1] && blockEmbedsDrawn && parseBlockEmbedTarget(inner)) continue;
       const embedTarget = match[1] ? parseWikiImageEmbedTarget(inner) : null;
       const htmlEmbed = match[1] && !embedTarget ? parseWikiHtmlEmbedTarget(inner) : null;
+      const audioEmbed =
+        match[1] && !embedTarget && !htmlEmbed ? parseWikiAudioEmbedTarget(inner) : null;
       const videoEmbed =
-        match[1] && !embedTarget && !htmlEmbed ? parseWikiVideoEmbedTarget(inner) : null;
+        match[1] && !embedTarget && !htmlEmbed && !audioEmbed
+          ? parseWikiVideoEmbedTarget(inner)
+          : null;
       // Other embeds (note transclusions, PDFs) keep the plain link
       // rendering over the `[[...]]` part, leaving the `!` as source text.
       const start =
-        from + match.index + (match[1] && !embedTarget && !htmlEmbed && !videoEmbed ? 1 : 0);
+        from +
+        match.index +
+        (match[1] && !embedTarget && !htmlEmbed && !videoEmbed && !audioEmbed ? 1 : 0);
       const end = from + match.index + match[0].length;
       if (isInsideCode(view.state, start)) continue;
 
@@ -203,6 +211,14 @@ function buildDecorations(view: EditorView, getFilePath: () => string): Decorati
           end,
           Decoration.replace({
             widget: new ImageEmbedWidget(match[0], embedTarget, workspaceRoot, currentFilePath),
+          }),
+        );
+      } else if (audioEmbed) {
+        builder.add(
+          start,
+          end,
+          Decoration.replace({
+            widget: new AudioEmbedWidget(match[0], audioEmbed.path, workspaceRoot, currentFilePath),
           }),
         );
       } else if (videoEmbed) {

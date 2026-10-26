@@ -163,6 +163,7 @@ stored in `.git/pensee-qa-receipts`, shared by all worktrees). Prototypes
 
 Learned the hard way; each one cost a failed run.
 
+- After `browser.refresh()`, wait for something the layout draws (the calendar toggle) before a global shortcut: IPC (`workspaceRoot`) answers before React has mounted the key hook, so an early ⌘] is lost (CAL-01 failed 1 run in 4 on HEAD, 2026-10-27).
 - Act like the user: click and type on what is on screen. Use IPC (`invoke`)
   only to arrange files before a journey or to read the result on disk.
 - The WebDriver plugin's `click()` sends no pointer events and no coordinates.

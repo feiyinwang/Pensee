@@ -625,6 +625,7 @@ pub fn run() {
             commands::search::find_lines_mentioning,
             commands::spaces::list_typed_notes,
             commands::images::save_clipboard_image,
+            commands::talk::save_recording,
             commands::images::import_image_file,
             commands::images::read_file_data_url,
             commands::images::write_export_file,

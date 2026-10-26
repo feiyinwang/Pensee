@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Pensée records your voice when you press Record in a note, and saves the audio in your vault's Recordings folder.</string>
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>

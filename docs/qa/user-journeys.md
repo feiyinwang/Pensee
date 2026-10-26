@@ -579,6 +579,18 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 | WIN-09 | On a Windows PC that never ran Pensée, launch it                                                           | The window fills the screen with onboarding's first question; the carousel says "touchpad"                      | you   |
 | WIN-10 | Ctrl+, anywhere in a workspace window                                                                      | Preferences opens in a tab, as from the File menu                                                               | you   |
 
+## Talk notes — TALK
+
+**Feature:** Press Record at the bottom of a note and talk; Stop saves the take as an audio file in `Recordings/` and writes `## Talk · 09:14` with a player into the note, after the line you were on.
+**Spec:** SPECs/talk-notes-spec.md
+**Code:** `src/components/talk/`, `src/stores/talk-store.ts`, `src/lib/talk/`, `src/lib/editor-views.ts` (editorViewFor), `src/components/editor-area/editor-pane.tsx` (TalkDock), `src/components/editor-area/audio-embed-widget.ts`, `src/components/editor-area/wiki-link-extension.ts` (audio embeds), `src/lib/wiki-links.ts` (parseWikiAudioEmbedTarget), `src-tauri/src/commands/talk.rs`, `src-tauri/Info.plist` (NSMicrophoneUsageDescription), `src-tauri/Entitlements.plist` (audio-input)
+
+| ID      | Journey                                                          | Expected                                                                                                                                    | Check      |
+| ------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| TALK-01 | ★ Press **Record** in a note, talk a few seconds, press **Stop** | `Recordings/2026-10-25 09.14.m4a` is on disk; the note has `## Talk · 09:14` and `![[Recordings/….m4a]]` after your line, drawn as a player | auto: talk |
+| TALK-02 | Press **Record** with the microphone refused                     | The pill says to allow it in System Settings → Privacy & Security → Microphone; **OK** closes it; the note is unchanged                     | auto: talk |
+| TALK-03 | Press **Record** the first time on a Mac                         | macOS asks to use the microphone, naming why; after Allow, the take records your voice and plays back                                       | you        |
+
 ---
 
 ## Template for a new feature

@@ -58,6 +58,11 @@ describe("Journeys: calendar panel", function () {
     }
     await browser.refresh();
     root = await workspaceRoot();
+    // ⌘] is heard once the layout has mounted its key hook; pressed earlier
+    // (IPC answers before React has drawn), it does nothing.
+    await $('button[aria-label="Show calendar"], button[aria-label="Hide calendar"]').waitForExist({
+      timeout: 10_000,
+    });
   });
 
   it("CAL-01 opens and closes with Cmd+] and the toggle button", async function () {

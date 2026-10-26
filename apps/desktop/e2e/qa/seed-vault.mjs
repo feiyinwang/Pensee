@@ -132,6 +132,9 @@ NOTES["Notes/Embed page.md"] =
 NOTES["Notes/assets/page.html"] =
   '<!doctype html><meta charset="utf-8"><title>Page</title><h1>An embedded page</h1>\n';
 
+// A note to record a talk into (TALK-01, TALK-02).
+NOTES["Notes/Talk note.md"] = "# Talk note\n\nWhat I want to think through today.\n";
+
 // Mermaid blocks (MED-06, MED-09, MED-10): a flowchart Pele draws in Arc's
 // style, a pie an Arc donut draws, and a block with a typo.
 NOTES["Notes/Diagrams.md"] = [

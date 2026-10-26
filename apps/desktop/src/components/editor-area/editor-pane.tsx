@@ -7,6 +7,7 @@ import { PageHeader } from "./page-header";
 import { EditorScrollContainer } from "./editor-scroll-container";
 import { EditorSearchOverview } from "./editor-search-overview";
 import { SectionRail } from "./section-rail";
+import { TalkDock } from "@/components/talk/talk-dock";
 import { useCloseEditorSearchWhenInactive } from "./use-close-editor-search-when-inactive";
 import { useIsFileLoading } from "@/hooks/use-tabs";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -84,6 +85,7 @@ export const EditorPane = memo(function EditorPane({
         outlineTop={inColumn ? 40 : 96}
       />
       {isActive && <EditorSearchOverview scrollContainerRef={scrollContainerRef} />}
+      <TalkDock path={path} isActive={isActive} />
     </div>
   );
 });
