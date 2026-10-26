@@ -337,8 +337,15 @@ button {
 
 .acts {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 26px;
+  gap: 14px 26px;
+}
+
+/* Kept on one line: the button beside it is wider on Windows, and a link
+   broken over two lines reads as two. */
+.acts .tlink {
+  white-space: nowrap;
 }
 
 /* ---------- paintings ---------- */

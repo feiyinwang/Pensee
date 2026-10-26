@@ -1,4 +1,4 @@
-import { DOWNLOAD, DOWNLOAD_WINDOWS } from "../content";
+import { DOWNLOAD, DOWNLOAD_WINDOWS, FINE_PRINT, FINE_PRINT_WINDOWS } from "../content";
 import { useVisitorOs } from "../visitor-os";
 
 const APPLE = (
@@ -40,8 +40,20 @@ export function DownloadButton({
   );
 }
 
-/** What it runs on, each platform a link to its own download, so a visitor on one computer can fetch the other's. */
+/**
+ * What it runs on. A Windows visitor sees only Windows, so the page offers
+ * one download. Elsewhere each platform links to its own download, so a Mac
+ * visitor can fetch the Windows build for another computer.
+ */
 export function Requirements() {
+  if (useVisitorOs() === "windows") {
+    return (
+      <>
+        <span className="req">Free and open source</span> ·{" "}
+        <span className="req">Windows 10 and 11</span>
+      </>
+    );
+  }
   return (
     <>
       <span className="req">Free and open source</span> ·{" "}
@@ -54,4 +66,9 @@ export function Requirements() {
       </span>
     </>
   );
+}
+
+/** The honest fine print for the visitor's computer: Gatekeeper on the Mac, SmartScreen on Windows. */
+export function FinePrint() {
+  return <p className="fine">{useVisitorOs() === "windows" ? FINE_PRINT_WINDOWS : FINE_PRINT}</p>;
 }

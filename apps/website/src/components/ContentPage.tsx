@@ -5,6 +5,7 @@ import type { LoadedPage } from "../pages/load";
 import type { PageSummary, PaintingId } from "../pages/parse";
 import { indexPath, pagePath, PAGE_TYPES, type PageType } from "../pages/types";
 import { DownloadButton, Requirements } from "./DownloadButton";
+import { useVisitorOs } from "../visitor-os";
 import { InstallLine } from "./InstallLine";
 import { OnThisPage } from "./OnThisPage";
 import { Credit, Painting } from "./Painting";
@@ -153,16 +154,7 @@ function Closing({ page }: { page: LoadedPage }) {
         </aside>
       );
     case "install":
-      return (
-        <aside className="doc-cta doc-cta-app">
-          <h2>Install or update</h2>
-          <InstallLine />
-          <p className="doc-cta-quiet">
-            Already installed? <code>brew upgrade --cask pensee</code>. What changed in each
-            version: <a href={`${REPO}/releases`}>Releases</a>.
-          </p>
-        </aside>
-      );
+      return <InstallCta />;
   }
 }
 
@@ -210,4 +202,31 @@ const DAY = new Intl.DateTimeFormat("en-GB", {
 
 function Updated({ date }: { date: string }) {
   return <time dateTime={date}>Updated {DAY.format(new Date(`${date}T00:00:00Z`))}</time>;
+}
+
+/** Install or update: Homebrew on the Mac; on Windows, only the installer, which updates in place. */
+function InstallCta() {
+  const windows = useVisitorOs() === "windows";
+  return (
+    <aside className="doc-cta doc-cta-app">
+      <h2>Install or update</h2>
+      {windows ? (
+        <div className="doc-cta-row">
+          <DownloadButton />
+        </div>
+      ) : (
+        <InstallLine />
+      )}
+      <p className="doc-cta-quiet">
+        {windows ? (
+          "Already installed? Run the newest installer over it."
+        ) : (
+          <>
+            Already installed? <code>brew upgrade --cask pensee</code>.
+          </>
+        )}{" "}
+        What changed in each version: <a href={`${REPO}/releases`}>Releases</a>.
+      </p>
+    </aside>
+  );
 }

@@ -28,8 +28,10 @@ export const HEADLINE = "Thinking, made by writing.";
 /** The README's first paragraph, with "neurodivergent" added. */
 export const INTRO =
   "I’m making Pensée for people like me: neurodivergent, with ADHD or a brain that works a little differently. We collect everything: the article, the video, the book a friend mentioned, the idea that shows up at 2am. Very little of it gets digested, and we wish it did, because digesting is how you come to understand the world and yourself.";
-export const FINE_PRINT =
-  "The second pen and the Agent run on Claude Code; Pensée signs you in from Settings. Pensée isn’t notarized by Apple yet, so if macOS won’t open the download, use the install line: it clears the flag macOS puts on downloads. On Windows, SmartScreen may warn the first time you run the installer, as it isn’t signed yet: choose More info, then Run anyway.";
+const CLAUDE_NOTE =
+  "The second pen and the Agent run on Claude Code; Pensée signs you in from Settings.";
+export const FINE_PRINT = `${CLAUDE_NOTE} Pensée isn’t notarized by Apple yet, so if macOS won’t open the download, use the install line: it clears the flag macOS puts on downloads.`;
+export const FINE_PRINT_WINDOWS = `${CLAUDE_NOTE} The installer isn’t signed yet, so Windows may warn the first time you run it: choose More info, then Run anyway.`;
 
 /** Public-domain paintings, downloaded from Wikimedia Commons into public/paintings. */
 export interface Painting {

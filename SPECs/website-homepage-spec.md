@@ -72,9 +72,12 @@ voice.
   a Windows visitor's screen (`src/visitor-os.ts`; pages are prerendered as
   Mac, the button switches as the page hydrates) it reads **Download for
   Windows** and links to `releases/latest/download/Pensee-windows-x64-setup.exe`,
-  which `.github/workflows/release-windows.yml` attaches to each release. The
-  line under it names both, each a link to its own download, so a visitor can
-  fetch the other computer's build.
+  which `.github/workflows/release-windows.yml` attaches to each release. A
+  Windows visitor is offered only Windows: the line under the button reads
+  _Free and open source · Windows 10 and 11_, the brew line is hidden, and the
+  fine print speaks of the installer. Everyone else sees the Mac button, and
+  the line under it names both systems, each a link to its own download, so a
+  Mac visitor can fetch the Windows build for another computer.
 
 ## Rejected, and why
 

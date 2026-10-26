@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DownloadButton, Requirements } from "../components/DownloadButton";
+import { DownloadButton, FinePrint, Requirements } from "../components/DownloadButton";
 import { FeatureCard } from "../components/FeatureCard";
 import { InstallLine } from "../components/InstallLine";
 import { Credit, Painting } from "../components/Painting";
 import { SiteBar } from "../components/SiteBar";
 import { SiteFooter } from "../components/SiteFooter";
 import { useScrolledPast } from "../components/useScrolledPast";
-import { FINE_PRINT, HEADLINE, INTRO, PAINTINGS, ROOMS, VERSION } from "../content";
+import { HEADLINE, INTRO, PAINTINGS, ROOMS, VERSION } from "../content";
 import { jsonLdScript } from "../pages/head";
 import { softwareApplication } from "../pages/jsonld";
 import { absoluteUrl } from "../site";
@@ -100,7 +100,7 @@ function HomePage() {
               <Requirements />
             </div>
             <InstallLine />
-            <p className="fine">{FINE_PRINT}</p>
+            <FinePrint />
           </div>
           <p className="credit">
             <Credit painting={PAINTINGS.hammershoi} /> · {PAINTINGS.hammershoi.at}
