@@ -117,43 +117,47 @@ Open/close behavior:
 - Default: H1-H3.
 - Configurable in settings if/when settings ships.
 
-## Standing outline (2026-10-16)
+## One line on the right edge (2026-10-27)
 
-When the margin right of the text column has room, the rail opens up into a
-standing outline instead of ticks behind a hover, after the "On this page"
-table of contents on component docs sites (uiarc's Button page).
+Replaces both the horizontal ticks and the standing **On this page** outline
+(2026-10-16), after the "In this chat" index in the Claude app: "just a line on
+the right edge, when hovering, showing the table of content". The line shows
+at every window width whenever the note has at least one heading.
 
-- **When.** The room is measured from `.cm-content` (its box minus its right
-  padding is the text column) to the pane's right edge, less the scrollbar
-  gutter. The outline keeps 40px off the text and 24px off the edge, grows
-  with the room up to 240px, and gives way to the ticks below 180px
-  (`outlineWidthForRoom` in `section-rail-depth.ts`). So a wide window shows
-  it, and a narrow window, a wide page preset or side-by-side columns fall
-  back to the ticks, each without a breakpoint table.
-- **Where.** Top-aligned with the page header (96px, 40px in a column), fixed
-  while the note scrolls; the list scrolls inside itself when it is taller
-  than the pane and keeps the marked row in view. In a video note it starts
-  24px under the video band instead (the video and the transcript beside it),
-  next to the text: it rides up as the band scrolls to stick and stays under
-  it once stuck, so it never covers the transcript or takes its wheel
-  (`useOutlineTop` in `section-rail.tsx`).
-- **Look.** A **On this page** label (label size, medium, primary), then one
-  row per heading hanging off a 1px hairline (`--line-subtle`), indented by
-  depth with the same sliding three-level window as the popover. Rows are
-  muted; the heading in view and a hovered row are primary. The heading in
-  view is marked by a 2px `--accent` bar on the hairline, as tall as its row.
-  Long headings wrap to two lines, then clamp; the full text is in the
-  tooltip. No row background.
-- **Motion.** The marker slides between rows (transform only, 160ms
-  ease-out); it lands without a slide when a file opens. None under reduced
-  motion. Switching between ticks and outline is instant.
-- **Same as the ticks.** Click scrolls to the heading; right-click offers
-  **Copy heading link**.
+- **The line.** One 2px line down the pane's right edge (4px in from the
+  scrollbar gutter, in a 20px hover zone), from the page header (96px, 40px in
+  a column) to 48px above the bottom. In a video note it starts 24px under the
+  video band and rides up with it (`useRailTop`).
+- **Segments.** One per heading, as long as that section's share of the note,
+  measured in characters from its heading to the next. Characters don't move
+  when text re-wraps, so neither typing nor a pinch across twenty tabs redraws
+  the line (rendered pixels did, and cost PERF-08 1–2ms); a board or image
+  counts for its markdown, not its height. 4px gaps; every segment at least 6px so a one-line section can be
+  hovered. More headings than fit shrink the gap to 2px, then the minimum
+  (`segmentLayout` in `section-rail-depth.ts`). Content above the first heading
+  is not on the line.
+- **Marks.** Segments are `--color-text-faint` at 60%; the marked heading's
+  segment (and a hovered one) is `--text-primary`. A 6px `--text-primary` dot
+  sits where the reading line falls inside the marked section, in rendered
+  pixels from CodeMirror's height map, following every scroll frame; it never leaves the marked segment, so a clicked (pinned)
+  heading and the dot agree (`dotOffset`). Marking itself is unchanged:
+  `useActiveHeadings`.
+- **Hover list.** After 100ms over the line (so passing to the scrollbar
+  doesn't flash it), a 260px `SurfaceCard` opens left of the line. Each row is
+  level with its segment; a row never overlaps the one above, so rows under
+  short sections are pushed down until a longer section lets them catch up
+  (`rowTops`). Rows are muted, one line, truncated, indented with the sliding
+  three-level window; the marked row is primary and medium weight. Hovering a
+  row lights its segment and the other way round. A list taller than the pane
+  scrolls itself and opens with the marked row in view. Leaving both, Esc, or
+  a click closes it.
+- **Motion.** The list enters with opacity and `translateX(4px) scale(0.97)`
+  from the right top, `--motion-base` `--ease-out`; segment colour fades on
+  `--motion-fast`. The dot does not animate. None under reduced motion.
+- **Same as before.** Click scrolls to the heading; right-click offers **Copy
+  heading link**; a wheel over the line scrolls the note.
 
-- **Wheel.** A wheel or trackpad scroll over the outline scrolls the note, as
-  over the empty margin; the list never takes the wheel, it follows the mark.
-
-Journeys ED-20–24.
+Journeys ED-20–25.
 
 ## Implementation Notes
 

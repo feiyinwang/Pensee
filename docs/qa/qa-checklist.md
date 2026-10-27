@@ -175,6 +175,7 @@ Learned the hard way; each one cost a failed run.
     `mousedown` (onboarding's click-to-write, `practice-guide.tsx`).
   - `waitForClickable` can time out on a button that `click()` presses fine:
     wait with `waitForExist`, then click (`onboarding.spec.js`).
+- Hover: `moveTo()` sends no pointer events either. React's `onMouseEnter` is built from `mouseover`, so dispatch `new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body })` on the element (ED-21).
 - `browser.keys(["Enter"])` on a focused `<button>` sends the keydown but
   doesn't press the button: a screen that runs its focused choice on ↵
   handles Enter itself (onboarding's `Question`).

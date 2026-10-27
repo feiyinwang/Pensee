@@ -1,27 +1,53 @@
-.section-rail-ticks {
-  transform-origin: right center;
-  transform: translateY(-50%) translateX(0) scale(1);
-  opacity: 1;
-  transition:
-    transform var(--motion-base) var(--ease-out),
-    opacity var(--motion-base) var(--ease-out);
-  will-change: transform, opacity;
+/* ---- The line: one segment per heading down the pane's right edge. ---- */
+
+.section-rail-segment {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
 }
 
-.section-rail-ticks[data-open="true"] {
-  transform: translateY(-50%) translateX(-8px) scale(1.05);
-  opacity: 0;
+/* The visible 2px line; the button around it is the 20px hover zone. */
+.section-rail-segment::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-text-faint);
+  opacity: 0.6;
+  transition:
+    background-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
+}
+
+.section-rail-segment[data-active]::before,
+.section-rail-segment[data-hover]::before {
+  background: var(--text-primary);
+  opacity: 1;
+}
+
+/* Where you are reading, inside the marked segment. */
+.section-rail-dot {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--text-primary);
   pointer-events: none;
 }
 
-.section-rail-tick {
-  transform-origin: right center;
-  will-change: transform;
-}
+/* ---- The list the line opens on hover. ---- */
 
 .section-rail-popover {
-  transform-origin: right center;
-  transform: translateY(-50%) translateX(-4px) scale(1);
+  transform-origin: right top;
+  transform: translateX(0) scale(1);
   opacity: 1;
   transition:
     transform var(--motion-base) var(--ease-out),
@@ -30,106 +56,52 @@
 }
 
 .section-rail-popover[data-state="closed"] {
-  transform: translateY(-50%) translateX(0) scale(0.95);
+  transform: translateX(4px) scale(0.97);
   opacity: 0;
 }
 
-.section-rail-popover-row {
+.section-rail-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: block;
+  padding: 0 16px 0 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+  font-size: var(--text-label);
+  line-height: 24px;
+  letter-spacing: -0.01em;
   color: var(--text-muted);
   transition: color var(--motion-fast) var(--ease-out);
 }
 
-/* Indent animates only after the popover has painted one frame at the current
+/* Indent animates only after the list has painted one frame at the current
    depth window — otherwise every open replays the slide as an entrance. */
-.section-rail-popover-row[data-animate="true"] {
+.section-rail-row[data-animate="true"] {
   transition:
     color var(--motion-fast) var(--ease-out),
     padding-left var(--motion-base) var(--ease-out);
 }
 
-.section-rail-popover-row:hover {
+.section-rail-row.is-hover,
+.section-rail-row.is-active {
   color: var(--text-primary);
-  transition: none;
 }
 
-/* Hover wants instant colour, but must not also freeze a window slide. */
-.section-rail-popover-row[data-animate="true"]:hover {
-  transition: padding-left var(--motion-base) var(--ease-out);
-}
-
-.section-rail-popover-row.is-active {
-  color: var(--accent);
-}
-
-/* ---- Standing outline: the rail opened up when the margin has room. ---- */
-
-.section-outline-title {
-  margin-bottom: 12px;
-  font-size: var(--text-label);
+.section-rail-row.is-active {
   font-weight: 500;
-  line-height: 20px;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
-}
-
-.section-outline-list {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  /* The hairline the rows hang off; the marker rides it. */
-  box-shadow: var(--shadow-outline-rail);
-}
-
-.section-outline-marker {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 2px;
-  height: 1px;
-  background: var(--accent);
-  transform-origin: top left;
-  pointer-events: none;
-}
-
-.section-outline-marker[data-animate="true"] {
-  transition: transform var(--motion-base) var(--ease-out);
-}
-
-.section-outline-row {
-  display: block;
-  width: 100%;
-  padding: 4px 0 4px 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: default;
-  font-size: var(--text-label);
-  line-height: 20px;
-  letter-spacing: -0.01em;
-  color: var(--text-muted);
-  transition: color var(--motion-fast) var(--ease-out);
-}
-
-.section-outline-label {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-}
-
-.section-outline-row:hover,
-.section-outline-row.is-active {
-  color: var(--text-primary);
-}
-
-.section-outline-row:hover {
-  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .section-outline-marker[data-animate="true"],
-  .section-outline-row {
+  .section-rail-segment::before,
+  .section-rail-popover,
+  .section-rail-row,
+  .section-rail-row[data-animate="true"] {
     transition: none;
   }
 }

@@ -1,22 +1,11 @@
-// Depth-axis maths for the section rail, kept free of React/Tauri/CSS imports
-// so it can be unit tested on its own.
+// Layout maths for the section rail, kept free of React/Tauri/CSS imports so
+// it can be unit tested on its own.
 
-// Ticks encode *depth* on the width axis, so the active/inactive distinction
-// can no longer live there too — one axis cannot carry two variables. Active
-// state rides opacity instead, with only a token scale nudge left behind.
-export const TICK_WIDTH_BY_DEPTH = [20, 17, 15, 13, 12, 11];
-export const TICK_MAX_WIDTH = TICK_WIDTH_BY_DEPTH[0];
-export const TICK_INACTIVE_SCALE = 0.88;
-
-// The popover is a fixed 260px and every row truncates, so indenting all six
+// The list is a fixed 260px and every row truncates, so indenting all six
 // levels would leave H6 as mostly ellipsis. Only DEPTH_WINDOW tiers are told
 // apart at a time; the window slides along the depth axis instead.
 export const INDENT_STEP = 12;
 export const DEPTH_WINDOW = 3;
-
-export function tickWidthForDepth(depth: number) {
-  return TICK_WIDTH_BY_DEPTH[Math.min(Math.max(depth, 0), TICK_WIDTH_BY_DEPTH.length - 1)];
-}
 
 // Rows outside the window are *flattened*, never clipped: a heading you cannot
 // read is worse than a heading whose depth you cannot tell.
@@ -37,20 +26,62 @@ export function nextWindowStart(current: number, activeDepth: number | null, max
   return Math.min(Math.max(next, 0), limit);
 }
 
-// When the margin right of the text column is wide enough, the rail opens up
-// into a standing outline ("On this page") instead of ticks behind a hover.
-// The outline keeps OUTLINE_TEXT_GAP clear of the text and OUTLINE_EDGE_INSET
-// from the pane edge, grows with the room up to OUTLINE_MAX_WIDTH, and gives
-// way to the ticks below OUTLINE_MIN_WIDTH, where headings would wrap on most
-// words.
-export const OUTLINE_MIN_WIDTH = 180;
-export const OUTLINE_MAX_WIDTH = 240;
-export const OUTLINE_TEXT_GAP = 40;
-export const OUTLINE_EDGE_INSET = 24;
+// The rail is one line down the pane, cut into a segment per heading. A
+// segment is as long as its section's share of the note, so the line reads as
+// a map: long sections are long. Every segment keeps SEGMENT_MIN so a one-line
+// section can still be hovered and clicked; a note with more headings than fit
+// shrinks the gaps, then the minimum, before it overflows.
+export const SEGMENT_GAP = 4;
+export const SEGMENT_MIN = 6;
+const SEGMENT_TIGHT_GAP = 2;
 
-export function outlineWidthForRoom(room: number): number | null {
-  const width = Math.floor(
-    Math.min(OUTLINE_MAX_WIDTH, room - OUTLINE_TEXT_GAP - OUTLINE_EDGE_INSET),
-  );
-  return width >= OUTLINE_MIN_WIDTH ? width : null;
+export interface Segment {
+  top: number;
+  height: number;
+}
+
+export function segmentLayout(sizes: number[], track: number): Segment[] {
+  const n = sizes.length;
+  if (n === 0 || track <= 0) return [];
+  let gap = SEGMENT_GAP;
+  let min = SEGMENT_MIN;
+  if (n * min + (n - 1) * gap > track) {
+    gap = SEGMENT_TIGHT_GAP;
+    min = Math.max(1, (track - (n - 1) * gap) / n);
+  }
+  const free = Math.max(0, track - (n - 1) * gap - n * min);
+  const total = sizes.reduce((sum, size) => sum + Math.max(0, size), 0);
+  const segments: Segment[] = [];
+  let top = 0;
+  for (const size of sizes) {
+    const share = total > 0 ? Math.max(0, size) / total : 1 / n;
+    const height = min + free * share;
+    segments.push({ top, height });
+    top += height + gap;
+  }
+  return segments;
+}
+
+// Where the "you are here" dot sits on the line: the reading line's place
+// inside the marked section (`start` to `stop`, in document pixels), mapped
+// onto that section's segment. The dot never leaves the marked segment, so a
+// heading pinned by a click and the dot always agree.
+export function dotOffset(segment: Segment, start: number, stop: number, readingY: number) {
+  const span = stop - start;
+  const fraction = span > 0 ? Math.min(Math.max((readingY - start) / span, 0), 1) : 0;
+  return segment.top + fraction * segment.height;
+}
+
+// The hover list sets each row level with its segment, so the line and the
+// list read as one thing. A row never overlaps the one above: short sections
+// push the rows under them down until a longer section lets them catch up.
+export function rowTops(segments: Segment[], rowHeight: number): number[] {
+  const tops: number[] = [];
+  let next = 0;
+  for (const segment of segments) {
+    const top = Math.max(segment.top, next);
+    tops.push(top);
+    next = top + rowHeight;
+  }
+  return tops;
 }

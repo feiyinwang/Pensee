@@ -1,6 +1,6 @@
-// The standing outline (ED-20…22 in docs/qa/user-journeys.md): when the
-// margin right of the text has room, the section rail shows every heading as
-// an "On this page" list instead of ticks behind a hover.
+// The section rail (ED-20…25 in docs/qa/user-journeys.md): one line down the
+// pane's right edge, a segment per heading as long as its section, that opens
+// the heading list on hover.
 // Runs on the seeded QA vault (e2e/qa/seed-vault.mjs).
 import { ok, strictEqual } from "node:assert/strict";
 import { invoke, waitForTitle, workspaceRoot } from "./_helpers.js";
@@ -26,31 +26,35 @@ const setPageWidth = (px) =>
     document.documentElement.style.setProperty("--pensee-editor-max-width", value);
   }, px);
 
-/** The front pane's outline: its rows, the marked one, and where it sits. */
-const outlineState = () =>
+/** The front pane's line: its segments, the marked one, the list if open. */
+const railState = () =>
   browser.execute(() => {
     const pane =
       document.querySelector("[data-column-tab][data-focused] [data-pane]") ??
       [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
     if (!pane) return null;
-    const nav = pane.querySelector('nav[aria-label="On this page"]');
-    const ticks = pane.querySelectorAll(".section-rail-tick").length;
-    if (!nav) return { shown: false, ticks };
+    const rail = pane.querySelector('nav[aria-label="On this page"]');
+    if (!rail) return { shown: false };
     const content = pane.querySelector(".cm-content");
     const c = content.getBoundingClientRect();
     const textRight = c.right - parseFloat(getComputedStyle(content).paddingRight);
-    const rows = [...nav.querySelectorAll(".section-outline-row")];
-    const active = nav.querySelector(".section-outline-row.is-active");
-    const marker = nav.querySelector(".section-outline-marker");
+    const r = rail.getBoundingClientRect();
+    const segments = [...rail.querySelectorAll(".section-rail-segment")].map((el) => {
+      const b = el.getBoundingClientRect();
+      return { label: el.getAttribute("aria-label"), top: b.top, height: b.height };
+    });
+    const active = rail.querySelector(".section-rail-segment[data-active]");
+    const rows = [...rail.querySelectorAll(".section-rail-row")].map((el) => el.textContent);
     return {
       shown: true,
-      ticks,
-      title: nav.querySelector(".section-outline-title")?.textContent,
-      rows: rows.map((row) => row.textContent),
-      active: active?.textContent ?? null,
-      gapToText: nav.getBoundingClientRect().left - textRight,
-      markerTop: marker?.getBoundingClientRect().top ?? null,
-      activeTop: active?.getBoundingClientRect().top ?? null,
+      railWidth: r.width,
+      railTop: r.top,
+      railBottom: r.bottom,
+      gapToText: r.left - textRight,
+      segments,
+      active: active?.getAttribute("aria-label") ?? null,
+      rows,
+      standingList: pane.querySelector(".section-outline-row") !== null,
     };
   });
 
@@ -71,54 +75,82 @@ describe("Journeys: outline", function () {
     );
   });
 
-  it("ED-20 with room beside the page, every heading stands listed under On this page", async function () {
-    await setPageWidth("280px");
-    await browser.waitUntil(async () => (await outlineState())?.shown, {
+  it("ED-20 a note with headings shows one line on the right, a segment per heading", async function () {
+    await browser.waitUntil(async () => (await railState())?.segments?.length === 8, {
       timeout: 5_000,
-      timeoutMsg: "the outline never opened with a wide margin",
+      timeoutMsg: "the line never drew a segment per heading",
     });
-    const state = await outlineState();
-    strictEqual(state.title, "On this page");
-    strictEqual(state.ticks, 0, "the ticks give way to the outline");
-    strictEqual(state.rows.length, 8, `every heading is a row: ${state.rows.join(" | ")}`);
-    strictEqual(state.rows[0], "Overview");
+    const state = await railState();
+    strictEqual(state.segments[0].label, "Overview");
     strictEqual(state.active, "Overview", "the first heading is marked at the top of the note");
-    ok(state.gapToText >= 40, `the outline keeps 40px off the text (got ${state.gapToText})`);
-    ok(Math.abs(state.markerTop - state.activeTop) < 1, "the marker sits on the marked row");
+    strictEqual(state.rows.length, 0, "the list stays closed until hovered");
+    ok(state.gapToText > 0, `the line covers no text (gap ${state.gapToText})`);
+    // Sections with a ### under them are longer, so their segment is longer.
+    const overview = state.segments[0].height;
+    const overviewDetails = state.segments[1].height;
+    ok(
+      overview > overviewDetails,
+      `a long section draws a longer segment (${overview} vs ${overviewDetails})`,
+    );
+    const last = state.segments[state.segments.length - 1];
+    ok(
+      Math.abs(last.top + last.height - state.railBottom) < 1.5,
+      "the segments fill the line to its end",
+    );
   });
 
-  it("ED-21 clicking a heading in On this page scrolls the note to it", async function () {
-    await setPageWidth("280px");
-    const scrolled = () =>
+  it("ED-21 hovering the line opens the list; clicking a heading scrolls the note to it", async function () {
+    const scrollTop = () =>
       browser.execute(() => {
         const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
-        const scroller = pane.querySelector('nav[aria-label="On this page"]').previousElementSibling
-          .firstElementChild;
-        return { scrollTop: scroller.scrollTop };
+        return pane.querySelector('nav[aria-label="On this page"]').previousElementSibling
+          .firstElementChild.scrollTop;
       });
-    const before = await scrolled();
+    const before = await scrollTop();
+    // moveTo sends no pointer events here: React's onMouseEnter is built from
+    // mouseover, so send that, coming from the page.
+    await browser.execute(() => {
+      const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
+      pane
+        .querySelector(".section-rail-segment")
+        .dispatchEvent(
+          new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body }),
+        );
+    });
+    await browser.waitUntil(async () => (await railState()).rows.length === 8, {
+      timeout: 5_000,
+      timeoutMsg: "hovering the line never opened the list",
+    });
     const row = await $('//nav[@aria-label="On this page"]//button[contains(., "Wrapping up")]');
-    await row.waitForExist({ timeout: 5_000 });
     await row.click();
     // The hidden e2e window runs no frames after a scroll, so CodeMirror may
     // never draw the heading's line, the mark can't move to the clicked row
     // (ED-24) and the landing keeps CodeMirror's height guess: check the jump.
-    await browser.waitUntil(async () => (await scrolled()).scrollTop > before.scrollTop + 1000, {
+    await browser.waitUntil(async () => (await scrollTop()) > before + 1000, {
       timeout: 10_000,
       timeoutMsg: "the note never scrolled down to the clicked heading",
     });
   });
 
-  it("ED-23 scrolling with the pointer over On this page scrolls the note", async function () {
-    await setPageWidth("280px");
-    await $('nav[aria-label="On this page"]').waitForExist({ timeout: 5_000 });
+  it("ED-22 the line stays a line at every page width; nothing stands in the margin", async function () {
+    for (const width of ["280px", "1000px"]) {
+      await setPageWidth(width);
+      const state = await railState();
+      ok(state.shown, `the line shows at page width ${width}`);
+      strictEqual(state.segments.length, 8);
+      strictEqual(state.standingList, false, `no standing list at page width ${width}`);
+      ok(state.railWidth <= 24, `the line keeps to the edge (${state.railWidth}px)`);
+    }
+  });
+
+  it("ED-23 scrolling with the pointer over the line scrolls the note", async function () {
     const scrolled = await browser.execute(() => {
       const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
-      const nav = pane.querySelector('nav[aria-label="On this page"]');
-      const scroller = nav.previousElementSibling.firstElementChild;
+      const rail = pane.querySelector('nav[aria-label="On this page"]');
+      const scroller = rail.previousElementSibling.firstElementChild;
       scroller.scrollTop = 0;
       const before = scroller.scrollTop;
-      nav.dispatchEvent(new WheelEvent("wheel", { deltaY: 300, bubbles: true, cancelable: true }));
+      rail.dispatchEvent(new WheelEvent("wheel", { deltaY: 300, bubbles: true, cancelable: true }));
       return { before, after: scroller.scrollTop };
     });
     ok(
@@ -127,17 +159,7 @@ describe("Journeys: outline", function () {
     );
   });
 
-  it("ED-22 without room beside the page, the outline folds back into ticks", async function () {
-    await setPageWidth("1000px");
-    await browser.waitUntil(async () => (await outlineState())?.shown === false, {
-      timeout: 5_000,
-      timeoutMsg: "the outline stayed open with no margin for it",
-    });
-    const state = await outlineState();
-    strictEqual(state.ticks, 8, "one tick per heading");
-  });
-
-  it("ED-25 in a video note, On this page starts under the video, beside the text", async function () {
+  it("ED-25 in a video note, the line starts under the video", async function () {
     // The seeded video note, given headings before it opens (a fresh vault per
     // spec file, so no other journey sees them).
     const root = await workspaceRoot();
@@ -151,33 +173,27 @@ describe("Journeys: outline", function () {
     });
     ok(wrote.ok, `write_file failed: ${wrote.error}`);
     await openViaSearch("Speech talk");
-    await setPageWidth("280px");
     const place = () =>
       browser.execute(() => {
         const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
-        const nav = pane?.querySelector('nav[aria-label="On this page"]');
+        const rail = pane?.querySelector('nav[aria-label="On this page"]');
         const band = pane?.querySelector(".video-band");
-        if (!nav || !band) return null;
-        const n = nav.getBoundingClientRect();
-        const b = band.getBoundingClientRect();
-        const scroller = band.parentElement;
+        if (!rail || !band) return null;
         return {
-          navTop: n.top,
-          navBottom: n.bottom,
-          bandBottom: b.bottom,
-          scroller: scroller.scrollTop,
+          railTop: rail.getBoundingClientRect().top,
+          bandBottom: band.getBoundingClientRect().bottom,
         };
       });
     await browser.waitUntil(async () => (await place()) !== null, {
       timeout: 15_000,
-      timeoutMsg: "no outline beside the video note",
+      timeoutMsg: "no line beside the video note",
     });
     let state = await place();
     ok(
-      state.navTop >= state.bandBottom,
-      `the outline starts under the video (${state.navTop} < ${state.bandBottom})`,
+      state.railTop >= state.bandBottom,
+      `the line starts under the video (${state.railTop} < ${state.bandBottom})`,
     );
-    // Scrolled to the bottom, the band sticks at the top and the outline sits
+    // Scrolled to the bottom, the band sticks at the top and the line starts
     // under it still.
     await browser.execute(() => {
       const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
@@ -187,8 +203,8 @@ describe("Journeys: outline", function () {
     });
     state = await place();
     ok(
-      state.navTop >= state.bandBottom,
-      `stuck band: the outline starts under it (${state.navTop} < ${state.bandBottom})`,
+      state.railTop >= state.bandBottom,
+      `stuck band: the line starts under it (${state.railTop} < ${state.bandBottom})`,
     );
   });
 });

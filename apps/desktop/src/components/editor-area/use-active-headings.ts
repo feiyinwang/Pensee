@@ -20,6 +20,19 @@ export interface ActiveHeadings {
   pin: (index: number) => void;
 }
 
+/** The reading line's screen y. Headings near the end of a note can never
+ *  scroll up to it, so once the note is scrolled to its end the line drops to
+ *  the pane's bottom: the last heading in view is the one being read. A note
+ *  too short to scroll keeps the reading line. */
+export function readingLineY(scroller: HTMLElement): number {
+  const scrollerRect = scroller.getBoundingClientRect();
+  const scrollable = scroller.scrollHeight > scroller.clientHeight;
+  const atEnd =
+    scrollable &&
+    scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - AT_END_SLACK_PX;
+  return atEnd ? scrollerRect.bottom : scrollerRect.top + scroller.clientHeight * READING_LINE;
+}
+
 function computeActiveIndex(
   view: EditorView,
   scroller: HTMLElement,
@@ -27,18 +40,7 @@ function computeActiveIndex(
 ): number | null {
   if (headings.length === 0) return null;
   const docLen = view.state.doc.length;
-  const scrollerRect = scroller.getBoundingClientRect();
-  // Headings near the end of a note can never scroll up to the reading line,
-  // so once the note is scrolled to its end the line drops to the pane's
-  // bottom: the last heading in view is the one being read. A note too short
-  // to scroll keeps the reading line.
-  const scrollable = scroller.scrollHeight > scroller.clientHeight;
-  const atEnd =
-    scrollable &&
-    scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - AT_END_SLACK_PX;
-  const threshold = atEnd
-    ? scrollerRect.bottom
-    : scrollerRect.top + scroller.clientHeight * READING_LINE;
+  const threshold = readingLineY(scroller);
 
   let activeIndex: number | null = null;
   for (let i = 0; i < headings.length; i++) {

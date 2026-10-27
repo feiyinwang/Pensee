@@ -1,41 +1,38 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type RefObject,
-} from "react";
-import { flushSync } from "react-dom";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { EditorView } from "@codemirror/view";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useDocumentHeadings, type DocumentHeading } from "@/hooks/use-document-headings";
 import { ScrollFade } from "@/components/scroll-fade";
 import { SurfaceCard } from "@/components/surface-card";
-import { useActiveHeadings } from "./use-active-headings";
+import { readingLineY, useActiveHeadings } from "./use-active-headings";
 import { useEscKey } from "./use-esc-key";
 import { useMountTransition } from "./use-mount-transition";
 import { showNativeContextMenu } from "./editor-context-menu";
 import { EDITOR_SCROLLBAR_GUTTER } from "./editor-scroll-container";
 import { scrollPosToSafeTop } from "./editor-scroll";
 import {
-  TICK_INACTIVE_SCALE,
-  TICK_MAX_WIDTH,
-  OUTLINE_EDGE_INSET,
+  SEGMENT_MIN,
+  dotOffset,
   indentForDepth,
   nextWindowStart,
-  outlineWidthForRoom,
-  tickWidthForDepth,
+  rowTops,
+  segmentLayout,
 } from "./section-rail-depth";
 import "./section-rail.css";
 
-const TICK_HEIGHT = 1;
-const TICK_GAP = 6;
-const RAIL_EDGE_INSET = 12;
-const RAIL_INNER_WIDTH = TICK_MAX_WIDTH + 2;
-const RAIL_ZONE_WIDTH = RAIL_EDGE_INSET + RAIL_INNER_WIDTH;
+// The hover zone is wider than the 2px line so it can be found; the line runs
+// down its middle.
+const RAIL_ZONE_WIDTH = 20;
+const RAIL_EDGE_INSET = 4;
+const RAIL_BOTTOM_INSET = 48;
+const RAIL_BAND_GAP = 24;
 const POPOVER_WIDTH = 260;
-const POPOVER_EDGE_INSET = RAIL_EDGE_INSET;
+const POPOVER_PAD_Y = 8;
+const ROW_HEIGHT = 24;
+// Each row's text centre sits on the middle of its segment's first SEGMENT_MIN.
+const POPOVER_OFFSET = -(POPOVER_PAD_Y + ROW_HEIGHT / 2) + SEGMENT_MIN / 2;
+// Passing over the line on the way to the scrollbar must not flash the list.
+const OPEN_DELAY_MS = 100;
 // Matches --motion-base in section-rail.css / App.css.
 const POPOVER_TRANSITION_MS = 160;
 
@@ -43,7 +40,7 @@ interface SectionRailProps {
   filePath: string;
   view: EditorView | null;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
-  /** Where the page header starts, so the standing outline lines up with it. */
+  /** Where the page header starts, so the line starts level with it. */
   outlineTop: number;
 }
 
@@ -69,53 +66,121 @@ function handleContextMenu(event: React.MouseEvent, heading: DocumentHeading) {
   );
 }
 
-// The margin right of the text column decides the rail's form. It is read off
-// `.cm-content` itself (its box minus its right padding is the text column), so
-// every page-width preset, tab column and window size lands without a table of
-// breakpoints. The observer watches the content box too: a preset change moves
-// the padding without resizing the scroller.
-function useOutlineWidth(
-  view: EditorView | null,
+// A video note's band (video-player.tsx) is sticky over the note's top, with
+// the transcript beside the video. The line starts under it, so it never
+// covers the video or takes the transcript's wheel; as the band scrolls up to
+// stick, the line rides up with it. Written to the node's style, not state: it
+// follows every scroll frame.
+function useRailTop(
+  railRef: RefObject<HTMLElement | null>,
   scrollContainerRef: RefObject<HTMLDivElement | null>,
-): number | null {
-  const [width, setWidth] = useState<number | null>(null);
-  useEffect(() => {
+  top: number,
+  mounted: boolean,
+) {
+  useLayoutEffect(() => {
+    const rail = railRef.current;
     const scroller = scrollContainerRef.current;
-    if (!view || !scroller) return;
-    const content = view.contentDOM;
-    const gutter = parseFloat(EDITOR_SCROLLBAR_GUTTER);
+    const pane = rail?.offsetParent;
+    if (!rail || !scroller || !pane) return;
+    let band: Element | null = null;
+    let applied = -1;
+    const place = () => {
+      const bandBottom = band
+        ? band.getBoundingClientRect().bottom - pane.getBoundingClientRect().top + RAIL_BAND_GAP
+        : 0;
+      const next = Math.round(Math.max(top, bandBottom));
+      if (next === applied) return;
+      applied = next;
+      rail.style.top = `${next}px`;
+      rail.style.height = `calc(100% - ${next + RAIL_BOTTOM_INSET}px)`;
+    };
+    const resize = new ResizeObserver(place);
+    // The band mounts once its player page answers, and goes with the link.
+    const findBand = () => {
+      const found = scroller.querySelector(":scope > .video-band");
+      if (found === band) return;
+      if (band) resize.unobserve(band);
+      band = found;
+      if (band) resize.observe(band);
+      place();
+    };
+    const children = new MutationObserver(findBand);
+    children.observe(scroller, { childList: true });
+    resize.observe(scroller);
+    scroller.addEventListener("scroll", place, { passive: true });
+    findBand();
+    place();
+    return () => {
+      children.disconnect();
+      resize.disconnect();
+      scroller.removeEventListener("scroll", place);
+    };
+  }, [railRef, scrollContainerRef, top, mounted]);
+}
+
+// The line's length on screen. It changes only when the pane's height does
+// (a window resize, a video band), never on a pinch or a re-wrap, so a pinch
+// across twenty tabs redraws no line. A pane hidden behind another tab keeps
+// its last length instead of measuring 0.
+function useTrackLength(railRef: RefObject<HTMLElement | null>, mounted: boolean): number {
+  const [track, setTrack] = useState(0);
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
     const measure = () => {
-      const contentRect = content.getBoundingClientRect();
-      const textRight = contentRect.right - parseFloat(getComputedStyle(content).paddingRight);
-      const next = outlineWidthForRoom(scroller.getBoundingClientRect().right - gutter - textRight);
-      // In this frame: a pinch between one tab and the columns resizes the
-      // pane, and the rail must not stand a frame in the old form.
-      flushSync(() => setWidth(next));
+      const next = rail.clientHeight;
+      if (next > 0) setTrack(next);
     };
     const observer = new ResizeObserver(measure);
-    observer.observe(scroller);
-    observer.observe(content);
+    observer.observe(rail);
+    measure();
     return () => observer.disconnect();
-  }, [view, scrollContainerRef]);
-  return view ? width : null;
+  }, [railRef, mounted]);
+  return track;
+}
+
+// A section's length is its characters, from its heading to the next. Unlike
+// rendered pixels, that does not move when the text re-wraps, so the line
+// never has to be re-measured while you type or pinch. A board or image counts
+// for its markdown, not its height.
+function sectionSizes(headings: DocumentHeading[], docLength: number): number[] {
+  return headings.map((heading, i) => (headings[i + 1]?.pos ?? docLength) - heading.pos);
 }
 
 export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: SectionRailProps) {
   const headings = useDocumentHeadings(filePath);
   const { activeIndex, pin } = useActiveHeadings(view, scrollContainerRef, headings);
-  const outlineWidth = useOutlineWidth(view, scrollContainerRef);
   const [isOpen, setIsOpen] = useState(false);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const { shouldRender, phase } = useMountTransition(isOpen, POPOVER_TRANSITION_MS);
   useEscKey(isOpen, () => setIsOpen(false));
 
-  const railZoneRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const dotRef = useRef<HTMLSpanElement>(null);
+  const openTimerRef = useRef(0);
+
+  const mounted = headings.length > 0;
+  const track = useTrackLength(railRef, mounted);
+  useRailTop(railRef, scrollContainerRef, outlineTop, mounted);
+
+  // Headings are parsed from the file's text, so the last section runs to that
+  // text's end: the last heading's line plus whatever follows it.
+  const docLength = view ? view.state.doc.length : 0;
+  const sizes = sectionSizes(
+    headings,
+    Math.max(docLength, headings[headings.length - 1]?.pos ?? 0),
+  );
+  const segments = view ? segmentLayout(sizes, track) : [];
+  const rows = rowTops(segments, ROW_HEIGHT);
+  const listHeight = rows.length > 0 ? rows[rows.length - 1] + ROW_HEIGHT : 0;
 
   const maxDepth = headings.reduce((max, heading) => Math.max(max, heading.depth), 0);
   const activeDepth = activeIndex === null ? null : (headings[activeIndex]?.depth ?? null);
   const [windowStart, setWindowStart] = useState(0);
   // Indentation only transitions once a frame has been painted at the current
-  // window. Without this, opening the popover (or switching files) replays the
+  // window. Without this, opening the list (or switching files) replays the
   // slide as an entrance animation and the titles visibly skate sideways.
   const [animateIndent, setAnimateIndent] = useState(false);
 
@@ -142,148 +207,166 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
     };
   }, [shouldRender, filePath]);
 
-  // Move-between rail and popover keeps the popover open; leaving to
-  // anywhere else closes. Crucial because the popover overlaps the rail
-  // x-range — we still need an explicit relatedTarget check to bridge.
-  const handleRailLeave = (event: React.MouseEvent<HTMLDivElement>) => {
-    const next = event.relatedTarget;
-    if (next instanceof Node && popoverRef.current?.contains(next)) return;
-    setIsOpen(false);
+  // The dot is where you are reading: it follows every scroll frame, so it is
+  // written to the node's style, not state.
+  const segmentTop = activeIndex === null ? undefined : segments[activeIndex]?.top;
+  const segmentHeight = activeIndex === null ? undefined : segments[activeIndex]?.height;
+  useEffect(() => {
+    const scroller = scrollContainerRef.current;
+    const dot = dotRef.current;
+    if (!view || !scroller || !dot || activeIndex === null) return;
+    if (segmentTop === undefined || segmentHeight === undefined) return;
+    const segment = { top: segmentTop, height: segmentHeight };
+    const start = headings[activeIndex].pos;
+    const stop = headings[activeIndex + 1]?.pos;
+    let frame = 0;
+    // Inside the marked section the dot follows rendered pixels, read from
+    // CodeMirror's height map, so it moves evenly past images and boards.
+    const place = () => {
+      frame = 0;
+      const docLen = view.state.doc.length;
+      const top = view.lineBlockAt(Math.min(start, docLen)).top;
+      const bottom =
+        stop === undefined
+          ? view.lineBlockAt(docLen).bottom
+          : view.lineBlockAt(Math.min(stop, docLen)).top;
+      const readingY = readingLineY(scroller) - view.documentTop;
+      dot.style.transform = `translateY(${dotOffset(segment, top, bottom, readingY)}px)`;
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    // Placed on the next frame, not inside the render that moved it.
+    schedule();
+    scroller.addEventListener("scroll", schedule, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      scroller.removeEventListener("scroll", schedule);
+    };
+  }, [view, scrollContainerRef, headings, activeIndex, segmentTop, segmentHeight]);
+
+  // A list taller than the pane opens with the marked row in view. Set by
+  // hand, not scrollIntoView, which would also scroll the tab strip to a
+  // column that is off to the side.
+  const activeRowTop = activeIndex === null ? undefined : rows[activeIndex];
+  useLayoutEffect(() => {
+    const list = listScrollRef.current;
+    if (!list || activeRowTop === undefined) return;
+    if (activeRowTop < list.scrollTop) list.scrollTop = activeRowTop;
+    else if (activeRowTop + ROW_HEIGHT > list.scrollTop + list.clientHeight) {
+      list.scrollTop = activeRowTop + ROW_HEIGHT - list.clientHeight;
+    }
+  }, [activeRowTop, shouldRender]);
+
+  useEffect(() => () => window.clearTimeout(openTimerRef.current), []);
+
+  const openSoon = () => {
+    window.clearTimeout(openTimerRef.current);
+    openTimerRef.current = window.setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
   };
 
-  const handlePopoverLeave = (event: React.MouseEvent<HTMLDivElement>) => {
-    const next = event.relatedTarget;
-    if (next instanceof Node && railZoneRef.current?.contains(next)) return;
+  const close = () => {
+    window.clearTimeout(openTimerRef.current);
     setIsOpen(false);
+    setHoverIndex(null);
   };
 
-  const handleTickClick = (heading: DocumentHeading) => {
+  // The line stands in the margin people scroll from, so a wheel over it
+  // scrolls the note. The open list keeps its own wheel: it can be taller
+  // than the pane.
+  const handleWheel = (event: React.WheelEvent) => {
+    if (event.target instanceof Node && popoverRef.current?.contains(event.target)) return;
+    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+    scrollContainerRef.current?.scrollBy({
+      top: event.deltaY * scale,
+      left: event.deltaX * scale,
+    });
+  };
+
+  const handlePick = (heading: DocumentHeading) => {
     const scroller = scrollContainerRef.current;
     if (!view || !scroller) return;
     scrollPosToSafeTop(view, scroller, heading.pos, "auto");
     pin(headings.indexOf(heading));
+    close();
   };
 
   if (headings.length === 0) return null;
 
-  if (outlineWidth !== null) {
-    return (
-      <SectionOutline
-        filePath={filePath}
-        headings={headings}
-        activeIndex={activeIndex}
-        windowStart={windowStart}
-        width={outlineWidth}
-        top={outlineTop}
-        scrollContainerRef={scrollContainerRef}
-        onPick={handleTickClick}
-      />
-    );
-  }
-
-  const tickStackHeight =
-    headings.length * TICK_HEIGHT + Math.max(0, headings.length - 1) * TICK_GAP;
-
   return (
-    <div
-      className="pointer-events-none absolute inset-y-0 z-20"
+    <nav
+      ref={railRef}
+      className="section-rail absolute z-20"
+      aria-label="On this page"
       style={{
-        right: EDITOR_SCROLLBAR_GUTTER,
-        width: POPOVER_EDGE_INSET + POPOVER_WIDTH,
+        right: `calc(${EDITOR_SCROLLBAR_GUTTER} + ${RAIL_EDGE_INSET}px)`,
+        width: RAIL_ZONE_WIDTH,
       }}
+      onMouseEnter={openSoon}
+      onMouseLeave={close}
+      onWheel={handleWheel}
     >
-      <div
-        ref={railZoneRef}
-        className="pointer-events-auto absolute right-0 top-1/2 -translate-y-1/2"
-        style={{ width: RAIL_ZONE_WIDTH, height: tickStackHeight }}
-        onMouseEnter={() => setIsOpen(true)}
-        onMouseLeave={handleRailLeave}
-      >
-        <ScrollFade
-          alwaysFade
-          fadeSize="48px"
-          className="pointer-events-none absolute left-0 right-0 top-1/2 h-[70vh] -translate-y-1/2 overflow-hidden"
-        >
-          <nav
-            className="section-rail-ticks absolute top-1/2 flex flex-col items-end"
-            data-open={isOpen ? "true" : "false"}
-            style={{
-              right: RAIL_EDGE_INSET,
-              width: RAIL_INNER_WIDTH,
-              gap: TICK_GAP,
-              color: "var(--text-primary, currentColor)",
-              pointerEvents: "none",
-            }}
-            aria-label="Document sections"
-          >
-            {headings.map((heading, i) => {
-              const isActive = i === activeIndex;
-              const tickStyle: CSSProperties = {
-                width: tickWidthForDepth(heading.depth),
-                height: TICK_HEIGHT,
-                background: "currentColor",
-                opacity: isActive ? 1 : 0.35,
-                transform: isActive ? "scaleX(1)" : `scaleX(${TICK_INACTIVE_SCALE})`,
-                transition:
-                  "transform var(--motion-base) var(--ease-out), opacity var(--motion-base) var(--ease-out), width var(--motion-base) var(--ease-out)",
-                pointerEvents: "auto",
-              };
-              return (
-                <button
-                  key={`${heading.line}-${i}`}
-                  type="button"
-                  className="section-rail-tick block cursor-default border-0 bg-transparent p-0"
-                  style={tickStyle}
-                  title={heading.text}
-                  aria-label={heading.text}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleTickClick(heading)}
-                  onContextMenu={(event) => handleContextMenu(event, heading)}
-                />
-              );
-            })}
-          </nav>
-        </ScrollFade>
-      </div>
+      {segments.map((segment, i) => {
+        const heading = headings[i];
+        return (
+          <button
+            key={`${heading.line}-${i}`}
+            type="button"
+            className="section-rail-segment"
+            data-active={i === activeIndex ? "true" : undefined}
+            data-hover={i === hoverIndex ? "true" : undefined}
+            aria-current={i === activeIndex ? "location" : undefined}
+            aria-label={heading.text}
+            style={{ top: segment.top, height: segment.height }}
+            onMouseDown={(event) => event.preventDefault()}
+            onMouseEnter={() => setHoverIndex(i)}
+            onClick={() => handlePick(heading)}
+            onContextMenu={(event) => handleContextMenu(event, heading)}
+          />
+        );
+      })}
+      {segments.length > 0 && <span ref={dotRef} aria-hidden="true" className="section-rail-dot" />}
 
       {shouldRender && (
         <SurfaceCard
           ref={popoverRef}
-          className="section-rail-popover pointer-events-auto absolute overflow-hidden"
+          className="section-rail-popover absolute flex flex-col overflow-hidden"
           data-state={phase}
           style={{
-            top: "50%",
-            right: POPOVER_EDGE_INSET,
+            top: POPOVER_OFFSET,
+            right: RAIL_ZONE_WIDTH,
             width: POPOVER_WIDTH,
+            maxHeight: `calc(100% + ${POPOVER_PAD_Y * 2}px)`,
           }}
-          onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={handlePopoverLeave}
         >
           <ScrollFade
+            ref={listScrollRef}
             axis="vertical"
             fadeSize="20px"
-            className="scrollbar-none max-h-[70vh] overflow-y-auto px-4 py-3"
+            className="scrollbar-none min-h-0 overflow-y-auto"
+            style={{ padding: `${POPOVER_PAD_Y}px 0` }}
           >
-            <ul className="flex flex-col" style={{ gap: 4 }}>
+            <ul className="relative" style={{ height: listHeight }}>
               {headings.map((heading, i) => {
-                const isActive = i === activeIndex;
+                const top = rows[i];
+                if (top === undefined) return null;
                 return (
                   <li key={`${heading.line}-${i}`}>
                     <button
                       type="button"
-                      className={`section-rail-popover-row block w-full cursor-default truncate border-0 bg-transparent p-0 text-left${
-                        isActive ? " is-active" : ""
+                      className={`section-rail-row${i === activeIndex ? " is-active" : ""}${
+                        i === hoverIndex ? " is-hover" : ""
                       }`}
                       data-animate={animateIndent ? "true" : "false"}
                       title={heading.text}
                       style={{
-                        fontSize: "var(--text-label)",
-                        letterSpacing: "-0.01em",
-                        lineHeight: 1.5,
-                        paddingLeft: indentForDepth(heading.depth, windowStart),
+                        top,
+                        height: ROW_HEIGHT,
+                        paddingLeft: 16 + indentForDepth(heading.depth, windowStart),
                       }}
                       onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => handleTickClick(heading)}
+                      onMouseEnter={() => setHoverIndex(i)}
+                      onClick={() => handlePick(heading)}
                       onContextMenu={(event) => handleContextMenu(event, heading)}
                     >
                       {heading.text}
@@ -295,200 +378,6 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
           </ScrollFade>
         </SurfaceCard>
       )}
-    </div>
-  );
-}
-
-interface SectionOutlineProps {
-  filePath: string;
-  headings: DocumentHeading[];
-  activeIndex: number | null;
-  windowStart: number;
-  width: number;
-  top: number;
-  scrollContainerRef: RefObject<HTMLDivElement | null>;
-  onPick: (heading: DocumentHeading) => void;
-}
-
-const OUTLINE_BOTTOM_INSET = 48;
-const OUTLINE_ROW_INSET = 14;
-const OUTLINE_LIST_FADE = 20;
-const OUTLINE_BAND_GAP = 24;
-
-// A video note's band (video-player.tsx) is sticky over the note's top, with
-// the transcript beside the video. The outline starts under it, next to the
-// text, so it never covers the video or takes the transcript's wheel; as the
-// band scrolls up to stick, the outline rides up with it. Written to the
-// node's style, not state: it follows every scroll frame.
-function useOutlineTop(
-  navRef: RefObject<HTMLElement | null>,
-  scrollContainerRef: RefObject<HTMLDivElement | null>,
-  top: number,
-) {
-  useLayoutEffect(() => {
-    const nav = navRef.current;
-    const scroller = scrollContainerRef.current;
-    const pane = nav?.offsetParent;
-    if (!nav || !scroller || !pane) return;
-    let band: Element | null = null;
-    let applied = -1;
-    const place = () => {
-      const bandBottom = band
-        ? band.getBoundingClientRect().bottom - pane.getBoundingClientRect().top + OUTLINE_BAND_GAP
-        : 0;
-      const next = Math.round(Math.max(top, bandBottom));
-      if (next === applied) return;
-      applied = next;
-      nav.style.top = `${next}px`;
-      nav.style.maxHeight = `calc(100% - ${next + OUTLINE_BOTTOM_INSET}px)`;
-    };
-    const resize = new ResizeObserver(place);
-    // The band mounts once its player page answers, and goes with the link.
-    const findBand = () => {
-      const found = scroller.querySelector(":scope > .video-band");
-      if (found === band) return;
-      if (band) resize.unobserve(band);
-      band = found;
-      if (band) resize.observe(band);
-      place();
-    };
-    const children = new MutationObserver(findBand);
-    children.observe(scroller, { childList: true });
-    resize.observe(scroller);
-    scroller.addEventListener("scroll", place, { passive: true });
-    findBand();
-    place();
-    return () => {
-      children.disconnect();
-      resize.disconnect();
-      scroller.removeEventListener("scroll", place);
-    };
-  }, [navRef, scrollContainerRef, top]);
-}
-
-// The rail opened up: every heading readable at rest, the one in view marked on
-// a hairline. Rows wrap to two lines rather than truncate — a standing outline
-// is read, not skimmed for a target the way the hover popover is.
-function SectionOutline({
-  filePath,
-  headings,
-  activeIndex,
-  windowStart,
-  width,
-  top,
-  scrollContainerRef,
-  onPick,
-}: SectionOutlineProps) {
-  const navRef = useRef<HTMLElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-  const listScrollRef = useRef<HTMLDivElement>(null);
-  const [marker, setMarker] = useState<{ top: number; height: number } | null>(null);
-  // The marker slides between rows only after it has been painted once at the
-  // current file, so opening a file or widening the window never replays a
-  // slide down from the first row.
-  const [animateMarker, setAnimateMarker] = useState(false);
-
-  // Rows wrap, so the marker reads the active row's real box. Width, indent
-  // and heading text all change the wrap, hence the deps.
-  useLayoutEffect(() => {
-    const row =
-      activeIndex === null
-        ? null
-        : listRef.current?.querySelector<HTMLElement>(`[data-outline-index="${activeIndex}"]`);
-    setMarker(row ? { top: row.offsetTop, height: row.offsetHeight } : null);
-  }, [activeIndex, headings, width, windowStart]);
-
-  // Keep the active row inside the list when the outline is taller than the
-  // pane. Set by hand, not scrollIntoView, which would also scroll the tab
-  // strip to a column that is off to the side. Instant: scrolling the note is
-  // the motion the user is watching.
-  useEffect(() => {
-    const list = listScrollRef.current;
-    if (!list || !marker) return;
-    if (marker.top - OUTLINE_LIST_FADE < list.scrollTop) {
-      list.scrollTop = marker.top - OUTLINE_LIST_FADE;
-    } else if (
-      marker.top + marker.height + OUTLINE_LIST_FADE >
-      list.scrollTop + list.clientHeight
-    ) {
-      list.scrollTop = marker.top + marker.height + OUTLINE_LIST_FADE - list.clientHeight;
-    }
-  }, [marker]);
-
-  // The outline stands where the note's margin is, so a wheel over it scrolls
-  // the note, as it would over the empty margin. The list itself never takes
-  // the wheel: it follows the note instead.
-  const handleWheel = (event: React.WheelEvent) => {
-    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
-    scrollContainerRef.current?.scrollBy({
-      top: event.deltaY * scale,
-      left: event.deltaX * scale,
-    });
-  };
-
-  useOutlineTop(navRef, scrollContainerRef, top);
-
-  // A new width rewraps the rows under the marker: it jumps with them, before
-  // paint, instead of sliding.
-  useLayoutEffect(() => {
-    setAnimateMarker(false);
-    let inner = 0;
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setAnimateMarker(true));
-    });
-    return () => {
-      cancelAnimationFrame(outer);
-      if (inner) cancelAnimationFrame(inner);
-    };
-  }, [filePath, width]);
-
-  return (
-    <nav
-      ref={navRef}
-      className="section-outline absolute z-20 flex flex-col"
-      aria-label="On this page"
-      style={{
-        right: `calc(${EDITOR_SCROLLBAR_GUTTER} + ${OUTLINE_EDGE_INSET}px)`,
-        width,
-      }}
-      onWheel={handleWheel}
-    >
-      <div className="section-outline-title">On this page</div>
-      <ScrollFade
-        axis="vertical"
-        fadeSize="20px"
-        className="scrollbar-none min-h-0 overflow-y-auto"
-      >
-        <ul ref={listRef} className="section-outline-list">
-          {marker && (
-            <li
-              aria-hidden="true"
-              className="section-outline-marker"
-              data-animate={animateMarker ? "true" : "false"}
-              style={{ transform: `translateY(${marker.top}px) scaleY(${marker.height})` }}
-            />
-          )}
-          {headings.map((heading, i) => (
-            <li key={`${heading.line}-${i}`}>
-              <button
-                type="button"
-                data-outline-index={i}
-                className={`section-outline-row${i === activeIndex ? " is-active" : ""}`}
-                aria-current={i === activeIndex ? "location" : undefined}
-                title={heading.text}
-                style={{
-                  paddingLeft: OUTLINE_ROW_INSET + indentForDepth(heading.depth, windowStart),
-                }}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => onPick(heading)}
-                onContextMenu={(event) => handleContextMenu(event, heading)}
-              >
-                <span className="section-outline-label">{heading.text}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </ScrollFade>
     </nav>
   );
 }

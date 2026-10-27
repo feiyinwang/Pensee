@@ -9,6 +9,7 @@
 
 ## Done
 
+- Section rail as one line on the right edge: a segment per heading sized by its section, hover opens the list; replaces the ticks and the standing outline. Spec: [SPECs/section-indicators-spec.md](./SPECs/section-indicators-spec.md)
 - Talk notes: Record in a note, the pen asks before each new topic, live Pele diagrams drawn with Arc, Whisper on the Mac (ElevenLabs optional), audio + transcript in the note, Continue, Recordings space. Spec: [SPECs/talk-notes-spec.md](./SPECs/talk-notes-spec.md)
   - [x] 1. Pele + Arc for mermaid blocks
   - [x] 2. Record to Recordings/ and the audio embed

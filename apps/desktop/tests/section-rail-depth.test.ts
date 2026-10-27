@@ -2,16 +2,13 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   DEPTH_WINDOW,
   INDENT_STEP,
-  OUTLINE_EDGE_INSET,
-  OUTLINE_MAX_WIDTH,
-  OUTLINE_MIN_WIDTH,
-  OUTLINE_TEXT_GAP,
-  TICK_MAX_WIDTH,
-  TICK_WIDTH_BY_DEPTH,
+  SEGMENT_GAP,
+  SEGMENT_MIN,
+  dotOffset,
   indentForDepth,
   nextWindowStart,
-  outlineWidthForRoom,
-  tickWidthForDepth,
+  rowTops,
+  segmentLayout,
 } from "../src/components/editor-area/section-rail-depth";
 
 describe("indentForDepth", () => {
@@ -69,39 +66,74 @@ describe("nextWindowStart", () => {
   });
 });
 
-describe("tickWidthForDepth", () => {
-  test("shallower headings get wider ticks", () => {
-    const widths = [0, 1, 2, 3, 4, 5].map(tickWidthForDepth);
-    expect(widths).toEqual(TICK_WIDTH_BY_DEPTH);
-    for (let i = 1; i < widths.length; i++) expect(widths[i]).toBeLessThan(widths[i - 1]);
+describe("segmentLayout", () => {
+  const ends = (segs: { top: number; height: number }[]) =>
+    segs[segs.length - 1].top + segs[segs.length - 1].height;
+
+  test("fills the track exactly, with a gap between segments", () => {
+    const segs = segmentLayout([100, 300, 600], 400);
+    expect(ends(segs)).toBeCloseTo(400);
+    expect(segs[1].top - (segs[0].top + segs[0].height)).toBe(SEGMENT_GAP);
   });
 
-  test("never exceeds the pre-existing 20px rail width", () => {
-    expect(TICK_MAX_WIDTH).toBe(20);
-    for (const depth of [0, 1, 2, 3, 4, 5, 6, 20]) {
-      expect(tickWidthForDepth(depth)).toBeLessThanOrEqual(TICK_MAX_WIDTH);
-    }
+  test("a longer section gets a longer segment", () => {
+    const [a, b, c] = segmentLayout([100, 300, 600], 400);
+    expect(a.height).toBeLessThan(b.height);
+    expect(b.height).toBeLessThan(c.height);
   });
 
-  test("clamps past the end of the table instead of returning undefined", () => {
-    expect(tickWidthForDepth(99)).toBe(TICK_WIDTH_BY_DEPTH[TICK_WIDTH_BY_DEPTH.length - 1]);
+  test("a one-line section still gets a segment you can hover", () => {
+    const segs = segmentLayout([1, 100_000], 400);
+    expect(segs[0].height).toBeGreaterThanOrEqual(SEGMENT_MIN);
+  });
+
+  test("more headings than fit shrink the gaps and minimum instead of overflowing", () => {
+    const segs = segmentLayout(
+      Array.from({ length: 100 }, () => 10),
+      300,
+    );
+    expect(ends(segs)).toBeCloseTo(300);
+    for (const seg of segs) expect(seg.height).toBeGreaterThan(0);
+  });
+
+  test("no headings or no room lays out nothing", () => {
+    expect(segmentLayout([], 400)).toEqual([]);
+    expect(segmentLayout([10], 0)).toEqual([]);
   });
 });
 
-describe("outlineWidthForRoom", () => {
-  const chrome = OUTLINE_TEXT_GAP + OUTLINE_EDGE_INSET;
+describe("dotOffset", () => {
+  const segment = { top: 100, height: 40 };
 
-  test("keeps the ticks when the margin cannot fit the narrowest outline", () => {
-    expect(outlineWidthForRoom(chrome + OUTLINE_MIN_WIDTH - 1)).toBeNull();
-    expect(outlineWidthForRoom(0)).toBeNull();
+  test("maps the reading line's place in its section onto that segment", () => {
+    expect(dotOffset(segment, 1000, 2000, 1500)).toBe(120);
   });
 
-  test("opens at the narrowest width as soon as it fits", () => {
-    expect(outlineWidthForRoom(chrome + OUTLINE_MIN_WIDTH)).toBe(OUTLINE_MIN_WIDTH);
+  test("stays inside the marked segment when the reading line is elsewhere (a pinned click)", () => {
+    expect(dotOffset(segment, 1000, 2000, 100)).toBe(100);
+    expect(dotOffset(segment, 1000, 2000, 9000)).toBe(140);
   });
 
-  test("grows with the margin, then stops at the widest width", () => {
-    expect(outlineWidthForRoom(chrome + 210.7)).toBe(210);
-    expect(outlineWidthForRoom(chrome + 900)).toBe(OUTLINE_MAX_WIDTH);
+  test("an empty section puts the dot at its segment's start", () => {
+    expect(dotOffset(segment, 1000, 1000, 1000)).toBe(100);
+  });
+});
+
+describe("rowTops", () => {
+  test("rows sit level with their segments when there is room", () => {
+    const segs = [
+      { top: 0, height: 50 },
+      { top: 54, height: 50 },
+    ];
+    expect(rowTops(segs, 24)).toEqual([0, 54]);
+  });
+
+  test("short segments push the rows under them down so rows never overlap", () => {
+    const segs = [
+      { top: 0, height: 6 },
+      { top: 10, height: 6 },
+      { top: 100, height: 6 },
+    ];
+    expect(rowTops(segs, 24)).toEqual([0, 24, 100]);
   });
 });
