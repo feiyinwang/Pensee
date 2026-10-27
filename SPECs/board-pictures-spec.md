@@ -33,8 +33,11 @@ start any of them.
     accent, the first line in the accent over a faint area, the donut in Arc's four series hues with a
     legend of each slice's value and share. No hover: a board is a file a note shows as an image.
   - **Every other type** keeps Pele's layout in Arc's look (the treatment a Mermaid block gets in a
-    note): neutral raised shapes with a hairline ring, a tint by section, quadrant or period, quiet
-    labels, 1.5px round lines. That style is written into the chart, so the file carries it.
+    note): raised shapes with a hairline ring, tinted by section, quadrant, period or cause
+    category, and where a diagram has none of those (a sequence, a class diagram, a state machine)
+    each shape takes the next of the four series hues, keyed by its name so a participant drawn twice
+    keeps one colour; quiet labels, 1.5px round lines. Bars and lines take the board's blue as
+    their accent, so every chart carries colour. That style is written into the chart, so the file carries it.
     The card takes its drawing's size, so its words read like the cards around it; Pele draws a bar or
     line chart it falls back to (bars and lines mixed) at 440×300. Double-click a chart card to edit
     its text in place (⌘↵ or Esc to finish); emptying it keeps the old text.

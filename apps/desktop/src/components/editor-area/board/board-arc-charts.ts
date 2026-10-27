@@ -12,17 +12,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Pele's parsed models are untyped data. */
 
 const ACCENT = "var(--wr-board-ink)";
+/** The marks' accent: the board's first series hue, as the donut's and the
+ *  other diagrams' tints are, so every chart on a board carries colour. */
+const MARK = "var(--wr-board-blue)";
 /** Arc's bar: a soft step of the accent, a lighter mix on a dark surface. */
-const BAR = `color-mix(in oklab,${ACCENT} calc(62% + var(--wr-board-flip) * 14%),var(--wr-board-surface))`;
+const BAR = `color-mix(in oklab,${MARK} calc(62% + var(--wr-board-flip) * 14%),var(--wr-board-surface))`;
 const GRID = `color-mix(in oklab,${ACCENT} 9%,transparent)`;
 const BASELINE = `color-mix(in oklab,${ACCENT} 22%,transparent)`;
 const MUTED = "var(--wr-board-muted)";
-/** Arc's line series: the accent, then two neutral steps. */
-const LINES = [
-  ACCENT,
-  `color-mix(in oklab,${ACCENT} 46%,var(--wr-board-surface))`,
-  `color-mix(in oklab,${ACCENT} 26%,var(--wr-board-surface))`,
-];
+/** Arc's line series, in the board's series hues. */
+const LINES = [MARK, "var(--wr-board-purple)", "var(--wr-board-orange)", "var(--wr-board-green)"];
 /** Arc's donut: its four series hues, then neutral steps. */
 const SLICES = [
   "var(--wr-board-blue)",

@@ -138,6 +138,8 @@ export const PELE_ARC_STYLE = [
   ".wr-board-chart .pele :is(.pele-cluster-label,.pele-section-label,.pele-axis-label text,.pele-wardley-axis-label,.pele-wardley-stage-label){fill:var(--wr-board-muted);font-weight:500}",
   ".wr-board-chart .pele .pele-title{fill:var(--wr-board-ink);font-weight:500}",
   ".wr-board-chart .pele.pele-gantt .pele-task>:is(rect,path){--hue:var(--wr-board-blue);--tint:70%;--ring:90%}",
+  ".wr-board-chart .pele .pele-ishikawa-category>rect{fill:color-mix(in oklab,var(--hue) 12%,var(--wr-board-surface));stroke:color-mix(in oklab,var(--hue) 55%,transparent)}",
+  ".wr-board-chart .pele .pele-ishikawa-category>path.pele-ishikawa-bones{stroke:color-mix(in oklab,var(--hue) 70%,transparent)}",
   ".wr-board-chart .pele .pele-quadrant>rect{fill:color-mix(in oklab,var(--hue) 7%,var(--wr-board-surface));stroke:color-mix(in oklab,var(--hue) 22%,transparent)}",
   ".wr-board-chart .pele circle:is(.pele-point,.pele-dot){fill:var(--wr-board-blue);stroke:var(--wr-board-surface);stroke-width:3px}",
   ".wr-board-chart .pele .pele-venn-set{fill-opacity:.12;stroke-width:2px}",
@@ -148,16 +150,33 @@ export const PELE_ARC_STYLE = [
   ".wr-board-chart .pele path.pele-edge:hover{stroke:color-mix(in oklab,var(--wr-board-ink) 80%,transparent);stroke-width:2.5px}",
 ].join("");
 
-/** Arc tints by category: a section's shapes share a series hue, and each
- *  quadrant and timeline period takes one (the `data-hue` PELE_ARC_STYLE reads). */
+/** The shapes Pele draws as one thing each (a node, a participant, a class…). */
+const SHAPES =
+  ".pele-node,.pele-actor,.pele-state,.pele-class,.pele-entity,.pele-task,.pele-service,.pele-requirement,.pele-element,.pele-usecase,.pele-wardley-component";
+
+/** Arc tints by category (the `data-hue` PELE_ARC_STYLE reads): a section's
+ *  shapes share a series hue, and each quadrant and timeline period takes
+ *  one. A diagram with neither (a sequence, a class diagram, a state
+ *  machine) gives each of its shapes the next hue in turn, keyed by its name,
+ *  so a participant drawn at the top and the bottom keeps one colour. */
 export function tintChart(svg: Element): void {
   svg.querySelectorAll("[class*='pele-section-']").forEach((g) => {
     const n = Number(/pele-section-(\d+)/.exec(g.getAttribute("class") ?? "")?.[1] ?? 0);
     g.setAttribute("data-hue", String((n % 4) + 1));
   });
   svg
-    .querySelectorAll(".pele-quadrant, .pele-period")
+    .querySelectorAll(".pele-quadrant, .pele-period, .pele-ishikawa-category")
     .forEach((g, i) => g.setAttribute("data-hue", String((i % 4) + 1)));
+  const hues = new Map<string, number>();
+  for (const g of svg.querySelectorAll(SHAPES)) {
+    // Inside a tinted section or another shape: it has its colour already.
+    // (The drawing's own root can carry a shape's class: `pele pele-class`.)
+    const host = g.parentElement?.closest(SHAPES);
+    if (g.closest("[data-hue]") || (host && host !== svg)) continue;
+    const key = g.getAttribute("data-id") || g.textContent?.trim() || String(hues.size);
+    if (!hues.has(key)) hues.set(key, (hues.size % 4) + 1);
+    g.setAttribute("data-hue", String(hues.get(key)));
+  }
 }
 
 /** Space between a chart card's edge and its drawing. */

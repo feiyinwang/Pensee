@@ -566,6 +566,9 @@
   background: var(--wr-board-surface);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--wr-board-muted) 30%, transparent);
   pointer-events: auto;
+  /* Arc's charts draw their marks in the accent: the board's blue, so a bar or
+     line chart carries colour like the rest. */
+  --accent: var(--wr-board-blue);
 }
 
 .wr-chart-live[data-selected] {
