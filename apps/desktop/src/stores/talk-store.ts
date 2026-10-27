@@ -22,6 +22,7 @@ import { type HeardLine, askTalk, endTalk, talkPrompt, warmTalk } from "@/lib/ta
 import { editorViewFor } from "@/lib/editor-views";
 import { showEditorNotice } from "@/components/editor-area/editor-notice-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useEditorStore } from "@/stores/editor-store";
 
 // One talk at a time (SPECs/talk-notes-spec.md). The recorder lives here,
 // outside React, so closing the note's pane mid-take never drops it.
@@ -124,6 +125,34 @@ let pending: Pending | null = null;
 let savedTimer: ReturnType<typeof setTimeout> | undefined;
 let undoTimer: ReturnType<typeof setTimeout> | undefined;
 const levelListeners = new Set<(level: number) => void>();
+
+const showing = (path: string) =>
+  useEditorStore
+    .getState()
+    .tabs.filter((tab) => tab.location.kind === "file" && tab.location.path === path)
+    .map((tab) => tab.id);
+/** The tabs that showed the take's note at Record. Going to another note in
+ *  one of them keeps recording (the pill follows you); closing them ends it. */
+let recordingTabs = new Set<string>();
+/** Whether the take's note is closed: no tab shows it and its tabs are gone. */
+const noteClosed = (path: string) => {
+  const tabs = useEditorStore.getState().tabs;
+  return !showing(path).length && !tabs.some((tab) => recordingTabs.has(tab.id));
+};
+let watchingTabs = false;
+/** A take ends with its note: closing the note's tab stops and saves it, so
+ *  the microphone is never left on with no Stop on screen. Subscribed on the
+ *  first Record, not at load, since the editor store's modules import this one. */
+function stopWhenNoteCloses() {
+  if (watchingTabs) return;
+  watchingTabs = true;
+  useEditorStore.subscribe((state, prev) => {
+    if (state.tabs === prev.tabs) return;
+    const { phase, notePath } = useTalkStore.getState();
+    if (phase === "recording" && notePath && noteClosed(notePath))
+      void useTalkStore.getState().stop();
+  });
+}
 
 /** The live loop's state for the take being recorded. */
 let liveTimer: ReturnType<typeof setInterval> | undefined;
@@ -318,6 +347,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
         undo: null,
         liveError: null,
       });
+      recordingTabs = new Set(showing(notePath));
       try {
         session = await invoke<string>("talk_pcm_begin");
         const id = session;
@@ -332,12 +362,18 @@ export const useTalkStore = create<TalkState>((set, get) => {
           },
         );
         set({ phase: "recording", startedAt: Date.now() });
+        stopWhenNoteCloses();
+        // Closed while the microphone was starting.
+        if (noteClosed(notePath)) return void get().stop();
         const model = await modelInfo();
         set({ model });
         if (model.installed) startLive(id);
         else set({ live: "needs-model" });
       } catch (error) {
+        // Started but a later step failed: release the microphone, don't just drop it.
+        recorder?.cancel();
         recorder = null;
+        stopLive();
         if (session) void invoke("talk_pcm_drop", { session });
         session = null;
         set({ phase: "error", error: microphoneError(error) });
@@ -370,10 +406,17 @@ export const useTalkStore = create<TalkState>((set, get) => {
           previous && view ? afterTranscriptInsertion(view.state, previous, `![[${file}]]`) : null;
         if (view && under) view.dispatch({ changes: under, userEvent: "input.talk" });
         else if (view) insertTalk(view, file, take.startedAt);
-        else
+        else {
+          // Its note was closed (which also stops the take): no pill is left to
+          // offer a transcript, and none could be written. The take is in Recordings/.
           showEditorNotice(
             `Saved to ${file}. Its note was closed, so the talk wasn't added to it.`,
           );
+          endTalk();
+          void invoke("talk_pcm_drop", { session: id });
+          finish();
+          return;
+        }
         set({ lastFile: file, talk: { notePath, takes: takes.length } });
         const model = await modelInfo();
         if (model.installed) {

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { EditorState } from "@codemirror/state";
 import { formatClock, recordingStem, talkHeadingTime } from "../src/lib/talk/clock";
 import { talkInsertion } from "../src/lib/talk/insert-talk";
+import { meterLevel } from "../src/lib/talk/recorder";
 import { parseWikiAudioEmbedTarget, parseWikiVideoEmbedTarget } from "../src/lib/wiki-links";
 
 describe("talk clock", () => {
@@ -15,6 +16,16 @@ describe("talk clock", () => {
     const at = new Date(2026, 9, 25, 9, 4);
     expect(recordingStem(at)).toBe("2026-10-25 09.04");
     expect(talkHeadingTime(at)).toBe("09:04");
+  });
+});
+
+describe("talk meter", () => {
+  test("speech fills most of the meter; room noise leaves it empty", () => {
+    expect(meterLevel(0)).toBe(0);
+    expect(meterLevel(0.001)).toBe(0); // -60 dB, a quiet room
+    expect(meterLevel(0.03)).toBeGreaterThan(0.5); // -30 dB, talking
+    expect(meterLevel(0.03)).toBeLessThan(meterLevel(0.1));
+    expect(meterLevel(0.5)).toBe(1);
   });
 });
 

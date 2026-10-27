@@ -36,6 +36,21 @@ export function microphoneError(error: unknown): string {
   return `The microphone couldn't be used: ${error.message}`;
 }
 
+/** Quieter than this reads as silence on the meter; louder than LOUD_DB fills it. */
+const QUIET_DB = -55;
+const LOUD_DB = -12;
+
+/**
+ * The meter's level, 0–1, for an RMS amplitude. On a decibel scale, because
+ * loudness is heard that way: speech sits around -35 to -15 dB (an RMS of
+ * 0.02–0.2), which a linear scale squashes into the bottom fifth.
+ */
+export function meterLevel(rms: number): number {
+  if (rms <= 0) return 0;
+  const db = 20 * Math.log10(rms);
+  return Math.min(1, Math.max(0, (db - QUIET_DB) / (LOUD_DB - QUIET_DB)));
+}
+
 export class Recorder {
   private readonly chunks: Blob[] = [];
   private readonly startedAt = new Date();
@@ -72,10 +87,16 @@ export class Recorder {
     const recorder = new MediaRecorder(stream, { mimeType: format.mime });
     const audioContext = new AudioContext();
     const self = new Recorder(stream, recorder, format.ext, audioContext);
-    self.meter(onLevel);
-    if (onPcm) await self.tap(onPcm);
-    // A chunk a second, so a crash loses at most the last second.
-    recorder.start(1000);
+    try {
+      self.meter(onLevel);
+      if (onPcm) await self.tap(onPcm);
+      // A chunk a second, so a crash loses at most the last second.
+      recorder.start(1000);
+    } catch (error) {
+      // The microphone is already open: close it before giving up.
+      self.cancel();
+      throw error;
+    }
     return self;
   }
 
@@ -97,7 +118,7 @@ export class Recorder {
       analyser.getFloatTimeDomainData(samples);
       let sum = 0;
       for (const v of samples) sum += v * v;
-      onLevel(Math.min(1, Math.sqrt(sum / samples.length) * 4));
+      onLevel(meterLevel(Math.sqrt(sum / samples.length)));
     };
     this.levelFrame = requestAnimationFrame(tick);
   }

@@ -44,14 +44,25 @@ const fakeMicrophone = async (allow) => {
       tone.connect(out);
       tone.start();
       // The recorder stops the track at Stop: close the hum with it, as a real
-      // microphone goes quiet, so takes don't pile up open audio contexts.
+      // microphone goes quiet, so takes don't pile up open audio contexts. By
+      // id on the prototype: getTracks() may hand back a new wrapper each time.
+      // window.__talkMic holds the open ones, for the journeys that check it goes off.
       const [track] = out.stream.getAudioTracks();
-      const stopTrack = track.stop.bind(track);
-      track.stop = () => {
-        stopTrack();
+      window.__talkMic ??= new Map();
+      window.__talkMic.set(track.id, () => {
         tone.stop();
         void ctx.close();
-      };
+      });
+      if (!MediaStreamTrack.prototype.__talkStop) {
+        const stop = MediaStreamTrack.prototype.stop;
+        MediaStreamTrack.prototype.__talkStop = stop;
+        MediaStreamTrack.prototype.stop = function () {
+          stop.call(this);
+          const close = window.__talkMic?.get(this.id);
+          window.__talkMic?.delete(this.id);
+          close?.();
+        };
+      }
       return out.stream;
     };
     // On the prototype and the instance: a plain assignment doesn't always stick.
@@ -585,5 +596,143 @@ describe("Journeys: talk notes", () => {
       (await invoke("read_file", { path: `${root}/Notes/Talk note.md` })).value.content,
       before,
     );
+  });
+
+  it("TALK-17 Closing the note while recording stops the take, saves it and turns the microphone off", async () => {
+    await openNote("Talk note");
+    await fakeMicrophone(true);
+    setWhisper(false);
+    const before = (await invoke("list_recordings")).value.length;
+    ok(await pressRecord());
+    await browser.waitUntil(async () => (await dockText()).includes("Stop"), {
+      timeout: 5_000,
+      timeoutMsg: `recording never started: ${await dockText()}`,
+    });
+    await browser.pause(1_500);
+    await pressCmd("w");
+    await browser.waitUntil(() => browser.execute(() => (window.__talkMic?.size ?? 0) === 0), {
+      timeout: 10_000,
+      timeoutMsg: "the microphone stayed on after the note closed",
+    });
+    await browser.waitUntil(
+      async () => (await invoke("list_recordings")).value.length === before + 1,
+      { timeout: 10_000, timeoutMsg: "the take wasn't saved to Recordings/" },
+    );
+  });
+
+  it("TALK-18 Going to another note while recording: the pill follows, names the note, and Stop ends the take", async () => {
+    await openNote("Talk note");
+    await fakeMicrophone(true);
+    setWhisper(false);
+    ok(await pressRecord());
+    await browser.waitUntil(async () => (await dockText()).includes("Stop"), {
+      timeout: 5_000,
+      timeoutMsg: `recording never started: ${await dockText()}`,
+    });
+    await openNote("Welcome");
+    const pill = () =>
+      browser.execute(() =>
+        [...document.querySelectorAll(".tab-column:not([data-hidden]) .talk-dock")]
+          .map((d) => d.textContent)
+          .join(" | "),
+      );
+    await browser
+      .waitUntil(async () => /in Talk note.*Stop/.test(await pill()), {
+        timeout: 5_000,
+        timeoutMsg: `no recording pill on Welcome: ${await pill()}`,
+      })
+      .catch(async (e) => {
+        // Don't leave the take running into the next journey.
+        await pressDock("Stop");
+        throw e;
+      });
+    ok(await browser.execute(() => window.__talkMic?.size === 1), "the take stopped on leaving");
+    ok(await pressDock("Stop"));
+    await browser.waitUntil(() => browser.execute(() => (window.__talkMic?.size ?? 0) === 0), {
+      timeout: 10_000,
+      timeoutMsg: "the microphone stayed on after Stop",
+    });
+  });
+
+  it("TALK-16 In columns after a pinch, the pill and the live box fit inside the note's column", async () => {
+    // Five columns: Pinch hub and the four notes it opens beside, then Talk
+    // note in the last one, so the take lands where the other journeys look.
+    await openNote("Pinch hub");
+    for (const name of ["Long essay", "Outline tour", "On writing", "Welcome"]) {
+      await $(`.cm-wiki-link*=${name}`).waitForExist({ timeout: 10_000 });
+      await browser.execute((text) => {
+        const link = [...document.querySelectorAll(".cm-wiki-link")].find(
+          (el) => el.textContent === text,
+        );
+        const r = link.getBoundingClientRect();
+        const at = { bubbles: true, cancelable: true, button: 0, clientX: r.left + 4 };
+        for (const type of ["mousedown", "mouseup", "click"]) {
+          link.dispatchEvent(new MouseEvent(type, { ...at, clientY: r.top + r.height / 2 }));
+        }
+      }, name);
+      await waitForTitle(name);
+    }
+    await openNote("Talk note");
+    // A pinch in, as Ctrl-wheel steps, if opening beside didn't already show columns.
+    const pinch = (deltaY) =>
+      browser.execute((dy) => {
+        const content = document.querySelector(".tab-column:not([data-hidden]) .cm-content");
+        const box = content.getBoundingClientRect();
+        for (let i = 0; i < 3; i++) {
+          content.dispatchEvent(
+            new WheelEvent("wheel", {
+              bubbles: true,
+              cancelable: true,
+              ctrlKey: true,
+              deltaY: dy,
+              clientX: box.left + 40,
+              clientY: box.top + 40,
+            }),
+          );
+        }
+        return document.querySelector(".tab-columns").hasAttribute("data-columns");
+      }, deltaY);
+    const columns = () =>
+      browser.execute(() => document.querySelector(".tab-columns").hasAttribute("data-columns"));
+    if (!(await columns())) ok(await pinch(5), "the pinch didn't show the columns");
+
+    await fakeMicrophone(true);
+    setWhisper(false);
+    const fit = () =>
+      browser.execute(() => {
+        const dock = document.querySelector(".talk-dock");
+        const column = dock.closest(".tab-column");
+        const c = column.getBoundingClientRect();
+        const out = (el) => {
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return r.left < c.left - 1 || r.right > c.right + 1 || el.scrollWidth > el.clientWidth + 1
+            ? `${el.className} at ${Math.round(r.left)}–${Math.round(r.right)} (content ${el.scrollWidth}px in ${el.clientWidth}px), column at ${Math.round(c.left)}–${Math.round(c.right)}`
+            : null;
+        };
+        return [".talk-dock-pill", ".talk-box"]
+          .map((s) => out(document.querySelector(s)))
+          .filter(Boolean);
+      });
+    const idle = await fit();
+    ok(idle.length === 0, `Record doesn't fit its column: ${idle.join("; ")}`);
+    ok(await pressRecord());
+    await browser.waitUntil(
+      () => browser.execute(() => Boolean(document.querySelector(".talk-box"))),
+      { timeout: 10_000, timeoutMsg: `the live box never showed: ${await dockText()}` },
+    );
+    const live = await fit();
+    ok(
+      await browser.execute(() => document.querySelectorAll("[data-talk-meter] span").length > 8),
+      "no level trace in the pill",
+    );
+    ok(await pressDock("Stop"));
+    ok(live.length === 0, `while recording, the pill or box spills out: ${live.join("; ")}`);
+    await browser.waitUntil(async () => /Whisper Small/.test(await dockText()), {
+      timeout: 10_000,
+    });
+    ok(await pressDock("Not now"));
+    // Back to one tab, as the other journeys expect.
+    if (await columns()) await pinch(-5);
   });
 });

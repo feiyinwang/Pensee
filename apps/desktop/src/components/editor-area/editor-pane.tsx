@@ -85,7 +85,7 @@ export const EditorPane = memo(function EditorPane({
         outlineTop={inColumn ? 40 : 96}
       />
       {isActive && <EditorSearchOverview scrollContainerRef={scrollContainerRef} />}
-      <TalkDock path={path} isActive={isActive} />
+      <TalkDock path={path} isActive={isActive} inColumn={inColumn} />
     </div>
   );
 });

@@ -1,38 +1,45 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { onTalkLevel, useTalkStore } from "@/stores/talk-store";
 import { formatClock } from "@/lib/talk/clock";
+import { useEditorStore } from "@/stores/editor-store";
 import "./talk-dock.css";
 
 // Record, at the bottom centre of the note (SPECs/talk-notes-spec.md#recording;
 // placed like Granola's, approved 2026-10-25). Capture only: playback lives
 // on the audio embed in the note.
 
-const METER_BARS = 5;
+/** Levels shown, newest on the right: about half a second at ~30 a second. */
+const METER_BARS = 16;
+/** How far a bar may fall per level, so a word's tail fades instead of snapping off. */
+const METER_FALL = 0.12;
 /** Loaded with the first take: Arc, motion and affectUI stay out of startup. */
 const TalkBox = lazy(() => import("./talk-box"));
 
 function Meter() {
   const bars = useRef<(HTMLSpanElement | null)[]>([]);
-  // Written straight to the bars, ~30 times a second, so the level never re-renders React.
-  useEffect(
-    () =>
-      onTalkLevel((level) => {
-        bars.current.forEach((bar, i) => {
-          if (!bar) return;
-          const shape = 0.55 + 0.45 * Math.sin((i + 1) * 1.7);
-          bar.style.transform = `scaleY(${Math.max(0.15, Math.min(1, level * shape * 1.6))})`;
-        });
-      }),
-    [],
-  );
+  // Written straight to the bars, ~30 times a second, so the level never
+  // re-renders React. Each level shifts the trace one bar left.
+  useEffect(() => {
+    const history = Array.from({ length: METER_BARS }, () => 0);
+    return onTalkLevel((level) => {
+      const last = history[METER_BARS - 1];
+      history.shift();
+      history.push(Math.max(level, last - METER_FALL));
+      bars.current.forEach((bar, i) => {
+        if (bar) bar.style.transform = `scaleY(${Math.max(0.12, history[i])})`;
+      });
+    });
+  }, []);
   return (
-    <span className="talk-dock-meter" aria-hidden="true">
+    <span className="talk-dock-meter" aria-hidden="true" data-talk-meter="">
       {Array.from({ length: METER_BARS }, (_, i) => (
         <span key={i} ref={(el) => void (bars.current[i] = el)} />
       ))}
     </span>
   );
 }
+
+const noteName = (path: string) => path.slice(path.lastIndexOf("/") + 1).replace(/\.md$/, "");
 
 function Elapsed({ since }: { since: number }) {
   const [now, setNow] = useState(() => Date.now());
@@ -43,7 +50,15 @@ function Elapsed({ since }: { since: number }) {
   return <span className="talk-dock-time">{formatClock((now - since) / 1000)}</span>;
 }
 
-export function TalkDock({ path, isActive }: { path: string; isActive: boolean }) {
+export function TalkDock({
+  path,
+  isActive,
+  inColumn,
+}: {
+  path: string;
+  isActive: boolean;
+  inColumn: boolean;
+}) {
   const phase = useTalkStore((s) => s.phase);
   const notePath = useTalkStore((s) => s.notePath);
   const startedAt = useTalkStore((s) => s.startedAt);
@@ -59,13 +74,22 @@ export function TalkDock({ path, isActive }: { path: string; isActive: boolean }
     "downloading",
     "transcribing",
   ].includes(phase);
+  // Whether any tab shows the note being recorded (a boolean, so tab changes
+  // elsewhere don't re-render the dock).
+  const noteInTab = useEditorStore((s) =>
+    s.tabs.some((tab) => tab.location.kind === "file" && tab.location.path === notePath),
+  );
   const mine = notePath === path;
+  // Recording a note that isn't on screen (left in its tab, or in a tab behind
+  // this one): the pill follows you, naming that note, so the microphone is
+  // never on with no Stop in sight. In columns its own column shows its pill.
+  const elsewhere = phase === "recording" && !mine && isActive && (!inColumn || !noteInTab);
   // A take shows on its own note; otherwise Record shows on the note you're in.
-  if (busy ? !mine : !isActive) return null;
+  if (!elsewhere && (busy ? !mine : !isActive)) return null;
 
   return (
     <div className="talk-dock" role="region" aria-label="Record">
-      {phase === "recording" && (
+      {phase === "recording" && mine && (
         <Suspense fallback={null}>
           <TalkBox />
         </Suspense>
@@ -75,6 +99,9 @@ export function TalkDock({ path, isActive }: { path: string; isActive: boolean }
           <span className="talk-dock-dot" aria-hidden="true" />
           <Meter />
           <Elapsed since={startedAt} />
+          {elsewhere && notePath && (
+            <span className="talk-dock-where">in {noteName(notePath)}</span>
+          )}
           <button
             type="button"
             className="talk-dock-button"

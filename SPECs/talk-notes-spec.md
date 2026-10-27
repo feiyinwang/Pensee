@@ -16,7 +16,9 @@ Ask on 2026-10-26) and `apps/desktop/proto/talk-notes` (Ask with Pele, audio, Co
 
 - **Record** sits at the bottom centre of the note, as Granola's does (approved 2026-10-25; it never moves into a
   menu or the ⌘. box). Pressing it asks for the microphone the first time (macOS's own prompt).
-- While recording the pill shows a live red dot, a moving level meter, the time and **Stop**.
+- While recording the pill shows a live red dot, a level trace, the time and **Stop**. The trace is the last half second of your voice's loudness, newest on the right, on a decibel scale so talking fills most of it and a quiet room leaves it flat.
+- The pill and the live box size to the note's pane, not the window, so they fit a column after a pinch.
+- The microphone is on only while the pill shows a take. Going to another note keeps recording, and the pill follows you there with the note's name ("in Talk note") and **Stop**. Closing the note's tab stops the take and saves it to `Recordings/`; with no note to write into, a notice says where it went.
 - **Stop** saves the take as an audio file in `Recordings/` at the vault root, named by date and time:
   `Recordings/2026-10-25 09.14.m4a`. A later take into the same talk is `… 09.14 (2).m4a`.
 - After a stop, the pill reads _Saved to Recordings/_ and offers **Continue**: it records the next take into the
