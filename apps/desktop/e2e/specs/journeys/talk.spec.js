@@ -425,7 +425,9 @@ describe("Journeys: talk notes", () => {
     ok(/> \[!transcript\]- Transcript · 7 lines · On this Mac · Whisper Small/.test(note), note);
     // A chart stays Mermaid; a mind map or flowchart is a board beside the note.
     ok(
-      /### .+\n\n(```mermaid\n|!\[[^\]]*\]\([^)]*\.board\.svg>?\))/.test(note),
+      /### .+\n\n(?:[^\n!#`-][^\n]*\n\n)?(```mermaid\n|!\[[^\]]*\]\([^)]*\.board\.svg>?\))/.test(
+        note,
+      ),
       `no topic section with a diagram: ${JSON.stringify(note)}`,
     );
   });
@@ -710,7 +712,7 @@ describe("Journeys: talk notes", () => {
     ok(await pressDock("Not now"));
   });
 
-  it("TALK-20 A plan you talk through is drawn as a board; a click opens it in the board editor; Stop puts the board in the note", async function () {
+  it("TALK-20 A plan you talk through is drawn as a board; a click opens it in the board editor; Stop puts a summary and the board in the note, its nodes holding clips", async function () {
     // Real Claude draws the plan: longer than the 60s default.
     this.timeout(240_000);
     await openNote("Talk note");
@@ -770,9 +772,27 @@ describe("Journeys: talk notes", () => {
     const embed = /!\[[^\]]*\]\(<?([^)>]*\.board\.svg)>?\)/.exec(note);
     ok(embed, `no board in the note: ${JSON.stringify(note)}`);
     const file = decodeURI(embed[1]);
+    const absolute = file.startsWith("/") ? file : `${root}/Notes/${file}`;
+    ok(await fileExists(absolute), `${file} isn't on disk`);
+    // A short summary above the board, and no list of lines under it.
+    const section = note.slice(note.lastIndexOf("\n### ", embed.index));
     ok(
-      await fileExists(file.startsWith("/") ? file : `${root}/Notes/${file}`),
-      `${file} isn't on disk`,
+      /^\n### [^\n]+\n\n[^\n!#-][^\n]*\n\n!\[/.test(section),
+      `no summary above the board: ${JSON.stringify(section)}`,
+    );
+    ok(
+      !/^### [^\n]+\n(?:(?!\n### )[\s\S])*\n- .*\[\d+:\d\d\]/.test(
+        section.slice(1).split("\n### Said in passing")[0],
+      ),
+      `the lines are still listed: ${JSON.stringify(section)}`,
+    );
+    // Its nodes play their part of the take.
+    await browser.waitUntil(
+      async () =>
+        /Recordings\/[^"#]+\.(m4a|webm)#t=\d+(\.\d)?,\d+/.test(
+          (await invoke("read_file", { path: absolute })).value.content,
+        ),
+      { timeout: 10_000, timeoutMsg: "the board's nodes have no clips" },
     );
   });
 

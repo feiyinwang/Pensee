@@ -18,6 +18,7 @@ import {
 } from "@/lib/paths";
 import * as tauri from "@/lib/tauri";
 import { type BoardScene, emptyScene } from "./board-model";
+import { audioClipAt, playAudioClipLink } from "./board-audio-links";
 import { mermaidToElements } from "./board-mermaid";
 import { measureText } from "./board-render";
 import {
@@ -343,6 +344,27 @@ const pageBoardLifetime = ViewPlugin.define((view) => ({
 
 /** Turns a `.board.svg` image preview into an openable board. The picture
  *  itself is still the plain `<img>` — that is what makes it instant. */
+/** The audio clip whose badge is under a click on a board's preview image. */
+async function clipUnder(
+  absolute: string,
+  image: HTMLImageElement,
+  e: MouseEvent,
+): Promise<string | null> {
+  const text =
+    lastText.get(absolute) ?? (await tauri.readFile(absolute).catch(() => null))?.content;
+  if (!text || !text.includes("#t=")) return null;
+  const parsed = readBoardSvg(text);
+  const box = /viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/.exec(text);
+  if (!parsed || !box) return null;
+  const r = image.getBoundingClientRect();
+  const [x, y, w, h] = box.slice(1).map(Number) as [number, number, number, number];
+  // The image keeps its aspect ratio inside its box (object-fit: contain).
+  const scale = Math.min(r.width / w, r.height / h);
+  const left = r.left + (r.width - w * scale) / 2;
+  const top = r.top + (r.height - h * scale) / 2;
+  return audioClipAt(parsed.scene, x + (e.clientX - left) / scale, y + (e.clientY - top) / scale);
+}
+
 export function boardImageEnhancer(getFilePath: () => string | null) {
   return [
     pageBoardLifetime,
@@ -389,7 +411,10 @@ export function boardImageEnhancer(getFilePath: () => string | null) {
       dom.append(actions);
       image.addEventListener("click", (e) => {
         e.preventDefault();
-        open();
+        // A talk's clip badge plays its part; anywhere else opens the board.
+        void clipUnder(absolute, image, e).then((clip) => {
+          if (!clip || !playAudioClipLink(clip)) open();
+        });
       });
     }),
   ];

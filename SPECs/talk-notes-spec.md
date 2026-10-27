@@ -85,7 +85,7 @@ quadrantChart
 
 A topic drawn as a mind map or a flowchart is a Pensée board, not a Mermaid picture: the first time the AI draws
 it, a `.board.svg` is made beside the note (as `/board` makes one) and the talk box shows it with the board's own
-renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts.
+renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their section has the summary and the Mermaid block. Asides keep their lines under "Said in passing".
 
 - **Click the board** in the talk box: it opens in the board editor. While it's open, what you say still goes
   to the AI, but that topic's drawing waits; it is merged when you close the editor.
@@ -97,8 +97,15 @@ renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts.
 - The AI is shown the board as it is now (its mind map as Mermaid), so its next drawing starts from your edits.
 - A flowchart has no tree to merge into: once you change anything on it, the AI leaves it as it is, and the box
   says so.
-- **After Stop** the topic's section holds the board (`![Title](assets/….board.svg)`) instead of a Mermaid block:
-  the drawing shows on the page and opens with one click, like any board.
+- **After Stop** the topic's section holds at most two sentences of summary (the AI's, of what you concluded or
+  plan), then the board (`![Title](assets/….board.svg)`) instead of a Mermaid block: the drawing shows on the
+  page and opens with one click, like any board. The heard lines aren't listed under it; they're in the transcript.
+- **Every node plays its part of the take.** The AI says which heard lines each node came from (`sources`); at Stop,
+  once the take is saved, each node gets `ln` = `Recordings/<take>#t=<start>,<end>` (`audio-clips.ts`): from its
+  first line to where its last line ends, in the take its first line is in. Its corner badge (a play mark, the span
+  as its tooltip) plays only that part and stops (`clip-player.ts`); clicking it again stops it. It works on the
+  board in the note (the click is mapped onto the image), in the board editor and in the talk box. A video pin is
+  never replaced; a node you renamed keeps its clip.
 
 
 - **Free by default, on the Mac:** OpenAI's Whisper through whisper.cpp, the engine Superwhisper's free plan runs.

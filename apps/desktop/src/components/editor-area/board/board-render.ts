@@ -23,6 +23,7 @@ import {
   isShape,
 } from "./board-model";
 import { PIN_ICON_PATH, formatVideoTime, parseVideoLink } from "@/lib/video-pins";
+import { parseAudioClip } from "@/lib/audio-clips";
 import { parseWikiLink } from "@/lib/wiki-links";
 import { smoothPath, strokeExtent } from "./board-draw";
 import {
@@ -465,19 +466,23 @@ function renderShape(g: SVGGElement, el: ShapeEl): void {
   if (el.ln) appendPinBadge(g, el.w, el.ln);
 }
 
-/** A video pin's badge on the element's top-right corner: the pin, with the
- *  moment as its tooltip; a click plays it (`data-wiki`, read by `linkAt`).
+/** A pin's badge on the element's top-right corner: a video pin (the pin,
+ *  with the moment as its tooltip) or a talk's audio clip (a play mark, with
+ *  the part it plays); a click plays it (`data-wiki`, read by `linkAt`).
  *  Styled by attribute so the saved `.board.svg` shows it too. */
 function appendPinBadge(g: SVGGElement, width: number, ln: string): void {
-  const link = parseVideoLink(ln);
-  if (!link) return;
+  const video = parseVideoLink(ln);
+  const clip = video ? null : parseAudioClip(ln);
+  if (!video && !clip) return;
   const badge = svgEl("g", {
     class: "wr-board-pin",
     "data-wiki": ln,
     transform: `translate(${width} 0)`,
   });
   const title = svgEl("title");
-  title.textContent = `Play from ${formatVideoTime(link.seconds)}`;
+  title.textContent = video
+    ? `Play from ${formatVideoTime(video.seconds)}`
+    : `Play ${formatVideoTime(clip!.start)}–${formatVideoTime(clip!.end)}`;
   badge.append(
     title,
     svgEl("circle", {
@@ -486,15 +491,22 @@ function appendPinBadge(g: SVGGElement, width: number, ln: string): void {
       stroke: "var(--wr-board-accent)",
       "stroke-width": 1.25,
     }),
-    svgEl("path", {
-      d: PIN_ICON_PATH,
-      transform: "translate(-6 -6) scale(0.5)",
-      fill: "none",
-      stroke: "var(--wr-board-accent)",
-      "stroke-width": 2.25,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-    }),
+    video
+      ? svgEl("path", {
+          d: PIN_ICON_PATH,
+          transform: "translate(-6 -6) scale(0.5)",
+          fill: "none",
+          stroke: "var(--wr-board-accent)",
+          "stroke-width": 2.25,
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round",
+        })
+      : // Nudged right: a triangle centred by its box looks left of centre.
+        svgEl("path", {
+          d: "M-2.5 -4.5 L4.5 0 L-2.5 4.5 Z",
+          fill: "var(--wr-board-accent)",
+          "stroke-linejoin": "round",
+        }),
   );
   g.append(badge);
 }
@@ -525,8 +537,8 @@ export function shapeLabel(el: ShapeEl): ShapeLabelLayout | null {
   const layout = shapeLabelLayout(el);
   // A linked shape (`ln`) is a link all over: every run carries it, so it
   // draws and clicks like a `[[link]]` in the text.
-  // A video pin is the corner badge's, not the label's: the text stays text.
-  if (layout && el.ln && !parseVideoLink(el.ln)) {
+  // A video pin or audio clip is the corner badge's, not the label's: the text stays text.
+  if (layout && el.ln && !parseVideoLink(el.ln) && !parseAudioClip(el.ln)) {
     const ln = el.ln;
     layout.lines = layout.lines.map((line) => line.map((run) => ({ ...run, ln })));
   }

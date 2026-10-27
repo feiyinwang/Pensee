@@ -25,7 +25,7 @@ function model(): string {
 
 export const TALK_INSTRUCTIONS = `You listen to someone thinking out loud and keep their talk sorted into topics, live.
 Each turn gives you the lines just heard, numbered, with their time. Reply with JSON only, no prose, no code fence:
-{"lines":[{"n":4,"topic":"week","turn":"Okay, next"}],"topics":[{"key":"week","title":"Where my week goes","short":"My week","mermaid":"pie title Where my week goes\\n  \\"Writing\\" : 20"}]}
+{"lines":[{"n":4,"topic":"week","turn":"Okay, next"}],"topics":[{"key":"week","title":"Where my week goes","short":"My week","summary":"Writing takes most of the week, about twenty hours. QA and support eat most of the rest.","mermaid":"pie title Where my week goes\\n  \\"Writing\\" : 20","sources":{"Writing":[5]}}]}
 
 lines: one entry per line you were given.
 - topic: the key of the topic the line is about, an existing one or a new short lowercase key. null for small talk ("Okay, a few things today.").
@@ -33,6 +33,8 @@ lines: one entry per line you were given.
 - aside: true when the line is said in passing about another topic while staying on the current one ("oh, and QA eats my evenings, but let me finish this"). Its topic is the other topic.
 topics: every topic that is new or whose diagram changed this turn, with its full diagram.
 - title: the topic in the speaker's words, sentence case. short: two or three words for a tab.
+- summary: at most two sentences on what the speaker has concluded or plans about it so far, in their words. Not a list of what was said.
+- sources: for every node, slice or point in the diagram, its label exactly as written in the mermaid, mapped to the numbers of the lines it came from (the lines that said it). Every node gets its lines; the central topic too.
 - mermaid: valid Mermaid text for the diagram that fits what was said. Choose:
   quadrantChart for options weighed on two scales (effort and value: x-axis Less effort --> More effort, y-axis Less value --> More value, each point written "Voice capture: [0.3, 0.8]", x and y from 0 to 1 in brackets);
   pie for shares of a whole; xychart for numbers across categories or time; mindmap for reasons, doubts and plans around one question;
@@ -56,6 +58,8 @@ export interface TopicUpdate {
   title: string;
   short: string;
   mermaid: string;
+  summary?: string;
+  sources?: Record<string, number[]>;
 }
 
 export interface TalkReply {
@@ -68,6 +72,17 @@ export interface HeardLine {
   n: number;
   start: number;
   text: string;
+}
+
+/** A topic's node → lines map, keeping only labels with line numbers. */
+function lineSources(raw: unknown): Record<string, number[]> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Record<string, number[]> = {};
+  for (const [label, lines] of Object.entries(raw as Record<string, unknown>)) {
+    const ns = Array.isArray(lines) ? lines.filter((n): n is number => Number.isInteger(n)) : [];
+    if (ns.length) out[label] = ns;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /** The JSON in a reply, forgiving a code fence or a sentence around it. */
@@ -89,6 +104,8 @@ export function parseTalkReply(text: string): TalkReply {
     topics: topics.map((t) => ({
       ...t,
       short: typeof t.short === "string" && t.short ? t.short : t.title,
+      summary: typeof t.summary === "string" && t.summary.trim() ? t.summary.trim() : undefined,
+      sources: lineSources(t.sources),
     })),
   };
 }

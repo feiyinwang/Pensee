@@ -21,6 +21,7 @@ import { followWikiLink } from "../wiki-pages-extension";
 import { parseVideoLink } from "@/lib/video-pins";
 import { openBookLink, parseBookLink } from "./board-book-links";
 import { openVideoLink } from "./board-video-links";
+import { playAudioClipLink } from "./board-audio-links";
 import { isInHiddenTab } from "../hidden-tab";
 import { type BoardScene, cloneScene } from "./board-model";
 import { type BoardCanvasHandle, mountBoardCanvas } from "./board-canvas";
@@ -255,6 +256,8 @@ export function openBoardFullscreen(opts: BoardFullscreenOptions): { close: () =
     present: opts.present,
     exportSvg: opts.exportSvg,
     onOpenLink: (inner) => {
+      // A talk's clip plays right here: nothing to open, the board stays.
+      if (playAudioClipLink(inner)) return;
       if (parseVideoLink(inner)) {
         // The player is in the video's note, beside an in-page board; full
         // screen the board would hide it, so it closes (and writes back) first.

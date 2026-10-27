@@ -264,13 +264,13 @@ describe("Ask", () => {
     expect(s.current).toBe("build");
   });
 
-  test("the topics become markdown sections with their diagram and time links", () => {
+  test("the topics become sections: summary, then the diagram or board; asides keep their lines", () => {
     const s = applyReply(emptyAsk(), {
       lines: [
         { n: 1, topic: "build", turn: "First" },
         { n: 2, topic: "hire", aside: true },
       ],
-      topics: [build],
+      topics: [{ ...build, summary: "Voice capture is the bet. A mobile app waits." }],
     });
     const lines = [
       { n: 1, start: 3, text: "First, what to build next quarter." },
@@ -285,17 +285,42 @@ describe("Ask", () => {
       [
         "### What to build next quarter",
         "",
+        "Voice capture is the bet. A mobile app waits.",
+        "",
         "```mermaid",
         "quadrantChart\n  Voice capture: [0.3, 0.8]",
         "```",
-        "",
-        "- First, what to build next quarter. [0:03](<Recordings/a.m4a#t=3>)",
         "",
         "### Said in passing",
         "",
         "- QA eats my evenings. [0:14](<Recordings/a.m4a#t=14>)",
       ].join("\n"),
     );
+  });
+
+  test("a topic drawn as a board embeds it instead of its Mermaid", () => {
+    const s = applyReply(emptyAsk(), {
+      lines: [{ n: 1, topic: "build", turn: "First" }],
+      topics: [build],
+    });
+    expect(
+      talkSections(
+        s,
+        [{ n: 1, start: 3, text: "First." }],
+        () => ({ file: "Recordings/a.m4a", start: 3 }),
+        () => "Talk-assets/plan.board.svg",
+      ),
+    ).toBe(
+      "### What to build next quarter\n\n![What to build next quarter](Talk-assets/plan.board.svg)",
+    );
+  });
+
+  test("a reply's summary and node sources are read; sources without lines are dropped", () => {
+    const reply = parseTalkReply(
+      '{"lines":[],"topics":[{"key":"b","title":"B","mermaid":"mindmap","summary":" One. Two. ","sources":{"Root":[1,2],"Empty":[],"Bad":"x"}}]}',
+    );
+    expect(reply.topics[0].summary).toBe("One. Two.");
+    expect(reply.topics[0].sources).toEqual({ Root: [1, 2] });
   });
 
   test("a reply's JSON is read even inside a code fence", () => {

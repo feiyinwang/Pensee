@@ -19,6 +19,10 @@ export interface Topic {
   short: string;
   /** The diagram, as Mermaid text; empty until the agent draws one. */
   mermaid: string;
+  /** At most two sentences on what the talk said about it, for the note. */
+  summary?: string;
+  /** Each diagram node's label → the heard lines it came from, for its clip. */
+  sources?: Record<string, number[]>;
   /** The heard lines about it, by number. */
   lines: number[];
 }
@@ -77,6 +81,8 @@ export function applyReply(prev: AskState, reply: TalkReply): AskState {
       title: t.title,
       short: t.short,
       mermaid: t.mermaid,
+      summary: t.summary ?? old?.summary,
+      sources: t.sources ?? old?.sources,
       lines: old?.lines ?? [],
     };
   }
@@ -152,14 +158,13 @@ export function talkSections(
   for (const key of s.open) {
     const t = s.topics[key];
     if (!t) continue;
-    const bullets = t.lines
-      .map((n) => said(n, s.lineTopic[n]?.aside ? "*Said in passing:* " : ""))
-      .filter(Boolean);
     out.push(`### ${t.title}`, "");
+    // What it came to, then its picture: the lines themselves are in the
+    // transcript, and a board node plays the part of the take it came from.
+    if (t.summary?.trim()) out.push(t.summary.trim(), "");
     const board = boardOf(key);
     if (board) out.push(`![${t.title}](${formatMarkdownDestination(board)})`, "");
     else if (t.mermaid.trim()) out.push("```mermaid", t.mermaid.trim(), "```", "");
-    if (bullets.length) out.push(...(bullets as string[]), "");
   }
   const passing = Object.values(s.topics)
     .filter((t) => !s.open.includes(t.key))

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { renderStaticBoard } from "@/components/editor-area/board/board-canvas";
+import { playAudioClipLink } from "@/components/editor-area/board/board-audio-links";
 import { editTopicBoard, useTopicBoards } from "@/lib/talk/topic-boards";
 import "@/components/editor-area/board/board.css";
 
@@ -42,11 +43,14 @@ export function TalkBoard({
       className="talk-board"
       data-talk-board={topicKey}
       aria-label={`${label}: open the board to change it`}
-      onClick={() =>
+      onClick={(e) => {
+        // A node's play badge plays its part of the take; anywhere else opens the board.
+        const pin = (e.target as Element).closest?.(".wr-board-pin[data-wiki]");
+        if (pin && playAudioClipLink(pin.getAttribute("data-wiki") ?? "")) return;
         void editTopicBoard(topicKey, notePath).catch((error: unknown) =>
           console.error("[talk] topic board didn't open:", error),
-        )
-      }
+        );
+      }}
     >
       <div ref={host} className="talk-board-surface" role="img" aria-label={label} />
       <span className="talk-board-hint">
