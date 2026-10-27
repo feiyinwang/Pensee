@@ -81,10 +81,12 @@ export function TalkDock({
     s.tabs.some((tab) => tab.location.kind === "file" && tab.location.path === notePath),
   );
   const mine = notePath === path;
-  // Recording a note that isn't on screen (left in its tab, or in a tab behind
-  // this one): the pill follows you, naming that note, so the microphone is
-  // never on with no Stop in sight. In columns its own column shows its pill.
-  const elsewhere = phase === "recording" && !mine && isActive && (!inColumn || !noteInTab);
+  // A take whose note isn't on screen (left in its tab, or in a tab behind
+  // this one): the pill follows you, naming that note while it records, so
+  // the microphone is never on with no Stop in sight and what Stop asks next
+  // (a download, an error) isn't left on a note you can't see. In columns
+  // the note's own column shows its pill.
+  const elsewhere = (busy || phase === "error") && !mine && isActive && (!inColumn || !noteInTab);
   // A take shows on its own note; otherwise Record shows on the note you're in.
   if (!elsewhere && (busy ? !mine : !isActive)) return null;
 
@@ -156,7 +158,7 @@ export function TalkDock({
             <span className="talk-dock-time">{Math.floor(progress * 100)}%</span>
           </span>
         </div>
-      ) : phase === "error" && mine ? (
+      ) : phase === "error" && (mine || elsewhere) ? (
         <div className="talk-dock-pill talk-dock-error" role="alert">
           <span className="talk-dock-note">{error}</span>
           <button

@@ -41,6 +41,43 @@
   scrollbar-width: none;
 }
 
+/* Topic tabs: one surface, the shown topic filled (no track around them). */
+.talk-box-topics {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.talk-box-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-label);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-hover) var(--ease-hover),
+    color var(--motion-hover) var(--ease-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .talk-box-tab:hover {
+    color: var(--color-text-primary);
+  }
+}
+
+.talk-box-tab[aria-selected="true"] {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+}
+
 .talk-box-fill {
   margin-left: 6px;
   color: var(--color-text-faint);

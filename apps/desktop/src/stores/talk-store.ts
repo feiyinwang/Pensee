@@ -3,7 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Recorder, microphoneError } from "@/lib/talk/recorder";
 import { recordingStem } from "@/lib/talk/clock";
-import { insertTalk } from "@/lib/talk/insert-talk";
+import { EditorState } from "@codemirror/state";
+import { insertTalk, talkInsertion } from "@/lib/talk/insert-talk";
+import { minimalChange } from "@/lib/block-refs";
+import { editPage } from "@/components/editor-area/linked-block-sync";
 import {
   type Segment,
   afterTranscriptInsertion,
@@ -136,6 +139,7 @@ const showing = (path: string) =>
 /** The tabs that showed the take's note at Record. Going to another note in
  *  one of them keeps recording (the pill follows you); closing them ends it. */
 let recordingTabs = new Set<string>();
+const noteTitle = (path: string) => path.slice(path.lastIndexOf("/") + 1).replace(/\.md$/, "");
 /** Whether the take's note is closed: no tab shows it and its tabs are gone. */
 const noteClosed = (path: string) => {
   const tabs = useEditorStore.getState().tabs;
@@ -245,35 +249,53 @@ export const useTalkStore = create<TalkState>((set, get) => {
     liveTimer = undefined;
   };
 
-  const writeTranscript = (take: Pending, segments: Segment[], engine: string) => {
-    const view = editorViewFor(take.notePath);
-    const callout = transcriptCallout(take.file, segments, engine);
-    const at = view && transcriptInsertion(view.state, take.file, callout);
-    if (!view || !at) {
-      showEditorNotice(
-        `The transcript of ${take.file} is ready, but its note was closed or the player was removed.`,
-      );
-      return;
-    }
-    view.dispatch({ changes: at, userEvent: "input.talk" });
+  /** The note's text with the take's transcript under its player and the
+   *  talk's topics under that, or null when the player is gone. */
+  const withTranscript = (doc: string, take: Pending, callout: string): string | null => {
+    const at = transcriptInsertion(EditorState.create({ doc }), take.file, callout);
+    if (!at) return null;
+    let state = EditorState.create({ doc }).update({ changes: at }).state;
     const sections = talkSections(take.ask, take.lines, (n) => ({
       file: take.takes[take.takeOfLine[n] ?? 0] ?? take.file,
       start: take.lines[n]?.start ?? 0,
     }));
-    if (!sections) return;
-    // A later take rewrites the talk's topics in place, if you haven't edited them.
-    const doc = view.state.doc.toString();
-    const old = sectionsWritten ? doc.indexOf(sectionsWritten) : -1;
-    if (sectionsWritten && old >= 0) {
-      view.dispatch({
-        changes: { from: old, to: old + sectionsWritten.length, insert: sections },
-        userEvent: "input.talk",
-      });
-    } else {
-      const below = afterTranscriptInsertion(view.state, take.file, sections);
-      if (below) view.dispatch({ changes: below, userEvent: "input.talk" });
+    if (sections) {
+      // A later take rewrites the talk's topics in place, if you haven't edited them.
+      const text = state.doc.toString();
+      const old = sectionsWritten ? text.indexOf(sectionsWritten) : -1;
+      const change =
+        sectionsWritten && old >= 0
+          ? { from: old, to: old + sectionsWritten.length, insert: sections }
+          : afterTranscriptInsertion(state, take.file, sections);
+      if (change) state = state.update({ changes: change }).state;
+      sectionsWritten = sections;
     }
-    sectionsWritten = sections;
+    return state.doc.toString();
+  };
+
+  const writeTranscript = async (take: Pending, segments: Segment[], engine: string) => {
+    const callout = transcriptCallout(take.file, segments, engine);
+    const view = editorViewFor(take.notePath);
+    const gone = () =>
+      showEditorNotice(
+        `The transcript of ${take.file} is ready, but its player was removed from the note.`,
+      );
+    if (view) {
+      const doc = view.state.doc.toString();
+      const next = withTranscript(doc, take, callout);
+      const change = next === null ? null : minimalChange(doc, next);
+      if (next === null) gone();
+      else if (change) view.dispatch({ changes: change, userEvent: "input.talk" });
+      return;
+    }
+    // You left the note, or closed it, while it was being written: into its file.
+    let missing = false;
+    await editPage(take.notePath, (page) => {
+      const body = withTranscript(page.body, take, callout);
+      missing = body === null;
+      return body === null ? page : { ...page, body };
+    });
+    if (missing) gone();
   };
 
   /** The whole take: Whisper from the samples it heard, or Scribe from the saved file. */
@@ -290,7 +312,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
         void invoke("talk_pcm_drop", { session: take.session });
         segments = await invoke<Segment[]>("elevenlabs_transcribe", { file: take.file });
       }
-      writeTranscript(take, segments, model ? `On this Mac · ${model.name}` : SCRIBE);
+      await writeTranscript(take, segments, model ? `On this Mac · ${model.name}` : SCRIBE);
       pending = null;
       set({ talk: { notePath: take.notePath, takes: take.takes.length } });
       finish();
@@ -412,15 +434,19 @@ export const useTalkStore = create<TalkState>((set, get) => {
         if (view && under) view.dispatch({ changes: under, userEvent: "input.talk" });
         else if (view) insertTalk(view, file, take.startedAt);
         else {
-          // Its note was closed (which also stops the take): no pill is left to
-          // offer a transcript, and none could be written. The take is in Recordings/.
-          showEditorNotice(
-            `Saved to ${file}. Its note was closed, so the talk wasn't added to it.`,
-          );
-          endTalk();
-          void invoke("talk_pcm_drop", { session: id });
-          finish();
-          return;
+          // You left the note, or closed it, while recording: the talk goes
+          // into its file, at the end (there is no caret to put it after).
+          await editPage(notePath, (page) => {
+            const state = EditorState.create({
+              doc: page.body,
+              selection: { anchor: page.body.length },
+            });
+            const change =
+              (previous && afterTranscriptInsertion(state, previous, `![[${file}]]`)) ||
+              talkInsertion(state, file, take.startedAt);
+            return { ...page, body: state.update({ changes: change }).state.doc.toString() };
+          });
+          showEditorNotice(`The talk went into ${noteTitle(notePath)}, which you'd left.`);
         }
         set({ lastFile: file, talk: { notePath, takes: takes.length } });
         const model = await modelInfo();

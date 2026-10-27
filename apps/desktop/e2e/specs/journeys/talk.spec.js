@@ -175,6 +175,10 @@ const readSettled = async (path) => {
 };
 
 const count = (text, part) => text.split(part).length - 1;
+/** Talk note as it is on disk (a note that isn't open is written there directly). */
+const noteText = async () =>
+  (await invoke("read_file", { path: `${await workspaceRoot()}/Notes/Talk note.md` })).value
+    .content;
 
 async function openSettings() {
   await pressCmd("p");
@@ -433,14 +437,7 @@ describe("Journeys: talk notes", () => {
     const card = () =>
       browser.execute(() => document.querySelector(".talk-box-card")?.textContent ?? null);
     const tabs = () =>
-      browser.execute(
-        () =>
-          [
-            ...document.querySelectorAll(
-              ".talk-box-tabs [data-value], .talk-box-tabs button[aria-pressed]",
-            ),
-          ].length,
-      );
+      browser.execute(() => [...document.querySelectorAll(".talk-box-tab")].length);
     await browser
       // Claude may offer an earlier line first; the card for the turn replaces it.
       .waitUntil(async () => /New topic\?.*“[^”]*next[^”]*”/i.test((await card()) ?? ""), {
@@ -619,6 +616,7 @@ describe("Journeys: talk notes", () => {
     await fakeMicrophone(true);
     setWhisper(false);
     const before = (await invoke("list_recordings")).value.length;
+    const embeds = count(await noteText(), "![[Recordings/");
     ok(await pressRecord());
     await browser.waitUntil(async () => (await dockText()).includes("Stop"), {
       timeout: 5_000,
@@ -634,12 +632,25 @@ describe("Journeys: talk notes", () => {
       async () => (await invoke("list_recordings")).value.length === before + 1,
       { timeout: 10_000, timeoutMsg: "the take wasn't saved to Recordings/" },
     );
+    // The talk still went into the note, in its file.
+    await browser.waitUntil(async () => count(await noteText(), "![[Recordings/") === embeds + 1, {
+      timeout: 10_000,
+      timeoutMsg: "the closed note didn't get the take",
+    });
+    // Its transcript offer follows to the next note you open.
+    await openNote("Welcome");
+    await browser.waitUntil(async () => /Whisper Small/.test(await dockText()), {
+      timeout: 10_000,
+      timeoutMsg: `no transcript offer after the note closed: ${await dockText()}`,
+    });
+    ok(await pressDock("Not now"));
   });
 
   it("TALK-18 Going to another note while recording: the pill follows, names the note, and Stop ends the take", async () => {
     await openNote("Talk note");
     await fakeMicrophone(true);
     setWhisper(false);
+    const embeds = count(await noteText(), "![[Recordings/");
     ok(await pressRecord());
     await browser.waitUntil(async () => (await dockText()).includes("Stop"), {
       timeout: 5_000,
@@ -668,6 +679,13 @@ describe("Journeys: talk notes", () => {
       timeout: 10_000,
       timeoutMsg: "the microphone stayed on after Stop",
     });
+    // The talk went into Talk note's file, though Welcome is in front.
+    await browser.waitUntil(async () => count(await noteText(), "![[Recordings/") === embeds + 1, {
+      timeout: 10_000,
+      timeoutMsg: "the note you'd left didn't get the take",
+    });
+    await browser.waitUntil(async () => /Whisper Small/.test(await pill()), { timeout: 10_000 });
+    ok(await pressDock("Not now"));
   });
 
   it("TALK-19 A microphone that sends only silence: the pill says it hears nothing and where to allow it", async () => {

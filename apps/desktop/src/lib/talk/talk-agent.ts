@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { offerClaudeSignIn } from "@/stores/claude-sign-in-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { agentModel } from "../agent-models";
 import { agentErrorText, parseAgentLine } from "../agent-stream";
 import { formatClock } from "./clock";
 
@@ -11,9 +13,15 @@ import { formatClock } from "./clock";
 // belongs to and the Mermaid diagram of every topic that changed.
 
 const CHANNEL = "talk";
-/** Fast enough to keep up with talking. */
-const MODEL = "haiku";
-const TIMEOUT_MS = 45_000;
+/** A turn may redraw several diagrams; the larger models need the room. */
+const TIMEOUT_MS = 90_000;
+
+/** Your model from Settings → Agent, at least Sonnet: Haiku keeps a mind map
+ *  flat and drops "put X under Y", as Organize found (second-pen-agent.ts). */
+function model(): string {
+  const id = agentModel(useSettingsStore.getState().getSetting("agent.model")).id;
+  return id === "haiku" ? "sonnet" : id;
+}
 
 export const TALK_INSTRUCTIONS = `You listen to someone thinking out loud and keep their talk sorted into topics, live.
 Each turn gives you the lines just heard, numbered, with their time. Reply with JSON only, no prose, no code fence:
@@ -31,6 +39,8 @@ topics: every topic that is new or whose diagram changed this turn, with its ful
   flowchart for steps or causes; journey for what a person goes through (score 1-5 per step); timeline for dates; kanban for things to do;
   sankey for flows between stages; sequenceDiagram for who says what to whom.
   Use only what was said; short labels in the speaker's words; never invent numbers. Keep a topic's diagram type once chosen.
+The speaker directs the picture. When they say where something goes or how it relates ("X comes after Y", "X is a step of Y", "put X under Y", "move X to…", "rename X", "drop X", "draw this as a flow"), redraw the diagram exactly that way, even against how you drew it before: their latest word wins, and nothing they placed moves back. A line that only gives such an instruction changes the diagram; it is never itself a node.
+Mind maps and flowcharts are MECE: every node says one thing, siblings don't overlap, together they cover what was said under their parent, nothing appears twice, and something said to belong under a node sits only there. Group the way the speaker groups.
 Write in the language the speaker uses.`;
 
 /** What the agent says about one line. */
@@ -146,7 +156,7 @@ export function warmTalk(): void {
   invoke("agent_warm", {
     sessionId: null,
     instructions: TALK_INSTRUCTIONS,
-    model: MODEL,
+    model: model(),
     channel: CHANNEL,
   }).catch((error: unknown) => console.error("[talk] Couldn't start Claude ahead of time:", error));
 }
@@ -171,7 +181,7 @@ export function askTalk(prompt: string): Promise<TalkReply> {
       prompt,
       sessionId: null,
       instructions: TALK_INSTRUCTIONS,
-      model: MODEL,
+      model: model(),
       channel: CHANNEL,
     }).catch((error: unknown) => {
       const request = waiting.get(requestId);

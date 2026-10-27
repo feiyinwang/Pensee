@@ -19,7 +19,7 @@ Ask on 2026-10-26) and `apps/desktop/proto/talk-notes` (Ask with Pele, audio, Co
 - While recording the pill shows a live red dot, a level trace, the time and **Stop**. The trace is the last half second of your voice's loudness, newest on the right, on a decibel scale so talking fills most of it and a quiet room leaves it flat.
 - The pill and the live box size to the note's pane, not the window, so they fit a column after a pinch.
 - When macOS hasn't let Pensée use the microphone it gets only silence, not an error. If nothing but exact zeros comes in for the first 3 seconds, the pill says "No sound from the microphone" and where to allow Pensée; it goes once sound arrives. A quiet room is never exactly zero, so this doesn't fire on silence you make.
-- The microphone is on only while the pill shows a take. Going to another note keeps recording, and the pill follows you there with the note's name ("in Talk note") and **Stop**. Closing the note's tab stops the take and saves it to `Recordings/`; with no note to write into, a notice says where it went.
+- The microphone is on only while the pill shows a take. Going to another note keeps recording, and the pill follows you there with the note's name ("in Talk note") and **Stop**. Closing the note's tab stops the take and saves it to `Recordings/`. A take whose note isn't on screen at Stop (left or closed) still goes into the note: into its file, at the end, with its transcript and topics after it; what Stop asks next (the Whisper download, an error) shows on the note you're in.
 - **Stop** saves the take as an audio file in `Recordings/` at the vault root, named by date and time:
   `Recordings/2026-10-25 09.14.m4a`. A later take into the same talk is `… 09.14 (2).m4a`.
 - After a stop, the pill reads _Saved to Recordings/_ and offers **Continue**: it records the next take into the
@@ -126,6 +126,9 @@ Phased; each phase ships on its own after its QA pass.
 4. **Ask.** The talk's sentences go to Claude (a `talk` channel next to the pen's) which returns, per sentence:
    new topic / same / back to / aside, the topic's title, and its updated Mermaid source. The box, card and tabs
    follow the prototype.
+   It runs on your model from Settings → Agent, at least Sonnet (Haiku keeps mind maps flat). The speaker
+   directs the picture: "X comes after Y", "put X under Y", "rename", "drop" redraw it that way and their
+   latest word wins; mind maps and flowcharts are kept MECE.
 5. **Continue, Recordings, Settings.** Next take into the same talk; the Recordings space; Settings section;
    ElevenLabs Scribe at stop through `reqwest`; key in the keychain (`keyring`).
 

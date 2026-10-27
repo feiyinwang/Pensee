@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import SegmentedControl from "@/components/arc/segmented-control/segmented-control";
 import { Badge } from "@/components/arc/badge/badge";
 import { TextMorph } from "@/components/arc/text-morph/text-morph";
 import { ThinkingLoader } from "@/components/affect/thinking-loader";
@@ -36,20 +35,23 @@ export default function TalkBox() {
       <div className="talk-box-head">
         <div className="talk-box-tabs">
           {ask.open.length > 0 && shown && (
-            <SegmentedControl
-              label="Topics"
-              value={shown}
-              onValueChange={(k) => useTalkStore.getState().pin(k)}
-              options={ask.open.map((k) => ({
-                value: k,
-                label: ask.topics[k]?.short ?? k,
-                accessory: (
+            <div className="talk-box-topics" role="tablist" aria-label="Topics">
+              {ask.open.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={k === shown}
+                  className="talk-box-tab"
+                  onClick={() => useTalkStore.getState().pin(k)}
+                >
+                  {ask.topics[k]?.short ?? k}
                   <span className="talk-box-fill">
                     <TextMorph>{ask.topics[k] ? topicFill(ask.topics[k]) : ""}</TextMorph>
                   </span>
-                ),
-              }))}
-            />
+                </button>
+              ))}
+            </div>
           )}
           {parked.map(([k, lines]) => (
             <Badge key={k} size="sm" tone="neutral" title="Said in passing; it waits here">
