@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { EditorView } from "@codemirror/view";
+import { motion, useReducedMotion, useSpring } from "motion/react";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useDocumentHeadings, type DocumentHeading } from "@/hooks/use-document-headings";
 import { ScrollFade } from "@/components/scroll-fade";
@@ -10,7 +11,13 @@ import { useMountTransition } from "./use-mount-transition";
 import { showNativeContextMenu } from "./editor-context-menu";
 import { EDITOR_SCROLLBAR_GUTTER } from "./editor-scroll-container";
 import { scrollPosToSafeTop } from "./editor-scroll";
-import { dotOffset, indentForDepth, nextWindowStart, segmentLayout } from "./section-rail-depth";
+import {
+  dotOffset,
+  followOffset,
+  indentForDepth,
+  nextWindowStart,
+  segmentLayout,
+} from "./section-rail-depth";
 import "./section-rail.css";
 
 // The hover zone is wider than the 2px line so it can be found; the line runs
@@ -28,6 +35,9 @@ const POPOVER_OFFSET = -(POPOVER_PAD_Y + ROW_HEIGHT / 2);
 const OPEN_DELAY_MS = 100;
 // Matches --motion-base in section-rail.css / App.css.
 const POPOVER_TRANSITION_MS = 160;
+// The open list rides down the line with the pointer: sticky, settling with a
+// small overshoot (damping ratio ~0.67).
+const FOLLOW_SPRING = { stiffness: 320, damping: 24, restDelta: 0.5 };
 
 interface SectionRailProps {
   filePath: string;
@@ -153,6 +163,9 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
   const listScrollRef = useRef<HTMLDivElement>(null);
   const dotRef = useRef<HTMLSpanElement>(null);
   const openTimerRef = useRef(0);
+  const pointerYRef = useRef(0);
+  const followY = useSpring(0, FOLLOW_SPRING);
+  const reduceMotion = useReducedMotion();
 
   const mounted = headings.length > 0;
   const track = useTrackLength(railRef, mounted);
@@ -252,6 +265,34 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
 
   useEffect(() => () => window.clearTimeout(openTimerRef.current), []);
 
+  const followTarget = () =>
+    followOffset(
+      pointerYRef.current,
+      popoverRef.current?.offsetHeight ?? 0,
+      track,
+      -POPOVER_OFFSET,
+    );
+
+  // The list opens where the pointer already is, with no slide from the top.
+  useLayoutEffect(() => {
+    if (shouldRender) followY.jump(followTarget());
+    // Only on opening: moves after that go through the spring.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldRender]);
+
+  // Written to the spring, not state: it follows every pointer move. Inside
+  // the list it holds still, so the rows don't slide out from under the
+  // pointer on its way to one.
+  const handlePointerMove = (event: React.PointerEvent) => {
+    if (event.target instanceof Node && popoverRef.current?.contains(event.target)) return;
+    const rail = railRef.current;
+    if (!rail) return;
+    pointerYRef.current = event.clientY - rail.getBoundingClientRect().top;
+    if (!popoverRef.current) return;
+    if (reduceMotion) followY.jump(followTarget());
+    else followY.set(followTarget());
+  };
+
   const openSoon = () => {
     window.clearTimeout(openTimerRef.current);
     openTimerRef.current = window.setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
@@ -296,6 +337,7 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
       }}
       onMouseEnter={openSoon}
       onMouseLeave={close}
+      onPointerMove={handlePointerMove}
       onWheel={handleWheel}
     >
       {segments.map((segment, i) => {
@@ -320,50 +362,55 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
       {segments.length > 0 && <span ref={dotRef} aria-hidden="true" className="section-rail-dot" />}
 
       {shouldRender && (
-        <SurfaceCard
-          ref={popoverRef}
-          className="section-rail-popover absolute flex flex-col overflow-hidden"
-          data-state={phase}
+        <motion.div
+          className="section-rail-follow absolute flex flex-col"
           style={{
+            y: followY,
             top: POPOVER_OFFSET,
             right: RAIL_ZONE_WIDTH,
             width: POPOVER_WIDTH,
             maxHeight: `calc(100% + ${POPOVER_PAD_Y * 2}px)`,
           }}
         >
-          <ScrollFade
-            ref={listScrollRef}
-            axis="vertical"
-            fadeSize="20px"
-            className="scrollbar-none min-h-0 overflow-y-auto"
-            style={{ padding: `${POPOVER_PAD_Y}px 0` }}
+          <SurfaceCard
+            ref={popoverRef}
+            className="section-rail-popover flex min-h-0 flex-col overflow-hidden"
+            data-state={phase}
           >
-            <ul>
-              {headings.map((heading, i) => (
-                <li key={`${heading.line}-${i}`}>
-                  <button
-                    type="button"
-                    className={`section-rail-row${i === activeIndex ? " is-active" : ""}${
-                      i === hoverIndex ? " is-hover" : ""
-                    }`}
-                    data-animate={animateIndent ? "true" : "false"}
-                    title={heading.text}
-                    style={{
-                      height: ROW_HEIGHT,
-                      paddingLeft: 16 + indentForDepth(heading.depth, windowStart),
-                    }}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => setHoverIndex(i)}
-                    onClick={() => handlePick(heading)}
-                    onContextMenu={(event) => handleContextMenu(event, heading)}
-                  >
-                    {heading.text}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </ScrollFade>
-        </SurfaceCard>
+            <ScrollFade
+              ref={listScrollRef}
+              axis="vertical"
+              fadeSize="20px"
+              className="scrollbar-none min-h-0 overflow-y-auto"
+              style={{ padding: `${POPOVER_PAD_Y}px 0` }}
+            >
+              <ul>
+                {headings.map((heading, i) => (
+                  <li key={`${heading.line}-${i}`}>
+                    <button
+                      type="button"
+                      className={`section-rail-row${i === activeIndex ? " is-active" : ""}${
+                        i === hoverIndex ? " is-hover" : ""
+                      }`}
+                      data-animate={animateIndent ? "true" : "false"}
+                      title={heading.text}
+                      style={{
+                        height: ROW_HEIGHT,
+                        paddingLeft: 16 + indentForDepth(heading.depth, windowStart),
+                      }}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() => setHoverIndex(i)}
+                      onClick={() => handlePick(heading)}
+                      onContextMenu={(event) => handleContextMenu(event, heading)}
+                    >
+                      {heading.text}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </ScrollFade>
+          </SurfaceCard>
+        </motion.div>
       )}
     </nav>
   );

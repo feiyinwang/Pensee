@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
   DEPTH_WINDOW,
+  followOffset,
   INDENT_STEP,
   SEGMENT_GAP,
   SEGMENT_MIN,
@@ -115,5 +116,26 @@ describe("dotOffset", () => {
 
   test("an empty section puts the dot at its segment's start", () => {
     expect(dotOffset(segment, 1000, 1000, 1000)).toBe(100);
+  });
+});
+
+describe("followOffset", () => {
+  // A 200px list on a 600px line, overhanging each end by 20px.
+  test("puts the list's middle level with the pointer", () => {
+    expect(followOffset(300, 200, 600, 20)).toBe(220);
+  });
+
+  test("keeps its top place near the top of the line", () => {
+    expect(followOffset(0, 200, 600, 20)).toBe(0);
+    expect(followOffset(50, 200, 600, 20)).toBe(0);
+  });
+
+  test("stops at the line's end", () => {
+    expect(followOffset(600, 200, 600, 20)).toBe(440);
+  });
+
+  test("a list as tall as the line stays put", () => {
+    expect(followOffset(300, 640, 600, 20)).toBe(0);
+    expect(followOffset(300, 800, 600, 20)).toBe(0);
   });
 });

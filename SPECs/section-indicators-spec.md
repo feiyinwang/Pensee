@@ -156,10 +156,19 @@ at every window width whenever the note has at least one heading.
 - **Motion.** The list enters with opacity and `translateX(4px) scale(0.97)`
   from the right top, `--motion-base` `--ease-out`; segment colour fades on
   `--motion-fast`. The dot does not animate. None under reduced motion.
+- **The list follows the pointer.** Asked for 2026-10-27: "follow the mouse
+  smoothly. sticky, even a bit bouncy". While the pointer moves along the
+  line, the open list slides so its middle is level with it, held between the
+  line's two ends (a list as tall as the line stays put). A Motion spring
+  (stiffness 320, damping 24, damping ratio ~0.67) gives the lag and the small
+  overshoot; it moves `translateY` on a wrapper, so the entrance's own
+  transform stays a CSS transition. The list opens already at the pointer, and
+  holds still once the pointer is inside it, so rows never slide out from
+  under it. Reduced motion jumps instead of springing.
 - **Same as before.** Click scrolls to the heading; right-click offers **Copy
   heading link**; a wheel over the line scrolls the note.
 
-Journeys ED-20–25.
+Journeys ED-20–25, ED-27.
 
 ## Implementation Notes
 

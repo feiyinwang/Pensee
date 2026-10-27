@@ -71,3 +71,12 @@ export function dotOffset(segment: Segment, start: number, stop: number, reading
   const fraction = span > 0 ? Math.min(Math.max((readingY - start) / span, 0), 1) : 0;
   return segment.top + fraction * segment.height;
 }
+
+// How far the open list sits below its top place so its middle is level with
+// the pointer (`pointerY`, from the line's top). It keeps between the line's
+// two ends, each `overhang` past them; a list as tall as the line cannot move.
+export function followOffset(pointerY: number, height: number, track: number, overhang: number) {
+  const room = track - height + 2 * overhang;
+  const centred = pointerY - height / 2 + overhang;
+  return Math.max(0, Math.min(room, centred));
+}
