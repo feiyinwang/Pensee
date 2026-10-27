@@ -32,7 +32,8 @@ start any of them.
 - **Colours.** The chart card sets Pele's colour variables from the board's own colour tokens, which
   the `.board.svg` carries in its `<style>`: the chart follows the board's palette and theme in the
   editor, in the talk box, in the note's image preview and in other apps. Words Pele writes on a
-  filled shape (a pie slice's share) take the light one of the theme's surface and ink.
+  filled shape (a pie slice's share) take the light one of the theme's surface and ink; boxes Pele
+  fills with its background colour (behind an arrow's label) stay the surface.
 - **The Picture tray.** The board's dock has a **Picture** group: Mind map, Steps, Matrix, Timeline,
   Chart, named as the talk box's buttons name them. Each drops its skeleton in the middle of the
   view, selected: a central topic; three steps; four empty sections with Low → High axes; three

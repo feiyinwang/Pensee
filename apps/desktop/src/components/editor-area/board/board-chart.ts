@@ -13,11 +13,9 @@ import type { BoardEl, ChartEl } from "./board-model";
 // draws "Drawing…" and asks for the type; `onChartsReady` listeners redraw
 // once it lands, and `loadCharts` lets a writer wait for it first.
 
-/** Pele's variables, from the board's tokens. Pele writes words on a filled
- *  shape (a pie slice's share) in its background colour: the light one of
- *  the theme's surface and ink (`--wr-board-flip` is 1 in dark mode). */
+/** Pele's variables, from the board's tokens. */
 export const CHART_INKS = [
-  "--pele-bg:color-mix(in oklab,var(--wr-board-ink) calc(var(--wr-board-flip) * 100%),var(--wr-board-surface))",
+  "--pele-bg:var(--wr-board-surface)",
   "--pele-fg:var(--wr-board-ink)",
   "--pele-muted:var(--wr-board-muted)",
   "--pele-line:var(--wr-board-muted)",
@@ -107,6 +105,13 @@ export function chartDrawing(src: string): Drawn | null {
   drawn.set(src, result);
   return result;
 }
+
+/** Words Pele writes on a filled shape (a pie slice's share) in its
+ *  background colour: they take the light one of the theme's surface and ink
+ *  instead (`--wr-board-flip` is 1 in dark mode), so they read on the fill in
+ *  both themes, while boxes drawn in the background colour stay the surface. */
+export const ON_FILL =
+  "color-mix(in oklab,var(--wr-board-ink) calc(var(--wr-board-flip) * 100%),var(--wr-board-surface))";
 
 /** Space between a chart card's edge and its drawing. */
 export const CHART_PAD = 16;
