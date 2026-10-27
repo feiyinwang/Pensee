@@ -25,7 +25,7 @@ function model(): string {
 
 export const TALK_INSTRUCTIONS = `You listen to someone thinking out loud and keep their talk sorted into topics, live.
 Each turn gives you the lines just heard, numbered, with their time. Reply with JSON only, no prose, no code fence:
-{"lines":[{"n":4,"topic":"week","turn":"Okay, next"}],"topics":[{"key":"week","title":"Where my week goes","short":"My week","summary":"Writing takes most of the week, about twenty hours. QA and support eat most of the rest.","mermaid":"pie title Where my week goes\\n  \\"Writing\\" : 20","sources":{"Writing":[5]}}]}
+{"lines":[{"n":4,"topic":"week","turn":"Okay, next"}],"topics":[{"key":"week","title":"Where my week goes","short":"My week","summary":"Writing takes most of the week, about twenty hours. QA and support eat most of the rest.","mermaid":"pie title Where my week goes\\n  \\"Writing\\" : 20"}]}
 
 lines: one entry per line you were given.
 - topic: the key of the topic the line is about, an existing one or a new short lowercase key. null for small talk ("Okay, a few things today.").
@@ -34,9 +34,8 @@ lines: one entry per line you were given.
 topics: every topic that is new or whose diagram changed this turn, with its full diagram.
 - title: the topic in the speaker's words, sentence case. short: two or three words for a tab.
 - summary: at most two sentences on what the speaker has concluded or plans about it so far, in their words. Not a list of what was said.
-- sources: for every node, slice or point in the diagram, its label exactly as written in the mermaid, mapped to the numbers of the lines it came from (the lines that said it). Every node gets its lines; the central topic too.
 - mermaid: valid Mermaid text for the diagram that fits what was said. Choose by the shape of the talk, and look again every turn as it grows:
-  flowchart for things done in order: "I'll do X, then Y", "first…, next…", "once that's done…", "after that…", a plan, a workflow, a process. One card per step, in the order they happen, chained A --> B --> C: flowchart LR for up to four steps, flowchart TD for more. A step's details go in its label ("Ad tests: Facebook, Google"), a condition between two steps on their link (B -->|verified| C); branch only when the speaker says "if…, otherwise…". A topic drawn as a mind map becomes a flowchart as soon as the speaker tells an order of steps;
+  flowchart for things done in order: "I'll do X, then Y", "first…, next…", "once that's done…", "after that…", a plan, a workflow, a process. One card per step, in the order they happen, chained A --> B --> C, always flowchart LR, as plain [rectangles]. A step's details go in its label ("Ad tests: Facebook, Google"), a condition between two steps on their link (B -->|verified| C); branch only when the speaker says "if…, otherwise…". A topic drawn as a mind map becomes a flowchart as soon as the speaker tells an order of steps;
   mindmap for ideas with no order: brainstorming, options, reasons, doubts around one question, and whenever no other type clearly fits;
   quadrantChart for options weighed on two scales (effort and value: x-axis Less effort --> More effort, y-axis Less value --> More value, each point written "Voice capture: [0.3, 0.8]", x and y from 0 to 1 in brackets);
   pie for shares of a whole; xychart for numbers across categories or time;
@@ -65,7 +64,6 @@ export interface TopicUpdate {
   short: string;
   mermaid: string;
   summary?: string;
-  sources?: Record<string, number[]>;
 }
 
 export interface TalkReply {
@@ -78,17 +76,6 @@ export interface HeardLine {
   n: number;
   start: number;
   text: string;
-}
-
-/** A topic's node → lines map, keeping only labels with line numbers. */
-function lineSources(raw: unknown): Record<string, number[]> | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const out: Record<string, number[]> = {};
-  for (const [label, lines] of Object.entries(raw as Record<string, unknown>)) {
-    const ns = Array.isArray(lines) ? lines.filter((n): n is number => Number.isInteger(n)) : [];
-    if (ns.length) out[label] = ns;
-  }
-  return Object.keys(out).length ? out : undefined;
 }
 
 /** The JSON in a reply, forgiving a code fence or a sentence around it. */
@@ -111,7 +98,6 @@ export function parseTalkReply(text: string): TalkReply {
       ...t,
       short: typeof t.short === "string" && t.short ? t.short : t.title,
       summary: typeof t.summary === "string" && t.summary.trim() ? t.summary.trim() : undefined,
-      sources: lineSources(t.sources),
     })),
   };
 }

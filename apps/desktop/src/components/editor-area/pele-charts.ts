@@ -17,6 +17,7 @@ export type ChartSpec =
         label: string;
         period: string;
         categoryLabel: string;
+        averageLabel: string;
         data: { key: string; label: string; axisLabel: string; value: number }[];
       };
     }
@@ -99,6 +100,8 @@ function xy(m: any): ChartSpec | null {
         label: m.yAxis?.title || m.title || "Values",
         period: m.title || "",
         categoryLabel: m.xAxis?.title || "Category",
+        // Bars across categories, not days: the headline is their average.
+        averageLabel: "Average",
         data: cats.map((c, i) => ({ key: c, label: c, axisLabel: c, value: at(plots[0], c, i) })),
       },
     };

@@ -131,11 +131,26 @@
   padding: 12px;
 }
 
-.talk-diagram svg {
+/* The drawing only: an Arc chart sizes its own svg. */
+.talk-diagram > svg {
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
+}
+
+/* A matrix is square, so in the box it shrinks to the stage's height: its
+   points and their names are drawn larger to stay readable there. Sizes are
+   in the drawing's own units (its root sets 16). */
+.talk-diagram .pele-quadrantChart .pele-point-labels {
+  font-size: 1.0625em;
+  font-weight: 500;
+}
+.talk-diagram .pele-quadrantChart .pele-axis-labels {
+  font-size: 1em;
+}
+.talk-diagram .pele-quadrantChart circle.pele-point {
+  r: 7px;
 }
 
 .talk-diagram.is-chart {

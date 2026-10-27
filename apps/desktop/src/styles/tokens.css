@@ -373,6 +373,8 @@
   /* The app icon drawn in the window (the launch splash). */
   --shadow-app-icon: var(--shadow-tile);
   --shadow-popover: var(--shadow-2);
+  /* Record's pill: short, so it ends in the gap above the document footer. */
+  --shadow-dock: var(--shadow-1);
   --shadow-overlay: var(--shadow-3);
   --shadow-surface: var(--shadow-4);
   --shadow-dialog: var(--shadow-5);

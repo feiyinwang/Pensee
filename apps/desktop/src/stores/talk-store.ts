@@ -7,8 +7,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { insertTalk, talkInsertion } from "@/lib/talk/insert-talk";
 import { minimalChange } from "@/lib/block-refs";
-import { audioClipLink } from "@/lib/audio-clips";
-import type { PictureKind, Topic } from "@/lib/talk/ask";
+import type { PictureKind } from "@/lib/talk/ask";
 import { PICTURES, isBoardDiagram, isEmptyTopic, startTopic } from "@/lib/talk/ask";
 import { editPage } from "@/components/editor-area/linked-block-sync";
 import {
@@ -198,33 +197,6 @@ const withTimeout = <T>(p: Promise<T>, ms: number) =>
   Promise.race([p, new Promise<void>((resolve) => setTimeout(resolve, ms))]);
 
 export const useTalkStore = create<TalkState>((set, get) => {
-  /** A topic's node words → the clip of the lines it came from: from its first
-   *  line to where its last one ends, in the take the first line is in. */
-  const clipLinks = (topic: Topic, lastTakeSeconds: number) => {
-    const norm = (text: string) => text.trim().replace(/\s+/g, " ").toLowerCase();
-    const byWords = new Map(
-      Object.entries(topic.sources ?? {}).map(([label, ns]) => [norm(label), ns]),
-    );
-    return (label: string): string | undefined => {
-      const ns = byWords.get(norm(label));
-      if (!ns?.length) return undefined;
-      const take = takeOfLine[Math.min(...ns)];
-      const file = take === undefined ? undefined : takes[take];
-      const same = ns.filter((n) => takeOfLine[n] === take && heard[n]).sort((a, b) => a - b);
-      if (!file || !same.length) return undefined;
-      const start = heard[same[0]!]!.start;
-      const last = same[same.length - 1]!;
-      const next = heard[last + 1];
-      const end =
-        next && takeOfLine[last + 1] === take
-          ? next.start
-          : take === takes.length - 1
-            ? lastTakeSeconds
-            : heard[last]!.start + 15;
-      return audioClipLink(file, start, Math.max(end, start + 1));
-    };
-  };
-
   const finish = () => {
     set({ phase: "saved" });
     clearTimeout(savedTimer);
@@ -546,14 +518,6 @@ export const useTalkStore = create<TalkState>((set, get) => {
           await livePass;
           await listenOnce(id, true);
           await withTimeout(sort(), LAST_TURN_MS);
-        }
-        // Each board node plays the part of the take it came from.
-        if (boards) {
-          const { ask } = get();
-          for (const key of ask.open) {
-            const topic = ask.topics[key];
-            if (topic?.sources) void boards.attachClips(key, clipLinks(topic, take.seconds));
-          }
         }
         endTalk();
         pending = {

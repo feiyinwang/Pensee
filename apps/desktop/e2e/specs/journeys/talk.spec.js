@@ -760,7 +760,7 @@ describe("Journeys: talk notes", () => {
     ok(await pressDock("Not now"));
   });
 
-  it("TALK-20 A brainstorm is drawn as a mind map board; a click opens it in the board editor; Stop puts a summary and the board in the note, its nodes holding clips", async function () {
+  it("TALK-20 A brainstorm is drawn as a mind map board; a click opens it in the board editor; Stop puts a summary and the board in the note, its nodes without play badges", async function () {
     // Real Claude draws the plan: longer than the 60s default.
     this.timeout(240_000);
     await openNote("Talk note");
@@ -892,17 +892,14 @@ describe("Journeys: talk notes", () => {
       ),
       `the lines are still listed: ${JSON.stringify(section)}`,
     );
-    // Its nodes play their part of the take.
-    await browser.waitUntil(
-      async () =>
-        /Recordings\/[^"#]+\.(m4a|webm)#t=\d+(\.\d)?,\d+/.test(
-          (await invoke("read_file", { path: absolute })).value.content,
-        ),
-      { timeout: 10_000, timeoutMsg: "the board's nodes have no clips" },
+    // Its nodes carry no play badges: the take is above, in the note.
+    ok(
+      !/Recordings\/[^"#]+#t=/.test((await invoke("read_file", { path: absolute })).value.content),
+      "the board's nodes still hold clips",
     );
   });
 
-  it("TALK-25 A plan told step by step is drawn as steps in that order; the as a mind map button redraws it", async function () {
+  it("TALK-25 A plan told step by step is drawn as rectangles left to right in that order; the as a mind map button redraws it", async function () {
     // Real Claude draws it, twice: longer than the 60s default.
     this.timeout(240_000);
     await openNote("Talk note");
@@ -933,7 +930,8 @@ describe("Journeys: talk notes", () => {
           return { x: r.left, y: r.top };
         };
         const arrows = surface.querySelectorAll('[data-type="arrow"]').length;
-        return { keywords: at("keyword"), rob: at("rob"), ads: at("ads"), arrows };
+        const shapes = [...new Set(cards.map((g) => g.dataset.type))];
+        return { keywords: at("keyword"), rob: at("rob"), ads: at("ads"), arrows, shapes };
       });
     await browser
       .waitUntil(
@@ -944,12 +942,14 @@ describe("Journeys: talk notes", () => {
         { timeout: 120_000, timeoutMsg: "the plan wasn't drawn as linked steps" },
       )
       .catch(stopOnFail);
-    const { keywords, rob, ads } = await steps();
-    const along = (a, b) => b.x > a.x + 1 || b.y > a.y + 1;
+    const { keywords, rob, ads, shapes } = await steps();
+    // Left to right, as plain rectangles.
+    const along = (a, b) => b.x > a.x + 1;
     ok(
       along(keywords, rob) && along(rob, ads),
       `steps out of order: ${JSON.stringify({ keywords, rob, ads })}`,
     );
+    ok(shapes.join() === "rect", `steps aren't plain rectangles: ${shapes}`);
     const pressed = () =>
       browser.execute(
         () => document.querySelector('.talk-box-picture[aria-pressed="true"]')?.textContent ?? "",

@@ -83,3 +83,20 @@ describe("flowchartToElements", () => {
       }
   });
 });
+
+describe("flowchartToElements rank gap", () => {
+  const shapesOf = (src: string, gap?: number) =>
+    flowchartToElements(parseMermaidFlowchart(src)!, undefined, gap)
+      .filter((el): el is ShapeEl => !isLinker(el))
+      .sort((a, b) => a.x - b.x);
+
+  test("a left-to-right chain is spaced by the gap asked for", () => {
+    const [a, b] = shapesOf("flowchart LR\n  A[One] --> B[Two]", 40);
+    expect(b.x - (a.x + a.w)).toBe(40);
+  });
+
+  test("an arrow's label opens its gap wider", () => {
+    const [a, b] = shapesOf("flowchart LR\n  A[One] -->|once it is verified| B[Two]", 40);
+    expect(b.x - (a.x + a.w)).toBeGreaterThan(40);
+  });
+});

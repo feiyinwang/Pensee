@@ -263,6 +263,12 @@
   fill: var(--color-text-muted);
   font-weight: 500;
 }
+/* Words Pele sets in the background colour, on a box it fills (a timeline's
+   dates): the boxes here are tints, so the words take the ink. */
+.pele-frame .pele text[fill="var(--_bg)"] {
+  fill: var(--color-text-primary);
+  font-weight: 500;
+}
 .pele-frame .pele .pele-title {
   fill: var(--color-text-primary);
   font-weight: 500;

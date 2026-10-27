@@ -1,12 +1,16 @@
 import { create } from "zustand";
 import * as tauri from "@/lib/tauri";
-import { mermaidToElements } from "@/components/editor-area/board/board-mermaid";
+import {
+  flowchartToElements,
+  mermaidToElements,
+  parseMermaidFlowchart,
+} from "@/components/editor-area/board/board-mermaid";
 import {
   type BoardEl,
   type BoardScene,
   type MindEl,
+  defaultStyle,
   emptyScene,
-  newShapeStyle,
 } from "@/components/editor-area/board/board-model";
 import {
   MIND_PALETTE,
@@ -15,14 +19,13 @@ import {
   mindSubtree,
 } from "@/components/editor-area/board/board-mind";
 import { readBoardSvg } from "@/components/editor-area/board/board-file";
-import { measureText } from "@/components/editor-area/board/board-render";
+import { measureText, wrapText } from "@/components/editor-area/board/board-render";
 import {
   boardSaved,
   createBoardFile,
   openBoardFile,
   saveBoardFile,
 } from "@/components/editor-area/board/board-file-session";
-import { parseAudioClip } from "@/lib/audio-clips";
 import { boardKind, handEdited, mergeTopicBoard, mindmapText } from "./topic-board-merge";
 
 // A talk topic drawn as a board (SPECs/talk-notes-spec.md#topic-boards): a
@@ -70,18 +73,33 @@ async function readScene(absolute: string): Promise<BoardScene> {
   return parsed.scene;
 }
 
-/** A flowchart's steps as the board's own cards (a soft fill with the strong
- *  outline of the same hue), not Mermaid's plain boxes. */
-function asCards(els: BoardEl[]): BoardEl[] {
-  for (const el of els)
-    if ("st" in el && el.t !== "arrow" && el.t !== "line") el.st = newShapeStyle();
+/** How wide a step's words run before they wrap, so a chain of five still
+ *  reads in the talk box. */
+const STEP_TEXT = 104;
+/** The space between two steps, wider where an arrow carries a label. */
+const STEP_GAP = 40;
+
+/**
+ * The AI's drawing as board elements. Steps are plain rectangles read left to
+ * right, drawn the way Arc draws a card (a quiet outline, no fill), their
+ * words wrapped so the chain stays narrow; a mind map is the board's own.
+ */
+export function boardElements(mermaid: string): BoardEl[] | null {
+  const flow = parseMermaidFlowchart(mermaid);
+  if (!flow) return mermaidToElements(mermaid, measureText);
+  flow.dir = "LR";
+  for (const node of flow.nodes.values()) {
+    node.shape = "rect";
+    node.text = wrapText(node.text.replace(/\s+/g, " ").trim(), 14, STEP_TEXT).join("\n");
+  }
+  const els = flowchartToElements(flow, measureText, STEP_GAP);
+  for (const el of els) if (el.t === "rect") el.st = defaultStyle({ s: "muted", f: "none", w: 1 });
   return els;
 }
 
 async function apply(key: string, mermaid: string, notePath: string): Promise<void> {
-  const converted = mermaidToElements(mermaid, measureText);
-  if (!converted) return;
-  const next = asCards(converted);
+  const next = boardElements(mermaid);
+  if (!next) return;
   if (useTopicBoards.getState().editing === key) {
     held.set(key, mermaid);
     return;
@@ -155,49 +173,6 @@ async function closed(key: string, notePath: string): Promise<void> {
   const mermaid = held.get(key);
   held.delete(key);
   if (mermaid) void syncTopicBoard(key, mermaid, notePath);
-}
-
-/** A board element's words: a mind-map topic's, or a shape's label. */
-const labelOf = (el: BoardScene["els"][number]): string | null =>
-  el.t === "mind" ? el.tx : "lb" in el && el.lb ? ((el.lb as { tx?: string }).tx ?? null) : null;
-
-/**
- * Gives each node the clip of the take it came from (`clipOf` its words, from
- * the topic's sources), once the take is saved. A node you renamed is found by
- * the words Pensée wrote; a video pin is never replaced.
- */
-export function attachClips(
-  key: string,
-  clipOf: (label: string) => string | undefined,
-): Promise<void> {
-  const run = (queues.get(key) ?? Promise.resolve())
-    .then(async () => {
-      const entry = entries.get(key);
-      if (!entry) return;
-      const scene = await readScene(entry.absolute);
-      const wrote = new Map(entry.written.els.map((el) => [el.id, el]));
-      let changed = false;
-      for (const el of scene.els) {
-        if (labelOf(el) === null) continue;
-        const own = el as typeof el & { ln?: string };
-        if (own.ln && !parseAudioClip(own.ln)) continue;
-        const before = wrote.get(el.id);
-        const words = labelOf(el);
-        const clip =
-          (words && clipOf(words)) || (before && labelOf(before) && clipOf(labelOf(before)!));
-        if (!clip || own.ln === clip) continue;
-        own.ln = clip;
-        // Pensée's own change: the written copy gets it too, so it isn't taken for yours.
-        if (before) (before as typeof before & { ln?: string }).ln = clip;
-        changed = true;
-      }
-      if (!changed) return;
-      await saveBoardFile(entry.absolute, scene);
-      show(key, scene, entry.frozen);
-    })
-    .catch((error: unknown) => console.error(`[talk] clips for ${key} not added:`, error));
-  queues.set(key, run);
-  return run;
 }
 
 export type MovePlace = "child" | "before" | "after";

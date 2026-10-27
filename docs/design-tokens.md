@@ -358,24 +358,25 @@ are drawn on Library covers and may.
 
 ### Shadows
 
-| Token                  | Light                       | Dark | For                                             |
-| ---------------------- | --------------------------- | ---- | ----------------------------------------------- |
-| `--shadow-card`        | `var(--shadow-1)`           | same | Small floating bars (toolbars, reader controls) |
-| `--shadow-popover`     | `var(--shadow-2)`           | same | Menus and popovers                              |
-| `--shadow-overlay`     | `var(--shadow-3)`           | same | Banners, video                                  |
-| `--shadow-surface`     | `var(--shadow-4)`           | same | Floating surface card (command palette)         |
-| `--shadow-dialog`      | `var(--shadow-5)`           | same | Dialogs                                         |
-| `--shadow-picker`      | `var(--shadow-soft)`        | same | Compact picker                                  |
-| `--shadow-menu`        | `var(--shadow-drop)`        | same | Board context menu                              |
-| `--shadow-lift`        | `var(--shadow-lift-lg)`     | same | A dragged tab column                            |
-| `--shadow-lift-hover`  | `var(--shadow-lift-sm)`     | same | A Library cover lifted on hover                 |
-| `--shadow-page`        | `var(--shadow-sheet)`       | same | A PDF page                                      |
-| `--shadow-book-cover`  | `var(--shadow-cover)`       | same | A Library cover                                 |
-| `--shadow-paper-cover` | `var(--shadow-cover-paper)` | same | A Library paper cover                           |
-| `--shadow-drag-paper`  | `var(--shadow-paper-lift)`  | same | A dragged block, as paper                       |
-| `--shadow-drag-curl`   | `var(--shadow-paper-curl)`  | same | A dragged block crumpled                        |
-| `--shadow-swatch-knob` | `var(--shadow-knob)`        | same | Colour-wheel knob                               |
-| `--shadow-swatch-ring` | `var(--shadow-knob-ring)`   | same | Colour-slider knob                              |
+| Token                  | Light                       | Dark | For                                                        |
+| ---------------------- | --------------------------- | ---- | ---------------------------------------------------------- |
+| `--shadow-card`        | `var(--shadow-1)`           | same | Small floating bars (toolbars, reader controls)            |
+| `--shadow-popover`     | `var(--shadow-2)`           | same | Menus and popovers                                         |
+| `--shadow-dock`        | `var(--shadow-1)`           | same | Record's pill: short, so it ends above the document footer |
+| `--shadow-overlay`     | `var(--shadow-3)`           | same | Banners, video                                             |
+| `--shadow-surface`     | `var(--shadow-4)`           | same | Floating surface card (command palette)                    |
+| `--shadow-dialog`      | `var(--shadow-5)`           | same | Dialogs                                                    |
+| `--shadow-picker`      | `var(--shadow-soft)`        | same | Compact picker                                             |
+| `--shadow-menu`        | `var(--shadow-drop)`        | same | Board context menu                                         |
+| `--shadow-lift`        | `var(--shadow-lift-lg)`     | same | A dragged tab column                                       |
+| `--shadow-lift-hover`  | `var(--shadow-lift-sm)`     | same | A Library cover lifted on hover                            |
+| `--shadow-page`        | `var(--shadow-sheet)`       | same | A PDF page                                                 |
+| `--shadow-book-cover`  | `var(--shadow-cover)`       | same | A Library cover                                            |
+| `--shadow-paper-cover` | `var(--shadow-cover-paper)` | same | A Library paper cover                                      |
+| `--shadow-drag-paper`  | `var(--shadow-paper-lift)`  | same | A dragged block, as paper                                  |
+| `--shadow-drag-curl`   | `var(--shadow-paper-curl)`  | same | A dragged block crumpled                                   |
+| `--shadow-swatch-knob` | `var(--shadow-knob)`        | same | Colour-wheel knob                                          |
+| `--shadow-swatch-ring` | `var(--shadow-knob-ring)`   | same | Colour-slider knob                                         |
 
 ### Boards
 

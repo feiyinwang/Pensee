@@ -323,12 +323,11 @@ describe("Ask", () => {
     );
   });
 
-  test("a reply's summary and node sources are read; sources without lines are dropped", () => {
+  test("a reply's summary is read, trimmed", () => {
     const reply = parseTalkReply(
-      '{"lines":[],"topics":[{"key":"b","title":"B","mermaid":"mindmap","summary":" One. Two. ","sources":{"Root":[1,2],"Empty":[],"Bad":"x"}}]}',
+      '{"lines":[],"topics":[{"key":"b","title":"B","mermaid":"mindmap","summary":" One. Two. "}]}',
     );
     expect(reply.topics[0].summary).toBe("One. Two.");
-    expect(reply.topics[0].sources).toEqual({ Root: [1, 2] });
   });
 
   test("a reply's JSON is read even inside a code fence", () => {

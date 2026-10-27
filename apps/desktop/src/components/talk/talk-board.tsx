@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { renderStaticBoard } from "@/components/editor-area/board/board-canvas";
-import { playAudioClipLink } from "@/components/editor-area/board/board-audio-links";
 import { type MovePlace, editTopicBoard, moveTopic, useTopicBoards } from "@/lib/talk/topic-boards";
 import "@/components/editor-area/board/board.css";
 
@@ -104,8 +103,8 @@ export function TalkBoard({
       aria-label={`${label}: open the board to change it`}
       onPointerDown={(e) => {
         const g = (e.target as Element).closest?.<SVGGElement>('[data-el][data-type="mind"]');
-        // The central topic stays put; a play badge is a click.
-        if (!g?.dataset.parent || (e.target as Element).closest(".wr-board-pin")) return;
+        // The central topic stays put.
+        if (!g?.dataset.parent) return;
         drag.current = {
           id: g.getAttribute("data-el")!,
           parent: g.dataset.parent,
@@ -145,14 +144,11 @@ export function TalkBoard({
         mark(null, "is-dragged");
         setDragging(false);
       }}
-      onClick={(e) => {
+      onClick={() => {
         // A drag ends here too: it moved a topic, it doesn't open the board.
         const d = drag.current;
         drag.current = null;
         if (d?.moved) return;
-        // A node's play badge plays its part of the take; anywhere else opens the board.
-        const pin = (e.target as Element).closest?.(".wr-board-pin[data-wiki]");
-        if (pin && playAudioClipLink(pin.getAttribute("data-wiki") ?? "")) return;
         void editTopicBoard(topicKey, notePath).catch((error: unknown) =>
           console.error("[talk] topic board didn't open:", error),
         );

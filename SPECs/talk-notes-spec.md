@@ -81,9 +81,12 @@ quadrantChart
 - Every ```` ```mermaid ```` block in any note renders with **Pele** (pele.run, MIT), which reads Mermaid text and
   covers all 32 of its types. The text stays plain Mermaid, so the note opens anywhere.
 - Types an Arc chart draws are drawn by that chart: pie → donut, xychart → bar or line, sankey → Sankey flow,
-  radar (≤ 3 series) → radar, treemap → treemap, treeView → tree view, kanban → kanban board.
+  radar (≤ 3 series) → radar, treemap → treemap, treeView → tree view, kanban → kanban board. A bar chart of
+  categories headlines their average ("Average"), not a daily one.
 - Every other type keeps Pele's layout but is drawn in Arc's style: raised surfaces with a hairline ring and soft
-  shadow, 8px corners, series tints by section or quadrant, quiet labels, 1.5px round lines, a lit ring on hover.
+  shadow, 8px corners, series tints by section, quadrant or timeline period, quiet labels, 1.5px round lines, a
+  lit ring on hover. Words Pele sets in its background colour on a filled box (a timeline's dates) take the ink.
+  In the talk box a matrix, which shrinks to the box's height, draws its points and their names larger.
 - The existing canvas behaviour stays: pan, zoom, reset, fullscreen and the source toggle; a parse error shows
   Pele's message.
 
@@ -94,8 +97,9 @@ it, a `.board.svg` is made beside the note (as `/board` makes one) and the talk 
 renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their section has the summary and the Mermaid block. Asides keep their lines under "Said in passing".
 
 - **Which picture.** Things done in order ("I'll do X, then Y", "first…, next…", "once that's done…") are
-  **steps**: the board's blue cards, one per step, chained in the order they happen (left to right up to four,
-  top to bottom beyond); a step's details sit in its label and a condition ("verified") on its arrow. A topic
+  **steps**: plain rectangles drawn as Arc draws a card (a quiet grey outline, no fill), one per step, chained
+  left to right in the order they happen, their words wrapped so a chain of five still reads in the box; a
+  step's details sit in its label and a condition ("verified") on its arrow, whose gap widens to fit it. A topic
   drawn as a map turns into steps as soon as you tell an order. Ideas with no order (brainstorming, options,
   reasons, doubts) are a **mind map** (the board's, its branches in colour), and so is anything no other type
   clearly fits. The map is MECE: two to six branches of a different kind each, every idea under the one branch
@@ -129,12 +133,7 @@ renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their sectio
 - **After Stop** the topic's section holds at most two sentences of summary (the AI's, of what you concluded or
   plan), then the board (`![Title](assets/….board.svg)`) instead of a Mermaid block: the drawing shows on the
   page and opens with one click, like any board. After Stop the note scrolls to the topics and draws them at once. The heard lines aren't listed under it; they're in the transcript.
-- **Every node plays its part of the take.** The AI says which heard lines each node came from (`sources`); at Stop,
-  once the take is saved, each node gets `ln` = `Recordings/<take>#t=<start>,<end>` (`audio-clips.ts`): from its
-  first line to where its last line ends, in the take its first line is in. Its corner badge (a play mark, the span
-  as its tooltip) plays only that part and stops (`clip-player.ts`); clicking it again stops it. It works on the
-  board in the note (the click is mapped onto the image), in the board editor and in the talk box. A video pin is
-  never replaced; a node you renamed keeps its clip.
+- **Nodes carry no play badges.** The take plays from the note above the board; a node is only words.
 
 
 - **Free by default, on the Mac:** OpenAI's Whisper through whisper.cpp, the engine Superwhisper's free plan runs.

@@ -553,14 +553,14 @@ function decorateSvg(svg: SVGSVGElement | null, ariaLabel: string): void {
 }
 
 /** Arc tints by category (mermaid-canvas.css): a section's shapes share a
- *  series hue, and each quadrant takes one. */
+ *  series hue, and each quadrant and timeline period takes one. */
 export function tintPeleSvg(svg: SVGSVGElement): void {
   svg.querySelectorAll<SVGElement>("[class*='pele-section-']").forEach((g) => {
     const n = Number(/pele-section-(\d+)/.exec(g.getAttribute("class") ?? "")?.[1] ?? 0);
     g.dataset.hue = String((n % 4) + 1);
   });
   svg
-    .querySelectorAll<SVGElement>(".pele-quadrant")
+    .querySelectorAll<SVGElement>(".pele-quadrant, .pele-period")
     .forEach((g, i) => (g.dataset.hue = String((i % 4) + 1)));
 }
 

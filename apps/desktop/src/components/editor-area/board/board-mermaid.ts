@@ -226,8 +226,14 @@ function rank(graph: FlowGraph): Map<string, number> {
  * Layered layout: ranks along the flow direction, nodes within a rank ordered
  * by the average position of their parents (one barycentre sweep), each rank
  * centred on the axis. Elements come back with the top-left at (0, 0).
+ * `rankGap` spaces the ranks; across a left-to-right flow a gap opens wider
+ * where an arrow's label needs the room.
  */
-export function flowchartToElements(graph: FlowGraph, measure: Measure = approxMeasure): BoardEl[] {
+export function flowchartToElements(
+  graph: FlowGraph,
+  measure: Measure = approxMeasure,
+  rankGap = RANK_GAP,
+): BoardEl[] {
   const ranks = rank(graph);
   const layers: string[][] = [];
   for (const id of graph.nodes.keys()) (layers[ranks.get(id) ?? 0] ??= []).push(id);
@@ -253,8 +259,16 @@ export function flowchartToElements(graph: FlowGraph, measure: Measure = approxM
   const horizontal = graph.dir === "LR" || graph.dir === "RL";
   const sizes = new Map([...graph.nodes.values()].map((n) => [n.id, sizeOf(n, measure)]));
   const shapes = new Map<string, ShapeEl>();
+  // The widest label on an arrow leaving each rank, for its gap.
+  const labelOut = new Map<number, number>();
+  if (horizontal)
+    for (const e of graph.edges) {
+      if (!e.label) continue;
+      const r = ranks.get(e.from) ?? 0;
+      labelOut.set(r, Math.max(labelOut.get(r) ?? 0, measure(e.label, 13) + 24));
+    }
   let along = 0;
-  for (const layer of layers) {
+  for (const [r, layer] of layers.entries()) {
     if (!layer) continue;
     const depth = Math.max(
       ...layer.map((id) => (horizontal ? sizes.get(id)!.w : sizes.get(id)!.h)),
@@ -282,7 +296,7 @@ export function flowchartToElements(graph: FlowGraph, measure: Measure = approxM
       });
       across += (horizontal ? h : w) + NODE_GAP;
     }
-    along += depth + RANK_GAP;
+    along += depth + Math.max(rankGap, labelOut.get(r) ?? 0);
   }
 
   // Reverse directions mirror the main axis.

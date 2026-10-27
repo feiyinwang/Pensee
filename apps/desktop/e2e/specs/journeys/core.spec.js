@@ -119,9 +119,9 @@ describe("Journeys: core (smoke)", function () {
   it("SB-10 hovering Today or a space shows what it does and its shortcut", async function () {
     for (const [selector, text] of [
       ['button[aria-keyshortcuts="Meta+T"]', "Open today's note ⌘ T"],
-      ['button[data-space-key="projects"]', "Go to Projects ⌥ P"],
-      ['button[data-space-key="library"]', "Go to Library ⌥ L"],
-      ['button[data-space-key="files"]', "Go to Files ⌥ F"],
+      ['button[data-space-key="projects"]', "Go to Projects ⌘ G P"],
+      ['button[data-space-key="library"]', "Go to Library ⌘ G L"],
+      ['button[data-space-key="files"]', "Go to Files ⌘ G F"],
     ]) {
       strictEqual(await hoverTooltip(selector), text);
     }

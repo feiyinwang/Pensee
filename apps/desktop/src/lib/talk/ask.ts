@@ -21,8 +21,6 @@ export interface Topic {
   mermaid: string;
   /** At most two sentences on what the talk said about it, for the note. */
   summary?: string;
-  /** Each diagram node's label → the heard lines it came from, for its clip. */
-  sources?: Record<string, number[]>;
   /** The heard lines about it, by number. */
   lines: number[];
 }
@@ -124,7 +122,6 @@ export function applyReply(prev: AskState, reply: TalkReply): AskState {
       short: t.short,
       mermaid: t.mermaid,
       summary: t.summary ?? old?.summary,
-      sources: t.sources ?? old?.sources,
       lines: old?.lines ?? [],
     };
   }
