@@ -66,6 +66,7 @@ export function TalkDock({
   const progress = useTalkStore((s) => s.progress);
   const model = useTalkStore((s) => s.model);
   const talk = useTalkStore((s) => s.talk);
+  const silent = useTalkStore((s) => s.silent);
   const busy = [
     "starting",
     "recording",
@@ -88,7 +89,12 @@ export function TalkDock({
   if (!elsewhere && (busy ? !mine : !isActive)) return null;
 
   return (
-    <div className="talk-dock" role="region" aria-label="Record">
+    <div
+      className="talk-dock"
+      role="region"
+      aria-label="Record"
+      data-in-column={inColumn || undefined}
+    >
       {phase === "recording" && mine && (
         <Suspense fallback={null}>
           <TalkBox />
@@ -101,6 +107,12 @@ export function TalkDock({
           <Elapsed since={startedAt} />
           {elsewhere && notePath && (
             <span className="talk-dock-where">in {noteName(notePath)}</span>
+          )}
+          {silent && (
+            <span className="talk-dock-note talk-dock-silent" role="status">
+              No sound from the microphone. Allow Pensée in System Settings → Privacy &amp; Security
+              → Microphone.
+            </span>
           )}
           <button
             type="button"

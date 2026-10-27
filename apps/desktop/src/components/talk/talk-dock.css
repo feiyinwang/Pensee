@@ -4,12 +4,19 @@
      fraction of the window, and left: 50% would cap the pill at half of it. */
   position: absolute;
   inset-inline: 16px;
-  bottom: 20px;
+  /* One tab runs under the document footer (document-footer.tsx, h-11 laid
+     over the editor's bottom), so the pill sits above it; a column already
+     ends at the footer's top. */
+  bottom: calc(2.75rem + 20px);
   z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
   pointer-events: none;
+}
+
+.talk-dock[data-in-column] {
+  bottom: 20px;
 }
 
 .talk-dock-pill {

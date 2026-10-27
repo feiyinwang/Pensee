@@ -39,6 +39,8 @@ export function microphoneError(error: unknown): string {
 /** Quieter than this reads as silence on the meter; louder than LOUD_DB fills it. */
 const QUIET_DB = -55;
 const LOUD_DB = -12;
+/** Only zeros for this long from the start means the microphone isn't reaching Pensée. */
+const SILENT_MS = 3000;
 
 /**
  * The meter's level, 0–1, for an RMS amplitude. On a decibel scale, because
@@ -55,7 +57,7 @@ export class Recorder {
   private readonly chunks: Blob[] = [];
   private readonly startedAt = new Date();
   private readonly started = performance.now();
-  private levelFrame = 0;
+  private levelTimer: ReturnType<typeof setInterval> | undefined;
 
   private constructor(
     private readonly stream: MediaStream,
@@ -70,6 +72,7 @@ export class Recorder {
   static async start(
     onLevel: (level: number) => void,
     onPcm?: (samples: Float32Array) => void,
+    onSilent?: (silent: boolean) => void,
   ): Promise<Recorder> {
     let stream: MediaStream;
     try {
@@ -88,7 +91,7 @@ export class Recorder {
     const audioContext = new AudioContext();
     const self = new Recorder(stream, recorder, format.ext, audioContext);
     try {
-      self.meter(onLevel);
+      self.meter(onLevel, onSilent);
       if (onPcm) await self.tap(onPcm);
       // A chunk a second, so a crash loses at most the last second.
       recorder.start(1000);
@@ -104,23 +107,36 @@ export class Recorder {
     return (performance.now() - this.started) / 1000;
   }
 
-  /** The input level, 0–1, about 30 times a second, for the pill's meter. */
-  private meter(onLevel: (level: number) => void): void {
+  /**
+   * The input level, 0–1, about 30 times a second, for the pill's meter. And
+   * `onSilent(true)` when nothing but exact zeros has come in for SILENT_MS:
+   * macOS hands an app it hasn't let use the microphone a stream of zeros, not
+   * an error, while even a quiet room is never exactly zero. Sound after that
+   * sends `onSilent(false)`.
+   */
+  private meter(onLevel: (level: number) => void, onSilent?: (silent: boolean) => void): void {
     const analyser = this.audioContext.createAnalyser();
     analyser.fftSize = 512;
     this.audioContext.createMediaStreamSource(this.stream).connect(analyser);
     const samples = new Float32Array(analyser.fftSize);
-    let last = 0;
-    const tick = (now: number) => {
-      this.levelFrame = requestAnimationFrame(tick);
-      if (now - last < 33) return;
-      last = now;
+    let heard = false;
+    let silent = false;
+    // A timer, not animation frames: frames stop in a window that's behind
+    // others, and the silence check must keep running there.
+    const tick = () => {
+      const now = performance.now();
       analyser.getFloatTimeDomainData(samples);
       let sum = 0;
       for (const v of samples) sum += v * v;
       onLevel(meterLevel(Math.sqrt(sum / samples.length)));
+      if (sum > 0) {
+        heard = true;
+        if (silent) onSilent?.((silent = false));
+      } else if (!heard && !silent && now - this.started >= SILENT_MS) {
+        onSilent?.((silent = true));
+      }
     };
-    this.levelFrame = requestAnimationFrame(tick);
+    this.levelTimer = setInterval(tick, 33);
   }
 
   /** Sends the take's samples at 16 kHz mono to `onPcm`, about 10 times a second. */
@@ -165,7 +181,7 @@ export class Recorder {
   }
 
   private release(): void {
-    cancelAnimationFrame(this.levelFrame);
+    clearInterval(this.levelTimer);
     for (const track of this.stream.getTracks()) track.stop();
     void this.audioContext.close();
   }

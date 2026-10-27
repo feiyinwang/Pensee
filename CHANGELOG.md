@@ -3,7 +3,7 @@
 ## 2026-10-27
 
 - A talk can go on after you stop. Press **Continue** and the next take goes under the last one's transcript, in the same talk, and its topics carry on where they were. Every take you've recorded is in **Recordings** in the sidebar: pick one to hear it, read its transcript and open the note it's in. In Settings → Transcription you choose who writes the transcript: Whisper on your Mac (Small, or Large v3 Turbo, which hears accents and quiet rooms better), or ElevenLabs Scribe with your own API key, which stays in your keychain.
-- While you record, the pill draws your voice as it comes in: a red trace that rises when you talk and goes flat when you stop. If you go to another note, recording carries on and the pill comes with you, saying which note it's for, with **Stop** at hand. Close the note and the take stops and is saved to Recordings, so the microphone is never left on. The pill and the topics box now fit a column when you pinch to see your tabs side by side.
+- While you record, the pill draws your voice as it comes in: a red trace that rises when you talk and goes flat when you stop. If you go to another note, recording carries on and the pill comes with you, saying which note it's for, with **Stop** at hand. Close the note and the take stops and is saved to Recordings, so the microphone is never left on. The pill and the topics box now fit a column when you pinch to see your tabs side by side, and Record no longer hides under the word count at the bottom. If your Mac isn't letting Pensée hear the microphone, the pill says so and where to allow it, instead of recording silence.
 
 ## 2026-10-26
 

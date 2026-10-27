@@ -31,53 +31,61 @@ async function openNote(name) {
   await waitForTitle(name);
 }
 
-/** A microphone that hums, or one the system refuses. */
-const fakeMicrophone = async (allow) => {
-  const installed = await browser.execute((allowed) => {
-    const fake = async () => {
-      if (!allowed) throw new DOMException("Permission denied", "NotAllowedError");
-      const ctx = new AudioContext();
-      // Without a real click WebKit may refuse to resume; the take then records silence, which is enough here.
-      ctx.resume().catch(() => {});
-      const tone = ctx.createOscillator();
-      const out = ctx.createMediaStreamDestination();
-      tone.connect(out);
-      tone.start();
-      // The recorder stops the track at Stop: close the hum with it, as a real
-      // microphone goes quiet, so takes don't pile up open audio contexts. By
-      // id on the prototype: getTracks() may hand back a new wrapper each time.
-      // window.__talkMic holds the open ones, for the journeys that check it goes off.
-      const [track] = out.stream.getAudioTracks();
-      window.__talkMic ??= new Map();
-      window.__talkMic.set(track.id, () => {
-        tone.stop();
-        void ctx.close();
+/** A microphone that hums, one that sends only silence (as macOS does for an app it
+ *  hasn't allowed), or one the system refuses. */
+const fakeMicrophone = async (allow, { silent = false } = {}) => {
+  const installed = await browser.execute(
+    (allowed, mute) => {
+      const fake = async () => {
+        if (!allowed) throw new DOMException("Permission denied", "NotAllowedError");
+        const ctx = new AudioContext();
+        // Without a real click WebKit may refuse to resume; the take then records silence, which is enough here.
+        ctx.resume().catch(() => {});
+        const tone = ctx.createOscillator();
+        const out = ctx.createMediaStreamDestination();
+        // Silent: a live stream of exact zeros, as macOS sends an app it hasn't allowed.
+        const level = ctx.createGain();
+        level.gain.value = mute ? 0 : 1;
+        tone.connect(level).connect(out);
+        tone.start();
+        // The recorder stops the track at Stop: close the hum with it, as a real
+        // microphone goes quiet, so takes don't pile up open audio contexts. By
+        // id on the prototype: getTracks() may hand back a new wrapper each time.
+        // window.__talkMic holds the open ones, for the journeys that check it goes off.
+        const [track] = out.stream.getAudioTracks();
+        window.__talkMic ??= new Map();
+        window.__talkMic.set(track.id, () => {
+          tone.stop();
+          void ctx.close();
+        });
+        if (!MediaStreamTrack.prototype.__talkStop) {
+          const stop = MediaStreamTrack.prototype.stop;
+          MediaStreamTrack.prototype.__talkStop = stop;
+          MediaStreamTrack.prototype.stop = function () {
+            stop.call(this);
+            const close = window.__talkMic?.get(this.id);
+            window.__talkMic?.delete(this.id);
+            close?.();
+          };
+        }
+        return out.stream;
+      };
+      // On the prototype and the instance: a plain assignment doesn't always stick.
+      Object.defineProperty(MediaDevices.prototype, "getUserMedia", {
+        value: fake,
+        configurable: true,
+        writable: true,
       });
-      if (!MediaStreamTrack.prototype.__talkStop) {
-        const stop = MediaStreamTrack.prototype.stop;
-        MediaStreamTrack.prototype.__talkStop = stop;
-        MediaStreamTrack.prototype.stop = function () {
-          stop.call(this);
-          const close = window.__talkMic?.get(this.id);
-          window.__talkMic?.delete(this.id);
-          close?.();
-        };
-      }
-      return out.stream;
-    };
-    // On the prototype and the instance: a plain assignment doesn't always stick.
-    Object.defineProperty(MediaDevices.prototype, "getUserMedia", {
-      value: fake,
-      configurable: true,
-      writable: true,
-    });
-    Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
-      value: fake,
-      configurable: true,
-      writable: true,
-    });
-    return navigator.mediaDevices.getUserMedia === fake;
-  }, allow);
+      Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+        value: fake,
+        configurable: true,
+        writable: true,
+      });
+      return navigator.mediaDevices.getUserMedia === fake;
+    },
+    allow,
+    silent,
+  );
   ok(installed, "the fake microphone didn't install");
 };
 
@@ -360,7 +368,10 @@ describe("Journeys: talk notes", () => {
     );
   });
 
-  it("TALK-08 While you talk, topics show as tabs with their diagram; Stop writes them under the transcript", async () => {
+  it("TALK-08 While you talk, topics show as tabs with their diagram; Stop writes them under the transcript", async function () {
+    // Real Claude answers here, sometimes slowly: longer than the 60s default,
+    // so a slow answer fails this journey's own wait (and stops its take).
+    this.timeout(150_000);
     await openNote("Talk note");
     await fakeMicrophone(true);
     setWhisper(true, SCRIPT);
@@ -410,7 +421,10 @@ describe("Journeys: talk notes", () => {
     );
   });
 
-  it("TALK-10 Turning to a new topic shows the New topic? card; Accept new tab opens its tab", async () => {
+  it("TALK-10 Turning to a new topic shows the New topic? card; Accept new tab opens its tab", async function () {
+    // Real Claude answers here, sometimes slowly: longer than the 60s default,
+    // so a slow answer fails this journey's own wait (and stops its take).
+    this.timeout(150_000);
     await openNote("Talk note");
     await fakeMicrophone(true);
     // Ends on the turn, so the card stays up until it's answered.
@@ -430,7 +444,7 @@ describe("Journeys: talk notes", () => {
     await browser
       // Claude may offer an earlier line first; the card for the turn replaces it.
       .waitUntil(async () => /New topic\?.*“[^”]*next[^”]*”/i.test((await card()) ?? ""), {
-        timeout: 60_000,
+        timeout: 100_000,
         timeoutMsg: "no New topic? card after “Okay, next”",
       })
       .catch(async (e) => {
@@ -438,6 +452,8 @@ describe("Journeys: talk notes", () => {
           "DEBUG box",
           await browser.execute(() => document.querySelector(".talk-box")?.textContent),
         );
+        // Don't leave the take running into the next journey.
+        await pressDock("Stop");
         throw e;
       });
     const before = await tabs();
@@ -654,6 +670,23 @@ describe("Journeys: talk notes", () => {
     });
   });
 
+  it("TALK-19 A microphone that sends only silence: the pill says it hears nothing and where to allow it", async () => {
+    await openNote("Talk note");
+    await fakeMicrophone(true, { silent: true });
+    setWhisper(false);
+    ok(await pressRecord());
+    await browser.waitUntil(async () => /No sound from the microphone/.test(await dockText()), {
+      timeout: 10_000,
+      timeoutMsg: `no word about the silent microphone: ${await dockText()}`,
+    });
+    ok((await dockText()).includes("Privacy & Security → Microphone"), await dockText());
+    ok(await pressDock("Stop"));
+    await browser.waitUntil(async () => /Whisper Small/.test(await dockText()), {
+      timeout: 10_000,
+    });
+    ok(await pressDock("Not now"));
+  });
+
   it("TALK-16 In columns after a pinch, the pill and the live box fit inside the note's column", async () => {
     // Five columns: Pinch hub and the four notes it opens beside, then Talk
     // note in the last one, so the take lands where the other journeys look.
@@ -676,7 +709,11 @@ describe("Journeys: talk notes", () => {
     // A pinch in, as Ctrl-wheel steps, if opening beside didn't already show columns.
     const pinch = (deltaY) =>
       browser.execute((dy) => {
-        const content = document.querySelector(".tab-column:not([data-hidden]) .cm-content");
+        // Over Talk note's column (it has the pill), so a pinch out shows that note.
+        const column =
+          document.querySelector(".talk-dock")?.closest(".tab-column") ??
+          document.querySelector(".tab-column:not([data-hidden])");
+        const content = column.querySelector(".cm-content");
         const box = content.getBoundingClientRect();
         for (let i = 0; i < 3; i++) {
           content.dispatchEvent(
@@ -732,7 +769,20 @@ describe("Journeys: talk notes", () => {
       timeout: 10_000,
     });
     ok(await pressDock("Not now"));
-    // Back to one tab, as the other journeys expect.
+    // Back to one tab, as the other journeys expect: there the note runs under
+    // the footer, and Record must sit above it.
     if (await columns()) await pinch(-5);
+    const clear = await browser.execute(() => {
+      const pill = document
+        .querySelector(".tab-column:not([data-hidden]) .talk-dock-pill")
+        ?.getBoundingClientRect();
+      const footer = document.querySelector("[data-document-footer]")?.getBoundingClientRect();
+      return !pill || !footer
+        ? `pill ${Boolean(pill)}, footer ${Boolean(footer)}`
+        : pill.bottom <= footer.top
+          ? null
+          : `pill ends at ${Math.round(pill.bottom)}, footer starts at ${Math.round(footer.top)}`;
+    });
+    ok(clear === null, `Record is under the footer in one tab: ${clear}`);
   });
 });

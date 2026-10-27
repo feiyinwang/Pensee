@@ -93,6 +93,8 @@ interface TalkState {
   undo: { before: AskState; key: string; aside: boolean } | null;
   /** The talk the last take belongs to, so Continue can add the next take to it. */
   talk: { notePath: string; takes: number } | null;
+  /** Nothing but silence from the microphone since Record: it isn't allowed, or is muted. */
+  silent: boolean;
   start: (notePath: string, continueTalk?: boolean) => Promise<void>;
   stop: () => Promise<void>;
   download: () => Promise<void>;
@@ -322,6 +324,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
     pinned: null,
     undo: null,
     talk: null,
+    silent: false,
 
     start: async (notePath, continueTalk = false) => {
       const busy: TalkPhase[] = ["starting", "recording", "saving", "downloading", "transcribing"];
@@ -346,6 +349,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
         pinned: null,
         undo: null,
         liveError: null,
+        silent: false,
       });
       recordingTabs = new Set(showing(notePath));
       try {
@@ -360,6 +364,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
               .then(() => invoke("talk_pcm_append", bytes, { headers: { "x-session": id } }))
               .catch((error: unknown) => console.error("[talk] samples not sent:", error));
           },
+          (silent) => set({ silent }),
         );
         set({ phase: "recording", startedAt: Date.now() });
         stopWhenNoteCloses();
