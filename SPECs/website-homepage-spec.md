@@ -62,6 +62,10 @@ voice.
   that play when scrolled into view and repeat every 5 seconds while on screen, like the GIFs (static under reduced motion). Cards
   rest near flat (hairline ring, 1px shadow); a deeper shadow fades in on hover
   (160ms, opacity only).
+- **Talk.** Between rooms I and II, one section with one large demo the
+  visitor plays (`components/TalkDemo.tsx`, the talk in `src/talk-script.ts`).
+  Decided 2026-10-27 from a picker (`apps/desktop/proto/voice-section/`,
+  deleted once built); see _Talk section_ below.
 - **Closing.** Hammershøi's interior fills the screen: _Start writing what you
   think._, the download button, the brew line with **Copy** (hidden on Windows:
   Homebrew is the Mac's), and the honest fine print (Claude Code for the pen;
@@ -78,6 +82,49 @@ voice.
   fine print speaks of the installer. Everyone else sees the Mac button, and
   the line under it names both systems, each a link to its own download, so a
   Mac visitor can fetch the Windows build for another computer.
+
+## Talk section
+
+**Try it** won. The section shows Talk (voice → pictures) by letting the
+visitor run a real one.
+
+- **Head.** Like a room head without a painting: eyebrow _New · Talk to a
+  note_, _Talk it through. Watch it take shape._, and one paragraph. The copy
+  says Whisper writes the transcript on the Mac and nothing more: the topics
+  are drawn by Claude, so the page never claims nothing leaves the computer.
+- **The demo.** A card holding the app's dark look: a note (_Lisbon?_) with
+  the talk box over it and the recording pill under it. One 48-second talk
+  about taking a job in Lisbon, written the way people talk ("It's, yeah,
+  basically the same"), in three topics: _Lisbon or Berlin_ (mind map, or a
+  matrix), _The move_ (steps, or a timeline), _Rent_ (a bar chart whose
+  average follows its bars). Every piece of a picture carries the id of the
+  line that said it, so a redraw keeps what's been heard.
+- **At rest it shows the finished talk.** Nothing plays on load or on scroll
+  (marketing motion rule: motion follows the visitor). Everything works at
+  rest: the topic tabs, the picture buttons, **Stop**.
+- **Play the talk** plays it from the start: under the card, the line being
+  said lights word by word (Bodoni, 200ms a word); the pill's red trace rises
+  while words come and goes flat between lines; each line's pieces appear when
+  it ends, 110ms apart (opacity + scale 0.96 → 1, 220ms ease-out). "Okay,
+  next" shows **New topic?**, and the tab opens three words later, as in the
+  app. **next topic** opens the next tab early.
+- **Stop** shows the note the app writes: the player, a two-sentence
+  conclusion, and each topic as a board in the picture the visitor last chose.
+- Reduced motion: the words and pieces still come in order (the visitor asked
+  for it), with no fades, scales or moving trace.
+- Phones: the pictures shrink with their box (`min(1em, 2.35cqw)`) so no
+  label is cut off; they read small there.
+
+Rejected:
+
+- **Room** (a fifth room with four looping demo cards): fits the page, but
+  splits one story into four small pieces, and it's the least memorable.
+- **Spoken** (full-bleed Wright of Derby, three spoken quotes lighting up
+  beside the box): striking, but the box covers the painting's lit centre and
+  it adds a third full-screen painting to the page.
+- **Afterwards** (drag between the raw transcript and the finished note):
+  sells the result, but never shows the pictures appearing while you talk,
+  which is the feature.
 
 ## Rejected, and why
 

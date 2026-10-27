@@ -33,6 +33,27 @@ const CLAUDE_NOTE =
 export const FINE_PRINT = `${CLAUDE_NOTE} Pensée isn’t notarized by Apple yet, so if macOS won’t open the download, use the install line: it clears the flag macOS puts on downloads.`;
 export const FINE_PRINT_WINDOWS = `${CLAUDE_NOTE} The installer isn’t signed yet, so Windows may warn the first time you run it: choose More info, then Run anyway.`;
 
+/**
+ * The Talk section, after the room named in `after` (SPECs/website-homepage-spec.md,
+ * "Talk section"). The talk its demo plays is in talk-script.ts.
+ */
+export const TALK_SECTION = {
+  after: "think",
+  eyebrow: "New · Talk to a note",
+  title: "Talk it through. Watch it take shape.",
+  intro:
+    "Press Record and think out loud. Pensée sorts what you say into topics and draws each one while you talk, then puts it in your note when you stop. Whisper writes the transcript on your computer.",
+  /** Under the demo while no line is being said. */
+  rest: {
+    start:
+      "A 48-second talk about a job in Lisbon, drawn as it was said. Click a picture under the topics to draw it another way, or press Stop to see it in the note.",
+    ended:
+      "That’s the talk. Press Stop and it goes into the note, or click a picture to draw a topic another way.",
+    stopped:
+      "This is the note after Stop: what you concluded, and each topic as a board you can open and rearrange.",
+  },
+};
+
 /** Public-domain paintings, downloaded from Wikimedia Commons into public/paintings. */
 export interface Painting {
   src: string;

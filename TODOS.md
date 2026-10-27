@@ -9,6 +9,7 @@
 
 ## Done
 
+- Website: a Talk section between rooms I and II, one talk the visitor plays and redraws, then stops into the note (decided from proto/voice-section). Spec: [SPECs/website-homepage-spec.md](./SPECs/website-homepage-spec.md#talk-section)
 - Record as a dot that steps aside while you scroll or write (decided from proto/record-dock). Spec: [SPECs/talk-notes-spec.md](./SPECs/talk-notes-spec.md#recording)
 - Section rail as one line on the right edge: a segment per heading sized by its section, hover opens the list; replaces the ticks and the standing outline. Spec: [SPECs/section-indicators-spec.md](./SPECs/section-indicators-spec.md)
 - Talk notes: Record in a note, the pen asks before each new topic, live Pele diagrams drawn with Arc, Whisper on the Mac (ElevenLabs optional), audio + transcript in the note, Continue, Recordings space. Spec: [SPECs/talk-notes-spec.md](./SPECs/talk-notes-spec.md)
