@@ -1,7 +1,8 @@
 /* The live box above Record (talk-box.tsx). */
 .talk-box {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-auto-rows: auto;
   gap: 8px;
   width: min(760px, 100%);
   height: min(400px, 52vh);
@@ -244,6 +245,79 @@
   font-size: var(--font-size-caption);
 }
 
+/* The pictures you can ask for, named the way you'd say them, and the next topic. */
+.talk-box-foot {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.talk-box-say {
+  flex: none;
+  padding: 0 6px 0 4px;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+}
+
+.talk-box-pictures {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.talk-box-picture {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-hover) var(--ease-hover),
+    color var(--motion-hover) var(--ease-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .talk-box-picture:not(:disabled):hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+  }
+}
+
+.talk-box-picture[aria-pressed="true"] {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+}
+
+.talk-box-picture:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+/* Asked for, until the talk's Claude redraws it. */
+.talk-box-picture[data-pending] {
+  animation: talk-box-pending 900ms var(--ease-in-out, ease-in-out) infinite alternate;
+}
+
+@keyframes talk-box-pending {
+  to {
+    opacity: 0.5;
+  }
+}
+
+.talk-box-next {
+  margin-left: auto;
+}
+
 /* affectUI pieces take Pensée's surfaces, AI ink and UI font, in both themes. */
 .talk-box :is(.ui-tlc, .ui-src) {
   font-family: inherit;
@@ -256,7 +330,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .talk-box {
+  .talk-box,
+  .talk-box-picture[data-pending] {
     animation: none;
   }
 }

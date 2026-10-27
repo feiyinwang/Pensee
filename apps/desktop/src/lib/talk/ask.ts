@@ -34,6 +34,25 @@ export function isBoardDiagram(mermaid: string | undefined): boolean {
   return /^\s*(mindmap|flowchart|graph)\b/.test(mermaid ?? "");
 }
 
+/** The pictures you can ask for by button, each named the way you'd say it. */
+export const PICTURES = [
+  { kind: "mindmap", says: "as a mind map" },
+  { kind: "flowchart", says: "as steps" },
+  { kind: "quadrantChart", says: "as a matrix" },
+  { kind: "timeline", says: "as a timeline" },
+  { kind: "xychart", says: "as a chart" },
+] as const;
+
+export type PictureKind = (typeof PICTURES)[number]["kind"];
+
+/** Which of the buttons' pictures a diagram is, if any. */
+export function pictureOf(mermaid: string | undefined): PictureKind | null {
+  const head = /^\s*([A-Za-z-]+)/.exec(mermaid ?? "")?.[1];
+  if (head === "graph") return "flowchart";
+  if (head === "xychart-beta") return "xychart";
+  return PICTURES.find((p) => p.kind === head)?.kind ?? null;
+}
+
 export interface AskState {
   topics: Record<string, Topic>;
   /** Topics with a tab, in the order they opened. */
@@ -52,6 +71,8 @@ export interface AskState {
   cue: string | null;
   /** The topic of the last line heard, so one line about another topic doesn't flip the picture. */
   last: string | null;
+  /** The tab **next topic** opened, and the first line heard after it, until something is said into it. */
+  started: { key: string; from: number } | null;
 }
 
 export const emptyAsk = (): AskState => ({
@@ -64,6 +85,7 @@ export const emptyAsk = (): AskState => ({
   lineTopic: {},
   cue: null,
   last: null,
+  started: null,
 });
 
 const take = (s: AskState, key: string): AskState => ({
@@ -81,6 +103,19 @@ export function applyReply(prev: AskState, reply: TalkReply): AskState {
     parked: { ...prev.parked },
     lineTopic: { ...prev.lineTopic },
   };
+  // What you said after **next topic** is its topic, whatever key the AI gave it:
+  // the empty tab becomes that topic, with no New topic? card.
+  const started = s.started;
+  if (started && isEmptyTopic(s.topics[started.key])) {
+    const first = reply.lines.find((l) => l.topic && l.n >= started.from && !l.aside);
+    const key = first?.topic;
+    if (key && key !== started.key && !s.open.includes(key)) {
+      delete s.topics[started.key];
+      s.open = s.open.map((k) => (k === started.key ? key : k));
+      if (s.current === started.key) s.current = key;
+      s.started = { key, from: started.from };
+    }
+  }
   for (const t of reply.topics) {
     const old = s.topics[t.key];
     s.topics[t.key] = {
@@ -125,8 +160,23 @@ export function applyReply(prev: AskState, reply: TalkReply): AskState {
     }
     s.last = key;
   }
+  if (s.started && !isEmptyTopic(s.topics[s.started.key])) s.started = null;
   return s;
 }
+
+/** The **next topic** button: a tab of its own now, titled once you talk about it. */
+export function startTopic(s: AskState, key: string, from: number): AskState {
+  const topic: Topic = { key, title: "New topic", short: "New topic", mermaid: "", lines: [] };
+  return {
+    ...take({ ...s, topics: { ...s.topics, [key]: topic } }, key),
+    cue: null,
+    started: { key, from },
+  };
+}
+
+/** A topic with nothing in it yet: no lines heard and no picture. */
+export const isEmptyTopic = (t: Topic | undefined): boolean =>
+  !!t && !t.lines.length && !t.mermaid.trim();
 
 /** The card's **Accept new tab**. */
 export const acceptOffer = (s: AskState): AskState => (s.offer ? take(s, s.offer.key) : s);
@@ -164,7 +214,8 @@ export function talkSections(
   const out: string[] = [];
   for (const key of s.open) {
     const t = s.topics[key];
-    if (!t) continue;
+    // A topic started by button that nothing was said into.
+    if (!t || isEmptyTopic(t)) continue;
     out.push(`### ${t.title}`, "");
     // What it came to, then its picture: the lines themselves are in the
     // transcript, and a board node plays the part of the take it came from.

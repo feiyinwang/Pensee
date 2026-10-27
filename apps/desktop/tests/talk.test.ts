@@ -175,8 +175,16 @@ describe("recordingTime", () => {
   });
 });
 
-import { acceptOffer, applyReply, emptyAsk, keepAside, talkSections } from "../src/lib/talk/ask";
-import { parseTalkReply } from "../src/lib/talk/talk-agent";
+import {
+  acceptOffer,
+  applyReply,
+  emptyAsk,
+  keepAside,
+  pictureOf,
+  startTopic,
+  talkSections,
+} from "../src/lib/talk/ask";
+import { parseTalkReply, talkPrompt } from "../src/lib/talk/talk-agent";
 
 describe("Ask", () => {
   const build = {
@@ -329,6 +337,86 @@ describe("Ask", () => {
     );
     expect(reply.lines[0]).toEqual({ n: 1, topic: "build", turn: "First" });
     expect(reply.topics[0].short).toBe("What to build");
+  });
+});
+
+describe("talk buttons", () => {
+  test("next topic opens an empty tab now; the reply that titles it keeps it, with no offer", () => {
+    let s = applyReply(emptyAsk(), {
+      lines: [{ n: 0, topic: "plan" }],
+      topics: [
+        { key: "plan", title: "My plan", short: "Plan", mermaid: "flowchart LR\n  A --> B" },
+      ],
+    });
+    s = startTopic(s, "topic-2", 1);
+    expect(s.open).toEqual(["plan", "topic-2"]);
+    expect(s.current).toBe("topic-2");
+    expect(s.topics["topic-2"]!.title).toBe("New topic");
+    s = applyReply(s, {
+      lines: [{ n: 1, topic: "topic-2", turn: "So, hiring" }],
+      topics: [
+        {
+          key: "topic-2",
+          title: "Who to hire",
+          short: "Hiring",
+          mermaid: "mindmap\n  root((Hiring))",
+        },
+      ],
+    });
+    expect(s.offer).toBeNull();
+    expect(s.current).toBe("topic-2");
+    expect(s.topics["topic-2"]!.title).toBe("Who to hire");
+  });
+
+  test("next topic's tab becomes the topic said after it, even under the AI's own key", () => {
+    let s = applyReply(emptyAsk(), {
+      lines: [{ n: 0, topic: "plan" }],
+      topics: [
+        { key: "plan", title: "My plan", short: "Plan", mermaid: "flowchart LR\n  A --> B" },
+      ],
+    });
+    s = startTopic(s, "topic-2", 1);
+    s = applyReply(s, {
+      lines: [
+        { n: 0, topic: "plan" },
+        { n: 1, topic: "hiring", turn: "We need to hire" },
+      ],
+      topics: [
+        {
+          key: "hiring",
+          title: "Who to hire",
+          short: "Hiring",
+          mermaid: "mindmap\n  root((Hiring))",
+        },
+      ],
+    });
+    expect(s.offer).toBeNull();
+    expect(s.open).toEqual(["plan", "hiring"]);
+    expect(s.current).toBe("hiring");
+    expect(s.topics["topic-2"]).toBeUndefined();
+    expect(s.started).toBeNull();
+  });
+
+  test("a topic started by button that nothing was said into isn't written to the note", () => {
+    const s = startTopic(emptyAsk(), "topic-1", 0);
+    expect(talkSections(s, [], () => ({ file: "a.m4a", start: 0 }))).toBe("");
+  });
+
+  test("the turn tells the AI what was clicked, even with nothing new heard", () => {
+    const prompt = talkPrompt([], [{ key: "plan", title: "My plan" }], "plan", [
+      "Draw plan as steps (flowchart)",
+    ]);
+    expect(prompt).toContain("New lines:\n(none)");
+    expect(prompt).toMatch(/Buttons:\n- Draw plan as steps \(flowchart\)$/);
+  });
+
+  test("each button knows its picture by the diagram's first word", () => {
+    expect(pictureOf("mindmap\n  root((x))")).toBe("mindmap");
+    expect(pictureOf("graph TD\n  A --> B")).toBe("flowchart");
+    expect(pictureOf("flowchart LR\n  A --> B")).toBe("flowchart");
+    expect(pictureOf("xychart-beta\n  bar [1]")).toBe("xychart");
+    expect(pictureOf('pie\n  "A" : 1')).toBeNull();
+    expect(pictureOf(undefined)).toBeNull();
   });
 });
 

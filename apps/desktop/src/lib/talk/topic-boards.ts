@@ -23,7 +23,7 @@ import {
   saveBoardFile,
 } from "@/components/editor-area/board/board-file-session";
 import { parseAudioClip } from "@/lib/audio-clips";
-import { mergeTopicBoard, mindmapText } from "./topic-board-merge";
+import { boardKind, handEdited, mergeTopicBoard, mindmapText } from "./topic-board-merge";
 
 // A talk topic drawn as a board (SPECs/talk-notes-spec.md#topic-boards): a
 // mind map or a flowchart becomes a real `.board.svg` beside the note the
@@ -86,14 +86,20 @@ async function apply(key: string, mermaid: string, notePath: string): Promise<vo
     held.set(key, mermaid);
     return;
   }
-  const entry = entries.get(key);
-  if (!entry) {
+  const create = async () => {
     const scene = emptyScene();
     scene.els = next;
     const file = await createBoardFile(notePath, scene);
     entries.set(key, { ...file, written: structuredClone(scene), frozen: false });
     show(key, scene, false);
-    return;
+  };
+  const entry = entries.get(key);
+  if (!entry) return create();
+  // Redrawn as the other kind (a map as steps, or back): a board of its own
+  // when you'd changed this one, so your version stays on disk as you left it.
+  if (boardKind(next) !== boardKind(entry.written.els)) {
+    if (handEdited(await readScene(entry.absolute), entry.written)) return create();
+    entry.frozen = false;
   }
   if (entry.frozen) return;
   const disk = await readScene(entry.absolute);

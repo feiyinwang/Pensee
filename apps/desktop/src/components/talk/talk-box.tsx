@@ -5,10 +5,9 @@ import { ThinkingLoader } from "@/components/affect/thinking-loader";
 import { SmartRecommendation } from "@/components/affect/smart-recommendation";
 import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { useTalkStore } from "@/stores/talk-store";
-import { topicFill } from "@/lib/talk/ask";
+import { PICTURES, isBoardDiagram, isEmptyTopic, pictureOf, topicFill } from "@/lib/talk/ask";
 import { TalkDiagram } from "./talk-diagram";
 import { TalkBoard } from "./talk-board";
-import { isBoardDiagram } from "@/lib/talk/ask";
 import "./talk-box.css";
 
 // What you're saying, as you say it (SPECs/talk-notes-spec.md#while-you-talk-ask):
@@ -25,6 +24,7 @@ export default function TalkBox() {
   const model = useTalkStore((s) => s.model);
   const progress = useTalkStore((s) => s.progress);
   const notePath = useTalkStore((s) => s.notePath);
+  const asked = useTalkStore((s) => s.asked);
   useEffect(() => ensureArcTokens(), []);
 
   const shown = pinned ?? ask.current;
@@ -32,6 +32,11 @@ export default function TalkBox() {
   const parked = Object.entries(ask.parked).filter(([k]) => !ask.open.includes(k));
   const cardKey = ask.offer?.key ?? undo?.key ?? null;
   const cardTopic = cardKey ? ask.topics[cardKey] : undefined;
+  // The picture it has, or the one you just asked for.
+  const picture = asked && asked.key === topic?.key ? asked.kind : pictureOf(topic?.mermaid);
+  const canDraw = live === "listening" && !!topic && !isEmptyTopic(topic);
+  const current = ask.current ? ask.topics[ask.current] : undefined;
+  const askedSays = asked && PICTURES.find((p) => p.kind === asked.kind)?.says;
 
   return (
     <div className="talk-box" role="region" aria-label="What you're saying">
@@ -72,7 +77,14 @@ export default function TalkBox() {
           )}
         </div>
         <div className="talk-box-status">
-          {live === "listening" && (
+          {live === "listening" && askedSays ? (
+            <ThinkingLoader
+              key="asked"
+              size="sm"
+              variant="plain"
+              phases={[`Drawing it ${askedSays}`]}
+            />
+          ) : live === "listening" ? (
             <ThinkingLoader
               size="sm"
               variant="plain"
@@ -80,7 +92,7 @@ export default function TalkBox() {
               done={Boolean(ask.cue)}
               doneLabel={ask.cue ?? ""}
             />
-          )}
+          ) : null}
         </div>
       </div>
       <div className="talk-box-stage">
@@ -141,11 +153,41 @@ export default function TalkBox() {
             {liveError ??
               (topic
                 ? "Its diagram starts with your next sentence."
-                : "Talk about what's on your mind. Say “next…” to start another topic, or “as steps”, “as a matrix”, “as a timeline” to change its picture.")}
+                : "Talk about what's on your mind; its picture draws here as you go.")}
           </p>
         )}
       </div>
       {liveError && topic?.mermaid && <p className="talk-box-error">{liveError}</p>}
+      {(live === "listening" || live === "error") && (
+        <div className="talk-box-foot">
+          <span className="talk-box-say" id="talk-box-say">
+            Say or click
+          </span>
+          <div className="talk-box-pictures" role="group" aria-labelledby="talk-box-say">
+            {PICTURES.map((p) => (
+              <button
+                key={p.kind}
+                type="button"
+                className="talk-box-picture"
+                aria-pressed={picture === p.kind}
+                data-pending={(asked?.kind === p.kind && asked.key === topic?.key) || undefined}
+                disabled={!canDraw}
+                onClick={() => useTalkStore.getState().redraw(p.kind)}
+              >
+                {p.says}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="talk-box-picture talk-box-next"
+            disabled={live !== "listening" || isEmptyTopic(current)}
+            onClick={() => useTalkStore.getState().newTopic()}
+          >
+            next topic
+          </button>
+        </div>
+      )}
     </div>
   );
 }

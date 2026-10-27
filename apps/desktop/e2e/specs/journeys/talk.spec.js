@@ -760,20 +760,20 @@ describe("Journeys: talk notes", () => {
     ok(await pressDock("Not now"));
   });
 
-  it("TALK-20 A plan you talk through is drawn as a board; a click opens it in the board editor; Stop puts a summary and the board in the note, its nodes holding clips", async function () {
+  it("TALK-20 A brainstorm is drawn as a mind map board; a click opens it in the board editor; Stop puts a summary and the board in the note, its nodes holding clips", async function () {
     // Real Claude draws the plan: longer than the 60s default.
     this.timeout(240_000);
     await openNote("Talk note");
     await fakeMicrophone(true);
     setWhisper(true, [
-      { start: 0, end: 4, text: "Let's map my business idea." },
-      { start: 4, end: 9, text: "First I scan keywords around the world." },
-      { start: 9, end: 14, text: "Then I dive deeper into the keywords using Rob's skills." },
+      { start: 0, end: 4, text: "Let me brainstorm where new users could come from." },
       {
-        start: 14,
-        end: 19,
-        text: "Testing with Facebook ads and Google ads comes after Rob's skills, as a step under it.",
+        start: 4,
+        end: 9,
+        text: "Maybe Reddit, the Obsidian subreddit, and Hacker News for a launch post.",
       },
+      { start: 9, end: 14, text: "Or YouTube shorts showing the talk feature, and TikTok." },
+      { start: 14, end: 19, text: "Writers on Substack too, and a weekly newsletter of my own." },
     ]);
     ok(await pressRecord());
     const stopOnFail = async (e) => {
@@ -785,10 +785,10 @@ describe("Journeys: talk notes", () => {
     await browser
       .waitUntil(() => browser.execute(() => !!document.querySelector(".talk-board svg")), {
         timeout: 100_000,
-        timeoutMsg: "the plan wasn't drawn as a board",
+        timeoutMsg: "the brainstorm wasn't drawn as a board",
       })
       .catch(stopOnFail);
-    // A plan told as "first…, then…" is a mind map: arrange it right in the box.
+    // A brainstorm is a mind map: arrange it right in the box.
     const arrange = (go) =>
       browser.execute((drop) => {
         const nodes = [
@@ -830,7 +830,7 @@ describe("Journeys: talk notes", () => {
     await browser
       .waitUntil(async () => Boolean(await arrange(false)), {
         timeout: 60_000,
-        timeoutMsg: "the plan wasn't drawn as a mind map with a topic to move",
+        timeoutMsg: "the brainstorm wasn't drawn as a mind map with a topic to move",
       })
       .catch(stopOnFail);
     const moved = await arrange(true);
@@ -900,6 +900,143 @@ describe("Journeys: talk notes", () => {
         ),
       { timeout: 10_000, timeoutMsg: "the board's nodes have no clips" },
     );
+  });
+
+  it("TALK-25 A plan told step by step is drawn as steps in that order; the as a mind map button redraws it", async function () {
+    // Real Claude draws it, twice: longer than the 60s default.
+    this.timeout(240_000);
+    await openNote("Talk note");
+    await fakeMicrophone(true);
+    setWhisper(true, [
+      { start: 0, end: 4, text: "Here's my plan for a business idea." },
+      { start: 4, end: 9, text: "First I scan keywords from what I read." },
+      { start: 9, end: 14, text: "Then I check the pull of each idea with Rob's skills." },
+      { start: 14, end: 19, text: "Once that's done, I test it with Facebook ads and Google ads." },
+    ]);
+    ok(await pressRecord());
+    const stopOnFail = async (e) => {
+      await pressDock("Stop");
+      throw e;
+    };
+    // Each step's card, where it sits along the flow.
+    const steps = () =>
+      browser.execute(() => {
+        const surface = document.querySelector(".talk-board-surface");
+        if (!surface || surface.querySelector('[data-type="mind"]')) return null;
+        const cards = [...surface.querySelectorAll("g[data-el]")].filter(
+          (g) => !/^(arrow|line)$/.test(g.dataset.type) && g.textContent.trim(),
+        );
+        const at = (word) => {
+          const card = cards.find((g) => g.textContent.toLowerCase().includes(word));
+          if (!card) return null;
+          const r = card.getBoundingClientRect();
+          return { x: r.left, y: r.top };
+        };
+        const arrows = surface.querySelectorAll('[data-type="arrow"]').length;
+        return { keywords: at("keyword"), rob: at("rob"), ads: at("ads"), arrows };
+      });
+    await browser
+      .waitUntil(
+        async () => {
+          const s = await steps();
+          return s && s.keywords && s.rob && s.ads && s.arrows >= 2;
+        },
+        { timeout: 120_000, timeoutMsg: "the plan wasn't drawn as linked steps" },
+      )
+      .catch(stopOnFail);
+    const { keywords, rob, ads } = await steps();
+    const along = (a, b) => b.x > a.x + 1 || b.y > a.y + 1;
+    ok(
+      along(keywords, rob) && along(rob, ads),
+      `steps out of order: ${JSON.stringify({ keywords, rob, ads })}`,
+    );
+    const pressed = () =>
+      browser.execute(
+        () => document.querySelector('.talk-box-picture[aria-pressed="true"]')?.textContent ?? "",
+      );
+    ok((await pressed()) === "as steps", `as steps isn't shown as the picture: ${await pressed()}`);
+    await browser.execute(() =>
+      [...document.querySelectorAll(".talk-box-picture")]
+        .find((b) => b.textContent === "as a mind map")
+        .click(),
+    );
+    ok((await pressed()) === "as a mind map");
+    await browser
+      .waitUntil(
+        () =>
+          browser.execute(() => !!document.querySelector('.talk-board-surface [data-type="mind"]')),
+        { timeout: 100_000, timeoutMsg: "as a mind map didn't redraw the topic" },
+      )
+      .catch(stopOnFail);
+    await browser.waitUntil(
+      () => browser.execute(() => !document.querySelector(".talk-box-picture[data-pending]")),
+      { timeout: 10_000, timeoutMsg: "the button kept waiting after the redraw" },
+    );
+    ok(await pressDock("Stop"));
+    await browser.waitUntil(async () => (await dockText()).includes("Saved to Recordings/"), {
+      timeout: 100_000,
+    });
+  });
+
+  it("TALK-26 The next topic button opens a tab now; what you say next goes in it and titles it, with no card", async function () {
+    this.timeout(240_000);
+    await openNote("Talk note");
+    await fakeMicrophone(true);
+    const plan = [
+      { start: 0, end: 4, text: "Let me think about the launch week." },
+      { start: 4, end: 9, text: "Monday the post goes out, Tuesday I answer comments." },
+    ];
+    setWhisper(true, plan);
+    ok(await pressRecord());
+    const stopOnFail = async (e) => {
+      await pressDock("Stop");
+      throw e;
+    };
+    const tabs = () =>
+      browser.execute(() =>
+        [...document.querySelectorAll(".talk-box-tab")].map((t) => ({
+          text: t.textContent,
+          selected: t.getAttribute("aria-selected") === "true",
+        })),
+      );
+    await browser
+      .waitUntil(async () => (await tabs()).length === 1, {
+        timeout: 80_000,
+        timeoutMsg: "the first topic never got a tab",
+      })
+      .catch(stopOnFail);
+    await browser.execute(() => document.querySelector(".talk-box-next").click());
+    const opened = await tabs();
+    ok(
+      opened.length === 2 && opened[1].selected && opened[1].text.startsWith("New topic"),
+      `next topic didn't open a tab: ${JSON.stringify(opened)}`,
+    );
+    ok(
+      await browser.execute(() => document.querySelector(".talk-box-next").disabled),
+      "next topic should wait for words in the empty tab",
+    );
+    setWhisper(true, [
+      ...plan,
+      { start: 9, end: 14, text: "We need to hire a designer and a support person." },
+      { start: 14, end: 19, text: "The designer comes first, part-time." },
+    ]);
+    await browser
+      .waitUntil(
+        async () => {
+          const t = await tabs();
+          return t.length === 2 && t[1].selected && !t[1].text.startsWith("New topic");
+        },
+        { timeout: 80_000, timeoutMsg: "what was said after next topic didn't title its tab" },
+      )
+      .catch(stopOnFail);
+    ok(
+      await browser.execute(() => !document.querySelector(".talk-box-card")),
+      "the button's topic was offered as a New topic? card",
+    );
+    ok(await pressDock("Stop"));
+    await browser.waitUntil(async () => (await dockText()).includes("Saved to Recordings/"), {
+      timeout: 100_000,
+    });
   });
 
   it("TALK-16 In columns after a pinch, the pill and the live box fit inside the note's column", async () => {

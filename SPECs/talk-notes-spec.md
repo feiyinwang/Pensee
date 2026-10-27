@@ -93,13 +93,26 @@ A topic drawn as a mind map or a flowchart is a Pensée board, not a Mermaid pic
 it, a `.board.svg` is made beside the note (as `/board` makes one) and the talk box shows it with the board's own
 renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their section has the summary and the Mermaid block. Asides keep their lines under "Said in passing".
 
-- **Which picture.** Brainstorming, ideas, plans, reasons and doubts are a **mind map** (the board's, its branches
-  in colour): the default whenever no other type clearly fits, even for a plan told as "first…, then…": the main
-  ideas or steps are the central topic's own branches, each in its colour, their details under them; something
-  goes under another only when it's a detail of it or you say so. Steps as a flowchart only when you ask ("as steps", "as a flow"), drawn
-  as the board's blue cards. Say "as a mind map", "as steps", "as a matrix" (two axes), "as a pie", "as a chart",
-  "as a timeline", "as a to-do board" or "as a journey" and the topic is redrawn that way at once. A topic shows
-  and is written as its current type: an earlier board of it stays on disk, unused.
+- **Which picture.** Things done in order ("I'll do X, then Y", "first…, next…", "once that's done…") are
+  **steps**: the board's blue cards, one per step, chained in the order they happen (left to right up to four,
+  top to bottom beyond); a step's details sit in its label and a condition ("verified") on its arrow. A topic
+  drawn as a map turns into steps as soon as you tell an order. Ideas with no order (brainstorming, options,
+  reasons, doubts) are a **mind map** (the board's, its branches in colour), and so is anything no other type
+  clearly fits. The map is MECE: two to six branches of a different kind each, every idea under the one branch
+  it belongs to and nowhere else; the AI regroups when branches overlap or one grows past six. Each turn it
+  redraws the whole topic from everything said so far (renaming, regrouping, reordering), rather than adding
+  the new lines at the end, and its nodes are what you mean, never your framing ("the idea is simple").
+- **Say or click.** Under the picture, a row names the pictures the way you'd say them: as a mind map, as steps,
+  as a matrix, as a timeline, as a chart. Saying one ("as steps", "as a flow"; "as a matrix", "on two axes",
+  "compare"; "as a pie"; "as a chart", "as bars", "over time"; "as a timeline"; "as a to-do board"; "as a
+  journey") or clicking it redraws the shown topic that way within a turn; the topic's current picture is
+  pressed, and a clicked one pulses until it's drawn (the status says "Drawing it as steps"). A type you asked
+  for stays until you ask for another. A topic shows and is written as its current type: an earlier chart of
+  it stays unused. A map redrawn as steps (or back) keeps its board file while you haven't touched it; if you
+  had, it gets a new board and yours stays on disk as you left it.
+- **next topic**, at the end of that row, opens a tab now, titled "New topic" until the AI names it from what
+  you say next; those lines go in it with no New topic? card. One empty tab at a time: the button waits while
+  the new tab has nothing in it, and an empty one isn't written to the note.
 - **Arrange it in the box.** Drag a mind-map topic onto another to put it under it, or onto a sibling's top or
   bottom edge to put it before or after; the topic under the pointer shows where it goes. A moved topic, and a
   sibling order you set, are yours (kept through the AI's drawings). The central topic doesn't move.

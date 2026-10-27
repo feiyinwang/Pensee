@@ -128,4 +128,22 @@ describe("topic board merge", () => {
       "mindmap\n  root((My business idea))\n    Scan keywords\n    Use Rob's skills\n    Test with ads",
     );
   });
+
+  test("a map redrawn as steps, and back, follows the AI while you haven't touched it", () => {
+    const written = board(FIRST);
+    const steps = els(
+      "flowchart LR\n  A[Scan keywords] --> B[Use Rob's skills] --> C[Test with ads]",
+    );
+    const asSteps = mergeTopicBoard(structuredClone(written), written, steps, measure);
+    expect(asSteps.frozen).toBe(false);
+    expect(asSteps.scene.els.some((e: { t: string }) => e.t === "mind")).toBe(false);
+    const back = mergeTopicBoard(
+      structuredClone(asSteps.scene),
+      asSteps.scene,
+      els(FIRST),
+      measure,
+    );
+    expect(back.frozen).toBe(false);
+    expect(tree(back.scene)).toHaveLength(3);
+  });
 });

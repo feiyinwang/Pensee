@@ -8,8 +8,8 @@ import { EditorView } from "@codemirror/view";
 import { insertTalk, talkInsertion } from "@/lib/talk/insert-talk";
 import { minimalChange } from "@/lib/block-refs";
 import { audioClipLink } from "@/lib/audio-clips";
-import type { Topic } from "@/lib/talk/ask";
-import { isBoardDiagram } from "@/lib/talk/ask";
+import type { PictureKind, Topic } from "@/lib/talk/ask";
+import { PICTURES, isBoardDiagram, isEmptyTopic, startTopic } from "@/lib/talk/ask";
 import { editPage } from "@/components/editor-area/linked-block-sync";
 import {
   type Segment,
@@ -102,6 +102,8 @@ interface TalkState {
   talk: { notePath: string; takes: number } | null;
   /** Nothing but silence from the microphone since Record: it isn't allowed, or is muted. */
   silent: boolean;
+  /** A picture you asked for by button, until the turn that draws it lands. */
+  asked: { key: string; kind: PictureKind } | null;
   start: (notePath: string, continueTalk?: boolean) => Promise<void>;
   stop: () => Promise<void>;
   download: () => Promise<void>;
@@ -111,6 +113,10 @@ interface TalkState {
   accept: () => void;
   aside: () => void;
   undoAnswer: () => void;
+  /** The picture buttons: redraws the shown topic as `kind`. */
+  redraw: (kind: PictureKind) => void;
+  /** The **next topic** button: a new tab for what you say next. */
+  newTopic: () => void;
 }
 
 /** How long "Saved to Recordings/" stays before the pill goes back to Record. */
@@ -177,6 +183,8 @@ let takes: string[] = [];
 let takeOfLine: number[] = [];
 let sectionsWritten: string | null = null;
 let toSort: HeardLine[] = [];
+/** What you asked for by button, told to the talk's Claude with its next turn. */
+let buttons: string[] = [];
 let sorting: Promise<void> | null = null;
 
 /** The microphone level while recording, 0–1; returns the unsubscribe. */
@@ -225,8 +233,9 @@ export const useTalkStore = create<TalkState>((set, get) => {
 
   /** Sends the lines heard since the last turn to the talk's Claude, one turn at a time. */
   const sort = (): Promise<void> => {
-    if (sorting || !toSort.length) return sorting ?? Promise.resolve();
+    if (sorting || (!toSort.length && !buttons.length)) return sorting ?? Promise.resolve();
     const batch = toSort.splice(0);
+    const asked = buttons.splice(0);
     const { ask } = get();
     const topics = ask.open.map((k) => ({
       key: k,
@@ -236,16 +245,22 @@ export const useTalkStore = create<TalkState>((set, get) => {
         (isBoardDiagram(ask.topics[k]?.mermaid) && boards?.topicBoardMermaid(k)) ||
         (ask.topics[k]?.mermaid ?? ""),
     }));
-    sorting = askTalk(talkPrompt(batch, topics, ask.current))
+    sorting = askTalk(talkPrompt(batch, topics, ask.current, asked))
       .then((reply) => {
         set({ ask: applyReply(get().ask, reply), liveError: null });
+        if (asked.length) set({ asked: null });
         const { notePath } = get();
         if (!notePath || !reply.topics.length) return;
         void loadBoards().then((m) => {
           for (const t of reply.topics) void m.syncTopicBoard(t.key, t.mermaid, notePath);
         });
       })
-      .catch((error: unknown) => set({ liveError: `Topics paused: ${message(error)}` }))
+      .catch((error: unknown) =>
+        set({
+          liveError: `Topics paused: ${message(error)}`,
+          ...(asked.length && { asked: null }),
+        }),
+      )
       .finally(() => {
         sorting = null;
         if (toSort.length) void sort();
@@ -418,6 +433,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
     undo: null,
     talk: null,
     silent: false,
+    asked: null,
 
     start: async (notePath, continueTalk = false) => {
       const busy: TalkPhase[] = ["starting", "recording", "saving", "downloading", "transcribing"];
@@ -434,6 +450,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
         sectionsWritten = null;
       }
       toSort = [];
+      buttons = [];
       liveFrom = 0;
       set({
         phase: "starting",
@@ -444,6 +461,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
         undo: null,
         liveError: null,
         silent: false,
+        asked: null,
       });
       recordingTabs = new Set(showing(notePath));
       try {
@@ -626,6 +644,29 @@ export const useTalkStore = create<TalkState>((set, get) => {
       if (!undo) return;
       clearTimeout(undoTimer);
       set({ ask: undo.before, undo: null });
+    },
+
+    redraw: (kind) => {
+      const { ask, pinned, phase, live } = get();
+      const key = pinned ?? ask.current;
+      const topic = key ? ask.topics[key] : undefined;
+      if (!key || !topic || isEmptyTopic(topic) || phase !== "recording" || live !== "listening")
+        return;
+      const says = PICTURES.find((p) => p.kind === kind)!.says;
+      buttons.push(`Draw ${key} ${says} (${kind})`);
+      set({ asked: { key, kind } });
+      void sort();
+    },
+
+    newTopic: () => {
+      const { ask, phase } = get();
+      // One empty tab at a time: the one you just started waits for your words.
+      if (phase !== "recording" || (ask.current && isEmptyTopic(ask.topics[ask.current]))) return;
+      let n = Object.keys(ask.topics).length + 1;
+      while (ask.topics[`topic-${n}`]) n++;
+      const key = `topic-${n}`;
+      buttons.push(`New topic ${key} from line ${heard.length}`);
+      set({ ask: startTopic(ask, key, heard.length), pinned: null });
     },
   };
 });

@@ -57,15 +57,24 @@ export function mergeTopicBoard(
   measure: Measure,
 ): MergeResult {
   const nextRoot = minds(next).find((el) => !el.pa);
-  if (!nextRoot) return mergeFlow(file, written, next);
+  // A flowchart, or a board turning from one kind into the other.
+  if (!nextRoot || !minds(file.els).some((el) => !el.pa)) return mergeFlow(file, written, next);
   return { scene: mergeMind(file, written, next, nextRoot, measure), frozen: false };
 }
 
-function mergeFlow(file: BoardScene, written: BoardScene, next: BoardEl[]): MergeResult {
-  const edited =
+/** Whether anything on the board was changed by hand since `written`. */
+export function handEdited(file: BoardScene, written: BoardScene): boolean {
+  return (
     file.els.length !== written.els.length ||
-    file.els.some((el, i) => content(el) !== content(written.els[i]));
-  if (edited) return { scene: file, frozen: true };
+    file.els.some((el, i) => content(el) !== content(written.els[i]))
+  );
+}
+
+/** A mind map (`mind`) or anything else drawn from a flowchart (`flow`). */
+export const boardKind = (els: BoardEl[]): "mind" | "flow" => (els.some(isMind) ? "mind" : "flow");
+
+function mergeFlow(file: BoardScene, written: BoardScene, next: BoardEl[]): MergeResult {
+  if (handEdited(file, written)) return { scene: file, frozen: true };
   return { scene: { ...clone(file), els: clone(next) }, frozen: false };
 }
 
