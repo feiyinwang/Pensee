@@ -4,12 +4,15 @@ import { SETTINGS_SCHEMA, type SettingDef } from "@/lib/settings-schema";
 import { SettingControl } from "./setting-control";
 import { ThemesSection } from "./themes-section";
 import { ClaudeAccountRow } from "./claude-account-row";
+import { TranscriptionRows } from "./transcription-row";
 import { IS_MAC } from "@/lib/platform";
 
 /** Account rows, each after the setting it belongs with: the Claude sign-in
- *  after the model the Agent uses. */
+ *  after the model the Agent uses; the Whisper download and the ElevenLabs
+ *  key after the Whisper model. */
 const ACCOUNT_ROWS_AFTER: Partial<Record<string, ComponentType<{ isShown: boolean }>>> = {
   "agent.model": ClaudeAccountRow,
+  "talk.whisper-model": TranscriptionRows,
 };
 import { EditorScrollContainer } from "@/components/editor-area/editor-scroll-container";
 

@@ -86,11 +86,18 @@ export function parseTalkReply(text: string): TalkReply {
 /** The turn's message: what's known so far, then the new lines. */
 export function talkPrompt(
   lines: HeardLine[],
-  topics: { key: string; title: string }[],
+  topics: { key: string; title: string; mermaid?: string }[],
   current: string | null,
 ): string {
+  // The diagrams go along too: a Continue starts a new conversation, and an
+  // updated diagram must keep what earlier takes put in it.
   const known = topics.length
-    ? topics.map((t) => `- ${t.key}: ${t.title}${t.key === current ? " (current)" : ""}`).join("\n")
+    ? topics
+        .map(
+          (t) =>
+            `- ${t.key}: ${t.title}${t.key === current ? " (current)" : ""}${t.mermaid ? `\n${t.mermaid.replace(/^/gm, "    ")}` : ""}`,
+        )
+        .join("\n")
     : "(none yet)";
   const heard = lines.map((l) => `${l.n} [${formatClock(l.start)}] ${l.text}`).join("\n");
   return `Topics so far:\n${known}\n\nNew lines:\n${heard}`;

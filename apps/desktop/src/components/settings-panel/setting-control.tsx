@@ -96,13 +96,15 @@ function StringControl({
 function EnumControl({
   value,
   options,
+  labels,
   onChange,
 }: {
   value: string;
   options: string[];
+  labels?: Record<string, string>;
   onChange: (v: string) => void;
 }) {
-  return <SelectControl value={value} options={options} onChange={onChange} />;
+  return <SelectControl value={value} options={options} labels={labels} onChange={onChange} />;
 }
 
 const HEX_RE = /^#([0-9a-f]{6}|[0-9a-f]{3})$/i;
@@ -260,7 +262,12 @@ function Control({
       return <FontControl def={def} value={value as string} onChange={onChange} />;
     case "enum":
       return (
-        <EnumControl value={value as string} options={def.options ?? []} onChange={onChange} />
+        <EnumControl
+          value={value as string}
+          options={def.options ?? []}
+          labels={def.optionLabels as Record<string, string> | undefined}
+          onChange={onChange}
+        />
       );
     case "list":
       return <ListControl value={(value as string[]) ?? []} onChange={onChange} />;

@@ -1,6 +1,8 @@
 interface SelectControlProps {
   value: string;
   options: string[];
+  /** What each option shows, when not the option itself. */
+  labels?: Record<string, string>;
   onChange: (value: string) => void;
   ariaLabel?: string;
   disabled?: boolean;
@@ -11,6 +13,7 @@ interface SelectControlProps {
 export function SelectControl({
   value,
   options,
+  labels,
   onChange,
   ariaLabel,
   disabled = false,
@@ -26,7 +29,7 @@ export function SelectControl({
     >
       {options.map((option) => (
         <option key={option} value={option}>
-          {option}
+          {labels?.[option] ?? option}
         </option>
       ))}
     </select>

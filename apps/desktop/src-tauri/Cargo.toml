@@ -47,8 +47,14 @@ tauri-plugin-store = "2.4.2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-webdriver = { version = "0.2", optional = true }
 # HTTP client for link previews, covers and transcripts.
-reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider"] }
+reqwest = { version = "0.13", default-features = false, features = [
+  "json",
+  "multipart",
+  "rustls-no-provider",
+] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
+# The ElevenLabs API key, in the system keychain (commands/elevenlabs.rs).
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
 
 # Reads the user's current PATH from the registry (commands/agent.rs). Already
 # in Cargo.lock through tauri.

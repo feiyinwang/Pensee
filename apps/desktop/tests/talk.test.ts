@@ -310,3 +310,17 @@ describe("afterTranscriptInsertion", () => {
     );
   });
 });
+
+import { readTranscript } from "../src/lib/talk/transcript";
+
+describe("readTranscript", () => {
+  test("reads back the callout a take wrote", () => {
+    const file = "Recordings/2026-10-25 09.14.m4a";
+    const doc = `## Talk\n\n![[${file}]]\n\n${transcriptCallout(file, [{ start: 3, end: 5, text: "First, what to build." }], "On this Mac · Whisper Small")}\n\nAfter.`;
+    expect(readTranscript(doc, file)).toEqual({
+      engine: "On this Mac · Whisper Small",
+      segments: [{ start: 3, end: 3, text: "First, what to build." }],
+    });
+    expect(readTranscript("No take here", file)).toBeNull();
+  });
+});

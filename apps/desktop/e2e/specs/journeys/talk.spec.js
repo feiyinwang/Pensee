@@ -8,7 +8,14 @@ import { ok, strictEqual } from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { fileExists, invoke, mouseClick, waitForTitle, workspaceRoot } from "./_helpers.js";
+import {
+  fileExists,
+  invoke,
+  mouseClick,
+  pressCmd,
+  waitForTitle,
+  workspaceRoot,
+} from "./_helpers.js";
 
 async function openNote(name) {
   await $("[data-sidebar-surface-content] [data-sidebar-search-button]").click();
@@ -25,9 +32,9 @@ async function openNote(name) {
 }
 
 /** A microphone that hums, or one the system refuses. */
-const fakeMicrophone = (allow) =>
-  browser.execute((allowed) => {
-    navigator.mediaDevices.getUserMedia = async () => {
+const fakeMicrophone = async (allow) => {
+  const installed = await browser.execute((allowed) => {
+    const fake = async () => {
       if (!allowed) throw new DOMException("Permission denied", "NotAllowedError");
       const ctx = new AudioContext();
       // Without a real click WebKit may refuse to resume; the take then records silence, which is enough here.
@@ -36,9 +43,32 @@ const fakeMicrophone = (allow) =>
       const out = ctx.createMediaStreamDestination();
       tone.connect(out);
       tone.start();
+      // The recorder stops the track at Stop: close the hum with it, as a real
+      // microphone goes quiet, so takes don't pile up open audio contexts.
+      const [track] = out.stream.getAudioTracks();
+      const stopTrack = track.stop.bind(track);
+      track.stop = () => {
+        stopTrack();
+        tone.stop();
+        void ctx.close();
+      };
       return out.stream;
     };
+    // On the prototype and the instance: a plain assignment doesn't always stick.
+    Object.defineProperty(MediaDevices.prototype, "getUserMedia", {
+      value: fake,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+      value: fake,
+      configurable: true,
+      writable: true,
+    });
+    return navigator.mediaDevices.getUserMedia === fake;
   }, allow);
+  ok(installed, "the fake microphone didn't install");
+};
 
 const dockText = () =>
   browser.execute(() => document.querySelector(".talk-dock")?.textContent ?? "");
@@ -47,7 +77,7 @@ const pressDock = (label) =>
     const button = [...document.querySelectorAll(".talk-dock button")].find((b) =>
       b.textContent.trim().endsWith(text),
     );
-    button?.click();
+    if (button) button?.click();
     return Boolean(button);
   }, label);
 
@@ -74,6 +104,113 @@ const WHISPER_SCRIPT = join(
 );
 const setWhisper = (installed, segments = []) =>
   writeFileSync(WHISPER_SCRIPT, JSON.stringify({ installed, segments }));
+/** The QA app's ElevenLabs (PENSEE_ELEVENLABS_SCRIPT, elevenlabs.rs): the words
+ *  Scribe sends back. The key `good-key` passes Check key; it stays in memory. */
+const ELEVENLABS_SCRIPT = join(
+  homedir(),
+  "Library/Application Support/com.pensee.app.e2e/elevenlabs-script.json",
+);
+const setScribe = (words) => writeFileSync(ELEVENLABS_SCRIPT, JSON.stringify({ words }));
+
+/** Starts a new talk: **Record**, or **New talk** on a note whose last take offers Continue. */
+const pressRecord = async () => {
+  const has = () =>
+    browser.execute(() =>
+      [...document.querySelectorAll(".talk-dock button")].some((b) =>
+        /(Record|New talk)$/.test(b.textContent.trim()),
+      ),
+    );
+  await browser.waitUntil(has, {
+    timeout: 10_000,
+    timeoutMsg: `no Record or New talk in the pill: ${await dockText()}`,
+  });
+  return (await pressDock("New talk")) || pressDock("Record");
+};
+
+/** Records a take of a few seconds (`label` "Continue", or a new talk); returns once the pill shows `after`. */
+const recordTake = async (label, after) => {
+  ok(label === "Continue" ? await pressDockWhenThere(label) : await pressRecord());
+  await browser.waitUntil(async () => (await dockText()).includes("Stop"), {
+    timeout: 5_000,
+    timeoutMsg: `recording never started: ${await dockText()}`,
+  });
+  await browser.pause(1_500);
+  ok(await pressDock("Stop"));
+  await browser.waitUntil(async () => (await dockText()).includes(after), {
+    timeout: 60_000,
+    timeoutMsg: `no ${after} after Stop: ${await dockText()}`,
+  });
+};
+
+/** The note's text once the editor's debounced save has landed. */
+const readSettled = async (path) => {
+  const read = async () => (await invoke("read_file", { path })).value.content;
+  let before = await read();
+  for (let i = 0; i < 10; i++) {
+    await browser.pause(500);
+    const now = await read();
+    if (now === before) break;
+    before = now;
+  }
+  return before;
+};
+
+const count = (text, part) => text.split(part).length - 1;
+
+async function openSettings() {
+  await pressCmd("p");
+  const input = await $("[cmdk-input]");
+  await input.waitForExist({ timeout: 5_000 });
+  await input.setValue("Settings");
+  const item = await $('//*[@cmdk-item][contains(., "Settings")]');
+  await item.waitForExist({ timeout: 5_000 });
+  await item.click();
+  await $("//h1[normalize-space(.)='Preferences']").waitForExist({ timeout: 5_000 });
+}
+
+/** Picks an option in the select of the setting labelled `label`. */
+const chooseSetting = (label, value) =>
+  browser.execute(
+    (label, value) => {
+      const title = [...document.querySelectorAll("[data-settings-panel] *")].find(
+        (el) => el.childElementCount === 0 && el.textContent.trim() === label,
+      );
+      let row = title;
+      while (row && !row.querySelector("select")) row = row.parentElement;
+      const select = row?.querySelector("select");
+      if (!select) return false;
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(select, value);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    },
+    label,
+    value,
+  );
+
+const keyRow = () =>
+  browser.execute(() => {
+    const row = document.querySelector("[data-settings-panel] [data-elevenlabs-key]");
+    if (!row) return null;
+    return {
+      state: row.getAttribute("data-elevenlabs-key"),
+      text: row.textContent,
+      alert: row.querySelector("[role=alert]")?.textContent ?? null,
+    };
+  });
+const pressKeyRow = (label) =>
+  browser.execute((label) => {
+    const button = [
+      ...document.querySelectorAll("[data-settings-panel] [data-elevenlabs-key] button"),
+    ].find((b) => b.textContent.trim() === label);
+    button?.click();
+    return Boolean(button);
+  }, label);
+const typeKey = (key) =>
+  browser.execute((key) => {
+    const field = document.querySelector("[data-elevenlabs-key] input");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(field, key);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  }, key);
 
 /** Presses a dock button once it's there: after a take the pill shows "Saved" a moment before Record. */
 const pressDockWhenThere = async (label) => {
@@ -135,7 +272,7 @@ describe("Journeys: talk notes", () => {
     setWhisper(false);
     await openNote("Talk note");
     await fakeMicrophone(true);
-    ok(await pressDockWhenThere("Record"));
+    ok(await pressRecord());
     await browser
       .waitUntil(async () => (await dockText()).includes("Stop"), {
         timeout: 5_000,
@@ -216,7 +353,7 @@ describe("Journeys: talk notes", () => {
     await openNote("Talk note");
     await fakeMicrophone(true);
     setWhisper(true, SCRIPT);
-    ok(await pressDockWhenThere("Record"));
+    ok(await pressRecord());
     const box = () =>
       browser.execute(() => {
         const el = document.querySelector(".talk-box");
@@ -267,7 +404,7 @@ describe("Journeys: talk notes", () => {
     await fakeMicrophone(true);
     // Ends on the turn, so the card stays up until it's answered.
     setWhisper(true, [SCRIPT[1], SCRIPT[2], SCRIPT[4]]);
-    ok(await pressDockWhenThere("Record"));
+    ok(await pressRecord());
     const card = () =>
       browser.execute(() => document.querySelector(".talk-box-card")?.textContent ?? null);
     const tabs = () =>
@@ -280,7 +417,8 @@ describe("Journeys: talk notes", () => {
           ].length,
       );
     await browser
-      .waitUntil(async () => (await card())?.includes("New topic?"), {
+      // Claude may offer an earlier line first; the card for the turn replaces it.
+      .waitUntil(async () => /New topic\?.*“[^”]*next[^”]*”/i.test((await card()) ?? ""), {
         timeout: 60_000,
         timeoutMsg: "no New topic? card after “Okay, next”",
       })
@@ -314,7 +452,7 @@ describe("Journeys: talk notes", () => {
     await openNote("Talk note");
     await fakeMicrophone(true);
     setWhisper(false);
-    ok(await pressDockWhenThere("Record"));
+    ok(await pressRecord());
     await browser.waitUntil(
       async () =>
         browser
@@ -330,6 +468,100 @@ describe("Journeys: talk notes", () => {
     ok(await pressDock("Not now"));
   });
 
+  it("TALK-11 Continue adds a take to the same talk: its player goes under the first take's transcript", async () => {
+    const path = `${root}/Notes/Talk note.md`;
+    await openNote("Talk note");
+    await fakeMicrophone(true);
+    // Small talk only, so the topics don't depend on what Claude makes of it.
+    setWhisper(true, [SCRIPT[0]]);
+    const before = await readSettled(path);
+    await recordTake("Record", "Continue");
+    await recordTake("Continue", "Continue");
+    const note = await readSettled(path);
+    strictEqual(count(note, "## Talk · "), count(before, "## Talk · ") + 1, note);
+    strictEqual(count(note, "> [!transcript]-"), count(before, "> [!transcript]-") + 2, note);
+    const added = note.slice(note.lastIndexOf("## Talk · "));
+    const embeds = [...added.matchAll(/!\[\[(Recordings\/[^\]]+)\]\]/g)].map((m) => m.index);
+    strictEqual(embeds.length, 2, added);
+    const firstTranscript = added.indexOf("> [!transcript]-");
+    ok(
+      firstTranscript > embeds[0] && embeds[1] > firstTranscript,
+      `the second take isn't under the first one's transcript: ${JSON.stringify(added)}`,
+    );
+  });
+
+  it("TALK-12 The Recordings space lists every take; one shows its transcript and opens its note", async () => {
+    await $("//button[normalize-space(.)='Recordings']").click();
+    await $(".recordings-page").waitForExist({ timeout: 5_000 });
+    const row = await $(
+      "//button[contains(@class,'recordings-row')][contains(., 'Talk transcript')]",
+    );
+    await row.waitForExist({ timeout: 5_000 });
+    await row.click();
+    await browser.waitUntil(async () => (await $$(".recordings-transcript li")).length === 2, {
+      timeout: 5_000,
+      timeoutMsg: "the take's transcript didn't show",
+    });
+    ok(
+      /On this Mac · Whisper Small/.test(await $(".recordings-h").getText()),
+      await $(".recordings-h").getText(),
+    );
+    ok(await $(".recordings-detail .cm-audio-embed-play").isExisting(), "no player for the take");
+    await $(".recordings-link").click();
+    await waitForTitle("Talk transcript");
+  });
+
+  it("TALK-13 With ElevenLabs Scribe chosen and a key saved, a take's transcript comes from ElevenLabs", async () => {
+    await openSettings();
+    ok(await chooseSetting("Transcribe With", "elevenlabs"), "no Transcribe With setting");
+    try {
+      await browser.waitUntil(async () => (await keyRow())?.state === "none", {
+        timeout: 5_000,
+        timeoutMsg: "no ElevenLabs key field",
+      });
+      await typeKey("bad-key");
+      ok(await pressKeyRow("Save"));
+      await browser.waitUntil(async () => (await keyRow())?.state === "saved", { timeout: 5_000 });
+      ok(await pressKeyRow("Check key"));
+      await browser.waitUntil(async () => /refused the key/.test((await keyRow())?.alert ?? ""), {
+        timeout: 5_000,
+        timeoutMsg: "a bad key wasn't refused",
+      });
+      ok(await pressKeyRow("Remove"));
+      await browser.waitUntil(async () => (await keyRow())?.state === "none", { timeout: 5_000 });
+      await typeKey("good-key");
+      ok(await pressKeyRow("Save"));
+      await browser.waitUntil(async () => (await keyRow())?.state === "saved", { timeout: 5_000 });
+      ok(await pressKeyRow("Check key"));
+      await browser.waitUntil(async () => /accepted the key/.test((await keyRow())?.text ?? ""), {
+        timeout: 5_000,
+        timeoutMsg: "the good key wasn't accepted",
+      });
+      await browser.keys("Escape");
+
+      const path = `${root}/Notes/Talk note.md`;
+      await openNote("Talk note");
+      await fakeMicrophone(true);
+      setWhisper(false);
+      setScribe([
+        { text: "Scribe", start: 0.1, end: 0.5, type: "word" },
+        { text: " ", start: 0.5, end: 0.6, type: "spacing" },
+        { text: "heard", start: 0.6, end: 0.9, type: "word" },
+        { text: " ", start: 0.9, end: 1.0, type: "spacing" },
+        { text: "this.", start: 1.0, end: 1.4, type: "word" },
+      ]);
+      // A new talk, not a Continue of TALK-11's.
+      await recordTake("Record", "Saved to Recordings/");
+      const note = await readSettled(path);
+      ok(/> \[!transcript\]- Transcript · 1 line · ElevenLabs Scribe/.test(note), note);
+      ok(note.includes("Scribe heard this."), note);
+    } finally {
+      await openSettings();
+      await chooseSetting("Transcribe With", "whisper");
+      await browser.keys("Escape");
+    }
+  });
+
   it("TALK-02 With the microphone refused, Record says how to allow it and writes nothing", async () => {
     await openNote("Talk note");
     // An earlier take's save may still be landing: wait until the file holds still.
@@ -343,7 +575,7 @@ describe("Journeys: talk notes", () => {
       before = now;
     }
     await fakeMicrophone(false);
-    ok(await pressDockWhenThere("Record"));
+    ok(await pressRecord());
     await browser.waitUntil(async () => (await dockText()).includes("Privacy & Security"), {
       timeout: 5_000,
       timeoutMsg: "no message about the microphone",

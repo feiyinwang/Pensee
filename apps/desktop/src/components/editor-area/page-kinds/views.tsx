@@ -9,6 +9,8 @@ import type { BookLocation } from "./book";
 import type { FileLocation } from "./file";
 import type { LauncherLocation } from "./launcher";
 import type { SettingsLocation } from "./settings";
+import type { RecordingsLocation } from "./recordings";
+import { RecordingsPage } from "@/components/talk/recordings-page";
 import type { SpaceLocation } from "./space";
 import type { PageKindView } from "./types";
 
@@ -70,6 +72,9 @@ const views = {
   space: {
     Component: SpacePage,
   } satisfies PageKindView<SpaceLocation>,
+  recordings: {
+    Component: RecordingsPage,
+  } satisfies PageKindView<RecordingsLocation>,
 } as const;
 
 /** Resolve a location to its registered view. Throws on an unknown kind —

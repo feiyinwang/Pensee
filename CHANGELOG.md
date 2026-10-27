@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27
+
+- A talk can go on after you stop. Press **Continue** and the next take goes under the last one's transcript, in the same talk, and its topics carry on where they were. Every take you've recorded is in **Recordings** in the sidebar: pick one to hear it, read its transcript and open the note it's in. In Settings → Transcription you choose who writes the transcript: Whisper on your Mac (Small, or Large v3 Turbo, which hears accents and quiet rooms better), or ElevenLabs Scribe with your own API key, which stays in your keychain.
+
 ## 2026-10-26
 
 - While you record, Pensée sorts what you say into topics. A box above **Record** shows a tab for each topic with a diagram that grows as you talk: a chart for numbers, a map for options, a mind map for reasons and doubts. When you turn to something new ("okay, next…"), it asks **New topic?** before opening a tab, and you can keep it as an aside instead; carry on talking about it and it opens the tab for you. When you stop, each topic goes under the transcript with its diagram and what you said, each line with its time. The diagrams stay plain Mermaid text you can edit. Topics need Whisper on your Mac and Claude Code signed in.

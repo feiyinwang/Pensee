@@ -21,14 +21,16 @@ import {
 import { type HeardLine, askTalk, endTalk, talkPrompt, warmTalk } from "@/lib/talk/talk-agent";
 import { editorViewFor } from "@/lib/editor-views";
 import { showEditorNotice } from "@/components/editor-area/editor-notice-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 // One talk at a time (SPECs/talk-notes-spec.md). The recorder lives here,
 // outside React, so closing the note's pane mid-take never drops it.
 //
 // While it records, its 16 kHz samples go to Rust. Every few seconds Whisper
 // transcribes what's new (`talk_transcribe_live`) and the talk's Claude sorts
-// those lines into topics (Ask). After Stop, Whisper transcribes the whole
-// take; the transcript and the topics go under the take in the note.
+// those lines into topics (Ask). After Stop, Whisper (or ElevenLabs Scribe,
+// per Settings → Transcription) transcribes the whole take; the transcript
+// and the topics go under the take in the note.
 
 export type TalkPhase =
   | "idle"
@@ -52,6 +54,9 @@ interface Pending {
   /** The live lines and topics, written under the transcript. */
   lines: HeardLine[];
   ask: AskState;
+  /** Each take's file, and which take each line was heard in. */
+  takes: string[];
+  takeOfLine: number[];
 }
 
 export interface ModelInfo {
@@ -85,7 +90,9 @@ interface TalkState {
   pinned: string | null;
   /** Lets the card undo its last answer, for a few seconds. */
   undo: { before: AskState; key: string; aside: boolean } | null;
-  start: (notePath: string) => Promise<void>;
+  /** The talk the last take belongs to, so Continue can add the next take to it. */
+  talk: { notePath: string; takes: number } | null;
+  start: (notePath: string, continueTalk?: boolean) => Promise<void>;
   stop: () => Promise<void>;
   download: () => Promise<void>;
   skipTranscript: () => void;
@@ -98,8 +105,10 @@ interface TalkState {
 
 /** How long "Saved to Recordings/" stays before the pill goes back to Record. */
 const SAVED_MS = 4000;
-/** The free, on-device model (Settings will choose; SPECs/talk-notes-spec.md#transcription). */
-const MODEL = "small";
+/** Settings → Transcription (SPECs/talk-notes-spec.md#transcription). */
+const whisperModel = () => useSettingsStore.getState().getSetting("talk.whisper-model") ?? "small";
+const usesScribe = () => useSettingsStore.getState().getSetting("talk.engine") === "elevenlabs";
+const SCRIBE = "ElevenLabs Scribe";
 /** How often Whisper looks at what's new while you talk. */
 const LIVE_MS = 4000;
 /** How long the card offers Undo after an answer. */
@@ -121,6 +130,10 @@ let liveTimer: ReturnType<typeof setInterval> | undefined;
 let liveFrom = 0;
 let livePass: Promise<void> | null = null;
 let heard: HeardLine[] = [];
+/** The talk's takes so far (files), which take each heard line belongs to, and the topics last written. */
+let takes: string[] = [];
+let takeOfLine: number[] = [];
+let sectionsWritten: string | null = null;
 let toSort: HeardLine[] = [];
 let sorting: Promise<void> | null = null;
 
@@ -146,7 +159,11 @@ export const useTalkStore = create<TalkState>((set, get) => {
     if (sorting || !toSort.length) return sorting ?? Promise.resolve();
     const batch = toSort.splice(0);
     const { ask } = get();
-    const topics = ask.open.map((k) => ({ key: k, title: ask.topics[k]?.title ?? k }));
+    const topics = ask.open.map((k) => ({
+      key: k,
+      title: ask.topics[k]?.title ?? k,
+      mermaid: ask.topics[k]?.mermaid ?? "",
+    }));
     sorting = askTalk(talkPrompt(batch, topics, ask.current))
       .then((reply) => set({ ask: applyReply(get().ask, reply), liveError: null }))
       .catch((error: unknown) => set({ liveError: `Topics paused: ${message(error)}` }))
@@ -162,7 +179,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
     if (livePass) return livePass;
     livePass = invoke<LiveResult>("talk_transcribe_live", {
       session: id,
-      model: MODEL,
+      model: get().model?.id ?? whisperModel(),
       from: liveFrom,
       last,
     })
@@ -172,6 +189,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
           .map((s) => ({ n: heard.length, start: s.start, text: s.text }))
           .map((l, i) => ({ ...l, n: heard.length + i }));
         heard.push(...lines);
+        takeOfLine.push(...lines.map(() => takes.length));
         toSort.push(...lines);
         void sort();
       })
@@ -208,22 +226,42 @@ export const useTalkStore = create<TalkState>((set, get) => {
     }
     view.dispatch({ changes: at, userEvent: "input.talk" });
     const sections = talkSections(take.ask, take.lines, (n) => ({
-      file: take.file,
+      file: take.takes[take.takeOfLine[n] ?? 0] ?? take.file,
       start: take.lines[n]?.start ?? 0,
     }));
-    const below = sections && afterTranscriptInsertion(view.state, take.file, sections);
-    if (below) view.dispatch({ changes: below, userEvent: "input.talk" });
+    if (!sections) return;
+    // A later take rewrites the talk's topics in place, if you haven't edited them.
+    const doc = view.state.doc.toString();
+    const old = sectionsWritten ? doc.indexOf(sectionsWritten) : -1;
+    if (sectionsWritten && old >= 0) {
+      view.dispatch({
+        changes: { from: old, to: old + sectionsWritten.length, insert: sections },
+        userEvent: "input.talk",
+      });
+    } else {
+      const below = afterTranscriptInsertion(view.state, take.file, sections);
+      if (below) view.dispatch({ changes: below, userEvent: "input.talk" });
+    }
+    sectionsWritten = sections;
   };
 
-  const transcribe = async (take: Pending, model: ModelInfo) => {
+  /** The whole take: Whisper from the samples it heard, or Scribe from the saved file. */
+  const transcribe = async (take: Pending, model: ModelInfo | null) => {
     set({ phase: "transcribing" });
     try {
-      const segments = await invoke<Segment[]>("talk_transcribe", {
-        session: take.session,
-        model: model.id,
-      });
-      writeTranscript(take, segments, `On this Mac · ${model.name}`);
+      let segments: Segment[];
+      if (model) {
+        segments = await invoke<Segment[]>("talk_transcribe", {
+          session: take.session,
+          model: model.id,
+        });
+      } else {
+        void invoke("talk_pcm_drop", { session: take.session });
+        segments = await invoke<Segment[]>("elevenlabs_transcribe", { file: take.file });
+      }
+      writeTranscript(take, segments, model ? `On this Mac · ${model.name}` : SCRIBE);
       pending = null;
+      set({ talk: { notePath: take.notePath, takes: take.takes.length } });
       finish();
     } catch (error) {
       pending = null;
@@ -235,8 +273,9 @@ export const useTalkStore = create<TalkState>((set, get) => {
   };
 
   const modelInfo = async (): Promise<ModelInfo> => {
-    const model = (await invoke<ModelInfo[]>("whisper_models")).find((m) => m.id === MODEL);
-    if (!model) throw new Error(`No Whisper model called ${MODEL}.`);
+    const id = whisperModel();
+    const model = (await invoke<ModelInfo[]>("whisper_models")).find((m) => m.id === id);
+    if (!model) throw new Error(`No Whisper model called ${id}.`);
     return model;
   };
 
@@ -253,21 +292,28 @@ export const useTalkStore = create<TalkState>((set, get) => {
     ask: emptyAsk(),
     pinned: null,
     undo: null,
+    talk: null,
 
-    start: async (notePath) => {
+    start: async (notePath, continueTalk = false) => {
       const busy: TalkPhase[] = ["starting", "recording", "saving", "downloading", "transcribing"];
       if (busy.includes(get().phase)) return;
       clearTimeout(savedTimer);
       if (pending) void invoke("talk_pcm_drop", { session: pending.session });
       pending = null;
-      heard = [];
+      const carryOn = continueTalk && get().talk?.notePath === notePath;
+      if (!carryOn) {
+        heard = [];
+        takes = [];
+        takeOfLine = [];
+        sectionsWritten = null;
+      }
       toSort = [];
       liveFrom = 0;
       set({
         phase: "starting",
         notePath,
         error: null,
-        ask: emptyAsk(),
+        ...(carryOn ? {} : { ask: emptyAsk(), talk: null }),
         pinned: null,
         undo: null,
         liveError: null,
@@ -317,12 +363,18 @@ export const useTalkStore = create<TalkState>((set, get) => {
           },
         });
         const view = editorViewFor(notePath);
-        if (view) insertTalk(view, file, take.startedAt);
+        const previous = takes[takes.length - 1];
+        takes.push(file);
+        // A Continue goes under the talk's last take (its transcript, if it has one); a new talk gets its heading.
+        const under =
+          previous && view ? afterTranscriptInsertion(view.state, previous, `![[${file}]]`) : null;
+        if (view && under) view.dispatch({ changes: under, userEvent: "input.talk" });
+        else if (view) insertTalk(view, file, take.startedAt);
         else
           showEditorNotice(
             `Saved to ${file}. Its note was closed, so the talk wasn't added to it.`,
           );
-        set({ lastFile: file });
+        set({ lastFile: file, talk: { notePath, takes: takes.length } });
         const model = await modelInfo();
         if (model.installed) {
           set({ phase: "transcribing" });
@@ -332,8 +384,19 @@ export const useTalkStore = create<TalkState>((set, get) => {
           await withTimeout(sort(), LAST_TURN_MS);
         }
         endTalk();
-        pending = { notePath, file, session: id, lines: [...heard], ask: get().ask };
-        if (model.installed) await transcribe(pending, model);
+        pending = {
+          notePath,
+          file,
+          session: id,
+          lines: [...heard],
+          ask: get().ask,
+          takes: [...takes],
+          takeOfLine: [...takeOfLine],
+        };
+        // Scribe once its key is saved; Whisper until then.
+        const scribe = usesScribe() && (await invoke<boolean>("elevenlabs_key_saved"));
+        if (scribe) await transcribe(pending, null);
+        else if (model.installed) await transcribe(pending, model);
         else set({ phase: "needs-model", model });
       } catch (error) {
         recorder = null;

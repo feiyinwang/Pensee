@@ -61,7 +61,10 @@ pub fn save_recording_impl(
 }
 
 /// The workspace open in the window that called.
-fn window_root(webview: &tauri::Webview, app: &tauri::AppHandle) -> Result<PathBuf, AppError> {
+pub(crate) fn window_root(
+    webview: &tauri::Webview,
+    app: &tauri::AppHandle,
+) -> Result<PathBuf, AppError> {
     let state = app.state::<AppState>().get_or_create(webview.label());
     let root = state.workspace_root.read().clone();
     root.ok_or(AppError::NoWorkspace)
@@ -100,6 +103,65 @@ pub async fn save_recording(
         .map_err(|e| AppError::Io(e.to_string()))?
 }
 
+#[derive(serde::Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordingFile {
+    /// As a note embeds it: `Recordings/2026-10-25 09.14.m4a`.
+    pub file: String,
+    pub bytes: u64,
+    /// Milliseconds since the epoch.
+    pub modified: u64,
+}
+
+/// Every take in `Recordings/`, newest first (SPECs/talk-notes-spec.md#recordings).
+pub fn list_recordings_impl(root: &Path) -> Result<Vec<RecordingFile>, AppError> {
+    let dir = root.join(RECORDINGS_DIR);
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    for entry in fs::read_dir(&dir)?.flatten() {
+        let path = entry.path();
+        let ext = path
+            .extension()
+            .map(|e| e.to_string_lossy().to_ascii_lowercase())
+            .unwrap_or_default();
+        if !AUDIO_EXTENSIONS.contains(&ext.as_str()) {
+            continue;
+        }
+        let meta = entry.metadata()?;
+        let modified = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let name = entry.file_name().to_string_lossy().to_string();
+        out.push(RecordingFile {
+            file: format!("{RECORDINGS_DIR}/{name}"),
+            bytes: meta.len(),
+            modified,
+        });
+    }
+    out.sort_by(|a, b| {
+        b.modified
+            .cmp(&a.modified)
+            .then_with(|| b.file.cmp(&a.file))
+    });
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn list_recordings(
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+) -> Result<Vec<RecordingFile>, AppError> {
+    let root = window_root(&webview, &app)?;
+    tokio::task::spawn_blocking(move || list_recordings_impl(&root))
+        .await
+        .map_err(|e| AppError::Io(e.to_string()))?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,6 +183,18 @@ mod tests {
         assert!(save_recording_impl(&dir, ".hidden", "m4a", b"x").is_err());
         assert!(save_recording_impl(&dir, "take", "exe", b"x").is_err());
         assert!(save_recording_impl(&dir, "take", "m4a", b"").is_err());
+    }
+
+    #[test]
+    fn lists_the_takes_in_recordings_only() {
+        let dir = tempfile_dir();
+        assert!(list_recordings_impl(&dir).unwrap().is_empty());
+        save_recording_impl(&dir, "a", "m4a", b"1").unwrap();
+        fs::write(dir.join("Recordings/notes.txt"), b"x").unwrap();
+        let list = list_recordings_impl(&dir).unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].file, "Recordings/a.m4a");
+        assert_eq!(list[0].bytes, 1);
     }
 
     fn tempfile_dir() -> PathBuf {

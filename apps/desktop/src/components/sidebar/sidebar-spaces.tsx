@@ -3,6 +3,7 @@ import {
   Folder01Icon,
   Layers01Icon,
   LibraryIcon,
+  Mic01Icon,
   Sun03Icon,
   Target02Icon,
 } from "@hugeicons/core-free-icons";
@@ -11,6 +12,8 @@ import { openTodaysNote } from "@/hooks/use-daily-note";
 import { openSpace, spaceLocationOf, useActiveSpaceKey, useSpaces } from "@/hooks/use-spaces";
 import { GO_TODAY_KEY, type SpaceIcon } from "@/lib/spaces";
 import { useUIStore } from "@/stores/ui-store";
+import { useEditorStore } from "@/stores/editor-store";
+import { useOpenRecordingsTab } from "@/hooks/use-tabs";
 import { SIDEBAR_SECTION_LABEL_CLASS } from "./sidebar-section";
 import { IS_MAC } from "@/lib/platform";
 
@@ -95,6 +98,11 @@ function Row({
 export function SidebarSpaces() {
   const spaces = useSpaces();
   const activeKey = useActiveSpaceKey();
+  const openRecordings = useOpenRecordingsTab();
+  const recordingsActive = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return tab?.location.kind === "recordings";
+  });
 
   const openToday = () => {
     void openTodaysNote().catch((error: unknown) => {
@@ -138,6 +146,12 @@ export function SidebarSpaces() {
               onClick={() => openSpace(spaceLocationOf(space))}
             />
           ))}
+          <Row
+            icon={Mic01Icon}
+            label="Recordings"
+            active={recordingsActive}
+            onClick={openRecordings}
+          />
         </div>
       </section>
     </>

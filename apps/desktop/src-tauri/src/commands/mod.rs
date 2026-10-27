@@ -4,6 +4,7 @@ pub mod books;
 pub mod changelog;
 pub mod claude_auth;
 pub mod covers;
+pub mod elevenlabs;
 pub mod fonts;
 pub mod fs;
 pub mod images;

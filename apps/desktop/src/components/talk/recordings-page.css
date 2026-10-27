@@ -1,0 +1,141 @@
+/* Recordings (recordings-page.tsx). */
+.recordings-page {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.recordings-column {
+  width: min(880px, calc(100% - 64px));
+  margin-inline: auto;
+  padding: 72px 0 120px;
+  font-family: var(--font-ui);
+}
+
+.recordings-title {
+  margin: 0 0 8px;
+  font-family: var(--font-title);
+  font-size: var(--font-size-display);
+  font-weight: 500;
+  line-height: 1.12;
+}
+
+.recordings-meta {
+  margin: 0 0 24px;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-caption);
+}
+
+.recordings-split {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.recordings-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recordings-row {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-hover) var(--ease-hover);
+}
+
+.recordings-row[aria-current="true"] {
+  background: var(--color-bg-selected);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .recordings-row:not([aria-current]):hover {
+    background: var(--color-bg-hover);
+  }
+}
+
+.recordings-row-name {
+  overflow: hidden;
+  font-size: var(--font-size-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordings-row-sub,
+.recordings-note {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-caption);
+}
+
+.recordings-player {
+  display: flex;
+  width: 100%;
+}
+
+.recordings-note {
+  margin: 10px 2px 18px;
+}
+
+.recordings-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-decoration: underline var(--color-border-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.recordings-h {
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+}
+
+.recordings-transcript {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-editor);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.recordings-transcript li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.recordings-time {
+  flex: none;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--color-ai-tint);
+  color: var(--color-ai-ink);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-caption);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.recordings-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-label);
+}

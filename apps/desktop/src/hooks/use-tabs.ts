@@ -1,4 +1,4 @@
-import { createSettingsTab, useEditorStore } from "@/stores/editor-store";
+import { createRecordingsTab, createSettingsTab, useEditorStore } from "@/stores/editor-store";
 import type { DocumentStats } from "@/lib/document-stats";
 
 export type { OpenFile, Tab, Location, FileLocation, SessionTab } from "@/stores/editor-store";
@@ -97,6 +97,11 @@ export function useReloadVersion(path: string | null) {
 
 function useOpenOrFocus() {
   return useEditorStore((s) => s.openOrFocus);
+}
+
+export function useOpenRecordingsTab() {
+  const openOrFocus = useOpenOrFocus();
+  return () => openOrFocus((tab) => tab.location.kind === "recordings", createRecordingsTab);
 }
 
 export function useOpenSettingsTab() {

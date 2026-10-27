@@ -64,3 +64,24 @@ export function afterTranscriptInsertion(
   }
   return null;
 }
+
+/** A take's transcript as the note holds it: the callout under `![[file]]`, read back. */
+export function readTranscript(
+  doc: string,
+  file: string,
+): { engine: string; segments: Segment[] } | null {
+  const lines = doc.split("\n");
+  const at = lines.findIndex((l) => l.includes(`![[${file}]]`));
+  if (at < 0) return null;
+  let i = at + 1;
+  while (i < lines.length && !lines[i]!.trim()) i++;
+  const head = /^\s*>\s*\[!transcript\][+-]?\s*(.*)$/.exec(lines[i] ?? "");
+  if (!head) return null;
+  const engine = head[1]!.split(" · ").slice(2).join(" · ");
+  const segments: Segment[] = [];
+  for (i++; i < lines.length && /^\s*>/.test(lines[i]!); i++) {
+    const m = /^\s*>\s*\[[^\]]*\]\(<?[^)>]*#t=(\d+(?:\.\d+)?)>?\)\s*(.*)$/.exec(lines[i]!);
+    if (m) segments.push({ start: Number(m[1]), end: Number(m[1]), text: m[2]! });
+  }
+  return { engine, segments };
+}

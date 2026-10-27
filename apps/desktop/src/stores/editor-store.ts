@@ -151,6 +151,10 @@ export function createSettingsTab(id = createTabId()): Tab {
   return { id, location: { kind: "settings" }, back: [], forward: [] };
 }
 
+export function createRecordingsTab(id = createTabId()): Tab {
+  return { id, location: { kind: "recordings" }, back: [], forward: [] };
+}
+
 export function createSpaceTab(location: SpaceLocation, id = createTabId()): Tab {
   return { id, location, back: [], forward: [] };
 }

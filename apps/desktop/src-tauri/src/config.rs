@@ -232,6 +232,13 @@ pub struct SettingDef {
     pub value_type: String, // "string" | "number" | "boolean" | "enum" | "list" | "color" | "range" | "font"
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<String>>, // enum + list
+    /// What an enum's select shows for each option, when not the option itself.
+    #[serde(
+        rename = "optionLabels",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub option_labels: Option<std::collections::BTreeMap<String, String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min: Option<f64>, // range
     #[serde(default, skip_serializing_if = "Option::is_none")]

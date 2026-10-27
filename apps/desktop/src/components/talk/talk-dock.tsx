@@ -50,6 +50,7 @@ export function TalkDock({ path, isActive }: { path: string; isActive: boolean }
   const error = useTalkStore((s) => s.error);
   const progress = useTalkStore((s) => s.progress);
   const model = useTalkStore((s) => s.model);
+  const talk = useTalkStore((s) => s.talk);
   const busy = [
     "starting",
     "recording",
@@ -132,14 +133,34 @@ export function TalkDock({ path, isActive }: { path: string; isActive: boolean }
           {phase === "saved" && mine && (
             <span className="talk-dock-note">Saved to Recordings/</span>
           )}
-          <button
-            type="button"
-            className="talk-dock-button talk-dock-record"
-            onClick={() => void useTalkStore.getState().start(path)}
-          >
-            <span className="talk-dock-dot" aria-hidden="true" />
-            Record
-          </button>
+          {talk?.notePath === path ? (
+            <>
+              <button
+                type="button"
+                className="talk-dock-button talk-dock-record"
+                onClick={() => void useTalkStore.getState().start(path, true)}
+              >
+                <span className="talk-dock-dot" aria-hidden="true" />
+                Continue
+              </button>
+              <button
+                type="button"
+                className="talk-dock-button"
+                onClick={() => void useTalkStore.getState().start(path)}
+              >
+                New talk
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="talk-dock-button talk-dock-record"
+              onClick={() => void useTalkStore.getState().start(path)}
+            >
+              <span className="talk-dock-dot" aria-hidden="true" />
+              Record
+            </button>
+          )}
         </div>
       )}
     </div>

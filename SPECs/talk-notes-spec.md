@@ -84,19 +84,29 @@ quadrantChart
   Works offline; audio never leaves the Mac. Whisper Small (488 MB) downloads on first use; Whisper Large v3 Turbo
   (1.62 GB) is an optional download.
 - **ElevenLabs Scribe** is opt-in in Settings with your API key (kept in the system keychain). The live view while
-  you talk still uses Whisper; the saved transcript of each take comes from Scribe. Until a key checks out, takes
-  use Whisper.
+  you talk still uses Whisper; the saved transcript of each take comes from Scribe, sent the take's audio file
+  once at Stop (`scribe_v2`, word times grouped into lines at sentence ends and pauses). Until a key is saved,
+  takes use Whisper.
 - Each take records which engine wrote its transcript.
 
 ### Recordings
 
 - **Recordings** in the sidebar's Spaces lists every audio file in `Recordings/`, newest first, with its note,
-  date and length. Choosing one shows its player and full transcript, and a link to the note.
+  date. Choosing one shows its player and full transcript (its times play that moment), and a link to the note.
 
 ### Settings · Transcription
 
-- Arc radio cards: **On this Mac** (Free) or **ElevenLabs Scribe** (about $0.22 an hour). Under the first, the
-  model; under the second, the API key field and **Check key**.
+- A **Transcription** section in Settings, like the others: **Transcribe With** (On this Mac / ElevenLabs Scribe,
+  `talk.engine`) and **Whisper Model** (Small / Large v3 Turbo, `talk.whisper-model`). Under them, whether the
+  model is on this Mac with **Download**, and, with ElevenLabs chosen, the API key field: **Save** puts it in the
+  keychain, then **Check key** and **Remove**. The key never goes back to the web view or into settings.json.
+
+### Continue
+
+- After a take, the pill offers **Continue** and **New talk** on that note. **Continue** records the next take into
+  the same talk: its player goes under the last take's transcript (no new heading), the topics carry on from where
+  they were, and after Stop the talk's topic sections are rewritten in place with every take's lines, each linking
+  to its own take. If you edited those sections, the new ones go under the take instead.
 
 ## Implementation
 

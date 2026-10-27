@@ -328,6 +328,28 @@
       "default": "haiku"
     },
     {
+      "key": "talk.engine",
+      "label": "Transcribe With",
+      "description": "Who writes a talk's transcript after you stop. On this Mac is free and nothing leaves your computer; ElevenLabs Scribe sends the take's audio to ElevenLabs with your own API key. The topics while you talk always come from Whisper on this Mac.",
+      "category": "Transcription",
+      "type": "enum",
+      "options": ["whisper", "elevenlabs"],
+      "optionLabels": { "whisper": "On this Mac", "elevenlabs": "ElevenLabs Scribe" },
+      "scope": "global",
+      "default": "whisper"
+    },
+    {
+      "key": "talk.whisper-model",
+      "label": "Whisper Model",
+      "description": "The model Whisper uses on this Mac. Small is quick and good for clear speech; Large v3 Turbo hears accents and quiet rooms better and is about three times the size.",
+      "category": "Transcription",
+      "type": "enum",
+      "options": ["small", "turbo"],
+      "optionLabels": { "small": "Whisper Small · 488 MB", "turbo": "Large v3 Turbo · 1.6 GB" },
+      "scope": "global",
+      "default": "small"
+    },
+    {
       "key": "workspace.daily-note-folder",
       "label": "Daily Note Folder",
       "description": "Folder inside the workspace where dated daily notes are created. Leave blank to create them at the workspace root.",

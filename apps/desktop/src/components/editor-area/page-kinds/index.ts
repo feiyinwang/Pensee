@@ -2,6 +2,7 @@ import { bookKind, type BookLocation } from "./book";
 import { fileKind, type FileLocation } from "./file";
 import { launcherKind, type LauncherLocation } from "./launcher";
 import { settingsKind, type SettingsLocation } from "./settings";
+import { recordingsKind, type RecordingsLocation } from "./recordings";
 import { spaceKind, type SpaceLocation } from "./space";
 import type { AnyPageKind, PageKind, SerializedLocation } from "./types";
 
@@ -12,14 +13,15 @@ import type { AnyPageKind, PageKind, SerializedLocation } from "./types";
  * that's declared here is usable everywhere and a kind that's missing is a
  * type error at every call site.
  */
-const kinds = [fileKind, launcherKind, settingsKind, bookKind, spaceKind] as const;
+const kinds = [fileKind, launcherKind, settingsKind, bookKind, spaceKind, recordingsKind] as const;
 
 export type Location =
   | FileLocation
   | LauncherLocation
   | SettingsLocation
   | BookLocation
-  | SpaceLocation;
+  | SpaceLocation
+  | RecordingsLocation;
 
 const byKind: Map<string, AnyPageKind> = new Map(
   kinds.map((k) => [k.kind, k as unknown as AnyPageKind]),
@@ -58,4 +60,5 @@ export type { FileLocation } from "./file";
 export type { BookLocation } from "./book";
 export type { LauncherLocation } from "./launcher";
 export type { SettingsLocation } from "./settings";
+export type { RecordingsLocation } from "./recordings";
 export type { SpaceLocation } from "./space";
