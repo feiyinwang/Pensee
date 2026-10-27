@@ -13,6 +13,7 @@
 import { addMindChild, layoutMind, newMindRoot } from "./board-mind";
 import {
   type BoardEl,
+  type BoxSide,
   type LinkerEl,
   type MindEl,
   type ShapeEl,
@@ -134,9 +135,35 @@ function readLink(c: Cursor): Omit<FlowEdge, "from" | "to"> | null {
   return null;
 }
 
+/** Statements: one per line, or split by `;`, but not a `;` inside a node's
+ *  brackets, quotes or a link's `|label|` ("Keywords: news; articles"). */
+function statements(source: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let depth = 0;
+  let quote = false;
+  let pipe = false;
+  for (const ch of source.replace(/\r/g, "")) {
+    if (ch === "\n" || (ch === ";" && !depth && !quote && !pipe)) {
+      out.push(cur);
+      cur = "";
+      depth = 0;
+      quote = pipe = false;
+      continue;
+    }
+    if (ch === '"') quote = !quote;
+    else if (!quote && ch === "|") pipe = !pipe;
+    else if (!quote && "[({".includes(ch)) depth++;
+    else if (!quote && "])}".includes(ch)) depth = Math.max(0, depth - 1);
+    cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
 /** `null` when the text is not a Mermaid flowchart. */
 export function parseMermaidFlowchart(source: string): FlowGraph | null {
-  const lines = source.replace(/\r/g, "").split(/\n|;/);
+  const lines = statements(source);
   const first = lines.findIndex((l) => l.trim() && !l.trim().startsWith("%%"));
   const header = first >= 0 ? HEADER.exec(lines[first]) : null;
   if (!header) return null;
@@ -167,6 +194,13 @@ export type Measure = (text: string, size: number) => number;
 const approxMeasure: Measure = (text, size) => text.length * size * 0.56;
 
 const FONT = 14;
+/** The side a forward arrow leaves by, and the side it enters by. */
+const FLOW_SIDES: Record<Direction, [BoxSide, BoxSide]> = {
+  LR: ["e", "w"],
+  RL: ["w", "e"],
+  TD: ["s", "n"],
+  BT: ["n", "s"],
+};
 const RANK_GAP = 70;
 const NODE_GAP = 44;
 
@@ -265,7 +299,8 @@ export function flowchartToElements(
     for (const e of graph.edges) {
       if (!e.label) continue;
       const r = ranks.get(e.from) ?? 0;
-      labelOut.set(r, Math.max(labelOut.get(r) ?? 0, measure(e.label, 13) + 24));
+      // Room for the arrow either side of its label, arrowhead included.
+      labelOut.set(r, Math.max(labelOut.get(r) ?? 0, measure(e.label, 13) + 64));
     }
   let along = 0;
   for (const [r, layer] of layers.entries()) {
@@ -278,7 +313,10 @@ export function flowchartToElements(
       NODE_GAP * (layer.length - 1);
     let across = -span / 2;
     for (const id of layer) {
-      const { w, h } = sizes.get(id)!;
+      const { h } = sizes.get(id)!;
+      // Across a left-to-right flow a column's boxes share its width, so the
+      // arrows leaving them start level and turn at one place.
+      const w = horizontal ? depth : sizes.get(id)!.w;
       const node = graph.nodes.get(id)!;
       const x = horizontal ? along + (depth - w) / 2 : across;
       const y = horizontal ? across : along + (depth - h) / 2;
@@ -321,6 +359,11 @@ export function flowchartToElements(
     if (!a || !b) return [];
     const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
     const bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    const forward = (ranks.get(e.to) ?? 0) > (ranks.get(e.from) ?? 0);
+    // A step to the next rank leaves by the side facing the flow and enters
+    // by the opposite one, so a fan-in turns in the gap between ranks instead
+    // of leaving a short box by its top and cutting through its neighbour.
+    const [out, into] = FLOW_SIDES[graph.dir];
     const link: LinkerEl = {
       id: newId(),
       t: e.arrow ? "arrow" : "line",
@@ -332,13 +375,13 @@ export function flowchartToElements(
       op: 1,
       // A loop back up the flow curves, so it never runs along the forward
       // trunk and hides that trunk's labels.
-      sh: (ranks.get(e.to) ?? 0) <= (ranks.get(e.from) ?? 0) ? "curved" : "elbow",
+      sh: forward ? "elbow" : "curved",
       pts: [
         [0, 0],
         [bc.x - ac.x, bc.y - ac.y],
       ],
-      b1: { el: a.id, fx: 0, gap: 4 },
-      b2: { el: b.id, fx: 0, gap: 4 },
+      b1: { el: a.id, fx: 0, gap: 4, ...(forward ? { sd: out } : {}) },
+      b2: { el: b.id, fx: 0, gap: 4, ...(forward ? { sd: into } : {}) },
       hd: { s: "none", e: e.arrow ? "triangle" : "none" },
       st: defaultStyle(e.dashed ? { d: "dashed" } : {}),
     };

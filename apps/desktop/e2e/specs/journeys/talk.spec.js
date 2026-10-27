@@ -899,7 +899,7 @@ describe("Journeys: talk notes", () => {
     );
   });
 
-  it("TALK-25 A plan told step by step is drawn as rectangles left to right in that order; the as a mind map button redraws it", async function () {
+  it("TALK-25 A plan told step by step is drawn as rounded cards left to right in that order; the as a mind map button redraws it", async function () {
     // Real Claude draws it, twice: longer than the 60s default.
     this.timeout(240_000);
     await openNote("Talk note");
@@ -943,13 +943,13 @@ describe("Journeys: talk notes", () => {
       )
       .catch(stopOnFail);
     const { keywords, rob, ads, shapes } = await steps();
-    // Left to right, as plain rectangles.
+    // Left to right, as the board's rounded cards.
     const along = (a, b) => b.x > a.x + 1;
     ok(
       along(keywords, rob) && along(rob, ads),
       `steps out of order: ${JSON.stringify({ keywords, rob, ads })}`,
     );
-    ok(shapes.join() === "rect", `steps aren't plain rectangles: ${shapes}`);
+    ok(shapes.join() === "roundRect", `steps aren't the board's rounded cards: ${shapes}`);
     const pressed = () =>
       browser.execute(
         () => document.querySelector('.talk-box-picture[aria-pressed="true"]')?.textContent ?? "",

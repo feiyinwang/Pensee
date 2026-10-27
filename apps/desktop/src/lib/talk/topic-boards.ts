@@ -9,8 +9,8 @@ import {
   type BoardEl,
   type BoardScene,
   type MindEl,
-  defaultStyle,
   emptyScene,
+  newShapeStyle,
 } from "@/components/editor-area/board/board-model";
 import {
   MIND_PALETTE,
@@ -80,8 +80,8 @@ const STEP_TEXT = 104;
 const STEP_GAP = 40;
 
 /**
- * The AI's drawing as board elements. Steps are plain rectangles read left to
- * right, drawn the way Arc draws a card (a quiet outline, no fill), their
+ * The AI's drawing as board elements. Steps are the board's own cards (a
+ * rounded rectangle, soft blue with a blue outline) read left to right, their
  * words wrapped so the chain stays narrow; a mind map is the board's own.
  */
 export function boardElements(mermaid: string): BoardEl[] | null {
@@ -89,11 +89,11 @@ export function boardElements(mermaid: string): BoardEl[] | null {
   if (!flow) return mermaidToElements(mermaid, measureText);
   flow.dir = "LR";
   for (const node of flow.nodes.values()) {
-    node.shape = "rect";
+    node.shape = "roundRect";
     node.text = wrapText(node.text.replace(/\s+/g, " ").trim(), 14, STEP_TEXT).join("\n");
   }
   const els = flowchartToElements(flow, measureText, STEP_GAP);
-  for (const el of els) if (el.t === "rect") el.st = defaultStyle({ s: "muted", f: "none", w: 1 });
+  for (const el of els) if (el.t === "roundRect") el.st = newShapeStyle();
   return els;
 }
 

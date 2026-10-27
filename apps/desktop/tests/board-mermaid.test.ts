@@ -100,3 +100,32 @@ describe("flowchartToElements rank gap", () => {
     expect(b.x - (a.x + a.w)).toBeGreaterThan(40);
   });
 });
+
+describe("flowchart statements and routing", () => {
+  test("a ; inside a label stays in the label", () => {
+    const g = parseMermaidFlowchart(
+      "flowchart LR\n  A[Keywords: news; articles] --> B[Scrape]; B --> C",
+    )!;
+    expect([...g.nodes.values()].map((n) => n.text)).toEqual([
+      "Keywords: news; articles",
+      "Scrape",
+      "C",
+    ]);
+    expect(g.edges.map((e) => `${e.from}>${e.to}`)).toEqual(["A>B", "B>C"]);
+  });
+
+  test("left to right, a forward arrow leaves by the right and enters by the left; a column shares one width", () => {
+    const els = flowchartToElements(
+      parseMermaidFlowchart(
+        "flowchart LR\n  A[Short] --> C[Target]\n  B[A much longer source] --> C",
+      )!,
+    );
+    const links = els.filter(isLinker) as LinkerEl[];
+    expect(links.map((l) => [l.b1?.sd, l.b2?.sd])).toEqual([
+      ["e", "w"],
+      ["e", "w"],
+    ]);
+    const [a, b] = els.filter((el): el is ShapeEl => !isLinker(el) && el.x === 0);
+    expect(a.w).toBe(b.w);
+  });
+});

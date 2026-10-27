@@ -97,9 +97,11 @@ it, a `.board.svg` is made beside the note (as `/board` makes one) and the talk 
 renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their section has the summary and the Mermaid block. Asides keep their lines under "Said in passing".
 
 - **Which picture.** Things done in order ("I'll do X, then Y", "first…, next…", "once that's done…") are
-  **steps**: plain rectangles drawn as Arc draws a card (a quiet grey outline, no fill), one per step, chained
+  **steps**: the board's own cards (rounded rectangles, soft blue with a blue outline), one per step, chained
   left to right in the order they happen, their words wrapped so a chain of five still reads in the box; a
-  step's details sit in its label and a condition ("verified") on its arrow, whose gap widens to fit it. A topic
+  column's cards share one width, and every arrow leaves a card by its right side and enters the next by its
+  left, so arrows gathering into one step meet in the gap instead of crossing a card. A step's details sit in
+  its label (a `;` inside it stays in it) and a condition ("verified") on its arrow, whose gap widens to fit it. A topic
   drawn as a map turns into steps as soon as you tell an order. Ideas with no order (brainstorming, options,
   reasons, doubts) are a **mind map** (the board's, its branches in colour), and so is anything no other type
   clearly fits. The map is MECE: two to six branches of a different kind each, every idea under the one branch
