@@ -81,7 +81,25 @@ quadrantChart
 - The existing canvas behaviour stays: pan, zoom, reset, fullscreen and the source toggle; a parse error shows
   Pele's message.
 
-### Transcription
+### Topic boards
+
+A topic drawn as a mind map or a flowchart is a Pensée board, not a Mermaid picture: the first time the AI draws
+it, a `.board.svg` is made beside the note (as `/board` makes one) and the talk box shows it with the board's own
+renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts.
+
+- **Click the board** in the talk box: it opens in the board editor. While it's open, what you say still goes
+  to the AI, but that topic's drawing waits; it is merged when you close the editor.
+- **What you change by hand stays** (`topic-board-merge.ts`). Measured against what Pensée last wrote to the
+  file: a topic whose words, parent, colour or side you changed, or that you added, stays where you put it; a
+  topic you deleted stays deleted (the same words can't come back); shapes, stickies and strokes you add are
+  never touched. A topic you renamed still counts as the same topic when the AI says its old words. Only what
+  the AI drew and you left alone follows its new drawing; what it drops goes, unless it holds something of yours.
+- The AI is shown the board as it is now (its mind map as Mermaid), so its next drawing starts from your edits.
+- A flowchart has no tree to merge into: once you change anything on it, the AI leaves it as it is, and the box
+  says so.
+- **After Stop** the topic's section holds the board (`![Title](assets/….board.svg)`) instead of a Mermaid block:
+  the drawing shows on the page and opens with one click, like any board.
+
 
 - **Free by default, on the Mac:** OpenAI's Whisper through whisper.cpp, the engine Superwhisper's free plan runs.
   Works offline; audio never leaves the Mac. Whisper Small (488 MB) downloads on first use; Whisper Large v3 Turbo

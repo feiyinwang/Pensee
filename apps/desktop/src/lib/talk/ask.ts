@@ -1,4 +1,5 @@
 import type { HeardLine, TalkReply } from "./talk-agent";
+import { formatMarkdownDestination } from "@/lib/paths";
 import { timeLink } from "./transcript";
 
 // Ask (SPECs/talk-notes-spec.md#while-you-talk-ask), as plain data in, data
@@ -137,6 +138,8 @@ export function talkSections(
   s: AskState,
   lines: HeardLine[],
   fileOf: (n: number) => { file: string; start: number },
+  /** A topic drawn as a board: its `.board.svg`, relative to the note. */
+  boardOf: (key: string) => string | null = () => null,
 ): string {
   const byN = new Map(lines.map((l) => [l.n, l]));
   const said = (n: number, prefix = "") => {
@@ -153,7 +156,9 @@ export function talkSections(
       .map((n) => said(n, s.lineTopic[n]?.aside ? "*Said in passing:* " : ""))
       .filter(Boolean);
     out.push(`### ${t.title}`, "");
-    if (t.mermaid.trim()) out.push("```mermaid", t.mermaid.trim(), "```", "");
+    const board = boardOf(key);
+    if (board) out.push(`![${t.title}](${formatMarkdownDestination(board)})`, "");
+    else if (t.mermaid.trim()) out.push("```mermaid", t.mermaid.trim(), "```", "");
     if (bullets.length) out.push(...(bullets as string[]), "");
   }
   const passing = Object.values(s.topics)

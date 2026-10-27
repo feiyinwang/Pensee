@@ -133,6 +133,12 @@ const versions = new Map<string, number>();
 /** Files written since their in-note preview was last refreshed. */
 const stalePreviews = new Set<string>();
 
+/** Resolves once every save queued for `absolute` has landed (a board
+ *  closed from the editor saves its last change on its way out). */
+export function boardSaved(absolute: string): Promise<void> {
+  return chains.get(absolute) ?? Promise.resolve();
+}
+
 /**
  * `refresh` reloads the note's `<img>` for this board. Only the final commit
  * (closing the board) asks for it: reloading means the webview decodes the

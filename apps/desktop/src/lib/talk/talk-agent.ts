@@ -34,7 +34,7 @@ lines: one entry per line you were given.
 topics: every topic that is new or whose diagram changed this turn, with its full diagram.
 - title: the topic in the speaker's words, sentence case. short: two or three words for a tab.
 - mermaid: valid Mermaid text for the diagram that fits what was said. Choose:
-  quadrantChart for options weighed on two scales (effort and value: x-axis Less effort --> More effort, y-axis Less value --> More value, points 0-1);
+  quadrantChart for options weighed on two scales (effort and value: x-axis Less effort --> More effort, y-axis Less value --> More value, each point written "Voice capture: [0.3, 0.8]", x and y from 0 to 1 in brackets);
   pie for shares of a whole; xychart for numbers across categories or time; mindmap for reasons, doubts and plans around one question;
   flowchart for steps or causes; journey for what a person goes through (score 1-5 per step); timeline for dates; kanban for things to do;
   sankey for flows between stages; sequenceDiagram for who says what to whom.

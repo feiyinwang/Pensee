@@ -375,7 +375,7 @@ describe("Journeys: talk notes", () => {
   it("TALK-08 While you talk, topics show as tabs with their diagram; Stop writes them under the transcript", async function () {
     // Real Claude answers here, sometimes slowly: longer than the 60s default,
     // so a slow answer fails this journey's own wait (and stops its take).
-    this.timeout(150_000);
+    this.timeout(240_000);
     await openNote("Talk note");
     await fakeMicrophone(true);
     setWhisper(true, SCRIPT);
@@ -388,7 +388,9 @@ describe("Journeys: talk notes", () => {
           tabs: [...el.querySelectorAll(".talk-box-tabs button")]
             .map((b) => b.textContent.trim())
             .filter(Boolean),
-          diagram: !!el.querySelector(".talk-diagram svg, .talk-diagram.is-chart *"),
+          diagram: !!el.querySelector(
+            ".talk-diagram svg, .talk-diagram.is-chart *, .talk-board svg",
+          ),
           card: el.querySelector(".talk-box-card")?.textContent ?? null,
           status: el.querySelector(".talk-box-status")?.textContent ?? "",
           note: el.querySelector(".talk-box-empty, .talk-box-error")?.textContent ?? null,
@@ -396,11 +398,13 @@ describe("Journeys: talk notes", () => {
       });
     await browser
       .waitUntil(async () => (await box())?.diagram, {
-        timeout: 60_000,
+        timeout: 100_000,
         timeoutMsg: "no topic diagram while talking",
       })
       .catch(async (e) => {
         console.log("DEBUG box", JSON.stringify(await box()));
+        // Don't leave the take running into the next journey.
+        await pressDock("Stop");
         throw e;
       });
     ok((await box()).tabs.length >= 1, JSON.stringify(await box()));
@@ -419,8 +423,9 @@ describe("Journeys: talk notes", () => {
       .catch(() => {});
     const note = await read();
     ok(/> \[!transcript\]- Transcript · 7 lines · On this Mac · Whisper Small/.test(note), note);
+    // A chart stays Mermaid; a mind map or flowchart is a board beside the note.
     ok(
-      /### .+\n\n```mermaid\n/.test(note),
+      /### .+\n\n(```mermaid\n|!\[[^\]]*\]\([^)]*\.board\.svg>?\))/.test(note),
       `no topic section with a diagram: ${JSON.stringify(note)}`,
     );
   });
@@ -428,7 +433,7 @@ describe("Journeys: talk notes", () => {
   it("TALK-10 Turning to a new topic shows the New topic? card; Accept new tab opens its tab", async function () {
     // Real Claude answers here, sometimes slowly: longer than the 60s default,
     // so a slow answer fails this journey's own wait (and stops its take).
-    this.timeout(150_000);
+    this.timeout(240_000);
     await openNote("Talk note");
     await fakeMicrophone(true);
     // Ends on the turn, so the card stays up until it's answered.
@@ -703,6 +708,72 @@ describe("Journeys: talk notes", () => {
       timeout: 10_000,
     });
     ok(await pressDock("Not now"));
+  });
+
+  it("TALK-20 A plan you talk through is drawn as a board; a click opens it in the board editor; Stop puts the board in the note", async function () {
+    // Real Claude draws the plan: longer than the 60s default.
+    this.timeout(240_000);
+    await openNote("Talk note");
+    await fakeMicrophone(true);
+    setWhisper(true, [
+      { start: 0, end: 4, text: "Let's map my business idea." },
+      { start: 4, end: 9, text: "First I scan keywords around the world." },
+      { start: 9, end: 14, text: "Then I dive deeper into the keywords using Rob's skills." },
+      {
+        start: 14,
+        end: 19,
+        text: "Testing with Facebook ads and Google ads comes after Rob's skills, as a step under it.",
+      },
+    ]);
+    ok(await pressRecord());
+    const stopOnFail = async (e) => {
+      // Don't leave the take running into the next journey.
+      await browser.keys("Escape");
+      await pressDock("Stop");
+      throw e;
+    };
+    await browser
+      .waitUntil(() => browser.execute(() => !!document.querySelector(".talk-board svg")), {
+        timeout: 100_000,
+        timeoutMsg: "the plan wasn't drawn as a board",
+      })
+      .catch(stopOnFail);
+    await browser.execute(() => document.querySelector(".talk-board").click());
+    await browser
+      .waitUntil(
+        () =>
+          browser.execute(() => !!document.querySelector(".wr-board-fullscreen svg.wr-board-svg")),
+        { timeout: 10_000, timeoutMsg: "the board editor didn't open" },
+      )
+      .catch(stopOnFail);
+    ok(
+      /waits until you close it/.test(
+        await browser.execute(() => document.querySelector(".talk-board-hint")?.textContent ?? ""),
+      ),
+    );
+    await browser.execute(() => document.querySelector(".wr-board-close")?.click());
+    await browser.waitUntil(
+      () =>
+        browser.execute(
+          () =>
+            !/waits until you close it/.test(
+              document.querySelector(".talk-board-hint")?.textContent ?? "",
+            ),
+        ),
+      { timeout: 10_000, timeoutMsg: "the board editor didn't close" },
+    );
+    ok(await pressDock("Stop"));
+    await browser.waitUntil(async () => (await dockText()).includes("Saved to Recordings/"), {
+      timeout: 100_000,
+    });
+    const note = await readSettled(`${root}/Notes/Talk note.md`);
+    const embed = /!\[[^\]]*\]\(<?([^)>]*\.board\.svg)>?\)/.exec(note);
+    ok(embed, `no board in the note: ${JSON.stringify(note)}`);
+    const file = decodeURI(embed[1]);
+    ok(
+      await fileExists(file.startsWith("/") ? file : `${root}/Notes/${file}`),
+      `${file} isn't on disk`,
+    );
   });
 
   it("TALK-16 In columns after a pinch, the pill and the live box fit inside the note's column", async () => {

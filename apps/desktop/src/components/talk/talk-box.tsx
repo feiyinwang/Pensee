@@ -7,12 +7,16 @@ import { ensureArcTokens } from "@/components/editor-area/board/arc-tokens";
 import { useTalkStore } from "@/stores/talk-store";
 import { topicFill } from "@/lib/talk/ask";
 import { TalkDiagram } from "./talk-diagram";
+import { TalkBoard } from "./talk-board";
 import "./talk-box.css";
 
 // What you're saying, as you say it (SPECs/talk-notes-spec.md#while-you-talk-ask):
 // the talk's topics as tabs, what the pen is doing, the New topic? card, and
 // the shown topic's diagram. Loaded lazily with the first take, so a note
 // never pays for Arc, motion or affectUI at startup.
+
+/** Mind maps and flowcharts are drawn as boards; charts stay Arc charts. */
+const BOARD_DIAGRAM = /^\s*(mindmap|flowchart|graph)\b/;
 
 export default function TalkBox() {
   const ask = useTalkStore((s) => s.ask);
@@ -22,6 +26,7 @@ export default function TalkBox() {
   const liveError = useTalkStore((s) => s.liveError);
   const model = useTalkStore((s) => s.model);
   const progress = useTalkStore((s) => s.progress);
+  const notePath = useTalkStore((s) => s.notePath);
   useEffect(() => ensureArcTokens(), []);
 
   const shown = pinned ?? ask.current;
@@ -129,6 +134,8 @@ export default function TalkBox() {
             Downloading {model.name} ·{" "}
             <span className="talk-box-num">{Math.floor(progress * 100)}%</span>
           </p>
+        ) : topic?.mermaid && notePath && BOARD_DIAGRAM.test(topic.mermaid) ? (
+          <TalkBoard topicKey={topic.key} label={topic.title} notePath={notePath} />
         ) : topic?.mermaid ? (
           <TalkDiagram source={topic.mermaid} label={topic.title} />
         ) : (

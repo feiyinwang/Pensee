@@ -123,6 +123,9 @@ const UNDO_MS = 5000;
 const LAST_TURN_MS = 20_000;
 
 let recorder: Recorder | null = null;
+/** Topic boards (topic-boards.ts), loaded with the first topic. */
+let boards: typeof import("@/lib/talk/topic-boards") | null = null;
+const loadBoards = async () => (boards ??= await import("@/lib/talk/topic-boards"));
 let session: string | null = null;
 /** Sends samples to Rust in order; Stop waits for the last batch. */
 let sending: Promise<unknown> = Promise.resolve();
@@ -197,10 +200,18 @@ export const useTalkStore = create<TalkState>((set, get) => {
     const topics = ask.open.map((k) => ({
       key: k,
       title: ask.topics[k]?.title ?? k,
-      mermaid: ask.topics[k]?.mermaid ?? "",
+      // A board shows the AI how it is now, with what you changed by hand.
+      mermaid: boards?.topicBoardMermaid(k) ?? ask.topics[k]?.mermaid ?? "",
     }));
     sorting = askTalk(talkPrompt(batch, topics, ask.current))
-      .then((reply) => set({ ask: applyReply(get().ask, reply), liveError: null }))
+      .then((reply) => {
+        set({ ask: applyReply(get().ask, reply), liveError: null });
+        const { notePath } = get();
+        if (!notePath || !reply.topics.length) return;
+        void loadBoards().then((m) => {
+          for (const t of reply.topics) void m.syncTopicBoard(t.key, t.mermaid, notePath);
+        });
+      })
       .catch((error: unknown) => set({ liveError: `Topics paused: ${message(error)}` }))
       .finally(() => {
         sorting = null;
@@ -251,14 +262,24 @@ export const useTalkStore = create<TalkState>((set, get) => {
 
   /** The note's text with the take's transcript under its player and the
    *  talk's topics under that, or null when the player is gone. */
-  const withTranscript = (doc: string, take: Pending, callout: string): string | null => {
+  const withTranscript = (
+    doc: string,
+    take: Pending,
+    callout: string,
+    boardOf: (key: string) => string | null,
+  ): string | null => {
     const at = transcriptInsertion(EditorState.create({ doc }), take.file, callout);
     if (!at) return null;
     let state = EditorState.create({ doc }).update({ changes: at }).state;
-    const sections = talkSections(take.ask, take.lines, (n) => ({
-      file: take.takes[take.takeOfLine[n] ?? 0] ?? take.file,
-      start: take.lines[n]?.start ?? 0,
-    }));
+    const sections = talkSections(
+      take.ask,
+      take.lines,
+      (n) => ({
+        file: take.takes[take.takeOfLine[n] ?? 0] ?? take.file,
+        start: take.lines[n]?.start ?? 0,
+      }),
+      boardOf,
+    );
     if (sections) {
       // A later take rewrites the talk's topics in place, if you haven't edited them.
       const text = state.doc.toString();
@@ -275,6 +296,14 @@ export const useTalkStore = create<TalkState>((set, get) => {
 
   const writeTranscript = async (take: Pending, segments: Segment[], engine: string) => {
     const callout = transcriptCallout(take.file, segments, engine);
+    // The boards' embeds, once their last drawings have landed.
+    const embeds = new Map<string, string>();
+    if (boards)
+      for (const key of take.ask.open) {
+        const relative = await boards.topicBoardEmbed(key);
+        if (relative) embeds.set(key, relative);
+      }
+    const boardOf = (key: string) => embeds.get(key) ?? null;
     const view = editorViewFor(take.notePath);
     const gone = () =>
       showEditorNotice(
@@ -282,7 +311,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
       );
     if (view) {
       const doc = view.state.doc.toString();
-      const next = withTranscript(doc, take, callout);
+      const next = withTranscript(doc, take, callout, boardOf);
       const change = next === null ? null : minimalChange(doc, next);
       if (next === null) gone();
       else if (change) view.dispatch({ changes: change, userEvent: "input.talk" });
@@ -291,7 +320,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
     // You left the note, or closed it, while it was being written: into its file.
     let missing = false;
     await editPage(take.notePath, (page) => {
-      const body = withTranscript(page.body, take, callout);
+      const body = withTranscript(page.body, take, callout, boardOf);
       missing = body === null;
       return body === null ? page : { ...page, body };
     });
@@ -357,6 +386,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
       const carryOn = continueTalk && get().talk?.notePath === notePath;
       if (!carryOn) {
         heard = [];
+        boards?.resetTopicBoards();
         takes = [];
         takeOfLine = [];
         sectionsWritten = null;
