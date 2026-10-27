@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { renderStaticBoard } from "@/components/editor-area/board/board-canvas";
 import { mermaidToElements } from "@/components/editor-area/board/board-mermaid";
 import { onChartsReady } from "@/components/editor-area/board/board-chart";
+import {
+  ChartLayer,
+  liveCards,
+  placeFromDom,
+} from "@/components/editor-area/board/board-chart-live";
 import { type MovePlace, editTopicBoard, moveTopic, useTopicBoards } from "@/lib/talk/topic-boards";
 import { TalkDiagram } from "./talk-diagram";
 import "@/components/editor-area/board/board.css";
@@ -68,6 +73,9 @@ export function TalkBoard({
   useEffect(() => {
     const el = host.current;
     if (!el || !board) return;
+    // Live charts over the board's chart cards: hover answers, a click opens the board.
+    const cards = liveCards(board.scene.els);
+    const charts = cards.length && el.parentElement ? new ChartLayer(el.parentElement) : null;
     // Drawn again when the box changes size: the static board is laid out in pixels.
     const draw = () => {
       el.replaceChildren(
@@ -81,6 +89,7 @@ export function TalkBoard({
           node.pa,
         );
       }
+      if (charts && el.parentElement) charts.sync(cards, placeFromDom(el, el.parentElement, cards));
     };
     draw();
     const observer = new ResizeObserver(draw);
@@ -90,6 +99,7 @@ export function TalkBoard({
     return () => {
       observer.disconnect();
       stop();
+      charts?.destroy();
     };
   }, [board]);
 

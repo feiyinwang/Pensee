@@ -26,7 +26,14 @@ import { PIN_ICON_PATH, formatVideoTime, parseVideoLink } from "@/lib/video-pins
 import { parseAudioClip } from "@/lib/audio-clips";
 import { parseWikiLink } from "@/lib/wiki-links";
 import { smoothPath, strokeExtent } from "./board-draw";
-import { CHART_INKS, CHART_PAD, ON_FILL, chartDrawing } from "./board-chart";
+import {
+  CHART_INKS,
+  CHART_PAD,
+  ON_FILL,
+  PELE_ARC_STYLE,
+  chartDrawing,
+  tintChart,
+} from "./board-chart";
 import {
   type SceneLookup,
   branchColor,
@@ -798,7 +805,14 @@ function renderChart(g: SVGGElement, el: BoardEl & { src: string }): void {
   chart.removeAttribute("role");
   for (const t of chart.querySelectorAll('text[fill="var(--_bg)"]'))
     t.setAttribute("fill", ON_FILL);
+  tintChart(chart);
   const inks = svgEl("g", { class: "wr-board-chart", style: CHART_INKS });
+  // Arc's look for a Pele drawing travels with it, into the file too.
+  if (chart.classList.contains("pele")) {
+    const style = svgEl("style");
+    style.textContent = PELE_ARC_STYLE;
+    inks.append(style);
+  }
   inks.append(chart);
   g.append(inks);
 }

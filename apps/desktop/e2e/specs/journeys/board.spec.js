@@ -480,9 +480,14 @@ describe("Journeys: boards", function () {
         document.querySelector('.wr-board-fullscreen [data-type="chart"] .wr-board-chart')
           .innerHTML,
     );
+    // On the live chart laid over the card: a double-click goes through to the board.
     await browser.execute((p) => {
-      const svg = document.querySelector(".wr-board-fullscreen svg.wr-board-svg");
-      svg.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, clientX: p.x, clientY: p.y }));
+      const target =
+        document.querySelector(".wr-board-fullscreen .wr-chart-live") ??
+        document.querySelector(".wr-board-fullscreen svg.wr-board-svg");
+      target.dispatchEvent(
+        new MouseEvent("dblclick", { bubbles: true, clientX: p.x, clientY: p.y }),
+      );
     }, centre);
     const field = await $(".wr-board-fullscreen .wr-board-text-editor.is-chart-source");
     await field.waitForExist({ timeout: 5_000 });
@@ -512,6 +517,55 @@ describe("Journeys: boards", function () {
     await browser.waitUntil(
       async () => /bar \[9, 4, 2\]/.test(await boardFile(root, "Dock board")),
       { timeout: 10_000, timeoutMsg: "the new numbers never reached the board file" },
+    );
+  });
+
+  it("BRD-14 a chart card is Arc's live chart; a click selects the card, then the chart takes clicks", async function () {
+    if (!(await $('.wr-board-fullscreen [data-type="chart"]').isExisting())) this.skip();
+    // The bar chart is Arc's own component, laid over the card.
+    await browser.waitUntil(
+      () =>
+        browser.execute(
+          () => !!document.querySelector(".wr-board-fullscreen .wr-chart-live figure"),
+        ),
+      { timeout: 10_000, timeoutMsg: "the chart card has no live Arc chart" },
+    );
+    // Clear the selection, then press the chart: the board takes it and selects the card.
+    await browser.execute(() => {
+      const host = document.querySelector(".wr-board-fullscreen .wr-board-host");
+      host.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    });
+    const pressed = await browser.execute(() => {
+      const live = document.querySelector(".wr-board-fullscreen .wr-chart-live");
+      const r = live.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      for (const type of ["pointerdown", "pointerup"])
+        live.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            pointerId: 1,
+            pointerType: "mouse",
+            isPrimary: true,
+            button: 0,
+            buttons: type === "pointerdown" ? 1 : 0,
+            clientX: x,
+            clientY: y,
+          }),
+        );
+      return live.dataset.chart;
+    });
+    await browser.waitUntil(
+      () =>
+        browser.execute(() =>
+          document
+            .querySelector(".wr-board-fullscreen .wr-chart-live")
+            ?.hasAttribute("data-selected"),
+        ),
+      { timeout: 5_000, timeoutMsg: `pressing the chart didn't select its card (${pressed})` },
     );
   });
 });

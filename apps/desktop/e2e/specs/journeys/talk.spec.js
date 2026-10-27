@@ -1091,11 +1091,11 @@ describe("Journeys: talk notes", () => {
         })
         .catch(stopOnFail);
     }
-    // The ideas arrive as they're said: the matrix fills as the last line lands.
+    // Its ideas are the board's cards (how many the AI places is up to it).
     await browser
-      .waitUntil(async () => (await surface('[data-type="roundRect"]')) >= 2, {
-        timeout: 100_000,
-        timeoutMsg: "the matrix never placed the ideas as cards",
+      .waitUntil(async () => (await surface('[data-type="roundRect"]')) >= 1, {
+        timeout: 30_000,
+        timeoutMsg: "the matrix placed no ideas as cards",
       })
       .catch(stopOnFail);
     await browser.waitUntil(

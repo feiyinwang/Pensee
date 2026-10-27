@@ -25,10 +25,31 @@ start any of them.
   - **Steps** and **mind maps** as before (SPECs/talk-notes-spec.md#topic-boards).
 - **Chart cards.** A bar, line or pie chart, and any other diagram Pele reads (journey, sankey,
   sequence…), is one chart card: a raised surface with a hairline ring, the chart drawn inside from
-  its Mermaid text every time the board draws, so new numbers redraw it. The card takes its
-  drawing's size, so its words read like the cards around it; a bar or line chart is drawn at
-  440×300 unless its text sets its own size. Double-click a chart card to edit its text in place
-  (⌘↵ or Esc to finish); emptying it keeps the old text.
+  its Mermaid text every time the board draws, so new numbers redraw it. The Mermaid text stays the
+  truth; only the drawing is Arc's:
+  - **Bar, line and pie** are drawn as Arc draws them in a note (`board-arc-charts.ts`), still: a
+    readout over the plot (the bars' average, the line's latest value, the donut's total in its
+    centre), hairline grids, a right-hand value axis, bars with round tops in Arc's soft step of the
+    accent, the first line in the accent over a faint area, the donut in Arc's four series hues with a
+    legend of each slice's value and share. No hover: a board is a file a note shows as an image.
+  - **Every other type** keeps Pele's layout in Arc's look (the treatment a Mermaid block gets in a
+    note): neutral raised shapes with a hairline ring, a tint by section, quadrant or period, quiet
+    labels, 1.5px round lines. That style is written into the chart, so the file carries it.
+    The card takes its drawing's size, so its words read like the cards around it; Pele draws a bar or
+    line chart it falls back to (bars and lines mixed) at 440×300. Double-click a chart card to edit
+    its text in place (⌘↵ or Esc to finish); emptying it keeps the old text.
+- **Live charts** (`board-chart-live.ts`). A board file stays a still picture, but wherever Pensée
+  shows a board (the board editor, the talk box, a note's board image) each chart card gets a live
+  layer laid exactly over its drawing, at its place and scale. A chart Arc has (bar, line, donut,
+  sankey, radar up to three series, treemap, tree view, kanban) is the real Arc component, with its
+  hover readouts, legends and toggles; any other diagram is its drawing inline, so hovering lights
+  the shape under the pointer and brightens an arrow. Hovering always reaches the chart. On a
+  board, the first press selects the card like any card (so it can be dragged) and once it's the
+  one thing selected the chart takes presses, outlined to say so; in the talk box and a note a
+  press opens the board. A double-click always goes to the board (it edits the chart's text). An
+  Arc chart with no still drawing of its own (sankey, radar, treemap, tree view, kanban) gets the
+  card size its live component needs, the still picture fitted inside. A note's image only reads
+  its board file when the file holds a chart.
 - **Colours.** The chart card sets Pele's colour variables from the board's own colour tokens, which
   the `.board.svg` carries in its `<style>`: the chart follows the board's palette and theme in the
   editor, in the talk box, in the note's image preview and in other apps. Words Pele writes on a

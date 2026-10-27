@@ -20,6 +20,7 @@ import * as tauri from "@/lib/tauri";
 import { type BoardScene, emptyScene } from "./board-model";
 import { audioClipAt, playAudioClipLink } from "./board-audio-links";
 import { loadCharts } from "./board-chart";
+import { ChartLayer, type LiveCard, liveCards } from "./board-chart-live";
 import { mermaidToElements } from "./board-mermaid";
 import { measureText } from "./board-render";
 import {
@@ -420,6 +421,73 @@ export function boardImageEnhancer(getFilePath: () => string | null) {
           if (!clip || !playAudioClipLink(clip)) open();
         });
       });
+      return liveChartsOver(absolute, image, dom);
     }),
   ];
+}
+
+/**
+ * The live charts of a board shown as an image in a note
+ * (SPECs/board-pictures-spec.md#live-charts): each chart card gets the real
+ * Arc chart, or its drawing inline, laid over its place in the picture, so it
+ * answers the pointer. A press goes through to the image (it opens the
+ * board). Returns the clean-up.
+ */
+function liveChartsOver(absolute: string, image: HTMLImageElement, dom: HTMLElement): () => void {
+  let layer: ChartLayer | null = null;
+  /** The charts shown, with each card's place in the board, and the board's viewBox. */
+  let shown: { cards: (LiveCard & { x: number; y: number })[]; box: number[] } | null = null;
+  let gone = false;
+  const place = () => {
+    if (!layer || !shown) return;
+    const [x, y, w, h] = shown.box as [number, number, number, number];
+    const r = image.getBoundingClientRect();
+    const origin = dom.getBoundingClientRect();
+    if (!r.width) return;
+    // The image keeps its aspect ratio inside its box (object-fit: contain).
+    const scale = Math.min(r.width / w, r.height / h);
+    const left = r.left - origin.left + (r.width - w * scale) / 2;
+    const top = r.top - origin.top + (r.height - h * scale) / 2;
+    const at = new Map(shown.cards.map((c) => [c.id, c]));
+    layer.sync(shown.cards, (id) => {
+      const card = at.get(id);
+      if (!card) return null;
+      return { x: left + (card.x - x) * scale, y: top + (card.y - y) * scale, scale };
+    });
+  };
+  const refresh = async () => {
+    const text =
+      lastText.get(absolute) ?? (await tauri.readFile(absolute).catch(() => null))?.content;
+    if (gone || !text) return;
+    // Most boards hold no chart: only those are read.
+    const parsed = text.includes("&quot;t&quot;:&quot;chart&quot;") ? readBoardSvg(text) : null;
+    const box = /viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/.exec(text);
+    const where = new Map(parsed?.scene.els.map((el) => [el.id, el]));
+    const cards = parsed
+      ? liveCards(parsed.scene.els).map((c) => ({
+          ...c,
+          x: where.get(c.id)!.x,
+          y: where.get(c.id)!.y,
+        }))
+      : [];
+    if (!cards.length || !box || !parsed) {
+      layer?.sync([], () => null);
+      shown = null;
+      return;
+    }
+    await loadCharts(parsed.scene.els);
+    if (gone) return;
+    layer ??= new ChartLayer(dom);
+    shown = { cards, box: box.slice(1).map(Number) };
+    place();
+  };
+  image.addEventListener("load", () => void refresh());
+  if (image.complete) void refresh();
+  const observer = new ResizeObserver(place);
+  observer.observe(image);
+  return () => {
+    gone = true;
+    observer.disconnect();
+    layer?.destroy();
+  };
 }

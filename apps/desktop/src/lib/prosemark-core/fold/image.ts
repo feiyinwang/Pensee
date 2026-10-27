@@ -57,13 +57,17 @@ export function attachStableImageHeight(
 
 /** Host hook for images that are more than pictures (a `.board.svg` opens an
  *  editor). Runs after the `<img>` is built; each enhancer checks `url` itself
- *  and leaves anything it does not own alone. */
+ *  and leaves anything it does not own alone. It may return a clean-up, run
+ *  when the widget's DOM is destroyed. */
 export type ImageWidgetEnhancer = (
   dom: HTMLElement,
   image: HTMLImageElement,
   url: string,
   view: EditorView,
-) => void;
+) => void | (() => void);
+
+/** Each widget DOM's enhancer clean-ups. */
+const cleanups = new WeakMap<HTMLElement, (() => void)[]>();
 
 export const imageWidgetEnhancerFacet = Facet.define<ImageWidgetEnhancer>();
 
@@ -93,10 +97,18 @@ class ImageWidget extends WidgetType {
     attachStableImageHeight(image, this.url, view);
     image.src = resolveImageSrc(view.state, this.url);
     elem.appendChild(image);
+    const done: (() => void)[] = [];
     for (const enhance of view.state.facet(imageWidgetEnhancerFacet)) {
-      enhance(elem, image, this.url, view);
+      const cleanup = enhance(elem, image, this.url, view);
+      if (cleanup) done.push(cleanup);
     }
+    if (done.length) cleanups.set(elem, done);
     return elem;
+  }
+
+  destroy(dom: HTMLElement) {
+    for (const cleanup of cleanups.get(dom) ?? []) cleanup();
+    cleanups.delete(dom);
   }
 
   // allows clicks to pass through to the editor

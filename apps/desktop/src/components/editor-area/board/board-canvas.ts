@@ -84,6 +84,7 @@ import {
 } from "./board-render";
 import { mermaidToElements, pictureToElements } from "./board-mermaid";
 import { fitCharts, loadCharts, onChartsReady } from "./board-chart";
+import { ChartLayer, liveCards, placeFromDom } from "./board-chart-live";
 import { PICTURE_STARTERS, type PictureId } from "./board-dock-items";
 import { type Emphasis, toggleEmphasis, toggleEmphasisAll } from "./board-emphasis";
 import { strokeFrom } from "./board-draw";
@@ -320,9 +321,21 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   svg.append(world);
   host.append(svg);
 
+  // Live charts over chart cards, under the text editor; a card takes presses
+  // once it's the one thing selected.
+  const charts = new ChartLayer(host, (id) => selection.size === 1 && selection.has(id));
   const editorLayer = document.createElement("div");
   editorLayer.className = "wr-board-editor-layer";
   host.append(editorLayer);
+
+  /** Lays the live charts over their cards; nothing to do on a board without one. */
+  function syncCharts(): void {
+    const cards = liveCards(scene.els);
+    if (!cards.length && !chartsShown) return;
+    chartsShown = cards.length > 0;
+    charts.sync(cards, placeFromDom(content, host, cards));
+  }
+  let chartsShown = false;
 
   const renderer = new SceneRenderer(content);
   const toolbar: Toolbar = buildToolbar(tools, {
@@ -441,6 +454,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     recullSoon();
     toolbar.setZoom(v.zoom);
     placeSelectionToolbar();
+    syncCharts();
   }
 
   /** Moves the viewport to `zoom`, keeping `anchorClient` (or the centre)
@@ -502,6 +516,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     // A stretch past a limit is not a zoom level; the label stays on it.
     toolbar.setZoom(clampZoom(n.zoom));
     placeSelectionToolbar();
+    syncCharts();
   }
 
   /* Panning moves the painted svg the same way. It overscans the stage by
@@ -701,6 +716,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     renderer.render(scene, { resolveSrc: opts.resolveSrc, scene }, visibleElements());
     drawOverlay();
     renderStyle();
+    syncCharts();
   }
 
   /** What a gesture over `moving` can change: those elements plus connectors
@@ -722,6 +738,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     if (!renderer.renderSome(scene, ctx, dirty)) renderer.render(scene, ctx, visibleElements());
     drawOverlay();
     renderStyle(); // hides the selection toolbar for the gesture (a class toggle)
+    syncCharts();
   }
 
   /** What a connector end can attach to under `p`: the topmost shape, note,
@@ -3597,6 +3614,7 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     destroy() {
       disposed = true;
       stopCharts();
+      charts.destroy();
       cancelLinkClick();
       resizeObserver.disconnect();
       window.removeEventListener("scroll", onAnyScroll, { capture: true });

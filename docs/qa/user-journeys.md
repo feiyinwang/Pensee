@@ -287,6 +287,7 @@ Opened full screen or **Edit here** over a note.
 | BRD-11 | ★ Drag a section by its name                                                    | Everything inside it moves with it, cards made before the section too; a card outside stays put; the file has the cards' new places                                                                                                                | auto: board             |
 | BRD-12 | Open the dock's **Picture** tray, pick Mind map, Steps, Matrix, Timeline, Chart | Each drops its skeleton in the middle of the view: a central topic; three blue step cards with arrows; four tinted sections; three period cards on an arrow; a chart card that draws its bars. The file has the chart's `"t":"chart"` and its text | auto: board             |
 | BRD-13 | Double-click a chart card, change its numbers, ⌘↵                               | Its Mermaid text opens in place; after ⌘↵ the chart redraws with the new numbers and the file has them                                                                                                                                             | auto: board             |
+| BRD-14 | Point at a chart card on a board, press it, then press it again                 | It's Arc's live chart: hovering shows its readout; the first press selects the card (it can be dragged), and once selected the chart takes presses                                                                                                 | auto: board             |
 
 ## Projects — PRJ
 
