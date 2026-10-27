@@ -25,11 +25,12 @@ export interface Topic {
   lines: number[];
 }
 
-/** Mind maps and flowcharts are drawn as boards; charts stay Arc charts. A
- *  topic that changes type follows its current one: its old board stays on
- *  disk but isn't shown or embedded. */
+/** Every picture is drawn as a board (SPECs/board-pictures-spec.md): mind
+ *  maps, steps, matrices and timelines in board pieces, charts as a chart
+ *  card. A topic that changes type follows its current one: its old board
+ *  stays on disk but isn't shown or embedded. */
 export function isBoardDiagram(mermaid: string | undefined): boolean {
-  return /^\s*(mindmap|flowchart|graph)\b/.test(mermaid ?? "");
+  return Boolean(mermaid?.trim());
 }
 
 /** The pictures you can ask for by button, each named the way you'd say it. */

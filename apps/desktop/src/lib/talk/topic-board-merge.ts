@@ -1,4 +1,9 @@
-import type { BoardEl, BoardScene, MindEl } from "@/components/editor-area/board/board-model";
+import type {
+  BoardEl,
+  BoardScene,
+  ChartEl,
+  MindEl,
+} from "@/components/editor-area/board/board-model";
 import {
   MIND_PALETTE,
   addMindChild,
@@ -20,8 +25,9 @@ import {
 // Positions aren't compared: the board lays a mind map out again whenever any
 // topic moves, so they change without being edited.
 //
-// A flowchart has no tree to merge into: once you change anything on it, the
-// AI leaves it as it is (`frozen`).
+// A flowchart, matrix or timeline has no tree to merge into: once you change
+// anything on it, the AI leaves it as it is (`frozen`). A chart card you only
+// moved or resized still takes the AI's new numbers.
 
 export interface MergeResult {
   scene: BoardScene;
@@ -73,7 +79,21 @@ export function handEdited(file: BoardScene, written: BoardScene): boolean {
 /** A mind map (`mind`) or anything else drawn from a flowchart (`flow`). */
 export const boardKind = (els: BoardEl[]): "mind" | "flow" => (els.some(isMind) ? "mind" : "flow");
 
+/** The board's only element, when it is a chart card. */
+const onlyChart = (els: BoardEl[]): ChartEl | null =>
+  els.length === 1 && els[0].t === "chart" ? els[0] : null;
+
 function mergeFlow(file: BoardScene, written: BoardScene, next: BoardEl[]): MergeResult {
+  // A chart card you moved or resized keeps its place and takes the new
+  // numbers; one whose text you edited is yours.
+  const mine = onlyChart(file.els);
+  const was = onlyChart(written.els);
+  const fresh = onlyChart(next);
+  if (mine && was && fresh && mine.src === was.src) {
+    const scene = clone(file);
+    (scene.els[0] as ChartEl).src = fresh.src;
+    return { scene, frozen: false };
+  }
   if (handEdited(file, written)) return { scene: file, frozen: true };
   return { scene: { ...clone(file), els: clone(next) }, frozen: false };
 }

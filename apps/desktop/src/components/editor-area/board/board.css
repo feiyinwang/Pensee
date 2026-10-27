@@ -572,6 +572,15 @@
   visibility: hidden;
 }
 
+/* A chart card edits as its Mermaid text, on the card's own surface so the
+   drawing underneath doesn't show through. */
+.wr-board-text-editor.is-chart-source {
+  background: var(--wr-board-surface);
+  font-family: var(--mono-font);
+  white-space: pre;
+  overflow: auto;
+}
+
 /* Quick-connect dots (Lark's side dots): solid discs of a softened
    foreground, so they never read as the outlined resize and rotate handles. */
 .wr-board-qdot {

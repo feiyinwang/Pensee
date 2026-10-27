@@ -13,8 +13,12 @@ import {
   Circle,
   CornerDownRight,
   Diamond,
+  ChartColumn,
   Frame,
+  GanttChart,
+  Grid2x2,
   Hand,
+  Network,
   Hexagon,
   Image as ImageIcon,
   MessageSquare,
@@ -29,6 +33,7 @@ import {
   Triangle,
   Type,
   WandSparkles,
+  Workflow,
 } from "lucide-react";
 import { Dock, type DockItem } from "@/components/arc/dock/dock";
 import type { ShapeKind } from "./board-model";
@@ -68,7 +73,16 @@ const TOP_ICONS: Record<string, ReactNode> = {
   pen: <Pencil />,
   frames: <Frame />,
   image: <ImageIcon />,
+  pictures: <Network />,
   tidy: <WandSparkles />,
+};
+
+const PICTURE_ICONS: Record<string, ReactNode> = {
+  "picture:mindmap": <Network />,
+  "picture:steps": <Workflow />,
+  "picture:matrix": <Grid2x2 />,
+  "picture:timeline": <GanttChart />,
+  "picture:chart": <ChartColumn />,
 };
 
 function iconFor(id: string): ReactNode {
@@ -76,6 +90,7 @@ function iconFor(id: string): ReactNode {
   if (kind === "shape") return SHAPE_ICONS[rest as ShapeKind];
   if (kind === "linker") return LINKER_ICONS[id];
   if (kind === "frame") return <Frame />;
+  if (kind === "picture") return PICTURE_ICONS[id];
   return TOP_ICONS[id];
 }
 

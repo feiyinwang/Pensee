@@ -19,6 +19,7 @@ import {
 import * as tauri from "@/lib/tauri";
 import { type BoardScene, emptyScene } from "./board-model";
 import { audioClipAt, playAudioClipLink } from "./board-audio-links";
+import { loadCharts } from "./board-chart";
 import { mermaidToElements } from "./board-mermaid";
 import { measureText } from "./board-render";
 import {
@@ -120,6 +121,9 @@ export async function boardFileText(scene: BoardScene, svgDir: string): Promise<
       }
     }),
   );
+  // A chart card's drawing is written into the file, for the note's preview
+  // and other apps: its type loads first.
+  await loadCharts(scene.els);
   return renderBoardSvg(scene, (src) => inlined.get(src) ?? "");
 }
 

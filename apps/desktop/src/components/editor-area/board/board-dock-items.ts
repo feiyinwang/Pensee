@@ -4,6 +4,7 @@
  *
  * Ids: "select" | "hand" | "text" | "pen" | "image" | "tidy" (an action)
  *      "shape:<kind>" | "linker:<kind>:<route>" | "frame:<preset>"
+ *      "picture:<id>" (an action: drops that picture's skeleton)
  */
 
 import { FRAME_PRESETS, type FramePreset, type ShapeKind } from "./board-model";
@@ -42,6 +43,29 @@ const FRAME_LABELS: Record<FramePreset, string> = {
   A4: "A4 page",
 };
 
+/** The pictures a board can hold (SPECs/board-pictures-spec.md), named as the
+ *  talk box's buttons name them. */
+export const PICTURES = [
+  ["mindmap", "Mind map"],
+  ["steps", "Steps"],
+  ["matrix", "Matrix"],
+  ["timeline", "Timeline"],
+  ["chart", "Chart"],
+] as const;
+
+export type PictureId = (typeof PICTURES)[number][0];
+
+/** What each picture starts as: its skeleton, nothing you didn't choose. A
+ *  chart can't draw without numbers, so it starts with placeholder ones to
+ *  write over (double-click it). */
+export const PICTURE_STARTERS: Record<PictureId, string> = {
+  mindmap: "mindmap\n  root((Central topic))",
+  steps: "flowchart LR\n  A[First step] --> B[Next step] --> C[Last step]",
+  matrix: "quadrantChart\n  x-axis Low --> High\n  y-axis Low --> High",
+  timeline: "timeline\n  First\n  Next\n  Then",
+  chart: "xychart-beta\n  x-axis [One, Two, Three]\n  bar [1, 2, 3]",
+};
+
 export const DOCK_SPEC: DockSpec[] = [
   { id: "select", label: "Select", shortcut: "V" },
   { id: "hand", label: "Hand", shortcut: "H" },
@@ -74,6 +98,11 @@ export const DOCK_SPEC: DockSpec[] = [
       label: FRAME_LABELS[p],
       shortcut: p === "custom" ? "⇧S" : undefined,
     })),
+  },
+  {
+    id: "pictures",
+    label: "Picture",
+    items: PICTURES.map(([id, label]) => ({ id: `picture:${id}`, label })),
   },
   { id: "image", label: "Image" },
   { id: "tidy", label: "Tidy up" },

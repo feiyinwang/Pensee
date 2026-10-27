@@ -102,7 +102,8 @@ export type ElementType =
   | "frame"
   | "image"
   | "mind"
-  | "draw";
+  | "draw"
+  | "chart";
 
 export interface Style {
   /** stroke */ s: ColorToken;
@@ -197,6 +198,16 @@ export interface ImageEl extends Base {
 }
 
 /**
+ * A chart drawn from Mermaid text (`board-chart.ts`): a bar, line or pie
+ * chart, or any diagram that has no board pieces of its own. The text is the
+ * truth; the drawing is made from it on every render, so new numbers redraw it.
+ */
+export interface ChartEl extends Base {
+  t: "chart";
+  src: string;
+}
+
+/**
  * One mind-map topic. The tree is the `pa` (parent) links; the root has none.
  * Positions and sizes are laid out by `board-mind.ts` and stored like any
  * element's, so the file renders without Pensée.
@@ -221,7 +232,16 @@ export interface DrawEl extends Base {
   st: Style;
 }
 
-export type BoardEl = ShapeEl | TextEl | StickyEl | LinkerEl | FrameEl | ImageEl | MindEl | DrawEl;
+export type BoardEl =
+  | ShapeEl
+  | TextEl
+  | StickyEl
+  | LinkerEl
+  | FrameEl
+  | ImageEl
+  | MindEl
+  | DrawEl
+  | ChartEl;
 
 export interface Viewport {
   x: number;
@@ -444,6 +464,10 @@ function parseElement(raw: unknown): BoardEl | null {
     if (typeof o.alt === "string") el.alt = o.alt;
     return el.src ? el : null;
   }
+  if (t === "chart") {
+    const el: ChartEl = { ...base, t, src: str(o.src, "") };
+    return el.src.trim() ? el : null;
+  }
   if ((SHAPE_KINDS as string[]).includes(t)) {
     const shape: ShapeEl = {
       ...base,
@@ -586,6 +610,10 @@ function pruneElement(el: BoardEl): Record<string, unknown> {
       if (el.c) o.c = el.c;
       break;
     }
+    case "chart": {
+      o.src = el.src;
+      break;
+    }
     case "image": {
       o.src = el.src;
       if (el.ar) o.ar = Math.round(el.ar * 1000) / 1000;
@@ -711,6 +739,7 @@ export function childrenOf(scene: BoardScene, frameId: string): BoardEl[] {
 export function textOf(el: BoardEl): string {
   if (el.t === "text" || el.t === "sticky" || el.t === "mind") return el.tx;
   if (el.t === "frame") return el.name;
+  if (el.t === "chart") return el.src;
   if (isLinker(el)) return el.lb?.tx ?? "";
   if (isShape(el)) return el.lb?.tx ?? "";
   return "";
@@ -719,6 +748,8 @@ export function textOf(el: BoardEl): string {
 export function setTextOf(el: BoardEl, text: string): void {
   if (el.t === "text" || el.t === "sticky" || el.t === "mind") el.tx = text;
   else if (el.t === "frame") el.name = text.trim() || "Section";
+  // A chart can't be emptied by its editor: it would be dropped on reload.
+  else if (el.t === "chart") el.src = text.trim() ? text : el.src;
   else if (isLinker(el)) {
     if (text) el.lb = { tx: text, sz: el.lb?.sz ?? 13 };
     else delete el.lb;

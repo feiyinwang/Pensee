@@ -1039,6 +1039,88 @@ describe("Journeys: talk notes", () => {
     });
   });
 
+  it("TALK-27 Every picture is a board: as a matrix gives tinted sections with the ideas as cards; as a chart gives a chart card", async function () {
+    // Real Claude draws it three times: longer than the 60s default.
+    this.timeout(300_000);
+    await openNote("Talk note");
+    await fakeMicrophone(true);
+    setWhisper(true, [
+      { start: 0, end: 4, text: "I have three ideas and I'm weighing effort against value." },
+      { start: 4, end: 9, text: "Voice notes are little effort and a lot of value." },
+      {
+        start: 9,
+        end: 14,
+        text: "Sync is a lot of effort for little value, and export is easy but small.",
+      },
+    ]);
+    ok(await pressRecord());
+    const stopOnFail = async (e) => {
+      await pressDock("Stop");
+      throw e;
+    };
+    const surface = (selector) =>
+      browser.execute(
+        (q) => document.querySelectorAll(`.talk-board-surface ${q}`).length,
+        selector,
+      );
+    const click = (says) =>
+      browser.execute(
+        (w) =>
+          [...document.querySelectorAll(".talk-box-picture")]
+            .find((b) => b.textContent === w)
+            .click(),
+        says,
+      );
+    // Some board first, whatever the AI picked.
+    await browser
+      .waitUntil(async () => (await surface("[data-el]")) > 0, {
+        timeout: 120_000,
+        timeoutMsg: "the topic wasn't drawn as a board",
+      })
+      .catch(stopOnFail);
+    await browser.waitUntil(
+      () => browser.execute(() => !document.querySelector(".talk-box-picture:disabled")),
+      { timeout: 10_000 },
+    );
+    if ((await surface('[data-type="frame"]')) !== 4) {
+      await click("as a matrix");
+      await browser
+        .waitUntil(async () => (await surface('[data-type="frame"]')) === 4, {
+          timeout: 100_000,
+          timeoutMsg: "as a matrix didn't draw four sections",
+        })
+        .catch(stopOnFail);
+    }
+    // The ideas arrive as they're said: the matrix fills as the last line lands.
+    await browser
+      .waitUntil(async () => (await surface('[data-type="roundRect"]')) >= 2, {
+        timeout: 100_000,
+        timeoutMsg: "the matrix never placed the ideas as cards",
+      })
+      .catch(stopOnFail);
+    await browser.waitUntil(
+      () => browser.execute(() => !document.querySelector(".talk-box-picture[data-pending]")),
+      { timeout: 10_000 },
+    );
+    await click("as a chart");
+    await browser
+      .waitUntil(async () => (await surface('[data-type="chart"] .wr-board-chart svg')) === 1, {
+        timeout: 100_000,
+        timeoutMsg: "as a chart didn't draw a chart card",
+      })
+      .catch(stopOnFail);
+    ok(await pressDock("Stop"));
+    await browser.waitUntil(async () => (await dockText()).includes("Saved to Recordings/"), {
+      timeout: 100_000,
+    });
+    // The note holds the chart's board, not a Mermaid block.
+    const note = await invoke("read_file", { path: `${root}/Notes/Talk note.md` });
+    const text = note.value?.content ?? "";
+    const last = text.slice(text.lastIndexOf("## Talk"));
+    ok(/\.board\.svg/.test(last), "the note doesn't embed the topic's board");
+    ok(!/```mermaid/.test(last), "the note still holds a Mermaid block");
+  });
+
   it("TALK-16 In columns after a pinch, the pill and the live box fit inside the note's column", async () => {
     // Five columns: Pinch hub and the four notes it opens beside, then Talk
     // note in the last one, so the take lands where the other journeys look.

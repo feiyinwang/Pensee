@@ -92,9 +92,10 @@ quadrantChart
 
 ### Topic boards
 
-A topic drawn as a mind map or a flowchart is a Pensée board, not a Mermaid picture: the first time the AI draws
-it, a `.board.svg` is made beside the note (as `/board` makes one) and the talk box shows it with the board's own
-renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their section has the summary and the Mermaid block. Asides keep their lines under "Said in passing".
+Every topic's picture is a Pensée board, not a Mermaid picture: the first time the AI draws it, a `.board.svg`
+is made beside the note (as `/board` makes one) and the talk box shows it with the board's own renderer. A
+matrix and a timeline are made of board pieces, a bar, line or pie chart is a chart card
+(SPECs/board-pictures-spec.md). Asides keep their lines under "Said in passing".
 
 - **Which picture.** Things done in order ("I'll do X, then Y", "first…, next…", "once that's done…") are
   **steps**: the board's own cards (rounded rectangles, soft blue with a blue outline), one per step, chained

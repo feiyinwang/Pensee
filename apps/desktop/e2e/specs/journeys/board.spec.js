@@ -232,7 +232,8 @@ describe("Journeys: boards", function () {
       timeout: 10_000,
       timeoutMsg: "the board's tools never showed",
     });
-    const offered = (await labels()).filter((l) => /sticky|mind map/i.test(l));
+    // A mind map is a picture in the Picture tray now, not a tool of its own.
+    const offered = (await labels()).filter((l) => /sticky|mind map,/i.test(l));
     ok(offered.length === 0, `still offered: ${offered.join("; ")}`);
 
     // T still picks Text (the keys are live); N and M pick nothing. With a
@@ -398,6 +399,119 @@ describe("Journeys: boards", function () {
         );
       },
       { timeout: 10_000, timeoutMsg: "the moved cards never reached the board file" },
+    );
+  });
+
+  it("BRD-12 the Picture tray drops a mind map, steps, a matrix, a timeline and a chart", async function () {
+    await openDockBoard();
+    const ids = () =>
+      browser.execute(() =>
+        [...document.querySelectorAll(".wr-board-fullscreen .wr-board-content [data-el]")].map(
+          (g) => `${g.getAttribute("data-el")}:${g.getAttribute("data-type")}`,
+        ),
+      );
+    // The tray opens from its group; each item drops its picture, selected.
+    await browser.execute(() =>
+      document
+        .querySelector('.wr-board-fullscreen [role="toolbar"] button[aria-label^="Picture"]')
+        .click(),
+    );
+    const drop = async (label) => {
+      const before = new Set(await ids());
+      await browser.execute((l) => {
+        const item = document.querySelector(
+          `.wr-board-fullscreen [role="group"][aria-label="Picture"] button[aria-label="${l}"]`,
+        );
+        item.click();
+      }, label);
+      let added = [];
+      await browser.waitUntil(
+        async () => {
+          added = (await ids()).filter((id) => !before.has(id)).map((id) => id.split(":")[1]);
+          return added.length > 0;
+        },
+        { timeout: 5_000, timeoutMsg: `${label} dropped nothing` },
+      );
+      return added;
+    };
+    const count = (types, t) => types.filter((x) => x === t).length;
+    ok(count(await drop("Mind map"), "mind") === 1, "Mind map didn't drop its central topic");
+    const steps = await drop("Steps");
+    ok(
+      count(steps, "roundRect") === 3 && count(steps, "arrow") === 2,
+      `Steps dropped ${steps.join()}`,
+    );
+    const matrix = await drop("Matrix");
+    ok(count(matrix, "frame") === 4, `Matrix dropped ${matrix.join()}`);
+    const timeline = await drop("Timeline");
+    ok(
+      count(timeline, "roundRect") === 3 && count(timeline, "arrow") === 1,
+      `Timeline dropped ${timeline.join()}`,
+    );
+    const chart = await drop("Chart");
+    ok(count(chart, "chart") === 1, `Chart dropped ${chart.join()}`);
+    // The chart card draws its bars once Pele's chart type has loaded.
+    await browser.waitUntil(
+      () =>
+        browser.execute(
+          () =>
+            !!document.querySelector(
+              '.wr-board-fullscreen [data-type="chart"] .wr-board-chart svg',
+            ),
+        ),
+      { timeout: 10_000, timeoutMsg: "the chart card never drew its chart" },
+    );
+    await browser.waitUntil(
+      async () => /"t":"chart"[^}]*"src":"xychart-beta/.test(await boardFile(root, "Dock board")),
+      { timeout: 10_000, timeoutMsg: "the chart card never reached the board file" },
+    );
+  });
+
+  it("BRD-13 double-clicking a chart card edits its numbers as text; the chart redraws", async function () {
+    if (!(await $('.wr-board-fullscreen [data-type="chart"]').isExisting())) this.skip();
+    const centre = await browser.execute(() => {
+      const r = document
+        .querySelector('.wr-board-fullscreen [data-type="chart"]')
+        .getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    const before = await browser.execute(
+      () =>
+        document.querySelector('.wr-board-fullscreen [data-type="chart"] .wr-board-chart')
+          .innerHTML,
+    );
+    await browser.execute((p) => {
+      const svg = document.querySelector(".wr-board-fullscreen svg.wr-board-svg");
+      svg.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, clientX: p.x, clientY: p.y }));
+    }, centre);
+    const field = await $(".wr-board-fullscreen .wr-board-text-editor.is-chart-source");
+    await field.waitForExist({ timeout: 5_000 });
+    ok(
+      (await field.getValue()).startsWith("xychart-beta"),
+      "the field doesn't hold the chart's text",
+    );
+    await browser.execute(() => {
+      const area = document.querySelector(
+        ".wr-board-fullscreen .wr-board-text-editor.is-chart-source",
+      );
+      area.value = "xychart-beta\n  x-axis [Draft, Edit, Ship]\n  bar [9, 4, 2]";
+      area.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true }),
+      );
+    });
+    await browser.waitUntil(
+      () =>
+        browser.execute((was) => {
+          const now = document.querySelector(
+            '.wr-board-fullscreen [data-type="chart"] .wr-board-chart',
+          );
+          return !!now && now.innerHTML !== was && now.textContent.includes("Draft");
+        }, before),
+      { timeout: 5_000, timeoutMsg: "the chart didn't redraw with the new numbers" },
+    );
+    await browser.waitUntil(
+      async () => /bar \[9, 4, 2\]/.test(await boardFile(root, "Dock board")),
+      { timeout: 10_000, timeoutMsg: "the new numbers never reached the board file" },
     );
   });
 });

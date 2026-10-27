@@ -145,7 +145,12 @@ export default function TalkBox() {
             <span className="talk-box-num">{Math.floor(progress * 100)}%</span>
           </p>
         ) : topic?.mermaid && notePath && isBoardDiagram(topic.mermaid) ? (
-          <TalkBoard topicKey={topic.key} label={topic.title} notePath={notePath} />
+          <TalkBoard
+            topicKey={topic.key}
+            label={topic.title}
+            notePath={notePath}
+            source={topic.mermaid}
+          />
         ) : topic?.mermaid ? (
           <TalkDiagram source={topic.mermaid} label={topic.title} />
         ) : (

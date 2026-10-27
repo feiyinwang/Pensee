@@ -1,16 +1,11 @@
 import { create } from "zustand";
 import * as tauri from "@/lib/tauri";
+import { pictureToElements } from "@/components/editor-area/board/board-mermaid";
+import { fitCharts, loadCharts } from "@/components/editor-area/board/board-chart";
 import {
-  flowchartToElements,
-  mermaidToElements,
-  parseMermaidFlowchart,
-} from "@/components/editor-area/board/board-mermaid";
-import {
-  type BoardEl,
   type BoardScene,
   type MindEl,
   emptyScene,
-  newShapeStyle,
 } from "@/components/editor-area/board/board-model";
 import {
   MIND_PALETTE,
@@ -19,22 +14,23 @@ import {
   mindSubtree,
 } from "@/components/editor-area/board/board-mind";
 import { readBoardSvg } from "@/components/editor-area/board/board-file";
-import { measureText, wrapText } from "@/components/editor-area/board/board-render";
+import { measureText } from "@/components/editor-area/board/board-render";
 import {
   boardSaved,
   createBoardFile,
   openBoardFile,
   saveBoardFile,
 } from "@/components/editor-area/board/board-file-session";
-import { boardKind, handEdited, mergeTopicBoard, mindmapText } from "./topic-board-merge";
+import { handEdited, mergeTopicBoard, mindmapText } from "./topic-board-merge";
 
-// A talk topic drawn as a board (SPECs/talk-notes-spec.md#topic-boards): a
-// mind map or a flowchart becomes a real `.board.svg` beside the note the
-// first time the AI draws it, so it can be opened and edited like any board,
+// A talk topic drawn as a board (SPECs/talk-notes-spec.md#topic-boards): its
+// picture becomes a real `.board.svg` beside the note the first time the AI
+// draws it, so it can be opened and edited like any board,
 // while you're talking and after. Each later drawing is merged into the file
 // (topic-board-merge.ts: what you did by hand stays). While you have a
 // topic's board open, its drawings wait and are merged when you close it.
-// Charts (pie, bar, quadrant…) aren't boards: they stay Arc charts.
+// Every picture is a board (SPECs/board-pictures-spec.md): a matrix and a
+// timeline in board pieces, a bar, line or pie chart as a chart card.
 //
 // Loaded with the first topic, so a note never pays for the board code.
 
@@ -46,6 +42,8 @@ interface Entry {
   written: BoardScene;
   /** A flowchart you edited: the AI leaves it. */
   frozen: boolean;
+  /** The picture it holds (`kindOf`). */
+  kind: string;
 }
 
 interface TopicBoardsState {
@@ -73,33 +71,22 @@ async function readScene(absolute: string): Promise<BoardScene> {
   return parsed.scene;
 }
 
-/** How wide a step's words run before they wrap, so a chain of five still
- *  reads in the talk box. */
-const STEP_TEXT = 104;
-/** The space between two steps, wider where an arrow carries a label. */
-const STEP_GAP = 40;
-
-/**
- * The AI's drawing as board elements. Steps are the board's own cards (a
- * rounded rectangle, soft blue with a blue outline) read left to right, their
- * words wrapped so the chain stays narrow; a mind map is the board's own.
- */
-export function boardElements(mermaid: string): BoardEl[] | null {
-  const flow = parseMermaidFlowchart(mermaid);
-  if (!flow) return mermaidToElements(mermaid, measureText);
-  flow.dir = "LR";
-  for (const node of flow.nodes.values()) {
-    node.shape = "roundRect";
-    node.text = wrapText(node.text.replace(/\s+/g, " ").trim(), 14, STEP_TEXT).join("\n");
-  }
-  const els = flowchartToElements(flow, measureText, STEP_GAP);
-  for (const el of els) if (el.t === "roundRect") el.st = newShapeStyle();
-  return els;
-}
+/** Which picture a drawing is, by its Mermaid header: a board changes kind
+ *  when the topic is redrawn as another picture (a map as steps, steps as a
+ *  matrix). */
+const kindOf = (mermaid: string): string => {
+  const head = /^\s*([A-Za-z-]+)/.exec(mermaid)?.[1] ?? "";
+  return head === "graph" ? "flowchart" : head.replace(/-beta$/, "");
+};
 
 async function apply(key: string, mermaid: string, notePath: string): Promise<void> {
-  const next = boardElements(mermaid);
+  const next = pictureToElements(mermaid, measureText);
   if (!next) return;
+  // A chart card's drawing goes into the file, so its type loads first; the
+  // card then takes its drawing's size.
+  await loadCharts(next);
+  fitCharts(next);
+  const kind = kindOf(mermaid);
   if (useTopicBoards.getState().editing === key) {
     held.set(key, mermaid);
     return;
@@ -108,16 +95,18 @@ async function apply(key: string, mermaid: string, notePath: string): Promise<vo
     const scene = emptyScene();
     scene.els = next;
     const file = await createBoardFile(notePath, scene);
-    entries.set(key, { ...file, written: structuredClone(scene), frozen: false });
+    entries.set(key, { ...file, written: structuredClone(scene), frozen: false, kind });
     show(key, scene, false);
   };
   const entry = entries.get(key);
   if (!entry) return create();
-  // Redrawn as the other kind (a map as steps, or back): a board of its own
-  // when you'd changed this one, so your version stays on disk as you left it.
-  if (boardKind(next) !== boardKind(entry.written.els)) {
+  // Redrawn as another picture (a map as steps, steps as a matrix): a board
+  // of its own when you'd changed this one, so your version stays on disk as
+  // you left it.
+  if (kind !== entry.kind) {
     if (handEdited(await readScene(entry.absolute), entry.written)) return create();
     entry.frozen = false;
+    entry.kind = kind;
   }
   if (entry.frozen) return;
   const disk = await readScene(entry.absolute);
@@ -130,7 +119,7 @@ async function apply(key: string, mermaid: string, notePath: string): Promise<vo
   show(key, scene, frozen);
 }
 
-/** Draws (or redraws) a topic's board from the AI's Mermaid; charts are skipped. */
+/** Draws (or redraws) a topic's board from the AI's Mermaid. */
 export function syncTopicBoard(key: string, mermaid: string, notePath: string): Promise<void> {
   const run = (queues.get(key) ?? Promise.resolve())
     .then(() => apply(key, mermaid, notePath))

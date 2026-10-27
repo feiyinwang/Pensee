@@ -11,6 +11,7 @@
  */
 
 import { addMindChild, layoutMind, newMindRoot } from "./board-mind";
+import { chartToElements, quadrantToElements, timelineToElements } from "./board-pictures";
 import {
   type BoardEl,
   type BoxSide,
@@ -21,6 +22,7 @@ import {
   defaultStyle,
   emptyScene,
   newId,
+  newShapeStyle,
 } from "./board-model";
 
 export type Direction = "TD" | "LR" | "BT" | "RL";
@@ -449,21 +451,72 @@ export function mindmapToElements(
 
 /* ------------------------------------------------------------ registry */
 
-/** Every Mermaid diagram type that can become a board, tried in order. */
-const IMPORTERS: ((source: string, measure?: Measure) => BoardEl[] | null)[] = [
+/** Every Mermaid diagram type that can become a board, tried in order: the
+ *  ones with board pieces of their own, then any other as a chart card. */
+const IMPORTERS: ((source: string, measure: Measure) => BoardEl[] | null)[] = [
   (src, measure) => {
     const graph = parseMermaidFlowchart(src);
     return graph ? flowchartToElements(graph, measure) : null;
   },
   (src, measure) => mindmapToElements(src, measure),
+  (src, measure) => quadrantToElements(src, measure),
+  (src, measure) => timelineToElements(src, measure),
+  (src) => chartToElements(src),
 ];
 
 /** Board elements for a Mermaid source, top-left at (0, 0); `null` when the
  *  diagram type has no board equivalent. */
-export function mermaidToElements(source: string, measure?: Measure): BoardEl[] | null {
+export function mermaidToElements(
+  source: string,
+  measure: Measure = approxMeasure,
+): BoardEl[] | null {
   for (const importer of IMPORTERS) {
     const els = importer(source, measure);
     if (els?.length) return els;
   }
   return null;
+}
+
+/** How wide a step's words run before they wrap, so a chain of five still
+ *  reads when the board is shown small (the talk box). */
+const STEP_TEXT = 104;
+/** The space between two steps, wider where an arrow carries a label. */
+const STEP_GAP = 40;
+
+/**
+ * A picture as Pensée draws it (SPECs/board-pictures-spec.md): steps are the
+ * board's own cards (a rounded rectangle, soft blue with a blue outline) read
+ * left to right, their words wrapped so the chain stays narrow; every other
+ * picture is `mermaidToElements`'s. A pasted flowchart keeps its own shapes;
+ * this is for what Pensée draws itself (the talk, the picture tray).
+ */
+export function pictureToElements(
+  source: string,
+  measure: Measure = approxMeasure,
+): BoardEl[] | null {
+  const flow = parseMermaidFlowchart(source);
+  if (!flow) return mermaidToElements(source, measure);
+  flow.dir = "LR";
+  for (const node of flow.nodes.values()) {
+    node.shape = "roundRect";
+    node.text = wrapWords(node.text.replace(/\s+/g, " ").trim(), FONT, STEP_TEXT, measure);
+  }
+  const els = flowchartToElements(flow, measure, STEP_GAP);
+  for (const el of els) if (el.t === "roundRect") el.st = newShapeStyle();
+  return els;
+}
+
+/** Greedy word wrap to `max` px, lines joined by newlines. */
+function wrapWords(words: string, size: number, max: number, measure: Measure): string {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words.split(" ").filter(Boolean)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && measure(next, size) > max) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines.join("\n");
 }

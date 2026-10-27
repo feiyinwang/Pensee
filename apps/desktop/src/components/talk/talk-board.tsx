@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { renderStaticBoard } from "@/components/editor-area/board/board-canvas";
+import { mermaidToElements } from "@/components/editor-area/board/board-mermaid";
+import { onChartsReady } from "@/components/editor-area/board/board-chart";
 import { type MovePlace, editTopicBoard, moveTopic, useTopicBoards } from "@/lib/talk/topic-boards";
+import { TalkDiagram } from "./talk-diagram";
 import "@/components/editor-area/board/board.css";
 
 // A topic drawn as a board in the talk box (SPECs/talk-notes-spec.md#topic-boards):
@@ -48,10 +51,13 @@ export function TalkBoard({
   topicKey,
   label,
   notePath,
+  source,
 }: {
   topicKey: string;
   label: string;
   notePath: string;
+  /** The AI's Mermaid: shown as it is when it can't become a board (a mistake). */
+  source: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const drag = useRef<(Drag & { parent?: string }) | null>(null);
@@ -79,7 +85,12 @@ export function TalkBoard({
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(el);
-    return () => observer.disconnect();
+    // A chart card draws once its type has loaded.
+    const stop = onChartsReady(draw);
+    return () => {
+      observer.disconnect();
+      stop();
+    };
   }, [board]);
 
   const mark = (id: string | null, cls: string) => {
@@ -92,7 +103,12 @@ export function TalkBoard({
       host.current?.querySelector(`[data-el="${to.target}"]`)?.setAttribute("data-drop", to.place);
   };
 
-  if (!board) return <p className="talk-diagram-note">Drawing…</p>;
+  if (!board)
+    return mermaidToElements(source) ? (
+      <p className="talk-diagram-note">Drawing…</p>
+    ) : (
+      <TalkDiagram source={source} label={label} />
+    );
   const isMap = board.scene.els.some((el) => el.t === "mind");
   return (
     <button

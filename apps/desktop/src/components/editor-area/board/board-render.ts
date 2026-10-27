@@ -26,6 +26,7 @@ import { PIN_ICON_PATH, formatVideoTime, parseVideoLink } from "@/lib/video-pins
 import { parseAudioClip } from "@/lib/audio-clips";
 import { parseWikiLink } from "@/lib/wiki-links";
 import { smoothPath, strokeExtent } from "./board-draw";
+import { CHART_INKS, CHART_PAD, chartDrawing } from "./board-chart";
 import {
   type SceneLookup,
   branchColor,
@@ -755,6 +756,51 @@ function renderImage(
   g.append(img);
 }
 
+/** A chart card: a raised surface with a hairline ring, the chart drawn from
+ *  its Mermaid text fitted inside (`board-chart.ts`). */
+function renderChart(g: SVGGElement, el: BoardEl & { src: string }): void {
+  const w = Math.max(el.w, 0);
+  const h = Math.max(el.h, 0);
+  g.append(
+    svgEl("rect", {
+      class: "wr-board-chart-card",
+      width: w,
+      height: h,
+      rx: 12,
+      fill: "var(--wr-board-surface)",
+      stroke: "var(--wr-board-muted)",
+      "stroke-opacity": 0.3,
+    }),
+  );
+  const drawing = chartDrawing(el.src);
+  if (!drawing || "error" in drawing) {
+    const note = svgEl("text", {
+      x: w / 2,
+      y: h / 2,
+      "text-anchor": "middle",
+      "dominant-baseline": "middle",
+      "font-size": 13,
+      fill: "var(--wr-board-muted)",
+    });
+    note.textContent = drawing ? `This chart has a mistake: ${drawing.error}` : "Drawing…";
+    g.append(note);
+    return;
+  }
+  const doc = new DOMParser().parseFromString(drawing.svg, "image/svg+xml");
+  const root = doc.documentElement;
+  if (root.nodeName !== "svg") return;
+  const chart = document.importNode(root, true) as unknown as SVGSVGElement;
+  chart.setAttribute("x", String(CHART_PAD));
+  chart.setAttribute("y", String(CHART_PAD));
+  chart.setAttribute("width", String(Math.max(w - CHART_PAD * 2, 0)));
+  chart.setAttribute("height", String(Math.max(h - CHART_PAD * 2, 0)));
+  chart.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  chart.removeAttribute("role");
+  const inks = svgEl("g", { class: "wr-board-chart", style: CHART_INKS });
+  inks.append(chart);
+  g.append(inks);
+}
+
 /** A tinted section is its hue thinned over the canvas, so the dot grid still
  *  shows through as it does through the plain grey one. A fill swatch is the
  *  `-soft` token; the tint is worked from its full hue. */
@@ -904,6 +950,7 @@ export function renderElement(el: BoardEl, ctx: RenderContext): SVGGElement {
   else if (el.t === "sticky") renderSticky(g, el as never);
   else if (el.t === "text") renderText(g, el as never);
   else if (el.t === "image") renderImage(g, el as never, ctx);
+  else if (el.t === "chart") renderChart(g, el);
   else if (el.t === "frame") renderFrame(g, el);
   else if (el.t === "mind") renderMind(g, el, ctx);
   else if (el.t === "draw") renderDraw(g, el);
@@ -1022,6 +1069,8 @@ function stampOf(el: BoardEl, scene: BoardScene, movable: boolean, look: SceneLo
       base += `|${parent.x - el.x},${parent.y - el.y},${parent.w},${parent.h}|${branchColor(scene, el, look)}`;
     }
   }
+  // A chart draws once its type has loaded: the stamp says whether it had.
+  if (el.t === "chart") base += chartDrawing(el.src) ? "|drawn" : "|waiting";
   if (isLinker(el)) {
     for (const b of [el.b1, el.b2]) {
       if (!b) continue;

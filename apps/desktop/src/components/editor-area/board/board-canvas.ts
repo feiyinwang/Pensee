@@ -82,7 +82,9 @@ import {
   shapeLabel,
   svgEl,
 } from "./board-render";
-import { mermaidToElements } from "./board-mermaid";
+import { mermaidToElements, pictureToElements } from "./board-mermaid";
+import { fitCharts, loadCharts, onChartsReady } from "./board-chart";
+import { PICTURE_STARTERS, type PictureId } from "./board-dock-items";
 import { type Emphasis, toggleEmphasis, toggleEmphasisAll } from "./board-emphasis";
 import { strokeFrom } from "./board-draw";
 import { gridSpec } from "./board-grid";
@@ -1292,6 +1294,14 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
       host.focus();
       return;
     }
+    if (kind === "picture") {
+      // A picture's skeleton, dropped in the middle of the view, selected.
+      const els = pictureToElements(PICTURE_STARTERS[a as PictureId], measureText);
+      if (els) placeImported(els, viewCenterScene());
+      toolDock?.setValue(toolValue());
+      host.focus();
+      return;
+    }
     if (kind === "shape") tools.shape = a as ShapeKind;
     else if (kind === "linker") tools.linker = { kind: a as LinkerKind, shape: b as LinkerShape };
     else if (kind === "frame") tools.frame = a as FramePreset;
@@ -1719,7 +1729,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
         : { x: el.x, y: el.y, w: el.w, h: el.h };
     const mind = isMind(el) ? mindDepth(scene, el) : -1;
     const centred = el.t === "sticky" || isShape(el) || Boolean(mid) || mind >= 0;
-    const pad = el.t === "sticky" ? 16 : isShape(el) ? 10 : mind >= 0 ? MIND.padY : 0;
+    const chart = el.t === "chart";
+    const pad = el.t === "sticky" ? 16 : isShape(el) ? 10 : mind >= 0 ? MIND.padY : chart ? 12 : 0;
     const boxW = Math.max(frame.w - pad * 2, 60);
     const boxH = Math.max(frame.h - pad * 2, 20);
     // Match what the renderer will draw, so nothing jumps when editing ends.
@@ -1759,6 +1770,8 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
             ? "var(--wr-board-surface)" // the root is light text on a dark pill
             : "";
     if (mind >= 0) area.style.fontWeight = mind === 0 ? "600" : mind === 1 ? "500" : "400";
+    // A chart edits as its Mermaid text, over its drawing.
+    if (chart) area.classList.add("is-chart-source");
 
     /** Shapes and notes edit centred, like they render: the field is only as
      *  tall as its text and sits in the middle of the box. */
@@ -3485,6 +3498,13 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
     selection = new Set(els.map((el) => el.id));
     draw();
     markDirty();
+    // A chart card takes its drawing's size once its type has loaded.
+    if (els.some((el) => el.t === "chart"))
+      void loadCharts(els).then(() => {
+        if (disposed || !fitCharts(els)) return;
+        draw();
+        markDirty();
+      });
   }
 
   function onPaste(e: ClipboardEvent): void {
@@ -3566,12 +3586,17 @@ export function mountBoardCanvas(host: HTMLElement, opts: BoardCanvasOptions): B
   setTool("select");
   applyViewport();
   draw();
+  // A chart card draws once its type has loaded.
+  const stopCharts = onChartsReady(() => {
+    if (!disposed) draw();
+  });
   toolbar.setHistory(false, false);
   if (opts.present) requestAnimationFrame(() => startPresenting(0));
 
   return {
     destroy() {
       disposed = true;
+      stopCharts();
       cancelLinkClick();
       resizeObserver.disconnect();
       window.removeEventListener("scroll", onAnyScroll, { capture: true });
