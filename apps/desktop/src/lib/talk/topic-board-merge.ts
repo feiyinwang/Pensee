@@ -90,6 +90,22 @@ function mergeMind(
   const root = minds(scene.els).find((el) => !el.pa);
   if (!root) return scene;
   if (!yours(root)) root.tx = nextRoot.tx;
+  // Topics whose children you put in another order: the order of the ones
+  // Pensée wrote differs between what it wrote and the file.
+  const order = (els: BoardEl[], parent: string, keep: (id: string) => boolean) =>
+    minds(els)
+      .filter((el) => el.pa === parent && keep(el.id))
+      .map((el) => el.id)
+      .join();
+  const reordered = new Set(
+    minds(file.els)
+      .map((el) => el.id)
+      .filter(
+        (id) =>
+          order(file.els, id, (k) => wrote.has(k)) !==
+          order(written.els, id, (k) => present.has(k)),
+      ),
+  );
 
   // The AI's tree, in its order: each of its topics matched to one of the
   // board's by words, or added; `onBoard` maps its ids to the board's.
@@ -146,12 +162,13 @@ function mergeMind(
   );
   scene.els = scene.els.filter((el) => !dropped.has(el.id));
 
-  // Sibling order is scene order: the AI's order first, then yours as it was.
+  // Sibling order is scene order: the AI's order first, then yours as it was;
+  // under a topic whose children you reordered by hand, your order stays.
   const ordered: MindEl[] = [];
   const walk = (el: MindEl) => {
     ordered.push(el);
     const kids = kidsOf(el.id);
-    const first = aiOrder.get(el.id) ?? [];
+    const first = reordered.has(el.id) ? [] : (aiOrder.get(el.id) ?? []);
     const byId = new Map(kids.map((k) => [k.id, k]));
     for (const id of first) {
       const kid = byId.get(id);

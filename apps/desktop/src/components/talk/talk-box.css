@@ -179,6 +179,34 @@
   }
 }
 
+/* Arranging a mind map in the box: topics are grabbable; the dragged one
+   fades, and where it would go is marked on the topic under the pointer. */
+.talk-board-surface [data-type="mind"][data-parent] {
+  cursor: grab;
+}
+
+.talk-board[data-dragging],
+.talk-board[data-dragging] * {
+  cursor: grabbing;
+}
+
+.talk-board-surface .is-dragged {
+  opacity: 0.4;
+}
+
+.talk-board-surface [data-drop] rect:first-of-type {
+  stroke: var(--color-focus);
+  stroke-width: 2.5;
+}
+
+.talk-board-surface [data-drop="before"] rect:first-of-type {
+  stroke-dasharray: 6 4;
+}
+
+.talk-board-surface [data-drop="after"] rect:first-of-type {
+  stroke-dasharray: 2 4;
+}
+
 .talk-board:focus-visible {
   outline: 2px solid var(--focus-border);
   outline-offset: -2px;

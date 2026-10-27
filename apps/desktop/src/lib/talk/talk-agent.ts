@@ -37,10 +37,12 @@ topics: every topic that is new or whose diagram changed this turn, with its ful
 - sources: for every node, slice or point in the diagram, its label exactly as written in the mermaid, mapped to the numbers of the lines it came from (the lines that said it). Every node gets its lines; the central topic too.
 - mermaid: valid Mermaid text for the diagram that fits what was said. Choose:
   quadrantChart for options weighed on two scales (effort and value: x-axis Less effort --> More effort, y-axis Less value --> More value, each point written "Voice capture: [0.3, 0.8]", x and y from 0 to 1 in brackets);
-  pie for shares of a whole; xychart for numbers across categories or time; mindmap for reasons, doubts and plans around one question;
-  flowchart for steps or causes; journey for what a person goes through (score 1-5 per step); timeline for dates; kanban for things to do;
+  pie for shares of a whole; xychart for numbers across categories or time;
+  mindmap for brainstorming, ideas, plans, reasons and doubts around one question: the default whenever no other type clearly fits, even for a plan told as "first…, then…". Keep it broad: the main ideas or steps are the central topic's own branches (a plan's steps in their order), each one's details under it; something goes under another only when it is a detail of it or the speaker says so;
+  flowchart only when the speaker asks for steps, a flow or a process; journey for what a person goes through (score 1-5 per step); timeline for dates; kanban for things to do;
   sankey for flows between stages; sequenceDiagram for who says what to whom.
-  Use only what was said; short labels in the speaker's words; never invent numbers. Keep a topic's diagram type once chosen.
+  Use only what was said; short labels in the speaker's words; never invent numbers.
+  Keep a topic's diagram type unless the speaker asks for another, then redraw that topic in it right away, with the same content: "as a mind map"; "as steps", "as a flow"; "as a matrix", "on two axes", "compare" (quadrantChart); "as a pie", "as shares"; "as a chart", "as bars", "over time" (xychart); "as a timeline"; "as a to-do board" (kanban); "as a journey".
 The speaker directs the picture. When they say where something goes or how it relates ("X comes after Y", "X is a step of Y", "put X under Y", "move X to…", "rename X", "drop X", "draw this as a flow"), redraw the diagram exactly that way, even against how you drew it before: their latest word wins, and nothing they placed moves back. A line that only gives such an instruction changes the diagram; it is never itself a node.
 Mind maps and flowcharts are MECE: every node says one thing, siblings don't overlap, together they cover what was said under their parent, nothing appears twice, and something said to belong under a node sits only there. Group the way the speaker groups.
 Write in the language the speaker uses.`;

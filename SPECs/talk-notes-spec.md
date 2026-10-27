@@ -87,6 +87,16 @@ A topic drawn as a mind map or a flowchart is a Pensée board, not a Mermaid pic
 it, a `.board.svg` is made beside the note (as `/board` makes one) and the talk box shows it with the board's own
 renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their section has the summary and the Mermaid block. Asides keep their lines under "Said in passing".
 
+- **Which picture.** Brainstorming, ideas, plans, reasons and doubts are a **mind map** (the board's, its branches
+  in colour): the default whenever no other type clearly fits, even for a plan told as "first…, then…": the main
+  ideas or steps are the central topic's own branches, each in its colour, their details under them; something
+  goes under another only when it's a detail of it or you say so. Steps as a flowchart only when you ask ("as steps", "as a flow"), drawn
+  as the board's blue cards. Say "as a mind map", "as steps", "as a matrix" (two axes), "as a pie", "as a chart",
+  "as a timeline", "as a to-do board" or "as a journey" and the topic is redrawn that way at once. A topic shows
+  and is written as its current type: an earlier board of it stays on disk, unused.
+- **Arrange it in the box.** Drag a mind-map topic onto another to put it under it, or onto a sibling's top or
+  bottom edge to put it before or after; the topic under the pointer shows where it goes. A moved topic, and a
+  sibling order you set, are yours (kept through the AI's drawings). The central topic doesn't move.
 - **Click the board** in the talk box: it opens in the board editor. While it's open, what you say still goes
   to the AI, but that topic's drawing waits; it is merged when you close the editor.
 - **What you change by hand stays** (`topic-board-merge.ts`). Measured against what Pensée last wrote to the
@@ -99,7 +109,7 @@ renderer. Charts (pie, bar, quadrant, timeline…) stay Arc charts; their sectio
   says so.
 - **After Stop** the topic's section holds at most two sentences of summary (the AI's, of what you concluded or
   plan), then the board (`![Title](assets/….board.svg)`) instead of a Mermaid block: the drawing shows on the
-  page and opens with one click, like any board. The heard lines aren't listed under it; they're in the transcript.
+  page and opens with one click, like any board. After Stop the note scrolls to the topics and draws them at once. The heard lines aren't listed under it; they're in the transcript.
 - **Every node plays its part of the take.** The AI says which heard lines each node came from (`sources`); at Stop,
   once the take is saved, each node gets `ln` = `Recordings/<take>#t=<start>,<end>` (`audio-clips.ts`): from its
   first line to where its last line ends, in the take its first line is in. Its corner badge (a play mark, the span

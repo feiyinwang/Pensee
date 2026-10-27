@@ -8,15 +8,13 @@ import { useTalkStore } from "@/stores/talk-store";
 import { topicFill } from "@/lib/talk/ask";
 import { TalkDiagram } from "./talk-diagram";
 import { TalkBoard } from "./talk-board";
+import { isBoardDiagram } from "@/lib/talk/ask";
 import "./talk-box.css";
 
 // What you're saying, as you say it (SPECs/talk-notes-spec.md#while-you-talk-ask):
 // the talk's topics as tabs, what the pen is doing, the New topic? card, and
 // the shown topic's diagram. Loaded lazily with the first take, so a note
 // never pays for Arc, motion or affectUI at startup.
-
-/** Mind maps and flowcharts are drawn as boards; charts stay Arc charts. */
-const BOARD_DIAGRAM = /^\s*(mindmap|flowchart|graph)\b/;
 
 export default function TalkBox() {
   const ask = useTalkStore((s) => s.ask);
@@ -134,7 +132,7 @@ export default function TalkBox() {
             Downloading {model.name} ·{" "}
             <span className="talk-box-num">{Math.floor(progress * 100)}%</span>
           </p>
-        ) : topic?.mermaid && notePath && BOARD_DIAGRAM.test(topic.mermaid) ? (
+        ) : topic?.mermaid && notePath && isBoardDiagram(topic.mermaid) ? (
           <TalkBoard topicKey={topic.key} label={topic.title} notePath={notePath} />
         ) : topic?.mermaid ? (
           <TalkDiagram source={topic.mermaid} label={topic.title} />
@@ -143,7 +141,7 @@ export default function TalkBox() {
             {liveError ??
               (topic
                 ? "Its diagram starts with your next sentence."
-                : "Talk about what's on your mind. When you turn to the next thing, say so: “next…”, “moving on…”.")}
+                : "Talk about what's on your mind. Say “next…” to start another topic, or “as steps”, “as a matrix”, “as a timeline” to change its picture.")}
           </p>
         )}
       </div>

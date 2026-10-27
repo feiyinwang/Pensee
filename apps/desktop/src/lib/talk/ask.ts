@@ -27,6 +27,13 @@ export interface Topic {
   lines: number[];
 }
 
+/** Mind maps and flowcharts are drawn as boards; charts stay Arc charts. A
+ *  topic that changes type follows its current one: its old board stays on
+ *  disk but isn't shown or embedded. */
+export function isBoardDiagram(mermaid: string | undefined): boolean {
+  return /^\s*(mindmap|flowchart|graph)\b/.test(mermaid ?? "");
+}
+
 export interface AskState {
   topics: Record<string, Topic>;
   /** Topics with a tab, in the order they opened. */

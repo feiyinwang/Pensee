@@ -740,6 +740,64 @@ describe("Journeys: talk notes", () => {
         timeoutMsg: "the plan wasn't drawn as a board",
       })
       .catch(stopOnFail);
+    // A plan told as "first…, then…" is a mind map: arrange it right in the box.
+    const arrange = (go) =>
+      browser.execute((drop) => {
+        const nodes = [
+          ...document.querySelectorAll('.talk-board-surface [data-type="mind"][data-parent]'),
+        ];
+        const parentOf = new Map(nodes.map((n) => [n.getAttribute("data-el"), n.dataset.parent]));
+        const under = (id, of) => {
+          for (let p = parentOf.get(id); p; p = parentOf.get(p)) if (p === of) return true;
+          return false;
+        };
+        // A topic, and somewhere it can go: not into its own branch, not where it already is.
+        for (const a of nodes)
+          for (const b of nodes) {
+            const ia = a.getAttribute("data-el");
+            const ib = b.getAttribute("data-el");
+            if (ia === ib || under(ib, ia) || a.dataset.parent === ib) continue;
+            if (!drop) return { id: ia, to: ib };
+            const at = (el) => {
+              const r = el.querySelector("rect").getBoundingClientRect();
+              return { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+            };
+            const opts = {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 7,
+              isPrimary: true,
+              button: 0,
+            };
+            a.dispatchEvent(new PointerEvent("pointerdown", { ...opts, ...at(a) }));
+            const button = document.querySelector(".talk-board");
+            button.dispatchEvent(new PointerEvent("pointermove", { ...opts, ...at(b) }));
+            button.dispatchEvent(new PointerEvent("pointerup", { ...opts, ...at(b) }));
+            button.dispatchEvent(new MouseEvent("click", { bubbles: true, ...at(b) }));
+            return { id: ia, to: ib };
+          }
+        return null;
+      }, go);
+    // Room to arrange appears as the talk goes on.
+    await browser
+      .waitUntil(async () => Boolean(await arrange(false)), {
+        timeout: 60_000,
+        timeoutMsg: "the plan wasn't drawn as a mind map with a topic to move",
+      })
+      .catch(stopOnFail);
+    const moved = await arrange(true);
+    await browser
+      .waitUntil(
+        () =>
+          browser.execute(
+            ({ id, to }) =>
+              document.querySelector(`.talk-board-surface [data-el="${id}"]`)?.dataset.parent ===
+              to,
+            moved,
+          ),
+        { timeout: 10_000, timeoutMsg: "dragging a topic onto another didn't move it there" },
+      )
+      .catch(stopOnFail);
     await browser.execute(() => document.querySelector(".talk-board").click());
     await browser
       .waitUntil(

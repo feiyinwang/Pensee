@@ -1,7 +1,19 @@
 import { create } from "zustand";
 import * as tauri from "@/lib/tauri";
 import { mermaidToElements } from "@/components/editor-area/board/board-mermaid";
-import { type BoardScene, emptyScene } from "@/components/editor-area/board/board-model";
+import {
+  type BoardEl,
+  type BoardScene,
+  type MindEl,
+  emptyScene,
+  newShapeStyle,
+} from "@/components/editor-area/board/board-model";
+import {
+  MIND_PALETTE,
+  isMind,
+  layoutMind,
+  mindSubtree,
+} from "@/components/editor-area/board/board-mind";
 import { readBoardSvg } from "@/components/editor-area/board/board-file";
 import { measureText } from "@/components/editor-area/board/board-render";
 import {
@@ -58,9 +70,18 @@ async function readScene(absolute: string): Promise<BoardScene> {
   return parsed.scene;
 }
 
+/** A flowchart's steps as the board's own cards (a soft fill with the strong
+ *  outline of the same hue), not Mermaid's plain boxes. */
+function asCards(els: BoardEl[]): BoardEl[] {
+  for (const el of els)
+    if ("st" in el && el.t !== "arrow" && el.t !== "line") el.st = newShapeStyle();
+  return els;
+}
+
 async function apply(key: string, mermaid: string, notePath: string): Promise<void> {
-  const next = mermaidToElements(mermaid, measureText);
-  if (!next) return;
+  const converted = mermaidToElements(mermaid, measureText);
+  if (!converted) return;
+  const next = asCards(converted);
   if (useTopicBoards.getState().editing === key) {
     held.set(key, mermaid);
     return;
@@ -169,6 +190,54 @@ export function attachClips(
       show(key, scene, entry.frozen);
     })
     .catch((error: unknown) => console.error(`[talk] clips for ${key} not added:`, error));
+  queues.set(key, run);
+  return run;
+}
+
+export type MovePlace = "child" | "before" | "after";
+
+/**
+ * Moves a mind-map topic in the talk box, by hand: under `target` (its last
+ * child), or just before or after it among its siblings. It is yours from
+ * then on, so the AI's drawings leave it where you put it.
+ */
+export function moveTopic(
+  key: string,
+  id: string,
+  target: string,
+  place: MovePlace,
+): Promise<void> {
+  const run = (queues.get(key) ?? Promise.resolve())
+    .then(async () => {
+      const entry = entries.get(key);
+      if (!entry) return;
+      const scene = await readScene(entry.absolute);
+      const el = scene.els.find((e) => e.id === id);
+      const to = scene.els.find((e) => e.id === target);
+      if (!isMind(el) || !isMind(to) || !el.pa) return;
+      // Not into itself or a branch of its own.
+      if (mindSubtree(scene, id).some((m) => m.id === target)) return;
+      const parent = place === "child" ? to.id : to.pa;
+      if (!parent) return;
+      scene.els.splice(scene.els.indexOf(el), 1);
+      let at: number;
+      if (place === "before") at = scene.els.indexOf(to);
+      else {
+        const branch = mindSubtree(scene, to.id).map((m) => scene.els.indexOf(m));
+        at = Math.max(...branch) + 1;
+      }
+      scene.els.splice(at, 0, el);
+      el.pa = parent;
+      delete el.sd;
+      const root = scene.els.find((e): e is MindEl => isMind(e) && !e.pa);
+      if (!root) return;
+      if (parent === root.id) el.c ??= MIND_PALETTE[0];
+      else delete el.c;
+      layoutMind(scene, root.id, measureText);
+      await saveBoardFile(entry.absolute, scene);
+      show(key, scene, entry.frozen);
+    })
+    .catch((error: unknown) => console.error(`[talk] topic not moved on ${key}:`, error));
   queues.set(key, run);
   return run;
 }

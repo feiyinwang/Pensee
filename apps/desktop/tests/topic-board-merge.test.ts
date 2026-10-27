@@ -94,6 +94,20 @@ describe("topic board merge", () => {
     ]);
   });
 
+  test("children you put in another order keep your order", () => {
+    const written = board(FIRST);
+    const file = structuredClone(written);
+    const ads = file.els.findIndex((e) => (e as MindEl).tx === "Test with ads");
+    const [moved] = file.els.splice(ads, 1);
+    file.els.splice(1, 0, moved!);
+    const { scene } = mergeTopicBoard(file, written, els(FIRST), measure);
+    expect(tree(scene)).toEqual([
+      "My business idea > Test with ads",
+      "My business idea > Scan keywords",
+      "My business idea > Use Rob's skills",
+    ]);
+  });
+
   test("a flowchart you edited is left as it is", () => {
     const flow = "flowchart LR\n  A[Keywords] --> B[Ideas]";
     const written = board(flow);

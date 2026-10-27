@@ -4,10 +4,12 @@ import { listen } from "@tauri-apps/api/event";
 import { Recorder, microphoneError } from "@/lib/talk/recorder";
 import { recordingStem } from "@/lib/talk/clock";
 import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { insertTalk, talkInsertion } from "@/lib/talk/insert-talk";
 import { minimalChange } from "@/lib/block-refs";
 import { audioClipLink } from "@/lib/audio-clips";
 import type { Topic } from "@/lib/talk/ask";
+import { isBoardDiagram } from "@/lib/talk/ask";
 import { editPage } from "@/components/editor-area/linked-block-sync";
 import {
   type Segment,
@@ -230,7 +232,9 @@ export const useTalkStore = create<TalkState>((set, get) => {
       key: k,
       title: ask.topics[k]?.title ?? k,
       // A board shows the AI how it is now, with what you changed by hand.
-      mermaid: boards?.topicBoardMermaid(k) ?? ask.topics[k]?.mermaid ?? "",
+      mermaid:
+        (isBoardDiagram(ask.topics[k]?.mermaid) && boards?.topicBoardMermaid(k)) ||
+        (ask.topics[k]?.mermaid ?? ""),
     }));
     sorting = askTalk(talkPrompt(batch, topics, ask.current))
       .then((reply) => {
@@ -329,6 +333,7 @@ export const useTalkStore = create<TalkState>((set, get) => {
     const embeds = new Map<string, string>();
     if (boards)
       for (const key of take.ask.open) {
+        if (!isBoardDiagram(take.ask.topics[key]?.mermaid)) continue;
         const relative = await boards.topicBoardEmbed(key);
         if (relative) embeds.set(key, relative);
       }
@@ -343,7 +348,15 @@ export const useTalkStore = create<TalkState>((set, get) => {
       const next = withTranscript(doc, take, callout, boardOf);
       const change = next === null ? null : minimalChange(doc, next);
       if (next === null) gone();
-      else if (change) view.dispatch({ changes: change, userEvent: "input.talk" });
+      else if (change) {
+        view.dispatch({ changes: change, userEvent: "input.talk" });
+        // Show what the talk came to: its topics, drawn now. Tall boards
+        // arrive at once, and the editor draws them only once it measures.
+        const at = sectionsWritten ? view.state.doc.toString().indexOf(sectionsWritten) : -1;
+        if (at >= 0)
+          view.dispatch({ effects: EditorView.scrollIntoView(at, { y: "start", yMargin: 96 }) });
+        view.requestMeasure();
+      }
       return;
     }
     // You left the note, or closed it, while it was being written: into its file.
