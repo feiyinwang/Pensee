@@ -10,14 +10,7 @@ import { useMountTransition } from "./use-mount-transition";
 import { showNativeContextMenu } from "./editor-context-menu";
 import { EDITOR_SCROLLBAR_GUTTER } from "./editor-scroll-container";
 import { scrollPosToSafeTop } from "./editor-scroll";
-import {
-  SEGMENT_MIN,
-  dotOffset,
-  indentForDepth,
-  nextWindowStart,
-  rowTops,
-  segmentLayout,
-} from "./section-rail-depth";
+import { dotOffset, indentForDepth, nextWindowStart, segmentLayout } from "./section-rail-depth";
 import "./section-rail.css";
 
 // The hover zone is wider than the 2px line so it can be found; the line runs
@@ -29,8 +22,8 @@ const RAIL_BAND_GAP = 24;
 const POPOVER_WIDTH = 260;
 const POPOVER_PAD_Y = 8;
 const ROW_HEIGHT = 24;
-// Each row's text centre sits on the middle of its segment's first SEGMENT_MIN.
-const POPOVER_OFFSET = -(POPOVER_PAD_Y + ROW_HEIGHT / 2) + SEGMENT_MIN / 2;
+// The first row's text centre sits level with the top of the line.
+const POPOVER_OFFSET = -(POPOVER_PAD_Y + ROW_HEIGHT / 2);
 // Passing over the line on the way to the scrollbar must not flash the list.
 const OPEN_DELAY_MS = 100;
 // Matches --motion-base in section-rail.css / App.css.
@@ -173,8 +166,6 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
     Math.max(docLength, headings[headings.length - 1]?.pos ?? 0),
   );
   const segments = view ? segmentLayout(sizes, track) : [];
-  const rows = rowTops(segments, ROW_HEIGHT);
-  const listHeight = rows.length > 0 ? rows[rows.length - 1] + ROW_HEIGHT : 0;
 
   const maxDepth = headings.reduce((max, heading) => Math.max(max, heading.depth), 0);
   const activeDepth = activeIndex === null ? null : (headings[activeIndex]?.depth ?? null);
@@ -248,7 +239,8 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
   // A list taller than the pane opens with the marked row in view. Set by
   // hand, not scrollIntoView, which would also scroll the tab strip to a
   // column that is off to the side.
-  const activeRowTop = activeIndex === null ? undefined : rows[activeIndex];
+  // Rows stack at a fixed height, so the marked row's place is its index.
+  const activeRowTop = activeIndex === null ? undefined : activeIndex * ROW_HEIGHT;
   useLayoutEffect(() => {
     const list = listScrollRef.current;
     if (!list || activeRowTop === undefined) return;
@@ -346,34 +338,29 @@ export function SectionRail({ filePath, view, scrollContainerRef, outlineTop }: 
             className="scrollbar-none min-h-0 overflow-y-auto"
             style={{ padding: `${POPOVER_PAD_Y}px 0` }}
           >
-            <ul className="relative" style={{ height: listHeight }}>
-              {headings.map((heading, i) => {
-                const top = rows[i];
-                if (top === undefined) return null;
-                return (
-                  <li key={`${heading.line}-${i}`}>
-                    <button
-                      type="button"
-                      className={`section-rail-row${i === activeIndex ? " is-active" : ""}${
-                        i === hoverIndex ? " is-hover" : ""
-                      }`}
-                      data-animate={animateIndent ? "true" : "false"}
-                      title={heading.text}
-                      style={{
-                        top,
-                        height: ROW_HEIGHT,
-                        paddingLeft: 16 + indentForDepth(heading.depth, windowStart),
-                      }}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onMouseEnter={() => setHoverIndex(i)}
-                      onClick={() => handlePick(heading)}
-                      onContextMenu={(event) => handleContextMenu(event, heading)}
-                    >
-                      {heading.text}
-                    </button>
-                  </li>
-                );
-              })}
+            <ul>
+              {headings.map((heading, i) => (
+                <li key={`${heading.line}-${i}`}>
+                  <button
+                    type="button"
+                    className={`section-rail-row${i === activeIndex ? " is-active" : ""}${
+                      i === hoverIndex ? " is-hover" : ""
+                    }`}
+                    data-animate={animateIndent ? "true" : "false"}
+                    title={heading.text}
+                    style={{
+                      height: ROW_HEIGHT,
+                      paddingLeft: 16 + indentForDepth(heading.depth, windowStart),
+                    }}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setHoverIndex(i)}
+                    onClick={() => handlePick(heading)}
+                    onContextMenu={(event) => handleContextMenu(event, heading)}
+                  >
+                    {heading.text}
+                  </button>
+                </li>
+              ))}
             </ul>
           </ScrollFade>
         </SurfaceCard>

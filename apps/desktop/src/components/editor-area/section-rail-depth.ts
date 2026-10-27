@@ -71,17 +71,3 @@ export function dotOffset(segment: Segment, start: number, stop: number, reading
   const fraction = span > 0 ? Math.min(Math.max((readingY - start) / span, 0), 1) : 0;
   return segment.top + fraction * segment.height;
 }
-
-// The hover list sets each row level with its segment, so the line and the
-// list read as one thing. A row never overlaps the one above: short sections
-// push the rows under them down until a longer section lets them catch up.
-export function rowTops(segments: Segment[], rowHeight: number): number[] {
-  const tops: number[] = [];
-  let next = 0;
-  for (const segment of segments) {
-    const top = Math.max(segment.top, next);
-    tops.push(top);
-    next = top + rowHeight;
-  }
-  return tops;
-}

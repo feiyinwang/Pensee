@@ -143,14 +143,16 @@ at every window width whenever the note has at least one heading.
   heading and the dot agree (`dotOffset`). Marking itself is unchanged:
   `useActiveHeadings`.
 - **Hover list.** After 100ms over the line (so passing to the scrollbar
-  doesn't flash it), a 260px `SurfaceCard` opens left of the line. Each row is
-  level with its segment; a row never overlaps the one above, so rows under
-  short sections are pushed down until a longer section lets them catch up
-  (`rowTops`). Rows are muted, one line, truncated, indented with the sliding
-  three-level window; the marked row is primary and medium weight. Hovering a
-  row lights its segment and the other way round. A list taller than the pane
-  scrolls itself and opens with the marked row in view. Leaving both, Esc, or
-  a click closes it.
+  doesn't flash it), a 260px `SurfaceCard` opens left of the line, its first
+  row level with the line's top. Rows stack tight, 24px each with no gaps
+  (2026-10-27: rows first sat level with their segments, which left big gaps
+  under long sections; "the gaps are too big … like before without too much
+  gap"). Hovering a row lights its segment, and the other way round, so the
+  link between list and line is shown on hover instead of by position. Rows
+  are muted, one line, truncated, indented with the sliding three-level
+  window; the marked row is primary and medium weight. A list taller than the
+  line scrolls itself and opens with the marked row in view. Leaving both,
+  Esc, or a click closes it.
 - **Motion.** The list enters with opacity and `translateX(4px) scale(0.97)`
   from the right top, `--motion-base` `--ease-out`; segment colour fades on
   `--motion-fast`. The dot does not animate. None under reduced motion.

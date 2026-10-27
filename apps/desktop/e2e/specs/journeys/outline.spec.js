@@ -121,6 +121,18 @@ describe("Journeys: outline", function () {
       timeout: 5_000,
       timeoutMsg: "hovering the line never opened the list",
     });
+    // The rows stack tight, one under the next, not spread out to their segments.
+    const pitches = await browser.execute(() => {
+      const pane = [...document.querySelectorAll("[data-pane]")].find((el) => el.offsetParent);
+      // Layout positions: the hidden window can leave the list mid-entrance,
+      // still scaled to 0.97, and a scaled box would read 23px.
+      const tops = [...pane.querySelectorAll(".section-rail-row")].map((row) => row.offsetTop);
+      return tops.slice(1).map((top, i) => Math.round(top - tops[i]));
+    });
+    ok(
+      pitches.every((pitch) => pitch === 24),
+      `rows sit 24px apart: ${pitches.join(", ")}`,
+    );
     const row = await $('//nav[@aria-label="On this page"]//button[contains(., "Wrapping up")]');
     await row.click();
     // The hidden e2e window runs no frames after a scroll, so CodeMirror may

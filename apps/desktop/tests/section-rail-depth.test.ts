@@ -7,7 +7,6 @@ import {
   dotOffset,
   indentForDepth,
   nextWindowStart,
-  rowTops,
   segmentLayout,
 } from "../src/components/editor-area/section-rail-depth";
 
@@ -116,24 +115,5 @@ describe("dotOffset", () => {
 
   test("an empty section puts the dot at its segment's start", () => {
     expect(dotOffset(segment, 1000, 1000, 1000)).toBe(100);
-  });
-});
-
-describe("rowTops", () => {
-  test("rows sit level with their segments when there is room", () => {
-    const segs = [
-      { top: 0, height: 50 },
-      { top: 54, height: 50 },
-    ];
-    expect(rowTops(segs, 24)).toEqual([0, 54]);
-  });
-
-  test("short segments push the rows under them down so rows never overlap", () => {
-    const segs = [
-      { top: 0, height: 6 },
-      { top: 10, height: 6 },
-      { top: 100, height: 6 },
-    ];
-    expect(rowTops(segs, 24)).toEqual([0, 24, 100]);
   });
 });
