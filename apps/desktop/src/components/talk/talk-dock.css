@@ -19,6 +19,49 @@
   bottom: 20px;
 }
 
+/* A problem with the take, above the pill (the microphone sends only
+   silence): its own card, in the error colour, so it reads as something to
+   fix, not as the pill's status. */
+.talk-dock-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(440px, 100%);
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--color-status-danger) 10%, var(--color-bg-popover));
+  box-shadow:
+    var(--shadow-dock),
+    inset 0 0 0 1px color-mix(in oklab, var(--color-status-danger) 35%, transparent);
+  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-label);
+  line-height: 1.4;
+  pointer-events: auto;
+  animation: talk-dock-alert-in var(--motion-base) var(--ease-out);
+}
+
+.talk-dock-alert strong {
+  color: var(--color-text-error);
+  font-weight: 600;
+}
+
+.talk-dock-alert-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--color-text-error);
+}
+
+@keyframes talk-dock-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
 .talk-dock-pill {
   display: flex;
   align-items: center;
@@ -211,7 +254,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .talk-dock-pill[data-recording] .talk-dock-dot {
+  .talk-dock-pill[data-recording] .talk-dock-dot,
+  .talk-dock-alert {
     animation: none;
   }
 

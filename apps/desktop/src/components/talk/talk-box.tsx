@@ -8,6 +8,7 @@ import { useTalkStore } from "@/stores/talk-store";
 import { PICTURES, isBoardDiagram, isEmptyTopic, pictureOf, topicFill } from "@/lib/talk/ask";
 import { TalkDiagram } from "./talk-diagram";
 import { TalkBoard } from "./talk-board";
+import { PicturePreview, PicturePreviews } from "./picture-preview";
 import "./talk-box.css";
 
 // What you're saying, as you say it (SPECs/talk-notes-spec.md#while-you-talk-ask):
@@ -169,19 +170,22 @@ export default function TalkBox() {
             Say or click
           </span>
           <div className="talk-box-pictures" role="group" aria-labelledby="talk-box-say">
-            {PICTURES.map((p) => (
-              <button
-                key={p.kind}
-                type="button"
-                className="talk-box-picture"
-                aria-pressed={picture === p.kind}
-                data-pending={(asked?.kind === p.kind && asked.key === topic?.key) || undefined}
-                disabled={!canDraw}
-                onClick={() => useTalkStore.getState().redraw(p.kind)}
-              >
-                {p.says}
-              </button>
-            ))}
+            <PicturePreviews>
+              {PICTURES.map((p) => (
+                <PicturePreview key={p.kind} kind={p.kind} says={p.says}>
+                  <button
+                    type="button"
+                    className="talk-box-picture"
+                    aria-pressed={picture === p.kind}
+                    data-pending={(asked?.kind === p.kind && asked.key === topic?.key) || undefined}
+                    disabled={!canDraw}
+                    onClick={() => useTalkStore.getState().redraw(p.kind)}
+                  >
+                    {p.says}
+                  </button>
+                </PicturePreview>
+              ))}
+            </PicturePreviews>
           </div>
           <button
             type="button"

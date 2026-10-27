@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { MicOff } from "lucide-react";
 import type { RefObject } from "react";
 import { onTalkLevel, useTalkStore } from "@/stores/talk-store";
 import { formatClock } from "@/lib/talk/clock";
@@ -218,6 +219,16 @@ export function TalkDock({
           <TalkBox />
         </Suspense>
       )}
+      {phase === "recording" && startedAt && silent && (
+        // Above the pill, as its own card: what's wrong and where to fix it.
+        <div className="talk-dock-alert" role="alert">
+          <MicOff className="talk-dock-alert-icon" aria-hidden="true" />
+          <span>
+            <strong>No sound from the microphone.</strong> Allow Pensée in System Settings → Privacy
+            &amp; Security → Microphone.
+          </span>
+        </div>
+      )}
       {phase === "recording" && startedAt ? (
         <div className="talk-dock-pill" data-recording="">
           <span className="talk-dock-dot" aria-hidden="true" />
@@ -225,12 +236,6 @@ export function TalkDock({
           <Elapsed since={startedAt} />
           {elsewhere && notePath && (
             <span className="talk-dock-where">in {noteName(notePath)}</span>
-          )}
-          {silent && (
-            <span className="talk-dock-note talk-dock-silent" role="status">
-              No sound from the microphone. Allow Pensée in System Settings → Privacy &amp; Security
-              → Microphone.
-            </span>
           )}
           <button
             type="button"

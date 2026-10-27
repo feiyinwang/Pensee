@@ -316,6 +316,70 @@
 .talk-box-picture:disabled {
   color: var(--color-text-faint);
   cursor: default;
+  /* Hover reaches the wrapper, which shows the picture's preview. */
+  pointer-events: none;
+}
+
+.picture-preview-trigger {
+  display: inline-flex;
+}
+
+/* A picture button's hover preview (picture-preview.tsx): a small example,
+   drawn as a topic would be, rising from the button. */
+.picture-preview {
+  z-index: 90;
+  display: grid;
+  gap: 2px;
+  width: 284px;
+  padding: 12px;
+  border-radius: var(--radius-card);
+  background: var(--color-bg-popover);
+  box-shadow:
+    var(--shadow-popover),
+    inset 0 0 0 1px var(--color-border-subtle);
+  font-family: var(--font-ui);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  transition:
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+@starting-style {
+  .picture-preview[data-state$="-open"] {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+
+.picture-preview[data-state="closed"] {
+  opacity: 0;
+}
+
+.picture-preview-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+}
+
+.picture-preview-when {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.picture-preview-drawing {
+  width: 260px;
+  height: 150px;
+  margin-top: 8px;
+  border-radius: var(--radius-field);
+  background: var(--color-bg-canvas);
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picture-preview {
+    transform: none;
+    transition: opacity var(--motion-fast) linear;
+  }
 }
 
 /* Asked for, until the talk's Claude redraws it. */

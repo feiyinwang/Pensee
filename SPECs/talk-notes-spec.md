@@ -24,7 +24,7 @@ Ask on 2026-10-26) and `apps/desktop/proto/talk-notes` (Ask with Pele, audio, Co
   video note; Record in the footer bar, which read as one more count; a pill that only shrank while you worked).
 - While recording the pill shows a live red dot, a level trace, the time and **Stop**. The trace is the last half second of your voice's loudness, newest on the right, on a decibel scale so talking fills most of it and a quiet room leaves it flat.
 - The pill and the live box size to the note's pane, not the window, so they fit a column after a pinch.
-- When macOS hasn't let Pensée use the microphone it gets only silence, not an error. If nothing but exact zeros comes in for the first 3 seconds, the pill says "No sound from the microphone" and where to allow Pensée; it goes once sound arrives. A quiet room is never exactly zero, so this doesn't fire on silence you make.
+- When macOS hasn't let Pensée use the microphone it gets only silence, not an error. If nothing but exact zeros comes in for the first 3 seconds, a red error card above the pill (its own card, not the pill's status) says "No sound from the microphone" and where to allow Pensée; it goes once sound arrives. A quiet room is never exactly zero, so this doesn't fire on silence you make.
 - The microphone is on only while the pill shows a take. Going to another note keeps recording, and the pill follows you there with the note's name ("in Talk note") and **Stop**. Closing the note's tab stops the take and saves it to `Recordings/`. A take whose note isn't on screen at Stop (left or closed) still goes into the note: into its file, at the end, with its transcript and topics after it; what Stop asks next (the Whisper download, an error) shows on the note you're in.
 - **Stop** saves the take as an audio file in `Recordings/` at the vault root, named by date and time:
   `Recordings/2026-10-25 09.14.m4a`. A later take into the same talk is `… 09.14 (2).m4a`.
@@ -117,6 +117,10 @@ matrix and a timeline are made of board pieces, a bar, line or pie chart is a ch
   for stays until you ask for another. A topic shows and is written as its current type: an earlier chart of
   it stays unused. A map redrawn as steps (or back) keeps its board file while you haven't touched it; if you
   had, it gets a new board and yours stays on disk as you left it.
+- **Hover a picture button** to see what it draws before you click it: a card rises from the button
+  with one line on when to use it ("Options weighed on two scales") and a small made-up example drawn
+  exactly as a topic would be. The first waits a moment; the next opens at once. It shows while the
+  buttons are still disabled, so you can learn them before you've said anything.
 - **next topic**, at the end of that row, opens a tab now, titled "New topic" until the AI names it from what
   you say next; those lines go in it with no New topic? card. One empty tab at a time: the button waits while
   the new tab has nothing in it, and an empty one isn't written to the note.

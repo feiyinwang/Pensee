@@ -743,7 +743,7 @@ describe("Journeys: talk notes", () => {
     ok(await pressDock("Not now"));
   });
 
-  it("TALK-19 A microphone that sends only silence: the pill says it hears nothing and where to allow it", async () => {
+  it("TALK-19 A microphone that sends only silence: an error card above the pill says it hears nothing and where to allow it", async () => {
     await openNote("Talk note");
     await fakeMicrophone(true, { silent: true });
     setWhisper(false);
@@ -753,6 +753,20 @@ describe("Journeys: talk notes", () => {
       timeoutMsg: `no word about the silent microphone: ${await dockText()}`,
     });
     ok((await dockText()).includes("Privacy & Security → Microphone"), await dockText());
+    // Its own error card above the pill, not text inside it.
+    const place = await browser.execute(() => {
+      const alert = document.querySelector(".talk-dock-alert[role='alert']");
+      const pill = document.querySelector(".talk-dock-pill");
+      if (!alert || !pill) return null;
+      return {
+        above: alert.getBoundingClientRect().bottom <= pill.getBoundingClientRect().top,
+        inPill: pill.textContent.includes("No sound"),
+      };
+    });
+    ok(
+      place?.above && !place.inPill,
+      `the warning isn't a card above the pill: ${JSON.stringify(place)}`,
+    );
     ok(await pressDock("Stop"));
     await browser.waitUntil(async () => /Whisper Small/.test(await dockText()), {
       timeout: 10_000,
@@ -955,6 +969,39 @@ describe("Journeys: talk notes", () => {
         () => document.querySelector('.talk-box-picture[aria-pressed="true"]')?.textContent ?? "",
       );
     ok((await pressed()) === "as steps", `as steps isn't shown as the picture: ${await pressed()}`);
+    // Hovering a picture button previews its picture, with a made-up example.
+    await browser.execute(() => {
+      const button = [...document.querySelectorAll(".talk-box-picture")].find(
+        (b) => b.textContent === "as a matrix",
+      );
+      const trigger = button.closest(".picture-preview-trigger");
+      const r = trigger.getBoundingClientRect();
+      for (const dx of [2, 4, 6])
+        trigger.dispatchEvent(
+          new PointerEvent("pointermove", {
+            bubbles: true,
+            pointerType: "mouse",
+            clientX: r.left + dx,
+            clientY: r.top + r.height / 2,
+          }),
+        );
+    });
+    await browser.waitUntil(
+      () =>
+        browser.execute(() => {
+          const card = document.querySelector(".picture-preview");
+          return (
+            !!card?.querySelector(".picture-preview-drawing svg") &&
+            card.querySelector(".picture-preview-title")?.textContent === "as a matrix"
+          );
+        }),
+      { timeout: 5_000, timeoutMsg: "hovering as a matrix showed no preview" },
+    );
+    await browser.execute(() =>
+      document
+        .querySelector(".picture-preview-trigger")
+        ?.dispatchEvent(new PointerEvent("pointerleave", { bubbles: false, pointerType: "mouse" })),
+    );
     await browser.execute(() =>
       [...document.querySelectorAll(".talk-box-picture")]
         .find((b) => b.textContent === "as a mind map")
