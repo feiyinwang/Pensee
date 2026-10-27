@@ -90,6 +90,68 @@
   animation: talk-dock-blink 1.2s ease-in-out infinite;
 }
 
+/* Record at rest: the red dot on a round surface (talk-dock.tsx RecordDot). The
+   surface is its own layer so stepping aside can fade it and leave only the dot. */
+.talk-dock-dot-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.talk-dock-dot-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-bg-popover);
+  box-shadow:
+    var(--shadow-popover),
+    inset 0 0 0 1px var(--color-border-subtle);
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    scale var(--motion-base) var(--ease-out);
+}
+
+.talk-dock-dot-button .talk-dock-dot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    scale var(--motion-fast) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .talk-dock-dot-button:hover .talk-dock-dot {
+    scale: 1.2;
+  }
+}
+
+/* Stepping aside while you scroll or write: the surface goes, the dot dims. */
+.talk-dock-dot-button[data-tucked]:not(:focus-visible)::before {
+  opacity: 0;
+  scale: 0.8;
+}
+
+.talk-dock-dot-button[data-tucked]:not(:focus-visible) .talk-dock-dot {
+  opacity: 0.3;
+}
+
+.talk-dock-pill:not([data-recording]) {
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+
+.talk-dock-pill[data-tucked]:not(:focus-within) {
+  opacity: 0.3;
+}
+
 @keyframes talk-dock-blink {
   50% {
     opacity: 0.35;
@@ -151,5 +213,11 @@
 @media (prefers-reduced-motion: reduce) {
   .talk-dock-pill[data-recording] .talk-dock-dot {
     animation: none;
+  }
+
+  .talk-dock-dot-button::before,
+  .talk-dock-dot-button .talk-dock-dot,
+  .talk-dock-pill {
+    transition: none;
   }
 }

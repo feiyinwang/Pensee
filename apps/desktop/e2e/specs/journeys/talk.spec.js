@@ -13,6 +13,7 @@ import {
   invoke,
   mouseClick,
   pressCmd,
+  typeInEditor,
   waitForTitle,
   workspaceRoot,
 } from "./_helpers.js";
@@ -249,6 +250,53 @@ describe("Journeys: talk notes", () => {
 
   before(async () => {
     root = await workspaceRoot();
+  });
+
+  it("TALK-24 Record at rest is a dot that steps aside while you scroll or type, and comes back", async () => {
+    await openNote("Long essay");
+    const dot = () =>
+      browser.execute(() => {
+        const button = document.querySelector(".talk-dock .talk-dock-dot-button");
+        if (!button) return null;
+        const { width, height } = button.getBoundingClientRect();
+        return {
+          width,
+          height,
+          name: button.textContent.trim(),
+          tucked: button.hasAttribute("data-tucked"),
+        };
+      });
+    const rest = await dot();
+    ok(rest, `no Record dot on the note: ${await dockText()}`);
+    ok(rest.width <= 40 && rest.height <= 40, `the dot is ${rest.width}×${rest.height}`);
+    strictEqual(rest.name, "Record");
+    strictEqual(rest.tucked, false);
+
+    // A real scroll of the note's scroller, not a synthetic event.
+    await browser.execute(() => {
+      const pane = document.querySelector(".talk-dock").closest("[data-pane]");
+      const scroller = [...pane.querySelectorAll("*")].find(
+        (el) =>
+          el.scrollHeight > el.clientHeight + 100 && getComputedStyle(el).overflowY === "auto",
+      );
+      scroller.scrollTop += 400;
+    });
+    await browser.waitUntil(async () => (await dot())?.tucked === true, {
+      timeout: 5_000,
+      timeoutMsg: "scrolling the note didn't tuck Record",
+    });
+    await browser.waitUntil(async () => (await dot())?.tucked === false, {
+      timeout: 5_000,
+      timeoutMsg: "Record didn't come back after the scroll stopped",
+    });
+
+    // Typing in the note tucks it too; the note ends as it was.
+    await typeInEditor("x");
+    await browser.waitUntil(async () => (await dot())?.tucked === true, {
+      timeout: 5_000,
+      timeoutMsg: "typing in the note didn't tuck Record",
+    });
+    await browser.execute(() => document.execCommand("delete"));
   });
 
   it("TALK-01 Record, talk, Stop: the take is saved in Recordings/ and lands in the note as a player", async () => {

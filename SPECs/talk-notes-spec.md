@@ -16,6 +16,12 @@ Ask on 2026-10-26) and `apps/desktop/proto/talk-notes` (Ask with Pele, audio, Co
 
 - **Record** sits at the bottom centre of the note, as Granola's does (approved 2026-10-25; it never moves into a
   menu or the ⌘. box). Pressing it asks for the microphone the first time (macOS's own prompt).
+- At rest Record is a red dot on a small round surface, the same on every note; hovering shows "Record". While you
+  scroll the note or type, the surface fades and the dot dims to a faint mark, so it never sits on the text you're
+  reading under a pinned video; it comes back 1.5 s after you stop, or as soon as the pointer comes near it. After
+  a take the pill (Saved, **Continue**, **New talk**) steps aside the same way, dimming. Decided from
+  `apps/desktop/proto/record-dock` (Dot + aside, 2026-10-27; rejected: the full pill, which covered a line on a
+  video note; Record in the footer bar, which read as one more count; a pill that only shrank while you worked).
 - While recording the pill shows a live red dot, a level trace, the time and **Stop**. The trace is the last half second of your voice's loudness, newest on the right, on a decibel scale so talking fills most of it and a quiet room leaves it flat.
 - The pill and the live box size to the note's pane, not the window, so they fit a column after a pinch.
 - When macOS hasn't let Pensée use the microphone it gets only silence, not an error. If nothing but exact zeros comes in for the first 3 seconds, the pill says "No sound from the microphone" and where to allow Pensée; it goes once sound arrives. A quiet room is never exactly zero, so this doesn't fire on silence you make.

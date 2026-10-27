@@ -12,7 +12,8 @@ const EDGE = 8;
 let lastClosedAt = 0;
 
 /**
- * A tooltip for window chrome: under a button, or right of a sidebar row. The
+ * A tooltip for window chrome: under a button (over one at the window's foot,
+ * like Record), or right of a sidebar row. The
  * webview never shows a native `title`, so the chrome draws its own. Plain DOM,
  * no Arc: the chrome mounts at startup and Arc stays behind a dynamic import
  * (docs/arc.md). `keys` is the shortcut, one keycap each (`["⌘", "P"]`).
@@ -20,7 +21,10 @@ let lastClosedAt = 0;
  */
 export function useChromeTooltip(
   text: string,
-  { keys = [], side = "bottom" }: { keys?: readonly string[]; side?: "bottom" | "right" } = {},
+  {
+    keys = [],
+    side = "bottom",
+  }: { keys?: readonly string[]; side?: "bottom" | "top" | "right" } = {},
 ) {
   const triggerRef = useRef<HTMLElement | null>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -62,7 +66,7 @@ export function useChromeTooltip(
             left: anchor.right + GAP,
           }
         : {
-            top: anchor.bottom + GAP,
+            top: side === "top" ? anchor.top - GAP - height : anchor.bottom + GAP,
             left: clamp(anchor.left + anchor.width / 2 - width / 2, width, window.innerWidth),
           },
     );
