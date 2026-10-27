@@ -20,8 +20,13 @@ start any of them.
     (the mind map's order), named after the quadrants; each idea a blue card placed by its two
     scores; the axes as text below and beside (the y axis reads bottom to top). Dragging a section
     carries its cards.
-  - **Timeline**: a card per period on an arrow, each period its own tint, its events in outlined
-    cards of the same hue under it.
+  - **Timeline**: a roadmap, drawn the way Linear draws one. The periods run across the top in
+    small capitals, each with a dashed guide where it begins (a period named in several sections is
+    one column). Each workstream is a row: a dot of its hue and its name, above a thin bar spanning
+    the periods it runs through, the bar's last stretch tinted in the hue with a dashed edge; its
+    events are diamonds on the bar, a milestone's width apart, each with its name under it. A
+    timeline's `section`s are its workstreams; with none, the whole timeline is one, named by its
+    title.
   - **Steps** and **mind maps** as before (SPECs/talk-notes-spec.md#topic-boards).
 - **Chart cards.** A bar, line or pie chart, and any other diagram Pele reads (journey, sankey,
   sequence…), is one chart card: a raised surface with a hairline ring, the chart drawn inside from

@@ -17,7 +17,8 @@ import {
 // (SPECs/board-pictures-spec.md), as board elements from Mermaid text:
 // - a matrix (`quadrantChart`) is four tinted sections with its ideas as the
 //   board's blue cards, placed by their scores, and its axes as text;
-// - a timeline is a card per period on an arrow, its events under it;
+// - a timeline is a roadmap, as Linear draws one: periods across the top,
+//   each workstream a bar with its events as diamonds;
 // - anything else (bar, line, pie, journey, sankey…) is one chart card that
 //   draws itself from the text (`board-chart.ts`).
 // Elements come back with the top-left at (0, 0).
@@ -47,21 +48,6 @@ function text(
   al: TextEl["al"] = "c",
 ): TextEl {
   return { ...base("text", x, y, w, sz * 1.5), t: "text", tx, sz, al, c: "ink" };
-}
-
-/** Greedy word wrap to `max` px, so a card's height can follow its words. */
-function wrap(words: string, size: number, max: number, measure: Measure): string[] {
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words.split(/\s+/).filter(Boolean)) {
-    const next = line ? `${line} ${word}` : word;
-    if (line && measure(next, size) > max) {
-      lines.push(line);
-      line = word;
-    } else line = next;
-  }
-  if (line) lines.push(line);
-  return lines.length ? lines : [""];
 }
 
 function card(
@@ -186,61 +172,134 @@ export function quadrantToElements(source: string, measure: Measure): BoardEl[] 
 
 /* ------------------------------------------------------------ timeline */
 
-const COL_W = 168;
-const COL_GAP = 24;
-const PERIOD_H = 44;
-const EVENT_FONT = 13;
+/** A period's column: wide enough for its milestones' labels side by side. */
+const COL_MIN = 150;
+const MILESTONE_W = 112;
+const HEADER_H = 28;
+const ROW_H = 92;
+const BAR_H = 22;
+const DIAMOND = 10;
+const LABEL_FONT = 11;
 
-/** Mermaid `timeline`: `period : event : event`, a line starting with `:`
- *  adds events to the period above; sections are left out. */
+/**
+ * Mermaid `timeline`, drawn as a roadmap (Linear's): the periods across the
+ * top with a dashed guide where each begins; each workstream a row, its name
+ * above a thin bar spanning the periods it runs through, its events as
+ * diamonds on the bar with their names under them, and the bar's last stretch
+ * tinted in the row's hue. A timeline's `section`s are its workstreams; with
+ * none, the whole timeline is one, named by its title.
+ * `period : event : event`; a line starting with `:` adds events to the
+ * period above.
+ */
 export function timelineToElements(source: string, measure: Measure): BoardEl[] | null {
   const lines = bodyLines(source, /^\s*timeline\b/);
   if (!lines) return null;
   let title = "";
-  const periods: { name: string; events: string[] }[] = [];
+  let section: string | null = null;
+  const periods: string[] = [];
+  const events: { period: number; text: string; row: string }[] = [];
+  const rows: string[] = [];
   for (const line of lines) {
-    const m = /^title\s+(.*)$/.exec(line);
-    if (m) {
-      title = m[1].trim();
+    const t = /^title\s+(.*)$/.exec(line);
+    if (t) {
+      title = t[1].trim();
       continue;
     }
-    if (/^section\s/.test(line)) continue;
-    const [head, ...rest] = line.split(":").map((s) => s.trim());
-    const events = rest.filter(Boolean);
-    if (!head && periods.length) periods[periods.length - 1].events.push(...events);
-    else periods.push({ name: head, events });
+    const sec = /^section\s+(.*)$/.exec(line);
+    if (sec) {
+      section = sec[1].trim();
+      if (!rows.includes(section)) rows.push(section);
+      continue;
+    }
+    const [head, ...rest] = line.split(":").map((x) => x.trim());
+    // A period named again (in another section) is the same column.
+    if (head && !periods.includes(head)) periods.push(head);
+    if (!periods.length) periods.push(head);
+    const period = head ? periods.indexOf(head) : (events[events.length - 1]?.period ?? 0);
+    const row = section ?? (title || "Timeline");
+    if (!rows.includes(row)) rows.push(row);
+    for (const text of rest.filter(Boolean)) events.push({ period, text, row });
   }
   if (!periods.length) return null;
 
+  // Columns: each period as wide as its busiest row's milestones need.
+  const busiest = periods.map((_, p) =>
+    Math.max(1, ...rows.map((r) => events.filter((e) => e.period === p && e.row === r).length)),
+  );
+  const colW = busiest.map((n) => Math.max(COL_MIN, n * MILESTONE_W + 40));
+  const colX = colW.map((_, i) => colW.slice(0, i).reduce((a, b) => a + b, 0));
+  const height = HEADER_H + rows.length * ROW_H + 8;
+
   const els: BoardEl[] = [];
-  const top = title ? 40 : 0;
-  const width = periods.length * COL_W + (periods.length - 1) * COL_GAP;
-  if (title) els.push(text(title, 0, 0, width, 16));
-  const axisY = top + PERIOD_H + 22;
-  const axis: LinkerEl = {
-    ...base("arrow", -8, axisY, 0, 0),
-    t: "arrow",
-    sh: "straight",
-    pts: [
-      [0, 0],
-      [width + 24, 0],
-    ],
-    hd: { s: "none", e: "triangle" },
-    st: defaultStyle({ s: "muted" }),
-  };
-  els.push(axis);
-  periods.forEach((p, i) => {
-    const x = i * (COL_W + COL_GAP);
-    const hue = HUES[i % HUES.length];
-    els.push(card(p.name, x, top, COL_W, PERIOD_H, 15, hue));
-    let y = axisY + 22;
-    for (const event of p.events) {
-      const lines = wrap(event, EVENT_FONT, COL_W - 24, measure);
-      const h = Math.max(36, lines.length * EVENT_FONT * 1.35 + 18);
-      const ev = card(lines.join("\n"), x, y, COL_W, h, EVENT_FONT, hue);
-      ev.st = defaultStyle({ s: hue, w: 1 });
-      els.push(ev);
-      y += h + 10;
+  // Workstreams are named by their sections; the timeline's title goes above.
+  if (title && !rows.includes(title)) {
+    const width = colX[colX.length - 1] + colW[colW.length - 1];
+    els.push(text(title, 0, -40, width, 16, "l"));
+  }
+  // The axis: each period's name, quiet, over a dashed guide where it begins.
+  periods.forEach((name, i) => {
+    const label = text(name.toUpperCase(), colX[i], 0, colW[i], 11, "l");
+    label.c = "muted";
+    label.x += 6;
+    els.push(label);
+    els.push({
+      ...base("line", colX[i], HEADER_H - 6, 0, 0),
+      t: "line",
+      sh: "straight",
+      pts: [
+        [0, 0],
+        [0, height - HEADER_H + 6],
+      ],
+      hd: { s: "none", e: "none" },
+      st: defaultStyle({ s: "muted", d: "dashed", w: 1 }),
+    } satisfies LinkerEl);
+  });
+
+  rows.forEach((row, r) => {
+    const hue = HUES[r % HUES.length];
+    const mine = events.filter((e) => e.row === row);
+    const first = mine.length ? Math.min(...mine.map((e) => e.period)) : 0;
+    const last = mine.length ? Math.max(...mine.map((e) => e.period)) : periods.length - 1;
+    const y = HEADER_H + 12 + r * ROW_H;
+    const x0 = colX[first] + 8;
+    const x1 = colX[last] + colW[last] - 8;
+    // Its name, after a dot of its hue.
+    els.push({
+      ...base("ellipse", x0, y + 5, 10, 10),
+      t: "ellipse",
+      st: defaultStyle({ f: hue, s: hue, w: 1 }),
+    });
+    els.push(text(row, x0 + 16, y - 1, Math.max(x1 - x0 - 16, measure(row, 14) + 8), 14, "l"));
+    const barY = y + 24;
+    // The track, then its last stretch in the row's hue, dashed, as a roadmap
+    // draws what's still ahead.
+    els.push({
+      ...base("roundRect", x0, barY, x1 - x0, BAR_H),
+      t: "roundRect",
+      st: defaultStyle({ f: "muted-soft", s: "none", w: 1, r: 4 }),
+    });
+    const tail = Math.min(colW[last] - 16, (x1 - x0) * 0.45);
+    els.push({
+      ...base("roundRect", x1 - tail, barY, tail, BAR_H),
+      t: "roundRect",
+      st: defaultStyle({ f: `${hue}-soft`, s: hue, w: 1, d: "dashed", r: 4 }),
+    });
+    // Its events: diamonds spread across their period's stretch of the bar.
+    for (let p = first; p <= last; p++) {
+      const here = mine.filter((e) => e.period === p);
+      here.forEach((e, k) => {
+        // One milestone's width apart, centred in the period.
+        const cx = colX[p] + (colW[p] - (here.length - 1) * MILESTONE_W) / 2 + k * MILESTONE_W;
+        els.push({
+          ...base("diamond", cx - DIAMOND / 2, barY + (BAR_H - DIAMOND) / 2, DIAMOND, DIAMOND),
+          t: "diamond",
+          st: defaultStyle({ f: "none", s: "muted", w: 1.25, r: 0 }),
+        });
+        const lw = Math.min(MILESTONE_W - 8, Math.max(measure(e.text, LABEL_FONT) + 8, 40));
+        const label = text(e.text, cx - lw / 2, barY + BAR_H + 6, lw, LABEL_FONT);
+        label.c = "muted";
+        els.push(label);
+      });
     }
   });
   return els;

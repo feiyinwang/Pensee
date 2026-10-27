@@ -39,7 +39,7 @@ topics: every topic that is new or whose diagram changed this turn, with its ful
   mindmap for ideas with no order: brainstorming, options, reasons, doubts around one question, and whenever no other type clearly fits;
   quadrantChart for options weighed on two scales (effort and value: x-axis Less effort --> More effort, y-axis Less value --> More value, each point written "Voice capture: [0.3, 0.8]", x and y from 0 to 1 in brackets);
   pie for shares of a whole; xychart for numbers across categories or time;
-  journey for what a person goes through (score 1-5 per step); timeline for dates; kanban for things to do;
+  journey for what a person goes through (score 1-5 per step); timeline for dates and plans over time (each "section" a workstream, drawn as its own row: "section Design" then "Mar : Sketches"); kanban for things to do;
   sankey for flows between stages; sequenceDiagram for who says what to whom.
   Use only what was said; short labels, a few words each, in the speaker's words; never invent numbers.
   Once a type the speaker asked for is set, keep it until they ask for another, then redraw that topic in it right away, with the same content: "as a mind map"; "as steps", "as a flow"; "as a matrix", "on two axes", "compare" (quadrantChart); "as a pie", "as shares"; "as a chart", "as bars", "over time" (xychart); "as a timeline"; "as a to-do board" (kanban); "as a journey".

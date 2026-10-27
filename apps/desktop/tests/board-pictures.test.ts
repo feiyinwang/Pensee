@@ -57,21 +57,30 @@ describe("board pictures", () => {
     ]);
   });
 
-  test("a timeline is a card per period on an arrow, its events under it", () => {
+  test("a timeline is a roadmap: periods across the top, a bar per workstream, its events as diamonds", () => {
     const els = mermaidToElements(
-      "timeline\n  title Launch\n  2026-10 : Beta\n  2026-11 : Talk notes : Boards\n          : Docs\n  2026-12",
+      "timeline\n  title Roadmap\n  section UI refresh\n    Mar : Core screens\n    Apr : Polish\n  section Split fares\n    Mar : Internal\n    May : Public beta : Docs",
       measure,
     )!;
-    const cards = of<ShapeEl>(els, "roundRect");
-    const periods = cards.filter((c) => ["2026-10", "2026-11", "2026-12"].includes(label(c)));
-    expect(periods).toHaveLength(3);
-    const under = (period: string) =>
-      cards
-        .filter((c) => !periods.includes(c) && c.x === periods.find((p) => label(p) === period)!.x)
-        .map(label);
-    expect(under("2026-11")).toEqual(["Talk notes", "Boards", "Docs"]);
-    expect(under("2026-12")).toEqual([]);
-    expect(of(els, "arrow")).toHaveLength(1);
+    const texts = of(els, "text").map((t) => (t as { tx: string }).tx);
+    // One column per period, named once though both sections use March.
+    expect(texts.filter((t) => ["MAR", "APR", "MAY"].includes(t))).toEqual(["MAR", "APR", "MAY"]);
+    expect(of(els, "line")).toHaveLength(3);
+    expect(texts).toEqual(expect.arrayContaining(["Roadmap", "UI refresh", "Split fares"]));
+    expect(of(els, "diamond")).toHaveLength(5);
+    // Each workstream's bar spans its own periods: Split fares runs on into May.
+    const bars = of<ShapeEl>(els, "roundRect").filter((b) => b.st.f === "muted-soft");
+    expect(bars).toHaveLength(2);
+    expect(bars[1].w).toBeGreaterThan(bars[0].w);
+  });
+
+  test("a timeline with no sections is one workstream, named by its title", () => {
+    const els = mermaidToElements(
+      "timeline\n  title Launch\n  2026-10 : Beta\n  2026-11 : Talk notes : Boards\n          : Docs",
+      measure,
+    )!;
+    expect(of(els, "text").map((t) => (t as { tx: string }).tx)).toContain("Launch");
+    expect(of(els, "diamond")).toHaveLength(4);
   });
 
   test("any other diagram is one chart card holding its text", () => {

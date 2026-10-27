@@ -445,7 +445,7 @@ describe("Journeys: boards", function () {
     ok(count(matrix, "frame") === 4, `Matrix dropped ${matrix.join()}`);
     const timeline = await drop("Timeline");
     ok(
-      count(timeline, "roundRect") === 3 && count(timeline, "arrow") === 1,
+      count(timeline, "line") === 3 && count(timeline, "roundRect") >= 1,
       `Timeline dropped ${timeline.join()}`,
     );
     const chart = await drop("Chart");
