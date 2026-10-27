@@ -8,6 +8,7 @@ import { useTalkStore } from "@/stores/talk-store";
 import { PICTURES, isBoardDiagram, isEmptyTopic, pictureOf, topicFill } from "@/lib/talk/ask";
 import { TalkDiagram } from "./talk-diagram";
 import { TalkBoard } from "./talk-board";
+import { startsSmall } from "@/lib/talk/whisper-models";
 import { PicturePreview, PicturePreviews } from "./picture-preview";
 import "./talk-box.css";
 
@@ -129,8 +130,9 @@ export default function TalkBox() {
         {live === "needs-model" && model ? (
           <div className="talk-box-empty">
             <p>
-              Topics and their diagrams show here as you talk, once Whisper is on this Mac (
-              {Math.round(model.bytes / 1e6)} MB, downloaded once). Your take records either way.
+              {startsSmall(model.id)
+                ? `Topics and their diagrams show here as you talk, once Whisper is on this Mac. It starts with ${model.name} (${Math.round(model.bytes / 1e6)} MB): a smaller model, but faster. Large v3 Turbo follows in the background. Your take records either way.`
+                : `Topics and their diagrams show here as you talk, once Whisper is on this Mac (${Math.round(model.bytes / 1e6)} MB, downloaded once). Your take records either way.`}
             </p>
             <button
               type="button"

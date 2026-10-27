@@ -28,6 +28,7 @@ import { type HeardLine, askTalk, endTalk, talkPrompt, warmTalk } from "@/lib/ta
 import { editorViewFor } from "@/lib/editor-views";
 import { showEditorNotice } from "@/components/editor-area/editor-notice-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { type ModelInfo, STARTER, downloadModel, modelNow } from "@/lib/talk/whisper-models";
 import { useEditorStore } from "@/stores/editor-store";
 
 // One talk at a time (SPECs/talk-notes-spec.md). The recorder lives here,
@@ -66,12 +67,7 @@ interface Pending {
   takeOfLine: number[];
 }
 
-export interface ModelInfo {
-  id: string;
-  name: string;
-  bytes: number;
-  installed: boolean;
-}
+export type { ModelInfo };
 
 interface LiveResult {
   segments: Segment[];
@@ -121,7 +117,7 @@ interface TalkState {
 /** How long "Saved to Recordings/" stays before the pill goes back to Record. */
 const SAVED_MS = 4000;
 /** Settings → Transcription (SPECs/talk-notes-spec.md#transcription). */
-const whisperModel = () => useSettingsStore.getState().getSetting("talk.whisper-model") ?? "small";
+const whisperModel = () => useSettingsStore.getState().getSetting("talk.whisper-model") ?? "turbo";
 const usesScribe = () => useSettingsStore.getState().getSetting("talk.engine") === "elevenlabs";
 const SCRIBE = "ElevenLabs Scribe";
 /** How often Whisper looks at what's new while you talk. */
@@ -132,6 +128,8 @@ const UNDO_MS = 5000;
 const LAST_TURN_MS = 20_000;
 
 let recorder: Recorder | null = null;
+/** The model downloading behind a talk on Small, so it's chained once. */
+let upgrading: string | null = null;
 /** Topic boards (topic-boards.ts), loaded with the first topic. */
 let boards: typeof import("@/lib/talk/topic-boards") | null = null;
 const loadBoards = async () => (boards ??= await import("@/lib/talk/topic-boards"));
@@ -383,11 +381,33 @@ export const useTalkStore = create<TalkState>((set, get) => {
     }
   };
 
+  /** The model to use now: the chosen one, or Small while the chosen one
+   *  downloads in the background (whisper-models.ts). */
   const modelInfo = async (): Promise<ModelInfo> => {
-    const id = whisperModel();
-    const model = (await invoke<ModelInfo[]>("whisper_models")).find((m) => m.id === id);
-    if (!model) throw new Error(`No Whisper model called ${id}.`);
-    return model;
+    const { now, later } = await modelNow(whisperModel());
+    if (later && now.installed) upgrade(later);
+    return now;
+  };
+
+  /** Downloads the chosen model behind a talk on Small; once it lands, the
+   *  rest of the talk (and every later one) uses it, and a notice says so. */
+  const upgrade = (target: ModelInfo) => {
+    if (upgrading === target.id) return;
+    upgrading = target.id;
+    void downloadModel(target.id).then(
+      () => {
+        upgrading = null;
+        if (get().model?.id === STARTER) set({ model: { ...target, installed: true } });
+        showEditorNotice(
+          `Now transcribing with ${target.name}: it hears accents and quiet rooms better.`,
+        );
+      },
+      (error: unknown) => {
+        upgrading = null;
+        // Small keeps working; the next take tries again.
+        console.error(`[talk] ${target.name} didn't download in the background:`, error);
+      },
+    );
   };
 
   return {
@@ -554,10 +574,12 @@ export const useTalkStore = create<TalkState>((set, get) => {
         },
       );
       try {
-        await invoke("whisper_download", { id: model.id });
+        await downloadModel(model.id);
         unlisten();
         const installed = { ...model, installed: true };
         set({ model: installed });
+        // Small first: the chosen model follows in the background.
+        void modelNow(whisperModel()).then(({ later }) => later && upgrade(later));
         // Still recording: topics start now, from the start of the take.
         if (get().phase === "recording" && session) startLive(session);
         else if (pending) await transcribe(pending, installed);

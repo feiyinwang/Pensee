@@ -341,13 +341,13 @@
     {
       "key": "talk.whisper-model",
       "label": "Whisper Model",
-      "description": "The model Whisper uses on this Mac. Small is quick and good for clear speech; Large v3 Turbo hears accents and quiet rooms better and is about three times the size.",
+      "description": "The model Whisper uses on this Mac. Large v3 Turbo hears accents and quiet rooms better; while it downloads (1.6 GB, once), talks start with Small, a smaller model but faster to get, and switch when it's ready. Pick Small to stay on it.",
       "category": "Transcription",
       "type": "enum",
       "options": ["small", "turbo"],
       "optionLabels": { "small": "Whisper Small · 488 MB", "turbo": "Large v3 Turbo · 1.6 GB" },
       "scope": "global",
-      "default": "small"
+      "default": "turbo"
     },
     {
       "key": "workspace.daily-note-folder",

@@ -470,7 +470,10 @@ describe("Journeys: talk notes", () => {
       .waitUntil(async () => (await read()).includes("```mermaid"), { timeout: 5_000 })
       .catch(() => {});
     const note = await read();
-    ok(/> \[!transcript\]- Transcript · 7 lines · On this Mac · Whisper Small/.test(note), note);
+    ok(
+      /> \[!transcript\]- Transcript · 7 lines · On this Mac · Whisper Large v3 Turbo/.test(note),
+      note,
+    );
     // A chart stays Mermaid; a mind map or flowchart is a board beside the note.
     ok(
       /### .+\n\n(?:[^\n!#`-][^\n]*\n\n)?(```mermaid\n|!\[[^\]]*\]\([^)]*\.board\.svg>?\))/.test(

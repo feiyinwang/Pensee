@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { onTalkLevel, useTalkStore } from "@/stores/talk-store";
 import { formatClock } from "@/lib/talk/clock";
 import { useEditorStore } from "@/stores/editor-store";
+import { startsSmall } from "@/lib/talk/whisper-models";
 import { useChromeTooltip } from "../chrome-tooltip";
 import "./talk-dock.css";
 
@@ -254,8 +255,9 @@ export function TalkDock({
       ) : phase === "needs-model" && model ? (
         <div className="talk-dock-pill" role="dialog" aria-label="Transcribe on this Mac">
           <span className="talk-dock-note">
-            Saved. To transcribe it on this Mac, Pensée downloads {model.name} once (
-            {Math.round(model.bytes / 1e6)} MB).
+            {startsSmall(model.id)
+              ? `Saved. To transcribe it on this Mac, Pensée starts with ${model.name} (${Math.round(model.bytes / 1e6)} MB): a smaller model, but faster. Large v3 Turbo follows in the background and takes over when it's ready.`
+              : `Saved. To transcribe it on this Mac, Pensée downloads ${model.name} once (${Math.round(model.bytes / 1e6)} MB).`}
           </span>
           <button
             type="button"

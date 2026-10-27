@@ -1,19 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useState } from "react";
 import { useSetting } from "@/hooks/use-settings";
+import {
+  type ModelInfo,
+  STARTER,
+  downloadModel,
+  useWhisperDownload,
+  whisperModels,
+} from "@/lib/talk/whisper-models";
 
 // Not schema entries: whether the Whisper model is on this Mac and the
 // ElevenLabs key (kept in the keychain, never in settings.json) belong to the
 // system, so these rows only borrow a setting's layout
 // (SPECs/talk-notes-spec.md#settings).
-
-interface ModelInfo {
-  id: string;
-  name: string;
-  bytes: number;
-  installed: boolean;
-}
 
 const BUTTON =
   "h-9 shrink-0 px-3 text-label whitespace-nowrap font-medium transition-colors disabled:opacity-50";
@@ -55,41 +54,34 @@ function Row({
 }
 
 function ModelRow({ isShown }: { isShown: boolean }) {
-  const id = useSetting("talk.whisper-model") ?? "small";
+  const id = useSetting("talk.whisper-model") ?? "turbo";
   const [model, setModel] = useState<ModelInfo | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // One download per model, shared with the talk (which may be fetching it
+  // in the background while a take runs on Small).
+  const running = useWhisperDownload((s) => (s.id === id ? s.progress : null));
+  // Read again when a download ends: it may have just landed.
+  const idle = running === null;
 
   useEffect(() => {
     if (!isShown) return;
     let live = true;
-    invoke<ModelInfo[]>("whisper_models")
+    whisperModels()
       .then((models) => live && setModel(models.find((m) => m.id === id) ?? null))
       .catch((e: unknown) => live && setError(message(e)));
     return () => {
       live = false;
     };
-  }, [id, isShown]);
+  }, [id, isShown, idle]);
 
   const download = async () => {
     if (!model) return;
     setError(null);
-    setProgress(0);
-    const unlisten = await listen<{ id: string; received: number; total: number }>(
-      "whisper:progress",
-      ({ payload }) => {
-        if (payload.id === model.id)
-          setProgress(payload.total ? payload.received / payload.total : 0);
-      },
-    );
     try {
-      await invoke("whisper_download", { id: model.id });
+      await downloadModel(model.id);
       setModel({ ...model, installed: true });
     } catch (e) {
       setError(`${model.name} didn't download: ${message(e)}`);
-    } finally {
-      unlisten();
-      setProgress(null);
     }
   };
 
@@ -99,9 +91,9 @@ function ModelRow({ isShown }: { isShown: boolean }) {
       ? "Checking…"
       : model.installed
         ? `${model.name} is on this Mac.`
-        : progress !== null
-          ? `Downloading ${model.name}… ${Math.round(progress * 100)}%`
-          : `${model.name} isn't on this Mac yet. It downloads once (${size(model.bytes)}) and runs offline after.`);
+        : running !== null
+          ? `Downloading ${model.name}… ${Math.round(running * 100)}%${model.id !== STARTER ? `. Talks use Whisper Small until it's ready, then switch.` : ""}`
+          : `${model.name} isn't on this Mac yet. It downloads once (${size(model.bytes)}) and runs offline after.${model.id !== STARTER ? " Until then, talks start with Whisper Small: smaller, but faster to get." : ""}`);
 
   return (
     <Row
@@ -113,11 +105,11 @@ function ModelRow({ isShown }: { isShown: boolean }) {
       {model && !model.installed && (
         <button
           type="button"
-          disabled={progress !== null}
+          disabled={running !== null}
           onClick={() => void download()}
           className={PRIMARY}
         >
-          {progress !== null ? "Downloading…" : "Download"}
+          {running !== null ? "Downloading…" : "Download"}
         </button>
       )}
     </Row>

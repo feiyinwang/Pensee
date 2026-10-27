@@ -144,8 +144,13 @@ matrix and a timeline are made of board pieces, a bar, line or pie chart is a ch
 
 
 - **Free by default, on the Mac:** OpenAI's Whisper through whisper.cpp, the engine Superwhisper's free plan runs.
-  Works offline; audio never leaves the Mac. Whisper Small (488 MB) downloads on first use; Whisper Large v3 Turbo
-  (1.62 GB) is an optional download.
+  Works offline; audio never leaves the Mac. **Large v3 Turbo** (1.62 GB) is the default model: it hears accents
+  and quiet rooms better. So a first talk doesn't wait for it, Pensée starts with **Whisper Small** (488 MB): the
+  missing-model prompt fetches Small and says so ("a smaller model, but faster; Large v3 Turbo follows in the
+  background"). As soon as Small is on the Mac, Turbo downloads in the background (`whisper-models.ts`, one
+  download per model, shared with Settings); the moment it lands, the rest of the talk and every later take use
+  it, and a notice says "Now transcribing with Whisper Large v3 Turbo". If it fails, Small keeps working and the
+  next take tries again. Choosing Small in Settings stays on Small; nothing bigger downloads.
 - **ElevenLabs Scribe** is opt-in in Settings with your API key (kept in the system keychain). The live view while
   you talk still uses Whisper; the saved transcript of each take comes from Scribe, sent the take's audio file
   once at Stop (`scribe_v2`, word times grouped into lines at sentence ends and pauses). Until a key is saved,
@@ -161,7 +166,8 @@ matrix and a timeline are made of board pieces, a bar, line or pie chart is a ch
 
 - A **Transcription** section in Settings, like the others: **Transcribe With** (On this Mac / ElevenLabs Scribe,
   `talk.engine`) and **Whisper Model** (Small / Large v3 Turbo, `talk.whisper-model`). Under them, whether the
-  model is on this Mac with **Download**, and, with ElevenLabs chosen, the API key field: **Save** puts it in the
+  model is on this Mac with **Download** (or its background download's progress, "talks use Whisper Small until
+  it's ready, then switch"), and, with ElevenLabs chosen, the API key field: **Save** puts it in the
   keychain, then **Check key** and **Remove**. The key never goes back to the web view or into settings.json.
 
 ### Continue
