@@ -34,12 +34,13 @@ export const FINE_PRINT = `${CLAUDE_NOTE} Pensée isn’t notarized by Apple yet
 export const FINE_PRINT_WINDOWS = `${CLAUDE_NOTE} The installer isn’t signed yet, so Windows may warn the first time you run it: choose More info, then Run anyway.`;
 
 /**
- * The Talk section, after the room named in `after` (SPECs/website-homepage-spec.md,
+ * The Talk section, first under the hero (SPECs/website-homepage-spec.md,
  * "Talk section"). The talk its demo plays is in talk-script.ts.
  */
 export const TALK_SECTION = {
-  after: "think",
-  eyebrow: "New · Talk to a note",
+  /** The tag before the eyebrow, while Talk is the newest feature. */
+  tag: "New",
+  eyebrow: "Talk to a note",
   title: "Talk it through. Watch it take shape.",
   intro:
     "Press Record and think out loud. Pensée sorts what you say into topics and draws each one while you talk, then puts it in your note when you stop. Whisper writes the transcript on your computer.",

@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment } from "react";
 
 import { DownloadButton, FinePrint, Requirements } from "../components/DownloadButton";
 import { FeatureCard } from "../components/FeatureCard";
@@ -9,7 +8,7 @@ import { SiteBar } from "../components/SiteBar";
 import { SiteFooter } from "../components/SiteFooter";
 import { TalkDemo } from "../components/TalkDemo";
 import { useScrolledPast } from "../components/useScrolledPast";
-import { HEADLINE, INTRO, PAINTINGS, ROOMS, TALK_SECTION, VERSION } from "../content";
+import { HEADLINE, INTRO, PAINTINGS, ROOMS, VERSION } from "../content";
 import { jsonLdScript } from "../pages/head";
 import { softwareApplication } from "../pages/jsonld";
 import { absoluteUrl } from "../site";
@@ -48,7 +47,7 @@ function HomePage() {
             <p className="stand">{INTRO}</p>
             <div className="acts">
               <DownloadButton size="lg" tone="light" beta />
-              <a className="tlink" href="#room-think">
+              <a className="tlink" href="#talk">
                 See what it does
               </a>
             </div>
@@ -64,32 +63,32 @@ function HomePage() {
             until it scrolls under it. */}
         <div ref={heroEnd} aria-hidden="true" />
 
+        {/* The newest feature is the first thing under the hero. */}
+        <TalkDemo />
+
         {ROOMS.map((room, i) => (
-          <Fragment key={room.id}>
-            <section className="room" id={`room-${room.id}`}>
-              <Painting painting={room.painting}>
-                <figcaption>
-                  <Credit painting={room.painting} />
-                  <small>{room.painting.at}</small>
-                </figcaption>
-              </Painting>
-              <div className="room-head">
-                <div>
-                  <div className="eyebrow">
-                    Room {ROMAN[i]} · {room.features.length} features
-                  </div>
-                  <h2>{room.name}</h2>
+          <section className="room" id={`room-${room.id}`} key={room.id}>
+            <Painting painting={room.painting}>
+              <figcaption>
+                <Credit painting={room.painting} />
+                <small>{room.painting.at}</small>
+              </figcaption>
+            </Painting>
+            <div className="room-head">
+              <div>
+                <div className="eyebrow">
+                  Room {ROMAN[i]} · {room.features.length} features
                 </div>
-                <p>{room.intro}</p>
+                <h2>{room.name}</h2>
               </div>
-              <div className="cards">
-                {room.features.map((feature) => (
-                  <FeatureCard feature={feature} room={room.name} key={feature.id} />
-                ))}
-              </div>
-            </section>
-            {room.id === TALK_SECTION.after && <TalkDemo />}
-          </Fragment>
+              <p>{room.intro}</p>
+            </div>
+            <div className="cards">
+              {room.features.map((feature) => (
+                <FeatureCard feature={feature} room={room.name} key={feature.id} />
+              ))}
+            </div>
+          </section>
         ))}
 
         <section className="full closing">

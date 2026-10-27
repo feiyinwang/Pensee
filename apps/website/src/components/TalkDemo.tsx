@@ -145,7 +145,10 @@ export function TalkDemo() {
     <section className="room talk" id="talk">
       <div className="room-head">
         <div>
-          <div className="eyebrow">{TALK_SECTION.eyebrow}</div>
+          <div className="eyebrow tk-eyebrow">
+            <span className="tk-tag">{TALK_SECTION.tag}</span>
+            {TALK_SECTION.eyebrow}
+          </div>
           <h2>{TALK_SECTION.title}</h2>
         </div>
         <p>{TALK_SECTION.intro}</p>

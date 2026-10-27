@@ -2360,13 +2360,34 @@ html:has(.changelog) {
 }
 
 /* ======================================================================
-   Talk: the section between rooms I and II (components/TalkDemo.tsx,
+   Talk: the first section under the hero (components/TalkDemo.tsx,
    SPECs/website-homepage-spec.md "Talk section"). The talk box, pill and
    board pictures in the app's dark look, sized in em so the frame scales
    them. Pieces rest drawn; one that's just been said fades and settles in.
    ====================================================================== */
 .talk .room-head {
   padding-top: 0;
+}
+
+/* New: the tag says Talk is the newest feature. Gold stays the beta's own,
+   so the tag takes the record dot's red, deepened for white text (5.6:1). */
+.tk-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tk-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--hue-red-deep);
+  color: #fff;
+  font: 700 11px/1 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .tk-card {

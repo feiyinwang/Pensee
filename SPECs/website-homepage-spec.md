@@ -62,7 +62,8 @@ voice.
   that play when scrolled into view and repeat every 5 seconds while on screen, like the GIFs (static under reduced motion). Cards
   rest near flat (hairline ring, 1px shadow); a deeper shadow fades in on hover
   (160ms, opacity only).
-- **Talk.** Between rooms I and II, one section with one large demo the
+- **Talk.** The first section under the hero, before the rooms (the
+  hero's _See what it does_ goes to it): one section with one large demo the
   visitor plays (`components/TalkDemo.tsx`, the talk in `src/talk-script.ts`).
   Decided 2026-10-27 from a picker (`apps/desktop/proto/voice-section/`,
   deleted once built); see _Talk section_ below.
@@ -88,8 +89,9 @@ voice.
 **Try it** won. The section shows Talk (voice → pictures) by letting the
 visitor run a real one.
 
-- **Head.** Like a room head without a painting: eyebrow _New · Talk to a
-  note_, _Talk it through. Watch it take shape._, and one paragraph. The copy
+- **Head.** Like a room head without a painting: a **New** tag (the record
+  dot's red deepened to `--hue-red-deep` for white text; gold stays the
+  beta's), the eyebrow _Talk to a note_, _Talk it through. Watch it take shape._, and one paragraph. The copy
   says Whisper writes the transcript on the Mac and nothing more: the topics
   are drawn by Claude, so the page never claims nothing leaves the computer.
 - **The demo.** A card holding the app's dark look: a note (_Lisbon?_) with
