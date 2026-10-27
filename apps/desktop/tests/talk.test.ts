@@ -163,3 +163,150 @@ describe("recordingTime", () => {
     expect(recordingTime("https://example.com/a.mp3")).toBeNull();
   });
 });
+
+import { acceptOffer, applyReply, emptyAsk, keepAside, talkSections } from "../src/lib/talk/ask";
+import { parseTalkReply } from "../src/lib/talk/talk-agent";
+
+describe("Ask", () => {
+  const build = {
+    key: "build",
+    title: "What to build next quarter",
+    short: "What to build",
+    mermaid: "quadrantChart\n  Voice capture: [0.3, 0.8]",
+  };
+  const week = {
+    key: "week",
+    title: "Where my week goes",
+    short: "My week",
+    mermaid: 'pie\n  "Writing" : 20',
+  };
+
+  test("the first topic opens without asking; a turn to a new one is offered; one more line takes it", () => {
+    let s = applyReply(emptyAsk(), {
+      lines: [
+        { n: 0, topic: null },
+        { n: 1, topic: "build", turn: "First" },
+      ],
+      topics: [build],
+    });
+    expect(s.open).toEqual(["build"]);
+    expect(s.current).toBe("build");
+    s = applyReply(s, { lines: [{ n: 2, topic: "week", turn: "Okay, next" }], topics: [week] });
+    expect(s.offer).toEqual({ key: "week", cue: "Okay, next" });
+    expect(s.current).toBe("build");
+    s = applyReply(s, { lines: [{ n: 3, topic: "week" }], topics: [] });
+    expect(s.open).toEqual(["build", "week"]);
+    expect(s.current).toBe("week");
+    expect(s.offer).toBeNull();
+  });
+
+  test("lines heard with the turn don't take the offer: the card gets its moment", () => {
+    let s = applyReply(emptyAsk(), {
+      lines: [{ n: 1, topic: "build", turn: "First" }],
+      topics: [build],
+    });
+    s = applyReply(s, {
+      lines: [
+        { n: 2, topic: "week", turn: "Okay, next" },
+        { n: 3, topic: "week" },
+      ],
+      topics: [week],
+    });
+    expect(s.offer?.key).toBe("week");
+    expect(s.open).toEqual(["build"]);
+    s = applyReply(s, { lines: [{ n: 4, topic: "week" }], topics: [] });
+    expect(s.open).toEqual(["build", "week"]);
+  });
+
+  test("an aside waits as a badge; Accept and Aside answer the card", () => {
+    let s = applyReply(emptyAsk(), {
+      lines: [
+        { n: 1, topic: "build", turn: "First" },
+        { n: 2, topic: "hire", aside: true },
+      ],
+      topics: [build],
+    });
+    expect(s.parked).toEqual({ hire: [2] });
+    expect(s.open).toEqual(["build"]);
+    s = applyReply(s, { lines: [{ n: 3, topic: "week", turn: "Next" }], topics: [week] });
+    expect(acceptOffer(s).current).toBe("week");
+    const aside = keepAside(s);
+    expect(aside.asides).toEqual(["week"]);
+    expect(applyReply(aside, { lines: [{ n: 4, topic: "week" }], topics: [] }).open).toEqual([
+      "build",
+    ]);
+  });
+
+  test("one line about an open topic doesn't flip the picture; a turn or a second line does", () => {
+    let s = applyReply(emptyAsk(), {
+      lines: [
+        { n: 1, topic: "build", turn: "First" },
+        { n: 2, topic: "week", turn: "Next" },
+      ],
+      topics: [build, week],
+    });
+    s = applyReply(s, { lines: [{ n: 3, topic: "week" }], topics: [] });
+    expect(s.current).toBe("week");
+    s = applyReply(s, { lines: [{ n: 4, topic: "build" }], topics: [] });
+    expect(s.current).toBe("week");
+    s = applyReply(s, { lines: [{ n: 5, topic: "build" }], topics: [] });
+    expect(s.current).toBe("build");
+  });
+
+  test("the topics become markdown sections with their diagram and time links", () => {
+    const s = applyReply(emptyAsk(), {
+      lines: [
+        { n: 1, topic: "build", turn: "First" },
+        { n: 2, topic: "hire", aside: true },
+      ],
+      topics: [build],
+    });
+    const lines = [
+      { n: 1, start: 3, text: "First, what to build next quarter." },
+      { n: 2, start: 14, text: "QA eats my evenings." },
+    ];
+    expect(
+      talkSections(s, lines, (n) => ({
+        file: "Recordings/a.m4a",
+        start: lines.find((l) => l.n === n)!.start,
+      })),
+    ).toBe(
+      [
+        "### What to build next quarter",
+        "",
+        "```mermaid",
+        "quadrantChart\n  Voice capture: [0.3, 0.8]",
+        "```",
+        "",
+        "- First, what to build next quarter. [0:03](<Recordings/a.m4a#t=3>)",
+        "",
+        "### Said in passing",
+        "",
+        "- QA eats my evenings. [0:14](<Recordings/a.m4a#t=14>)",
+      ].join("\n"),
+    );
+  });
+
+  test("a reply's JSON is read even inside a code fence", () => {
+    const reply = parseTalkReply(
+      '```json\n{"lines":[{"n":1,"topic":"build","turn":"First"}],"topics":[{"key":"build","title":"What to build","mermaid":"pie"}]}\n```',
+    );
+    expect(reply.lines[0]).toEqual({ n: 1, topic: "build", turn: "First" });
+    expect(reply.topics[0].short).toBe("What to build");
+  });
+});
+
+import { afterTranscriptInsertion } from "../src/lib/talk/transcript";
+
+describe("afterTranscriptInsertion", () => {
+  test("the topics go below the transcript callout", () => {
+    const file = "Recordings/a.m4a";
+    const state = EditorState.create({
+      doc: `![[${file}]]\n\n> [!transcript]- T\n> [0:00](<${file}#t=0>) One.\n\nAfter.`,
+    });
+    const at = afterTranscriptInsertion(state, file, "### Topic")!;
+    expect(state.update({ changes: at }).state.doc.toString()).toBe(
+      `![[${file}]]\n\n> [!transcript]- T\n> [0:00](<${file}#t=0>) One.\n\n### Topic\n\nAfter.`,
+    );
+  });
+});

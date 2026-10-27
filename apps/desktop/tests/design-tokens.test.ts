@@ -16,6 +16,8 @@ const SRC = resolve(__dirname, "../src");
 const SKIP = [
   /^styles\/tokens\.css$/,
   /^components\/arc\//,
+  // Vendored affectUI files, kept byte-identical like Arc's.
+  /^components\/affect\//,
   // Held by a parallel change to the sidebar header; its one literal (the
   // wordmark's text-[16px]) moves to --font-size-heading-sm when that lands.
   /^components\/sidebar\/index\.tsx$/,

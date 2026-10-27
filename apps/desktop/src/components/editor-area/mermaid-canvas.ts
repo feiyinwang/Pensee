@@ -80,7 +80,7 @@ export function mountMermaidCanvas(
   opts: MermaidCanvasOptions,
 ): MermaidCanvasHandle {
   host.replaceChildren();
-  host.classList.add("cm-mermaid-canvas");
+  host.classList.add("cm-mermaid-canvas", "pele-frame");
   host.tabIndex = 0;
 
   const editingEnabled = !!(opts.source !== undefined && opts.onSourceChange);
@@ -549,8 +549,12 @@ function decorateSvg(svg: SVGSVGElement | null, ariaLabel: string): void {
   // via individual style properties, which merge with whatever's there.
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", ariaLabel);
-  // Arc tints by category (mermaid-canvas.css): a section's shapes share a
-  // series hue, and each quadrant takes one.
+  tintPeleSvg(svg);
+}
+
+/** Arc tints by category (mermaid-canvas.css): a section's shapes share a
+ *  series hue, and each quadrant takes one. */
+export function tintPeleSvg(svg: SVGSVGElement): void {
   svg.querySelectorAll<SVGElement>("[class*='pele-section-']").forEach((g) => {
     const n = Number(/pele-section-(\d+)/.exec(g.getAttribute("class") ?? "")?.[1] ?? 0);
     g.dataset.hue = String((n % 4) + 1);

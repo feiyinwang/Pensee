@@ -30,10 +30,14 @@ const AGENT_TOOLS: &str = "Read,Edit,Write,Glob,Grep";
 /// conversation; the second pen (SPECs/second-pen-spec.md) writes one line
 /// per request from what the request carries, with no tools and nothing
 /// saved, in a process of its own so it never waits on or enters the chat.
+/// A talk (SPECs/talk-notes-spec.md#while-you-talk-ask) keeps one more: it
+/// sorts what you say into topics while you record, in its own process so a
+/// pen request mid-talk never waits on it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Channel {
     Chat,
     Pen,
+    Talk,
 }
 
 impl Channel {
@@ -41,6 +45,7 @@ impl Channel {
         match name {
             None | Some("chat") => Ok(Self::Chat),
             Some("pen") => Ok(Self::Pen),
+            Some("talk") => Ok(Self::Talk),
             Some(other) => Err(AppError::Io(format!("unknown agent channel: {other}"))),
         }
     }
@@ -50,6 +55,7 @@ impl Channel {
         match self {
             Self::Chat => label.to_owned(),
             Self::Pen => format!("{label}#pen"),
+            Self::Talk => format!("{label}#talk"),
         }
     }
 }
@@ -301,8 +307,8 @@ fn build_args(
         "--tools".to_owned(),
         match channel {
             Channel::Chat => AGENT_TOOLS,
-            // The pen gets everything it may use in the request itself.
-            Channel::Pen => "",
+            // The pen and the talk get everything they may use in the request itself.
+            Channel::Pen | Channel::Talk => "",
         }
         .to_owned(),
         // Execution mode: reads and edits run without prompts; nothing is planned first.
@@ -311,7 +317,7 @@ fn build_args(
         "--append-system-prompt".to_owned(),
         instructions.to_owned(),
     ];
-    if channel == Channel::Pen {
+    if channel != Channel::Chat {
         args.push("--no-session-persistence".to_owned());
     }
     if let Some(session_id) = session_id {
@@ -615,7 +621,7 @@ pub(crate) fn end_all_sessions(app: &tauri::AppHandle) {
 
 /// Kill all of a window's processes. Called when the window closes.
 pub fn close_window_session(app: &tauri::AppHandle, label: &str) {
-    for channel in [Channel::Chat, Channel::Pen] {
+    for channel in [Channel::Chat, Channel::Pen, Channel::Talk] {
         kill_session(app, &channel.key(label));
     }
 }

@@ -11,7 +11,7 @@
   - [x] 1. Pele + Arc for mermaid blocks
   - [x] 2. Record to Recordings/ and the audio embed
   - [x] 3. Whisper transcription and the transcript callout
-  - [ ] 4. Ask: live topics and diagrams
+  - [x] 4. Ask: live topics and diagrams
   - [ ] 5. Continue, Recordings space, Settings, ElevenLabs
 
 ## Done

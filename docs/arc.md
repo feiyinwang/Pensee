@@ -2,6 +2,10 @@
 
 [Arc](https://uiarc.dev) is a React + `motion` component library installed through shadcn registries. Pensée uses it for board chrome (see [SPECs/board-lark-parity-spec.md](../SPECs/board-lark-parity-spec.md)) in the calendar panel (`calendar`, `dropdown-menu`), in the Projects space (`badge`, the Pro `kanban-board` block; see [SPECs/project-views-spec.md](../SPECs/project-views-spec.md)), in the second pen's box (`floating-button-group`, see [SPECs/second-pen-spec.md](../SPECs/second-pen-spec.md)), and in the agent chat panel: `text-shimmer` for the thinking line, `code-block` (with `copy-button`) for code in replies (see [SPECs/agent-chat-spec.md](../SPECs/agent-chat-spec.md)), and in a video note's transcript box: `dropdown-menu` for the caption language, `copy-button` for **Copy** (see [SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md#transcript-box)), and in Add to Projects' **Already a project?** popup: `dialog` and `button`, its close button hidden by a wrapper class, not an edit (see [SPECs/add-to-projects-spec.md](../SPECs/add-to-projects-spec.md#repeats)).
 
+Talk notes ([SPECs/talk-notes-spec.md](../SPECs/talk-notes-spec.md)) use `segmented-control`, `badge` and `text-morph` in the live box, and `donut-chart`, `bar-chart`, `line-chart`, `treemap`, `tree-view`, `sankey-flow` (Pro), `radar-chart` (Pro) and the `kanban-board` block for the mermaid types an Arc chart draws (`editor-area/pele-chart-view.tsx`).
+
+**affectUI** ([affectui.com](https://www.affectui.com/components)) gives the live box its thinking loader and New topic? card: free single-file components in `src/components/affect/`, vendored byte-identical from `https://www.affectui.com/r/<name>-clean.json` and skipped by the formatter, linter and token test like Arc's. Their colours are set on `.talk-box` (`talk-box.css`), not in the files.
+
 ## Installing items
 
 From `apps/desktop/`:

@@ -632,6 +632,7 @@ pub fn run() {
             commands::whisper::talk_pcm_append,
             commands::whisper::talk_pcm_drop,
             commands::whisper::talk_transcribe,
+            commands::whisper::talk_transcribe_live,
             commands::images::import_image_file,
             commands::images::read_file_data_url,
             commands::images::write_export_file,

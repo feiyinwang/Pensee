@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { onTalkLevel, useTalkStore } from "@/stores/talk-store";
 import { formatClock } from "@/lib/talk/clock";
 import "./talk-dock.css";
@@ -8,6 +8,8 @@ import "./talk-dock.css";
 // on the audio embed in the note.
 
 const METER_BARS = 5;
+/** Loaded with the first take: Arc, motion and affectUI stay out of startup. */
+const TalkBox = lazy(() => import("./talk-box"));
 
 function Meter() {
   const bars = useRef<(HTMLSpanElement | null)[]>([]);
@@ -62,6 +64,11 @@ export function TalkDock({ path, isActive }: { path: string; isActive: boolean }
 
   return (
     <div className="talk-dock" role="region" aria-label="Record">
+      {phase === "recording" && (
+        <Suspense fallback={null}>
+          <TalkBox />
+        </Suspense>
+      )}
       {phase === "recording" && startedAt ? (
         <div className="talk-dock-pill" data-recording="">
           <span className="talk-dock-dot" aria-hidden="true" />

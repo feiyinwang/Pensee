@@ -68,6 +68,7 @@ cd "$E2E_DIR"
 # wdio.conf.js reseeds the QA vault (qa/seed-vault.mjs) before every spec file.
 PENSEE_OBSIDIAN_CONFIG="$HOME/Library/Application Support/com.pensee.app.e2e/obsidian.json" \
   PENSEE_CHANGELOG_FILE="$HOME/Library/Application Support/com.pensee.app.e2e/changelog.md" \
+  PENSEE_WHISPER_SCRIPT="$HOME/Library/Application Support/com.pensee.app.e2e/whisper-script.json" \
   PENSEE_QA_SEED=1 PENSEE_E2E_APP="$APP" pnpm exec wdio run ./wdio.conf.js "${specs[@]}" ${grep_args[@]+"${grep_args[@]}"}
 
 # Green: the app as built, and the specs as they are now, have passed QA.

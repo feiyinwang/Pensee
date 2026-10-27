@@ -10,6 +10,8 @@ export default defineConfig({
       ".wrangler/**",
       // Vendored Arc registry files (`shadcn add @uiarc/...`); keep them byte-identical to upstream.
       "apps/desktop/src/components/arc/**",
+      // Vendored affectUI components (one file each); same rule as Arc's.
+      "apps/desktop/src/components/affect/**",
       // Throwaway design prototypes; nothing in the app or website build loads them.
       "apps/desktop/proto/**",
     ],
@@ -20,6 +22,8 @@ export default defineConfig({
       ".wrangler/**",
       // Vendored Arc registry files (`shadcn add @uiarc/...`); keep them byte-identical to upstream.
       "apps/desktop/src/components/arc/**",
+      // Vendored affectUI components (one file each); same rule as Arc's.
+      "apps/desktop/src/components/affect/**",
       // Throwaway design prototypes; nothing in the app or website build loads them.
       "apps/desktop/proto/**",
     ],

@@ -135,12 +135,13 @@
   max-width: none;
 }
 
-/* Pele's diagrams in Arc's style (SPECs/talk-notes-spec.md#diagrams-pele-drawn-with-arc):
+/* Pele's diagrams in Arc's style (SPECs/talk-notes-spec.md#diagrams-pele-drawn-with-arc),
+   anywhere a `.pele-frame` holds one: the mermaid canvas and the talk box.
    neutral raised shapes with a hairline ring, series tints by section or
    quadrant, 8px corners, quiet labels, 1.5px round lines, a lit ring on hover.
    Pele colours everything through these variables and classes, so the same
    SVG follows the light and dark themes. */
-.cm-mermaid-canvas .pele {
+.pele-frame .pele {
   --pele-bg: transparent;
   --pele-fg: var(--color-text-primary);
   --pele-muted: var(--color-text-muted);
@@ -163,19 +164,19 @@
   --pele-series-7: var(--color-text-muted);
   --pele-series-8: var(--color-text-faint);
 }
-.cm-mermaid-canvas .pele [data-hue="1"] {
+.pele-frame .pele [data-hue="1"] {
   --hue: var(--hue-blue);
 }
-.cm-mermaid-canvas .pele [data-hue="2"] {
+.pele-frame .pele [data-hue="2"] {
   --hue: var(--hue-purple);
 }
-.cm-mermaid-canvas .pele [data-hue="3"] {
+.pele-frame .pele [data-hue="3"] {
   --hue: var(--hue-orange);
 }
-.cm-mermaid-canvas .pele [data-hue="4"] {
+.pele-frame .pele [data-hue="4"] {
   --hue: var(--hue-green);
 }
-.cm-mermaid-canvas
+.pele-frame
   .pele
   :is(
     .pele-node,
@@ -203,12 +204,12 @@
     fill var(--motion-hover, 150ms) ease-out,
     stroke var(--motion-hover, 150ms) ease-out;
 }
-.cm-mermaid-canvas .pele [data-hue] {
+.pele-frame .pele [data-hue] {
   --tint: 12%;
   --ring: 55%;
 }
 @media (hover: hover) and (pointer: fine) {
-  .cm-mermaid-canvas
+  .pele-frame
     .pele
     :is(
       .pele-node,
@@ -225,32 +226,32 @@
     stroke: color-mix(in oklab, var(--hue, var(--hue-blue)) 80%, transparent);
   }
 }
-.cm-mermaid-canvas .pele :is(.pele-divider, .pele-er-divider) {
+.pele-frame .pele :is(.pele-divider, .pele-er-divider) {
   stroke: var(--color-border-default);
 }
-.cm-mermaid-canvas .pele path:is(.pele-edge, .pele-track, .pele-lifeline) {
+.pele-frame .pele path:is(.pele-edge, .pele-track, .pele-lifeline) {
   stroke: var(--pele-line);
   stroke-width: 1.5px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.cm-mermaid-canvas .pele .pele-marker {
+.pele-frame .pele .pele-marker {
   fill: var(--pele-line);
   stroke: none;
 }
-.cm-mermaid-canvas .pele .pele-edge-label :is(rect, path) {
+.pele-frame .pele .pele-edge-label :is(rect, path) {
   fill: var(--color-bg-raised);
   stroke: var(--color-border-default);
 }
-.cm-mermaid-canvas .pele :is(text.pele-edge-label, .pele-edge-label text) {
+.pele-frame .pele :is(text.pele-edge-label, .pele-edge-label text) {
   fill: var(--color-text-secondary);
 }
-.cm-mermaid-canvas .pele .pele-cluster > :is(rect, path) {
+.pele-frame .pele .pele-cluster > :is(rect, path) {
   fill: color-mix(in oklab, var(--color-text-primary) 3%, transparent);
   stroke: var(--color-border-default);
   stroke-dasharray: 3 4;
 }
-.cm-mermaid-canvas
+.pele-frame
   .pele
   :is(
     .pele-cluster-label,
@@ -262,30 +263,30 @@
   fill: var(--color-text-muted);
   font-weight: 500;
 }
-.cm-mermaid-canvas .pele .pele-title {
+.pele-frame .pele .pele-title {
   fill: var(--color-text-primary);
   font-weight: 500;
 }
 /* bars are data: a Gantt task carries its series colour, as Arc's bar chart does */
-.cm-mermaid-canvas .pele.pele-gantt .pele-task > :is(rect, path) {
+.pele-frame .pele.pele-gantt .pele-task > :is(rect, path) {
   --hue: var(--hue-blue);
   --tint: 70%;
   --ring: 90%;
 }
-.cm-mermaid-canvas .pele .pele-quadrant > rect {
+.pele-frame .pele .pele-quadrant > rect {
   fill: color-mix(in oklab, var(--hue) 7%, var(--color-bg-card));
   stroke: color-mix(in oklab, var(--hue) 22%, transparent);
 }
-.cm-mermaid-canvas .pele circle:is(.pele-point, .pele-dot) {
+.pele-frame .pele circle:is(.pele-point, .pele-dot) {
   fill: var(--hue-blue);
   stroke: var(--color-bg-canvas);
   stroke-width: 3px;
 }
-.cm-mermaid-canvas .pele .pele-venn-set {
+.pele-frame .pele .pele-venn-set {
   fill-opacity: 0.12;
   stroke-width: 2px;
 }
-.cm-mermaid-canvas .pele .pele-curve {
+.pele-frame .pele .pele-curve {
   fill-opacity: 0.1;
   stroke-width: 2px;
   stroke-linejoin: round;

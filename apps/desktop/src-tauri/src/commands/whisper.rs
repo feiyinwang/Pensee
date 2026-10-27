@@ -20,6 +20,44 @@ use crate::error::AppError;
 /// Samples a second, as Whisper wants them.
 pub const SAMPLE_RATE: usize = 16_000;
 
+/// The e2e journeys' Whisper (`PENSEE_WHISPER_SCRIPT`, set by e2e/qa/run.sh):
+/// a JSON file `{"installed": bool, "segments": [...]}` the journey writes.
+/// Each live pass returns the next two lines; a full pass returns them all.
+/// The file is read on every call, so a journey can change it between takes.
+#[derive(serde::Deserialize)]
+struct Script {
+    installed: bool,
+    segments: Vec<ScriptLine>,
+}
+
+#[derive(serde::Deserialize)]
+struct ScriptLine {
+    start: f64,
+    end: f64,
+    text: String,
+}
+
+fn script() -> Option<Script> {
+    let path = std::env::var("PENSEE_WHISPER_SCRIPT").ok()?;
+    serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
+}
+
+fn scripted(lines: &[ScriptLine]) -> Vec<Segment> {
+    lines
+        .iter()
+        .map(|l| Segment {
+            start: l.start,
+            end: l.end,
+            text: l.text.clone(),
+        })
+        .collect()
+}
+
+/// How many lines each take's live passes have handed out, by session.
+static SCRIPT_PASSES: LazyLock<Mutex<HashMap<String, usize>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+const SCRIPT_LINES_PER_PASS: usize = 2;
+
 struct Model {
     id: &'static str,
     name: &'static str,
@@ -78,6 +116,17 @@ pub struct ModelInfo {
 
 #[tauri::command]
 pub fn whisper_models(app: tauri::AppHandle) -> Result<Vec<ModelInfo>, AppError> {
+    if let Some(script) = script() {
+        return Ok(MODELS
+            .iter()
+            .map(|m| ModelInfo {
+                id: m.id,
+                name: m.name,
+                bytes: m.bytes,
+                installed: script.installed,
+            })
+            .collect());
+    }
     let dir = models_dir(&app)?;
     Ok(MODELS
         .iter()
@@ -274,6 +323,11 @@ pub async fn talk_transcribe(
     model: String,
     app: tauri::AppHandle,
 ) -> Result<Vec<Segment>, AppError> {
+    if let Some(script) = script() {
+        SESSIONS.lock().remove(&session);
+        SCRIPT_PASSES.lock().remove(&session);
+        return Ok(scripted(&script.segments));
+    }
     let m = self::model(&model)?;
     let dir = models_dir(&app)?;
     if !installed(&dir, m) {
@@ -289,9 +343,128 @@ pub async fn talk_transcribe(
         .map_err(|e| AppError::Io(e.to_string()))?
 }
 
+#[derive(Serialize)]
+pub struct LiveResult {
+    pub segments: Vec<Segment>,
+    /// Where the next live pass starts, in samples: after the last segment kept.
+    pub next: usize,
+}
+
+/// Speech within this much of the end may still be mid-sentence: left for the next pass.
+const LIVE_HOLD_SAMPLES: usize = SAMPLE_RATE * 3 / 2;
+
+/// What a live pass keeps: segments that end before the last 1.5 s (unless
+/// the take has ended), shifted to the take's own clock, and where to resume.
+pub fn keep_live(segments: Vec<Segment>, from: usize, heard: usize, last: bool) -> LiveResult {
+    let cutoff = if last {
+        f64::INFINITY
+    } else {
+        heard.saturating_sub(from + LIVE_HOLD_SAMPLES) as f64 / SAMPLE_RATE as f64
+    };
+    let offset = from as f64 / SAMPLE_RATE as f64;
+    let kept: Vec<Segment> = segments
+        .into_iter()
+        .take_while(|s| s.end <= cutoff)
+        .collect();
+    let next = match kept.last() {
+        Some(s) if !last => from + (s.end * SAMPLE_RATE as f64) as usize,
+        _ if last => heard,
+        _ => from,
+    };
+    LiveResult {
+        segments: kept
+            .into_iter()
+            .map(|s| Segment {
+                start: s.start + offset,
+                end: s.end + offset,
+                text: s.text,
+            })
+            .collect(),
+        next,
+    }
+}
+
+/// While a take records: transcribes what was heard from `from` (samples) on,
+/// for the live view, without forgetting the take's samples. `last` keeps the
+/// final words too (the pass after Stop).
+#[tauri::command]
+pub async fn talk_transcribe_live(
+    session: String,
+    model: String,
+    from: usize,
+    last: bool,
+    app: tauri::AppHandle,
+) -> Result<LiveResult, AppError> {
+    if let Some(script) = script() {
+        let mut passes = SCRIPT_PASSES.lock();
+        let given = passes.entry(session).or_insert(0);
+        let take = if last {
+            script.segments.len()
+        } else {
+            (*given + SCRIPT_LINES_PER_PASS).min(script.segments.len())
+        };
+        let lines = scripted(&script.segments[(*given).min(take)..take]);
+        *given = take;
+        return Ok(LiveResult {
+            segments: lines,
+            next: from + SAMPLE_RATE,
+        });
+    }
+    let m = self::model(&model)?;
+    let dir = models_dir(&app)?;
+    if !installed(&dir, m) {
+        return Err(AppError::User(format!("{} isn't downloaded yet.", m.name)));
+    }
+    let samples: Vec<f32> = {
+        let sessions = SESSIONS.lock();
+        let all = sessions
+            .get(&session)
+            .ok_or_else(|| AppError::User("That take has ended.".into()))?;
+        all.get(from.min(all.len())..).unwrap_or_default().to_vec()
+    };
+    let heard = from + samples.len();
+    let path = dir.join(m.file);
+    tokio::task::spawn_blocking(move || {
+        transcribe(&path, &samples).map(|segs| keep_live(segs, from, heard, last))
+    })
+    .await
+    .map_err(|e| AppError::Io(e.to_string()))?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_live_pass_keeps_finished_sentences_on_the_take_clock() {
+        let seg = |start: f64, end: f64, text: &str| Segment {
+            start,
+            end,
+            text: text.into(),
+        };
+        // 10 s heard from 20 s in: the last 1.5 s are held back.
+        let from = 20 * SAMPLE_RATE;
+        let heard = 30 * SAMPLE_RATE;
+        let live = keep_live(
+            vec![
+                seg(0.0, 4.0, "One."),
+                seg(4.0, 8.0, "Two."),
+                seg(8.0, 9.5, "Thr"),
+            ],
+            from,
+            heard,
+            false,
+        );
+        assert_eq!(
+            live.segments,
+            vec![seg(20.0, 24.0, "One."), seg(24.0, 28.0, "Two.")]
+        );
+        assert_eq!(live.next, 28 * SAMPLE_RATE);
+        // Nothing finished yet: start again from the same place.
+        let none = keep_live(vec![seg(0.0, 9.9, "Still going")], from, heard, false);
+        assert!(none.segments.is_empty());
+        assert_eq!(none.next, from);
+    }
 
     #[test]
     fn silence_and_noise_markers_are_not_speech() {

@@ -43,3 +43,24 @@ export function transcriptInsertion(
   }
   return null;
 }
+
+/** Under the take's transcript callout (or its embed, when it has none yet): where the talk's topics go. */
+export function afterTranscriptInsertion(
+  state: EditorState,
+  file: string,
+  text: string,
+): { from: number; insert: string } | null {
+  const embed = `![[${file}]]`;
+  for (let n = 1; n <= state.doc.lines; n++) {
+    if (!state.doc.line(n).text.includes(embed)) continue;
+    let last = state.doc.line(n);
+    let k = n + 1;
+    while (k <= state.doc.lines && state.doc.line(k).text.trim() === "") k++;
+    if (k <= state.doc.lines && /^\s*>\s*\[!transcript\]/.test(state.doc.line(k).text)) {
+      while (k <= state.doc.lines && /^\s*>/.test(state.doc.line(k).text))
+        last = state.doc.line(k++);
+    }
+    return { from: last.to, insert: `\n\n${text}` };
+  }
+  return null;
+}
