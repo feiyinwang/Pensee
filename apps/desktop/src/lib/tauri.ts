@@ -526,9 +526,9 @@ export function readChangelog(): Promise<string> {
   return invoke("read_changelog");
 }
 
-/** Whether Claude Code's `claude` binary can be found on this Mac. */
-export function claudeInstalled(): Promise<boolean> {
-  return invoke("claude_installed");
+/** Whether a CLI's binary (`claude` by default, or `codex`) can be found on this Mac. */
+export function claudeInstalled(provider: "claude" | "codex" = "claude"): Promise<boolean> {
+  return invoke("claude_installed", { provider });
 }
 
 /** `~/Documents/Pensée`, made if missing: onboarding's "Start a new folder". */

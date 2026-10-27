@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { BookOpen, Check, Copy, MonitorPlay, PenLine, Podcast } from "lucide-react";
 import * as tauri from "@/lib/tauri";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { AGENT_PROVIDERS, type AgentProviderId } from "@/lib/agent-models";
 import {
   refreshClaudeAccount,
   signInClaudeFromSettings,
@@ -249,13 +251,11 @@ function NotesScreen() {
 
 /* ---------------------------------------------------------- 2. which AI */
 
-const INSTALL_CLAUDE = "curl -fsSL https://claude.ai/install.sh | bash";
-/** Shown, not offered: the pen and Agent run on Claude Code only for now
- *  (SPECs/ai-providers-spec.md). */
-const COMING = [
-  { name: "Codex", maker: "OpenAI" },
-  { name: "Gemini CLI", maker: "Google" },
-];
+/** How to install each CLI, for when it isn't on this Mac. */
+const INSTALL: Record<AgentProviderId, string> = {
+  claude: "curl -fsSL https://claude.ai/install.sh | bash",
+  codex: "npm install -g @openai/codex",
+};
 
 function CopyCommand({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
@@ -279,65 +279,101 @@ function CopyCommand({ command }: { command: string }) {
   );
 }
 
+/** Pensée needs Claude Code or Codex: each one found gets a button (Use it,
+ *  or Sign in), the ones missing show how to install them. */
 function AiScreen() {
-  const [installed, setInstalled] = useState<boolean | null>(null);
+  const [installed, setInstalled] = useState<Record<AgentProviderId, boolean> | null>(null);
   const [more, setMore] = useState(false);
-  const account = useClaudeSignInStore((s) => s.account);
-  const accountError = useClaudeSignInStore((s) => s.accountError);
-  const signing = useClaudeSignInStore((s) => s.open && s.phase === "waiting");
+  const [error, setError] = useState<string | null>(null);
+  const accounts = useClaudeSignInStore((s) => s.accounts);
+  const accountErrors = useClaudeSignInStore((s) => s.accountErrors);
+  const signingIn = useClaudeSignInStore((s) =>
+    s.open && s.phase === "waiting" ? s.provider : null,
+  );
 
   const check = () => {
     setInstalled(null);
-    void tauri.claudeInstalled().then((found) => {
-      setInstalled(found);
-      if (found) void refreshClaudeAccount();
-    });
+    void Promise.all(
+      AGENT_PROVIDERS.map((provider) =>
+        tauri.claudeInstalled(provider.id).then((found) => {
+          if (found) void refreshClaudeAccount(provider.id);
+          return [provider.id, found] as const;
+        }),
+      ),
+    ).then((found) => setInstalled(Object.fromEntries(found) as Record<AgentProviderId, boolean>));
   };
   useEffect(check, []);
 
   const next = () => goToScreen("try");
+  const use = (provider: AgentProviderId) => {
+    setError(null);
+    useSettingsStore
+      .getState()
+      .setSetting("agent.provider", provider, "global")
+      .then(next, (e: unknown) => setError(errorText(e)));
+  };
+
+  const found = AGENT_PROVIDERS.filter((provider) => installed?.[provider.id]);
+  const missing = AGENT_PROVIDERS.filter((provider) => installed && !installed[provider.id]);
   // Still checking; a failed check shows its reason instead (below).
-  if (installed === null || (installed && account === null && !accountError)) return null;
+  const checking =
+    installed === null ||
+    found.some((provider) => accounts[provider.id] === null && !accountErrors[provider.id]);
+  if (checking) return null;
+  // The one already chosen leads, so a returning writer's ↵ keeps it.
+  const chosen = useSettingsStore.getState().getSetting("agent.provider");
+  found.sort((a, b) => Number(b.id === chosen) - Number(a.id === chosen));
+  // Signed in first: that's the one ↵ should take.
+  found.sort(
+    (a, b) => Number(accounts[b.id] === "signed-in") - Number(accounts[a.id] === "signed-in"),
+  );
+  const showMissing = missing.length > 0 && (found.length === 0 || more);
 
   return (
     <Question
       title="Which AI should Pensée use?"
-      sub="It runs on the plan you already have. Only the lines you ask about are sent."
+      sub="Pensée needs Claude or ChatGPT, on the plan you already have (ChatGPT Free works). Only the lines you ask about are sent."
     >
-      {installed && account === "signed-in" && <Choice onSelect={next}>Use Claude Code</Choice>}
-      {installed && account === null && accountError && <p className="onb-error">{accountError}</p>}
-      {installed && account !== null && account !== "signed-in" && (
-        <Choice
-          onSelect={signInClaudeFromSettings}
-          meta={signing ? "finish in your browser" : "signed out"}
-        >
-          Sign in to Claude Code
-        </Choice>
-      )}
-      {!installed && (
-        <div className="onb-panel">
-          <p>
-            <b>Claude Code</b> isn't on this Mac yet. Install it in Terminal, then check again.
+      {found.map((provider) =>
+        accounts[provider.id] === "signed-in" ? (
+          <Choice key={provider.id} onSelect={() => use(provider.id)} meta={provider.name}>
+            Use {provider.plan}
+          </Choice>
+        ) : accounts[provider.id] === null ? (
+          <p key={provider.id} className="onb-error">
+            {accountErrors[provider.id]}
           </p>
-          <CopyCommand command={INSTALL_CLAUDE} />
+        ) : (
+          <Choice
+            key={provider.id}
+            onSelect={() => signInClaudeFromSettings(provider.id)}
+            meta={signingIn === provider.id ? "finish in your browser" : "signed out"}
+          >
+            Sign in to {provider.plan}
+          </Choice>
+        ),
+      )}
+      {showMissing && (
+        <div className="onb-panel">
+          {missing.map((provider) => (
+            <Fragment key={provider.id}>
+              <p>
+                <b>{provider.plan}</b> needs {provider.name}, which isn't on this Mac yet. Install
+                it in Terminal, then check again.
+              </p>
+              <CopyCommand command={INSTALL[provider.id]} />
+            </Fragment>
+          ))}
           <Choice onSelect={check}>Check again</Choice>
         </div>
       )}
-      {more && (
-        <div className="onb-panel">
-          {COMING.map((cli) => (
-            <div className="onb-row" key={cli.name}>
-              <b>{cli.name}</b>
-              <span>{cli.maker}</span>
-              <span className="onb-soon">Coming soon</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {error && <p className="onb-error">{error}</p>}
       <div className="onb-alt">
-        <button type="button" className="onb-text-button" onClick={() => setMore(!more)}>
-          {more ? "Fewer options" : "Other options"}
-        </button>
+        {missing.length > 0 && found.length > 0 && (
+          <button type="button" className="onb-text-button" onClick={() => setMore(!more)}>
+            {more ? "Fewer options" : "Other options"}
+          </button>
+        )}
         <button type="button" className="onb-text-button" onClick={next}>
           Skip for now
         </button>

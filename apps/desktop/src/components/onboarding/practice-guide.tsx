@@ -7,6 +7,8 @@ import { formatVideoTime } from "@/lib/video-pins";
 import { seekVideo, videoPlayerFor } from "@/lib/video-players";
 import { useEditorStore } from "@/stores/editor-store";
 import { useClaudeSignInStore } from "@/stores/claude-sign-in-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { agentProvider } from "@/lib/agent-models";
 import { goToScreen, useOnboardingStore } from "./onboarding-store";
 import { SAMPLES, type Sample } from "./samples";
 import { keyLabel } from "@/lib/platform";
@@ -86,7 +88,10 @@ export function PracticeGuide() {
   const id = useOnboardingStore((s) => s.sample);
   const path = useOnboardingStore((s) => s.practicePath);
   const body = useEditorStore((s) => (path ? (s.openFiles.get(path)?.content ?? "") : ""));
-  const signedOut = useClaudeSignInStore((s) => s.account !== "signed-in");
+  const provider = agentProvider(
+    useSettingsStore((s) => s.settings["agent.provider"] as string | undefined),
+  ).id;
+  const signedOut = useClaudeSignInStore((s) => s.accounts[provider] !== "signed-in");
   const [writing, setWriting] = useState<"no" | "yes" | "done">("no");
   const [time, setTime] = useState(0);
   const sample = id ? SAMPLES[id] : null;

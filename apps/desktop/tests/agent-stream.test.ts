@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
-import { describeToolCall, parseAgentLine, SIGNED_OUT_TEXT } from "../src/lib/agent-stream";
+import {
+  describeToolCall,
+  parseAgentLine,
+  SIGNED_OUT_TEXT,
+  signedOutText,
+} from "../src/lib/agent-stream";
 import {
   buildAgentInstructions,
   buildAgentMessage,
@@ -95,6 +100,123 @@ describe("parseAgentLine", () => {
 
   test("ignores non-JSON lines", () => {
     expect(parseAgentLine("not json")).toEqual([]);
+  });
+});
+
+// Shapes as `codex app-server` 0.165 prints them.
+describe("parseAgentLine (Codex)", () => {
+  test("the thread's id is the session", () => {
+    expect(parseAgentLine(line({ id: 1, result: { thread: { id: "t1" }, model: "m" } }))).toEqual([
+      { kind: "session", sessionId: "t1" },
+    ]);
+    // A turn's own response says nothing.
+    expect(parseAgentLine(line({ id: 11, result: { turn: { id: "u1" } } }))).toEqual([]);
+  });
+
+  test("streams message deltas, each later message its own paragraph", () => {
+    expect(
+      parseAgentLine(
+        line({ method: "item/agentMessage/delta", params: { itemId: "m", delta: "Hi" } }),
+      ),
+    ).toEqual([{ kind: "text", text: "Hi" }]);
+    expect(
+      parseAgentLine(
+        line({ method: "item/started", params: { item: { type: "agentMessage", text: "" } } }),
+      ),
+    ).toEqual([{ kind: "text", text: "\n\n" }]);
+  });
+
+  test("turns reads, searches and edits into one-line labels", () => {
+    const started = (item: unknown) =>
+      parseAgentLine(line({ method: "item/started", params: { item } }));
+    expect(
+      started({
+        type: "commandExecution",
+        command: "/bin/zsh -lc 'cat Draft.md'",
+        commandActions: [
+          { type: "read", command: "cat Draft.md", name: "Draft.md", path: "/n/Draft.md" },
+        ],
+      }),
+    ).toEqual([{ kind: "tool", label: "Read Draft.md" }]);
+    expect(
+      started({
+        type: "commandExecution",
+        commandActions: [{ type: "search", command: "rg todo", query: "todo", path: null }],
+      }),
+    ).toEqual([{ kind: "tool", label: "Searched for “todo”" }]);
+    expect(started({ type: "commandExecution", commandActions: [] })).toEqual([
+      { kind: "tool", label: "Ran a command" },
+    ]);
+    expect(
+      started({ type: "fileChange", changes: [{ path: "/n/Draft.md", kind: { type: "update" } }] }),
+    ).toEqual([{ kind: "tool", label: "Edited Draft.md" }]);
+    expect(started({ type: "reasoning" })).toEqual([]);
+    expect(started({ type: "userMessage", content: [] })).toEqual([]);
+  });
+
+  test("a finished turn ends on its last message", () => {
+    expect(
+      parseAgentLine(
+        line({
+          method: "turn/completed",
+          params: {
+            threadId: "t1",
+            turn: {
+              status: "completed",
+              error: null,
+              items: [
+                { type: "agentMessage", text: "I’ll read Draft.md.\n", phase: "commentary" },
+                { type: "commandExecution" },
+                { type: "agentMessage", text: "It says notes beat memory.", phase: "final_answer" },
+              ],
+            },
+          },
+        }),
+      ),
+    ).toEqual([
+      { kind: "result", isError: false, text: "It says notes beat memory.", sessionId: "t1" },
+    ]);
+  });
+
+  test("a failed turn says why", () => {
+    expect(
+      parseAgentLine(
+        line({
+          method: "turn/completed",
+          params: {
+            threadId: "t1",
+            turn: { status: "failed", items: [], error: { message: "Model not found: gpt-x" } },
+          },
+        }),
+      ),
+    ).toEqual([{ kind: "result", isError: true, text: "Model not found: gpt-x", sessionId: "t1" }]);
+  });
+
+  test("a missing sign-in ends the reply at the first 401, not after the retries", () => {
+    const retrying = {
+      method: "error",
+      params: {
+        threadId: "t1",
+        willRetry: true,
+        error: {
+          message: "Reconnecting... 2/5",
+          codexErrorInfo: { responseStreamDisconnected: { httpStatusCode: 401 } },
+        },
+      },
+    };
+    expect(parseAgentLine(line(retrying))).toEqual([
+      { kind: "result", isError: true, text: signedOutText("ChatGPT"), sessionId: "t1" },
+    ]);
+    // Any other dropped stream is retried quietly.
+    const dropped = structuredClone(retrying);
+    dropped.params.error.codexErrorInfo.responseStreamDisconnected.httpStatusCode = 502;
+    expect(parseAgentLine(line(dropped))).toEqual([]);
+  });
+
+  test("a failed request is an error", () => {
+    expect(
+      parseAgentLine(line({ id: 11, error: { code: -32600, message: "thread not found" } })),
+    ).toEqual([{ kind: "result", isError: true, text: "thread not found", sessionId: null }]);
   });
 });
 

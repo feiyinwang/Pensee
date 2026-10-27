@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { offerClaudeSignIn } from "@/stores/claude-sign-in-store";
-import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { agentModel } from "./agent-models";
+import type { AgentModelId } from "./agent-models";
 import { agentErrorText, parseAgentLine } from "./agent-stream";
+import { agentInvokeArgs, agentTarget } from "./agent-target";
 import { PEN_INSTRUCTIONS } from "./second-pen";
 
 // The second pen's Claude (SPECs/second-pen-spec.md#implementation): the
@@ -62,21 +62,17 @@ function ensureListeners(): void {
       const request = waiting.get(payload.requestId);
       if (!request) return;
       waiting.delete(payload.requestId);
-      const reason = agentErrorText(lastLine(payload.stderr));
+      const reason = agentErrorText(lastLine(payload.stderr), agentTarget().provider.plan);
       offerClaudeSignIn(reason);
       request.reject(new Error(reason || "Claude stopped before the pen finished."));
     },
   );
 }
 
-function model(): string {
-  return agentModel(useSettingsStore.getState().getSetting("agent.model")).id;
-}
-
-/** Organize builds a pyramid of ideas from what the lines mean: Haiku hands
- *  back a flat list, so it asks Sonnet at least. */
-export function organizeModel(): string {
-  const id = model();
+/** Organize builds a pyramid of ideas from what the lines mean: the fastest
+ *  model hands back a flat list, so it asks for Balanced at least. */
+export function organizeModel(): AgentModelId {
+  const id = agentTarget().model.id;
   return id === "haiku" ? "sonnet" : id;
 }
 
@@ -93,7 +89,7 @@ export function warmPen(): void {
   invoke("agent_warm", {
     sessionId: null,
     instructions: PEN_INSTRUCTIONS,
-    model: model(),
+    ...agentInvokeArgs(),
     channel: CHANNEL,
   }).catch((error: unknown) => {
     // Not shown: the request starts the process itself and reports the reason.
@@ -110,7 +106,7 @@ export interface PenConversation {
   end: () => void;
 }
 
-export function penConversation(modelId?: string): PenConversation {
+export function penConversation(modelId?: AgentModelId): PenConversation {
   ensureListeners();
   let current: string | null = null;
   let ended = false;
@@ -141,7 +137,7 @@ export function penConversation(modelId?: string): PenConversation {
           prompt,
           sessionId: null,
           instructions: PEN_INSTRUCTIONS,
-          model: modelId ?? model(),
+          ...agentInvokeArgs(modelId),
           channel: CHANNEL,
         }).catch((error: unknown) => {
           const request = waiting.get(requestId);

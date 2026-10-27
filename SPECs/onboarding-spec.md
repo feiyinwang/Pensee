@@ -23,11 +23,12 @@ works that way:
   (`~/Library/Application Support/obsidian/obsidian.json`) and counts each
   vault's notes (`obsidian_vaults`). **Start a new folder in Documents** makes
   `~/Documents/Pensée`.
-- **Screen 2** offers Claude Code only: **Use Claude Code** when signed in,
-  **Sign in to Claude Code** (the existing sign-in popup) when signed out, or
-  its install line with **Check again** when it isn't installed. Codex and
-  Gemini CLI show under **Other options** as _Coming soon_ until the pen runs
-  on them (SPECs/ai-providers-spec.md).
+- **Screen 2** offers Claude and ChatGPT (Codex), and says Pensée needs one
+  of them: **Use Claude** / **Use ChatGPT** when signed in, **Sign in to …**
+  (the existing sign-in popup) when signed out, or each one's install line
+  with **Check again** when it isn't installed (open when neither is,
+  behind **Other options** otherwise). **Skip for now** stays.
+  (SPECs/codex-spec.md, 2026-10-27; Gemini CLI and Another CLI dropped.)
 - **Screen 3's samples are real notes**, written into `Pensée samples/` in the
   vault (the copy says so, and that they can be deleted), because only a
   note in the vault gets the real editor, player and pen. The book is _The
@@ -72,7 +73,7 @@ back on screens 1–2.
      command field for DeepSeek or a local model.
    - **Skip for now** sits beside it. With nothing installed, the options
      show open and **Skip for now** is the ↵ action.
-   - The CLIs themselves are specced in the multi-provider work.
+   - The CLIs themselves are specced in SPECs/codex-spec.md.
 3. **What are you learning right now?** _Pick one to try. Each becomes a
    note you can write around._ Four example buttons, no link field. Each
    opens a practice note marked _a sample, not saved to <vault>_, so nothing

@@ -1,9 +1,10 @@
-//! Signing Claude Code in and out from Pensée (SPECs/claude-sign-in-spec.md).
-//! `claude auth login` opens the browser itself and waits for the writer to
-//! approve; the result is checked with `claude auth status`, never assumed
-//! from the exit code.
+//! Signing the agent CLI in and out from Pensée (SPECs/claude-sign-in-spec.md,
+//! SPECs/codex-spec.md). `claude auth login` and `codex login` open the browser
+//! themselves and wait for the writer to approve; the result is checked with
+//! the CLI's status command, never assumed from the login's exit code.
+//! Every command takes the `provider` (`claude` when absent).
 
-use super::agent::{claude_command, end_all_sessions};
+use super::agent::{cli_command, end_all_sessions, Provider};
 use crate::error::AppError;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -19,11 +20,20 @@ const QUICK_TIMEOUT: Duration = Duration::from_secs(15);
 const POLL: Duration = Duration::from_millis(150);
 const TOO_OLD: &str = "This version of Claude Code can't sign in from Pensée. Run `claude update` in Terminal, then try again.";
 const NOT_FINISHED: &str = "Signing in didn't finish. Try again.";
-const STILL_SIGNED_IN: &str =
-    "Claude Code is still signed in. Run `claude auth logout` in Terminal to sign out.";
 
-/// The sign-in running now, if any. One at a time, app-wide: Claude Code has
-/// one sign-in per Mac.
+fn still_signed_in(provider: Provider) -> String {
+    let logout = match provider {
+        Provider::Claude => "claude auth logout",
+        Provider::Codex => "codex logout",
+    };
+    format!(
+        "{} is still signed in. Run `{logout}` in Terminal to sign out.",
+        provider.name()
+    )
+}
+
+/// The sign-in running now, if any. One at a time, app-wide: each CLI has one
+/// sign-in per Mac, and one popup asks for it.
 #[derive(Default)]
 pub struct ClaudeSignInState {
     current: Mutex<Option<Arc<SignIn>>>,
@@ -43,21 +53,32 @@ struct SignInUrl {
     url: String,
 }
 
-/// Run a short `claude` command to the end, or kill it at the deadline.
-fn quick_output(mut command: Command) -> Result<String, AppError> {
+/// What a short command printed: Claude Code answers on stdout, Codex's
+/// `login status` on stderr.
+struct QuickOutput {
+    stdout: String,
+    stderr: String,
+}
+
+fn read_all(stream: Option<impl Read + Send + 'static>) -> std::thread::JoinHandle<String> {
+    std::thread::spawn(move || {
+        let mut text = String::new();
+        if let Some(mut stream) = stream {
+            let _ = stream.read_to_string(&mut text);
+        }
+        text
+    })
+}
+
+/// Run a short CLI command to the end, or kill it at the deadline.
+fn quick_output(mut command: Command) -> Result<QuickOutput, AppError> {
     let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()?;
-    let mut stdout = child.stdout.take();
-    let reader = std::thread::spawn(move || {
-        let mut text = String::new();
-        if let Some(stdout) = stdout.as_mut() {
-            let _ = stdout.read_to_string(&mut text);
-        }
-        text
-    });
+    let stdout = read_all(child.stdout.take());
+    let stderr = read_all(child.stderr.take());
     let deadline = Instant::now() + QUICK_TIMEOUT;
     while child.try_wait()?.is_none() {
         if Instant::now() >= deadline {
@@ -67,7 +88,10 @@ fn quick_output(mut command: Command) -> Result<String, AppError> {
         std::thread::sleep(POLL);
     }
     let _ = child.wait();
-    Ok(reader.join().unwrap_or_default())
+    Ok(QuickOutput {
+        stdout: stdout.join().unwrap_or_default(),
+        stderr: stderr.join().unwrap_or_default(),
+    })
 }
 
 /// Versions without `claude auth` print the main help for `auth --help`
@@ -82,55 +106,91 @@ fn parse_status(stdout: &str) -> Option<bool> {
     value.get("loggedIn")?.as_bool()
 }
 
-fn signed_in() -> Result<bool, AppError> {
-    let mut help = claude_command()?;
-    help.args(["auth", "--help"]);
-    if !supports_auth(&quick_output(help)?) {
-        return Err(AppError::User(TOO_OLD.to_owned()));
+/// `codex login status` prints "Logged in using ChatGPT" (or "using an API
+/// key") or "Not logged in".
+fn parse_codex_status(output: &str) -> Option<bool> {
+    let line = output
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())?;
+    if line.starts_with("Logged in") {
+        Some(true)
+    } else if line.starts_with("Not logged in") {
+        Some(false)
+    } else {
+        None
     }
-    let mut status = claude_command()?;
-    status.args(["auth", "status"]);
-    parse_status(&quick_output(status)?).ok_or_else(|| AppError::User(TOO_OLD.to_owned()))
 }
 
-/// The sign-in page Claude Code prints for when the browser didn't open.
+fn signed_in(provider: Provider) -> Result<bool, AppError> {
+    if provider == Provider::Codex {
+        let mut status = cli_command(provider)?;
+        status.args(["login", "status"]);
+        let output = quick_output(status)?;
+        return parse_codex_status(&format!("{}\n{}", output.stderr, output.stdout)).ok_or_else(
+            || {
+                AppError::User(format!(
+                    "Couldn't tell whether Codex is signed in: {}",
+                    output.stderr.trim()
+                ))
+            },
+        );
+    }
+    let mut help = cli_command(provider)?;
+    help.args(["auth", "--help"]);
+    if !supports_auth(&quick_output(help)?.stdout) {
+        return Err(AppError::User(TOO_OLD.to_owned()));
+    }
+    let mut status = cli_command(provider)?;
+    status.args(["auth", "status"]);
+    parse_status(&quick_output(status)?.stdout).ok_or_else(|| AppError::User(TOO_OLD.to_owned()))
+}
+
+/// The sign-in page the CLI prints for when the browser didn't open (Codex
+/// also prints its local `http://localhost` callback, which isn't it).
 fn sign_in_url(line: &str) -> Option<&str> {
     line.split_whitespace()
         .find(|word| word.starts_with("https://"))
 }
 
-/// Whether Claude Code is signed in now.
+/// Whether the CLI is signed in now.
 #[tauri::command]
-pub async fn claude_auth_status() -> Result<bool, AppError> {
-    tauri::async_runtime::spawn_blocking(signed_in)
+pub async fn claude_auth_status(provider: Option<String>) -> Result<bool, AppError> {
+    let provider = Provider::parse(provider.as_deref())?;
+    tauri::async_runtime::spawn_blocking(move || signed_in(provider))
         .await
         .map_err(|error| AppError::Io(error.to_string()))?
 }
 
-/// Sign Claude Code in: resolves once the writer approved in the browser (or
-/// was already signed in), and ends every window's running Claude so the next
+/// Sign the CLI in: resolves once the writer approved in the browser (or was
+/// already signed in), and ends every window's running agent so the next
 /// request uses the new sign-in. The sign-in page's address is sent to the
 /// calling window as `claude-sign-in:url`.
 #[tauri::command]
 pub async fn claude_sign_in(
+    provider: Option<String>,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
     let label = webview.label().to_owned();
-    tauri::async_runtime::spawn_blocking(move || sign_in(&app, &label))
+    let provider = Provider::parse(provider.as_deref())?;
+    tauri::async_runtime::spawn_blocking(move || sign_in(&app, &label, provider))
         .await
         .map_err(|error| AppError::Io(error.to_string()))?
 }
 
-fn sign_in(app: &tauri::AppHandle, label: &str) -> Result<(), AppError> {
-    if signed_in()? {
+fn sign_in(app: &tauri::AppHandle, label: &str, provider: Provider) -> Result<(), AppError> {
+    if signed_in(provider)? {
         end_all_sessions(app);
         return Ok(());
     }
 
-    let mut command = claude_command()?;
+    let mut command = cli_command(provider)?;
+    match provider {
+        Provider::Claude => command.args(["auth", "login", "--claudeai"]),
+        Provider::Codex => command.arg("login"),
+    };
     let mut child = command
-        .args(["auth", "login", "--claudeai"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -192,7 +252,7 @@ fn sign_in(app: &tauri::AppHandle, label: &str) -> Result<(), AppError> {
     if session.cancelled.load(Ordering::SeqCst) {
         return Err(AppError::User("Signing in was cancelled.".to_owned()));
     }
-    if signed_in()? {
+    if signed_in(provider)? {
         end_all_sessions(app);
         return Ok(());
     }
@@ -200,30 +260,37 @@ fn sign_in(app: &tauri::AppHandle, label: &str) -> Result<(), AppError> {
     Err(AppError::User(if reason.is_empty() {
         NOT_FINISHED.to_owned()
     } else {
-        format!("{NOT_FINISHED} Claude Code said: {reason}")
+        format!("{NOT_FINISHED} {} said: {reason}", provider.name())
     }))
 }
 
-/// Sign Claude Code out (Settings → Agent → Claude), then end every window's
-/// running Claude: a running one keeps the sign-in it started with.
+/// Sign the CLI out (Settings → Agent), then end every window's running
+/// agent: a running one keeps the sign-in it started with.
 #[tauri::command]
-pub async fn claude_sign_out(app: tauri::AppHandle) -> Result<(), AppError> {
-    tauri::async_runtime::spawn_blocking(move || sign_out(&app))
+pub async fn claude_sign_out(
+    provider: Option<String>,
+    app: tauri::AppHandle,
+) -> Result<(), AppError> {
+    let provider = Provider::parse(provider.as_deref())?;
+    tauri::async_runtime::spawn_blocking(move || sign_out(&app, provider))
         .await
         .map_err(|error| AppError::Io(error.to_string()))?
 }
 
-fn sign_out(app: &tauri::AppHandle) -> Result<(), AppError> {
+fn sign_out(app: &tauri::AppHandle, provider: Provider) -> Result<(), AppError> {
     // Checks `auth` exists first, so an old CLI never gets `auth logout` as a prompt.
-    if !signed_in()? {
+    if !signed_in(provider)? {
         return Ok(());
     }
-    let mut logout = claude_command()?;
-    logout.args(["auth", "logout"]);
+    let mut logout = cli_command(provider)?;
+    match provider {
+        Provider::Claude => logout.args(["auth", "logout"]),
+        Provider::Codex => logout.arg("logout"),
+    };
     quick_output(logout)?;
     // A sign-in from the shell (an API key in the environment) outlives logout.
-    if signed_in()? {
-        return Err(AppError::User(STILL_SIGNED_IN.to_owned()));
+    if signed_in(provider)? {
+        return Err(AppError::User(still_signed_in(provider)));
     }
     end_all_sessions(app);
     Ok(())
@@ -292,6 +359,26 @@ mod tests {
         assert_eq!(parse_status("{\"loggedIn\": true}"), Some(true));
         assert_eq!(parse_status("Invalid API key · Please run /login"), None);
         assert_eq!(parse_status("{}"), None);
+    }
+
+    #[test]
+    fn codex_status_reads_its_line() {
+        assert_eq!(parse_codex_status("Logged in using ChatGPT\n"), Some(true));
+        assert_eq!(
+            parse_codex_status("\nLogged in using an API key - sk-…\n"),
+            Some(true)
+        );
+        assert_eq!(parse_codex_status("Not logged in\n"), Some(false));
+        assert_eq!(parse_codex_status("error: unexpected argument"), None);
+        assert_eq!(parse_codex_status(""), None);
+    }
+
+    #[test]
+    fn url_skips_codex_local_callback() {
+        assert_eq!(
+            sign_in_url("Starting local login server on http://localhost:1455. If your browser did not open, navigate to this URL to authenticate: https://auth.openai.com/oauth/authorize?x=1"),
+            Some("https://auth.openai.com/oauth/authorize?x=1")
+        );
     }
 
     #[test]

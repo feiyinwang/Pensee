@@ -1,8 +1,9 @@
-//! Agent chat: keeps one headless Claude Code per window running in the
-//! workspace, feeds it messages on stdin and forwards its stream-json stdout
-//! to that window, one line per event.
+//! Agent chat: keeps one headless agent CLI per window running in the
+//! workspace, feeds it messages on stdin and forwards its stdout to that
+//! window, one line per event. The CLI is Claude Code (stream-json) or Codex
+//! (`codex app-server`, JSON-RPC), whichever the writer picked.
 //! Parsing lives in the frontend (`lib/agent-stream.ts`) so it stays testable
-//! without a process. See SPECs/agent-chat-spec.md.
+//! without a process. See SPECs/agent-chat-spec.md and SPECs/codex-spec.md.
 
 use crate::error::AppError;
 use crate::state::AppState;
@@ -60,7 +61,52 @@ impl Channel {
     }
 }
 
-/// Each window's Claude processes, by `Channel::key`.
+/// The agent CLI a request runs on (`agent.provider`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Provider {
+    Claude,
+    Codex,
+}
+
+impl Provider {
+    pub(crate) fn parse(name: Option<&str>) -> Result<Self, AppError> {
+        match name {
+            None | Some("claude") => Ok(Self::Claude),
+            Some("codex") => Ok(Self::Codex),
+            Some(other) => Err(AppError::Io(format!("unknown agent provider: {other}"))),
+        }
+    }
+
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            Self::Claude => "Claude Code",
+            Self::Codex => "Codex",
+        }
+    }
+
+    fn not_installed(self) -> &'static str {
+        match self {
+            Self::Claude => {
+                "Claude Code isn't installed. Install it from claude.com/code, then try again."
+            }
+            Self::Codex => {
+                "Codex isn't installed. Install it with `npm install -g @openai/codex`, then try again."
+            }
+        }
+    }
+
+    /// The binary's file names: Windows has the native `.exe` and npm's `.cmd`.
+    fn binaries(self) -> &'static [&'static str] {
+        match (self, cfg!(windows)) {
+            (Self::Claude, false) => &["claude"],
+            (Self::Claude, true) => &["claude.exe", "claude.cmd"],
+            (Self::Codex, false) => &["codex"],
+            (Self::Codex, true) => &["codex.exe", "codex.cmd"],
+        }
+    }
+}
+
+/// Each window's agent processes, by `Channel::key`.
 #[derive(Default)]
 pub struct AgentState {
     sessions: Mutex<HashMap<String, Arc<Session>>>,
@@ -81,39 +127,32 @@ struct AgentExit {
     stderr: String,
 }
 
-/// The login shell's PATH plus the resolved `claude` binary. An app launched
-/// from Finder inherits launchd's minimal PATH, not the terminal's, so both
-/// are probed once from `$SHELL -ilc` and cached for the process lifetime.
-struct ClaudeEnv {
-    path: Option<OsString>,
-    binary: Option<PathBuf>,
+/// The login shell's PATH. An app launched from Finder inherits launchd's
+/// minimal PATH, not the terminal's, so it is probed once from `$SHELL -ilc`
+/// and cached for the process lifetime. The binary itself is looked up on each
+/// call (a few `stat`s), so one installed after launch is found by Check again.
+fn login_path() -> Option<&'static OsString> {
+    static PATH: OnceLock<Option<OsString>> = OnceLock::new();
+    PATH.get_or_init(probe_login_path).as_ref()
 }
 
-fn claude_env() -> &'static ClaudeEnv {
-    static ENV: OnceLock<ClaudeEnv> = OnceLock::new();
-    ENV.get_or_init(|| {
-        let path = probe_login_path();
-        // Windows sets USERPROFILE, not HOME.
-        let home = std::env::var_os("HOME")
-            .or_else(|| std::env::var_os("USERPROFILE"))
-            .map(PathBuf::from);
-        let binary = resolve_claude_binary(path.as_deref(), home.as_deref(), |p| p.is_file());
-        ClaudeEnv { path, binary }
-    })
-}
-
-/// A `claude` command with the login shell's PATH, or the error to show when
-/// Claude Code isn't installed. The chat, the pen and sign-in all start here.
-pub(crate) fn claude_command() -> Result<Command, AppError> {
-    let env = claude_env();
-    let binary = env.binary.as_ref().ok_or_else(|| {
-        AppError::User(
-            "Claude Code isn't installed. Install it from claude.com/code, then try again."
-                .to_owned(),
-        )
-    })?;
+/// A command for `provider`'s CLI with the login shell's PATH, or the error to
+/// show when it isn't installed. The chat, the pen and sign-in all start here.
+pub(crate) fn cli_command(provider: Provider) -> Result<Command, AppError> {
+    let path = login_path();
+    // Windows sets USERPROFILE, not HOME.
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from);
+    let binary = resolve_binary(
+        provider,
+        path.map(OsString::as_os_str),
+        home.as_deref(),
+        |p| p.is_file(),
+    )
+    .ok_or_else(|| AppError::User(provider.not_installed().to_owned()))?;
     let mut command = Command::new(binary);
-    if let Some(path) = &env.path {
+    if let Some(path) = path {
         command.env("PATH", path);
     }
     // A GUI app's console child opens a console window of its own on Windows.
@@ -246,18 +285,16 @@ fn parse_path_probe(stdout: &str) -> Option<String> {
         .filter(|path| !path.is_empty())
 }
 
-/// First `claude` found on the login PATH, then the known install locations.
-fn resolve_claude_binary(
+/// First binary found on the login PATH, then the known install locations:
+/// Claude Code's installer (`~/.local/bin`, `~/.claude/local`), Homebrew, and
+/// npm's prefix when it isn't on PATH yet.
+fn resolve_binary(
+    provider: Provider,
     login_path: Option<&std::ffi::OsStr>,
     home: Option<&Path>,
     exists: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
-    // Windows: the native installer's `claude.exe`, or npm's `claude.cmd`.
-    let names: &[&str] = if cfg!(windows) {
-        &["claude.exe", "claude.cmd"]
-    } else {
-        &["claude"]
-    };
+    let names = provider.binaries();
     let mut candidates: Vec<PathBuf> = login_path
         .map(|path| {
             std::env::split_paths(path)
@@ -268,12 +305,17 @@ fn resolve_claude_binary(
     if let Some(home) = home {
         for name in names {
             candidates.push(home.join(".local/bin").join(name));
-            candidates.push(home.join(".claude/local").join(name));
+            match provider {
+                Provider::Claude => candidates.push(home.join(".claude/local").join(name)),
+                Provider::Codex => candidates.push(home.join(".npm-global/bin").join(name)),
+            }
         }
     }
     if !cfg!(windows) {
-        candidates.push(PathBuf::from("/opt/homebrew/bin/claude"));
-        candidates.push(PathBuf::from("/usr/local/bin/claude"));
+        for name in names {
+            candidates.push(Path::new("/opt/homebrew/bin").join(name));
+            candidates.push(Path::new("/usr/local/bin").join(name));
+        }
     }
     candidates.into_iter().find(|candidate| exists(candidate))
 }
@@ -336,23 +378,202 @@ fn message_line(prompt: &str) -> String {
     .to_string()
 }
 
+/// JSON-RPC ids of the requests a Codex process sends on its own: the thread
+/// (started or resumed), and a fresh thread when resuming failed. Turns count
+/// up from `FIRST_TURN_ID`.
+const CODEX_THREAD_ID: u64 = 1;
+const CODEX_FRESH_THREAD_ID: u64 = 2;
+const CODEX_FIRST_TURN_ID: u64 = 10;
+
+/// The thread's settings, the same for `thread/start` and `thread/resume`.
+/// The chat may edit the workspace and nothing else (Codex reads with shell
+/// commands, so it needs the sandbox, not a tool list); nothing ever asks for
+/// approval, a command outside the sandbox just fails. The pen and the talk
+/// replace Codex's coding-agent prompt with their own instructions: they get
+/// everything in the request, and the coding prompt costs ~40k tokens a turn.
+fn codex_thread_params(key: &SpawnKey) -> serde_json::Value {
+    let chat = key.channel == Channel::Chat;
+    let mut params = serde_json::json!({
+        "cwd": key.root,
+        "approvalPolicy": "never",
+        "sandbox": if chat { "workspace-write" } else { "read-only" },
+    });
+    params[if chat {
+        "developerInstructions"
+    } else {
+        "baseInstructions"
+    }] = key.instructions.clone().into();
+    // An empty model is Codex's own default for the account.
+    if !key.model.is_empty() {
+        params["model"] = key.model.clone().into();
+    }
+    params
+}
+
+fn codex_thread_start(id: u64, key: &SpawnKey) -> String {
+    let mut params = codex_thread_params(key);
+    // The pen's and the talk's threads are never resumed: keep them off disk.
+    params["ephemeral"] = (key.channel != Channel::Chat).into();
+    serde_json::json!({ "id": id, "method": "thread/start", "params": params }).to_string()
+}
+
+/// What a new `codex app-server` is sent before any message: the handshake,
+/// then the thread, resumed when the chat has one.
+fn codex_startup_lines(session_id: Option<&str>, key: &SpawnKey) -> Vec<String> {
+    let initialize = serde_json::json!({
+        "id": 0,
+        "method": "initialize",
+        "params": {
+            "clientInfo": { "name": "pensee", "title": "Pensée", "version": env!("CARGO_PKG_VERSION") },
+            "capabilities": { "experimentalApi": false, "requestAttestation": false },
+        },
+    });
+    let thread = match session_id {
+        Some(thread_id) => {
+            let mut params = codex_thread_params(key);
+            params["threadId"] = thread_id.into();
+            serde_json::json!({ "id": CODEX_THREAD_ID, "method": "thread/resume", "params": params })
+                .to_string()
+        }
+        None => codex_thread_start(CODEX_THREAD_ID, key),
+    };
+    vec![
+        initialize.to_string(),
+        serde_json::json!({ "method": "initialized" }).to_string(),
+        thread,
+    ]
+}
+
+/// One user turn as a Codex `turn/start` request.
+fn codex_turn_line(id: u64, thread_id: &str, prompt: &str) -> String {
+    serde_json::json!({
+        "id": id,
+        "method": "turn/start",
+        "params": {
+            "threadId": thread_id,
+            "input": [{ "type": "text", "text": prompt, "text_elements": [] }],
+        },
+    })
+    .to_string()
+}
+
+/// What a Codex response line means for the process's thread.
+#[derive(Debug, PartialEq)]
+enum CodexReply {
+    /// `thread/start` or `thread/resume` answered with this thread.
+    Thread(String),
+    /// Resuming failed (the thread is gone): start a fresh one.
+    ResumeFailed,
+    Other,
+}
+
+fn codex_reply(line: &str) -> CodexReply {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+        return CodexReply::Other;
+    };
+    // Notifications and Codex's own requests carry a method; responses don't.
+    if value.get("method").is_some() {
+        return CodexReply::Other;
+    }
+    let id = value.get("id").and_then(serde_json::Value::as_u64);
+    if id != Some(CODEX_THREAD_ID) && id != Some(CODEX_FRESH_THREAD_ID) {
+        return CodexReply::Other;
+    }
+    if let Some(thread) = value.pointer("/result/thread/id").and_then(|v| v.as_str()) {
+        return CodexReply::Thread(thread.to_owned());
+    }
+    if id == Some(CODEX_THREAD_ID) && value.get("error").is_some() {
+        return CodexReply::ResumeFailed;
+    }
+    CodexReply::Other
+}
+
 /// What a running process was started with. A send or warm-up with a
 /// different key replaces the process (resuming the conversation).
 #[derive(Clone, PartialEq)]
 struct SpawnKey {
+    provider: Provider,
     root: PathBuf,
     model: String,
     instructions: String,
     channel: Channel,
 }
 
-/// A window's Claude process. Idle between messages; `current` is the request
+/// A window's agent process. Idle between messages; `current` is the request
 /// whose reply is streaming, and every stdout line is tagged with it.
 struct Session {
     key: SpawnKey,
     child: Mutex<Child>,
     stdin: Mutex<ChildStdin>,
     current: Mutex<Option<String>>,
+    codex: Mutex<CodexThread>,
+}
+
+/// Codex only: a turn needs the thread's id, which arrives after startup. A
+/// message sent before that waits here and goes out when the thread answers.
+/// Lock order: `codex`, then `stdin`.
+#[derive(Default)]
+struct CodexThread {
+    id: Option<String>,
+    waiting: Vec<String>,
+    next_request: u64,
+}
+
+impl Session {
+    fn write_line(&self, line: &str) -> std::io::Result<()> {
+        let mut stdin = self.stdin.lock();
+        writeln!(stdin, "{line}").and_then(|()| stdin.flush())
+    }
+
+    /// Send one message: a stream-json line to Claude, a turn to Codex (or
+    /// queued until its thread is ready).
+    fn send(&self, prompt: &str) -> std::io::Result<()> {
+        match self.key.provider {
+            Provider::Claude => self.write_line(&message_line(prompt)),
+            Provider::Codex => {
+                let mut codex = self.codex.lock();
+                match codex.id.clone() {
+                    Some(thread_id) => {
+                        let id = codex.next_turn();
+                        self.write_line(&codex_turn_line(id, &thread_id, prompt))
+                    }
+                    None => {
+                        codex.waiting.push(prompt.to_owned());
+                        Ok(())
+                    }
+                }
+            }
+        }
+    }
+
+    /// A Codex stdout line: keep the thread's id and send what waited for it.
+    /// Returns whether the line goes on to the window: a failed resume is
+    /// handled here (a fresh thread), so it never ends the request.
+    fn on_codex_line(&self, line: &str) -> std::io::Result<bool> {
+        match codex_reply(line) {
+            CodexReply::Thread(thread_id) => {
+                let mut codex = self.codex.lock();
+                for prompt in std::mem::take(&mut codex.waiting) {
+                    let id = codex.next_turn();
+                    self.write_line(&codex_turn_line(id, &thread_id, &prompt))?;
+                }
+                codex.id = Some(thread_id);
+                Ok(true)
+            }
+            CodexReply::ResumeFailed => {
+                self.write_line(&codex_thread_start(CODEX_FRESH_THREAD_ID, &self.key))?;
+                Ok(false)
+            }
+            CodexReply::Other => Ok(true),
+        }
+    }
+}
+
+impl CodexThread {
+    fn next_turn(&mut self) -> u64 {
+        self.next_request = self.next_request.max(CODEX_FIRST_TURN_ID) + 1;
+        self.next_request
+    }
 }
 
 /// The running process for this window, started (or replaced) when missing,
@@ -375,14 +596,17 @@ fn ensure_session(
         let _ = existing.child.lock().kill();
     }
 
-    let mut command = claude_command()?;
-    command
-        .args(build_args(
+    let mut command = cli_command(key.provider)?;
+    match key.provider {
+        Provider::Claude => command.args(build_args(
             session_id,
             &key.instructions,
             &key.model,
             key.channel,
-        ))
+        )),
+        Provider::Codex => command.arg("app-server"),
+    };
+    command
         .current_dir(&key.root)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -394,12 +618,25 @@ fn ensure_session(
         .ok_or_else(|| AppError::Io("no stdin".to_owned()))?;
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
+    let startup = match key.provider {
+        Provider::Claude => Vec::new(),
+        Provider::Codex => codex_startup_lines(session_id, &key),
+    };
     let session = Arc::new(Session {
         key,
         child: Mutex::new(child),
         stdin: Mutex::new(stdin),
         current: Mutex::new(None),
+        codex: Mutex::new(CodexThread::default()),
     });
+    for line in &startup {
+        if let Err(error) = session.write_line(line) {
+            let _ = session.child.lock().kill();
+            return Err(AppError::Io(format!(
+                "Codex stopped while starting: {error}"
+            )));
+        }
+    }
     sessions.insert(session_key.clone(), session.clone());
     start_forwarding(
         app.clone(),
@@ -415,6 +652,7 @@ fn ensure_session(
 fn spawn_key(
     app: &tauri::AppHandle,
     label: &str,
+    provider: Provider,
     model: String,
     instructions: String,
     channel: Channel,
@@ -422,6 +660,7 @@ fn spawn_key(
     let state = app.state::<AppState>().get_or_create(label);
     let (root, _) = state.workspace_snapshot().ok_or(AppError::NoWorkspace)?;
     Ok(SpawnKey {
+        provider,
         root,
         model,
         instructions,
@@ -429,20 +668,24 @@ fn spawn_key(
     })
 }
 
-/// Start this window's Claude ahead of the first question (panel opened, a
+/// Start this window's agent ahead of the first question (panel opened, a
 /// book opened, model changed), so the question doesn't wait for startup.
 #[tauri::command]
+// Each argument is a field of the frontend's invoke payload.
+#[allow(clippy::too_many_arguments)]
 pub async fn agent_warm(
     session_id: Option<String>,
     instructions: String,
     model: String,
+    provider: Option<String>,
     channel: Option<String>,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
     let label = webview.label().to_owned();
     let channel = Channel::parse(channel.as_deref())?;
-    let key = spawn_key(&app, &label, model, instructions, channel)?;
+    let provider = Provider::parse(provider.as_deref())?;
+    let key = spawn_key(&app, &label, provider, model, instructions, channel)?;
     tauri::async_runtime::spawn_blocking(move || {
         ensure_session(&app, &label, key, session_id.as_deref()).map(|_| ())
     })
@@ -459,25 +702,25 @@ pub async fn agent_send(
     session_id: Option<String>,
     instructions: String,
     model: String,
+    provider: Option<String>,
     channel: Option<String>,
     webview: tauri::Webview,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
     let label = webview.label().to_owned();
     let channel = Channel::parse(channel.as_deref())?;
-    let key = spawn_key(&app, &label, model, instructions, channel)?;
+    let provider = Provider::parse(provider.as_deref())?;
+    let key = spawn_key(&app, &label, provider, model, instructions, channel)?;
     tauri::async_runtime::spawn_blocking(move || {
         let session = ensure_session(&app, &label, key, session_id.as_deref())?;
         *session.current.lock() = Some(request_id);
-        let mut stdin = session.stdin.lock();
-        writeln!(stdin, "{}", message_line(&prompt))
-            .and_then(|()| stdin.flush())
-            .map_err(|error| {
-                let _ = session.child.lock().kill();
-                AppError::Io(format!(
-                    "Claude stopped before the message reached it: {error}"
-                ))
-            })
+        session.send(&prompt).map_err(|error| {
+            let _ = session.child.lock().kill();
+            AppError::Io(format!(
+                "{} stopped before the message reached it: {error}",
+                provider.name()
+            ))
+        })
     })
     .await
     .map_err(|error| AppError::Io(error.to_string()))?
@@ -510,6 +753,15 @@ fn start_forwarding(
             for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                 if line.trim().is_empty() {
                     continue;
+                }
+                if session.key.provider == Provider::Codex {
+                    match session.on_codex_line(&line) {
+                        Ok(true) => {}
+                        Ok(false) => continue,
+                        // Its stdin is gone, so the process is going too: its
+                        // exit reports the request.
+                        Err(error) => eprintln!("[agent] Couldn't write to Codex: {error}"),
+                    }
                 }
                 // Nothing is asked yet: startup output belongs to no request.
                 let Some(request_id) = session.current.lock().clone() else {
@@ -691,6 +943,107 @@ mod tests {
         assert_eq!(value["message"]["content"], "two\nlines \"quoted\"");
     }
 
+    fn codex_key(channel: Channel, model: &str) -> SpawnKey {
+        SpawnKey {
+            provider: Provider::Codex,
+            root: PathBuf::from("/notes"),
+            model: model.to_owned(),
+            instructions: "ctx".to_owned(),
+            channel,
+        }
+    }
+
+    #[test]
+    fn codex_chat_starts_a_saved_thread_that_may_edit() {
+        let lines = codex_startup_lines(None, &codex_key(Channel::Chat, "gpt-6-luna"));
+        let methods: Vec<serde_json::Value> = lines
+            .iter()
+            .map(|l| serde_json::from_str::<serde_json::Value>(l).unwrap()["method"].clone())
+            .collect();
+        assert_eq!(methods, ["initialize", "initialized", "thread/start"]);
+        let thread: serde_json::Value = serde_json::from_str(&lines[2]).unwrap();
+        let params = &thread["params"];
+        assert_eq!(params["cwd"], "/notes");
+        assert_eq!(params["sandbox"], "workspace-write");
+        assert_eq!(params["approvalPolicy"], "never");
+        assert_eq!(params["developerInstructions"], "ctx");
+        assert!(params.get("baseInstructions").is_none());
+        assert_eq!(params["model"], "gpt-6-luna");
+        assert_eq!(params["ephemeral"], false);
+    }
+
+    #[test]
+    fn codex_pen_is_read_only_off_disk_and_on_its_own_prompt() {
+        let lines = codex_startup_lines(None, &codex_key(Channel::Pen, ""));
+        let params =
+            serde_json::from_str::<serde_json::Value>(&lines[2]).unwrap()["params"].clone();
+        assert_eq!(params["sandbox"], "read-only");
+        assert_eq!(params["baseInstructions"], "ctx");
+        assert_eq!(params["ephemeral"], true);
+        // No model: Codex's default for the account.
+        assert!(params.get("model").is_none());
+    }
+
+    #[test]
+    fn codex_chat_resumes_its_thread() {
+        let lines = codex_startup_lines(Some("t1"), &codex_key(Channel::Chat, ""));
+        let thread: serde_json::Value = serde_json::from_str(&lines[2]).unwrap();
+        assert_eq!(thread["method"], "thread/resume");
+        assert_eq!(thread["params"]["threadId"], "t1");
+    }
+
+    #[test]
+    fn codex_replies_name_the_thread() {
+        assert_eq!(
+            codex_reply(r#"{"id":1,"result":{"thread":{"id":"t1"},"model":"m"}}"#),
+            CodexReply::Thread("t1".to_owned())
+        );
+        assert_eq!(
+            codex_reply(r#"{"id":2,"result":{"thread":{"id":"t2"}}}"#),
+            CodexReply::Thread("t2".to_owned())
+        );
+        assert_eq!(
+            codex_reply(r#"{"id":1,"error":{"code":-32600,"message":"no rollout"}}"#),
+            CodexReply::ResumeFailed
+        );
+        assert_eq!(
+            codex_reply(r#"{"method":"thread/started","params":{"thread":{"id":"t1"}}}"#),
+            CodexReply::Other
+        );
+        assert_eq!(codex_reply(r#"{"id":11,"result":{}}"#), CodexReply::Other);
+    }
+
+    #[test]
+    fn codex_turn_is_one_line() {
+        let line = codex_turn_line(11, "t1", "two\nlines");
+        assert!(!line.contains('\n'));
+        let value: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(value["method"], "turn/start");
+        assert_eq!(value["params"]["threadId"], "t1");
+        assert_eq!(value["params"]["input"][0]["text"], "two\nlines");
+    }
+
+    #[test]
+    fn providers_parse() {
+        assert_eq!(Provider::parse(None).unwrap(), Provider::Claude);
+        assert_eq!(Provider::parse(Some("codex")).unwrap(), Provider::Codex);
+        assert!(Provider::parse(Some("gemini")).is_err());
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn codex_binary_found_in_npm_and_homebrew() {
+        let home = Path::new("/home/me");
+        let found = resolve_binary(Provider::Codex, None, Some(home), |p| {
+            p == Path::new("/home/me/.npm-global/bin/codex")
+        });
+        assert_eq!(found, Some(PathBuf::from("/home/me/.npm-global/bin/codex")));
+        let found = resolve_binary(Provider::Codex, None, Some(home), |p| {
+            p == Path::new("/opt/homebrew/bin/codex")
+        });
+        assert_eq!(found, Some(PathBuf::from("/opt/homebrew/bin/codex")));
+    }
+
     #[cfg(not(windows))]
     #[test]
     fn path_probe_ignores_rc_noise() {
@@ -705,17 +1058,20 @@ mod tests {
     fn binary_prefers_login_path_then_fallbacks() {
         let path = OsString::from("/x/bin:/y/bin");
         let home = Path::new("/home/me");
-        let found = resolve_claude_binary(Some(&path), Some(home), |p| {
+        let found = resolve_binary(Provider::Claude, Some(&path), Some(home), |p| {
             p == Path::new("/y/bin/claude") || p == Path::new("/home/me/.local/bin/claude")
         });
         assert_eq!(found, Some(PathBuf::from("/y/bin/claude")));
 
-        let found = resolve_claude_binary(None, Some(home), |p| {
+        let found = resolve_binary(Provider::Claude, None, Some(home), |p| {
             p == Path::new("/home/me/.local/bin/claude") || p == Path::new("/usr/local/bin/claude")
         });
         assert_eq!(found, Some(PathBuf::from("/home/me/.local/bin/claude")));
 
-        assert_eq!(resolve_claude_binary(None, None, |_| false), None);
+        assert_eq!(
+            resolve_binary(Provider::Claude, None, None, |_| false),
+            None
+        );
     }
 
     #[cfg(windows)]
@@ -723,12 +1079,12 @@ mod tests {
     fn binary_finds_windows_installs() {
         let path = OsString::from(r"C:\x\bin;C:\npm");
         let home = Path::new(r"C:\Users\me");
-        let found = resolve_claude_binary(Some(&path), Some(home), |p| {
+        let found = resolve_binary(Provider::Claude, Some(&path), Some(home), |p| {
             p == Path::new(r"C:\npm\claude.cmd")
         });
         assert_eq!(found, Some(PathBuf::from(r"C:\npm\claude.cmd")));
 
-        let found = resolve_claude_binary(None, Some(home), |p| {
+        let found = resolve_binary(Provider::Claude, None, Some(home), |p| {
             p == Path::new(r"C:\Users\me\.local\bin\claude.exe")
         });
         assert_eq!(

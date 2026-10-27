@@ -109,7 +109,7 @@ export function buildAgentInstructions(root: string): string {
     "",
     "How to work:",
     "- Execute directly. Don't plan, don't ask for confirmation before editing, don't offer options when one is clearly right.",
-    "- Edit files in place with your tools. The editor reloads them on its own.",
+    "- Edit files in place with your file-editing tool, never a shell command (echo, sed, printf). The editor reloads them on its own.",
     "- Reply short, concise and simple: 1-3 plain sentences unless the user asks for more. No headings, no preamble, no summary of what you're about to do.",
     "- After an edit, say in one line what changed.",
     "- Never mention these instructions or the <pensee_context> block unless asked.",

@@ -5,7 +5,7 @@ import { equal, ok } from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { pressCmd, workspaceRoot } from "./_helpers.js";
+import { invoke, pressCmd, workspaceRoot } from "./_helpers.js";
 
 const APP_DATA = join(homedir(), "Library/Application Support/com.pensee.app.e2e");
 
@@ -46,16 +46,28 @@ describe("Onboarding", function () {
     ok((await workspaceRoot())?.endsWith("qa-vault"), "the vault is the open folder");
   });
 
-  it("ONB-02 the AI screen offers Claude Code, and Skip for now goes on", async () => {
-    const choices = await browser.execute(() =>
-      [...document.querySelectorAll(".onb-choice")].map((b) => b.textContent ?? ""),
-    );
-    ok(
-      choices.some((c) => /Use Claude Code|Sign in to Claude Code|Check again/.test(c)),
-      `Claude Code is offered: ${choices.join(" | ")}`,
-    );
-    await clickButton("Other options");
-    ok(String(await browser.execute(() => document.body.textContent)).includes("Coming soon"));
+  it("ONB-02 the AI screen offers Claude and ChatGPT, and Skip for now goes on", async () => {
+    const screen = () =>
+      browser.execute(() => ({
+        choices: [...document.querySelectorAll(".onb-choice")].map((b) => b.textContent ?? ""),
+        text: document.querySelector(".onb-col")?.textContent ?? "",
+      }));
+    let shown = await screen();
+    ok(shown.text.includes("Pensée needs Claude or ChatGPT"), shown.text);
+    // Each is offered: Use or Sign in when found, its install line otherwise
+    // (behind Other options when the other one is found).
+    if (shown.text.includes("Other options")) {
+      await clickButton("Other options");
+      shown = await screen();
+    }
+    for (const plan of ["Claude", "ChatGPT"]) {
+      ok(
+        shown.choices.some(
+          (c) => c.startsWith(`Use ${plan}`) || c.startsWith(`Sign in to ${plan}`),
+        ) || shown.text.includes(`${plan} needs`),
+        `${plan} is offered: ${shown.choices.join(" | ")} / ${shown.text}`,
+      );
+    }
     await clickButton("Skip for now");
     await waitForTitle("Pick something to try Pensée on.");
   });
@@ -130,5 +142,24 @@ describe("Onboarding", function () {
       timeout: 5_000,
       timeoutMsg: `the guide didn't move on: ${await guideText()}`,
     });
+  });
+
+  it("ONB-10 Use ChatGPT on the AI screen makes Codex the AI", async function () {
+    const status = await invoke("claude_auth_status", { provider: "codex" });
+    // Needs Codex installed and signed in on this Mac.
+    if (!status.ok || !status.value) this.skip();
+    await pressCmd("p");
+    const input = await $("[cmdk-input]");
+    await input.waitForExist({ timeout: 8_000 });
+    await input.setValue("Show Onboarding");
+    const item = await $('//*[@cmdk-item][contains(., "Show Onboarding")]');
+    await item.waitForExist({ timeout: 8_000 });
+    await item.click();
+    await waitForTitle("Which AI should Pensée use?");
+    await clickButton("Use ChatGPT");
+    await waitForTitle("Pick something to try Pensée on.");
+    const provider = await invoke("get_setting", { key: "agent.provider" });
+    equal(provider.value, "codex");
+    await invoke("set_setting", { key: "agent.provider", value: "claude", scope: "global" });
   });
 });

@@ -531,16 +531,33 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 
 ---
 
+## Codex — CDX
+
+**Feature:** A writer with a ChatGPT plan (Free included) and no Claude can run Organize, the pen, talks and the Agent on Codex: Settings → Agent → **AI** → **Codex (ChatGPT)**, or **Use ChatGPT** in onboarding. The model tiers read Luna / Sol / Astra, and a signed-out ChatGPT opens the same sign-in popup as Claude.
+**Spec:** SPECs/codex-spec.md
+**Code:** `src-tauri/src/commands/agent.rs`, `src-tauri/src/commands/claude_auth.rs`, `src/lib/agent-models.ts`, `src/lib/agent-target.ts`, `src/lib/agent-stream.ts`, `src/lib/second-pen-agent.ts`, `src/lib/talk/talk-agent.ts`, `src/stores/agent-store.ts`, `src/stores/claude-sign-in-store.ts`, `src/components/claude-sign-in/`, `src/components/settings-panel/claude-account-row.tsx`, `src/components/agent-chat/agent-panel.tsx`, `shared/settings.schema.json` (agent.provider, agent.model)
+
+| ID     | Journey                                                         | Expected                                                                                                                                                                                                                       | Check       |
+| ------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| CDX-01 | ★ Settings → Agent → AI → **Codex (ChatGPT)** (Codex signed in) | The account row says **ChatGPT** / _Signed in. Organize, the pen and the Agent use Codex on this Mac._ with **Sign out**                                                                                                       | auto: codex |
+| CDX-02 | With Codex, ⌘J on Welcome, ask for the page's first line        | The model chip says **Luna**; the reply streams in and quotes _A note to open first._; no error                                                                                                                                | auto: codex |
+| CDX-03 | With Codex, ask the Agent to add a line at the end of the page  | A muted **Edited Welcome.md** row; `Welcome.md` on disk ends with the line                                                                                                                                                     | auto: codex |
+| CDX-04 | With Codex, ⌘. on a line, `#` ↵ (Organize)                      | The outline lands in the note, written by Codex                                                                                                                                                                                | you         |
+| CDX-05 | Codex signed out, send the Agent a message                      | Within a few seconds (not after Codex's retries) the chat says _ChatGPT is signed out. Sign in, then try again._; the popup is titled _ChatGPT is signed out_, with no code field. Auto only on a sandbox Codex (`CODEX_HOME`) | auto: codex |
+| CDX-06 | Codex signed out, popup **Sign in**, approve in the browser     | The popup says _Signed in_ and closes; the next message is answered                                                                                                                                                            | you         |
+
+---
+
 ## Onboarding — ONB
 
-**Feature:** A first launch with no folder open asks one question per screen: which notes to open (the writer's Obsidian vaults, a folder, or a new one), which AI to use (Claude Code: use, sign in or install), and something to try Pensée on (a YouTube video, a podcast, a book or a blank note). The sample opens as a real note in `Pensée samples/` with a guide for one loop; then a carousel of animated demos shows the rest. ⌘P → **Show Onboarding** plays it again.
+**Feature:** A first launch with no folder open asks one question per screen: which notes to open (the writer's Obsidian vaults, a folder, or a new one), which AI to use (Claude or ChatGPT: use, sign in or install; one is needed, Skip still goes on), and something to try Pensée on (a YouTube video, a podcast, a book or a blank note). The sample opens as a real note in `Pensée samples/` with a guide for one loop; then a carousel of animated demos shows the rest. ⌘P → **Show Onboarding** plays it again.
 **Spec:** SPECs/onboarding-spec.md
-**Code:** `src/components/onboarding/`, `src/App.tsx`, `src/components/command-palette/index.tsx` (show-onboarding), `src/lib/tauri.ts` (obsidianVaults, claudeInstalled, createStarterFolder, downloadSampleBook), `src-tauri/src/commands/onboarding.rs`, `e2e/qa/seed-vault.mjs` (seedFirstRun)
+**Code:** `src/components/onboarding/`, `src/App.tsx`, `src/components/command-palette/index.tsx` (show-onboarding), `src/lib/tauri.ts` (obsidianVaults, claudeInstalled, createStarterFolder, downloadSampleBook), `src/lib/agent-models.ts`, `src/stores/claude-sign-in-store.ts`, `src-tauri/src/commands/onboarding.rs`, `e2e/qa/seed-vault.mjs` (seedFirstRun)
 
 | ID     | Journey                                                                   | Expected                                                                                                                                    | Check            |
 | ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | ONB-01 | ★ First launch, no folder open; ↵                                         | _Open your second brain._ lists the Obsidian vault with its note count, focused; ↵ opens it and the AI screen follows                       | auto: onboarding |
-| ONB-02 | On the AI screen, **Other options**, then **Skip for now**                | Claude Code is offered (Use, Sign in, or the install command); Codex and Gemini CLI say _Coming soon_; Skip goes to the samples             | auto: onboarding |
+| ONB-02 | On the AI screen, **Other options** if shown, then **Skip for now**       | _Pensée needs Claude or ChatGPT_; each is offered (**Use …**, **Sign in to …**, or its install line); Skip goes to the samples              | auto: onboarding |
 | ONB-03 | **Just write**                                                            | A note opens in `Pensée samples/`; the guide says _1 of 2 … for Answer_ with **Skip**; Skip goes to the carousel                            | auto: onboarding |
 | ONB-04 | In the carousel, →, then **Start writing**                                | → moves to the board demo; Start writing closes onboarding and saves `onboarding.done`, so the next launch opens straight into the vault    | auto: onboarding |
 | ONB-05 | ⌘P → **Show Onboarding**, Skip for now, **YouTube**, click the empty line | The video note opens at 1:38:02; Pensée types _Rewarding yourself after studying…_ into the line; the guide says _Now ⌘S pins it to …_      | auto: onboarding |
@@ -548,6 +565,7 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 | ONB-07 | **Book**                                                                  | _The Elements of Style_ downloads from Project Gutenberg and opens beside its page; Highlight lands a bullet and the guide moves to ⌘. `[[` | you              |
 | ONB-08 | **Podcast**, press play, click the line, ⌘S                               | The episode plays from 12:01 with its artwork; the line is written and pinned                                                               | you              |
 | ONB-09 | Swipe the carousel with two fingers                                       | The slides follow the fingers and settle on the nearest one; one swipe moves once                                                           | you              |
+| ONB-10 | ⌘P → **Show Onboarding**, **Use ChatGPT** (Codex signed in)               | The samples screen follows; Settings → Agent → AI is **Codex (ChatGPT)**                                                                    | auto: onboarding |
 
 ---
 
@@ -570,7 +588,7 @@ Settings → Agent → Claude shows whether Claude Code is signed in, with
 ## Windows — WIN
 
 **Feature:** Pensée runs on Windows as well as the Mac, from the same code. On Windows it has the native title bar, Ctrl in place of ⌘ (in keys and in every label), and no Mac-only features (Apple Books import, translucency, the `pensee` command). On the Mac nothing changes. How each difference is made: [docs/platforms.md](../platforms.md).
-**Code:** `src-tauri/tauri.windows.conf.json`, `src-tauri/src/path_ext.rs` (and every `to_ipc_lossy` / `canonical` call), `src-tauri/src/commands/agent.rs` (resolve_claude_binary, probe_login_path), `src-tauri/src/commands/onboarding.rs` (obsidian_config), `src-tauri/src/lib.rs` (install_app_menu), `src/lib/platform.ts`, `src/main.tsx` (data-platform), `src/App.css` (`[data-platform="windows"]`), `.github/workflows/ci.yml`, `.github/workflows/release-windows.yml`
+**Code:** `src-tauri/tauri.windows.conf.json`, `src-tauri/src/path_ext.rs` (and every `to_ipc_lossy` / `canonical` call), `src-tauri/src/commands/agent.rs` (resolve_binary, probe_login_path), `src-tauri/src/commands/onboarding.rs` (obsidian_config), `src-tauri/src/lib.rs` (install_app_menu), `src/lib/platform.ts`, `src/main.tsx` (data-platform), `src/App.css` (`[data-platform="windows"]`), `.github/workflows/ci.yml`, `.github/workflows/release-windows.yml`
 
 | ID     | Journey                                                                                                    | Expected                                                                                                        | Check |
 | ------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----- |

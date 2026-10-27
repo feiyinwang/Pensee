@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { offerClaudeSignIn } from "@/stores/claude-sign-in-store";
-import { useSettingsStore } from "@/stores/settings-store";
-import { agentModel } from "../agent-models";
+import type { AgentModelId } from "../agent-models";
 import { agentErrorText, parseAgentLine } from "../agent-stream";
+import { agentInvokeArgs, agentTarget } from "../agent-target";
 import { formatClock } from "./clock";
 
 // The talk's Claude (SPECs/talk-notes-spec.md#while-you-talk-ask): the
@@ -16,10 +16,10 @@ const CHANNEL = "talk";
 /** A turn may redraw several diagrams; the larger models need the room. */
 const TIMEOUT_MS = 90_000;
 
-/** Your model from Settings → Agent, at least Sonnet: Haiku keeps a mind map
- *  flat and drops "put X under Y", as Organize found (second-pen-agent.ts). */
-function model(): string {
-  const id = agentModel(useSettingsStore.getState().getSetting("agent.model")).id;
+/** Your model from Settings → Agent, at least Balanced: the fastest keeps a
+ *  mind map flat and drops "put X under Y", as Organize found (second-pen-agent.ts). */
+function tier(): AgentModelId {
+  const id = agentTarget().model.id;
   return id === "haiku" ? "sonnet" : id;
 }
 
@@ -157,7 +157,10 @@ function ensureListeners(): void {
       const request = waiting.get(payload.requestId);
       if (!request) return;
       waiting.delete(payload.requestId);
-      const reason = agentErrorText(payload.stderr.trim().split("\n").pop() ?? "");
+      const reason = agentErrorText(
+        payload.stderr.trim().split("\n").pop() ?? "",
+        agentTarget().provider.plan,
+      );
       offerClaudeSignIn(reason);
       request.reject(new Error(reason || "Claude stopped before it sorted the talk."));
     },
@@ -170,7 +173,7 @@ export function warmTalk(): void {
   invoke("agent_warm", {
     sessionId: null,
     instructions: TALK_INSTRUCTIONS,
-    model: model(),
+    ...agentInvokeArgs(tier()),
     channel: CHANNEL,
   }).catch((error: unknown) => console.error("[talk] Couldn't start Claude ahead of time:", error));
 }
@@ -195,7 +198,7 @@ export function askTalk(prompt: string): Promise<TalkReply> {
       prompt,
       sessionId: null,
       instructions: TALK_INSTRUCTIONS,
-      model: model(),
+      ...agentInvokeArgs(tier()),
       channel: CHANNEL,
     }).catch((error: unknown) => {
       const request = waiting.get(requestId);

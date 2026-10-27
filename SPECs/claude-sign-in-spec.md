@@ -1,5 +1,9 @@
 # Claude sign-in popup
 
+Codex (ChatGPT) uses the same popup and Settings row, naming its plan:
+_ChatGPT is signed out_, `codex login` / `codex login status` /
+`codex logout`, no code field (SPECs/codex-spec.md).
+
 ## Problem
 
 The pen (Organize, ⌘.) and the Agent run on Claude Code, the `claude` command on

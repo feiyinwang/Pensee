@@ -9,6 +9,7 @@
 
 ## Done
 
+- Codex (ChatGPT) as a second AI beside Claude Code: the chat, the pen and talks on `codex app-server`; onboarding asks for Claude or ChatGPT. Spec: [SPECs/codex-spec.md](./SPECs/codex-spec.md)
 - Website: a Talk section, first under the hero with a New tag: one talk the visitor plays and redraws, then stops into the note (decided from proto/voice-section). Spec: [SPECs/website-homepage-spec.md](./SPECs/website-homepage-spec.md#talk-section)
 - Record as a dot that steps aside while you scroll or write (decided from proto/record-dock). Spec: [SPECs/talk-notes-spec.md](./SPECs/talk-notes-spec.md#recording)
 - Section rail as one line on the right edge: a segment per heading sized by its section, hover opens the list; replaces the ticks and the standing outline. Spec: [SPECs/section-indicators-spec.md](./SPECs/section-indicators-spec.md)

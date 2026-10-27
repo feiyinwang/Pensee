@@ -17,7 +17,8 @@ import { flushSave } from "@/lib/save";
 import { videoPlayerFor } from "@/lib/video-players";
 import { formatVideoTime } from "@/lib/video-pins";
 import { linesAround, transcriptIn, transcriptLines } from "@/lib/video-transcript";
-import { agentModel, type AgentModelId } from "@/lib/agent-models";
+import type { AgentModelId, AgentProviderId } from "@/lib/agent-models";
+import { agentInvokeArgs, agentTarget } from "@/lib/agent-target";
 
 /** One row in the chat. `tool` and `status` rows are muted one-liners. */
 export type AgentItem =
@@ -37,6 +38,8 @@ interface AgentState {
   isOpen: boolean;
   items: AgentItem[];
   sessionId: string | null;
+  /** The CLI `sessionId` belongs to: a Claude session can't go on in Codex. */
+  sessionProvider: AgentProviderId | null;
   run: AgentRun | null;
   /** Bumped by `open`, so an open panel still takes focus again. */
   focusRequest: number;
@@ -50,7 +53,7 @@ interface AgentState {
   newChat: () => void;
   /** Switch the model for this and later messages; it is a global setting. */
   setModel: (id: AgentModelId) => void;
-  /** Start this window's Claude now, so the next question skips its startup. */
+  /** Start this window's agent now, so the next question skips its startup. */
   warm: () => void;
 }
 
@@ -66,7 +69,7 @@ function appendItem(items: AgentItem[], item: Omit<AgentItem, "id">): AgentItem[
 function applyEvent(state: AgentState, event: AgentStreamEvent): Partial<AgentState> {
   switch (event.kind) {
     case "session":
-      return { sessionId: event.sessionId };
+      return { sessionId: event.sessionId, sessionProvider: agentTarget().provider.id };
     case "text": {
       const last = state.items[state.items.length - 1];
       if (last?.role === "assistant") {
@@ -82,14 +85,16 @@ function applyEvent(state: AgentState, event: AgentStreamEvent): Partial<AgentSt
     // The reply is done. The process stays up for the next message, so this,
     // not its exit, ends the run.
     case "result": {
-      const sessionId = event.sessionId ?? state.sessionId;
-      if (!event.isError) return { run: null, sessionId };
+      const session = event.sessionId
+        ? { sessionId: event.sessionId, sessionProvider: agentTarget().provider.id }
+        : {};
+      if (!event.isError) return { run: null, ...session };
       return {
         run: null,
-        sessionId,
+        ...session,
         items: appendItem(state.items, {
           role: "error",
-          text: event.text || "Claude stopped with an error.",
+          text: event.text || `${agentTarget().provider.name} stopped with an error.`,
         }),
       };
     }
@@ -116,7 +121,7 @@ function ensureListeners() {
   if (listening) return;
   listening = true;
 
-  // Signing in ended every Claude: start this window's again, as it was.
+  // Signing in ended every agent: start this window's again, as it was.
   void listen("agent:ended", () => useAgentStore.getState().warm());
 
   void listen<{ requestId: string; line: string }>("agent:line", ({ payload }) => {
@@ -132,8 +137,9 @@ function ensureListeners() {
     "agent:exit",
     ({ payload }) => {
       const { run } = useAgentStore.getState();
+      const { provider } = agentTarget();
       if (run?.requestId === payload.requestId && !run.cancelled) {
-        offerClaudeSignIn(agentErrorText(lastLine(payload.stderr)));
+        offerClaudeSignIn(agentErrorText(lastLine(payload.stderr), provider.plan));
       }
       useAgentStore.setState((state) => {
         if (!state.run || state.run.requestId !== payload.requestId) return {};
@@ -144,10 +150,10 @@ function ensureListeners() {
         }
         // Still running means no `result` came: the process died mid-reply.
         const reason =
-          agentErrorText(lastLine(payload.stderr)) ||
+          agentErrorText(lastLine(payload.stderr), provider.plan) ||
           (payload.code === 0
-            ? "Claude stopped before finishing its reply."
-            : `Claude exited with code ${payload.code ?? "?"}.`);
+            ? `${provider.name} stopped before finishing its reply.`
+            : `${provider.name} exited with code ${payload.code ?? "?"}.`);
         return { run: null, items: appendItem(state.items, { role: "error", text: reason }) };
       });
     },
@@ -207,13 +213,19 @@ async function currentContext(root: string) {
 }
 
 export function currentModel() {
-  return agentModel(useSettingsStore.getState().getSetting("agent.model"));
+  return agentTarget().model;
+}
+
+/** The conversation to go on with, when it ran on the chosen CLI. */
+function resumable(state: AgentState): string | null {
+  return state.sessionProvider === agentTarget().provider.id ? state.sessionId : null;
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
   isOpen: false,
   items: [],
   sessionId: null,
+  sessionProvider: null,
   run: null,
   focusRequest: 0,
 
@@ -256,9 +268,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       await invoke("agent_send", {
         requestId,
         prompt: buildAgentMessage(context, text),
-        sessionId: get().sessionId,
+        sessionId: resumable(get()),
         instructions: buildAgentInstructions(root),
-        model: currentModel().id,
+        ...agentInvokeArgs(),
       });
     } catch (error) {
       set((state) =>
@@ -280,7 +292,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   newChat: () => {
-    set({ items: [], sessionId: null, run: null });
+    set({ items: [], sessionId: null, sessionProvider: null, run: null });
     // Ending the process ends the conversation (and any reply in progress).
     void invoke("agent_reset").then(() => get().warm());
   },
@@ -301,7 +313,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set((state) => ({
       items: appendItem(state.items, {
         role: "status",
-        text: `Model set to ${agentModel(id).name}`,
+        text: `Model set to ${agentTarget(id).model.name}`,
       }),
     }));
     get().warm();
@@ -313,12 +325,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     if (!root || get().run) return;
     ensureListeners();
     invoke("agent_warm", {
-      sessionId: get().sessionId,
+      sessionId: resumable(get()),
       instructions: buildAgentInstructions(root),
-      model: currentModel().id,
+      ...agentInvokeArgs(),
     }).catch((error: unknown) => {
       // Not shown: the next send starts the process itself and reports the reason.
-      console.error("[agent] Couldn't start Claude ahead of time:", error);
+      console.error("[agent] Couldn't start the agent ahead of time:", error);
     });
   },
 }));

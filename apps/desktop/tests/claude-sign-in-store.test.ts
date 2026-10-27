@@ -27,7 +27,7 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-import { SIGNED_OUT_TEXT } from "../src/lib/agent-stream";
+import { SIGNED_OUT_TEXT, signedOutText } from "../src/lib/agent-stream";
 import {
   closeClaudeSignIn,
   offerClaudeSignIn,
@@ -46,7 +46,10 @@ beforeEach(() => {
   settle = null;
   signedIn = false;
   signOutError = null;
-  useClaudeSignInStore.setState({ account: null, accountError: null });
+  useClaudeSignInStore.setState({
+    accounts: { claude: null, codex: null },
+    accountErrors: { claude: null, codex: null },
+  });
 });
 
 describe("claude sign-in popup", () => {
@@ -95,18 +98,18 @@ describe("claude account in settings", () => {
   test("reads the status", async () => {
     signedIn = true;
     await refreshClaudeAccount();
-    expect(useClaudeSignInStore.getState().account).toBe("signed-in");
+    expect(useClaudeSignInStore.getState().accounts.claude).toBe("signed-in");
     signedIn = false;
     await refreshClaudeAccount();
-    expect(useClaudeSignInStore.getState().account).toBe("signed-out");
+    expect(useClaudeSignInStore.getState().accounts.claude).toBe("signed-out");
   });
 
   test("a status that can't be read says why", async () => {
     invoke.mockImplementationOnce(() => Promise.reject("Run `claude update`"));
     await refreshClaudeAccount();
     expect(useClaudeSignInStore.getState()).toMatchObject({
-      account: null,
-      accountError: "Run `claude update`",
+      accounts: { claude: null },
+      accountErrors: { claude: "Run `claude update`" },
     });
   });
 
@@ -121,17 +124,20 @@ describe("claude account in settings", () => {
     settle!.resolve();
     await flush();
     await flush();
-    expect(useClaudeSignInStore.getState()).toMatchObject({ phase: "done", account: "signed-in" });
+    expect(useClaudeSignInStore.getState()).toMatchObject({
+      phase: "done",
+      accounts: { claude: "signed-in" },
+    });
   });
 
   test("sign out ends signed out", async () => {
     signedIn = true;
     await refreshClaudeAccount();
     const signingOut = signOutClaude();
-    expect(useClaudeSignInStore.getState().account).toBe("signing-out");
+    expect(useClaudeSignInStore.getState().accounts.claude).toBe("signing-out");
     await signingOut;
-    expect(invoke).toHaveBeenCalledWith("claude_sign_out");
-    expect(useClaudeSignInStore.getState().account).toBe("signed-out");
+    expect(invoke).toHaveBeenCalledWith("claude_sign_out", { provider: "claude" });
+    expect(useClaudeSignInStore.getState().accounts.claude).toBe("signed-out");
   });
 
   test("a sign out that didn't take says why and stays signed in", async () => {
@@ -139,8 +145,30 @@ describe("claude account in settings", () => {
     signOutError = "Claude Code is still signed in.";
     await signOutClaude();
     expect(useClaudeSignInStore.getState()).toMatchObject({
-      account: "signed-in",
-      accountError: "Claude Code is still signed in.",
+      accounts: { claude: "signed-in" },
+      accountErrors: { claude: "Claude Code is still signed in." },
     });
+  });
+
+  test("each CLI keeps its own sign-in", async () => {
+    signedIn = true;
+    await refreshClaudeAccount("codex");
+    expect(useClaudeSignInStore.getState().accounts).toEqual({ claude: null, codex: "signed-in" });
+    expect(invoke).toHaveBeenCalledWith("claude_auth_status", { provider: "codex" });
+  });
+
+  test("signing in to ChatGPT runs Codex's sign-in", async () => {
+    signInClaudeFromSettings("codex");
+    expect(useClaudeSignInStore.getState()).toMatchObject({ provider: "codex", phase: "waiting" });
+    expect(invoke).toHaveBeenCalledWith("claude_sign_in", { provider: "codex" });
+    settle!.resolve();
+    await flush();
+  });
+});
+
+describe("signed-out text", () => {
+  test("ChatGPT's signed-out error opens the popup too", () => {
+    offerClaudeSignIn(signedOutText("ChatGPT"));
+    expect(useClaudeSignInStore.getState().open).toBe(true);
   });
 });

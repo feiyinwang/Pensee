@@ -318,12 +318,24 @@
       "default": 10
     },
     {
+      "key": "agent.provider",
+      "label": "AI",
+      "description": "What Organize, the pen, talks and the Agent run on: Claude Code with your Claude plan, or Codex with your ChatGPT plan (Free included).",
+      "category": "Agent",
+      "type": "enum",
+      "options": ["claude", "codex"],
+      "optionLabels": { "claude": "Claude Code", "codex": "Codex (ChatGPT)" },
+      "scope": "global",
+      "default": "claude"
+    },
+    {
       "key": "agent.model",
       "label": "Agent Model",
-      "description": "The Claude model the Agent chat uses. Haiku answers fastest; Sonnet and Opus think harder but take longer. Type /model in the chat to switch.",
+      "description": "How hard the AI thinks. Fastest is Claude's Haiku or ChatGPT's Luna; Smartest (Opus or Astra) thinks harder but takes longer. Type /model in the chat to switch.",
       "category": "Agent",
       "type": "enum",
       "options": ["haiku", "sonnet", "opus"],
+      "optionLabels": { "haiku": "Fastest", "sonnet": "Balanced", "opus": "Smartest" },
       "scope": "global",
       "default": "haiku"
     },

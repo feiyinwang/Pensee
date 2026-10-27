@@ -1,3 +1,4 @@
+import { agentProvider } from "@/lib/agent-models";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -27,6 +28,9 @@ function SignInCard() {
   const error = useClaudeSignInStore((s) => s.error);
   const url = useClaudeSignInStore((s) => s.url);
   const fromSettings = useClaudeSignInStore((s) => s.fromSettings);
+  const provider = agentProvider(useClaudeSignInStore((s) => s.provider));
+  // Codex hands the sign-in back through its own local page: no code to paste.
+  const takesCode = provider.id === "claude";
   const [code, setCode] = useState("");
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +61,7 @@ function SignInCard() {
     }
   }
 
-  const title = phase === "done" ? "Signed in" : "Claude is signed out";
+  const title = phase === "done" ? "Signed in" : `${provider.plan} is signed out`;
   const body =
     phase === "done"
       ? fromSettings
@@ -65,7 +69,7 @@ function SignInCard() {
         : "Run it again."
       : phase === "waiting"
         ? "Finish signing in in your browser, then come back here."
-        : "Organize, the pen and the Agent use Claude Code on this Mac. Sign in to use them again.";
+        : `Organize, the pen and the Agent use ${provider.name} on this Mac. Sign in to use them again.`;
 
   return (
     <div className="claude-sign-in-layer">
@@ -92,6 +96,7 @@ function SignInCard() {
             and its buttons stay put from state to state. */}
         <form
           className="claude-sign-in-code"
+          hidden={!takesCode}
           data-shown={phase === "waiting" || undefined}
           inert={phase !== "waiting"}
           aria-hidden={phase !== "waiting"}

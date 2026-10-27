@@ -1,7 +1,8 @@
 //! What the first-run onboarding needs from the Mac (SPECs/onboarding-spec.md):
-//! the writer's Obsidian vaults, whether Claude Code is installed, and the
+//! the writer's Obsidian vaults, whether Claude Code or Codex is installed, and the
 //! public-domain sample book.
 
+use super::agent::{cli_command, Provider};
 use super::link_preview::client;
 use crate::error::AppError;
 use crate::path_ext::PathExt;
@@ -123,13 +124,16 @@ pub async fn obsidian_vaults() -> Result<Vec<ObsidianVault>, AppError> {
     .map_err(|e| AppError::Io(e.to_string()))
 }
 
-/// Whether the `claude` binary can be found (the login shell's PATH and the
-/// usual install places, as the Agent finds it).
+/// Whether the provider's CLI (`claude` when absent, or `codex`) can be found
+/// (the login shell's PATH and the usual install places, as the Agent finds it).
 #[tauri::command]
-pub async fn claude_installed() -> bool {
-    tauri::async_runtime::spawn_blocking(|| super::agent::claude_command().is_ok())
-        .await
-        .unwrap_or(false)
+pub async fn claude_installed(provider: Option<String>) -> Result<bool, AppError> {
+    let provider = Provider::parse(provider.as_deref())?;
+    Ok(
+        tauri::async_runtime::spawn_blocking(move || cli_command(provider).is_ok())
+            .await
+            .unwrap_or(false),
+    )
 }
 
 /// "Start a new folder": `~/Documents/Pensée`, made if it isn't there.

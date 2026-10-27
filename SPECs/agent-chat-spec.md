@@ -53,6 +53,10 @@ Before a message is sent, every dirty open file is saved, so Claude reads exactl
 
 ### Process
 
+On Codex (ChatGPT) the process is `codex app-server` instead, with the same
+lifecycle: warm, one per window, resume after Stop (SPECs/codex-spec.md).
+The model chip and `/model` show that CLI's names (Luna, Sol, Astra).
+
 - One Claude Code process per window, kept running: `claude -p --input-format stream-json --output-format stream-json --verbose --include-partial-messages --model <model> <lean flags, below> --permission-mode acceptEdits --append-system-prompt <instructions>` in the workspace root. Each message is one stream-json `user` line on its stdin. A warm process gets the first word in 0.7-1 s; starting one per message took about 1.5 s.
 - It starts ahead of the first question (`agent_warm`): 2 s after a workspace window opens, when the panel opens, when a book opens, after a model change, after Stop and after New chat. A send finds it running, or starts it itself.
 - A process is replaced, with `--resume <session>` so the conversation carries on, when the workspace root, model or instructions differ from what it was started with, or it has exited. A run in progress is never replaced by a warm-up.

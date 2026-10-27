@@ -215,21 +215,6 @@
   line-height: 1.5;
 }
 
-.onb-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.onb-row span {
-  color: var(--color-text-faint);
-}
-
-.onb-soon {
-  margin-left: auto;
-  font-size: var(--font-size-caption);
-}
-
 .onb-code {
   display: flex;
   align-items: center;

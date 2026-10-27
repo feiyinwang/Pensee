@@ -16,7 +16,20 @@ import { useActiveFilePath, useResolvedDocumentTitle } from "@/hooks/use-tabs";
 import { getFileStem } from "@/lib/paths";
 import { useAgentStore, type AgentItem } from "@/stores/agent-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { agentModel, parseModelCommand, type AgentModel } from "@/lib/agent-models";
+import {
+  agentModel,
+  agentModels,
+  agentProvider,
+  parseModelCommand,
+  type AgentModel,
+  type AgentProviderId,
+} from "@/lib/agent-models";
+
+/** "Haiku, Sonnet or Opus": the chosen CLI's models, for the no-match line. */
+function modelNames(provider: AgentProviderId): string {
+  const names = agentModels(provider).map((model) => model.name);
+  return `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
+}
 import { AgentMarkdown } from "./agent-markdown";
 
 export default function AgentPanel() {
@@ -131,24 +144,38 @@ function AgentRow({ item }: { item: AgentItem }) {
   switch (item.role) {
     case "user":
       return (
-        <p className="max-w-[85%] self-end rounded-xl bg-[var(--surface-subtle)] px-3 py-2 text-ui leading-[1.5] font-medium break-words whitespace-pre-wrap text-[var(--text-primary)] select-text">
+        <p
+          data-agent-row="user"
+          className="max-w-[85%] self-end rounded-xl bg-[var(--surface-subtle)] px-3 py-2 text-ui leading-[1.5] font-medium break-words whitespace-pre-wrap text-[var(--text-primary)] select-text"
+        >
           {item.text}
         </p>
       );
     case "assistant":
       return (
-        <div className="agent-reply flex flex-col gap-2 text-ui leading-[1.55] font-medium break-words text-[var(--text-primary)] select-text">
+        <div
+          data-agent-row="assistant"
+          className="agent-reply flex flex-col gap-2 text-ui leading-[1.55] font-medium break-words text-[var(--text-primary)] select-text"
+        >
           <AgentMarkdown text={item.text} />
         </div>
       );
     case "tool":
     case "status":
       return (
-        <p className="truncate text-caption font-medium text-[var(--text-muted)]">{item.text}</p>
+        <p
+          data-agent-row={item.role}
+          className="truncate text-caption font-medium text-[var(--text-muted)]"
+        >
+          {item.text}
+        </p>
       );
     case "error":
       return (
-        <p className="flex items-start gap-1.5 text-ui leading-[1.5] font-medium text-[var(--text-primary)] select-text">
+        <p
+          data-agent-row="error"
+          className="flex items-start gap-1.5 text-ui leading-[1.5] font-medium text-[var(--text-primary)] select-text"
+        >
           <HugeiconsIcon
             icon={Alert02Icon}
             size={14}
@@ -178,11 +205,15 @@ function AgentComposer({
   const send = useAgentStore((s) => s.send);
   const stop = useAgentStore((s) => s.stop);
   const setModel = useAgentStore((s) => s.setModel);
+  const provider = agentProvider(
+    useSettingsStore((s) => s.settings["agent.provider"] as string | undefined),
+  ).id;
   const model = agentModel(
     useSettingsStore((s) => s.settings["agent.model"] as string | undefined),
+    provider,
   );
-  // A `/model` draft is handled here and never sent to Claude.
-  const modelCommand = parseModelCommand(draft);
+  // A `/model` draft is handled here and never sent to the agent.
+  const modelCommand = parseModelCommand(draft, provider);
   const matches = modelCommand?.matches ?? [];
   const canSend = draft.trim().length > 0 && !isRunning && !modelCommand;
 
@@ -271,6 +302,7 @@ function AgentComposer({
           matches={matches}
           highlight={Math.min(highlight, matches.length - 1)}
           currentId={model.id}
+          provider={provider}
           onHighlight={setHighlight}
           onPick={pickModel}
         />
@@ -342,19 +374,21 @@ function ModelMenu({
   matches,
   highlight,
   currentId,
+  provider: currentProvider,
   onHighlight,
   onPick,
 }: {
   matches: AgentModel[];
   highlight: number;
   currentId: string;
+  provider: AgentProviderId;
   onHighlight: (index: number) => void;
   onPick: (model: AgentModel) => void;
 }) {
   if (matches.length === 0) {
     return (
       <p className="mb-1 px-2 py-1.5 text-caption font-medium text-[var(--text-muted)]">
-        No model by that name. Try Haiku, Sonnet or Opus.
+        No model by that name. Try {modelNames(currentProvider)}.
       </p>
     );
   }

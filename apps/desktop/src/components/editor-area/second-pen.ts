@@ -78,6 +78,7 @@ import {
   penConversation,
   warmPen,
 } from "@/lib/second-pen-agent";
+import type { AgentModelId } from "@/lib/agent-models";
 import { findLinesMentioning, searchPapers } from "@/lib/tauri";
 import { formatVideoTime, isBlankLine, videoIdOf } from "@/lib/video-pins";
 import { videoPlayerFor } from "@/lib/video-players";
@@ -1212,7 +1213,7 @@ class PenPlugin {
 
   /** A request starts: its conversation, and its progress shown where its
    *  line will land (`at`), or under the line it reads. */
-  private start(label: string, at: Placement, model?: string): PenConversation {
+  private start(label: string, at: Placement, model?: AgentModelId): PenConversation {
     this.conversation = penConversation(model);
     this.busyLabel = label;
     this.message = null;
