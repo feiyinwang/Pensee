@@ -613,8 +613,11 @@ function VideoBand({
         disarmAutoPin();
       }
       report = { t, playing, at: performance.now() };
+      // Only playing or paused is a place: while a video loads or buffers
+      // the page says 0:00, which would wipe where it was left.
       if (message.state === YT_ENDED) rememberPosition(videoId, null);
       else if (
+        (playing || message.state === YT_PAUSED) &&
         Math.abs(t - saved.t) >= 1 &&
         (!playing || report.at - saved.at >= POSITION_SAVE_MS)
       ) {

@@ -1178,6 +1178,54 @@ describe("YouTube notes: where a video was left", function () {
     ok(from >= 60 && from < 120, `the video didn't open where it was left: ${src}`);
     ok((await boxState()).now >= 2, "the transcript isn't at the line where the video was left");
     if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-34-resumed.png`);
+
+    // Play (⌘S from the note): from there, not from 0:00, and loading it
+    // never wipes the place.
+    await browser.execute(() => {
+      const frame = shownBand().querySelector("iframe");
+      window.__ytResume = [];
+      addEventListener("message", (e) => {
+        if (e.source === frame.contentWindow && e.data?.type === "state") {
+          window.__ytResume.push({
+            ...e.data,
+            kept: JSON.parse(localStorage.getItem("writer.video-positions") ?? "{}"),
+          });
+        }
+      });
+      const view = shownBand().closest("[data-pane]").querySelector(".cm-content").cmTile.root.view;
+      view.dispatch({ selection: { anchor: view.state.doc.length } });
+      view.focus();
+    });
+    await pressCmd("s");
+    let reports = [];
+    await browser
+      .waitUntil(
+        async () => {
+          reports = await browser.execute(() => window.__ytResume);
+          return reports.some((r) => r.playing);
+        },
+        { timeout: 30_000 },
+      )
+      .catch(() => {
+        throw new Error(`the video never played again: ${JSON.stringify(reports)}`);
+      });
+    const first = reports.find((r) => r.playing);
+    ok(first.t >= from - 1 && first.t < from + 30, `it played from ${first.t}s, not ${from}s`);
+    ok(
+      reports.every((r) => Object.values(r.kept).every((t) => t >= 60)),
+      `loading the video wiped where it was left: ${JSON.stringify(reports)}`,
+    );
+    // Paused, so closing it later writes nothing: the QA vault's video notes
+    // share this video, and the next journeys start from their links.
+    await browser.execute(() =>
+      shownBand()
+        .querySelector("iframe")
+        .contentWindow.postMessage({ source: "pensee", cmd: "pause" }, "*"),
+    );
+    await browser.waitUntil(async () => browser.execute(() => !window.__ytResume.at(-1).playing), {
+      timeout: 5_000,
+      timeoutMsg: "the video didn't pause",
+    });
   });
 });
 

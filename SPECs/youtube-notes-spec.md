@@ -55,7 +55,11 @@ selected.
   YouTube: its place is written down on pause, every 5s while it plays, and
   when its note closes, kept per video for the 200 most recent. That place
   wins over the link's own start (`t=210`). A video watched to its end
-  starts over.
+  starts over. Only a playing or paused report is a place: while the video
+  loads or buffers the page says 0:00, which would wipe it. Play on a video
+  that hasn't started loads it at its place (`loadVideoById` with
+  `startSeconds`, as a pin does): `playVideo` can drop the `start` and play
+  from 0:00.
 - The band sits 1px in from the scroller's edges, so the frames' 1px rings
   are never cut by the scroller (at its top once stuck, and at its sides).
 - **Starting.** ⌘S (or a pin) on a video that isn't playing yet puts a ring

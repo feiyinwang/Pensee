@@ -441,8 +441,14 @@
 
       function toggle() {
         if (!ready) return;
+        const state = player.getPlayerState();
         if (playing()) player.pauseVideo();
-        else player.playVideo();
+        // Not started: playVideo can drop the start (where the video was
+        // left, or the link's t=) and play from 0:00. Loading there plays
+        // from there, as a pin does.
+        else if (state === YT.PlayerState.UNSTARTED || state === YT.PlayerState.CUED) {
+          run({ cmd: "seek", t: player.getCurrentTime() || start });
+        } else player.playVideo();
       }
 
       function seek(t) {
