@@ -68,6 +68,7 @@ windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_System_
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
+block2 = "0.6"
 whisper-rs = { version = "0.16", features = ["metal"] }
 rusqlite = "0.40.2"
 

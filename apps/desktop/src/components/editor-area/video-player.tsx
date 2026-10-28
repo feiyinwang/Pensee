@@ -13,8 +13,10 @@ import {
   setVideoHovered,
   videoPlayerOrigin,
 } from "@/lib/video-players";
-import { youtubeChapters } from "@/lib/tauri";
+import { saveVideoSnapshot, youtubeChapters } from "@/lib/tauri";
+import { ZOOM_SETTING_KEY, clampZoom } from "@/lib/zoom";
 import { useEditorStore } from "@/stores/editor-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { showEditorNotice } from "./editor-notice-store";
 import { PlayerKeys } from "./player-keys";
 import { installVideoPinShortcut, returnFocusFrom } from "./video-pin";
@@ -173,6 +175,122 @@ function savePrefs(prefs: Prefs): void {
   }
 }
 
+// The height the band's edge was dragged to, for every video: a per-viewer
+// layout choice, like the speed.
+const HEIGHT_KEY = "writer.video-height";
+/** Below this the picture is too small to read a slide. */
+const MIN_VIDEO_HEIGHT = 140;
+/** The transcript's narrowest, beside the video, and the gap before it
+ *  (video-player.css). */
+const BESIDE_TRANSCRIPT_MIN = 320 + 8;
+/** How far one arrow key moves the edge. */
+const HEIGHT_STEP = 24;
+
+function readHeight(): number | null {
+  try {
+    const saved = Number(localStorage.getItem(HEIGHT_KEY));
+    return saved >= MIN_VIDEO_HEIGHT ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveHeight(height: number | null): void {
+  try {
+    if (height === null) localStorage.removeItem(HEIGHT_KEY);
+    else localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
+  } catch (error) {
+    console.warn("[video] Couldn't save the video's height:", error);
+  }
+}
+
+/**
+ * The edge under the video (and the transcript beside it): dragged, it sets
+ * their height; the video stays 16:9, so it narrows and the transcript takes
+ * the width. Arrow keys move it too; a double-click puts it back. The height
+ * is written straight to the band while dragging and kept on release.
+ */
+function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
+  const [height, setHeight] = useState(readHeight);
+
+  const apply = (band: HTMLElement, value: number | null) => {
+    if (value === null) {
+      band.style.removeProperty("--video-height");
+      delete band.dataset.sized;
+    } else {
+      band.style.setProperty("--video-height", `${value}px`);
+      band.dataset.sized = "";
+    }
+  };
+
+  /** The tallest the video can be here: its 16:9 height at the width it
+   *  has, and no more than 80% of the window, so notes keep a strip. */
+  const tallest = (band: HTMLElement) => {
+    const main = band.querySelector<HTMLElement>(".video-band-main");
+    const beside = band.querySelector(".video-band-transcript")?.checkVisibility() ?? false;
+    const width = (main?.clientWidth ?? 0) - (beside ? BESIDE_TRANSCRIPT_MIN : 0);
+    return Math.max(MIN_VIDEO_HEIGHT, Math.min((width * 9) / 16, window.innerHeight * 0.8));
+  };
+
+  const commit = (value: number | null) => {
+    setHeight(value);
+    saveHeight(value);
+  };
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const band = bandRef.current;
+    const frame = band?.querySelector<HTMLElement>(".video-frame");
+    if (!band || !frame || event.button !== 0) return;
+    // A press, not a focus: the caret stays in the note.
+    event.preventDefault();
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    const startY = event.clientY;
+    // In CSS pixels; the pointer moves in screen pixels, which differ while
+    // the pane is drawn scaled (the tab columns' pinch).
+    const startHeight = frame.offsetHeight;
+    const scale = frame.getBoundingClientRect().height / startHeight || 1;
+    const max = tallest(band);
+    let next = startHeight;
+    band.dataset.resizing = "";
+    const move = (moveEvent: PointerEvent) => {
+      const moved = (moveEvent.clientY - startY) / scale;
+      next = Math.min(max, Math.max(MIN_VIDEO_HEIGHT, startHeight + moved));
+      apply(band, next);
+    };
+    const end = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", end);
+      handle.removeEventListener("pointercancel", end);
+      delete band.dataset.resizing;
+      if (next !== startHeight) commit(next);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const band = bandRef.current;
+    const frame = band?.querySelector<HTMLElement>(".video-frame");
+    if (!band || !frame) return;
+    const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const now = frame.offsetHeight;
+    commit(Math.min(tallest(band), Math.max(MIN_VIDEO_HEIGHT, now + step * HEIGHT_STEP)));
+  };
+
+  const onDoubleClick = () => commit(null);
+
+  // React owns the height between drags; a drag writes it directly.
+  useEffect(() => {
+    if (bandRef.current) apply(bandRef.current, height);
+  }, [bandRef, height]);
+
+  return { onPointerDown, onKeyDown, onDoubleClick };
+}
+
 /** What the player page last said, and when, so the time can be read
  *  between its half-second reports. */
 interface Report {
@@ -195,6 +313,8 @@ function VideoBand({
 }) {
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const bandRef = useRef<HTMLDivElement | null>(null);
+  const resize = useVideoHeight(bandRef);
   const playerRef = useRef<VideoPlayerHandle | null>(null);
   const [error, setError] = useState<number | null>(null);
   const [stuck, setStuck] = useState(false);
@@ -248,6 +368,24 @@ function VideoBand({
       (reason: unknown) => console.warn("[video] Couldn't read the video's chapters:", reason),
     );
 
+    // The page hides its own controls for a screenshot and says when they
+    // are off the screen.
+    let bareDone: (() => void) | null = null;
+    const hideControls = () =>
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          console.warn("[video] The player page didn't hide its controls in time.");
+          bareDone = null;
+          resolve();
+        }, 500);
+        bareDone = () => {
+          clearTimeout(timer);
+          bareDone = null;
+          resolve();
+        };
+        post({ cmd: "bare", on: true });
+      });
+
     const player: VideoPlayerHandle = {
       notePath: filePath,
       time: () => (report.playing ? report.t + (performance.now() - report.at) / 1000 : report.t),
@@ -267,6 +405,26 @@ function VideoBand({
       skip: (seconds) => {
         markVideoUsed(filePath);
         send({ cmd: "skip", by: seconds });
+      },
+      picture: async () => {
+        const frame = frameRef.current;
+        if (!frame) throw new Error("the video isn't loaded");
+        markVideoUsed(filePath);
+        await hideControls();
+        try {
+          // The web view's points: CSS pixels times the page zoom.
+          const zoom = clampZoom(useSettingsStore.getState().settings[ZOOM_SETTING_KEY]) / 100;
+          const box = frame.getBoundingClientRect();
+          const saved = await saveVideoSnapshot(filePath, {
+            x: box.x * zoom,
+            y: box.y * zoom,
+            width: box.width * zoom,
+            height: box.height * zoom,
+          });
+          return saved.relative_path;
+        } finally {
+          post({ cmd: "bare", on: false });
+        }
       },
       rect: () => frameRef.current?.getBoundingClientRect() ?? new DOMRect(),
       shown: () => {
@@ -293,6 +451,7 @@ function VideoBand({
         deltaY?: number;
         ctrlKey?: boolean;
         over?: boolean;
+        on?: boolean;
       };
       if (message?.source !== "pensee-yt") return;
       if (message.type === "error") {
@@ -303,6 +462,10 @@ function VideoBand({
       // to the player page.
       if (message.type === "release") {
         if (frameRef.current) returnFocusFrom(frameRef.current);
+        return;
+      }
+      if (message.type === "bare") {
+        if (message.on) bareDone?.();
         return;
       }
       if (message.type === "prefs") {
@@ -393,6 +556,7 @@ function VideoBand({
     <>
       <div ref={sentinelRef} className="video-band-sentinel" aria-hidden />
       <div
+        ref={bandRef}
         className="video-band"
         data-stuck={stuck || undefined}
         data-beside={(transcribed && !collapsed) || undefined}
@@ -427,12 +591,21 @@ function VideoBand({
               </Suspense>
             </div>
           )}
+          <div
+            className="video-band-resize"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Video height"
+            title="Drag to resize · double-click to reset"
+            tabIndex={0}
+            {...resize}
+          />
         </div>
         {error === null && (
           <div className="video-band-row">
             {/* The keys stand in for Play and Pin buttons: ⌘S plays, then pins
                 and pauses. The page's own bar sets the speed. */}
-            <PlayerKeys playing={playing} />
+            <PlayerKeys playing={playing} video />
             {!transcribed && hasCaptions && (
               <button
                 type="button"

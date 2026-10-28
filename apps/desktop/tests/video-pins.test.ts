@@ -95,6 +95,13 @@ describe("pinEmptyLine", () => {
     expect(pinEmptyLine("3.", "yt-5")).toEqual({ text: "3.  ^yt-5", caret: 3 });
   });
 
+  test("a screenshot fills the item, the caret after it", () => {
+    expect(pinEmptyLine("  - ", "yt-5", "![0:05](a.png)")).toEqual({
+      text: "  - ![0:05](a.png) ^yt-5",
+      caret: 18,
+    });
+  });
+
   test("a line with text is left to the block rules", () => {
     expect(pinEmptyLine("- idea", "yt-5")).toBeNull();
     expect(pinEmptyLine("idea", "yt-5")).toBeNull();
@@ -105,6 +112,13 @@ describe("pinnedItemAfter", () => {
   test("the next item of a list", () => {
     expect(pinnedItemAfter("  - idea ^yt-3", "yt-9")).toEqual({ text: "  -  ^yt-9", caret: 4 });
     expect(pinnedItemAfter("2. idea ^yt-3", "yt-9")).toEqual({ text: "3.  ^yt-9", caret: 3 });
+  });
+
+  test("a screenshot is the new item's text", () => {
+    expect(pinnedItemAfter("- idea", "yt-9", "![0:09](a.png)")).toEqual({
+      text: "- ![0:09](a.png) ^yt-9",
+      caret: 16,
+    });
   });
 
   test("a top-level bullet after any other block", () => {

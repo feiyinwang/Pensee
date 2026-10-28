@@ -83,21 +83,29 @@ export function isBlankLine(line: string): boolean {
 /**
  * A pin on a line with nothing in it yet: a blank line becomes a bullet, an
  * empty item keeps its marker. Returns the line's new text and where the
- * caret goes in it (between the marker and the hidden id, ready to type), or
- * null when the line already has content.
+ * caret goes in it (after the marker and `content`, before the hidden id,
+ * ready to type), or null when the line already has content.
  */
-export function pinEmptyLine(line: string, id: string): { text: string; caret: number } | null {
+export function pinEmptyLine(
+  line: string,
+  id: string,
+  content = "",
+): { text: string; caret: number } | null {
   let head: string;
   const item = EMPTY_ITEM_RE.exec(line);
   if (item) head = `${item[1]}${item[2]} `;
   else if (!line.trim()) head = `${/^\s*/.exec(line)![0]}- `;
   else return null;
-  return { text: `${head} ^${id}`, caret: head.length };
+  return { text: `${head}${content} ^${id}`, caret: head.length + content.length };
 }
 
 /** A new pinned item after the block whose first line is `line`: the next
  *  item of its list, or a top-level bullet after any other block. */
-export function pinnedItemAfter(line: string, id: string): { text: string; caret: number } {
+export function pinnedItemAfter(
+  line: string,
+  id: string,
+  content = "",
+): { text: string; caret: number } {
   const head = nextItemPrefix(line) ?? "- ";
-  return { text: `${head} ^${id}`, caret: head.length };
+  return { text: `${head}${content} ^${id}`, caret: head.length + content.length };
 }

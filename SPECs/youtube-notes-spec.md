@@ -29,7 +29,16 @@ selected.
   to edge: 16:9, but no taller than 60% of the window (past that, the frame
   keeps the width and YouTube letterboxes the picture). Its corners are
   rounded (10px) and it casts a soft shadow, the same as the mini player
-  over a board. It is sticky: once the
+  over a board.
+- **Its height is yours.** The edge under the video (and the transcript
+  beside it) drags up or down; a grip shows on hover. The video stays 16:9
+  at that height, so it narrows and centres, and the transcript beside it
+  takes the width it gives up; both stay the same height. It goes from 140px
+  to the video's full 16:9 height (no more than 80% of the window). ↑ / ↓ on
+  the focused edge move it 24px; a double-click puts back the default. The
+  height is kept for every video in `localStorage` under
+  `writer.video-height`. The mini player over a board keeps its own size.
+- It is sticky: once the
   properties scroll away, it stays at the top of the note and the notes
   scroll beneath it. The band behind it has the page's background, so no
   text shows through around the video.
@@ -58,8 +67,8 @@ selected.
 - Scrolling over the video scrolls the note; pinching over it reaches the
   tab columns' pinch like a pinch anywhere else.
 - Under the video is one row: the keys in full, each a label then its key
-  (**Play ⌘S** while paused, **Pin ⌘S** while playing, **Slower ⇧,**,
-  **Faster ⇧.**), then **Transcript** when the video has captions not yet
+  (**Play ⌘S** while paused, **Pin ⌘S** while playing, **Screenshot ⌘⇧S**,
+  **Slower ⇧,**, **Faster ⇧.**), then **Transcript** when the video has captions not yet
   brought in. There are no Play or Pin buttons: ⌘S does both, the video's
   own bar plays and pauses with the mouse, and its bar sets the speed.
 - **⇧, / ⇧.** step the speed down or up YouTube's list while the pointer
@@ -74,6 +83,19 @@ selected.
   last one used when several are). ⌘⇧J is gone: J meant nothing.
   Plain Space is never taken, so it always
   types. (Not ⌘⇧Space: it clashes with system shortcuts.)
+- **⌘⇧S** (the bigger ⌘S: a pin with a picture), wherever ⌘S pins, puts a
+  screenshot of the video in the note. The picture is saved as a PNG in
+  the note's `<stem>-assets` folder and goes in as a pinned item of its
+  own, `- ![1:25](<Note-assets/….png>) ^yt-85`, by the pin rules below
+  except that it never joins a block with text: an empty line takes it,
+  else a new item after the caret's block. The video plays on. The player
+  page hides its own bar, lists and speed badge for the shot
+  (`{cmd:"bare", on}`, answered with `{type:"bare"}` two frames later).
+  YouTube's video is in a cross-origin frame that no canvas can read, so
+  WebKit takes it: `save_video_snapshot` asks the WKWebView for a snapshot
+  of the frame's rectangle (`takeSnapshotWithConfiguration`, CSS pixels
+  times the page zoom). macOS only for now; on Windows it says so. A
+  podcast has no picture: ⌘⇧S there says to play a video.
 - The video keeps playing while you type. When you start it by clicking in
   the player, focus goes back to where it was (the note or the board). Your
   typing lands in the note, not in YouTube's keyboard controls.

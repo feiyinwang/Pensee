@@ -918,6 +918,7 @@ name = "desktop"
 version = "0.6.0"
 dependencies = [
  "base64 0.22.1",
+ "block2",
  "dunce",
  "fontdb",
  "ignore",

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-28
+
+- Take a screenshot of a video while you watch it: press ⌘⇧S in its note and a picture of the video at that moment goes into the note, pinned to that moment so a click on the pin plays from there. The picture is saved next to the note, the video's own controls are left out of it, and the video keeps playing. The row under the video lists it as **Screenshot ⌘⇧S**.
+- Drag the edge under a video to make it shorter or taller. The transcript beside it follows, so they stay the same height, and the video keeps its shape and gives the transcript the width it no longer needs. The height you pick is kept for every video; double-click the edge to put it back.
+
 ## 2026-10-27
 
 - Record is now a small red dot at the bottom of the note, on every note. On a video note, where the video leaves only a few lines below it, it no longer covers the line you're reading. While you scroll or type it fades to a faint mark, and it comes back a moment after you stop, or as soon as you move the pointer near it. Hover it to see Record.

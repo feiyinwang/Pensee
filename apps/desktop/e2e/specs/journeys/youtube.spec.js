@@ -309,7 +309,11 @@ describe("YouTube notes: where the transcript shows", function () {
     });
     // ⌘S plays on while paused, and pins (and pauses) while playing.
     ok(["Play⌘S", "Pin⌘S"].includes(row.keys[0]), `⌘S isn't named for what it does (${row.keys})`);
-    equal(row.keys.slice(1).join(" · "), "Slower⇧, · Faster⇧.", "the speed keys in full");
+    equal(
+      row.keys.slice(1).join(" · "),
+      "Screenshot⌘⇧S · Slower⇧, · Faster⇧.",
+      "the screenshot and speed keys in full",
+    );
     ok(row.first, "the keys aren't at the start of the row");
     ok(row.sameLine, "the keys and Transcript aren't on one line");
     ok(
@@ -363,6 +367,88 @@ describe("YouTube notes: where the transcript shows", function () {
     equal(state.shown, 1, "both boxes show at once");
     ok(state.lines.length >= 8, "the box under the video lost its lines");
     if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-13-under.png`);
+  });
+
+  it("YT-28 dragging the edge under the video sets its and the transcript's height", async function () {
+    // The band on screen: an earlier journey can leave the note mounted,
+    // hidden, in another tab.
+    await browser.execute(() => {
+      window.shownBand = () =>
+        [...document.querySelectorAll(".video-band")].find((band) => band.checkVisibility());
+    });
+    await setPaneWidth(BESIDE_MIN_WIDTH + 300);
+    await browser.waitUntil(async () => (await boxState()).placement === "beside", {
+      timeout: 3_000,
+      timeoutMsg: "the box isn't beside the video in a wide pane",
+    });
+    const sizes = () =>
+      browser.execute(() => {
+        const frame = shownBand().querySelector(".video-frame").getBoundingClientRect();
+        const box = shownBand().querySelector(".transcript-box").getBoundingClientRect();
+        return { frame: frame.toJSON(), box: box.toJSON() };
+      });
+    // From the default height: the e2e app keeps its storage between runs,
+    // so a height dragged in an earlier run is still set.
+    await browser.execute(() =>
+      shownBand()
+        .querySelector(".video-band-resize")
+        .dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+    );
+    await browser.waitUntil(
+      async () => browser.execute(() => !shownBand().hasAttribute("data-sized")),
+      { timeout: 3_000, timeoutMsg: "a double-click didn't put the default height back" },
+    );
+    const before = await sizes();
+    // The plugin sends no pointer events: dispatch the drag on the edge,
+    // whose own listeners follow it (pointer capture can't take a made-up id).
+    await browser.execute((by) => {
+      const edge = shownBand().querySelector(".video-band-resize");
+      edge.setPointerCapture = () => {};
+      const y = edge.getBoundingClientRect().top + 4;
+      const at = (type, clientY) =>
+        edge.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            pointerId: 7,
+            clientY,
+          }),
+        );
+      at("pointerdown", y);
+      at("pointermove", y - by / 2);
+      at("pointermove", y - by);
+      at("pointerup", y - by);
+    }, 120);
+    const after = await sizes();
+    ok(
+      Math.abs(after.frame.height - (before.frame.height - 120)) < 3,
+      `the video isn't 120px shorter (${before.frame.height} → ${after.frame.height})`,
+    );
+    ok(
+      Math.abs(after.box.height - after.frame.height) < 2,
+      "the transcript isn't the video's height",
+    );
+    ok(
+      Math.abs(after.frame.width / after.frame.height - 16 / 9) < 0.02,
+      "the video isn't 16:9 at its new height",
+    );
+    ok(
+      after.box.width > before.box.width + 100,
+      "the transcript didn't take the width the video gave up",
+    );
+    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-28-shorter.png`);
+
+    // A double-click puts it back.
+    await browser.execute(() =>
+      shownBand()
+        .querySelector(".video-band-resize")
+        .dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+    );
+    await browser.waitUntil(
+      async () => Math.abs((await sizes()).frame.height - before.frame.height) < 2,
+      { timeout: 3_000, timeoutMsg: "a double-click didn't put the height back" },
+    );
   });
 
   it("YT-12 folding the box leaves its header, and stays folded", async function () {
@@ -473,8 +559,8 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
   before(async function () {
     // The workspace first: ⌘O does nothing until it has loaded.
     await workspaceRoot();
-    await openNote(NOTE);
-    await $(".video-band iframe").waitForExist({ timeout: 15_000 });
+    // Listening before the note opens: a paused page reports only on a
+    // change, so a note an earlier journey left open would say nothing.
     await browser.execute(() => {
       window.__ytReports = [];
       window.__ytRates = [];
@@ -485,6 +571,9 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
           window.__ytRates.push(e.data.rate);
       });
     });
+    await openNote("Welcome");
+    await openNote(NOTE);
+    await $(".video-band iframe").waitForExist({ timeout: 15_000 });
     await browser.waitUntil(async () => browser.execute(() => window.__ytReports.length > 0), {
       timeout: 30_000,
       timeoutMsg: "the player page never reported (needs YouTube)",
@@ -522,7 +611,8 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
   }
 
   /** Waits for a report the player page sent after `since` with its time
-   *  in [min, max]; returns the last one. */
+   *  in [min, max]; returns the last such one. Not the last of all: a video
+   *  that hadn't started reports 0 while it buffers after the skip. */
   async function reportAfter(since, [min, max], timeout, timeoutMsg) {
     await browser.waitUntil(
       async () =>
@@ -534,7 +624,16 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
         ),
       { timeout, timeoutMsg },
     );
-    return browser.execute((from) => window.__ytReports.slice(from).at(-1), since);
+    return browser.execute(
+      (from, lo, hi) =>
+        window.__ytReports
+          .slice(from)
+          .filter((r) => r.t >= lo && r.t <= hi)
+          .at(-1),
+      since,
+      min,
+      max,
+    );
   }
 
   it("YT-20 ← / → over the video skip it 5s; off it they move the caret", async function () {
@@ -606,6 +705,70 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
     // Back to the speed it had, for the next video.
     ok(await press("<", "Comma"), "⇧, over the video typed");
     await hover(false);
+  });
+
+  it("YT-27 ⌘⇧S puts a screenshot of the video in the note, pinned to the moment", async function () {
+    const root = await workspaceRoot();
+    await caret(0);
+    // Playing, so the picture is YouTube's video, not the page's poster:
+    // ⌘S plays a paused video.
+    const playing = () => browser.execute(() => window.__ytReports.at(-1)?.playing === true);
+    if (!(await playing())) await pressCmd("s", { inFocus: true });
+    await browser.waitUntil(
+      async () => browser.execute(() => window.__ytReports.at(-1)?.state === 1),
+      { timeout: 20_000, timeoutMsg: "the video didn't play (needs YouTube)" },
+    );
+    await browser.pause(1_500);
+    await pressCmd("S", { shift: true, inFocus: true });
+    const line = await browser.waitUntil(
+      async () =>
+        browser.execute(() => {
+          const view = document
+            .querySelector(".video-band")
+            .closest("[data-pane]")
+            .querySelector(".cm-content").cmTile.root.view;
+          return (
+            view.state.doc
+              .toString()
+              .split("\n")
+              .find((text) => /!\[\d+:\d\d\]\(.*\.png>?\) \^yt-\d+$/.test(text)) ?? false
+          );
+        }),
+      { timeout: 10_000, timeoutMsg: "no pinned screenshot in the note" },
+    );
+    const [, time, path, pin] = /!\[(\d+:\d\d)\]\(<?(.+?\.png)>?\) \^yt-(\d+)$/.exec(line);
+    const [m, sec] = time.split(":").map(Number);
+    equal(m * 60 + sec, Number(pin), "the picture's time and its pin disagree");
+    ok(path.startsWith(`${NOTE}-assets/`), `not in the note's assets folder (${path})`);
+
+    // A picture, not a blank: as wide as the video, many colours.
+    const file = await invoke("read_file_data_url", { path: `${root}/${path}` });
+    ok(file.ok, `the screenshot isn't on disk (${file.error})`);
+    // executeAsync: the plugin doesn't await a promise from execute.
+    const picture = await browser.executeAsync((url, done) => {
+      const image = new Image();
+      image.onerror = () => done({ width: 0, colours: 0, frameWidth: 0 });
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+        const colours = new Set();
+        for (let i = 0; i < data.length; i += 4 * 97)
+          colours.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+        const frame = document.querySelector(".video-frame").getBoundingClientRect();
+        done({ width: image.naturalWidth, colours: colours.size, frameWidth: frame.width });
+      };
+      image.src = url;
+    }, file.value);
+    ok(picture.width >= picture.frameWidth - 2, `smaller than the video (${picture.width}px)`);
+    ok(picture.colours > 50, `the screenshot is blank (${picture.colours} colours)`);
+    if (process.env.SHOTS) {
+      execSync(`cp "${root}/${path}" "${process.env.SHOTS}/yt-27-screenshot.png"`);
+      await browser.saveScreenshot(`${process.env.SHOTS}/yt-27-note.png`);
+    }
   });
 });
 

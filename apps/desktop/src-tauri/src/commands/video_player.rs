@@ -375,6 +375,65 @@ fn chapters_in(page: &str) -> Vec<Chapter> {
 }
 
 /// `http://127.0.0.1:<port>`, starting the server on the first call.
+/// Saves what the window shows in `x, y, width, height` (CSS pixels, page
+/// zoom applied by the caller) as a PNG in the note's assets folder: a
+/// screenshot of the video playing there. The video plays in YouTube's frame
+/// inside the player page, out of reach of a canvas, so WebKit takes it.
+#[tauri::command]
+pub async fn save_video_snapshot(
+    window: tauri::WebviewWindow,
+    markdown_file_path: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<crate::commands::images::ImageSaveResult, AppError> {
+    if !(width >= 1.0 && height >= 1.0) {
+        return Err(AppError::User("The video isn't on screen.".into()));
+    }
+    let png = snapshot(&window, x, y, width, height).await?;
+    crate::commands::images::save_clipboard_image_impl(&markdown_file_path, &png, "png")
+}
+
+#[cfg(target_os = "macos")]
+async fn snapshot(
+    window: &tauri::WebviewWindow,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<Vec<u8>, AppError> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    window
+        .with_webview(move |webview| unsafe {
+            crate::macos::snapshot_png(
+                webview.inner().cast(),
+                crate::macos::CGRect::new(x, y, width, height),
+                move |result| {
+                    let _ = sender.send(result);
+                },
+            );
+        })
+        .map_err(|error| AppError::Io(format!("Couldn't reach the web view: {error}")))?;
+    receiver
+        .await
+        .map_err(|_| AppError::Io("The screenshot never came back.".into()))?
+        .map_err(|reason| AppError::Io(format!("Couldn't take the screenshot: {reason}")))
+}
+
+#[cfg(not(target_os = "macos"))]
+async fn snapshot(
+    _window: &tauri::WebviewWindow,
+    _x: f64,
+    _y: f64,
+    _width: f64,
+    _height: f64,
+) -> Result<Vec<u8>, AppError> {
+    Err(AppError::User(
+        "Video screenshots work on macOS only for now.".into(),
+    ))
+}
+
 #[tauri::command]
 pub fn video_player_origin() -> Result<String, AppError> {
     ORIGIN

@@ -665,6 +665,7 @@ pub fn run() {
             commands::apple_books::has_full_disk_access,
             commands::books::import_book,
             commands::video_player::video_player_origin,
+            commands::video_player::save_video_snapshot,
             commands::video_player::youtube_chapters,
             commands::video_player::youtube_transcript,
             commands::video_player::youtube_caption_languages,

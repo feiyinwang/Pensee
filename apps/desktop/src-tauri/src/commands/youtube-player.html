@@ -78,6 +78,14 @@
         pointer-events: auto;
         transition: opacity 150ms cubic-bezier(0.32, 0.72, 0, 1);
       }
+      /* A screenshot of the video (⌘⇧S in the app): the picture alone. */
+      body[data-bare] #bar,
+      body[data-bare] .menu,
+      body[data-bare] #badge,
+      body[data-bare] #poster span {
+        visibility: hidden;
+        transition: none;
+      }
       #row {
         display: flex;
         align-items: center;
@@ -784,6 +792,16 @@
         if (event.source !== parent) return;
         const message = event.data;
         if (!message || message.source !== "pensee") return;
+        // Before the player is ready too: a screenshot of the poster.
+        if (message.cmd === "bare") {
+          if (message.on) document.body.dataset.bare = "";
+          else delete document.body.dataset.bare;
+          // Two frames: off the screen, not just out of the style.
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => post({ type: "bare", on: Boolean(message.on) })),
+          );
+          return;
+        }
         if (message.cmd === "chapters") {
           chapters = Array.isArray(message.chapters) ? message.chapters : [];
           segments.forEach((s) => s.remove());

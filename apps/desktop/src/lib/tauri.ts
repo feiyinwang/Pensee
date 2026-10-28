@@ -484,6 +484,15 @@ export function saveWebPdf(url: string, markdownFilePath: string, name: string):
   return invoke("save_web_pdf", { url, markdownFilePath, name });
 }
 
+/** Saves what the window shows in `rect` (the web view's points: CSS pixels
+ *  times the page zoom) as a PNG in the note's assets folder. macOS only. */
+export function saveVideoSnapshot(
+  markdownFilePath: string,
+  rect: { x: number; y: number; width: number; height: number },
+): Promise<{ relative_path: string; absolute_path: string }> {
+  return invoke("save_video_snapshot", { markdownFilePath, ...rect });
+}
+
 export function saveClipboardImage(
   markdownFilePath: string,
   imageData: number[],

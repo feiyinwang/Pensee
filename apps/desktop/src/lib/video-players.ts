@@ -22,6 +22,9 @@ export interface VideoPlayer {
   /** Jump `seconds` back (negative) or on, playing or paused as it was.
    *  YouTube players only: ← / → while the pointer is over the video. */
   skip?: (seconds: number) => void;
+  /** Saves the picture showing now into the note's assets folder; returns
+   *  its path relative to the note. YouTube players only (⌘⇧S). */
+  picture?: () => Promise<string>;
   /** The player on screen, for placing a pin's card beside it on a board. */
   rect: () => DOMRect;
   /** Whether it is on screen: an inactive tab keeps its player mounted but

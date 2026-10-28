@@ -54,6 +54,7 @@ These shortcuts are handled by the global `useKeyboardShortcuts` hook and work r
 | Cmd+0           | Actual size (100%)                        |
 | Cmd+J           | Toggle the agent chat                     |
 | Cmd+S           | Pin the moment and pause; again, play¹    |
+| Cmd+Shift+S     | Screenshot of the video, pinned¹          |
 | Shift+, / .     | Video slower / faster²                    |
 | Left / Right    | Video 5s back / on, over it⁵              |
 
@@ -74,8 +75,10 @@ everywhere else it does nothing, since notes save themselves
 ([SPECs/youtube-notes-spec.md](../SPECs/youtube-notes-spec.md),
 [SPECs/podcast-notes-spec.md](../SPECs/podcast-notes-spec.md)). While the
 video plays it pins the moment and pauses, so you can write about it; while
-it is paused it plays on. The player names every key in full, a label then
-its key (Play or Pin ⌘S, Slower ⇧,, Faster ⇧.): at the start of the row under
+it is paused it plays on. Cmd+Shift+S, in the same places, puts a
+screenshot of the video in the note as a pinned item and plays on (a
+podcast has no picture). The player names every key in full, a label then
+its key (Play or Pin ⌘S, Screenshot ⌘⇧S, Slower ⇧,, Faster ⇧.): at the start of the row under
 a video, before **Transcript**, and under a podcast's card. They stand in for
 Play and Pin buttons, which the players don't have. ⌘S is named for what it
 does now: Play while paused, Pin while playing. "Video" means the episode in a podcast note.

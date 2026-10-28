@@ -56,11 +56,25 @@
   display: none;
 }
 
+/* Dragged to a height (the edge under the video, video-player.tsx): the
+   video keeps 16:9 at that height, narrower and centred, instead of black
+   bars beside the picture. */
+.video-band[data-sized] .video-frame {
+  width: min(100%, calc(var(--video-height) * 16 / 9));
+  max-height: none;
+  margin-inline: auto;
+}
+
 @container pane (min-width: 900px) {
   .video-band[data-beside] .video-band-main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(320px, 36%);
     gap: 8px;
+  }
+
+  /* Beside, the transcript takes the width the video gives up. */
+  .video-band[data-beside][data-sized] .video-band-main {
+    grid-template-columns: minmax(0, calc(var(--video-height) * 16 / 9)) minmax(320px, 1fr);
   }
 
   .video-band[data-beside] .video-band-transcript {
@@ -71,6 +85,62 @@
   [data-pane]:has(.video-band[data-beside]) .cm-transcript-widget {
     display: none;
   }
+}
+
+.video-band-main {
+  position: relative;
+}
+
+/* The edge under the video and transcript: drag it to set their height. A
+   strip below the frames, its grip showing on hover and while held. */
+.video-band-resize {
+  position: absolute;
+  right: 0;
+  bottom: -9px;
+  left: 0;
+  z-index: 1;
+  height: 10px;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.video-band-resize::after {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--text-muted);
+  content: "";
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity var(--motion-hover) var(--ease-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .video-band-resize:hover::after {
+    opacity: 0.6;
+  }
+}
+
+.video-band[data-resizing] .video-band-resize::after,
+.video-band-resize:focus-visible::after {
+  opacity: 0.9;
+}
+
+.video-band-resize:focus-visible {
+  outline: none;
+}
+
+/* While dragging, the frame would swallow the pointer once it is over it. */
+.video-band[data-resizing] iframe {
+  pointer-events: none;
+}
+
+.video-band[data-resizing] {
+  cursor: row-resize;
+  user-select: none;
 }
 
 .video-frame iframe {
@@ -198,8 +268,14 @@
   display: block;
 }
 
-[data-pane]:has(> .wr-board-inline) .video-band .video-band-transcript {
+[data-pane]:has(> .wr-board-inline) .video-band .video-band-transcript,
+[data-pane]:has(> .wr-board-inline) .video-band-resize {
   display: none;
+}
+
+/* The mini player keeps its own size. */
+[data-pane]:has(> .wr-board-inline) .video-band[data-sized] .video-frame {
+  width: 100%;
 }
 
 [data-pane]:has(> .wr-board-inline) .video-band-row {

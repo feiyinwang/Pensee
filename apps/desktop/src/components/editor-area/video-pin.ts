@@ -2,6 +2,7 @@ import type { Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
 
 import { blockIdsInText, blockIdOnLine } from "@/lib/block-refs";
+import { formatMarkdownDestination } from "@/lib/paths";
 import {
   PIN_ICON_PATH,
   formatVideoTime,
@@ -94,15 +95,18 @@ export class VideoPinWidget extends WidgetType {
  * - a block with text and no id gets the pin;
  * - a block that already has an id gets a new pinned item after it.
  *
- * The caret ends on the pinned line, ready to type.
+ * With `content` (a screenshot's image) the pinned item holds it, so it never
+ * goes on a block with text: an empty line takes it, else a new item after
+ * the block. The caret ends on the pinned line, after `content`, ready to
+ * type.
  */
-export function pinAtCaret(view: EditorView, seconds: number): void {
+export function pinAtCaret(view: EditorView, seconds: number, content = ""): void {
   const { state } = view;
   const head = state.selection.main.head;
   const line = state.doc.lineAt(head);
   const id = videoPinId(seconds, new Set(blockIdsInText(state.doc.toString())));
 
-  const empty = pinEmptyLine(line.text, id);
+  const empty = pinEmptyLine(line.text, id, content);
   if (empty) {
     view.dispatch({
       changes: { from: line.from, to: line.to, insert: empty.text },
@@ -120,7 +124,7 @@ export function pinAtCaret(view: EditorView, seconds: number): void {
     return;
   }
   const idLine = blockIdLine(state, block);
-  if (!blockIdOnLine(idLine.text)) {
+  if (!content && !blockIdOnLine(idLine.text)) {
     view.dispatch({
       changes: { from: idLine.to, insert: ` ^${id}` },
       selection: { anchor: Math.min(head, idLine.to) },
@@ -134,7 +138,7 @@ export function pinAtCaret(view: EditorView, seconds: number): void {
   // its last line (the caret narrowed it to one).
   const end =
     block.name === "ListItem" ? state.doc.lineAt(Math.max(block.from, block.to - 1)).to : idLine.to;
-  const item = pinnedItemAfter(state.doc.lineAt(block.from).text, id);
+  const item = pinnedItemAfter(state.doc.lineAt(block.from).text, id, content);
   view.dispatch({
     changes: { from: end, insert: `\n${item.text}` },
     selection: { anchor: end + 1 + item.caret },
@@ -207,6 +211,46 @@ export function saveTheMoment(): void {
 }
 
 /**
+ * ⌘⇧S, a screenshot of the moment: saves the picture the video shows now in
+ * the note's assets folder and adds it to the note as a pinned item, where
+ * ⌘S would pin (the caret in the video's note, else the note's open editor).
+ * The video plays on. The video is the focused note's, else
+ * `currentVideoPlayer`'s; a podcast has no picture.
+ */
+export async function screenshotTheMoment(): Promise<void> {
+  const focused = focusedNote();
+  const player = (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
+  if (!player?.picture) {
+    showEditorNotice("Play a video in a note to take a screenshot of it.");
+    return;
+  }
+  if (!player.shown()) {
+    showEditorNotice("Show the video's note to take a screenshot of it.");
+    return;
+  }
+  const seconds = player.time();
+  let path: string;
+  try {
+    path = await player.picture();
+  } catch (error) {
+    console.error("[video] Couldn't take the screenshot:", error);
+    showEditorNotice(
+      typeof error === "string" && error ? error : "Couldn't take a screenshot of the video.",
+    );
+    return;
+  }
+  // Read after the shot: focus may have moved while it was taken.
+  const now = focusedNote();
+  const [open] = liveEditorsFor(player.notePath);
+  const view = now?.path === player.notePath ? now.view : open;
+  if (!view) {
+    showEditorNotice("Couldn't find the video's note to put the screenshot in.");
+    return;
+  }
+  pinAtCaret(view, seconds, `![${formatVideoTime(seconds)}](${formatMarkdownDestination(path)})`);
+}
+
+/**
  * Words typed into a video's note soon after it paused are a note on that
  * moment: the block they land in gets a pin a few seconds before the pause
  * (AUTO_PIN_LEAD_SECONDS), as if ⌘S had been pressed then. Waits for words,
@@ -258,6 +302,7 @@ function autoPinAtCaret(view: EditorView, notePath: string): void {
 }
 
 export const PIN_SHORTCUT_LABEL = "⌘S";
+export const SCREENSHOT_SHORTCUT_LABEL = "⌘⇧S";
 export const SLOWER_SHORTCUT_LABEL = "⇧,";
 export const FASTER_SHORTCUT_LABEL = "⇧.";
 export const SPEED_KEYSHORTCUTS = "Shift+, Shift+.";
@@ -287,7 +332,7 @@ let installed = false;
  *  it can hand focus straight back (typing goes to the note, not YouTube). */
 let lastFocus: HTMLElement | null = null;
 
-/** Whether ⌘S pins the moment here: in a note that plays a video or
+/** Whether ⌘S (and ⌘⇧S) pins the moment here: in a note that plays a video or
  *  episode, on its player, or on a board while one is mounted (a board
  *  swallows ⌘S anyway). Everywhere else ⌘S does nothing. */
 function pinKeyHere(): boolean {
@@ -298,7 +343,7 @@ function pinKeyHere(): boolean {
   return boardHasFocus() && currentVideoPlayer() !== null;
 }
 
-/** ⌘S (pin and pause, or play on) where `pinKeyHere`, ← / → (skip) and ⇧, /
+/** ⌘S (pin and pause, or play on) and ⌘⇧S (screenshot) where `pinKeyHere`, ← / → (skip) and ⇧, /
  *  ⇧. (speed) while the pointer is over a player, and the focus tracking
  *  `returnFocus` needs. Installed once, by the first player. */
 export function installVideoPinShortcut(): void {
@@ -329,11 +374,13 @@ export function installVideoPinShortcut(): void {
         return;
       }
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
-      if (!event.shiftKey && event.key.toLowerCase() === "s") {
+      if (event.key.toLowerCase() === "s") {
         if (!pinKeyHere()) return;
         event.preventDefault();
         event.stopPropagation();
-        if (!event.repeat) saveTheMoment();
+        if (event.repeat) return;
+        if (event.shiftKey) void screenshotTheMoment();
+        else saveTheMoment();
       }
     },
     // Capture: before the board's and the editor's own keys.
