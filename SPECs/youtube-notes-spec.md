@@ -47,9 +47,15 @@ selected.
   keeps its own size.
 - **Hide transcript.** Beside the video the transcript is a panel with a
   × at the end of its header (after Copy and Ask); its title is only a
-  title. The × folds it away from the video's side: the video takes the
-  full width, and the folded header waits under the video to bring it back.
-  Under the video (a narrow pane) the title is the fold button, as before.
+  title. The × hides it: the video takes the full width, and the box
+  leaves the note too. **Transcript** in the row under the video, after the
+  keys, brings it back. Under the video (a narrow pane) the title is the
+  fold button, and folding hides it the same way.
+- **Where it was left.** A video opens where it was last left, as on
+  YouTube: its place is written down on pause, every 5s while it plays, and
+  when its note closes, kept per video for the 200 most recent. That place
+  wins over the link's own start (`t=210`). A video watched to its end
+  starts over.
 - The band sits 1px in from the scroller's edges, so the frames' 1px rings
   are never cut by the scroller (at its top once stuck, and at its sides).
 - **Starting.** ⌘S (or a pin) on a video that isn't playing yet puts a ring
@@ -209,10 +215,10 @@ open into raw `<details>` source when clicked).
   note. The pane's width counts, not the window's, so opening the sidebar
   or splitting columns can move it under. With a board open over the note
   (mini player) it isn't shown.
-- **Folding.** The chevron and **Transcript** in the header fold the box to
-  its header and unfold it. Folded, it is under the video (beside it there
-  would be an empty column), and unfolding in a wide pane puts it back
-  beside. One setting for every video note, kept across launches.
+- **Hiding.** The × beside the video, or the chevron and **Transcript** in
+  the header under it, hide the box: nothing of it stays in the note, and
+  **Transcript** in the row under the video shows it again (beside in a
+  wide pane). One setting for every video note, kept across launches.
 - **Language.** When the video has captions in more than one language, a
   menu next to the title names the transcript's language (**English**) and
   lists the video's caption languages, English first, as YouTube names

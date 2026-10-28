@@ -36,6 +36,10 @@ async function boxState() {
       now: lines.findIndex((line) => line.dataset.state === "now"),
       placement: box?.dataset.placement ?? null,
       collapsed: box?.hasAttribute("data-collapsed") ?? false,
+      // Hidden: no box in the note, Transcript in the row under the video.
+      hidden: [
+        ...document.querySelectorAll(".video-band-row button[title='Show transcript']"),
+      ].some((el) => el.checkVisibility()),
       shown: [...document.querySelectorAll(".transcript-box")].filter((el) => el.checkVisibility())
         .length,
       editorText: document.querySelector(".cm-content")?.textContent ?? "",
@@ -49,7 +53,7 @@ async function waitForBox() {
   await browser.waitUntil(
     async () => {
       const state = await boxState();
-      return state.shown === 1 && (state.collapsed || state.lines.length > 0);
+      return state.hidden || (state.shown === 1 && state.lines.length > 0);
     },
     { timeout: 15_000, timeoutMsg: "no transcript box on screen" },
   );
@@ -130,6 +134,21 @@ async function shownButton(label) {
   throw new Error(`no ${label} button on screen in the transcript box`);
 }
 
+/** Forgets where every video was left (the e2e app keeps its storage
+ *  between runs): each note opens at its link's own start. */
+async function forgetVideoPositions() {
+  await browser.execute(() => localStorage.removeItem("writer.video-positions"));
+}
+
+/** Transcript in the row under the video on screen, which brings a hidden
+ *  transcript back. */
+async function showTranscriptButton() {
+  for (const button of await $$("//button[@title='Show transcript']")) {
+    if (await button.isDisplayed()) return button;
+  }
+  throw new Error("no Transcript in the row under the video");
+}
+
 /** Open a note from ⌘O. */
 async function openNote(name) {
   await pressCmd("o");
@@ -146,6 +165,7 @@ describe("YouTube notes: typing in a video note", function () {
   before(async function () {
     const root = await workspaceRoot();
     this.path = `${root}/${NOTE}.md`;
+    await forgetVideoPositions();
     // Opened afresh from another note, the way a user comes to it. First in
     // the file: YT-08 leaves the Agent open, holding focus.
     await openNote("Welcome");
@@ -568,7 +588,7 @@ describe("YouTube notes: where the transcript shows", function () {
     await (
       await $("//section[@data-placement='beside']//button[@title='Hide transcript']")
     ).click();
-    await browser.waitUntil(async () => (await boxState()).placement === "note", {
+    await browser.waitUntil(async () => (await boxState()).hidden, {
       timeout: 3_000,
       timeoutMsg: "Hide transcript left the box beside the video",
     });
@@ -592,7 +612,7 @@ describe("YouTube notes: where the transcript shows", function () {
       `the video doesn't take the pane's width (${hidden.frame.width} of ${hidden.main.width})`,
     );
     if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-29-hidden.png`);
-    await (await $("//section[@data-placement='note']//button[@aria-expanded='false']")).click();
+    await (await showTranscriptButton()).click();
     await browser.waitUntil(async () => (await boxState()).placement === "beside", {
       timeout: 3_000,
       timeoutMsg: "showing the transcript didn't put it beside the video",
@@ -615,7 +635,7 @@ describe("YouTube notes: where the transcript shows", function () {
     await (
       await $("//section[@data-placement='beside']//button[@aria-label='Hide transcript']")
     ).click();
-    await browser.waitUntil(async () => (await boxState()).placement === "note", {
+    await browser.waitUntil(async () => (await boxState()).hidden, {
       timeout: 3_000,
       timeoutMsg: "the × left the box beside the video",
     });
@@ -639,7 +659,7 @@ describe("YouTube notes: where the transcript shows", function () {
     if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-33-alone.png`);
 
     // Beside the transcript again: the size it had there, not this one.
-    await (await $("//section[@data-placement='note']//button[@aria-expanded='false']")).click();
+    await (await showTranscriptButton()).click();
     await browser.waitUntil(async () => (await boxState()).placement === "beside", {
       timeout: 3_000,
       timeoutMsg: "showing the transcript didn't put it beside the video",
@@ -653,7 +673,7 @@ describe("YouTube notes: where the transcript shows", function () {
     await (
       await $("//section[@data-placement='beside']//button[@aria-label='Hide transcript']")
     ).click();
-    await browser.waitUntil(async () => (await boxState()).placement === "note", {
+    await browser.waitUntil(async () => (await boxState()).hidden, {
       timeout: 3_000,
       timeoutMsg: "the × left the box beside the video",
     });
@@ -669,47 +689,56 @@ describe("YouTube notes: where the transcript shows", function () {
       },
       { timeout: 3_000, timeoutMsg: "a double-click didn't put back the full width" },
     );
-    await (await $("//section[@data-placement='note']//button[@aria-expanded='false']")).click();
+    await (await showTranscriptButton()).click();
   });
 
-  it("YT-12 folding the box leaves its header, and stays folded", async function () {
+  it("YT-12 hiding the transcript leaves Transcript in the row under the video, and it stays hidden", async function () {
     await setPaneWidth(BESIDE_MIN_WIDTH + 200);
     await browser.waitUntil(async () => (await boxState()).placement === "beside", {
       timeout: 3_000,
     });
     // Beside the video it is a panel, closed by its ×.
-    const fold = await $(
-      "//section[@data-placement='beside']//button[@aria-label='Hide transcript']",
-    );
-    await fold.click();
-    // Folded, the transcript goes back under the video as just its header.
-    await browser.waitUntil(async () => (await boxState()).collapsed, {
+    await (await shownButton("Hide transcript")).click();
+    await browser.waitUntil(async () => (await boxState()).hidden, {
       timeout: 3_000,
-      timeoutMsg: "the box didn't fold",
+      timeoutMsg: "the × didn't hide the transcript",
     });
     let state = await boxState();
-    equal(state.placement, "note", "a folded box stays beside the video");
-    await browser.pause(300);
-    const height = await browser.execute(
-      () =>
-        [...document.querySelectorAll(".transcript-box-body")]
-          .find((el) => el.closest(".transcript-box").checkVisibility())
-          ?.getBoundingClientRect().height ?? -1,
-    );
-    ok(height >= 0 && height < 2, `the folded box still shows its lines (${height}px)`);
-    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-12-folded.png`);
-    // Another visit finds it folded.
+    equal(state.shown, 0, "the hidden transcript still shows in the note");
+    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-12-hidden.png`);
+    // Another visit finds it hidden.
     await openNote("Welcome");
     await openNote(NOTE);
     await waitForBox();
-    state = await boxState();
-    ok(state.collapsed, "the box unfolded on its own");
-    const unfold = await $("//section[@data-placement='note']//button[@aria-expanded='false']");
-    await unfold.click();
+    ok((await boxState()).hidden, "the transcript came back on its own");
+    await (await showTranscriptButton()).click();
     await browser.waitUntil(async () => (await boxState()).placement === "beside", {
       timeout: 3_000,
-      timeoutMsg: "unfolded in a wide pane, the box didn't go back beside the video",
+      timeoutMsg: "Transcript in a wide pane didn't put the box back beside the video",
     });
+
+    // Under the video in a narrow pane, its fold hides it the same way.
+    await setPaneWidth(BESIDE_MIN_WIDTH - 200);
+    await browser.waitUntil(async () => (await boxState()).placement === "note", {
+      timeout: 3_000,
+      timeoutMsg: "the box isn't under the video in a narrow pane",
+    });
+    await (await shownButton("Transcript")).click();
+    await browser.waitUntil(async () => (await boxState()).hidden, {
+      timeout: 3_000,
+      timeoutMsg: "the fold didn't hide the transcript",
+    });
+    state = await boxState();
+    equal(state.shown, 0, "the folded transcript still shows in the note");
+    await (await showTranscriptButton()).click();
+    await browser.waitUntil(
+      async () => {
+        const now = await boxState();
+        return now.placement === "note" && now.lines.length > 0;
+      },
+      { timeout: 3_000, timeoutMsg: "Transcript didn't bring the box back under the video" },
+    );
+    await setPaneWidth(BESIDE_MIN_WIDTH + 200);
   });
 
   it("YT-14 the language menu reads the transcript again in another language", async function () {
@@ -1106,9 +1135,56 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
   });
 });
 
+describe("YouTube notes: where a video was left", function () {
+  before(async function () {
+    await workspaceRoot();
+    await forgetVideoPositions();
+    await openNote(NOTE);
+    await waitForBox();
+  });
+
+  it("YT-34 a video closed while playing opens again where it was left", async function () {
+    await markShownBand();
+    // Show the box beside the video, wherever an earlier journey left it.
+    if ((await boxState()).hidden) await (await showTranscriptButton()).click();
+    await waitForBox();
+    // Play from 1:00, the third line.
+    await browser.execute(() =>
+      [...document.querySelectorAll(".transcript-box-line")]
+        .filter((line) => line.checkVisibility())[2]
+        ?.click(),
+    );
+    await browser.waitUntil(
+      async () =>
+        browser.execute(
+          () => shownBand().querySelector(".player-key")?.textContent.startsWith("Pin") ?? false,
+        ),
+      { timeout: 30_000, timeoutMsg: "the video never played (needs YouTube)" },
+    );
+    await browser.pause(1_500);
+    await pressCmd("w");
+    await browser.waitUntil(
+      async () =>
+        browser.execute(
+          () => ![...document.querySelectorAll(".video-band")].some((b) => b.checkVisibility()),
+        ),
+      { timeout: 5_000, timeoutMsg: "⌘W didn't close the video note" },
+    );
+    await openNote(NOTE);
+    await waitForBox();
+    await markShownBand();
+    const src = await browser.execute(() => shownBand().querySelector("iframe").src);
+    const from = Number(new URL(src).searchParams.get("t"));
+    ok(from >= 60 && from < 120, `the video didn't open where it was left: ${src}`);
+    ok((await boxState()).now >= 2, "the transcript isn't at the line where the video was left");
+    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-34-resumed.png`);
+  });
+});
+
 describe("YouTube notes: a link with a timestamp", function () {
   before(async function () {
     await workspaceRoot();
+    await forgetVideoPositions();
     await openNote("Start at a time");
     await $(".video-band iframe").waitForExist({ timeout: 15_000 });
     await browser.execute(() => {

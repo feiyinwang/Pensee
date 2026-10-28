@@ -181,6 +181,43 @@ function savePrefs(prefs: Prefs): void {
   }
 }
 
+// Where each video was left, so it opens there next time, as on YouTube.
+// Kept per video for the most recent ones; a video watched to its end
+// starts over.
+const POSITIONS_KEY = "writer.video-positions";
+const KEPT_POSITIONS = 200;
+/** How often a playing video's place is written down. */
+const POSITION_SAVE_MS = 5000;
+
+function readPositions(): Record<string, number> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(POSITIONS_KEY) ?? "{}") as unknown;
+    return saved && typeof saved === "object" ? (saved as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function watchedPosition(videoId: string): number | null {
+  const seconds = Number(readPositions()[videoId]);
+  return seconds >= 1 ? seconds : null;
+}
+
+/** `null` forgets the video's place. */
+function rememberPosition(videoId: string, seconds: number | null): void {
+  const positions = readPositions();
+  // Re-added last, so the oldest are the first dropped.
+  delete positions[videoId];
+  if (seconds !== null && seconds >= 1) positions[videoId] = Math.floor(seconds);
+  const ids = Object.keys(positions);
+  for (const id of ids.slice(0, Math.max(0, ids.length - KEPT_POSITIONS))) delete positions[id];
+  try {
+    localStorage.setItem(POSITIONS_KEY, JSON.stringify(positions));
+  } catch (error) {
+    console.warn("[video] Couldn't save where the video was left:", error);
+  }
+}
+
 // The video's height, dragged: one beside the transcript, one with the video
 // alone (transcript hidden, or under it in a narrow pane), for every video. A
 // per-viewer layout choice, like the speed.
@@ -381,20 +418,26 @@ function VideoBand({
   // Beside the video when the pane is wide enough (video-player.css): the
   // note's own box hides while this one shows. Folded, it goes back under.
   const collapsed = useTranscriptView((s) => s.collapsed);
+  const setCollapsed = useTranscriptView((s) => s.setCollapsed);
   const [reading, setReading] = useState(false);
+  // Where the video was left wins over the link's own start.
+  const [from] = useState(() => watchedPosition(videoId) ?? start);
   // Read once per video: the page takes them in its address, so a change
   // must not reload the frame.
   const [src] = useState(() => {
     const prefs = readPrefs();
     const query = new URLSearchParams({ v: videoId, rate: String(prefs.rate) });
-    if (start) query.set("t", String(start));
+    if (from) query.set("t", String(from));
     if (prefs.cc) query.set("cc", "1");
     return `${origin}/youtube-player.html?${query}`;
   });
 
   useEffect(() => {
     installVideoPinShortcut();
-    let report: Report = { t: start, playing: false, at: performance.now() };
+    let report: Report = { t: from, playing: false, at: performance.now() };
+    // The place last written down, and when: a report that hasn't moved
+    // (the page saying it's ready) writes nothing.
+    let saved = { t: from, at: 0 };
     // Commands sent before the page has loaded would be dropped: the last
     // one waits for its first report.
     let ready = false;
@@ -570,6 +613,14 @@ function VideoBand({
         disarmAutoPin();
       }
       report = { t, playing, at: performance.now() };
+      if (message.state === YT_ENDED) rememberPosition(videoId, null);
+      else if (
+        Math.abs(t - saved.t) >= 1 &&
+        (!playing || report.at - saved.at >= POSITION_SAVE_MS)
+      ) {
+        rememberPosition(videoId, t);
+        saved = { t, at: report.at };
+      }
       setPlaying(playing);
       // Playing, or settled without playing (paused, ended): the wait is over.
       if (playing || message.state === YT_PAUSED || message.state === YT_ENDED) startPlaying(false);
@@ -597,6 +648,8 @@ function VideoBand({
     const unregister = registerVideoPlayer(player);
     return () => {
       disposed = true;
+      // Closed while playing: up to the last moment, not the last save.
+      if (ready && report.playing) rememberPosition(videoId, player.time());
       clearTimeout(startTimer);
       window.removeEventListener("message", onMessage);
       unregister();
@@ -635,6 +688,7 @@ function VideoBand({
         className="video-band"
         data-stuck={stuck || undefined}
         data-beside={(transcribed && !collapsed) || undefined}
+        data-transcript-hidden={(transcribed && collapsed) || undefined}
       >
         <div className="video-band-main">
           <div className="video-frame">
@@ -706,6 +760,20 @@ function VideoBand({
               >
                 <ScrollText size={13} aria-hidden />
                 {reading ? "Getting transcript…" : "Transcript"}
+              </button>
+            )}
+            {/* Hidden (its ×, or its fold under the video): brought back
+                from here, beside the video or under it. */}
+            {transcribed && collapsed && (
+              <button
+                type="button"
+                className="video-pin-button"
+                title="Show transcript"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setCollapsed(false)}
+              >
+                <ScrollText size={13} aria-hidden />
+                Transcript
               </button>
             )}
           </div>

@@ -107,6 +107,12 @@
   }
 }
 
+/* Hidden, the transcript leaves the note too: Transcript in the row under
+   the video brings it back. */
+[data-pane]:has(.video-band[data-transcript-hidden]) .cm-transcript-widget {
+  display: none;
+}
+
 .video-band-main {
   position: relative;
 }
