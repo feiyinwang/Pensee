@@ -572,6 +572,20 @@ describe("YouTube notes: where the transcript shows", function () {
       timeout: 3_000,
       timeoutMsg: "Hide transcript left the box beside the video",
     });
+    // From the default size alone (the e2e app keeps its storage between
+    // runs, and YT-33 sizes it).
+    await browser.execute(() => {
+      const band = shownBand();
+      if (band.hasAttribute("data-sized-alone")) {
+        band
+          .querySelector(".video-band-resize")
+          .dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      }
+    });
+    await browser.waitUntil(
+      async () => browser.execute(() => !shownBand().hasAttribute("data-sized-alone")),
+      { timeout: 3_000, timeoutMsg: "a double-click didn't put back the full width" },
+    );
     const hidden = await bandSizes();
     ok(
       Math.abs(hidden.frame.width - hidden.main.width) < 2,
@@ -588,6 +602,74 @@ describe("YouTube notes: where the transcript shows", function () {
       Math.abs(shown.frame.height - sized.frame.height) < 2,
       "the video lost the size it had beside the transcript",
     );
+  });
+
+  it("YT-33 with the transcript hidden, the edge makes the video smaller, apart from its size beside", async function () {
+    await markShownBand();
+    await setPaneWidth(BESIDE_MIN_WIDTH + 300);
+    await browser.waitUntil(async () => (await boxState()).placement === "beside", {
+      timeout: 3_000,
+      timeoutMsg: "the box isn't beside the video in a wide pane",
+    });
+    const beside = await bandSizes();
+    await (
+      await $("//section[@data-placement='beside']//button[@aria-label='Hide transcript']")
+    ).click();
+    await browser.waitUntil(async () => (await boxState()).placement === "note", {
+      timeout: 3_000,
+      timeoutMsg: "the × left the box beside the video",
+    });
+    const alone = await bandSizes();
+    await dragHandle(".video-band-resize", -120);
+    const smaller = await bandSizes();
+    ok(
+      Math.abs(smaller.frame.height - (alone.frame.height - 120)) < 3,
+      `the video alone isn't 120px shorter (${alone.frame.height} → ${smaller.frame.height})`,
+    );
+    ok(
+      Math.abs(smaller.frame.width / smaller.frame.height - 16 / 9) < 0.02,
+      "the video alone isn't 16:9 at its new height",
+    );
+    ok(
+      Math.abs(
+        smaller.frame.left - smaller.main.left - (smaller.main.right - smaller.frame.right),
+      ) < 2,
+      "the smaller video isn't centred",
+    );
+    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-33-alone.png`);
+
+    // Beside the transcript again: the size it had there, not this one.
+    await (await $("//section[@data-placement='note']//button[@aria-expanded='false']")).click();
+    await browser.waitUntil(async () => (await boxState()).placement === "beside", {
+      timeout: 3_000,
+      timeoutMsg: "showing the transcript didn't put it beside the video",
+    });
+    ok(
+      Math.abs((await bandSizes()).frame.height - beside.frame.height) < 2,
+      "sizing the video alone changed its size beside the transcript",
+    );
+
+    // Hidden again, a double-click on the edge puts back the full width.
+    await (
+      await $("//section[@data-placement='beside']//button[@aria-label='Hide transcript']")
+    ).click();
+    await browser.waitUntil(async () => (await boxState()).placement === "note", {
+      timeout: 3_000,
+      timeoutMsg: "the × left the box beside the video",
+    });
+    await browser.execute(() =>
+      shownBand()
+        .querySelector(".video-band-resize")
+        .dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+    );
+    await browser.waitUntil(
+      async () => {
+        const now = await bandSizes();
+        return Math.abs(now.frame.width - now.main.width) < 2;
+      },
+      { timeout: 3_000, timeoutMsg: "a double-click didn't put back the full width" },
+    );
+    await (await $("//section[@data-placement='note']//button[@aria-expanded='false']")).click();
   });
 
   it("YT-12 folding the box leaves its header, and stays folded", async function () {

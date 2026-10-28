@@ -30,18 +30,21 @@ selected.
   keeps the width and YouTube letterboxes the picture). Its corners are
   rounded (10px) and it casts a soft shadow, the same as the mini player
   over a board.
-- **Its size is yours, beside the transcript.** Two handles size the video
-  and the transcript beside it: the edge under them (drag up or down) and
-  the divider between them (drag left or right); a grip shows on hover. The
-  video stays 16:9, so both set one thing: a shorter video is narrower, and
-  the transcript takes the width it gives up, as tall as the video. It goes
-  from 140px to the 16:9 height the transcript's 320px leaves (no more than
-  80% of the window). ↑ / ↓ on the focused edge and ← / → on the focused
-  divider move it 24px; a double-click on either puts back the default. The
-  size is kept for every video in `localStorage` under `writer.video-height`.
-  It applies only beside: with the transcript hidden (or under the video in
-  a narrow pane) the video has the pane's width again, and the handles are
-  gone. The mini player over a board keeps its own size.
+- **Its size is yours.** The edge under the video (and the transcript beside
+  it) drags up or down; beside the transcript, the divider between them
+  drags left or right; a grip shows on hover. The video stays 16:9, so both
+  set its height. Beside, a shorter video is narrower and the transcript
+  takes the width it gives up, as tall as the video; up to the 16:9 height
+  the transcript's 320px leaves. Alone (transcript hidden, or under the
+  video in a narrow pane) a shorter video is narrower and centred; up to the
+  pane's 16:9 height. Never under 140px or over 80% of the window. Each
+  layout keeps its own size, for every video, in `localStorage`
+  (`writer.video-height` beside, `writer.video-height-alone` alone): hiding
+  the transcript gives the video the pane's width until it is sized alone,
+  and sizing it alone never changes its size beside. ↑ / ↓ on the focused
+  edge and ← / → on the focused divider move it 24px; a double-click puts
+  back the default of the layout showing. The mini player over a board
+  keeps its own size.
 - **Hide transcript.** Beside the video the transcript is a panel with a
   × at the end of its header (after Copy and Ask); its title is only a
   title. The × folds it away from the video's side: the video takes the

@@ -181,9 +181,14 @@ function savePrefs(prefs: Prefs): void {
   }
 }
 
-// The height the band's edge was dragged to, for every video: a per-viewer
-// layout choice, like the speed.
-const HEIGHT_KEY = "writer.video-height";
+// The video's height, dragged: one beside the transcript, one with the video
+// alone (transcript hidden, or under it in a narrow pane), for every video. A
+// per-viewer layout choice, like the speed.
+type Layout = "beside" | "alone";
+const HEIGHT_KEYS: Record<Layout, string> = {
+  beside: "writer.video-height",
+  alone: "writer.video-height-alone",
+};
 /** Below this the picture is too small to read a slide. */
 const MIN_VIDEO_HEIGHT = 140;
 /** The transcript's narrowest, beside the video, and the gap before it
@@ -192,61 +197,78 @@ const BESIDE_TRANSCRIPT_MIN = 320 + 8;
 /** How far one arrow key moves the edge. */
 const HEIGHT_STEP = 24;
 
-function readHeight(): number | null {
+function readHeight(layout: Layout): number | null {
   try {
-    const saved = Number(localStorage.getItem(HEIGHT_KEY));
+    const saved = Number(localStorage.getItem(HEIGHT_KEYS[layout]));
     return saved >= MIN_VIDEO_HEIGHT ? saved : null;
   } catch {
     return null;
   }
 }
 
-function saveHeight(height: number | null): void {
+function saveHeight(layout: Layout, height: number | null): void {
   try {
-    if (height === null) localStorage.removeItem(HEIGHT_KEY);
-    else localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
+    if (height === null) localStorage.removeItem(HEIGHT_KEYS[layout]);
+    else localStorage.setItem(HEIGHT_KEYS[layout], String(Math.round(height)));
   } catch (error) {
     console.warn("[video] Couldn't save the video's height:", error);
   }
 }
 
+/** The band's CSS for each layout's size (video-player.css). */
+const SIZE_STYLE: Record<Layout, { variable: string; flag: string }> = {
+  beside: { variable: "--video-height", flag: "sized" },
+  alone: { variable: "--video-height-alone", flag: "sizedAlone" },
+};
+
 /**
- * The video's size beside its transcript, from two handles: the edge under
- * them (drag up or down) and the divider between them (drag left or right).
- * The video stays 16:9, so both set the same thing, its height: a shorter
- * video is narrower and the transcript takes the width. Arrow keys move
- * them too; a double-click puts back the default. The size is written
- * straight to the band while dragging and kept on release. With the
- * transcript hidden the video takes the pane's width again (video-player.css).
+ * The video's size from two handles: the edge under it (drag up or down)
+ * and, beside the transcript, the divider between them (drag left or
+ * right). The video stays 16:9, so both set its height: beside, a shorter
+ * video is narrower and the transcript takes the width; alone, it is
+ * narrower and centred. Each layout keeps its own size, so hiding the
+ * transcript gives the video the pane's width until it is sized alone.
+ * Arrow keys move the handles too; a double-click puts back the layout's
+ * default. The size is written straight to the band while dragging and
+ * kept on release.
  */
 function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
-  const [height, setHeight] = useState(readHeight);
+  const [heights, setHeights] = useState(() => ({
+    beside: readHeight("beside"),
+    alone: readHeight("alone"),
+  }));
 
-  const apply = (band: HTMLElement, value: number | null) => {
+  const apply = (band: HTMLElement, layout: Layout, value: number | null) => {
+    const { variable, flag } = SIZE_STYLE[layout];
     if (value === null) {
-      band.style.removeProperty("--video-height");
-      delete band.dataset.sized;
+      band.style.removeProperty(variable);
+      delete band.dataset[flag];
     } else {
-      band.style.setProperty("--video-height", `${value}px`);
-      band.dataset.sized = "";
+      band.style.setProperty(variable, `${value}px`);
+      band.dataset[flag] = "";
     }
   };
 
-  /** The tallest the video can be beside the transcript: its 16:9 height
-   *  at the width the transcript leaves, and no more than 80% of the window,
-   *  so notes keep a strip. */
-  const tallest = (band: HTMLElement) => {
+  /** Which size the handles set now: the transcript on screen beside the
+   *  video, or not. */
+  const layoutOf = (band: HTMLElement): Layout =>
+    band.querySelector(".video-band-transcript")?.checkVisibility() ? "beside" : "alone";
+
+  /** The tallest the video can be: its 16:9 height at the width it has
+   *  (beside, what the transcript leaves), and no more than 80% of the
+   *  window, so notes keep a strip. */
+  const tallest = (band: HTMLElement, layout: Layout) => {
     const main = band.querySelector<HTMLElement>(".video-band-main");
-    const width = (main?.clientWidth ?? 0) - BESIDE_TRANSCRIPT_MIN;
+    const width = (main?.clientWidth ?? 0) - (layout === "beside" ? BESIDE_TRANSCRIPT_MIN : 0);
     return Math.max(MIN_VIDEO_HEIGHT, Math.min((width * 9) / 16, window.innerHeight * 0.8));
   };
 
-  const clamp = (band: HTMLElement, value: number) =>
-    Math.min(tallest(band), Math.max(MIN_VIDEO_HEIGHT, value));
+  const clamp = (band: HTMLElement, layout: Layout, value: number) =>
+    Math.min(tallest(band, layout), Math.max(MIN_VIDEO_HEIGHT, value));
 
-  const commit = (value: number | null) => {
-    setHeight(value);
-    saveHeight(value);
+  const commit = (layout: Layout, value: number | null) => {
+    setHeights((now) => ({ ...now, [layout]: value }));
+    saveHeight(layout, value);
   };
 
   /** A drag on the edge (`y`: px down is px taller) or the divider (`x`: px
@@ -259,6 +281,7 @@ function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
     event.preventDefault();
     const handle = event.currentTarget;
     handle.setPointerCapture(event.pointerId);
+    const layout = layoutOf(band);
     const start = axis === "y" ? event.clientY : event.clientX;
     // In CSS pixels; the pointer moves in screen pixels, which differ while
     // the pane is drawn scaled (the tab columns' pinch).
@@ -268,15 +291,15 @@ function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
     band.dataset.resizing = axis;
     const move = (moveEvent: PointerEvent) => {
       const moved = ((axis === "y" ? moveEvent.clientY : moveEvent.clientX) - start) / scale;
-      next = clamp(band, startHeight + (axis === "y" ? moved : (moved * 9) / 16));
-      apply(band, next);
+      next = clamp(band, layout, startHeight + (axis === "y" ? moved : (moved * 9) / 16));
+      apply(band, layout, next);
     };
     const end = () => {
       handle.removeEventListener("pointermove", move);
       handle.removeEventListener("pointerup", end);
       handle.removeEventListener("pointercancel", end);
       delete band.dataset.resizing;
-      if (next !== startHeight) commit(next);
+      if (next !== startHeight) commit(layout, next);
     };
     handle.addEventListener("pointermove", move);
     handle.addEventListener("pointerup", end);
@@ -291,15 +314,21 @@ function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
       const step = event.key === smaller ? -1 : event.key === larger ? 1 : 0;
       if (!step) return;
       event.preventDefault();
-      commit(clamp(band, frame.offsetHeight + step * HEIGHT_STEP));
+      const layout = layoutOf(band);
+      commit(layout, clamp(band, layout, frame.offsetHeight + step * HEIGHT_STEP));
     };
 
-  const onDoubleClick = () => commit(null);
+  const onDoubleClick = () => {
+    if (bandRef.current) commit(layoutOf(bandRef.current), null);
+  };
 
-  // React owns the size between drags; a drag writes it directly.
+  // React owns the sizes between drags; a drag writes them directly.
   useEffect(() => {
-    if (bandRef.current) apply(bandRef.current, height);
-  }, [bandRef, height]);
+    const band = bandRef.current;
+    if (!band) return;
+    apply(band, "beside", heights.beside);
+    apply(band, "alone", heights.alone);
+  }, [bandRef, heights]);
 
   return {
     edge: { onPointerDown: drag("y"), onKeyDown: keys("ArrowUp", "ArrowDown"), onDoubleClick },
