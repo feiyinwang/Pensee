@@ -14,11 +14,13 @@
   margin-bottom: -1px;
 }
 
+/* 1px in from the scroller's edges: the frames' 1px rings sit outside them
+   and the scroller clips at its edge (top when stuck, and the sides). */
 .video-band {
   position: sticky;
   top: 0;
   z-index: 6;
-  padding-block: 0 4px;
+  padding: 1px 1px 4px;
   border-bottom: 1px solid transparent;
   transition:
     background-color var(--motion-fast) var(--ease-out),
@@ -38,6 +40,7 @@
    60% of the window, then the frame keeps the width and YouTube letterboxes
    the picture, so notes always have room under it. */
 .video-frame {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   max-height: 60vh;
@@ -177,6 +180,45 @@
 
 .video-band[data-resizing="x"] {
   cursor: col-resize;
+}
+
+/* Asked to play, not playing yet (video-player.tsx): a ring turning around
+   the page's own play button, in after 150ms so a quick start never
+   flashes it. Over the frame; presses go through to the video. */
+.video-starting {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border: 2px solid color-mix(in oklch, var(--color-on-scrim) 90%, transparent);
+  border-right-color: transparent;
+  border-radius: var(--radius-pill);
+  opacity: 0;
+  pointer-events: none;
+  animation:
+    video-starting-in var(--motion-fast) var(--ease-out) 150ms forwards,
+    video-starting-turn 800ms linear infinite;
+}
+
+@keyframes video-starting-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes video-starting-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-starting {
+    animation: video-starting-in var(--motion-fast) var(--ease-out) 150ms forwards;
+    border-right-color: color-mix(in oklch, var(--color-on-scrim) 90%, transparent);
+  }
 }
 
 .video-frame iframe {

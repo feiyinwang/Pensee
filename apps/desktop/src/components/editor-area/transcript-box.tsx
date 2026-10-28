@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cursor02Icon } from "@hugeicons/core-free-icons";
-import { ChevronDown, PanelRightClose } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { CopyButton } from "@/components/arc/copy-button/copy-button";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { markVideoUsed, seekVideo, videoPlayerFor } from "@/lib/video-players";
@@ -206,23 +206,23 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
     >
       <header className="transcript-box-head">
         <div className="transcript-box-lead">
-          <button
-            type="button"
-            className="transcript-box-fold"
-            aria-expanded={!collapsed}
-            title={collapsed ? "Show transcript" : "Hide transcript"}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {/* Beside the video it hides the panel, giving the video the
-                width: a panel icon, not a fold. */}
-            {compact ? (
-              <PanelRightClose size={14} aria-hidden className="transcript-box-chevron" />
-            ) : (
-              <ChevronDown size={14} aria-hidden className="transcript-box-chevron" />
-            )}
+          {/* Beside the video a panel: closed by its × (below), so the
+              title is only a title. Under it a fold. */}
+          {compact ? (
             <span className="transcript-box-title">Transcript</span>
-          </button>
+          ) : (
+            <button
+              type="button"
+              className="transcript-box-fold"
+              aria-expanded={!collapsed}
+              title={collapsed ? "Show transcript" : "Hide transcript"}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <ChevronDown size={14} aria-hidden className="transcript-box-chevron" />
+              <span className="transcript-box-title">Transcript</span>
+            </button>
+          )}
           {/* Only a video with captions in more than one language has a choice. */}
           {languages.length > 1 && (
             <DropdownMenu
@@ -260,6 +260,20 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
             <HugeiconsIcon icon={Cursor02Icon} size={16} color="currentColor" strokeWidth={2} />
             {!compact && "Ask"}
           </button>
+          {/* Hides the panel: the video takes the width, and the folded
+              header under it brings the transcript back. */}
+          {compact && (
+            <button
+              type="button"
+              className="transcript-box-button"
+              title="Hide transcript"
+              aria-label="Hide transcript"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setCollapsed(true)}
+            >
+              <X size={16} aria-hidden />
+            </button>
+          )}
         </div>
       </header>
       <div className="transcript-box-body" inert={collapsed}>

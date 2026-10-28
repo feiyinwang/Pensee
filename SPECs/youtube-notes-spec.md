@@ -42,10 +42,19 @@ selected.
   It applies only beside: with the transcript hidden (or under the video in
   a narrow pane) the video has the pane's width again, and the handles are
   gone. The mini player over a board keeps its own size.
-- **Hide transcript.** Beside the video, the button before **Transcript** is
-  a panel icon (hide the panel), not a fold chevron: it folds the transcript
-  away from the video's side, the video takes the full width, and the folded
-  header waits under the video to bring it back.
+- **Hide transcript.** Beside the video the transcript is a panel with a
+  × at the end of its header (after Copy and Ask); its title is only a
+  title. The × folds it away from the video's side: the video takes the
+  full width, and the folded header waits under the video to bring it back.
+  Under the video (a narrow pane) the title is the fold button, as before.
+- The band sits 1px in from the scroller's edges, so the frames' 1px rings
+  are never cut by the scroller (at its top once stuck, and at its sides).
+- **Starting.** ⌘S (or a pin) on a video that isn't playing yet puts a ring
+  turning round the play button at once, faded in after 150ms so a quick
+  start never flashes it, until the video plays, pauses, ends or fails
+  (20s at most). From a note just opened that is about 2s: YouTube's player
+  loads (~0.6s), then buffers. A press before the player is ready waits for
+  it and is never dropped.
 - It is sticky: once the
   properties scroll away, it stays at the top of the note and the notes
   scroll beneath it. The band behind it has the page's background, so no
@@ -109,8 +118,9 @@ selected.
   when nothing was tracked yet (the note just opened), to the video's note:
   never left in the frame, where keys reach only the player's page. Should
   ⌘S or ⌘⇧S land in the page anyway, the page passes them to the app
-  (`{type:"key", shift}`). With nothing focused at all (a note opened from
-  the sidebar), ⌘S and ⌘⇧S mean the video on screen. Your
+  (`{type:"key", shift}`). With focus on nothing that takes text (no focus
+  at all, the sidebar row the note was opened from, a tab), ⌘S and ⌘⇧S mean
+  the video on screen; in another note or a text field they do nothing. Your
   typing lands in the note, not in YouTube's keyboard controls.
 - A video whose owner forbids embedding shows a line with **Open on
   YouTube** instead.

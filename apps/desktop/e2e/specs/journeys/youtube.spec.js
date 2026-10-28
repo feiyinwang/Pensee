@@ -402,8 +402,17 @@ describe("YouTube notes: where the transcript shows", function () {
     const pinned = await browser.execute(() => {
       const frame = document.querySelector(".video-frame").getBoundingClientRect();
       const box = document.querySelector(".video-band .transcript-box").getBoundingClientRect();
-      const scroller = document.querySelector(".video-band").parentElement.getBoundingClientRect();
-      return { frameTop: frame.top, boxTop: box.top, scrollerTop: scroller.top };
+      const scrollerEl = document.querySelector(".video-band").parentElement;
+      const scroller = scrollerEl.getBoundingClientRect();
+      return {
+        frameTop: frame.top,
+        boxTop: box.top,
+        boxRight: box.right,
+        scrollerTop: scroller.top,
+        // The scroller clips at its padding box: its left edge plus its
+        // client width (the scrollbar is outside it).
+        clipRight: scroller.left + scrollerEl.clientLeft + scrollerEl.clientWidth,
+      };
     });
     equal(
       Math.round(pinned.boxTop),
@@ -411,6 +420,12 @@ describe("YouTube notes: where the transcript shows", function () {
       "the box didn't stay by the video",
     );
     ok(pinned.boxTop >= pinned.scrollerTop - 1, "the box scrolled away");
+    // Its 1px ring is outside it: whole only with a pixel between the box
+    // and the scroller's edges.
+    ok(
+      pinned.boxTop >= pinned.scrollerTop + 1 && pinned.boxRight <= pinned.clipRight - 1,
+      `the box's outline is cut by the note's edge: ${JSON.stringify(pinned)}`,
+    );
     if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-13-beside.png`);
 
     await setPaneWidth(BESIDE_MIN_WIDTH - 200);
@@ -580,7 +595,10 @@ describe("YouTube notes: where the transcript shows", function () {
     await browser.waitUntil(async () => (await boxState()).placement === "beside", {
       timeout: 3_000,
     });
-    const fold = await $("//section[@data-placement='beside']//button[@aria-expanded='true']");
+    // Beside the video it is a panel, closed by its ×.
+    const fold = await $(
+      "//section[@data-placement='beside']//button[@aria-label='Hide transcript']",
+    );
     await fold.click();
     // Folded, the transcript goes back under the video as just its header.
     await browser.waitUntil(async () => (await boxState()).collapsed, {
@@ -893,6 +911,52 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
       timeout: 20_000,
       timeoutMsg: "⌘S with nothing focused did nothing",
     });
+
+    // Focus left on the sidebar row the note was opened from: the same.
+    const again = await playing();
+    ok(
+      await browser.execute(() => {
+        const row = document.querySelector(
+          "[data-sidebar-surface] button, [data-sidebar-surface] a",
+        );
+        row?.focus();
+        return document.activeElement === row;
+      }),
+      "no sidebar row to focus",
+    );
+    await pressCmd("s", { inFocus: true });
+    await browser.waitUntil(async () => (await playing()) !== again, {
+      timeout: 20_000,
+      timeoutMsg: "⌘S with a sidebar row focused did nothing",
+    });
+  });
+
+  it("YT-32 ⌘S the moment a video note opens shows a ring at once, gone once it plays", async function () {
+    await openNote("Welcome");
+    await openNote(NOTE);
+    await $(".video-band iframe").waitForExist({ timeout: 15_000 });
+    const since = await browser.execute(() => window.__ytReports.length);
+    const pressed = Date.now();
+    await pressCmd("s", { inFocus: true });
+    // In the DOM at once; it fades in after 150ms so a quick start never
+    // flashes it.
+    ok(
+      await browser.execute(() =>
+        [...document.querySelectorAll(".video-starting")].some((ring) => ring.checkVisibility()),
+      ),
+      "no ring over the video right after ⌘S",
+    );
+    await browser.waitUntil(
+      async () =>
+        browser.execute(
+          (from) =>
+            window.__ytReports.slice(from).some((r) => r.playing) &&
+            !document.querySelector(".video-starting"),
+          since,
+        ),
+      { timeout: 20_000, timeoutMsg: "the video didn't start, or the ring stayed once it did" },
+    );
+    console.log(`YT-32 ⌘S → playing in ${Date.now() - pressed}ms`);
   });
 
   it("YT-27 ⌘⇧S puts a screenshot of the video in the note, pinned to the moment", async function () {

@@ -58,6 +58,13 @@
   white-space: nowrap;
 }
 
+/* Beside the video the title stands alone (its × closes the panel), lined
+   up where the fold button's label sits under the video. */
+.transcript-box-lead > .transcript-box-title {
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+}
+
 .transcript-box-actions {
   display: flex;
   align-items: center;

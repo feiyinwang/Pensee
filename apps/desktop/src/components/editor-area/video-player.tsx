@@ -137,8 +137,9 @@ function useHasCaptions(videoId: string): boolean {
   return has?.videoId === videoId && has.has;
 }
 
-/** YouTube's `PlayerState.PAUSED`. */
+/** YouTube's `PlayerState.PAUSED` and `ENDED`. */
 const YT_PAUSED = 2;
+const YT_ENDED = 0;
 
 /** Each video's chapters, read once per launch (a watch page is ~1.5 MB;
  *  switching tabs remounts the player). A failed read is forgotten. */
@@ -339,6 +340,10 @@ function VideoBand({
   const [stuck, setStuck] = useState(false);
   // For the keys line (⌘S named Play or Pin); the page reports it with every state.
   const [playing, setPlaying] = useState(false);
+  // Asked to play and not playing yet: YouTube's player loads, then buffers
+  // (about 2s from opening the note), and a ring over the video says the
+  // press was taken.
+  const [starting, setStarting] = useState(false);
   const transcript = useEditorStore((s) =>
     transcriptSourceIn(s.openFiles.get(filePath)?.content ?? ""),
   );
@@ -405,15 +410,25 @@ function VideoBand({
         post({ cmd: "bare", on: true });
       });
 
+    let startTimer = 0;
+    const startPlaying = (on: boolean) => {
+      clearTimeout(startTimer);
+      setStarting(on);
+      // A play YouTube never answers (offline) doesn't spin forever.
+      if (on) startTimer = window.setTimeout(() => setStarting(false), 20_000);
+    };
+
     const player: VideoPlayerHandle = {
       notePath: filePath,
       time: () => (report.playing ? report.t + (performance.now() - report.at) / 1000 : report.t),
       seek: (seconds) => {
+        if (!report.playing) startPlaying(true);
         send({ cmd: "seek", t: seconds });
         report = { t: seconds, playing: true, at: performance.now() };
       },
       toggle: () => {
         markVideoUsed(filePath);
+        startPlaying(!report.playing);
         send({ cmd: "toggle" });
       },
       playing: () => report.playing,
@@ -475,6 +490,7 @@ function VideoBand({
       };
       if (message?.source !== "pensee-yt") return;
       if (message.type === "error") {
+        startPlaying(false);
         setError(Number(message.code) || 0);
         return;
       }
@@ -526,6 +542,8 @@ function VideoBand({
       }
       report = { t, playing, at: performance.now() };
       setPlaying(playing);
+      // Playing, or settled without playing (paused, ended): the wait is over.
+      if (playing || message.state === YT_PAUSED || message.state === YT_ENDED) startPlaying(false);
     };
     // A scroll or pinch over the video happens in the page's frame, out of
     // the note's reach: the page sends it here. A scroll moves the note; a
@@ -550,6 +568,7 @@ function VideoBand({
     const unregister = registerVideoPlayer(player);
     return () => {
       disposed = true;
+      clearTimeout(startTimer);
       window.removeEventListener("message", onMessage);
       unregister();
       playerRef.current = null;
@@ -591,13 +610,16 @@ function VideoBand({
         <div className="video-band-main">
           <div className="video-frame">
             {error === null ? (
-              <iframe
-                ref={frameRef}
-                src={src}
-                title="YouTube video"
-                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                allowFullScreen
-              />
+              <>
+                <iframe
+                  ref={frameRef}
+                  src={src}
+                  title="YouTube video"
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allowFullScreen
+                />
+                {starting && <div className="video-starting" aria-hidden />}
+              </>
             ) : (
               <div className="video-error">
                 <p>

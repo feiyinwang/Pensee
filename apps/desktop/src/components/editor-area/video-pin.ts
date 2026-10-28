@@ -334,18 +334,22 @@ let installed = false;
 let lastFocus: HTMLElement | null = null;
 
 /** Whether ⌘S (and ⌘⇧S) pins the moment here: in a note that plays a video or
- *  episode, on its player, with nothing focused while one is on screen, or on
- *  a board while one is mounted (a board swallows ⌘S anyway). Everywhere
- *  else ⌘S does nothing. */
+ *  episode, on its player, on a board while one is mounted (a board swallows
+ *  ⌘S anyway), or with focus on nothing that takes text while one is on
+ *  screen. In another note or a text field ⌘S does nothing. */
 function pinKeyHere(): boolean {
   const focused = focusedNote();
   if (focused) return videoPlayerFor(focused.path) !== null;
   const active = document.activeElement;
   if (active instanceof HTMLElement && active.closest(".video-band, .podcast-card")) return true;
-  // Nothing focused (a note just opened from the sidebar): the player on
-  // screen is the one meant.
-  if (!active || active === document.body) return currentVideoPlayer()?.shown() ?? false;
-  return boardHasFocus() && currentVideoPlayer() !== null;
+  if (boardHasFocus()) return currentVideoPlayer() !== null;
+  // Somewhere that takes no text (nothing, the sidebar row the note was
+  // opened from, a tab): the player on screen is the one meant. A field or
+  // another note keeps its ⌘S.
+  if (active instanceof HTMLElement && active.closest("input, textarea, [contenteditable]")) {
+    return false;
+  }
+  return currentVideoPlayer()?.shown() ?? false;
 }
 
 /** ⌘S (pin and pause, or play on) and ⌘⇧S (screenshot) where `pinKeyHere`, ← / → (skip) and ⇧, /
