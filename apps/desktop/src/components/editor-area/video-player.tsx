@@ -19,7 +19,12 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { showEditorNotice } from "./editor-notice-store";
 import { PlayerKeys } from "./player-keys";
-import { installVideoPinShortcut, returnFocusFrom } from "./video-pin";
+import {
+  installVideoPinShortcut,
+  returnFocusFrom,
+  saveTheMoment,
+  screenshotTheMoment,
+} from "./video-pin";
 import { useTranscriptView } from "./transcript-view";
 import { bringInTranscript, captionLanguagesOf } from "./video-transcript";
 import { isInHiddenTab } from "./hidden-tab";
@@ -205,10 +210,13 @@ function saveHeight(height: number | null): void {
 }
 
 /**
- * The edge under the video (and the transcript beside it): dragged, it sets
- * their height; the video stays 16:9, so it narrows and the transcript takes
- * the width. Arrow keys move it too; a double-click puts it back. The height
- * is written straight to the band while dragging and kept on release.
+ * The video's size beside its transcript, from two handles: the edge under
+ * them (drag up or down) and the divider between them (drag left or right).
+ * The video stays 16:9, so both set the same thing, its height: a shorter
+ * video is narrower and the transcript takes the width. Arrow keys move
+ * them too; a double-click puts back the default. The size is written
+ * straight to the band while dragging and kept on release. With the
+ * transcript hidden the video takes the pane's width again (video-player.css).
  */
 function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
   const [height, setHeight] = useState(readHeight);
@@ -223,21 +231,26 @@ function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
     }
   };
 
-  /** The tallest the video can be here: its 16:9 height at the width it
-   *  has, and no more than 80% of the window, so notes keep a strip. */
+  /** The tallest the video can be beside the transcript: its 16:9 height
+   *  at the width the transcript leaves, and no more than 80% of the window,
+   *  so notes keep a strip. */
   const tallest = (band: HTMLElement) => {
     const main = band.querySelector<HTMLElement>(".video-band-main");
-    const beside = band.querySelector(".video-band-transcript")?.checkVisibility() ?? false;
-    const width = (main?.clientWidth ?? 0) - (beside ? BESIDE_TRANSCRIPT_MIN : 0);
+    const width = (main?.clientWidth ?? 0) - BESIDE_TRANSCRIPT_MIN;
     return Math.max(MIN_VIDEO_HEIGHT, Math.min((width * 9) / 16, window.innerHeight * 0.8));
   };
+
+  const clamp = (band: HTMLElement, value: number) =>
+    Math.min(tallest(band), Math.max(MIN_VIDEO_HEIGHT, value));
 
   const commit = (value: number | null) => {
     setHeight(value);
     saveHeight(value);
   };
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  /** A drag on the edge (`y`: px down is px taller) or the divider (`x`: px
+   *  right is px wider, 9/16 of that taller). */
+  const drag = (axis: "x" | "y") => (event: React.PointerEvent<HTMLDivElement>) => {
     const band = bandRef.current;
     const frame = band?.querySelector<HTMLElement>(".video-frame");
     if (!band || !frame || event.button !== 0) return;
@@ -245,17 +258,16 @@ function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
     event.preventDefault();
     const handle = event.currentTarget;
     handle.setPointerCapture(event.pointerId);
-    const startY = event.clientY;
+    const start = axis === "y" ? event.clientY : event.clientX;
     // In CSS pixels; the pointer moves in screen pixels, which differ while
     // the pane is drawn scaled (the tab columns' pinch).
     const startHeight = frame.offsetHeight;
     const scale = frame.getBoundingClientRect().height / startHeight || 1;
-    const max = tallest(band);
     let next = startHeight;
-    band.dataset.resizing = "";
+    band.dataset.resizing = axis;
     const move = (moveEvent: PointerEvent) => {
-      const moved = (moveEvent.clientY - startY) / scale;
-      next = Math.min(max, Math.max(MIN_VIDEO_HEIGHT, startHeight + moved));
+      const moved = ((axis === "y" ? moveEvent.clientY : moveEvent.clientX) - start) / scale;
+      next = clamp(band, startHeight + (axis === "y" ? moved : (moved * 9) / 16));
       apply(band, next);
     };
     const end = () => {
@@ -270,25 +282,32 @@ function useVideoHeight(bandRef: React.RefObject<HTMLDivElement | null>) {
     handle.addEventListener("pointercancel", end);
   };
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const band = bandRef.current;
-    const frame = band?.querySelector<HTMLElement>(".video-frame");
-    if (!band || !frame) return;
-    const step = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
-    if (!step) return;
-    event.preventDefault();
-    const now = frame.offsetHeight;
-    commit(Math.min(tallest(band), Math.max(MIN_VIDEO_HEIGHT, now + step * HEIGHT_STEP)));
-  };
+  const keys =
+    (smaller: string, larger: string) => (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const band = bandRef.current;
+      const frame = band?.querySelector<HTMLElement>(".video-frame");
+      if (!band || !frame) return;
+      const step = event.key === smaller ? -1 : event.key === larger ? 1 : 0;
+      if (!step) return;
+      event.preventDefault();
+      commit(clamp(band, frame.offsetHeight + step * HEIGHT_STEP));
+    };
 
   const onDoubleClick = () => commit(null);
 
-  // React owns the height between drags; a drag writes it directly.
+  // React owns the size between drags; a drag writes it directly.
   useEffect(() => {
     if (bandRef.current) apply(bandRef.current, height);
   }, [bandRef, height]);
 
-  return { onPointerDown, onKeyDown, onDoubleClick };
+  return {
+    edge: { onPointerDown: drag("y"), onKeyDown: keys("ArrowUp", "ArrowDown"), onDoubleClick },
+    divider: {
+      onPointerDown: drag("x"),
+      onKeyDown: keys("ArrowLeft", "ArrowRight"),
+      onDoubleClick,
+    },
+  };
 }
 
 /** What the player page last said, and when, so the time can be read
@@ -452,6 +471,7 @@ function VideoBand({
         ctrlKey?: boolean;
         over?: boolean;
         on?: boolean;
+        shift?: boolean;
       };
       if (message?.source !== "pensee-yt") return;
       if (message.type === "error") {
@@ -461,7 +481,14 @@ function VideoBand({
       // A press in the player is done: typing goes back where it was, never
       // to the player page.
       if (message.type === "release") {
-        if (frameRef.current) returnFocusFrom(frameRef.current);
+        if (frameRef.current) returnFocusFrom(frameRef.current, filePath);
+        return;
+      }
+      // ⌘S / ⌘⇧S pressed while focus was in the page (a press on the video,
+      // before focus came back): the app's keys never saw them.
+      if (message.type === "key") {
+        if (message.shift) void screenshotTheMoment(player);
+        else saveTheMoment(player);
         return;
       }
       if (message.type === "bare") {
@@ -586,6 +613,15 @@ function VideoBand({
           </div>
           {transcript !== null && !collapsed && (
             <div className="video-band-transcript">
+              <div
+                className="video-band-divider"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Video width"
+                title="Drag to resize · double-click to reset"
+                tabIndex={0}
+                {...resize.divider}
+              />
               <Suspense fallback={null}>
                 <TranscriptBox source={transcript} notePath={notePath} placement="beside" />
               </Suspense>
@@ -598,7 +634,7 @@ function VideoBand({
             aria-label="Video height"
             title="Drag to resize · double-click to reset"
             tabIndex={0}
-            {...resize}
+            {...resize.edge}
           />
         </div>
         {error === null && (

@@ -65,6 +65,61 @@ async function setPaneWidth(width) {
   }, width);
 }
 
+/** `window.shownBand()` in the page: the video band on screen (an earlier
+ *  journey can leave the note mounted, hidden, in another tab). */
+async function markShownBand() {
+  await browser.execute(() => {
+    window.shownBand = () =>
+      [...document.querySelectorAll(".video-band")].find((band) => band.checkVisibility());
+  });
+}
+
+/** Drags the on-screen band's `handle` (`.video-band-resize` down `by` px,
+ *  `.video-band-divider` right `by` px). The plugin sends no pointer events,
+ *  so they are dispatched on the handle, whose own listeners follow the drag
+ *  (pointer capture can't take a made-up id). */
+async function dragHandle(handle, by) {
+  await browser.execute(
+    (selector, px) => {
+      const el = shownBand().querySelector(selector);
+      el.setPointerCapture = () => {};
+      const box = el.getBoundingClientRect();
+      const across = selector === ".video-band-divider";
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      const at = (type, moved) =>
+        el.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            pointerId: 7,
+            clientX: across ? x + moved : x,
+            clientY: across ? y : y + moved,
+          }),
+        );
+      at("pointerdown", 0);
+      at("pointermove", px / 2);
+      at("pointermove", px);
+      at("pointerup", px);
+    },
+    handle,
+    by,
+  );
+}
+
+/** The on-screen video's and transcript box's boxes, and the band's width. */
+async function bandSizes() {
+  return browser.execute(() => {
+    const band = shownBand();
+    return {
+      frame: band.querySelector(".video-frame").getBoundingClientRect().toJSON(),
+      box: band.querySelector(".transcript-box")?.getBoundingClientRect().toJSON() ?? null,
+      main: band.querySelector(".video-band-main").getBoundingClientRect().toJSON(),
+    };
+  });
+}
+
 /** The button named `label` in the box on screen (beside the video its
  *  buttons are icons, named by aria-label). */
 async function shownButton(label) {
@@ -451,6 +506,75 @@ describe("YouTube notes: where the transcript shows", function () {
     );
   });
 
+  it("YT-30 dragging the divider sets the video's width; the transcript takes the rest", async function () {
+    await markShownBand();
+    await setPaneWidth(BESIDE_MIN_WIDTH + 300);
+    await browser.waitUntil(async () => (await boxState()).placement === "beside", {
+      timeout: 3_000,
+      timeoutMsg: "the box isn't beside the video in a wide pane",
+    });
+    // From the default size (the e2e app keeps its storage between runs).
+    await browser.execute(() =>
+      shownBand()
+        .querySelector(".video-band-divider")
+        .dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+    );
+    await dragHandle(".video-band-divider", -160);
+    const before = await bandSizes();
+    await dragHandle(".video-band-divider", 120);
+    const after = await bandSizes();
+    ok(
+      Math.abs(after.frame.width - (before.frame.width + 120)) < 3,
+      `the video isn't 120px wider (${before.frame.width} → ${after.frame.width})`,
+    );
+    ok(
+      Math.abs(after.frame.width / after.frame.height - 16 / 9) < 0.02,
+      "the video isn't 16:9 at its new width",
+    );
+    ok(
+      Math.abs(after.box.height - after.frame.height) < 2,
+      "the transcript isn't the video's height",
+    );
+    ok(
+      Math.abs(after.box.right - after.main.right) < 2 && after.box.left > after.frame.right,
+      "the transcript doesn't fill the rest of the width",
+    );
+  });
+
+  it("YT-29 hiding the transcript gives the video the pane's width; showing it puts back its size", async function () {
+    await markShownBand();
+    await setPaneWidth(BESIDE_MIN_WIDTH + 300);
+    await browser.waitUntil(async () => (await boxState()).placement === "beside", {
+      timeout: 3_000,
+      timeoutMsg: "the box isn't beside the video in a wide pane",
+    });
+    await dragHandle(".video-band-resize", -100);
+    const sized = await bandSizes();
+    await (
+      await $("//section[@data-placement='beside']//button[@title='Hide transcript']")
+    ).click();
+    await browser.waitUntil(async () => (await boxState()).placement === "note", {
+      timeout: 3_000,
+      timeoutMsg: "Hide transcript left the box beside the video",
+    });
+    const hidden = await bandSizes();
+    ok(
+      Math.abs(hidden.frame.width - hidden.main.width) < 2,
+      `the video doesn't take the pane's width (${hidden.frame.width} of ${hidden.main.width})`,
+    );
+    if (process.env.SHOTS) await browser.saveScreenshot(`${process.env.SHOTS}/yt-29-hidden.png`);
+    await (await $("//section[@data-placement='note']//button[@aria-expanded='false']")).click();
+    await browser.waitUntil(async () => (await boxState()).placement === "beside", {
+      timeout: 3_000,
+      timeoutMsg: "showing the transcript didn't put it beside the video",
+    });
+    const shown = await bandSizes();
+    ok(
+      Math.abs(shown.frame.height - sized.frame.height) < 2,
+      "the video lost the size it had beside the transcript",
+    );
+  });
+
   it("YT-12 folding the box leaves its header, and stays folded", async function () {
     await setPaneWidth(BESIDE_MIN_WIDTH + 200);
     await browser.waitUntil(async () => (await boxState()).placement === "beside", {
@@ -705,6 +829,70 @@ describe("YouTube notes: the arrow and speed keys over the video", function () {
     // Back to the speed it had, for the next video.
     ok(await press("<", "Comma"), "⇧, over the video typed");
     await hover(false);
+  });
+
+  it("YT-31 ⌘S works after clicking the video, and with nothing focused", async function () {
+    const view = () =>
+      browser.execute(() => {
+        const content = document
+          .querySelector(".video-band")
+          .closest("[data-pane]")
+          .querySelector(".cm-content");
+        return {
+          focused: document.activeElement === content,
+          active: document.activeElement?.tagName,
+          pins: (content.cmTile.root.view.state.doc.toString().match(/\^yt-\d+/g) ?? []).length,
+        };
+      });
+    const fromPage = (data) =>
+      browser.execute((message) => {
+        const frame = document.querySelector(".video-band iframe");
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            data: { source: "pensee-yt", ...message },
+            origin: new URL(frame.src).origin,
+            source: frame.contentWindow,
+          }),
+        );
+      }, data);
+    await caret(0);
+    // A click on the video: its frame takes focus, its page says "release".
+    // With nothing tracked before (the note just opened), focus goes to the
+    // note, not left in the frame where keys reach only YouTube's page.
+    await browser.execute(() => document.querySelector(".video-band iframe").focus());
+    await fromPage({ type: "release" });
+    ok(
+      (await view()).focused,
+      `focus stayed in ${(await view()).active} after a click on the video`,
+    );
+
+    // ⌘S pressed while focus was still in the page: the page passes it on.
+    const playing = () => browser.execute(() => window.__ytReports.at(-1)?.playing === true);
+    const wasPlaying = await playing();
+    const pins = (await view()).pins;
+    await fromPage({ type: "key", shift: false });
+    if (wasPlaying) {
+      await browser.waitUntil(async () => (await view()).pins > pins, {
+        timeout: 5_000,
+        timeoutMsg: "⌘S from the video's page didn't pin",
+      });
+    } else {
+      await browser.waitUntil(playing, {
+        timeout: 20_000,
+        timeoutMsg: "⌘S from the video's page didn't play it",
+      });
+    }
+
+    // Nothing focused (a note opened from the sidebar): ⌘S still means
+    // the video on screen.
+    const before = await playing();
+    await browser.execute(() => document.activeElement?.blur());
+    equal((await view()).active, "BODY");
+    await pressCmd("s");
+    await browser.waitUntil(async () => (await playing()) !== before, {
+      timeout: 20_000,
+      timeoutMsg: "⌘S with nothing focused did nothing",
+    });
   });
 
   it("YT-27 ⌘⇧S puts a screenshot of the video in the note, pinned to the moment", async function () {

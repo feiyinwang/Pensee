@@ -714,6 +714,12 @@
       // Focus is the note's (below), but should it be here, ← / → skip too,
       // still only with the pointer on the video.
       document.addEventListener("keydown", (event) => {
+        // ⌘S (pin) and ⌘⇧S (screenshot) are the app's, wherever focus is.
+        if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "s") {
+          event.preventDefault();
+          if (!event.repeat) post({ type: "key", shift: event.shiftKey });
+          return;
+        }
         if (!hovering || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
         const by = { ArrowLeft: -5, ArrowRight: 5 }[event.key];
         if (by === undefined) return;

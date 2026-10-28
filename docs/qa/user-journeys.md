@@ -357,7 +357,8 @@ fetches the transcript (English by default, other
 caption languages from a menu), which shows as a teleprompter box that
 highlights the line being said, seeks, copies, folds and asks the Agent:
 beside the video and pinned with it in a wide pane, under it in a narrow one.
-Dragging the edge under the video sets the video's and the transcript's height.
+Dragging the edge under the video, or the divider beside it, sizes the video
+and the transcript; hiding the transcript gives the video the pane's width.
 **Spec:** SPECs/youtube-notes-spec.md
 **Code:** `src/components/editor-area/` (video-player.tsx, video-player.css, video-pin.ts, player-keys.tsx, video-transcript.ts, transcript-box.tsx, transcript-box.css, transcript-view.ts, html-block-decorations.ts, transcript-edges.ts), `src/lib/video-transcript.ts`, `src/lib/video-players.ts`, `src/lib/video-pins.ts`, `src/lib/covers.ts` (youtubeStartSeconds), `src/hooks/use-composer.ts` (a link already in Library), `src/components/command-palette/library-add-rows.tsx`, `src/components/arc/dropdown-menu/`, `src/stores/agent-store.ts` (open), `src-tauri/src/commands/video_player.rs`, `src-tauri/src/commands/youtube-player.html`, `src-tauri/src/macos.rs` (snapshot_png)
 
@@ -390,7 +391,10 @@ Dragging the edge under the video sets the video's and the transcript's height.
 | YT-25 | In the video's note press ⇧. off the video, then over it                                        | Off it `>` is typed and the speed stays; over it the speed steps up and nothing is typed                                                                                                                       | auto: youtube (YouTube)   |
 | YT-26 | Click the video, move the pointer off it, press →                                               | The caret moves; the video doesn't skip                                                                                                                                                                        | you                       |
 | YT-27 | ⌘⇧S in a video's note while it plays                                                            | A pinned item holds a picture of the video at that moment (`![1:25](<Note-assets/….png>) ^yt-85`), saved in the note's assets folder; the player's own controls aren't in it; the video plays on               | auto: youtube (YouTube)   |
-| YT-28 | Drag the edge under the video up, then double-click it                                          | The video and the transcript beside it get shorter together, the video still 16:9 and the transcript wider; the height is kept for every video; a double-click puts it back                                    | auto: youtube             |
+| YT-28 | With the transcript beside the video, drag the edge under them up, then double-click it         | The video and the transcript get shorter together, the video still 16:9 and the transcript wider; the size is kept for every video; a double-click puts it back                                                | auto: youtube             |
+| YT-29 | With the video sized, **Hide transcript** (the panel icon beside it), then show it again        | Hidden, the video takes the pane's whole width; shown again, it is back beside the video at the size it had                                                                                                    | auto: youtube             |
+| YT-30 | Drag the divider between the video and the transcript                                           | The video gets wider or narrower, still 16:9 and as tall as the transcript; the transcript fills the rest of the width                                                                                         | auto: youtube             |
+| YT-31 | Click the video, then ⌘S; open the note from the sidebar and ⌘S at once                         | Each ⌘S plays, or pins and pauses, as in the note; after the click focus is back in the note, not in the video                                                                                                 | auto: youtube (YouTube)   |
 
 ## Podcast notes — POD
 

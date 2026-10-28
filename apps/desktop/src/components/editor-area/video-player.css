@@ -56,15 +56,6 @@
   display: none;
 }
 
-/* Dragged to a height (the edge under the video, video-player.tsx): the
-   video keeps 16:9 at that height, narrower and centred, instead of black
-   bars beside the picture. */
-.video-band[data-sized] .video-frame {
-  width: min(100%, calc(var(--video-height) * 16 / 9));
-  max-height: none;
-  margin-inline: auto;
-}
-
 @container pane (min-width: 900px) {
   .video-band[data-beside] .video-band-main {
     display: grid;
@@ -72,9 +63,20 @@
     gap: 8px;
   }
 
-  /* Beside, the transcript takes the width the video gives up. */
+  /* Sized from its edge or the divider (video-player.tsx): the video keeps
+     16:9 at that height and the transcript takes the width it gives up.
+     Only beside: with the transcript hidden the video has the pane's width. */
   .video-band[data-beside][data-sized] .video-band-main {
     grid-template-columns: minmax(0, calc(var(--video-height) * 16 / 9)) minmax(320px, 1fr);
+  }
+
+  .video-band[data-beside][data-sized] .video-frame {
+    max-height: none;
+  }
+
+  .video-band[data-beside] .video-band-resize,
+  .video-band[data-beside] .video-band-divider {
+    display: block;
   }
 
   .video-band[data-beside] .video-band-transcript {
@@ -91,20 +93,35 @@
   position: relative;
 }
 
-/* The edge under the video and transcript: drag it to set their height. A
-   strip below the frames, its grip showing on hover and while held. */
-.video-band-resize {
+/* The edge under the video and transcript, and the divider between them:
+   drag either to size them. Strips over the gaps, a grip showing on hover
+   and while held; only beside (above). */
+.video-band-resize,
+.video-band-divider {
+  display: none;
   position: absolute;
-  right: 0;
-  bottom: -9px;
-  left: 0;
   z-index: 1;
-  height: 10px;
-  cursor: row-resize;
   touch-action: none;
 }
 
-.video-band-resize::after {
+.video-band-resize {
+  right: 0;
+  bottom: -9px;
+  left: 0;
+  height: 10px;
+  cursor: row-resize;
+}
+
+.video-band-divider {
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  width: 8px;
+  cursor: col-resize;
+}
+
+.video-band-resize::after,
+.video-band-divider::after {
   position: absolute;
   top: 3px;
   left: 50%;
@@ -118,18 +135,30 @@
   transition: opacity var(--motion-hover) var(--ease-hover);
 }
 
+.video-band-divider::after {
+  top: 50%;
+  left: 2px;
+  width: 4px;
+  height: 36px;
+  transform: translateY(-50%);
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .video-band-resize:hover::after {
+  .video-band-resize:hover::after,
+  .video-band-divider:hover::after {
     opacity: 0.6;
   }
 }
 
-.video-band[data-resizing] .video-band-resize::after,
-.video-band-resize:focus-visible::after {
+.video-band[data-resizing="y"] .video-band-resize::after,
+.video-band[data-resizing="x"] .video-band-divider::after,
+.video-band-resize:focus-visible::after,
+.video-band-divider:focus-visible::after {
   opacity: 0.9;
 }
 
-.video-band-resize:focus-visible {
+.video-band-resize:focus-visible,
+.video-band-divider:focus-visible {
   outline: none;
 }
 
@@ -139,8 +168,15 @@
 }
 
 .video-band[data-resizing] {
-  cursor: row-resize;
   user-select: none;
+}
+
+.video-band[data-resizing="y"] {
+  cursor: row-resize;
+}
+
+.video-band[data-resizing="x"] {
+  cursor: col-resize;
 }
 
 .video-frame iframe {
@@ -271,11 +307,6 @@
 [data-pane]:has(> .wr-board-inline) .video-band .video-band-transcript,
 [data-pane]:has(> .wr-board-inline) .video-band-resize {
   display: none;
-}
-
-/* The mini player keeps its own size. */
-[data-pane]:has(> .wr-board-inline) .video-band[data-sized] .video-frame {
-  width: 100%;
 }
 
 [data-pane]:has(> .wr-board-inline) .video-band-row {

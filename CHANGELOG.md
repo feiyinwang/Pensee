@@ -3,7 +3,8 @@
 ## 2026-10-28
 
 - Take a screenshot of a video while you watch it: press ⌘⇧S in its note and a picture of the video at that moment goes into the note, pinned to that moment so a click on the pin plays from there. The picture is saved next to the note, the video's own controls are left out of it, and the video keeps playing. The row under the video lists it as **Screenshot ⌘⇧S**.
-- Drag the edge under a video to make it shorter or taller. The transcript beside it follows, so they stay the same height, and the video keeps its shape and gives the transcript the width it no longer needs. The height you pick is kept for every video; double-click the edge to put it back.
+- Size a video and the transcript beside it: drag the edge under them, or the divider between them. The video keeps its shape, so a smaller video gives the transcript more width, and the two stay the same height. The size you pick is kept for every video; double-click a handle to put it back. To put the transcript away, press the panel icon before **Transcript**: the video takes the whole width, and the transcript comes back at the size you left it.
+- ⌘S now works right after you click the video, and right after you open a video note from the sidebar. Before, a click on the video could leave the keyboard inside it, so ⌘S never reached Pensée.
 
 ## 2026-10-27
 

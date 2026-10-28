@@ -193,11 +193,12 @@ export function pinMoment(prefer?: VideoPlayer): void {
  * ⌘S, "save the moment": while the video plays, pins the moment and pauses,
  * so you can write about it; while it is paused, plays on. One key for the
  * listen → pin → write loop (SPECs/obsidian-shortcuts-spec.md#the-system).
- * The video is the focused note's, else `currentVideoPlayer`'s.
+ * The video is `prefer` (⌘S pressed in its page), else the focused note's,
+ * else `currentVideoPlayer`'s.
  */
-export function saveTheMoment(): void {
+export function saveTheMoment(prefer?: VideoPlayer): void {
   const focused = focusedNote();
-  const player = (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
+  const player = prefer ?? (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
   if (!player) {
     showEditorNotice("Play a video or podcast in a note to pin a moment.");
     return;
@@ -214,12 +215,12 @@ export function saveTheMoment(): void {
  * ⌘⇧S, a screenshot of the moment: saves the picture the video shows now in
  * the note's assets folder and adds it to the note as a pinned item, where
  * ⌘S would pin (the caret in the video's note, else the note's open editor).
- * The video plays on. The video is the focused note's, else
- * `currentVideoPlayer`'s; a podcast has no picture.
+ * The video plays on. The video is `prefer` (⌘⇧S pressed in its page), else
+ * the focused note's, else `currentVideoPlayer`'s; a podcast has no picture.
  */
-export async function screenshotTheMoment(): Promise<void> {
+export async function screenshotTheMoment(prefer?: VideoPlayer): Promise<void> {
   const focused = focusedNote();
-  const player = (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
+  const player = prefer ?? (focused && videoPlayerFor(focused.path)) ?? currentVideoPlayer();
   if (!player?.picture) {
     showEditorNotice("Play a video in a note to take a screenshot of it.");
     return;
@@ -333,13 +334,17 @@ let installed = false;
 let lastFocus: HTMLElement | null = null;
 
 /** Whether ⌘S (and ⌘⇧S) pins the moment here: in a note that plays a video or
- *  episode, on its player, or on a board while one is mounted (a board
- *  swallows ⌘S anyway). Everywhere else ⌘S does nothing. */
+ *  episode, on its player, with nothing focused while one is on screen, or on
+ *  a board while one is mounted (a board swallows ⌘S anyway). Everywhere
+ *  else ⌘S does nothing. */
 function pinKeyHere(): boolean {
   const focused = focusedNote();
   if (focused) return videoPlayerFor(focused.path) !== null;
   const active = document.activeElement;
   if (active instanceof HTMLElement && active.closest(".video-band, .podcast-card")) return true;
+  // Nothing focused (a note just opened from the sidebar): the player on
+  // screen is the one meant.
+  if (!active || active === document.body) return currentVideoPlayer()?.shown() ?? false;
   return boardHasFocus() && currentVideoPlayer() !== null;
 }
 
@@ -349,6 +354,15 @@ function pinKeyHere(): boolean {
 export function installVideoPinShortcut(): void {
   if (installed) return;
   installed = true;
+  // Focus may have landed before the first player installed the tracking.
+  const active = document.activeElement;
+  if (
+    active instanceof HTMLElement &&
+    active !== document.body &&
+    !(active instanceof HTMLIFrameElement)
+  ) {
+    lastFocus = active;
+  }
   document.addEventListener(
     "keydown",
     (event) => {
@@ -393,8 +407,15 @@ export function installVideoPinShortcut(): void {
   });
 }
 
-/** Gives focus back to where it was before `frame` took it. */
-export function returnFocusFrom(frame: HTMLIFrameElement): void {
+/** Gives focus back to where it was before `frame` took it, else to the
+ *  note at `notePath`: never left in the frame, where ⌘S and typing would go
+ *  to the player's page. */
+export function returnFocusFrom(frame: HTMLIFrameElement, notePath: string): void {
   if (document.activeElement !== frame) return;
-  if (lastFocus?.isConnected) lastFocus.focus({ preventScroll: true });
+  if (lastFocus?.isConnected && lastFocus !== document.body) {
+    lastFocus.focus({ preventScroll: true });
+    return;
+  }
+  const [view] = liveEditorsFor(notePath);
+  view?.focus();
 }

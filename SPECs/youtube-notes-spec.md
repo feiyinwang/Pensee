@@ -30,14 +30,22 @@ selected.
   keeps the width and YouTube letterboxes the picture). Its corners are
   rounded (10px) and it casts a soft shadow, the same as the mini player
   over a board.
-- **Its height is yours.** The edge under the video (and the transcript
-  beside it) drags up or down; a grip shows on hover. The video stays 16:9
-  at that height, so it narrows and centres, and the transcript beside it
-  takes the width it gives up; both stay the same height. It goes from 140px
-  to the video's full 16:9 height (no more than 80% of the window). ↑ / ↓ on
-  the focused edge move it 24px; a double-click puts back the default. The
-  height is kept for every video in `localStorage` under
-  `writer.video-height`. The mini player over a board keeps its own size.
+- **Its size is yours, beside the transcript.** Two handles size the video
+  and the transcript beside it: the edge under them (drag up or down) and
+  the divider between them (drag left or right); a grip shows on hover. The
+  video stays 16:9, so both set one thing: a shorter video is narrower, and
+  the transcript takes the width it gives up, as tall as the video. It goes
+  from 140px to the 16:9 height the transcript's 320px leaves (no more than
+  80% of the window). ↑ / ↓ on the focused edge and ← / → on the focused
+  divider move it 24px; a double-click on either puts back the default. The
+  size is kept for every video in `localStorage` under `writer.video-height`.
+  It applies only beside: with the transcript hidden (or under the video in
+  a narrow pane) the video has the pane's width again, and the handles are
+  gone. The mini player over a board keeps its own size.
+- **Hide transcript.** Beside the video, the button before **Transcript** is
+  a panel icon (hide the panel), not a fold chevron: it folds the transcript
+  away from the video's side, the video takes the full width, and the folded
+  header waits under the video to bring it back.
 - It is sticky: once the
   properties scroll away, it stays at the top of the note and the notes
   scroll beneath it. The band behind it has the page's background, so no
@@ -97,7 +105,12 @@ selected.
   times the page zoom). macOS only for now; on Windows it says so. A
   podcast has no picture: ⌘⇧S there says to play a video.
 - The video keeps playing while you type. When you start it by clicking in
-  the player, focus goes back to where it was (the note or the board). Your
+  the player, focus goes back to where it was (the note or the board), or,
+  when nothing was tracked yet (the note just opened), to the video's note:
+  never left in the frame, where keys reach only the player's page. Should
+  ⌘S or ⌘⇧S land in the page anyway, the page passes them to the app
+  (`{type:"key", shift}`). With nothing focused at all (a note opened from
+  the sidebar), ⌘S and ⌘⇧S mean the video on screen. Your
   typing lands in the note, not in YouTube's keyboard controls.
 - A video whose owner forbids embedding shows a line with **Open on
   YouTube** instead.

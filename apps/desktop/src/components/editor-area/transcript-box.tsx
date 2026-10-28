@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cursor02Icon } from "@hugeicons/core-free-icons";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, PanelRightClose } from "lucide-react";
 import { CopyButton } from "@/components/arc/copy-button/copy-button";
 import { DropdownMenu } from "@/components/arc/dropdown-menu/dropdown-menu";
 import { markVideoUsed, seekVideo, videoPlayerFor } from "@/lib/video-players";
@@ -214,7 +214,13 @@ export function TranscriptBox({ source, notePath, placement }: TranscriptBoxProp
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => setCollapsed(!collapsed)}
           >
-            <ChevronDown size={14} aria-hidden className="transcript-box-chevron" />
+            {/* Beside the video it hides the panel, giving the video the
+                width: a panel icon, not a fold. */}
+            {compact ? (
+              <PanelRightClose size={14} aria-hidden className="transcript-box-chevron" />
+            ) : (
+              <ChevronDown size={14} aria-hidden className="transcript-box-chevron" />
+            )}
             <span className="transcript-box-title">Transcript</span>
           </button>
           {/* Only a video with captions in more than one language has a choice. */}
